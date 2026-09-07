@@ -1,0 +1,73 @@
+# Environment variables & secrets (CRITICAL FOR SECURITY)
+.env
+.env.*
+*.env
+!.env.example
+backend/.env
+frontend/.env
+
+# Dependency directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build and distribution outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.vuepress/dist/
+.serverless/
+.fusebox/
+.dynamodb/
+
+# Log files
+*.log
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Python & Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS metadata
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Temporary scratch & backup files
+*.tmp
+*.bak
+/idea project/
+# Large reference docx files (>100MB)
+8572_HCM_SP26SE118_GSP02_HCM_Report7_Final_Project_Report.docx
+docs/templates_doc/
+
+# Agent local skills & locks
+.agents/
+.skills/
+skills-lock.json
+
+
