@@ -7,9 +7,577 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ==========================================
+// 1. ENUMS (CODE-FIRST DOMAIN DEFINITIONS)
+// ==========================================
+
+enum UserRole {
+  SYSTEM_ADMIN
+  SYSTEM_MANAGER
+  SHOP_MANAGER
+  SHOP_STAFF
+  COLLABORATOR
+}
+
+enum KycStatus {
+  UNVERIFIED
+  VERIFIED
+  REJECTED
+}
+
+enum SocialPlatform {
+  TIKTOK
+  FACEBOOK
+  YOUTUBE
+  INSTAGRAM
+  THREADS
+  ZALO
+  TELEGRAM
+  SHOPEE_VIDEO
+  LEMON8
+  OTHER
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+  COPYWRITE_TEXT
+}
+
+enum SampleRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SHIPPED
+}
+
+enum AttributionMethod {
+  COOKIE
+  COUPON
+  FINGERPRINT
+}
+
+enum OrderStatus {
+  PENDING
+  SHIPPING
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  RETURNED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  REVERSED
+}
+
+enum TransactionType {
+  COMMISSION_APPROVED
+  PAYOUT_WITHDRAW
+  REVERSAL
+  PAYOUT_REJECT_REFUND
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CampaignParticipantStatus {
+  INVITED
+  ACCEPTED
+  REJECTED
+}
+
+// ==========================================
+// 2. USER & COLLABORATOR SUBSYSTEM
+// ==========================================
+
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         UserRole  @default(COLLABORATOR)
+  fullName     String    @map("full_name") @db.VarChar(150)
+  phoneNumber  String?   @map("phone_number") @db.VarChar(20)
+  isActive     Boolean   @default(true) @map("is_active")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Reverse Relations
+  stores                    Store[]
+  collaboratorProfile       CollaboratorProfile?
+  socialChannels            CollaboratorSocialChannel[]
+  sampleProductRequests     SampleProductRequest[]
+  referralLinks             ReferralLink[]
+  attributedOrders          Order[]                     @relation("AttributedCollaboratorOrders")
+  commissions               Commission[]
+  wallet                    Wallet?
+  payoutRequests            PayoutRequest[]
+  collaboratorConversations Conversation[]              @relation("CollaboratorConversations")
+  sentChatMessages          ChatMessage[]               @relation("SentChatMessages")
+  campaignParticipants      CampaignParticipant[]
+  auditLogs                 AuditLog[]
+
+  @@map("users")
+}
+
+model Store {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId                String    @map("owner_id") @db.Uuid
+  name                   String    @db.VarChar(200)
+  slug                   String    @unique @db.VarChar(200)
+  logoUrl                String?   @map("logo_url")
+  description            String?
+  websiteUrl             String?   @map("website_url") @db.VarChar(255)
+  defaultCommissionRate  Decimal   @default(10.00) @map("default_commission_rate") @db.Decimal(5, 2)
+  attributionWindowDays  Int       @default(30) @map("attribution_window_days")
+  minPayoutAmount        Decimal   @default(200000.00) @map("min_payout_amount") @db.Decimal(15, 2)
+  isDeleted              Boolean   @default(false) @map("is_deleted")
+  deletedAt              DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products        Product[]
+  mediaAssets     MediaAsset[]
+  commissionRules CommissionRule[]
+  campaigns       Campaign[]
+  orders          Order[]
+  conversations   Conversation[]
+
+  @@index([ownerId], map: "idx_fk_stores_owner")
+  @@map("stores")
+}
+
+model CollaboratorTier {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String   @db.VarChar(50)
+  minRevenueThreshold  Decimal  @default(0.00) @map("min_revenue_threshold") @db.Decimal(15, 2)
+  extraBonusPercentage Decimal  @default(0.00) @map("extra_bonus_percentage") @db.Decimal(5, 2)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Reverse Relations
+  collaboratorProfiles CollaboratorProfile[]
+
+  @@map("collaborator_tiers")
+}
+
+model CollaboratorProfile {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String    @unique @map("user_id") @db.Uuid
+  tierId                String?   @map("tier_id") @db.Uuid
+  avatarUrl             String?   @map("avatar_url")
+  bio                   String?
+  idCardNumber          String?   @map("id_card_number") @db.VarChar(50)
+  taxCode               String?   @map("tax_code") @db.VarChar(50)
+  bankName              String    @map("bank_name") @db.VarChar(100)
+  bankAccountNumber     String    @map("bank_account_number") @db.VarChar(50)
+  bankAccountName       String    @map("bank_account_name") @db.VarChar(150)
+  socialLinksJson       Json?     @map("social_links_json")
+  totalFollowers        Int       @default(0) @map("total_followers")
+  totalEarnedCommission Decimal   @default(0.00) @map("total_earned_commission") @db.Decimal(15, 2)
+  totalOrdersReferred   Int       @default(0) @map("total_orders_referred")
+  kycStatus             KycStatus @default(UNVERIFIED) @map("kyc_status")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tier CollaboratorTier? @relation(fields: [tierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([tierId], map: "idx_fk_collab_profiles_tier")
+  @@map("collaborator_profiles")
+}
+
+model CollaboratorSocialChannel {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId String         @map("collaborator_id") @db.Uuid
+  platformName   SocialPlatform @map("platform_name")
+  channelName    String?        @map("channel_name") @db.VarChar(150)
+  channelUrl     String         @map("channel_url")
+  followerCount  Int            @default(0) @map("follower_count")
+  isPrimary      Boolean        @default(false) @map("is_primary")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  collaborator User @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([collaboratorId], map: "idx_social_channels_collab")
+  @@map("collaborator_social_channels")
+}
+
+// ==========================================
+// 3. CATALOG & MEDIA ASSETS SUBSYSTEM
+// ==========================================
+
+model Product {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId              String    @map("store_id") @db.Uuid
+  sku                  String    @db.VarChar(100)
+  title                String    @db.VarChar(255)
+  categoryName         String?   @map("category_name") @db.VarChar(100)
+  description          String?
+  imageUrl             String?   @map("image_url")
+  originalPrice        Decimal?  @map("original_price") @db.Decimal(15, 2)
+  price                Decimal   @db.Decimal(15, 2)
+  customCommissionRate Decimal?  @map("custom_commission_rate") @db.Decimal(5, 2)
+  stockQuantity        Int       @default(0) @map("stock_quantity")
+  isActive             Boolean   @default(true) @map("is_active")
+  isDeleted            Boolean   @default(false) @map("is_deleted")
+  deletedAt            DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  store                 Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mediaAssets           MediaAsset[]
+  sampleProductRequests SampleProductRequest[]
+  referralLinks         ReferralLink[]
+  orderItems            OrderItem[]
+  productReviews        ProductReview[]
+
+  @@index([storeId], map: "idx_fk_products_store")
+  @@map("products")
+}
+
+model ProductReview {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId      String   @map("product_id") @db.Uuid
+  orderId        String?  @map("order_id") @db.Uuid
+  customerName   String?  @map("customer_name") @db.VarChar(150)
+  rating         Int      @default(5)
+  comment        String?
+  reviewImageUrl String?  @map("review_image_url")
+  isApproved     Boolean  @default(true) @map("is_approved")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([productId], map: "idx_fk_product_reviews_product")
+  @@index([orderId], map: "idx_fk_product_reviews_order")
+  @@map("product_reviews")
+}
+
+model MediaAsset {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId      String    @map("store_id") @db.Uuid
+  productId    String?   @map("product_id") @db.Uuid
+  title        String    @db.VarChar(255)
+  assetType    AssetType @map("asset_type")
+  urlOrContent String    @map("url_or_content")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  store   Store    @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([storeId], map: "idx_fk_media_assets_store")
+  @@index([productId], map: "idx_fk_media_assets_product")
+  @@map("media_assets")
+}
+
+model CommissionRule {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId           String    @map("store_id") @db.Uuid
+  name              String    @db.VarChar(150)
+  minMonthlyRevenue Decimal   @default(0.00) @map("min_monthly_revenue") @db.Decimal(15, 2)
+  bonusPercentage   Decimal   @default(0.00) @map("bonus_percentage") @db.Decimal(5, 2)
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([storeId], map: "idx_fk_commission_rules_store")
+  @@map("commission_rules")
+}
+
+model SampleProductRequest {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId  String              @map("collaborator_id") @db.Uuid
+  productId       String              @map("product_id") @db.Uuid
+  shippingAddress String              @map("shipping_address")
+  trackingNumber  String?             @map("tracking_number") @db.VarChar(100)
+  status          SampleRequestStatus @default(PENDING)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  collaborator User    @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product      Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([collaboratorId], map: "idx_fk_sample_req_collab")
+  @@index([productId], map: "idx_fk_sample_req_product")
+  @@map("sample_product_requests")
+}
+
+// ==========================================
+// 4. TRACKING & ATTRIBUTION SUBSYSTEM
+// ==========================================
+
+model ReferralLink {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId   String    @map("collaborator_id") @db.Uuid
+  productId        String    @map("product_id") @db.Uuid
+  shortCode        String    @map("short_code") @db.VarChar(50)
+  customCouponCode String?   @map("custom_coupon_code") @db.VarChar(50)
+  qrCodeUrl        String?   @map("qr_code_url")
+  totalClicks      Int       @default(0) @map("total_clicks")
+  totalOrders      Int       @default(0) @map("total_orders")
+  isDeleted        Boolean   @default(false) @map("is_deleted")
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  collaborator     User              @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  clickTrafficLogs ClickTrafficLog[]
+
+  @@index([collaboratorId], map: "idx_fk_ref_links_collab")
+  @@index([productId], map: "idx_fk_ref_links_product")
+  @@map("referral_links")
+}
+
+model ClickTrafficLog {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referralLinkId    String   @map("referral_link_id") @db.Uuid
+  ipAddress         String   @map("ip_address") @db.VarChar(45)
+  userAgent         String?  @map("user_agent")
+  deviceFingerprint String?  @map("device_fingerprint") @db.VarChar(255)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  referralLink ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([referralLinkId, createdAt(sort: Desc)], map: "idx_click_logs_link_date")
+  @@map("click_traffic_logs")
+}
+
+model Campaign {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId             String   @map("store_id") @db.Uuid
+  name                String   @db.VarChar(200)
+  bonusCommissionRate Decimal  @default(5.00) @map("bonus_commission_rate") @db.Decimal(5, 2)
+  startDate           DateTime @map("start_date") @db.Timestamptz(6)
+  endDate             DateTime @map("end_date") @db.Timestamptz(6)
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  store        Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participants CampaignParticipant[]
+
+  @@index([storeId], map: "idx_fk_campaigns_store")
+  @@map("campaigns")
+}
+
+model CampaignParticipant {
+  id             String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId     String                    @map("campaign_id") @db.Uuid
+  collaboratorId String                    @map("collaborator_id") @db.Uuid
+  status         CampaignParticipantStatus @default(INVITED)
+  joinedAt       DateTime?                 @map("joined_at") @db.Timestamptz(6)
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  collaborator User     @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([campaignId, collaboratorId], map: "idx_unique_campaign_collab")
+  @@index([campaignId], map: "idx_fk_campaign_part_campaign")
+  @@index([collaboratorId], map: "idx_fk_campaign_part_collab")
+  @@map("campaign_participants")
+}
+
+// ==========================================
+// 5. ORDER & COMMISSION SUBSYSTEM
+// ==========================================
+
+model Order {
+  id                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId                  String             @map("store_id") @db.Uuid
+  externalOrderSn          String             @map("external_order_sn") @db.VarChar(100)
+  attributedCollaboratorId String?            @map("attributed_collaborator_id") @db.Uuid
+  attributionMethod        AttributionMethod? @map("attribution_method")
+  customerName             String?            @map("customer_name") @db.VarChar(150)
+  customerPhone            String?            @map("customer_phone") @db.VarChar(20)
+  shippingAddress          String?            @map("shipping_address")
+  subtotalAmount           Decimal            @map("subtotal_amount") @db.Decimal(15, 2)
+  discountAmount           Decimal            @default(0.00) @map("discount_amount") @db.Decimal(15, 2)
+  finalAmount              Decimal            @map("final_amount") @db.Decimal(15, 2)
+  status                   OrderStatus        @default(PENDING)
+  createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  store                  Store           @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  attributedCollaborator User?           @relation("AttributedCollaboratorOrders", fields: [attributedCollaboratorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  orderItems             OrderItem[]
+  commissions            Commission[]
+  productReviews         ProductReview[]
+
+  @@index([storeId], map: "idx_fk_orders_store")
+  @@index([attributedCollaboratorId], map: "idx_fk_orders_collab")
+  @@map("orders")
+}
+
+model OrderItem {
+  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId                    String   @map("order_id") @db.Uuid
+  productId                  String   @map("product_id") @db.Uuid
+  quantity                   Int
+  unitPrice                  Decimal  @map("unit_price") @db.Decimal(15, 2)
+  appliedCommissionRate      Decimal  @map("applied_commission_rate") @db.Decimal(5, 2)
+  calculatedCommissionAmount Decimal  @map("calculated_commission_amount") @db.Decimal(15, 2)
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([orderId], map: "idx_fk_order_items_order")
+  @@index([productId], map: "idx_fk_order_items_product")
+  @@map("order_items")
+}
+
+model Commission {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String           @map("order_id") @db.Uuid
+  collaboratorId   String           @map("collaborator_id") @db.Uuid
+  commissionAmount Decimal          @map("commission_amount") @db.Decimal(15, 2)
+  status           CommissionStatus @default(PENDING)
+  approvedAt       DateTime?        @map("approved_at") @db.Timestamptz(6)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  order        Order @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  collaborator User  @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([orderId], map: "idx_fk_commissions_order")
+  @@index([collaboratorId], map: "idx_fk_commissions_collab")
+  @@map("commissions")
+}
+
+// ==========================================
+// 6. FINANCIAL LEDGER & PAYOUT SUBSYSTEM
+// ==========================================
+
+model Wallet {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId   String   @unique @map("collaborator_id") @db.Uuid
+  availableBalance Decimal  @default(0.00) @map("available_balance") @db.Decimal(15, 2)
+  pendingBalance   Decimal  @default(0.00) @map("pending_balance") @db.Decimal(15, 2)
+  version          Int      @default(1)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  collaborator     User              @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  financialLedgers FinancialLedger[]
+
+  @@map("wallets")
+}
+
+model FinancialLedger {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  walletId        String          @map("wallet_id") @db.Uuid
+  transactionType TransactionType @map("transaction_type")
+  amount          Decimal         @db.Decimal(15, 2)
+  balanceBefore   Decimal         @map("balance_before") @db.Decimal(15, 2)
+  balanceAfter    Decimal         @map("balance_after") @db.Decimal(15, 2)
+  referenceId     String?         @map("reference_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([walletId, createdAt(sort: Desc)], map: "idx_ledgers_wallet_date")
+  @@map("financial_ledgers")
+}
+
+model PayoutRequest {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId    String       @map("collaborator_id") @db.Uuid
+  amount            Decimal      @db.Decimal(15, 2) // Gross Amount
+  taxAmount         Decimal      @default(0.00) @map("tax_amount") @db.Decimal(15, 2) // 10% PIT Tax
+  netAmount         Decimal      @default(0.00) @map("net_amount") @db.Decimal(15, 2) // Net Amount after tax
+  status            PayoutStatus @default(PENDING)
+  bankName          String?      @map("bank_name") @db.VarChar(100)
+  bankAccountNumber String?      @map("bank_account_number") @db.VarChar(50)
+  bankAccountName   String?      @map("bank_account_name") @db.VarChar(150)
+  bankRefCode       String?      @map("bank_ref_code") @db.VarChar(100)
+  proofImageUrl     String?      @map("proof_image_url")
+  rejectedReason    String?      @map("rejected_reason")
+  processedAt       DateTime?    @map("processed_at") @db.Timestamptz(6)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  collaborator User @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([collaboratorId, createdAt], map: "idx_payouts_pending")
+  @@map("payout_requests")
+}
+
+// ==========================================
+// 7. REAL-TIME CHAT & AUDIT SUBSYSTEM
+// ==========================================
+
+model Conversation {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  collaboratorId String   @map("collaborator_id") @db.Uuid
+  lastMessageAt  DateTime @default(now()) @map("last_message_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  collaborator User          @relation("CollaboratorConversations", fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  chatMessages ChatMessage[]
+
+  @@index([storeId], map: "idx_fk_conversations_store")
+  @@index([collaboratorId], map: "idx_fk_conversations_collab")
+  @@map("conversations")
+}
+
+model ChatMessage {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  senderId       String   @map("sender_id") @db.Uuid
+  messageText    String   @map("message_text")
+  mediaUrl       String?  @map("media_url")
+  isRead         Boolean  @default(false) @map("is_read")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender       User         @relation("SentChatMessages", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([conversationId], map: "idx_fk_chat_messages_conv")
+  @@index([senderId], map: "idx_fk_chat_messages_sender")
+  @@map("chat_messages")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(100)
+  details    Json?
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([userId], map: "idx_fk_audit_logs_user")
+  @@map("audit_logs")
 }
