@@ -24,7 +24,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('SCANMS API Documentation')
-    .setDescription('Sales Collaborator & Affiliate Network Management System API')
+    .setDescription(
+      'Sales Collaborator & Affiliate Network Management System API',
+    )
     .setVersion('1.0.0')
     .addBearerAuth(
       {
@@ -50,5 +52,3 @@ async function bootstrap() {
   await app.listen(port);
 }
 bootstrap();
-
-
