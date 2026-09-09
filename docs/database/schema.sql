@@ -25,7 +25,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('SYSTEM_ADMIN', 'SYSTEM_MANAGER', 'SHOP_MANAGER', 'SHOP_STAFF', 'COLLABORATOR')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('SYSTEM_ADMIN', 'SYSTEM_MANAGER', 'SHOP_MANAGER', 'COLLABORATOR')),
     full_name VARCHAR(150) NOT NULL,
     phone_number VARCHAR(20),
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -176,7 +176,7 @@ CREATE TABLE referral_links (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     collaborator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    short_code VARCHAR(50) NOT NULL,
+    short_code VARCHAR(50) NOT NULL UNIQUE,
     custom_coupon_code VARCHAR(50),
     qr_code_url TEXT,
     total_clicks INTEGER NOT NULL DEFAULT 0 CHECK (total_clicks >= 0),
@@ -224,7 +224,8 @@ CREATE TABLE orders (
     final_amount NUMERIC(15,2) NOT NULL CHECK (final_amount >= 0),
     status VARCHAR(50) NOT NULL CHECK (status IN ('PENDING', 'SHIPPING', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_orders_store_external UNIQUE (store_id, external_order_sn)
 );
 
 CREATE TRIGGER update_orders_updated_at
@@ -249,7 +250,8 @@ CREATE TABLE commissions (
     commission_amount NUMERIC(15,2) NOT NULL CHECK (commission_amount >= 0),
     status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REVERSED')),
     approved_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_commissions_order_collab UNIQUE (order_id, collaborator_id)
 );
 
 -- -----------------------------------------------------------------------------
@@ -283,8 +285,14 @@ CREATE TABLE financial_ledgers (
 CREATE TABLE payout_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     collaborator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
     amount NUMERIC(15,2) NOT NULL CHECK (amount > 0),
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    tax_amount NUMERIC(15,2) NOT NULL DEFAULT 0.00 CHECK (tax_amount >= 0),
+    net_amount NUMERIC(15,2) NOT NULL DEFAULT 0.00 CHECK (net_amount >= 0),
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REVERSED', 'REJECTED')),
+    bank_name VARCHAR(100),
+    bank_account_number VARCHAR(50),
+    bank_account_name VARCHAR(150),
     bank_ref_code VARCHAR(100),
     proof_image_url TEXT,
     rejected_reason TEXT,
@@ -366,8 +374,11 @@ CREATE INDEX idx_fk_audit_logs_user ON audit_logs(user_id);
 -- -----------------------------------------------------------------------------
 
 CREATE INDEX idx_click_logs_link_date ON click_traffic_logs(referral_link_id, created_at DESC);
+CREATE INDEX idx_ref_links_coupon ON referral_links(custom_coupon_code) WHERE custom_coupon_code IS NOT NULL;
 CREATE INDEX idx_orders_unattributed ON orders(created_at) WHERE attributed_collaborator_id IS NULL;
+CREATE INDEX idx_orders_status_created ON orders(status, created_at DESC);
 CREATE INDEX idx_payouts_pending ON payout_requests(collaborator_id, created_at) WHERE status = 'PENDING';
+CREATE INDEX idx_payouts_store_status ON payout_requests(store_id, status);
 CREATE INDEX idx_ledgers_wallet_date ON financial_ledgers(wallet_id, created_at DESC);
 CREATE INDEX idx_social_channels_collab ON collaborator_social_channels(collaborator_id);
 CREATE INDEX idx_products_store_active ON products(store_id, created_at DESC) WHERE is_deleted = false AND is_active = true;

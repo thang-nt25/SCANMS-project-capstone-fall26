@@ -20,6 +20,21 @@
 - **File thực thi**: `docs/generate_capstone_docx.py`, `docs/database/schema.sql`, `backend/src/`, `frontend/src/`
 - **Ghi chú**: Đã hoàn thành 100% nền tảng kỹ thuật và đẩy repository sạch bảo mật lên GitHub chính chủ `thang-nt25`.
 
+### [2026-09-09] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (4-Person Parallel Architecture & Foundation Setup)
+- **Hạng mục đã thực hiện**:
+  1. Chuẩn hóa tên dự án chính thức và duy nhất: **SCANMS** (FA26SE032 - Sales Collaborator and Affiliate Network Management System).
+  2. Cập nhật thương hiệu hiển thị trên Frontend: Title trang web, Logo Navbar, Footer và Nội dung Hero Homepage.
+  3. Xây dựng Kịch bản Gieo mầm CSDL Master (`backend/prisma/seed.ts`) bao phủ trọn vẹn 21 bảng dữ liệu mẫu: User 4 roles, Store, 4 Tiers, 2 Sản phẩm, Media Hub, Link/QR tiếp thị, Ví tiền, Sổ cái tài chính, Đơn hàng và Cuộc hội thoại Chat.
+  4. Cấu hình script `"seed": "prisma db seed"` trong `backend/package.json`.
+  5. Thiết lập Ma trận Phân công Thực chiến cho 4 thành viên (`docs/4_PERSON_TEAM_EXECUTION_GUIDE.md`):
+     - **Nguyễn Thành Thắng (Leader)**: Nhánh Git `thang` (FR-01 → FR-08: Nền tảng, IAM, Store & Products).
+     - **Nguyễn Đình Tuấn**: Nhánh Git `tuan` (FR-09 → FR-16: Tracking, QR & Checkout).
+     - **Phan Xuân Thịnh**: Nhánh Git `thinh` (FR-17 → FR-24: Đơn hàng, Hoa hồng & Ví tiền).
+     - **Nguyễn Phú Quý (hoặc Trần Văn Nhật)**: Nhánh Git `quy` (FR-25 → FR-32: Chat Socket.io & 2 Động cơ AI).
+- **File thực thi**: `backend/prisma/seed.ts`, `backend/package.json`, `frontend/index.html`, `frontend/src/components/layout/MainLayout.tsx`, `frontend/src/pages/HomePage.tsx`, `docs/4_PERSON_TEAM_EXECUTION_GUIDE.md`
+
+
 ---
 
 ### [2026-09-07] Thành viên: Nguyễn Đình Tuấn (UI/UX Designer & Frontend Dev)

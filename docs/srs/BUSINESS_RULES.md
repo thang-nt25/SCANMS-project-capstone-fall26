@@ -16,13 +16,12 @@ Tài liệu này quy định chi tiết toàn bộ **Quy tắc Nghiệp vụ K�
 - **Xác thực:** Nghiêm cấm lưu trữ mật khẩu ở dạng plain-text hoặc mã hóa 1 chiều yếu (`MD5`, `SHA1`).
 - **Ngoại lệ:** Trả về HTTP `400 Bad Request` nếu mật khẩu không đủ độ phức tạp (Tối thiểu 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt).
 
-### BR-SEC-002: Ma trận Phân quyền RBAC 5 Roles (Role-Based Access Control)
+### BR-SEC-002: Ma trận Phân quyền RBAC 4 Roles (Role-Based Access Control)
 - **Mô tả:** Mỗi API Endpoint bắt buộc phải gắn Decorator `@Roles(...)` kiểm soát vai trò:
   1. `SYSTEM_ADMIN`: Chỉ có quyền READ trên Executive Dashboards và Audit Logs toàn sàn.
   2. `SYSTEM_MANAGER`: Quản lý SaaS Web, duyệt Store, xem cảnh báo AI Fraud.
-  3. `SHOP_MANAGER`: Quản lý toàn bộ dữ liệu thuộc Cửa hàng của mình (`WHERE store_id = req.user.store_id`).
-  4. `SHOP_STAFF`: Quản lý đối soát đơn hàng và thông tin rút tiền thuộc Store của mình.
-  5. `COLLABORATOR`: Chỉ có quyền READ/WRITE trên dữ liệu của chính cá nhân mình (`WHERE collaborator_id = req.user.id`).
+  3. `SHOP_MANAGER`: Quản lý toàn bộ dữ liệu, sản phẩm, đối soát đơn hàng và duyệt rút tiền thuộc Cửa hàng của mình (`WHERE store_id = req.user.store_id`).
+  4. `COLLABORATOR`: Chỉ có quyền READ/WRITE trên dữ liệu của chính cá nhân mình (`WHERE collaborator_id = req.user.id`).
 - **Ngoại lệ:** Trả về HTTP `403 Forbidden` nếu người dùng truy cập tài nguyên vượt phân quyền.
 
 ### BR-SEC-003: Nguyên tắc Ràng buộc Xóa Mềm Tuyệt Đối (100% Soft Delete Invariant)
