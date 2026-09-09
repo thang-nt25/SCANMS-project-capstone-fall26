@@ -1,0 +1,1028 @@
+// ==========================================================================
+// SCANMS CUSTOMER MODULE (Khu Vực Tài Khoản Khách Mua Hàng)
+// ==========================================================================
+
+const icon = (name) => `<i class="ph ${name}" aria-hidden="true"></i>`;
+const money = (v) => `${new Intl.NumberFormat("vi-VN").format(v)} ₫`;
+
+export const customerState = {
+  profile: {
+    id: "CUST-8821",
+    name: "Nguyễn Hải Yến",
+    email: "haiyen.nguyen@gmail.com",
+    emailVerified: true,
+    phone: "0903 218 456",
+    phoneVerified: true,
+    avatar: "Y",
+    memberTier: "Thành viên VIP (Hạng Vàng)",
+    joinedDate: "12/03/2026",
+    ordersCount: 8,
+    totalSpent: 3840000
+  },
+
+  orders: [
+    {
+      id: "IN23944",
+      date: "08/09/2026 14:15",
+      storeName: "Sora Skin Official",
+      kolRef: "NHATXINH10 (Trần Văn Nhật)",
+      status: "shipping", // 'pending_pay' | 'shipping' | 'delivered' | 'cancelled' | 'returned'
+      items: [
+        { id: "P01", name: "Serum Vitamin C 15% Dưỡng Sáng Sora Skin", variant: "Dung tích 30ml", qty: 1, price: 459000, img: "./assets/serum-hero-optimized.jpg" }
+      ],
+      shippingFee: 0,
+      discount: 45900,
+      totalAmount: 413100,
+      paymentMethod: "Chuyển khoản VietQR (Đã thanh toán)",
+      shippingCarrier: "Giao Hàng Nhanh (GHN Express)",
+      trackingCode: "GHN88291024VN",
+      shippingAddress: "Số 24 ngõ 168 Hào Nam, Phường Ô Chợ Dừa, Đống Đa, Hà Nội",
+      timeline: [
+        { time: "08/09 14:15", title: "Đặt hàng thành công", desc: "Đơn hàng đã được xác nhận thanh toán qua VietQR." },
+        { time: "08/09 16:30", title: "Shop đã đóng gói", desc: "Kiện hàng đã bàn giao cho shipper GHN Express." },
+        { time: "08/09 19:45", title: "Đang vận chuyển liên tỉnh", desc: "Kiện hàng đã rời kho phân loại trung tâm Hà Nội." }
+      ]
+    },
+    {
+      id: "IN23845",
+      date: "28/08/2026 10:20",
+      storeName: "Sora Skin Official",
+      kolRef: "NHATXINH10 (Trần Văn Nhật)",
+      status: "delivered",
+      items: [
+        { id: "P01", name: "Serum Vitamin C 15% Dưỡng Sáng Sora Skin", variant: "Dung tích 50ml", qty: 1, price: 689000, img: "./assets/serum-hero-optimized.jpg" }
+      ],
+      shippingFee: 0,
+      discount: 50000,
+      totalAmount: 639000,
+      paymentMethod: "Thanh toán khi nhận hàng (COD)",
+      shippingCarrier: "Giao Hàng Tiết Kiệm (GHTK)",
+      trackingCode: "GHTK19827411VN",
+      shippingAddress: "Số 24 ngõ 168 Hào Nam, Phường Ô Chợ Dừa, Đống Đa, Hà Nội",
+      deliveredAt: "30/08/2026 15:40",
+      reviewed: true,
+      timeline: [
+        { time: "28/08 10:20", title: "Đặt hàng thành công", desc: "Hình thức thanh toán: COD đồng kiểm." },
+        { time: "29/08 08:30", title: "Đang giao hàng", desc: "Shipper đang trên đường phát kiện hàng." },
+        { time: "30/08 15:40", title: "Giao hàng thành công", desc: "Người nhận đã ký nhận và thanh toán 639.000 ₫." }
+      ]
+    },
+    {
+      id: "IN23712",
+      date: "15/08/2026 09:00",
+      storeName: "Gia Dụng Thông Minh ZenHome",
+      kolRef: "TUANREVIEW (Tuấn Lifestyle)",
+      status: "delivered",
+      items: [
+        { id: "P05", name: "Bình giữ nhiệt phong cách Bắc Âu 500ml", variant: "Màu Trắng Kem", qty: 2, price: 280000, img: "./assets/serum-hero-optimized.jpg" }
+      ],
+      shippingFee: 25000,
+      discount: 30000,
+      totalAmount: 555000,
+      paymentMethod: "Thanh toán VietQR",
+      shippingCarrier: "Viettel Post",
+      trackingCode: "VTP9912048VN",
+      shippingAddress: "Số 24 ngõ 168 Hào Nam, Phường Ô Chợ Dừa, Đống Đa, Hà Nội",
+      deliveredAt: "17/08/2026 11:15",
+      reviewed: false, // Eligible for review!
+      timeline: [
+        { time: "15/08 09:00", title: "Đặt hàng thành công", desc: "Đơn hàng đã được xác nhận." },
+        { time: "17/08 11:15", title: "Giao hàng thành công", desc: "Kiện hàng đã được giao an toàn." }
+      ]
+    },
+    {
+      id: "IN23501",
+      date: "02/08/2026 21:10",
+      storeName: "Thời Trang Thiết Kế Aura Studio",
+      kolRef: "AURA10",
+      status: "cancelled",
+      items: [
+        { id: "P09", name: "Váy Linen Dáng Xòe Cổ V Cao Cấp", variant: "Size M / Be", qty: 1, price: 520000, img: "./assets/serum-hero-optimized.jpg" }
+      ],
+      shippingFee: 0,
+      discount: 52000,
+      totalAmount: 468000,
+      paymentMethod: "COD",
+      shippingCarrier: "GHN Express",
+      shippingAddress: "Số 24 ngõ 168 Hào Nam, Phường Ô Chợ Dừa, Đống Đa, Hà Nội",
+      cancelReason: "Khách hàng đổi ý muốn chọn lại màu sắc khác.",
+      timeline: [
+        { time: "02/08 21:10", title: "Tạo đơn hàng", desc: "Đơn hàng chờ xác nhận." },
+        { time: "02/08 22:00", title: "Đã hủy theo yêu cầu khách", desc: "Lý do: Khách hàng đổi ý." }
+      ]
+    }
+  ],
+
+  addresses: [
+    {
+      id: "ADDR-1",
+      isDefault: true,
+      label: "Nhà riêng",
+      receiverName: "Nguyễn Hải Yến",
+      phone: "0903 218 456",
+      province: "Hà Nội",
+      district: "Quận Đống Đa",
+      ward: "Phường Ô Chợ Dừa",
+      street: "Số 24 ngõ 168 Hào Nam"
+    },
+    {
+      id: "ADDR-2",
+      isDefault: false,
+      label: "Văn phòng công ty",
+      receiverName: "Nguyễn Hải Yến",
+      phone: "0903 218 456",
+      province: "Hà Nội",
+      district: "Quận Cầu Giấy",
+      ward: "Phường Dịch Vọng",
+      street: "Tầng 6, Tòa nhà FPT Tower, số 10 Phạm Văn Bạch"
+    }
+  ],
+
+  wishlist: [
+    {
+      id: "P01",
+      name: "Serum Vitamin C 15% Dưỡng Sáng Mờ Thâm Sora Skin",
+      brand: "Sora Skin Official",
+      price: 459000,
+      origPrice: 520000,
+      img: "./assets/serum-hero-optimized.jpg",
+      inStock: true,
+      kolDeal: "Giảm 10% qua mã NHATXINH10"
+    },
+    {
+      id: "P02",
+      name: "Kem Chống Nắng Quang Phổ Rộng SPF50+ Ultra Light",
+      brand: "Sora Skin Official",
+      price: 380000,
+      origPrice: 420000,
+      img: "./assets/toner-bha-product.jpg",
+      inStock: true,
+      kolDeal: "Tặng kèm mẫu thử Serum 5ml"
+    },
+    {
+      id: "P03",
+      name: "Nồi Chiên Không Dầu Điện Tử 6L ZenHome",
+      brand: "ZenHome",
+      price: 1450000,
+      origPrice: 1890000,
+      img: "./assets/cleanser-product.jpg",
+      inStock: false, // Hết hàng
+      kolDeal: "Tạm hết hàng - Bật thông báo khi có hàng"
+    }
+  ],
+
+  reviews: [
+    {
+      orderId: "IN23845",
+      productName: "Serum Vitamin C 15% Dưỡng Sáng Sora Skin",
+      rating: 5,
+      date: "31/08/2026",
+      comment: "Mua qua link giới thiệu của bạn Nhật được giảm 10% hời dã man! Serum thấm nhanh không bị vàng da, da sáng hơn sau 2 tuần dùng.",
+      images: ["./assets/serum-hero-optimized.jpg"],
+      shopReply: "Cảm ơn bạn Hải Yến đã tin tưởng lựa chọn Sora Skin và ủng hộ đối tác KOL của shop ạ!"
+    }
+  ],
+
+  supportTickets: [
+    {
+      id: "TICK-701",
+      orderId: "IN23944",
+      subject: "Hỏi về thời gian giao hàng dự kiến tại Đống Đa",
+      status: "resolved", // 'pending' | 'in_progress' | 'resolved'
+      createdAt: "08/09 15:00",
+      messages: [
+        { sender: "customer", text: "Shop ơi đơn này chiều mai mình nhận kịp trước khi đi công tác không ạ?", time: "08/09 15:00" },
+        { sender: "support", text: "Chào bạn Hải Yến, kiện hàng đã xuất kho HN nên dự kiến trưa mai 09/09 shipper GHN sẽ giao tới bạn nhé!", time: "08/09 15:20" }
+      ]
+    }
+  ],
+
+  activeOrderTab: "all",
+  selectedOrderDetailId: null
+};
+
+// --------------------------------------------------------------------------
+// 1. TÀI KHOẢN CỦA TÔI (CUSTOMER PROFILE)
+// --------------------------------------------------------------------------
+export function customerProfileScreen() {
+  const p = customerState.profile;
+
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>Khách hàng / </span><strong>Tài khoản của tôi</strong></div>
+        <h1>Hồ Sơ Tài Khoản Khách Hàng</h1>
+        <p>Quản lý thông tin liên hệ, xác thực số điện thoại/email và quản lý các giao dịch mua hàng.</p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" data-cust-goto="storefront"><i class="ph ph-shopping-bag"></i> Mua sắm tiếp</button>
+      </div>
+    </header>
+
+    <div class="split" style="grid-template-columns:1fr 1fr;gap:20px">
+      <!-- Cột Trái: Thông tin cá nhân -->
+      <div class="card" style="padding:22px">
+        <h3 style="margin-top:0;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:10px">
+          ${icon("ph-user")} Thông tin cá nhân
+        </h3>
+        
+        <div style="display:flex;align-items:center;gap:16px;margin:18px 0">
+          <div style="width:64px;height:64px;border-radius:50%;background:#f59e0b;color:#fff;display:grid;place-items:center;font-size:28px;font-weight:700">
+            ${p.avatar}
+          </div>
+          <div>
+            <strong style="font-size:18px;display:block">${p.name}</strong>
+            <span class="badge warning" style="font-size:11.5px;margin-top:2px">${icon("ph-crown")} ${p.memberTier}</span>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">Thành viên từ: ${p.joinedDate}</div>
+          </div>
+        </div>
+
+        <form id="cust-profile-form" class="form-stack">
+          <div class="field">
+            <label>Họ và tên</label>
+            <input class="input" id="cust-name-input" value="${p.name}" required />
+          </div>
+
+          <div class="field">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label>Địa chỉ Email</label>
+              <span style="font-size:11.5px;color:#059669;font-weight:600"><i class="ph ph-check-circle"></i> Đã xác minh</span>
+            </div>
+            <input class="input" id="cust-email-input" value="${p.email}" required />
+          </div>
+
+          <div class="field">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label>Số điện thoại nhận hàng</label>
+              <span style="font-size:11.5px;color:#059669;font-weight:600"><i class="ph ph-check-circle"></i> Đã xác minh OTP</span>
+            </div>
+            <input class="input" id="cust-phone-input" value="${p.phone}" required />
+          </div>
+
+          <button class="btn" type="submit"><i class="ph ph-check"></i> Cập nhật hồ sơ</button>
+        </form>
+      </div>
+
+      <!-- Cột Phải: Thống kê chi tiêu & Liên kết nhanh -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="card" style="padding:22px">
+          <h3 style="margin-top:0;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:10px">
+            ${icon("ph-chart-pie")} Tóm tắt mua hàng
+          </h3>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+            <div style="padding:14px;background:var(--surface-2);border-radius:10px">
+              <small style="color:var(--muted)">Đơn hàng đã đặt</small>
+              <strong style="font-size:24px;display:block;margin-top:4px">${p.ordersCount} đơn</strong>
+              <span style="font-size:11.5px;color:#059669"><i class="ph ph-trend-up"></i> 100% hoàn thành</span>
+            </div>
+            <div style="padding:14px;background:var(--surface-2);border-radius:10px">
+              <small style="color:var(--muted)">Tổng chi tiêu tích lũy</small>
+              <strong style="font-size:24px;display:block;margin-top:4px;color:var(--brand)">${money(p.totalSpent)}</strong>
+              <span style="font-size:11.5px;color:var(--muted)">Tiết kiệm ~${money(420000)} qua KOL</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:22px">
+          <h3 style="margin-top:0;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:10px">
+            ${icon("ph-shield-check")} Bảo vệ tài khoản & Guest Checkout
+          </h3>
+          <p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin:12px 0">
+            Hệ thống hỗ trợ cả <strong>Guest Checkout</strong> (mua không cần tài khoản) và lưu trữ đơn vào tài khoản thành viên. Đơn hàng mua qua mã tiếp thị KOL được bảo chứng nguồn gốc và đối soát an toàn 14 ngày.
+          </p>
+          <div style="display:flex;gap:10px">
+            <button class="btn small secondary" data-cust-goto="customer-addresses"><i class="ph ph-map-pin"></i> Sổ địa chỉ (${customerState.addresses.length})</button>
+            <button class="btn small secondary" data-cust-goto="customer-orders"><i class="ph ph-receipt"></i> Đơn của tôi</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// --------------------------------------------------------------------------
+// 2. ĐƠN HÀNG CỦA TÔI (CUSTOMER ORDERS)
+// --------------------------------------------------------------------------
+export function customerOrdersScreen() {
+  const tab = customerState.activeOrderTab;
+  const filtered = customerState.orders.filter(o => {
+    if (tab === "all") return true;
+    return o.status === tab;
+  });
+
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>Khách hàng / </span><strong>Đơn hàng của tôi</strong></div>
+        <h1>Đơn Hàng Của Tôi</h1>
+        <p>Theo dõi tiến trình vận chuyển, xem chi tiết hóa đơn, gửi yêu cầu đổi trả hoặc đánh giá sản phẩm.</p>
+      </div>
+      <div class="actions">
+        <label class="search" style="margin:0">${icon("ph-magnifying-glass")}<input class="input" placeholder="Tìm mã đơn hàng (VD: IN23944)..." id="cust-order-search" /></label>
+      </div>
+    </header>
+
+    <!-- Tabs Trạng Thái Đơn Hàng Chuẩn E-Commerce -->
+    <div class="toolbar" style="margin-bottom:18px">
+      <div class="segmented" style="margin:0">
+        <button class="${tab === 'all' ? 'active' : ''}" data-cust-order-tab="all">Tất cả (${customerState.orders.length})</button>
+        <button class="${tab === 'shipping' ? 'active' : ''}" data-cust-order-tab="shipping">Đang vận chuyển (${customerState.orders.filter(o => o.status === 'shipping').length})</button>
+        <button class="${tab === 'delivered' ? 'active' : ''}" data-cust-order-tab="delivered">Đã giao (${customerState.orders.filter(o => o.status === 'delivered').length})</button>
+        <button class="${tab === 'cancelled' ? 'active' : ''}" data-cust-order-tab="cancelled">Đã hủy (${customerState.orders.filter(o => o.status === 'cancelled').length})</button>
+      </div>
+    </div>
+
+    <!-- Danh Sách Card Đơn Hàng -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      ${filtered.length > 0 ? filtered.map(order => `
+        <div class="card" style="padding:20px;border-radius:12px">
+          <!-- Header Card: Shop, Trạng thái -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <i class="ph ph-storefront" style="color:var(--brand);font-size:20px"></i>
+              <strong>${order.storeName}</strong>
+              <span style="font-size:12px;color:var(--muted)">• Mã đơn: <strong class="mono" style="color:var(--text)">${order.id}</strong></span>
+              <span style="font-size:11.5px;background:var(--brand-soft);color:var(--brand-strong);padding:2px 8px;border-radius:6px">
+                KOL: ${order.kolRef}
+              </span>
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-size:10.5px;padding:2px 7px;border-radius:6px">
+                <i class="ph ph-shield-check"></i> Đổi trả & Escrow 14 ngày
+              </span>
+            </div>
+            <div>
+              ${renderOrderStatusBadge(order.status)}
+            </div>
+          </div>
+
+          <!-- Body Card: Danh sách sản phẩm trong đơn -->
+          <div style="display:flex;flex-direction:column;gap:12px">
+            ${order.items.map(it => `
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:14px">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <img src="${it.img}" alt="${it.name}" style="width:54px;height:54px;border-radius:8px;object-fit:cover;border:1px solid var(--line)" />
+                  <div>
+                    <strong style="font-size:14px;display:block">${it.name}</strong>
+                    <small style="color:var(--muted)">Phân loại: ${it.variant} • Số lượng: x${it.qty}</small>
+                  </div>
+                </div>
+                <div style="text-align:right">
+                  <strong style="font-size:14.5px">${money(it.price)}</strong>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+
+          <!-- Footer Card: Tổng tiền & Nút hành động -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--line);margin-top:14px">
+            <div>
+              <small style="color:var(--muted)">Thời gian đặt: ${order.date}</small>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">Đơn vị giao: <strong>${order.shippingCarrier}</strong> (${order.trackingCode || 'Đang cập nhật mã'})</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div>
+                <span style="font-size:12.5px;color:var(--muted)">Tổng thanh toán:</span>
+                <strong style="font-size:18px;color:var(--brand);margin-left:6px">${money(order.totalAmount)}</strong>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn small secondary" data-cust-view-order="${order.id}">Chi tiết</button>
+                ${order.status === 'shipping' ? `
+                  <button class="btn small" data-cust-track-order="${order.id}"><i class="ph ph-map-pin"></i> Theo dõi</button>
+                  <button class="btn small secondary" data-cust-cancel-order="${order.id}" style="color:#dc2626">Hủy đơn</button>
+                ` : ''}
+                ${order.status === 'delivered' ? `
+                  ${!order.reviewed ? `<button class="btn small" data-cust-review-order="${order.id}"><i class="ph ph-star"></i> Đánh giá</button>` : `<span class="badge success" style="font-size:11px"><i class="ph ph-check"></i> Đã đánh giá</span>`}
+                  <button class="btn small secondary" data-cust-return-order="${order.id}">Đổi trả / Hỗ trợ</button>
+                  <button class="btn small secondary" data-cust-reorder="${order.id}">Mua lại</button>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join("") : `
+        <div class="card" style="text-align:center;padding:48px;color:var(--muted)">
+          <i class="ph ph-receipt" style="font-size:40px;display:block;margin-bottom:12px;color:var(--muted)"></i>
+          <h3 style="margin:0;font-size:16px;color:var(--text)">Chưa có đơn hàng nào ở trạng thái này</h3>
+          <p style="font-size:13px;margin:6px 0 16px">Khám phá các sản phẩm hot đang được các KOL/KOC ưu đãi ngay hôm nay!</p>
+          <button class="btn" data-cust-goto="storefront"><i class="ph ph-shopping-bag"></i> Mua sắm ngay</button>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderOrderStatusBadge(status) {
+  switch (status) {
+    case "shipping":
+      return `<span class="badge info" style="background:#e0e7ff;color:#4f46e5;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600"><i class="ph ph-truck"></i> Đang vận chuyển</span>`;
+    case "delivered":
+      return `<span class="badge success" style="background:#d1fae5;color:#059669;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600"><i class="ph ph-check-circle"></i> Giao thành công</span>`;
+    case "cancelled":
+      return `<span class="badge danger" style="background:#fee2e2;color:#dc2626;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600"><i class="ph ph-x-circle"></i> Đã hủy đơn</span>`;
+    case "returned":
+      return `<span class="badge warning" style="background:#fef3c7;color:#d97706;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600"><i class="ph ph-arrow-u-down-left"></i> Đổi trả hàng</span>`;
+    default:
+      return `<span class="badge neutral">${status}</span>`;
+  }
+}
+
+// --------------------------------------------------------------------------
+// 3. CHI TIẾT ĐƠN HÀNG (CUSTOMER ORDER DETAIL)
+// --------------------------------------------------------------------------
+export function customerOrderDetailScreen() {
+  const orderId = customerState.selectedOrderDetailId || "IN23944";
+  const order = customerState.orders.find(o => o.id === orderId) || customerState.orders[0];
+
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>Khách hàng / </span><a href="#customer-orders" style="color:var(--brand);text-decoration:none">Đơn hàng của tôi</a> / <strong>${order.id}</strong></div>
+        <h1>Chi Tiết Đơn Hàng: ${order.id}</h1>
+        <p>Thông tin kiện hàng, chi phí đối soát, mã giảm giá tiếp thị và hành trình giao nhận.</p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" data-cust-goto="customer-orders">&larr; Quay lại danh sách</button>
+      </div>
+    </header>
+
+    <div class="split" style="grid-template-columns:1.2fr 0.8fr;gap:20px">
+      <!-- Cột Trái: Sản phẩm & Thanh toán -->
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="card" style="padding:22px">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px">
+            <div>
+              <strong style="font-size:16px">${order.storeName}</strong>
+              <small style="color:var(--muted);display:block">Mã giảm giá KOL đã áp dụng: <strong>${order.kolRef}</strong></small>
+            </div>
+            ${renderOrderStatusBadge(order.status)}
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:14px">
+            ${order.items.map(it => `
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:14px">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <img src="${it.img}" alt="${it.name}" style="width:58px;height:58px;border-radius:8px;object-fit:cover;border:1px solid var(--line)" />
+                  <div>
+                    <strong style="font-size:14.5px;display:block">${it.name}</strong>
+                    <small style="color:var(--muted)">Phân loại: ${it.variant}</small>
+                    <div style="font-size:12px;color:var(--muted)">Số lượng: x${it.qty}</div>
+                  </div>
+                </div>
+                <strong style="font-size:15px">${money(it.price * it.qty)}</strong>
+              </div>
+            `).join("")}
+          </div>
+
+          <!-- Chi tiết bảng tiền -->
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;font-size:13.5px">
+            <div style="display:flex;justify-content:space-between">
+              <span style="color:var(--muted)">Tổng tiền hàng:</span>
+              <strong>${money(order.items.reduce((acc, it) => acc + (it.price * it.qty), 0))}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="color:var(--muted)">Phí vận chuyển:</span>
+              <span>${order.shippingFee > 0 ? money(order.shippingFee) : '<span style="color:#059669;font-weight:600">Miễn phí vận chuyển</span>'}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="color:var(--muted)">Giảm giá qua KOL (${order.kolRef}):</span>
+              <strong style="color:#059669">-${money(order.discount)}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:16px;padding-top:10px;border-top:1px dashed var(--line);margin-top:4px">
+              <strong>Thành tiền thanh toán:</strong>
+              <strong style="color:var(--brand)">${money(order.totalAmount)}</strong>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">
+              Phương thức: <strong>${order.paymentMethod}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:22px">
+          <h3 style="margin-top:0;font-size:15px;border-bottom:1px solid var(--line);padding-bottom:10px">
+            ${icon("ph-map-pin")} Địa chỉ nhận hàng
+          </h3>
+          <div style="font-size:13.5px;line-height:1.5;margin-top:10px">
+            <strong>${customerState.profile.name}</strong> • ${customerState.profile.phone}
+            <div style="color:var(--muted);margin-top:2px">${order.shippingAddress}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cột Phải: Tiến trình giao nhận (Timeline) -->
+      <div class="card" style="padding:22px">
+        <h3 style="margin-top:0;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:10px">
+          ${icon("ph-truck")} Tiến trình vận chuyển
+        </h3>
+        <div style="font-size:12.5px;color:var(--muted);margin:10px 0 16px">
+          Đơn vị: <strong>${order.shippingCarrier}</strong> • Mã vận đơn: <strong class="mono">${order.trackingCode}</strong>
+        </div>
+
+        <div class="stepper" style="display:flex;flex-direction:column;gap:18px">
+          ${order.timeline ? order.timeline.map((step, idx) => `
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="background:#059669;color:#fff;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px">
+                <i class="ph ph-check"></i>
+              </span>
+              <div>
+                <strong style="font-size:13px">${step.title}</strong>
+                <div style="font-size:12px;color:var(--muted);margin-top:1px">${step.desc}</div>
+                <small class="mono" style="color:var(--muted);font-size:11px">${step.time}</small>
+              </div>
+            </div>
+          `).join("") : ''}
+        </div>
+
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px">
+          <button class="btn secondary" data-cust-support-order="${order.id}"><i class="ph ph-chat-circle-dots"></i> Yêu cầu hỗ trợ đơn này</button>
+          ${order.status === 'shipping' ? `<button class="btn danger" data-cust-cancel-order="${order.id}">Hủy đơn hàng</button>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// --------------------------------------------------------------------------
+// 4. SỔ ĐỊA CHỈ (CUSTOMER ADDRESSES)
+// --------------------------------------------------------------------------
+export function customerAddressesScreen() {
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>Khách hàng / </span><strong>Sổ địa chỉ</strong></div>
+        <h1>Sổ Địa Chỉ Nhận Hàng</h1>
+        <p>Quản lý các địa chỉ giao hàng để tự động điền nhanh khi thanh toán giỏ hàng (Guest/Member Checkout).</p>
+      </div>
+      <div class="actions">
+        <button class="btn" data-cust-add-address><i class="ph ph-plus"></i> Thêm địa chỉ mới</button>
+      </div>
+    </header>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(360px, 1fr));gap:16px">
+      ${customerState.addresses.map(addr => `
+        <div class="card" style="padding:20px;position:relative;border:${addr.isDefault ? '2px solid var(--brand)' : '1px solid var(--line)'}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <strong style="font-size:15px">${addr.receiverName}</strong>
+              <span style="color:var(--muted)">| ${addr.phone}</span>
+            </div>
+            ${addr.isDefault ? `<span class="badge" style="background:var(--brand-soft);color:var(--brand-strong);font-weight:700;font-size:11px">MẶC ĐỊNH</span>` : ''}
+          </div>
+
+          <span class="badge neutral" style="font-size:11.5px;margin-bottom:10px"><i class="ph ph-tag"></i> ${addr.label}</span>
+
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:16px">
+            ${addr.street}, ${addr.ward}, ${addr.district}, ${addr.province}
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--line)">
+            <div>
+              ${!addr.isDefault ? `<button class="text-btn" data-cust-set-default-addr="${addr.id}" style="font-size:12px">Thiết lập mặc định</button>` : '<span style="font-size:12px;color:var(--muted)">Địa chỉ ưu tiên</span>'}
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn small secondary" data-cust-edit-addr="${addr.id}"><i class="ph ph-pencil"></i> Sửa</button>
+              ${!addr.isDefault ? `<button class="icon-btn danger" data-cust-delete-addr="${addr.id}" title="Xóa địa chỉ">${icon("ph-trash")}</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+// --------------------------------------------------------------------------
+// 5. SẢN PHẨM ĐÃ LƯU (CUSTOMER WISHLIST)
+// --------------------------------------------------------------------------
+export function customerWishlistScreen() {
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>Khách hàng / </span><strong>Yêu thích</strong></div>
+        <h1>Sản Phẩm Đã Lưu (Wishlist)</h1>
+        <p>Danh sách các sản phẩm yêu thích đã lưu để theo dõi chương trình giảm giá và ưu đãi từ KOL.</p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" data-cust-goto="storefront"><i class="ph ph-shopping-bag"></i> Khám phá thêm</button>
+      </div>
+    </header>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:20px">
+      ${customerState.wishlist.map(item => `
+        <div class="card" style="padding:16px;display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <div style="position:relative;margin-bottom:12px">
+              <img src="${item.img}" alt="${item.name}" style="width:100%;height:180px;object-fit:cover;border-radius:10px" />
+              <button class="icon-btn danger" data-cust-remove-wishlist="${item.id}" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.9);box-shadow:0 2px 8px rgba(0,0,0,0.1)" title="Bỏ lưu">
+                ${icon("ph-heart-break")}
+              </button>
+            </div>
+            <small style="color:var(--brand);font-weight:600">${item.brand}</small>
+            <strong style="font-size:14.5px;display:block;margin:4px 0 8px;line-height:1.4">${item.name}</strong>
+            <div style="font-size:12px;color:#059669;margin-bottom:8px">
+              <i class="ph ph-sparkle"></i> ${item.kolDeal}
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px">
+              <strong style="font-size:17px;color:var(--brand)">${money(item.price)}</strong>
+              <small style="color:var(--muted);text-decoration:line-through">${money(item.origPrice)}</small>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line)">
+            ${item.inStock ? `
+              <button class="btn" data-cust-add-to-cart="${item.id}" style="width:100%"><i class="ph ph-shopping-cart-simple"></i> Thêm vào giỏ</button>
+            ` : `
+              <button class="btn secondary" disabled style="width:100%"><i class="ph ph-prohibit"></i> Tạm hết hàng</button>
+            `}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+// --------------------------------------------------------------------------
+// 6. ĐÁNH GIÁ CỦA TÔI (CUSTOMER REVIEWS)
+// --------------------------------------------------------------------------
+export function customerReviewsScreen() {
+  const pendingOrders = customerState.orders.filter(o => o.status === "delivered" && !o.reviewed);
+
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>Khách hàng / </span><strong>Đánh giá của tôi</strong></div>
+        <h1>Đánh Giá Sản Phẩm Đã Mua</h1>
+        <p>Chỉ những đơn hàng đã giao thành công và thuộc tài khoản của bạn mới đủ điều kiện gửi đánh giá (Bảo chứng tính khách quan).</p>
+      </div>
+    </header>
+
+    <!-- Hàng Đơn Chờ Đánh Giá -->
+    ${pendingOrders.length > 0 ? `
+      <div class="card" style="padding:20px;margin-bottom:24px;background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">
+        <h3 style="margin-top:0;font-size:15px;color:var(--brand-strong)">
+          ${icon("ph-star")} Bạn có ${pendingOrders.length} sản phẩm đã nhận hàng đang chờ đánh giá!
+        </h3>
+        <p style="font-size:12.5px;color:var(--muted);margin:4px 0 14px">
+          Chia sẻ trải nghiệm sử dụng thực tế để nhận ngay mã ưu đãi 5% cho lần mua tiếp theo.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${pendingOrders.map(po => `
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface);padding:12px 16px;border-radius:10px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <img src="${po.items[0].img}" style="width:44px;height:44px;border-radius:6px;object-fit:cover" />
+                <div>
+                  <strong>${po.items[0].name}</strong>
+                  <small style="color:var(--muted);display:block">Đơn hàng: ${po.id} • Nhận ngày: ${po.deliveredAt || 'Gần đây'}</small>
+                </div>
+              </div>
+              <button class="btn small" data-cust-open-review-form="${po.id}"><i class="ph ph-pencil-simple"></i> Viết đánh giá ngay</button>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    ` : ''}
+
+    <h3 style="font-size:16px;margin:20px 0 12px">${icon("ph-chats-circle")} Các đánh giá bạn đã gửi (${customerState.reviews.length})</h3>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      ${customerState.reviews.map(rev => `
+        <div class="card" style="padding:20px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div>
+              <strong style="font-size:15px">${rev.productName}</strong>
+              <div style="color:#f59e0b;font-size:15px;margin:4px 0">
+                ${'<i class="ph ph-star-fill"></i>'.repeat(rev.rating)}
+                <small style="color:var(--muted);margin-left:6px">${rev.date}</small>
+              </div>
+            </div>
+            <span class="badge success" style="font-size:11px"><i class="ph ph-check"></i> Đã duyệt hiển thị</span>
+          </div>
+
+          <p style="font-size:13.5px;line-height:1.5;margin:0 0 12px">${rev.comment}</p>
+
+          ${rev.images ? `
+            <div style="display:flex;gap:10px;margin-bottom:12px">
+              ${rev.images.map(img => `<img src="${img}" style="width:68px;height:68px;border-radius:8px;object-fit:cover;border:1px solid var(--line)" />`).join("")}
+            </div>
+          ` : ''}
+
+          ${rev.shopReply ? `
+            <div style="background:var(--surface-2);padding:12px 14px;border-radius:8px;font-size:12.5px;line-height:1.5;border-left:3px solid var(--brand)">
+              <strong style="color:var(--brand)"><i class="ph ph-arrow-bend-down-right"></i> Phản hồi từ Người bán:</strong>
+              <div style="margin-top:2px;color:var(--text)">${rev.shopReply}</div>
+            </div>
+          ` : ''}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+// --------------------------------------------------------------------------
+// 7. HỖ TRỢ ĐƠN HÀNG (CUSTOMER SUPPORT)
+// --------------------------------------------------------------------------
+export function customerSupportScreen() {
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>Khách hàng / </span><strong>Hỗ trợ & Khiếu nại</strong></div>
+        <h1>Trung Tâm Hỗ Trợ Đơn Hàng</h1>
+        <p>Gửi yêu cầu trợ giúp về vận chuyển, đổi trả sản phẩm hoặc hóa đơn mua hàng.</p>
+      </div>
+      <div class="actions">
+        <button class="btn" data-cust-create-ticket><i class="ph ph-plus"></i> Tạo yêu cầu mới</button>
+      </div>
+    </header>
+
+    <div class="split" style="grid-template-columns:1fr 1fr;gap:20px">
+      <!-- Cột Trái: Danh sách Ticket -->
+      <div class="card" style="padding:22px">
+        <h3 style="margin-top:0;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:10px">
+          ${icon("ph-ticket")} Yêu cầu đã gửi (${customerState.supportTickets.length})
+        </h3>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">
+          ${customerState.supportTickets.map(t => `
+            <div style="padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span class="mono" style="font-weight:700;color:var(--brand)">${t.id}</span>
+                <span class="badge ${t.status === 'resolved' ? 'success' : 'warning'}" style="font-size:11px">
+                  ${t.status === 'resolved' ? 'Đã giải quyết' : 'Đang xử lý'}
+                </span>
+              </div>
+              <strong style="font-size:13.5px;display:block;margin-bottom:4px">${t.subject}</strong>
+              <small style="color:var(--muted)">Đơn hàng liên quan: <strong class="mono">${t.orderId}</strong> • ${t.createdAt}</small>
+              <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted)">
+                ${t.messages[t.messages.length - 1].text}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      <!-- Cột Phải: FAQ & Hướng dẫn khiếu nại -->
+      <div class="card" style="padding:22px">
+        <h3 style="margin-top:0;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:10px">
+          ${icon("ph-question")} Câu hỏi thường gặp
+        </h3>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-top:14px;font-size:13px;line-height:1.5">
+          <div>
+            <strong>1. Thời gian đổi trả hàng là bao lâu?</strong>
+            <p style="margin:4px 0 0;color:var(--muted)">Khách hàng được quyền gửi yêu cầu đổi trả miễn phí trong vòng 14 ngày kể từ khi ký nhận hàng thành công.</p>
+          </div>
+          <div>
+            <strong>2. Tiền hoàn trả sẽ về tài khoản như thế nào?</strong>
+            <p style="margin:4px 0 0;color:var(--muted)">Nếu thanh toán qua VietQR, tiền sẽ hoàn trực tiếp vào tài khoản ngân hàng trong 24h sau khi Shop xác nhận nhận lại kiện hàng.</p>
+          </div>
+          <div>
+            <strong>3. Mua hàng qua mã KOL có được bảo hành chính hãng?</strong>
+            <p style="margin:4px 0 0;color:var(--muted)">Có! Mọi đơn hàng đều do chính hãng Shop xuất kho và bảo hành đầy đủ tem niêm phong.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// --------------------------------------------------------------------------
+// 8. BẢO MẬT TÀI KHOẢN (CUSTOMER SECURITY)
+// --------------------------------------------------------------------------
+export function customerSecurityScreen() {
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>Khách hàng / </span><strong>Bảo mật tài khoản</strong></div>
+        <h1>Bảo Mật & Quản Lý Phiên Đăng Nhập</h1>
+        <p>Đổi mật khẩu định kỳ và theo dõi danh sách thiết bị đang đăng nhập.</p>
+      </div>
+    </header>
+
+    <div class="split" style="grid-template-columns:1fr 1fr;gap:20px">
+      <div class="card" style="padding:22px">
+        <h3 style="margin-top:0;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:10px">${icon("ph-lock")} Đổi mật khẩu</h3>
+        <form id="cust-change-pass-form" class="form-stack" style="margin-top:16px">
+          <div class="field"><label>Mật khẩu hiện tại</label><input class="input" type="password" value="••••••••" required /></div>
+          <div class="field"><label>Mật khẩu mới</label><input class="input" type="password" placeholder="Tối thiểu 8 ký tự" required /></div>
+          <div class="field"><label>Xác nhận mật khẩu mới</label><input class="input" type="password" placeholder="Nhập lại mật khẩu mới" required /></div>
+          <button class="btn" type="submit">Lưu mật khẩu mới</button>
+        </form>
+      </div>
+
+      <div class="card" style="padding:22px">
+        <h3 style="margin-top:0;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:10px">${icon("ph-devices")} Phiên đăng nhập</h3>
+        <div style="margin-top:14px;display:flex;flex-direction:column;gap:12px">
+          <div style="padding:12px;background:var(--surface-2);border-radius:8px">
+            <div style="display:flex;justify-content:space-between">
+              <strong>Chrome trên Windows (Thiết bị này)</strong>
+              <span class="badge success" style="font-size:11px">Đang hoạt động</span>
+            </div>
+            <small style="color:var(--muted)">Hà Nội, Việt Nam • IP: 14.241.88.19</small>
+          </div>
+          <button class="btn danger small" data-cust-toast="Đã đăng xuất phiên trên các thiết bị khác!">Đăng xuất tất cả thiết bị khác</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// --------------------------------------------------------------------------
+// BINDING LOGIC CHO CUSTOMER
+// --------------------------------------------------------------------------
+export function bindCustomer(root, { toast, go, renderCurrentPage, modal }) {
+  // Navigation
+  root.querySelectorAll("[data-cust-goto]").forEach(el => {
+    el.addEventListener("click", () => go(el.dataset.custGoto));
+  });
+
+  // Order Tabs
+  root.querySelectorAll("[data-cust-order-tab]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      customerState.activeOrderTab = btn.dataset.custOrderTab;
+      renderCurrentPage();
+    });
+  });
+
+  // View order detail
+  root.querySelectorAll("[data-cust-view-order]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      customerState.selectedOrderDetailId = btn.dataset.custViewOrder;
+      go("customer-order-detail");
+    });
+  });
+
+  // Track order
+  root.querySelectorAll("[data-cust-track-order]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      customerState.selectedOrderDetailId = btn.dataset.custTrackOrder;
+      go("customer-order-detail");
+    });
+  });
+
+  // Cancel order
+  root.querySelectorAll("[data-cust-cancel-order]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.custCancelOrder;
+      const order = customerState.orders.find(o => o.id === id);
+      if (!order) return;
+      if (confirm(`Bạn có chắc chắn muốn hủy đơn hàng ${order.id}?`)) {
+        order.status = "cancelled";
+        order.cancelReason = "Khách hàng hủy đơn qua giao diện.";
+        toast(`Đã hủy thành công đơn hàng ${order.id}.`);
+        renderCurrentPage();
+      }
+    });
+  });
+
+  // Return order
+  root.querySelectorAll("[data-cust-return-order]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.custReturnOrder;
+      const reason = prompt("Vui lòng nhập lý do bạn muốn đổi trả sản phẩm:", "Sản phẩm còn nguyên seal nhưng mình muốn đổi sang phân loại khác.");
+      if (reason) {
+        toast(`Đã gửi yêu cầu đổi trả cho đơn ${id}. Shop sẽ liên hệ trong 24h.`);
+      }
+    });
+  });
+
+  // Reorder
+  root.querySelectorAll("[data-cust-reorder]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      go("storefront");
+      toast("Đã thêm sản phẩm vào giỏ hàng!");
+    });
+  });
+
+  // Review Order
+  root.querySelectorAll("[data-cust-review-order], [data-cust-open-review-form]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const orderId = btn.dataset.custReviewOrder || btn.dataset.custOpenReviewForm;
+      const order = customerState.orders.find(o => o.id === orderId);
+      if (!order) return;
+      const comment = prompt(`Viết đánh giá cho "${order.items[0].name}" (Nhận ngay voucher 5%):`, "Sản phẩm dùng rất ưng ý, đóng gói kỹ và giao nhanh!");
+      if (comment) {
+        order.reviewed = true;
+        customerState.reviews.unshift({
+          orderId: order.id,
+          productName: order.items[0].name,
+          rating: 5,
+          date: "Hôm nay",
+          comment: comment,
+          images: [order.items[0].img],
+          shopReply: "Cảm ơn bạn đã ủng hộ shop và CTV!"
+        });
+        toast("Cảm ơn bạn! Đánh giá đã được gửi và tặng bạn voucher 5%.");
+        renderCurrentPage();
+      }
+    });
+  });
+
+  // Add Address
+  root.querySelector("[data-cust-add-address]")?.addEventListener("click", () => {
+    const street = prompt("Nhập số nhà, tên đường:", "Số 15 Lê Văn Lương");
+    if (street) {
+      customerState.addresses.push({
+        id: `ADDR-${Date.now().toString().slice(-3)}`,
+        isDefault: false,
+        label: "Địa chỉ mới",
+        receiverName: customerState.profile.name,
+        phone: customerState.profile.phone,
+        province: "Hà Nội",
+        district: "Quận Thanh Xuân",
+        ward: "Phường Nhân Chính",
+        street: street
+      });
+      toast("Đã thêm địa chỉ mới thành công!");
+      renderCurrentPage();
+    }
+  });
+
+  // Set default address
+  root.querySelectorAll("[data-cust-set-default-addr]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.custSetDefaultAddr;
+      customerState.addresses.forEach(a => a.isDefault = (a.id === id));
+      toast("Đã đặt làm địa chỉ giao hàng mặc định!");
+      renderCurrentPage();
+    });
+  });
+
+  // Delete address
+  root.querySelectorAll("[data-cust-delete-addr]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.custDeleteAddr;
+      customerState.addresses = customerState.addresses.filter(a => a.id !== id);
+      toast("Đã xóa địa chỉ khỏi sổ tay!");
+      renderCurrentPage();
+    });
+  });
+
+  // Edit address demo
+  root.querySelectorAll("[data-cust-edit-addr]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.custEditAddr;
+      const addr = customerState.addresses.find(a => a.id === id);
+      if (!addr) return;
+      const newStreet = prompt("Chỉnh sửa địa chỉ chi tiết:", addr.street);
+      if (newStreet) {
+        addr.street = newStreet;
+        toast("Đã lưu thay đổi địa chỉ!");
+        renderCurrentPage();
+      }
+    });
+  });
+
+  // Remove Wishlist
+  root.querySelectorAll("[data-cust-remove-wishlist]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.custRemoveWishlist;
+      customerState.wishlist = customerState.wishlist.filter(w => w.id !== id);
+      toast("Đã xóa sản phẩm khỏi danh sách yêu thích!");
+      renderCurrentPage();
+    });
+  });
+
+  // Add to cart from wishlist
+  root.querySelectorAll("[data-cust-add-to-cart]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      toast("Đã thêm sản phẩm vào giỏ hàng!");
+      go("storefront");
+    });
+  });
+
+  // Create ticket
+  root.querySelector("[data-cust-create-ticket]")?.addEventListener("click", () => {
+    const sub = prompt("Nhập tiêu đề yêu cầu hỗ trợ:", "Cần hóa đơn VAT cho đơn hàng vừa nhận");
+    if (sub) {
+      customerState.supportTickets.unshift({
+        id: `TICK-${Date.now().toString().slice(-3)}`,
+        orderId: "IN23944",
+        subject: sub,
+        status: "in_progress",
+        createdAt: "Vừa xong",
+        messages: [
+          { sender: "customer", text: sub, time: "Vừa xong" }
+        ]
+      });
+      toast("Đã tạo yêu cầu hỗ trợ thành công! Nhân viên sẽ phản hồi sớm.");
+      renderCurrentPage();
+    }
+  });
+
+  // Profile submit
+  root.querySelector("#cust-profile-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = root.querySelector("#cust-name-input")?.value;
+    const phone = root.querySelector("#cust-phone-input")?.value;
+    if (name) customerState.profile.name = name;
+    if (phone) customerState.profile.phone = phone;
+    toast("Đã lưu thông tin hồ sơ khách hàng thành công!");
+    renderCurrentPage();
+  });
+
+  // Change pass submit
+  root.querySelector("#cust-change-pass-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    toast("Đã cập nhật mật khẩu mới thành công!");
+  });
+
+  // Generic toasts
+  root.querySelectorAll("[data-cust-toast]").forEach(el => {
+    el.addEventListener("click", () => toast(el.dataset.custToast));
+  });
+}
