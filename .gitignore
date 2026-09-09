@@ -60,6 +60,7 @@ coverage/
 # Temporary scratch & backup files
 *.tmp
 *.bak
+scratch/
 /idea project/
 # Large reference docx files (>100MB)
 8572_HCM_SP26SE118_GSP02_HCM_Report7_Final_Project_Report.docx
@@ -69,5 +70,6 @@ docs/templates_doc/
 .agents/
 .skills/
 skills-lock.json
+.gemini/
 
 
