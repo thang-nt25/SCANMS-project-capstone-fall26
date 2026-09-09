@@ -2,10 +2,10 @@ function HomePage() {
   return (
     <div className="hero-section">
       <h1 className="hero-title">
-        Welcome to Capstone Project
+        Nền tảng Quản trị Tiếp thị Liên kết & CTV Bán hàng (SCANMS)
       </h1>
       <p className="hero-subtitle">
-        A professional, secure monorepo built using NestJS (Backend) + Prisma ORM + Supabase, and ReactJS (Frontend) + Vite.
+        Hệ thống Sales Collaborator and Affiliate Network Management System (Mã đề tài: FA26SE032) dành cho Thương hiệu D2C và Mạng lưới KOL/KOC.
       </p>
       <div className="hero-actions">
         <a

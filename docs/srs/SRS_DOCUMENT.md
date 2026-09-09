@@ -1,7 +1,6 @@
 # SOFTWARE REQUIREMENT SPECIFICATION (SRS)
-## Project Name: InfluxNet - KOL & Sales Collaborator Management Platform
+## Project Name: SCANMS - Sales Collaborator and Affiliate Network Management System
 **Official Registered Code:** FA26SE032  
-**Official Subtitle:** Sales Collaborator and Affiliate Network Management System  
 **Document Version:** 1.0.0 (Enterprise Specification)  
 **Target Jury / Faculty:** Capstone Defense Committee (FPT University)
 
@@ -10,24 +9,23 @@
 ## 1. INTRODUCTION
 
 ### 1.1 Purpose
-Tài liệu Software Requirement Specification (SRS) v1.0.0 này quy định chi tiết toàn bộ Yêu cầu Chức năng (Functional Requirements - FR) và Yêu cầu Phi chức năng (Non-Functional Requirements - NFR) cho dự án **InfluxNet**. Tài liệu này làm căn cứ chính thức cho quy trình thiết kế CSDL (21 bảng 3NF), kiến trúc hệ thống (SAD), hợp đồng API (API Specification), phát triển mã nguồn và kiểm thử phần mềm.
+Tài liệu Software Requirement Specification (SRS) v1.0.0 này quy định chi tiết toàn bộ Yêu cầu Chức năng (Functional Requirements - FR) và Yêu cầu Phi chức năng (Non-Functional Requirements - NFR) cho dự án **SCANMS**. Tài liệu này làm căn cứ chính thức cho quy trình thiết kế CSDL (21 bảng 3NF), kiến trúc hệ thống (SAD), hợp đồng API (API Specification), phát triển mã nguồn và kiểm thử phần mềm.
 
 ### 1.2 Scope & Vision
-**InfluxNet** là nền tảng quản trị mạng lưới Tiếp thị liên kết (Affiliate Marketing) và Cộng tác viên bán hàng (KOL/KOC/Sales Partner) dành cho các thương hiệu D2C và Shop bán hàng.
+**SCANMS** là nền tảng quản trị mạng lưới Tiếp thị liên kết (Affiliate Marketing) và Cộng tác viên bán hàng (KOL/KOC/Sales Partner) dành cho các thương hiệu D2C và Shop bán hàng.
 - **Tự động hóa đối soát tài chính:** Loại bỏ hoàn toàn lỗi tính toán hoa hồng thủ công.
 - **Tracking thời gian thực:** Ghi nhận chính xác nguồn đơn hàng dựa trên cơ chế Last-Click Attribution, Cookie Tracking và Device Fingerprinting.
 - **Tự động hóa toàn diện:** Tích hợp Chat Realtime In-App, Luồng xin sản phẩm mẫu dùng thử, Phân cấp bậc CTV, Chống Race Condition ví tiền, Quản lý không giới hạn Kênh MXH và AI Gợi ý KOL.
 
 ---
 
-## 2. USER PERSONAS & ROLE MATRIX (5 SYSTEM ROLES)
+## 2. USER PERSONAS & ROLE MATRIX (4 SYSTEM ROLES)
 
 | Actor / Role | Mô tả vai trò | Quyền hạn chính trong InfluxNet |
 | :--- | :--- | :--- |
 | **System Administrator (Super Admin)** | Quản trị viên cấp cao | - Xem Executive High-Level Dashboard toàn nền tảng SaaS.<br>- Xem báo cáo sức khỏe hệ thống và Tổng dung lượng tài chính.<br>- Tra cứu Audit Logs cấp cao. |
 | **System Manager (Web Manager)** | Quản lý vận hành hệ thống Web | - Phê duyệt và Onboarding Cửa hàng (Stores) mới.<br>- Quản lý các cờ cảnh báo gian lận AI (AI Anti-Fraud Flags).<br>- Cấu hình danh mục Ngân hàng hợp lệ toàn sàn (VietQR/Napas247). |
-| **Shop Manager (Merchant)** | Chủ cửa hàng / Quản lý thương hiệu | - Quản lý Danh mục sản phẩm & Đồng bộ tồn kho.<br>- Cấu hình Quy tắc hoa hồng (Flat rate, %, Tiered Bonuses).<br>- Tải lên Kho nguyên liệu Marketing (Media Assets, Banners, Copywritten Text).<br>- Duyệt yêu cầu xin sản phẩm mẫu.<br>- Chat nhắn tin 1-1 với KOLs và Duyệt yêu cầu rút tiền đính kèm bill ngân hàng. |
-| **Shop Staff (Finance Auditor)** | Kế toán / Nhân viên Cửa hàng | - Hỗ trợ đối soát đơn hàng và trạng thái hoàn trả/hủy đơn.<br>- Kiểm tra hồ sơ KYC và hỗ trợ chuẩn bị danh sách rút tiền cho Manager duyệt. |
+| **Shop Manager (Merchant / Shop Owner)** | Chủ cửa hàng / Quản trị viên Store | - Quản lý Danh mục sản phẩm & Đồng bộ tồn kho.<br>- Cấu hình Quy tắc hoa hồng (Flat rate, %, Tiered Bonuses).<br>- Tải lên Kho nguyên liệu Marketing (Media Assets, Banners, Copywritten Text).<br>- Duyệt yêu cầu xin sản phẩm mẫu.<br>- Chat nhắn tin 1-1 với KOLs.<br>- Quản lý đối soát đơn hàng, trạng thái hoàn trả/hủy đơn và Duyệt rút tiền đính kèm bill ngân hàng / xuất file VietQR. |
 | **Collaborator (KOL/KOC/CTV)** | Cộng tác viên bán hàng & Influencers | - Đăng ký tài khoản, xác thực thông tin tài khoản ngân hàng & Thêm không giới hạn Kênh MXH (TikTok, Facebook, Youtube, Threads, Zalo...).<br>- Xem Cấp bậc của mình (Bronze, Silver, Gold, Platinum).<br>- Tạo Link tiếp thị mã hóa, Mã giảm giá (Coupon Code) & Mã QR Code động.<br>- Bấm xin sản phẩm mẫu dùng thử.<br>- Chat trực tiếp 1-1 với Shop Manager.<br>- Theo dõi Dashboard doanh số thời gian thực và Bấm rút tiền hoa hồng. |
 
 ---
@@ -36,7 +34,7 @@ Tài liệu Software Requirement Specification (SRS) v1.0.0 này quy định chi
 
 ### 3.1 Module 1: Identity & Access Management (IAM), KYC, Tiers & Unlimited Social Channels
 - **FR-01 (User Registration & Authentication):** Đăng ký/Đăng nhập an toàn qua JWT (Access & Refresh Token). Bảo mật OTP 2FA khi rút tiền.
-- **FR-02 (Role-Based Access Control - RBAC):** Kiểm soát phân quyền nghiêm ngặt giữa 5 vai trò (`SYSTEM_ADMIN`, `SYSTEM_MANAGER`, `SHOP_MANAGER`, `SHOP_STAFF`, `COLLABORATOR`).
+- **FR-02 (Role-Based Access Control - RBAC):** Kiểm soát phân quyền nghiêm ngặt giữa 4 vai trò (`SYSTEM_ADMIN`, `SYSTEM_MANAGER`, `SHOP_MANAGER`, `COLLABORATOR`).
 - **FR-03 (Partner KYC & Multi-Channel Verification):** Cập nhật CMND/CCCD, Mã số thuế, STK Ngân hàng và Thêm không giới hạn các kênh MXH (TikTok, Facebook, Youtube, Threads, Zalo, Telegram, Shopee Video, Lemon8...).
 - **FR-04 (Collaborator Tier Ranking Engine):** Tự động phân cấp bậc CTV (Đồng, Bạc, Vàng, Kim Cương) theo tổng doanh số tích lũy để thưởng thêm % hoa hồng.
 

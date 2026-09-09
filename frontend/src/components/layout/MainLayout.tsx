@@ -17,7 +17,7 @@ function MainLayout() {
         <div className="nav-container">
           <div className="nav-links">
             <Link to="/" className="nav-logo">
-              CAPSTONE
+              SCANMS
             </Link>
             <nav className="nav-links">
               <Link to="/" className="nav-link">
@@ -48,7 +48,7 @@ function MainLayout() {
       {/* Footer */}
       <footer className="app-footer">
         <div className="footer-container">
-          &copy; {new Date().getFullYear()} Capstone Project. All rights reserved.
+          &copy; {new Date().getFullYear()} SCANMS (FA26SE032) - Sales Collaborator & Affiliate Network Management System.
         </div>
       </footer>
     </div>

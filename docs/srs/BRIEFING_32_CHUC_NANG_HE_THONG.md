@@ -1,15 +1,14 @@
-# TỔNG HỢP TOÀN BỘ 32 CHỨC NĂNG DỰ ÁN INFLUXNET (SCANMS)
+# TỔNG HỢP TOÀN BỘ 32 CHỨC NĂNG DỰ ÁN SCANMS
 ## TÀI LIỆU BRIEFING DÀNH CHO TRUYỀN ĐẠT & KICKOFF NHÓM
 > **Mã đề tài:** FA26SE032  
 > **Tên chính thức:** Sales Collaborator and Affiliate Network Management System (SCANMS)  
-> **Tên thương mại:** InfluxNet - Nền tảng Tiếp thị Liên kết & Quản trị Mạng lưới KOL/KOC  
 > **Mục đích:** Bản tổng hợp cô đọng bằng văn nói tự nhiên, trực quan, giúp Leader và các thành viên dễ dàng truyền đạt, nắm bắt toàn bộ luồng nghiệp vụ của hệ thống trong 5 phút.
 
 ---
 
 ## 🎙️ LỜI MỞ ĐẦU: BỨC TRANH TOÀN CẢNH (BIG PICTURE)
 
-> *"Dự án **InfluxNet (SCANMS)** của chúng ta bản chất là **hệ thống quản lý mạng lưới Tiếp thị liên kết (Affiliate Marketing) và Cộng tác viên bán hàng (KOL/KOC/Sales Partner)** dành cho các thương hiệu D2C và Shop bán hàng.
+> *"Dự án **SCANMS** của chúng ta bản chất là **hệ thống quản lý mạng lưới Tiếp thị liên kết (Affiliate Marketing) và Cộng tác viên bán hàng (KOL/KOC/Sales Partner)** dành cho các thương hiệu D2C và Shop bán hàng.
 >
 > **Nỗi đau thực tế ngoài đời:**  
 > - **Chủ Shop:** Rất muốn thuê KOL bán hàng nhưng sợ bị gian lận click ảo, tính hoa hồng bằng Excel thủ công thì vừa chậm vừa dễ nhầm lẫn, khách hoàn đơn thì không biết đường nào mà đòi lại hoa hồng.  
@@ -41,8 +40,8 @@
 
 * **FR-01: Đăng ký & Đăng nhập JWT (kèm 2FA)**  
   Đăng nhập chia theo vai trò người dùng, cấp Access Token ngắn hạn và Refresh Token dài hạn. Khi rút tiền có thêm xác thực OTP 2FA để bảo vệ ví.
-* **FR-02: Phân quyền 5 vai trò (RBAC Guard)**  
-  Chặn quyền nghiêm ngặt giữa 5 nhóm: Admin sàn $\rightarrow$ Quản lý sàn $\rightarrow$ Chủ Shop $\rightarrow$ Kế toán Shop $\rightarrow$ KOL. Shop chỉ thấy dữ liệu Shop mình; KOL chỉ thấy ví và đơn của mình.
+* **FR-02: Phân quyền 4 vai trò (RBAC Guard)**  
+  Chặn quyền nghiêm ngặt giữa 4 nhóm: Admin sàn $\rightarrow$ Quản lý sàn $\rightarrow$ Chủ Shop (bao gồm đối soát tài chính) $\rightarrow$ KOL. Shop chỉ thấy dữ liệu Shop mình; KOL chỉ thấy ví và đơn của mình.
 * **FR-03: Xác thực tài chính KYC**  
   KOL muốn nhận tiền thì phải nhập CCCD, Mã số thuế cá nhân và Số tài khoản ngân hàng chính chủ để hợp thức hóa thu nhập.
 * **FR-04: Quản lý đa kênh Mạng xã hội không giới hạn**  

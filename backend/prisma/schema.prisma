@@ -1,6 +1,5 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -15,7 +14,6 @@ enum UserRole {
   SYSTEM_ADMIN
   SYSTEM_MANAGER
   SHOP_MANAGER
-  SHOP_STAFF
   COLLABORATOR
 }
 
@@ -150,6 +148,7 @@ model Store {
   campaigns       Campaign[]
   orders          Order[]
   conversations   Conversation[]
+  payoutRequests  PayoutRequest[]
 
   @@index([ownerId], map: "idx_fk_stores_owner")
   @@map("stores")
@@ -330,7 +329,7 @@ model ReferralLink {
   id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   collaboratorId   String    @map("collaborator_id") @db.Uuid
   productId        String    @map("product_id") @db.Uuid
-  shortCode        String    @map("short_code") @db.VarChar(50)
+  shortCode        String    @unique @map("short_code") @db.VarChar(50)
   customCouponCode String?   @map("custom_coupon_code") @db.VarChar(50)
   qrCodeUrl        String?   @map("qr_code_url")
   totalClicks      Int       @default(0) @map("total_clicks")
@@ -346,6 +345,7 @@ model ReferralLink {
 
   @@index([collaboratorId], map: "idx_fk_ref_links_collab")
   @@index([productId], map: "idx_fk_ref_links_product")
+  @@index([customCouponCode], map: "idx_ref_links_coupon")
   @@map("referral_links")
 }
 
@@ -427,8 +427,10 @@ model Order {
   commissions            Commission[]
   productReviews         ProductReview[]
 
+  @@unique([storeId, externalOrderSn], map: "idx_unique_store_external_order")
   @@index([storeId], map: "idx_fk_orders_store")
   @@index([attributedCollaboratorId], map: "idx_fk_orders_collab")
+  @@index([status, createdAt], map: "idx_orders_status_created")
   @@map("orders")
 }
 
@@ -464,8 +466,9 @@ model Commission {
   order        Order @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   collaborator User  @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@unique([orderId, collaboratorId], map: "idx_unique_commission_order_collab")
   @@index([orderId], map: "idx_fk_commissions_order")
-  @@index([collaboratorId], map: "idx_fk_commissions_collab")
+  @@index([collaboratorId, status], map: "idx_commissions_collab_status")
   @@map("commissions")
 }
 
@@ -508,6 +511,7 @@ model FinancialLedger {
 model PayoutRequest {
   id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   collaboratorId    String       @map("collaborator_id") @db.Uuid
+  storeId           String?      @map("store_id") @db.Uuid
   amount            Decimal      @db.Decimal(15, 2) // Gross Amount
   taxAmount         Decimal      @default(0.00) @map("tax_amount") @db.Decimal(15, 2) // 10% PIT Tax
   netAmount         Decimal      @default(0.00) @map("net_amount") @db.Decimal(15, 2) // Net Amount after tax
@@ -522,8 +526,10 @@ model PayoutRequest {
   createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  collaborator User @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  collaborator User   @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  store        Store? @relation(fields: [storeId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
+  @@index([storeId, status], map: "idx_payouts_store_status")
   @@index([collaboratorId, createdAt], map: "idx_payouts_pending")
   @@map("payout_requests")
 }
