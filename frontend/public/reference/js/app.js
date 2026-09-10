@@ -17,7 +17,7 @@ import {
   managerProfileScreen,
   managerProfileState,
   bindManager
-} from './manager.js';
+} from './manager.js?v=142';
 
 import {
   customerState,
@@ -3317,8 +3317,8 @@ function kolBonusScreen() {
   } catch { }
 
   return `
-    <div style="padding: 0; width: 100%; margin-top: -24px;">
-      <iframe id="kol-bonus-iframe" src="/collaborator/bonus-progress" style="width: 100%; min-height: 520px; height: 800px; border: none; border-radius: 16px; background: transparent; display: block; transition: height 0.2s ease;" scrolling="auto" onload="window.handleIframeAutoHeight && window.handleIframeAutoHeight(this)" title="Tiến Độ Mốc Thưởng Doanh Số"></iframe>
+    <div style="padding: 0; width: 100%; margin-top: -16px;">
+      <iframe id="kol-bonus-iframe" src="/collaborator/bonus-progress" style="width: 100%; min-height: 600px; height: 950px; border: none; border-radius: 18px; background: transparent; display: block; transition: height 0.2s ease;" scrolling="auto" onload="window.handleIframeAutoHeight && window.handleIframeAutoHeight(this)" title="Tiến Độ Mốc Thưởng Doanh Số"></iframe>
     </div>
   `;
 }
@@ -3649,7 +3649,7 @@ function shell(content) {
         </div>
       </header>
       `}
-      <div class="page">${content}</div>
+      <div class="page ${state.screen === 'kol-bonus' ? 'page-wide' : ''}">${content}</div>
     </main>
   </div>`;
 }
