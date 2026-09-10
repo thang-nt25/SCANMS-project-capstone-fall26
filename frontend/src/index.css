@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
   --color-canvas: #FAF8F5;
   --color-surface: #ffffff;
   --color-surface-sand: #F3EFE6;
@@ -37,7 +40,7 @@
   --shadow: 0 1px 3px 0 rgba(26, 22, 18, 0.06), 0 1px 2px -1px rgba(26, 22, 18, 0.04);
   --radius: 14px;
   --radius-sm: 9px;
-  font-family: "Plus Jakarta Sans", "Segoe UI", Arial, sans-serif;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
 }
 
 /* === BASE RESETS === */
@@ -54,7 +57,26 @@ body {
   color: var(--ink);
   background: var(--canvas);
   min-width: 320px;
+  font-family: "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: "Plus Jakarta Sans", sans-serif;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+p, .font-body {
+  text-wrap: pretty;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 button, input, select, textarea {
