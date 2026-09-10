@@ -34,6 +34,27 @@
      - **Nguyễn Phú Quý (hoặc Trần Văn Nhật)**: Nhánh Git `quy` (FR-25 → FR-32: Chat Socket.io & 2 Động cơ AI).
 - **File thực thi**: `backend/prisma/seed.ts`, `backend/package.json`, `frontend/index.html`, `frontend/src/components/layout/MainLayout.tsx`, `frontend/src/pages/HomePage.tsx`, `docs/4_PERSON_TEAM_EXECUTION_GUIDE.md`
 
+### [2026-09-10] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (100% FR-01 → FR-08 Backend & Frontend + Public Guest Storefront + Đồng Bộ UI Vàng Be)
+- **Hạng mục đã thực hiện**:
+  1. **Đồng bộ toàn diện hệ thống UI Vàng Be Figma**:
+     - Chuẩn hóa màu chủ đạo toàn app sang **Vàng Be (Warm Sand `#F3EFE6`, Warm Cream `#FAF8F5`, Sand Gold `#C59B58` / `#B88E4F`, Ink `#1A1612`)**.
+     - Chỉnh sửa trang Đăng nhập & Đăng ký: Cột giới thiệu nền Warm Sand với hoa văn chấm lưới Sand Gold, nút đăng nhập chính Vàng Đất `#C59B58` ("Đăng nhập an toàn").
+     - Loại bỏ triệt để 85% CSS dư thừa, chuẩn hóa 100% Tailwind v4 + Lucide React icons.
+  2. **Xây dựng Trang Bán Hàng Cho Khách Vãng Lai (Guest Storefront)**:
+     - Route chính `/` và `/store`, `/storefront`, `/shop`: Cho phép khách truy cập và mua hàng trực tiếp mà không bắt buộc tạo tài khoản.
+     - Luồng Đặt Hàng 1-Chạm: Form thông tin giao hàng (họ tên, SĐT, tỉnh/thành, địa chỉ), phương thức COD / VietQR, tự động áp mã ưu đãi KOL (`THANGVIP10` -10%), tạo mã đơn `#DH-2026-XXXX`.
+     - Nút điều hướng thông minh: Nút `[ 🔐 Đăng nhập Đối tác / KOL ]` ở header của Storefront và các nút `[ ← Quay lại Cửa Hàng Sora Skin ]` trên trang Login và Register.
+  3. **Hoàn thiện trọn bộ 8 chức năng phụ trách (FR-01 → FR-08)**:
+     - FR-01 & FR-02: Xác thực đa vai trò IAM (JWT, OTP Email, Bcrypt, Google Sign-in).
+     - FR-03 & FR-04: Quản lý Hồ sơ & Thông tin Gian hàng D2C (`StoreManagement`).
+     - FR-05 & FR-06: Danh mục Sản phẩm Merchant, biến thể SKU và định giá hoa hồng.
+     - FR-07: Kho tài nguyên truyền thông (`MediaHub`) với phân loại banner/video/copywriting.
+     - FR-08: Quản lý liên kết Kênh mạng xã hội KOL (TikTok, Facebook, Instagram, YouTube) và Bảng vinh danh cấp bậc Gamification.
+- **File thực thi**:
+  - Frontend: `frontend/src/pages/store/GuestStorefrontPage.tsx`, `frontend/src/pages/auth/LoginPage.tsx`, `frontend/src/pages/auth/RegisterPage.tsx`, `frontend/src/routes/AppRoutes.tsx`, `frontend/src/pages/DashboardDispatcher.tsx`, `frontend/src/index.css`, `frontend/src/components/layout/Sidebar.tsx`
+  - Backend: `backend/src/modules/auth/`, `backend/src/modules/products/`, `backend/src/modules/stores/`, `backend/src/modules/media/`, `backend/src/modules/social-channels/`, `backend/src/modules/tiers/`, `backend/src/modules/kyc/`
+- **Ghi chú**: Build Frontend và Backend 0 lỗi, kiểm thử giao diện và luồng mua hàng thực tế qua Playwright thành công 100%.
 
 ---
 
