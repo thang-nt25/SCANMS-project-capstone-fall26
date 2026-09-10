@@ -9,6 +9,7 @@ import { CloudinaryModule } from './core/cloudinary/cloudinary.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { SamplesModule } from './modules/samples/samples.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 
 @Module({
@@ -27,6 +28,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     UsersModule,
     AuthModule,
     ChatModule,
+    SamplesModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy],
