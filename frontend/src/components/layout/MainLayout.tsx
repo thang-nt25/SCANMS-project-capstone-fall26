@@ -1,58 +1,74 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Home, User, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { authService, type UserProfile } from '../../services/auth.service';
+import { Sidebar } from './Sidebar';
+import { Topbar } from './Topbar';
+import { RoleSwitcherModal } from './RoleSwitcherModal';
 
-function MainLayout() {
+export default function MainLayout() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [showRoleModal, setShowRoleModal] = useState(false);
+
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    setCurrentUser(user);
+  }, [location.pathname]);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    authService.logout();
+    setCurrentUser(null);
     navigate('/login');
   };
 
+  const isAuth = location.pathname === '/login' || location.pathname === '/register';
+
+  if (isAuth) {
+    return <Outlet />;
+  }
+
   return (
-    <div className="app-container">
-      {/* Header / Navbar */}
-      <header className="app-header">
-        <div className="nav-container">
-          <div className="nav-links">
-            <Link to="/" className="nav-logo">
-              SCANMS
-            </Link>
-            <nav className="nav-links">
-              <Link to="/" className="nav-link">
-                <Home size={16} /> Home
-              </Link>
-            </nav>
-          </div>
+    <div className="min-h-screen flex bg-slate-50 text-slate-900">
+      {/* 1. SIDEBAR */}
+      <Sidebar
+        currentUser={currentUser}
+        onOpenRoleSwitcher={() => setShowRoleModal(true)}
+        onLogout={handleLogout}
+      />
 
-          <div className="nav-links">
-            {token ? (
-              <button onClick={handleLogout} className="btn btn-logout">
-                <LogOut size={16} /> Logout
-              </button>
-            ) : (
-              <Link to="/login" className="btn btn-primary">
-                <User size={16} /> Login
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* 2. MAIN CONTENT AREA */}
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+        <Topbar
+          currentUser={currentUser}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onOpenRoleSwitcher={() => setShowRoleModal(true)}
+        />
 
-      {/* Main Content Area */}
-      <main className="app-main">
-        <Outlet />
-      </main>
+        <main className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto">
+          <Outlet />
+        </main>
+      </div>
 
-      {/* Footer */}
-      <footer className="app-footer">
-        <div className="footer-container">
-          &copy; {new Date().getFullYear()} SCANMS (FA26SE032) - Sales Collaborator & Affiliate Network Management System.
-        </div>
-      </footer>
+      {/* 3. DEMO ROLE SWITCHER MODAL */}
+      <RoleSwitcherModal
+        isOpen={showRoleModal}
+        onClose={() => setShowRoleModal(false)}
+        currentUser={currentUser}
+        onUserChanged={(user) => setCurrentUser(user)}
+      />
     </div>
   );
 }
-
-export default MainLayout;

@@ -8,6 +8,14 @@ import { PrismaModule } from './core/database/prisma.module';
 import { CloudinaryModule } from './core/cloudinary/cloudinary.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+// Thắng's modules (FR-01 ~ FR-08)
+import { KycModule } from './modules/kyc/kyc.module';
+import { SocialChannelsModule } from './modules/social-channels/social-channels.module';
+import { TiersModule } from './modules/tiers/tiers.module';
+import { StoresModule } from './modules/stores/stores.module';
+import { ProductsModule } from './modules/products/products.module';
+import { MediaModule } from './modules/media/media.module';
+// Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
 import { SamplesModule } from './modules/samples/samples.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
@@ -27,6 +35,14 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     CloudinaryModule,
     UsersModule,
     AuthModule,
+    // Thắng's modules
+    KycModule,
+    SocialChannelsModule,
+    TiersModule,
+    StoresModule,
+    ProductsModule,
+    MediaModule,
+    // Quy's modules
     ChatModule,
     SamplesModule,
   ],
