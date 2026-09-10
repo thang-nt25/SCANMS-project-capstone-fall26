@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { getChatSocket, disconnectChatSocket } from '../../services/chatSocket';
+import { getChatSocket } from '../../services/chatSocket';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '../../types/chat';
 import './ChatBoxPage.css';
