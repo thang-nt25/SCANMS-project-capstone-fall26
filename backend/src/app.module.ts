@@ -6,6 +6,7 @@ import { PrismaModule } from './core/database/prisma.module';
 import { CloudinaryModule } from './core/cloudinary/cloudinary.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CommissionRulesModule } from './modules/commission-rules/commission-rules.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthModule } from './modules/auth/auth.module';
     CloudinaryModule,
     UsersModule,
     AuthModule,
+    CommissionRulesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

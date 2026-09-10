@@ -19,7 +19,12 @@ export class PrismaService
   constructor(@Optional() private readonly configService?: ConfigService) {
     const connectionString =
       configService?.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
-    const pool = new Pool({ connectionString });
+    const pool = new Pool({
+      connectionString,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
     const adapter = new PrismaPg(pool);
 
     super({ adapter });
@@ -31,7 +36,11 @@ export class PrismaService
   }
 
   async onModuleDestroy() {
-    await this.$disconnect();
-    await this.pool.end();
+    try {
+      await this.$disconnect();
+    } catch {}
+    try {
+      await this.pool.end();
+    } catch {}
   }
 }
