@@ -7,6 +7,7 @@ const money = (v) => `${new Intl.NumberFormat("vi-VN").format(v)} ₫`;
 
 export const managerState = {
   activeStoreFilter: "all",
+  storeSearchQuery: "",
   selectedStoreDetailId: "STORE-007",
   stores: [
     {
@@ -312,19 +313,49 @@ export function managerDashboardScreen() {
   `;
 }
 
+function getStoreAvatarGradient(id) {
+  const gradients = [
+    "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+    "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+    "linear-gradient(135deg, #ec4899 0%, #be185d 100%)",
+    "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+    "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
+    "linear-gradient(135deg, #6366f1 0%, #4338ca 100%)",
+    "linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)"
+  ];
+  let sum = 0;
+  for (let i = 0; i < (id || "").length; i++) sum += id.charCodeAt(i);
+  return gradients[sum % gradients.length];
+}
+
+function getStoreShadow(id) {
+  const shadows = [
+    "rgba(59, 130, 246, 0.28)",
+    "rgba(139, 92, 246, 0.28)",
+    "rgba(236, 72, 153, 0.28)",
+    "rgba(16, 185, 129, 0.28)",
+    "rgba(245, 158, 11, 0.28)",
+    "rgba(99, 102, 241, 0.28)",
+    "rgba(14, 165, 233, 0.28)"
+  ];
+  let sum = 0;
+  for (let i = 0; i < (id || "").length; i++) sum += id.charCodeAt(i);
+  return shadows[sum % shadows.length];
+}
+
 // Helper render status badge
 function renderStoreStatusBadge(status) {
   switch (status) {
     case "approved":
-      return `<span class="badge success" style="background:#d1fae5;color:#059669;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:600"><i class="ph ph-check-circle"></i> Đã được duyệt</span>`;
+      return `<span class="status-pill status-approved" style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);color:#065f46;border:1px solid #a7f3d0;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;box-shadow:0 1px 3px rgba(16,185,129,0.1);white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:#10b981;box-shadow:0 0 0 2px rgba(16,185,129,0.25)"></span><i class="ph-fill ph-seal-check" style="color:#059669;font-size:12px"></i> Đã duyệt</span>`;
     case "reviewing":
-      return `<span class="badge info" style="background:#e0e7ff;color:#4f46e5;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:600"><i class="ph ph-hourglass"></i> Đang xem xét</span>`;
+      return `<span class="status-pill status-reviewing" style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);color:#1e40af;border:1px solid #bfdbfe;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;box-shadow:0 1px 3px rgba(59,130,246,0.1);white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,0.25)"></span><i class="ph-bold ph-hourglass-high" style="color:#2563eb;font-size:11px"></i> Đang xét</span>`;
     case "pending":
-      return `<span class="badge warning" style="background:#fef3c7;color:#d97706;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:600"><i class="ph ph-clock"></i> Chờ xét duyệt</span>`;
+      return `<span class="status-pill status-pending" style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);color:#92400e;border:1px solid #fde68a;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;box-shadow:0 1px 3px rgba(245,158,11,0.12);white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,0.25)"></span><i class="ph-bold ph-clock-countdown" style="color:#d97706;font-size:11px"></i> Chờ duyệt</span>`;
     case "need_info":
-      return `<span class="badge warning" style="background:#fed7aa;color:#c2410c;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:600"><i class="ph ph-file-arrow-up"></i> Cần bổ sung</span>`;
+      return `<span class="status-pill status-need-info" style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%);color:#9a3412;border:1px solid #fed7aa;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;box-shadow:0 1px 3px rgba(234,88,12,0.1);white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:#ea580c;box-shadow:0 0 0 2px rgba(234,88,12,0.25)"></span><i class="ph-fill ph-warning-circle" style="color:#ea580c;font-size:12px"></i> Bổ sung</span>`;
     case "rejected":
-      return `<span class="badge danger" style="background:#fee2e2;color:#dc2626;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:600"><i class="ph ph-x-circle"></i> Bị từ chối</span>`;
+      return `<span class="status-pill status-rejected" style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%);color:#991b1b;border:1px solid #fecaca;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(220,38,38,0.1);white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:#dc2626"></span><i class="ph-fill ph-x-circle" style="color:#dc2626;font-size:12px"></i> Từ chối</span>`;
     default:
       return `<span class="badge neutral">${status}</span>`;
   }
@@ -350,87 +381,214 @@ export function managerStoresScreen() {
   } catch (e) {}
 
   const filter = managerState.activeStoreFilter;
+  const searchQ = (managerState.storeSearchQuery || "").trim().toLowerCase();
   const filtered = managerState.stores.filter(s => {
-    if (filter === "all") return true;
-    if (filter === "pending") return s.status === "pending" || s.status === "reviewing";
-    return s.status === filter;
+    let matchFilter = true;
+    if (filter === "all") matchFilter = true;
+    else if (filter === "pending") matchFilter = s.status === "pending" || s.status === "reviewing";
+    else matchFilter = s.status === filter;
+
+    if (!matchFilter) return false;
+    if (!searchQ) return true;
+    return (
+      (s.name && s.name.toLowerCase().includes(searchQ)) ||
+      (s.id && s.id.toLowerCase().includes(searchQ)) ||
+      (s.taxCode && s.taxCode.toLowerCase().includes(searchQ)) ||
+      (s.owner && s.owner.toLowerCase().includes(searchQ)) ||
+      (s.email && s.email.toLowerCase().includes(searchQ))
+    );
   });
 
   return `
-    <header class="page-head">
+    <header class="page-head" style="margin-bottom:24px">
       <div>
         <div class="crumb"><span>Vận hành / </span><strong>Hồ sơ Cửa hàng (Shop)</strong></div>
-        <h1>Thẩm Định & Xét Duyệt Gian Hàng Shop</h1>
-        <p>Quy trình thẩm định pháp lý 4 trạng thái chuẩn: Chờ xét duyệt &rarr; Đang xem xét &rarr; Được duyệt / Cần bổ sung / Bị từ chối.</p>
+        <h1 style="font-size:26px;font-weight:800;letter-spacing:-0.02em;margin:6px 0">Thẩm Định & Xét Duyệt Gian Hàng Shop</h1>
+        <p style="color:var(--muted);font-size:14px;margin:0">Quy trình thẩm định pháp lý 4 trạng thái chuẩn: Chờ xét duyệt &rarr; Đang xem xét &rarr; Được duyệt / Cần bổ sung / Bị từ chối.</p>
       </div>
       <div class="actions">
-        <button class="btn secondary" data-mgr-toast="Đã xuất danh sách hồ sơ Shop"><i class="ph ph-download-simple"></i> Xuất Excel</button>
+        <button class="btn secondary" data-mgr-toast="Đã xuất danh sách hồ sơ Shop" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:11px;font-weight:700;font-size:13px;border:1.5px solid rgba(16,185,129,0.3);background:linear-gradient(135deg,#ffffff 0%,#f0fdf4 100%);color:#047857;box-shadow:0 2px 6px rgba(16,185,129,0.08);cursor:pointer;transition:all .18s ease">
+          <i class="ph-bold ph-microsoft-excel-logo" style="font-size:17px;color:#10b981"></i>
+          <span>Xuất Excel</span>
+        </button>
       </div>
     </header>
 
     <!-- Bộ Lọc Trạng Thái Pipeline Chuẩn -->
-    <div class="toolbar" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-      <div class="segmented" style="margin:0">
-        <button class="${filter === 'all' ? 'active' : ''}" data-mgr-store-filter="all">Tất cả (${managerState.stores.length})</button>
-        <button class="${filter === 'pending' ? 'active' : ''}" data-mgr-store-filter="pending">Chờ & Đang duyệt (${managerState.stores.filter(s => s.status === 'pending' || s.status === 'reviewing').length})</button>
-        <button class="${filter === 'need_info' ? 'active' : ''}" data-mgr-store-filter="need_info">Cần bổ sung (${managerState.stores.filter(s => s.status === 'need_info').length})</button>
-        <button class="${filter === 'approved' ? 'active' : ''}" data-mgr-store-filter="approved">Đã duyệt (${managerState.stores.filter(s => s.status === 'approved').length})</button>
-        <button class="${filter === 'rejected' ? 'active' : ''}" data-mgr-store-filter="rejected">Bị từ chối (${managerState.stores.filter(s => s.status === 'rejected').length})</button>
+    <div class="toolbar" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+      <div class="segmented" style="margin:0;display:inline-flex;background:var(--surface-2);padding:4px;border-radius:12px;border:1px solid var(--line);gap:2px">
+        <button class="${filter === 'all' ? 'active' : ''}" data-mgr-store-filter="all" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s ease">
+          <i class="ph ph-storefront" style="font-size:14px"></i> Tất cả (${managerState.stores.length})
+        </button>
+        <button class="${filter === 'pending' ? 'active' : ''}" data-mgr-store-filter="pending" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s ease">
+          <i class="ph-bold ph-hourglass-high" style="font-size:14px;color:#d97706"></i> Chờ & Đang duyệt (${managerState.stores.filter(s => s.status === 'pending' || s.status === 'reviewing').length})
+        </button>
+        <button class="${filter === 'need_info' ? 'active' : ''}" data-mgr-store-filter="need_info" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s ease">
+          <i class="ph-bold ph-warning-circle" style="font-size:14px;color:#ea580c"></i> Cần bổ sung (${managerState.stores.filter(s => s.status === 'need_info').length})
+        </button>
+        <button class="${filter === 'approved' ? 'active' : ''}" data-mgr-store-filter="approved" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s ease">
+          <i class="ph-bold ph-seal-check" style="font-size:14px;color:#059669"></i> Đã duyệt (${managerState.stores.filter(s => s.status === 'approved').length})
+        </button>
+        <button class="${filter === 'rejected' ? 'active' : ''}" data-mgr-store-filter="rejected" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s ease">
+          <i class="ph-bold ph-x-circle" style="font-size:14px;color:#e11d48"></i> Bị từ chối (${managerState.stores.filter(s => s.status === 'rejected').length})
+        </button>
       </div>
       <div style="display:flex;gap:10px">
-        <label class="search" style="margin:0">${icon("ph-magnifying-glass")}<input class="input" placeholder="Tìm kiếm tên Shop, MST, email..." id="mgr-store-search" /></label>
+        <div class="mgr-search-box" style="margin:0;display:inline-flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--line);border-radius:11px;padding:0 14px;height:42px;box-shadow:0 1px 3px rgba(0,0,0,0.03);min-width:280px;box-sizing:border-box">
+          <i class="ph ph-magnifying-glass" style="font-size:17px;color:var(--muted);flex-shrink:0;position:static !important"></i>
+          <input type="text" style="border:none;background:transparent;outline:none;font-size:13px;padding:0;width:100%;color:var(--ink);font-family:inherit" placeholder="Tìm kiếm tên Shop, MST, email..." id="mgr-store-search" value="${managerState.storeSearchQuery || ''}" />
+          ${managerState.storeSearchQuery ? `<button id="mgr-store-search-clear" style="border:none;background:transparent;cursor:pointer;color:var(--muted);padding:2px;display:grid;place-items:center" title="Xóa tìm kiếm"><i class="ph ph-x" style="font-size:14px"></i></button>` : ''}
+        </div>
       </div>
     </div>
 
     <!-- Bảng Hồ Sơ Shop -->
-    <div class="table-wrap">
-      <table>
+    <div class="table-wrap" style="background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow-x:auto;box-shadow:0 4px 20px rgba(0,0,0,0.04)">
+      <table style="width:100%;border-collapse:separate;border-spacing:0;font-size:12px">
         <thead>
-          <tr>
-            <th>Mã / Tên Gian Hàng</th>
-            <th>Người Đại Diện Pháp Luật</th>
-            <th>Mã Số Thuế</th>
-            <th>Tài Liệu Đính Kèm</th>
-            <th>Ngày Nộp</th>
-            <th>Trạng Thái</th>
-            <th style="text-align:right">Thao Tác Thẩm Định</th>
+          <tr style="background:var(--surface-2);border-bottom:1px solid var(--line)">
+            <th style="padding:10px 10px;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:left;white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px"><span style="width:18px;height:18px;border-radius:5px;background:rgba(217,119,6,0.1);display:grid;place-items:center;color:var(--brand)"><i class="ph ph-storefront" style="font-size:11px"></i></span> Gian Hàng</div></th>
+            <th style="padding:10px 10px;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:left;white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px"><span style="width:18px;height:18px;border-radius:5px;background:rgba(217,119,6,0.1);display:grid;place-items:center;color:var(--brand)"><i class="ph ph-user-circle" style="font-size:11px"></i></span> Đại Diện Pháp Luật</div></th>
+            <th style="padding:10px 8px;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:left;white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px"><span style="width:18px;height:18px;border-radius:5px;background:rgba(217,119,6,0.1);display:grid;place-items:center;color:var(--brand)"><i class="ph ph-identification-card" style="font-size:11px"></i></span> Mã Số Thuế</div></th>
+            <th style="padding:10px 8px;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:left;white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px"><span style="width:18px;height:18px;border-radius:5px;background:rgba(217,119,6,0.1);display:grid;place-items:center;color:var(--brand)"><i class="ph ph-files" style="font-size:11px"></i></span> Tài Liệu</div></th>
+            <th style="padding:10px 8px;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:left;white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px"><span style="width:18px;height:18px;border-radius:5px;background:rgba(217,119,6,0.1);display:grid;place-items:center;color:var(--brand)"><i class="ph ph-calendar-blank" style="font-size:11px"></i></span> Ngày Nộp</div></th>
+            <th style="padding:10px 8px;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:left;white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px"><span style="width:18px;height:18px;border-radius:5px;background:rgba(217,119,6,0.1);display:grid;place-items:center;color:var(--brand)"><i class="ph ph-flag-banner" style="font-size:11px"></i></span> Trạng Thái</div></th>
+            <th style="padding:10px 10px;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:right;white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px;justify-content:flex-end"><span style="width:18px;height:18px;border-radius:5px;background:rgba(217,119,6,0.1);display:grid;place-items:center;color:var(--brand)"><i class="ph ph-lightning" style="font-size:11px"></i></span> Thao Tác</div></th>
           </tr>
         </thead>
         <tbody>
           ${filtered.length > 0 ? filtered.map(st => `
-            <tr>
-              <td>
-                <div style="font-weight:700;color:var(--text)">${st.name}</div>
-                <div style="font-size:11.5px;color:var(--muted)">${st.id} • ${st.category}</div>
+            <tr style="border-bottom:1px solid var(--line);transition:background .15s ease">
+              <!-- Cột 1: Mã / Tên Gian Hàng -->
+              <td style="padding:10px 10px">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <div style="width:36px;height:36px;border-radius:11px;background:${getStoreAvatarGradient(st.id)};color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;box-shadow:0 3px 8px ${getStoreShadow(st.id)};position:relative;border:1.5px solid rgba(255,255,255,0.85);flex-shrink:0">
+                    ${st.name.charAt(0).toUpperCase()}
+                    ${st.status === 'approved' ? `
+                      <div style="position:absolute;bottom:-2px;right:-2px;width:13px;height:13px;border-radius:50%;background:#059669;color:#fff;border:1.5px solid #fff;display:grid;place-items:center;font-size:7.5px;box-shadow:0 1px 3px rgba(0,0,0,0.2)" title="Gian hàng đã xác thực">
+                        <i class="ph ph-check" style="font-weight:700"></i>
+                      </div>
+                    ` : ''}
+                  </div>
+                  <div style="min-width:0">
+                    <div style="font-weight:800;font-size:13px;color:var(--text);letter-spacing:-0.01em;display:flex;align-items:center;gap:5px;line-height:1.2;white-space:nowrap">
+                      <span>${st.name}</span>
+                      ${st.status === 'approved' ? `
+                        <span style="font-size:9.5px;font-weight:700;color:#059669;background:rgba(5,150,105,0.1);padding:1px 5px;border-radius:4px;display:inline-flex;align-items:center;gap:2px">
+                          <i class="ph-fill ph-seal-check"></i> Verified
+                        </span>
+                      ` : ''}
+                    </div>
+                    <div style="font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:2px;white-space:nowrap">
+                      <span class="mono" style="font-weight:700;color:#b45309;background:#fef3c7;border:1px solid #fde68a;padding:0.5px 5px;border-radius:4px;font-size:10px;display:inline-flex;align-items:center;gap:2px;white-space:nowrap;flex-shrink:0">#${st.id}</span>
+                      <span style="color:var(--line)">•</span>
+                      <span style="color:var(--muted);font-weight:500;max-width:105px;overflow:hidden;text-overflow:ellipsis" title="${st.category}">${st.category}</span>
+                    </div>
+                  </div>
+                </div>
               </td>
-              <td>
-                <div>${st.owner}</div>
-                <div style="font-size:11.5px;color:var(--muted)">${st.phone} • ${st.email}</div>
+
+              <!-- Cột 2: Người Đại Diện Pháp Luật -->
+              <td style="padding:10px 10px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);color:#334155;border:1px solid #cbd5e1;display:grid;place-items:center;font-size:11.5px;font-weight:800;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+                    ${st.owner.charAt(0).toUpperCase()}
+                  </div>
+                  <div style="min-width:0">
+                    <strong style="font-size:12.5px;color:var(--text);font-weight:700;display:block;line-height:1.2;white-space:nowrap">${st.owner}</strong>
+                    <div style="font-size:10.5px;display:flex;align-items:center;gap:4px;margin-top:2px;white-space:nowrap">
+                      <span style="display:inline-flex;align-items:center;gap:3px;padding:1.5px 5px;border-radius:4px;background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.15);color:#1d4ed8;font-size:10px;font-family:var(--font-mono);font-weight:600;white-space:nowrap">
+                        <i class="ph-fill ph-phone" style="font-size:9px;color:#2563eb"></i>
+                        <span>${st.phone}</span>
+                      </span>
+                      <span style="color:var(--line)">•</span>
+                      <span style="display:inline-flex;align-items:center;gap:3px;padding:1.5px 5px;border-radius:4px;background:rgba(100,116,139,0.06);border:1px solid rgba(100,116,139,0.15);color:#475569;font-size:10px;font-weight:600;white-space:nowrap;max-width:85px;overflow:hidden;text-overflow:ellipsis" title="${st.email}">
+                        <i class="ph-fill ph-envelope" style="font-size:9px;color:#64748b"></i>
+                        <span>${st.email.split('@')[0]}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </td>
-              <td class="mono" style="font-weight:600">${st.taxCode}</td>
-              <td>
-                <span class="badge neutral" style="font-size:11.5px"><i class="ph ph-file-text"></i> ${st.documents.length} tài liệu PDF</span>
+
+              <!-- Cột 3: Mã Số Thuế -->
+              <td style="padding:10px 8px;white-space:nowrap">
+                <div style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#ffffff 0%,#f8fafc 100%);border:1px solid var(--line);padding:3px 7px;border-radius:7px;box-shadow:0 1px 2px rgba(0,0,0,0.03)">
+                  <div style="width:16px;height:16px;border-radius:4px;background:rgba(217,119,6,0.1);display:grid;place-items:center;color:#d97706">
+                    <i class="ph ph-barcode" style="font-size:10.5px"></i>
+                  </div>
+                  <span class="mono" style="font-weight:800;font-size:11px;color:var(--text);letter-spacing:0.02em">${st.taxCode}</span>
+                </div>
               </td>
-              <td style="font-size:12px;color:var(--muted)">${st.submittedAt}</td>
-              <td>${renderStoreStatusBadge(st.status)}</td>
-              <td style="text-align:right">
-                <div class="actions" style="justify-content:flex-end">
-                  <button class="btn small secondary" data-mgr-view-store="${st.id}">Xem chi tiết</button>
+
+              <!-- Cột 4: Tài Liệu Đính Kèm -->
+              <td style="padding:10px 8px;white-space:nowrap">
+                <div style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#fff1f2 0%,#ffe4e6 100%);border:1px solid #fecdd3;padding:3px 7px;border-radius:7px;cursor:pointer;transition:all .18s ease;box-shadow:0 1px 2px rgba(225,29,72,0.05)" data-mgr-view-store="${st.id}" title="Xem hồ sơ GPKD">
+                  <div style="width:16px;height:16px;border-radius:4px;background:#ef4444;color:#fff;display:grid;place-items:center;box-shadow:0 1px 3px rgba(239,68,68,0.3)">
+                    <i class="ph-fill ph-file-pdf" style="font-size:9.5px"></i>
+                  </div>
+                  <span style="font-weight:700;font-size:10.5px;color:#9f1239">${st.documents.length} PDF</span>
+                  <i class="ph ph-arrow-up-right" style="color:#e11d48;font-size:9px"></i>
+                </div>
+              </td>
+
+              <!-- Cột 5: Ngày Nộp -->
+              <td style="padding:10px 8px;white-space:nowrap">
+                <div style="display:inline-flex;align-items:center;gap:4px;color:var(--text);font-size:10px;background:var(--surface-2);border:1px solid var(--line);padding:2.5px 6px;border-radius:6px">
+                  <i class="ph ph-calendar-blank" style="color:var(--muted);font-size:10px"></i>
+                  <span class="mono" style="font-weight:600;font-size:9.5px">${st.submittedAt}</span>
+                </div>
+              </td>
+
+              <!-- Cột 6: Trạng Thái -->
+              <td style="padding:10px 8px;white-space:nowrap">
+                ${renderStoreStatusBadge(st.status)}
+              </td>
+
+              <!-- Cột 7: Thao Tác Thẩm Định -->
+              <td style="padding:10px 10px;text-align:right;white-space:nowrap">
+                <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:nowrap">
+                  <!-- Nút Chi tiết -->
+                  <button class="btn small secondary" data-mgr-view-store="${st.id}" style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px;border-radius:7px;font-weight:700;font-size:10.5px;border:1px solid var(--line);background:var(--surface);cursor:pointer;transition:all .15s ease" title="Xem hồ sơ chi tiết">
+                    <i class="ph ph-eye" style="font-size:11.5px;color:var(--brand)"></i>
+                    <span>Chi tiết</span>
+                  </button>
+
                   ${st.status !== 'approved' ? `
-                    <button class="btn small" data-mgr-approve-store="${st.id}" style="background:#059669;color:#fff"><i class="ph ph-check"></i> Duyệt</button>
-                    <button class="icon-btn" data-mgr-need-info="${st.id}" title="Yêu cầu bổ sung tài liệu">${icon("ph-pencil-simple-line")}</button>
-                    <button class="icon-btn danger" data-mgr-reject-store="${st.id}" title="Từ chối hồ sơ">${icon("ph-x")}</button>
+                    <!-- Nút Duyệt -->
+                    <button data-mgr-approve-store="${st.id}" style="display:inline-flex;align-items:center;gap:3px;padding:4px 9px;border-radius:7px;border:none;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;font-size:10.5px;font-weight:700;box-shadow:0 2px 5px rgba(5,150,105,0.25);cursor:pointer;transition:all .15s ease" title="Duyệt gian hàng này">
+                      <i class="ph ph-check" style="font-size:11px;font-weight:700"></i>
+                      <span>Duyệt</span>
+                    </button>
+
+                    <!-- Khung Icon Yêu cầu bổ sung -->
+                    <button class="icon-btn-luxury" data-mgr-need-info="${st.id}" title="Yêu cầu bổ sung hồ sơ" style="width:26px;height:26px;border-radius:7px;border:1px solid #fde68a;background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);color:#d97706;display:inline-flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;box-shadow:0 1px 2px rgba(217,119,6,0.1);transition:all .15s ease">
+                      <i class="ph ph-pencil-simple-line"></i>
+                    </button>
+
+                    <!-- Khung Icon Từ chối -->
+                    <button class="icon-btn-luxury" data-mgr-reject-store="${st.id}" title="Từ chối hồ sơ Shop" style="width:26px;height:26px;border-radius:7px;border:1px solid #fecdd3;background:linear-gradient(135deg,#fff1f2 0%,#ffe4e6 100%);color:#e11d48;display:inline-flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;box-shadow:0 1px 2px rgba(225,29,72,0.1);transition:all .15s ease">
+                      <i class="ph ph-x"></i>
+                    </button>
                   ` : `
-                    <span style="font-size:11.5px;color:#059669;font-weight:600;padding:4px 8px">Đang hoạt động</span>
+                    <!-- Khung Đang hoạt động -->
+                    <div style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:7px;background:linear-gradient(135deg,rgba(16,185,129,0.08) 0%,rgba(5,150,105,0.12) 100%);border:1px solid rgba(16,185,129,0.25);color:#047857;font-size:10.5px;font-weight:700;white-space:nowrap;box-shadow:0 1px 2px rgba(16,185,129,0.06)">
+                      <span style="width:5px;height:5px;border-radius:50%;background:#10b981;box-shadow:0 0 0 2px rgba(16,185,129,0.25)"></span>
+                      <i class="ph-fill ph-shield-check" style="font-size:12px;color:#059669"></i>
+                      <span>Đang hoạt động</span>
+                    </div>
                   `}
                 </div>
               </td>
             </tr>
           `).join("") : `
             <tr>
-              <td colspan="7" style="text-align:center;padding:36px;color:var(--muted)">
-                <i class="ph ph-tray" style="font-size:32px;display:block;margin-bottom:8px"></i>
-                Không tìm thấy hồ sơ Shop nào phù hợp với bộ lọc hiện tại.
+              <td colspan="7" style="text-align:center;padding:48px 24px;color:var(--muted)">
+                <div style="width:56px;height:56px;border-radius:16px;background:var(--surface-2);color:var(--muted);display:grid;place-items:center;margin:0 auto 12px;font-size:26px">
+                  <i class="ph ph-storefront"></i>
+                </div>
+                <strong style="font-size:15px;color:var(--text);display:block;margin-bottom:4px">Không tìm thấy hồ sơ Shop phù hợp</strong>
+                <p style="margin:0;font-size:13px">Thử chọn bộ lọc trạng thái khác hoặc nhập từ khóa tìm kiếm mới.</p>
               </td>
             </tr>
           `}
@@ -984,6 +1142,28 @@ export function bindManager(root, { toast, go, renderCurrentPage }) {
       renderCurrentPage();
     });
   });
+
+  // Store search input filter
+  const storeSearchInput = root.querySelector("#mgr-store-search");
+  if (storeSearchInput) {
+    storeSearchInput.addEventListener("input", (e) => {
+      managerState.storeSearchQuery = e.target.value;
+      renderCurrentPage();
+      const updated = document.querySelector("#mgr-store-search");
+      if (updated) {
+        updated.focus();
+        updated.setSelectionRange(updated.value.length, updated.value.length);
+      }
+    });
+  }
+
+  const storeSearchClear = root.querySelector("#mgr-store-search-clear");
+  if (storeSearchClear) {
+    storeSearchClear.addEventListener("click", () => {
+      managerState.storeSearchQuery = "";
+      renderCurrentPage();
+    });
+  }
 
   // Fraud filters
   root.querySelectorAll("[data-mgr-fraud-filter]").forEach(btn => {
