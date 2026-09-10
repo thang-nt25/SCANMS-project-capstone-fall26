@@ -24,6 +24,9 @@ import ChatBoxPage from '../pages/chat/ChatBoxPage';
 // Quy - FR-26: Sample Product Requests
 import SampleRequestsPage from '../pages/collaborator/SampleRequestsPage';
 import ShopSampleRequestsPage from '../pages/merchant/ShopSampleRequestsPage';
+// Quy - FR-27: Campaign Invitations
+import ShopCampaignsPage from '../pages/merchant/ShopCampaignsPage';
+import KolCampaignsPage from '../pages/collaborator/KolCampaignsPage';
 
 function AppRoutes() {
   return (
@@ -72,6 +75,10 @@ function AppRoutes() {
           {/* ── Quy - FR-26: Sample Product Workflow ── */}
           <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
           <Route path="merchant/sample-requests" element={<ShopSampleRequestsPage />} />
+
+          {/* ── Quy - FR-27: Campaign Invitations ── */}
+          <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
+          <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
         </Route>
       </Routes>
     </Router>

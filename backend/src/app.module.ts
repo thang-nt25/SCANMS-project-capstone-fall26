@@ -17,6 +17,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
+import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { SamplesModule } from './modules/samples/samples.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 
@@ -45,6 +46,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     // Quy's modules
     ChatModule,
     SamplesModule,
+    CampaignsModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy],
