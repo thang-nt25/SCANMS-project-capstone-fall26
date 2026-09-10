@@ -23,17 +23,19 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
 
   const config = new DocumentBuilder()
-    .setTitle('SCANMS API Documentation')
+    .setTitle('SCANMS API Documentation (FA26SE032)')
     .setDescription(
-      'Sales Collaborator & Affiliate Network Management System API',
+      'Hệ thống Quản lý Mạng lưới Tiếp thị Liên kết & Cộng tác viên Bán hàng (SCANMS) - RESTful API UI',
     )
     .setVersion('1.0.0')
+    .addBearerAuth()
     .addBearerAuth(
       {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
         name: 'JWT Authorization',
+        description: 'Nhập JWT Token (Bearer token)',
         in: 'header',
       },
       'JWT-auth',
