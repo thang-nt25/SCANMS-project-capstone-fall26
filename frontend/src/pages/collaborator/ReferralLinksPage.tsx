@@ -553,33 +553,37 @@ export default function ReferralLinksPage() {
     switch (link.status) {
       case 'ACTIVE':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Đang hoạt động
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 shadow-2xs whitespace-nowrap">
+            <span className="relative flex h-2 w-2 flex-shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Đang hoạt động</span>
           </span>
         );
       case 'PAUSED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
-            <PauseCircle className="w-4 h-4" />
-            Tạm ngừng
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50/90 text-amber-800 border border-amber-200/80 shadow-2xs whitespace-nowrap">
+            <PauseCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+            <span>Tạm ngừng</span>
           </span>
         );
       case 'EXPIRED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200 shadow-2xs">
-            Đã hết hạn
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-600 border border-slate-200/80 shadow-2xs whitespace-nowrap">
+            <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+            <span>Đã hết hạn</span>
           </span>
         );
       case 'BLOCKED':
         return (
-          <div className="relative group inline-block">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 cursor-help shadow-2xs">
-              <ShieldAlert className="w-4 h-4" />
-              Đã bị khóa
+          <div className="relative group inline-block whitespace-nowrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50/90 text-rose-800 border border-rose-200/80 cursor-help shadow-2xs whitespace-nowrap">
+              <ShieldAlert className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+              <span>Đã bị khóa</span>
             </span>
             {link.disabledReason && (
-              <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-20 w-64 p-2.5 bg-gray-900 text-white text-xs rounded-xl shadow-xl">
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-20 w-64 p-2.5 bg-gray-900 text-white text-xs rounded-xl shadow-xl text-left">
                 <div className="font-semibold text-rose-300 mb-0.5">Lý do khóa:</div>
                 <div className="text-gray-200">{link.disabledReason}</div>
                 {link.disabledBy && (
@@ -598,7 +602,7 @@ export default function ReferralLinksPage() {
         );
       default:
         return (
-          <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 shadow-2xs">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 whitespace-nowrap">
             {link.status}
           </span>
         );
@@ -810,13 +814,13 @@ export default function ReferralLinksPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#FAF8F5] border-b border-[#E8DAC4] text-xs font-bold text-[#7D6D55] uppercase tracking-wider">
-                  <th className="py-4 px-5 sm:px-6">Sản phẩm &amp; Cửa hàng</th>
-                  <th className="py-4 px-5">Mã rút gọn &amp; Kênh</th>
-                  <th className="py-4 px-5">Trạng thái</th>
-                  <th className="py-4 px-5 text-center">Lượt nhấp (Clicks)</th>
-                  <th className="py-4 px-5 text-center">Đơn hàng</th>
-                  <th className="py-4 px-5">Ngày tạo</th>
-                  <th className="py-4 px-5 sm:px-6 text-right">Thao tác</th>
+                  <th className="py-4 px-5 sm:px-6 min-w-[240px]">Sản phẩm &amp; Cửa hàng</th>
+                  <th className="py-4 px-5 min-w-[180px]">Mã rút gọn &amp; Kênh</th>
+                  <th className="py-4 px-5 text-center whitespace-nowrap min-w-[140px]">Trạng thái</th>
+                  <th className="py-4 px-5 text-center whitespace-nowrap min-w-[130px]">Lượt nhấp (Clicks)</th>
+                  <th className="py-4 px-5 text-center whitespace-nowrap min-w-[110px]">Đơn hàng</th>
+                  <th className="py-4 px-5 whitespace-nowrap min-w-[100px]">Ngày tạo</th>
+                  <th className="py-4 px-5 sm:px-6 text-right whitespace-nowrap min-w-[130px]">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8DAC4]/60 text-sm">
@@ -891,25 +895,37 @@ export default function ReferralLinksPage() {
                       </td>
 
                       {/* Cột 3: Trạng thái */}
-                      <td className="py-5 px-5">{renderStatusBadge(link)}</td>
+                      <td className="py-5 px-5 text-center whitespace-nowrap">
+                        {renderStatusBadge(link)}
+                      </td>
 
                       {/* Cột 4: Clicks */}
-                      <td className="py-5 px-5 text-center">
-                        <div className="text-base sm:text-lg font-extrabold text-[#1A1612]">{link.totalClicks}</div>
-                        <div className="text-xs text-[#A49B8B]">
-                          {link.uniqueClicks} unique
+                      <td className="py-5 px-5 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#FAF8F5] border border-[#E8DAC4] rounded-xl shadow-2xs text-left">
+                          <div className="w-6 h-6 rounded-lg bg-white border border-[#E8DAC4]/60 flex items-center justify-center text-[#9E7933] flex-shrink-0">
+                            <MousePointerClick className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <div className="text-xs sm:text-sm font-extrabold text-[#1A1612] leading-none">
+                              {link.totalClicks}
+                            </div>
+                            <div className="text-[10px] font-medium text-[#A49B8B] leading-none mt-0.5">
+                              {link.uniqueClicks} unique
+                            </div>
+                          </div>
                         </div>
                       </td>
 
                       {/* Cột 5: Đơn hàng */}
-                      <td className="py-5 px-5 text-center">
-                        <span className="font-bold text-[#9E7933] bg-[#FDF8EE] border border-[#DEBE85] px-3.5 py-1 rounded-full text-xs sm:text-sm shadow-2xs">
-                          {link.totalOrders} đơn
-                        </span>
+                      <td className="py-5 px-5 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FDF8EE] border border-[#DEBE85] text-[#9E7933] rounded-xl shadow-2xs font-bold text-xs">
+                          <ShoppingBag className="w-3.5 h-3.5 text-[#C59B58] flex-shrink-0" />
+                          <span>{link.totalOrders} đơn</span>
+                        </div>
                       </td>
 
                       {/* Cột 6: Ngày tạo */}
-                      <td className="py-5 px-5 text-xs sm:text-sm text-[#7D6D55]">
+                      <td className="py-5 px-5 text-xs sm:text-sm text-[#7D6D55] whitespace-nowrap">
                         {new Date(link.createdAt).toLocaleDateString('vi-VN')}
                       </td>
 
