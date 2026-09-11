@@ -27,6 +27,8 @@ import ShopSampleRequestsPage from '../pages/merchant/ShopSampleRequestsPage';
 // Quy - FR-27: Campaign Invitations
 import ShopCampaignsPage from '../pages/merchant/ShopCampaignsPage';
 import KolCampaignsPage from '../pages/collaborator/KolCampaignsPage';
+// Quy - FR-28: Dashboard Doanh Số Realtime
+import { ShopDashboardStatsPage, KolDashboardPage } from '../pages/dashboard/DashboardPage';
 
 function AppRoutes() {
   return (
@@ -79,6 +81,10 @@ function AppRoutes() {
           {/* ── Quy - FR-27: Campaign Invitations ── */}
           <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
           <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
+
+          {/* ── Quy - FR-28: Dashboard Doanh Số Realtime ── */}
+          <Route path="merchant/stats" element={<ShopDashboardStatsPage />} />
+          <Route path="collaborator/stats" element={<KolDashboardPage />} />
         </Route>
       </Routes>
     </Router>

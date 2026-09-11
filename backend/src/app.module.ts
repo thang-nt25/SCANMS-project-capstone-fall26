@@ -19,6 +19,7 @@ import { MediaModule } from './modules/media/media.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { SamplesModule } from './modules/samples/samples.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 
 @Module({
@@ -47,6 +48,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     ChatModule,
     SamplesModule,
     CampaignsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy],
