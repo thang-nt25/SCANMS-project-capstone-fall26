@@ -20,10 +20,10 @@ import UiReferencePage from '../pages/UiReferencePage';
 // Commission Rules & Referral Links (Tuấn - FR-10 & Milestone Bonus)
 import CommissionRulesPage from '../pages/merchant/CommissionRulesPage';
 import StoreReferralLinksPage from '../pages/merchant/StoreReferralLinksPage';
+import StoreCollaboratorsPage from '../pages/merchant/StoreCollaboratorsPage';
 import AdminReferralLinksPage from '../pages/admin/AdminReferralLinksPage';
 import KolBonusProgressPage from '../pages/collaborator/KolBonusProgressPage';
 import ReferralLinksPage from '../pages/collaborator/ReferralLinksPage';
-import { ProtectedRoute } from './ProtectedRoute';
 
 // Merchant Pages (Thắng - FR-01~08)
 import ProductManagementPage from '../pages/merchant/ProductManagementPage';
@@ -36,7 +36,6 @@ import KolTierStatusPage from '../pages/collaborator/KolTierStatusPage';
 import SocialChannelsPage from '../pages/collaborator/SocialChannelsPage';
 import KycSubmissionPage from '../pages/collaborator/KycSubmissionPage';
 import MediaHubBrowserPage from '../pages/collaborator/MediaHubBrowserPage';
-import LinksPage from '../pages/collaborator/LinksPage';
 import SamplesPage from '../pages/collaborator/SamplesPage';
 
 // Realtime Chat (Quý - FR-25)
@@ -84,52 +83,33 @@ function AppRoutes() {
         <Route path="/products/:slug" element={<ProductDetailPage />} />
 
         {/* ================================================================= */}
-        {/* 2. Cổng Portal / Dashboard cho người dùng nội bộ (MainLayout)     */}
-        {/* ================================================================= */}
-        <Route path="/portal" element={<MainLayout />}>
-          <Route index element={<DashboardDispatcher />} />
-        </Route>
-        <Route path="/dashboard" element={<MainLayout />}>
-          <Route index element={<DashboardDispatcher />} />
-        </Route>
-
-        {/* ================================================================= */}
-        {/* 3. Protected standalone routes (Tuấn)                             */}
-        {/* ================================================================= */}
-        <Route element={<ProtectedRoute allowedRoles={['SYSTEM_ADMIN']} />}>
-          <Route path="/admin/referral-links" element={<AdminReferralLinksPage />} />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={['SHOP_MANAGER', 'SYSTEM_ADMIN']} />}>
-          <Route path="/merchant/commission-rules" element={<CommissionRulesPage />} />
-          <Route path="/stores/:storeId/commission-rules" element={<CommissionRulesPage />} />
-          <Route path="/merchant/referral-links" element={<StoreReferralLinksPage />} />
-          <Route path="/stores/:storeId/referral-links" element={<StoreReferralLinksPage />} />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={['COLLABORATOR']} />}>
-          <Route path="/collaborator/bonus-progress" element={<KolBonusProgressPage />} />
-          <Route path="/kol/bonus-progress" element={<KolBonusProgressPage />} />
-          <Route path="/collaborator/referral-links" element={<ReferralLinksPage />} />
-          <Route path="/kol/referral-links" element={<ReferralLinksPage />} />
-        </Route>
-
-        {/* ================================================================= */}
-        {/* 4. Routes tích hợp trong MainLayout (Sidebar + Topbar)            */}
+        {/* 2. Routes tích hợp trong MainLayout (Có Sidebar & Topbar đầy đủ) */}
         {/* ================================================================= */}
         <Route element={<MainLayout />}>
-          {/* Merchant (Thắng - FR-01~08 & Tuấn FR-10) */}
+          <Route path="/portal" element={<DashboardDispatcher />} />
+          <Route path="/dashboard" element={<DashboardDispatcher />} />
+
+          {/* ── Merchant ── */}
           <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
           <Route path="merchant/products" element={<ProductManagementPage />} />
           <Route path="merchant/settings" element={<ShopSettingsPage />} />
           <Route path="merchant/kyc-approval" element={<KycApprovalPage />} />
+          <Route path="merchant/commission-rules" element={<CommissionRulesPage />} />
+          <Route path="stores/:storeId/commission-rules" element={<CommissionRulesPage />} />
+          <Route path="merchant/referral-links" element={<StoreReferralLinksPage />} />
+          <Route path="merchant/collaborators" element={<StoreCollaboratorsPage />} />
+          <Route path="stores/:storeId/referral-links" element={<StoreReferralLinksPage />} />
           <Route path="merchant/sample-requests" element={<ShopSampleRequestsPage />} />
           <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
           <Route path="merchant/stats" element={<ShopDashboardStatsPage />} />
 
-          {/* Collaborator (Thắng - FR-01~08, Quý FR-25~28, Tuấn FR-10) */}
+          {/* ── Collaborator ── */}
           <Route path="collaborator/dashboard" element={<HomePage />} />
-          <Route path="collaborator/links" element={<LinksPage />} />
+          <Route path="collaborator/links" element={<ReferralLinksPage />} />
+          <Route path="collaborator/referral-links" element={<ReferralLinksPage />} />
+          <Route path="kol/referral-links" element={<ReferralLinksPage />} />
+          <Route path="collaborator/bonus-progress" element={<KolBonusProgressPage />} />
+          <Route path="kol/bonus-progress" element={<KolBonusProgressPage />} />
           <Route path="collaborator/social-channels" element={<SocialChannelsPage />} />
           <Route path="collaborator/media-hub" element={<MediaHubBrowserPage />} />
           <Route path="collaborator/samples" element={<SamplesPage />} />
@@ -139,10 +119,11 @@ function AppRoutes() {
           <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
           <Route path="collaborator/stats" element={<KolDashboardPage />} />
 
-          {/* Admin */}
+          {/* ── Admin ── */}
           <Route path="admin/users" element={<KycApprovalPage />} />
+          <Route path="admin/referral-links" element={<AdminReferralLinksPage />} />
 
-          {/* Chat */}
+          {/* ── Chat ── */}
           <Route path="chat" element={<ChatBoxPage />} />
           <Route path="collaborator/messages" element={<ChatBoxPage />} />
           <Route path="merchant/messages" element={<ChatBoxPage />} />

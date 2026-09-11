@@ -70,6 +70,14 @@ export class CommissionRulesService {
     collaboratorId: string,
     client: any = this.prisma,
   ): Promise<void> {
+    if (typeof client.storeCollaborator?.findFirst === 'function') {
+      const approvedRelation = await client.storeCollaborator.findFirst({
+        where: { storeId, collaboratorId, status: 'APPROVED' },
+        select: { id: true },
+      });
+      if (approvedRelation) return;
+    }
+
     if (typeof client.order?.findFirst === 'function') {
       const hasOrder = await client.order.findFirst({
         where: { storeId, attributedCollaboratorId: collaboratorId },
@@ -88,6 +96,7 @@ export class CommissionRulesService {
       const hasCampaign = await client.campaignParticipant.findFirst({
         where: {
           collaboratorId,
+          status: 'ACCEPTED',
           campaign: { storeId },
         },
         select: { id: true },
@@ -1986,8 +1995,9 @@ export class CommissionRulesService {
 
     if (collaboratorId && !isDiscovery) {
       whereClause.OR = [
+        { storeCollaborators: { some: { collaboratorId, status: 'APPROVED' } } },
         { orders: { some: { attributedCollaboratorId: collaboratorId } } },
-        { campaigns: { some: { participants: { some: { collaboratorId } } } } },
+        { campaigns: { some: { participants: { some: { collaboratorId, status: 'ACCEPTED' } } } } },
         { products: { some: { referralLinks: { some: { collaboratorId } } } } },
         { products: { some: { sampleProductRequests: { some: { collaboratorId } } } } },
         { monthlyBonusResults: { some: { collaboratorId } } },

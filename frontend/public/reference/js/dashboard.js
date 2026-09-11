@@ -734,6 +734,11 @@ export function bindDashboard(root, actions) {
   root.querySelectorAll('[data-dash]').forEach(b=>{
     b.onclick=()=>{
       const a=b.dataset.dash;
+      if(a==='links'){
+        if(actions.go) return actions.go('links');
+        location.hash = '#links';
+        return;
+      }
       if(a==='withdraw')return withdrawal();
       if(a==='ready'){demo.mode='ready';return actions.refresh();}
       if(a==='reset'){demo.days=7;demo.from=demo.to='';demo.mode='ready';demo.selectedDay=null;demo.showAllTasks=false;return actions.refresh();}

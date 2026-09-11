@@ -117,6 +117,22 @@ function getActiveChannels() {
 }
 
 export function linksPage() {
+  return `
+    <section class="link-fullstack-embed" aria-label="Quản trị link tiếp thị FR-10">
+      <iframe
+        id="referral-links-iframe"
+        src="/collaborator/referral-links"
+        title="Quản trị Link Tiếp Thị Rút Gọn FR-10"
+        scrolling="auto"
+        style="width:100%;height:calc(100vh - 112px);min-height:760px;border:0;border-radius:16px;background:#f8fafc;display:block"
+      ></iframe>
+    </section>
+  `;
+}
+
+// Giữ màn hình prototype cũ để tham chiếu thiết kế; luồng chính dùng trang React
+// Fullstack phía trên nhằm không tạo hai giao diện quản trị song song.
+function legacyLinksPage() {
   const activeChannels = getActiveChannels();
   if (typeof window !== 'undefined' && window.__SCANMS_PRESELECTED_CHANNEL__) {
     model.channel = window.__SCANMS_PRESELECTED_CHANNEL__;
@@ -129,10 +145,16 @@ export function linksPage() {
     <!-- Header & UX State Testing Switcher -->
     <header class="page-head">
       <div>
-        <h1>Link và Mã QR Tiếp Thị</h1>
-        <p>Chọn sản phẩm, kênh phân phối, gắn mã tracking và nhận mã QR quét được để xuất bản nội dung bán hàng.</p>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <h1>Tạo Link Tiếp Thị Rút Gọn (FR-10)</h1>
+          <span class="badge" style="background:#FEF3C7;color:#92400E;font-weight:700">scanms.vn/r/{code}</span>
+        </div>
+        <p>KOL chọn sản phẩm &rarr; Hệ thống sinh link <strong>scanms.vn/r/{short_code}</strong> kèm mã QR quét được và cơ chế gắn Cookie 30 ngày.</p>
       </div>
-      <div class="actions">
+      <div class="actions" style="display:flex;gap:10px;align-items:center">
+        <a href="/collaborator/referral-links" class="btn small" style="background:#231D15;color:#EAD2A3;border:1px solid #C59B58;font-weight:700">
+          <i class="ph ph-sliders"></i> Quản Trị Link React Fullstack &rarr;
+        </a>
         <div class="link-state-capsule" title="Trạng thái nguồn dữ liệu kho hàng">
           <i class="ph ph-sliders-horizontal"></i>
           <select id="link-mode" class="link-mode-select">
@@ -204,8 +226,8 @@ export function linksPage() {
             <span>Bạn vừa thay đổi sản phẩm hoặc kênh. Hãy nhấn nút dưới đây để tạo lại link & mã QR mới.</span>
           </div>
 
-          <button class="btn" id="generate-link" style="width:100%;height:46px;font-size:15px;font-weight:700">
-            <i class="ph ph-link-simple-horizontal" aria-hidden="true"></i> Tạo link tiếp thị & QR
+          <button class="btn" id="generate-link" style="width:100%;height:48px;font-size:15px;font-weight:700;background:linear-gradient(135deg, #C59B58, #B88E4F);color:#fff">
+            <i class="ph ph-link-simple-horizontal" aria-hidden="true"></i> Tạo Link Tiếp Thị Rút Gọn & Mã QR
           </button>
           <div id="generate-feedback" class="link-feedback" role="status" aria-live="polite"></div>
         </section>
@@ -214,30 +236,47 @@ export function linksPage() {
         <section class="step-section">
           <div class="step-title">
             <span class="step-badge">3</span>
-            <span>Link tiếp thị định danh CTV</span>
+            <span>Link tiếp thị rút gọn định danh CTV (scanms.vn/r/{code})</span>
           </div>
 
-          <div class="link-result-card">
-            <label for="generated-url" style="font-weight:600;font-size:13.5px;color:var(--ink)">
-              Đường dẫn tiếp thị duy nhất (Tracking URL)
+          <div class="link-result-card" style="border: 2px solid #EEDFC6; background: #FFFCF7; padding: 18px; border-radius: 12px">
+            <!-- Ô LINK RÚT GỌN NỔI BẬT THEO ĐẶC TẢ -->
+            <div style="margin-bottom: 14px">
+              <label for="generated-short-url" style="font-weight:800;font-size:14px;color:#92400E;display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                <i class="ph ph-lightning"></i> Link Rút Gọn Tiếp Thị (FR-10): scanms.vn/r/{short_code}
+              </label>
+              <div class="link-row" style="display:flex;gap:8px">
+                <input class="input mono" id="generated-short-url" readonly placeholder="Chưa tạo link. Bấm nút Tạo link ở trên..." style="font-weight:800;font-size:14.5px;color:#92400E;background:#FEF3C7;border:1.5px solid #F59E0B" />
+                <button class="btn" id="copy-short-link" disabled style="white-space:nowrap;background:#92400E;color:#fff;font-weight:700">
+                  <i class="ph ph-copy" aria-hidden="true"></i> <span id="copy-short-btn-text">Sao chép Link Rút Gọn</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Ô URL ĐÍCH ĐẦY ĐỦ -->
+            <label for="generated-url" style="font-weight:600;font-size:12px;color:var(--muted)">
+              URL Đích Chuyển Tiếp (Đã gắn UTM & Token Attribution):
             </label>
-            <div class="link-row" style="display:flex;gap:8px">
-              <input class="input mono" id="generated-url" readonly placeholder="Chưa có link. Hãy bấm Tạo link tiếp thị ở trên..." />
-              <button class="btn" id="copy-link" disabled style="white-space:nowrap">
-                <i class="ph ph-copy" aria-hidden="true"></i> <span id="copy-btn-text">Sao chép</span>
+            <div class="link-row" style="display:flex;gap:8px;margin-top:4px">
+              <input class="input mono" id="generated-url" readonly placeholder="URL đích..." style="font-size:12px;color:var(--muted)" />
+              <button class="btn secondary" id="copy-link" disabled style="white-space:nowrap;font-size:12px">
+                <i class="ph ph-copy" aria-hidden="true"></i> <span>URL dài</span>
               </button>
             </div>
             <div id="copy-feedback" class="link-feedback" role="status"></div>
 
-            <div class="link-result-meta-tags">
+            <div class="link-result-meta-tags" style="margin-top:10px">
               <span class="meta-pill active"><i class="ph ph-shield-check"></i> Định danh CTV duy nhất</span>
               <span class="meta-pill"><i class="ph ph-clock"></i> Cookie 30 ngày</span>
               <span class="meta-pill"><i class="ph ph-cursor-click"></i> Last-Click Attribution</span>
             </div>
 
-            <div class="actions" style="margin-top:6px">
+            <div class="actions" style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
               <a class="btn secondary small" id="open-link" target="_blank" rel="noopener noreferrer" hidden style="display:inline-flex;align-items:center;gap:6px">
-                <i class="ph ph-arrow-square-out" aria-hidden="true"></i> Mở trang đích mua hàng (Demo)
+                <i class="ph ph-arrow-square-out" aria-hidden="true"></i> Thử nghiệm Click Link (/r/:code)
+              </a>
+              <a class="btn small" href="/collaborator/referral-links" style="display:inline-flex;align-items:center;gap:6px;background:#231D15;color:#EAD2A3">
+                <i class="ph ph-arrow-up-right"></i> Mở Trang Quản Trị Link React Fullstack
               </a>
             </div>
           </div>
@@ -568,7 +607,9 @@ function updateResultUI() {
   if (!host) return;
   const r = model.result;
   const urlInput = host.querySelector('#generated-url');
+  const shortUrlInput = host.querySelector('#generated-short-url');
   const copyBtn = host.querySelector('#copy-link');
+  const copyShortBtn = host.querySelector('#copy-short-link');
   const openLink = host.querySelector('#open-link');
   const staleBanner = host.querySelector('#stale-warning');
 
@@ -576,11 +617,19 @@ function updateResultUI() {
     staleBanner.hidden = !model.isStale;
   }
 
+  if (shortUrlInput) {
+    shortUrlInput.value = r ? (r.shortUrl || `https://scanms.vn/r/${r.code.toLowerCase()}`) : '';
+  }
+
   if (urlInput) {
     urlInput.value = r?.url || '';
   }
 
-  const actionIds = ['copy-link', 'share-system', 'share-facebook', 'share-zalo', 'share-caption'];
+  if (copyShortBtn) {
+    copyShortBtn.disabled = !r || model.isStale;
+  }
+
+  const actionIds = ['copy-link', 'copy-short-link', 'share-system', 'share-facebook', 'share-zalo', 'share-caption'];
   actionIds.forEach((id) => {
     const el = host.querySelector('#' + id);
     if (el) el.disabled = !r || model.isStale;
@@ -588,7 +637,7 @@ function updateResultUI() {
 
   if (openLink) {
     openLink.hidden = !r;
-    if (r) openLink.href = r.url;
+    if (r) openLink.href = r.localShortUrl || `/r/${r.code.toLowerCase()}`;
   }
 
   drawQR();
@@ -1138,11 +1187,27 @@ export function bindLinks(root) {
     feedback('generate-feedback', `Đã tạo link tiếp thị và mã QR cho sản phẩm "${p.name}" trên kênh ${c.name}!`);
   };
 
-  // 7. Sao chép link
+  // 7. Sao chép link tiếp thị
   local.querySelector('#copy-link').onclick = () => {
     if (!model.result) return;
-    copyToClipboard(model.result.url, 'copy-feedback', 'Đã sao chép link tiếp thị vào clipboard!');
+    copyToClipboard(model.result.url, 'copy-feedback', 'Đã sao chép link tiếp thị đầy đủ vào clipboard!');
   };
+
+  // 7b. Sao chép Link Rút Gọn scanms.vn/r/{code}
+  const copyShortBtn = local.querySelector('#copy-short-link');
+  if (copyShortBtn) {
+    copyShortBtn.onclick = () => {
+      if (!model.result) return;
+      const shortUrl = model.result.shortUrl || `https://scanms.vn/r/${model.result.code.toLowerCase()}`;
+      copyToClipboard(shortUrl, 'copy-feedback', `Đã sao chép Link Rút Gọn (${shortUrl}) vào clipboard!`);
+      const btnText = local.querySelector('#copy-short-btn-text');
+      if (btnText) {
+        const orig = btnText.textContent;
+        btnText.textContent = 'Đã chép link! ✓';
+        setTimeout(() => { if (btnText) btnText.textContent = orig; }, 2000);
+      }
+    };
+  }
 
   // 9. Tải ảnh QR PNG
   local.querySelector('#download-qr').onclick = () => {

@@ -20,6 +20,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { commissionRulesService } from '../../services/commissionRulesService';
+import api from '../../services/api';
 import { getVietnamCurrentMonthYear } from '../../utils/dateTimeUtils';
 
 interface MilestoneItem {
@@ -94,6 +95,8 @@ export const KolBonusProgressPage: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(currentVnMonth);
   const [stores, setStores] = useState<Array<{ id: string; name: string }>>([]);
   const [storesLoading, setStoresLoading] = useState<boolean>(true);
+  const [storeInvitations, setStoreInvitations] = useState<any[]>([]);
+  const [invitationLoading, setInvitationLoading] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'progress' | 'history'>('progress');
   const [loading, setLoading] = useState<boolean>(false);
@@ -105,6 +108,18 @@ export const KolBonusProgressPage: React.FC = () => {
 
   const isDevMockEnabled = import.meta.env.VITE_ENABLE_MOCK_DEMO === 'true';
   const currentYearMonth = `${selectedYear}-${selectedMonth}`;
+
+  // Iframe có thể được mở bằng JWT cũ trong lúc ứng dụng cha đang đổi vai trò.
+  // Khi JWT mới đã sẵn sàng, tải lại để lấy đúng Shop và lời mời của KOL mới.
+  useEffect(() => {
+    const handleAuthSync = (event: MessageEvent) => {
+      if (event.data?.type === 'SCANMS_AUTH_SYNC') {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('message', handleAuthSync);
+    return () => window.removeEventListener('message', handleAuthSync);
+  }, []);
 
   // Load danh sách Store thực tế của KOL
   useEffect(() => {
@@ -138,6 +153,28 @@ export const KolBonusProgressPage: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    api.get('/store-collaborators/my-invitations')
+      .then((res: any) => {
+        const body = res?.data || res;
+        setStoreInvitations(Array.isArray(body) ? body.filter((item: any) => item.status === 'PENDING') : []);
+      })
+      .catch(() => setStoreInvitations([]));
+  }, []);
+
+  const respondToStoreInvitation = async (id: string, accept: boolean) => {
+    setInvitationLoading(id);
+    try {
+      await api.patch(`/store-collaborators/${id}/${accept ? 'accept' : 'reject'}`, {});
+      setStoreInvitations((items) => items.filter((item) => item.id !== id));
+      if (accept) window.location.reload();
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Không thể xử lý lời mời của Shop');
+    } finally {
+      setInvitationLoading(null);
+    }
+  };
 
   // Tự động điều chỉnh chiều cao iframe cha
   useEffect(() => {
@@ -410,6 +447,18 @@ export const KolBonusProgressPage: React.FC = () => {
         }
       `}</style>
       <div style={{ maxWidth: '100%', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {storeInvitations.map((invitation) => (
+          <div key={invitation.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '18px 22px', background: '#FFF7E7', border: '1.5px solid #DEBE85', borderRadius: 16, flexWrap: 'wrap' }}>
+            <div>
+              <strong style={{ fontSize: 17 }}>{invitation.store?.name} mời bạn vào đội ngũ CTV</strong>
+              <div style={{ marginTop: 5, color: '#7D6D55', fontSize: 14 }}>Chấp nhận để xem mốc thưởng và tạo link tiếp thị cho Shop này.</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, false)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #D8C6A8', background: '#fff', fontWeight: 700, cursor: 'pointer' }}>Từ chối</button>
+              <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, true)} style={{ padding: '10px 18px', borderRadius: 10, border: 0, background: '#C9A363', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>{invitationLoading === invitation.id ? 'Đang xử lý…' : 'Chấp nhận'}</button>
+            </div>
+          </div>
+        ))}
         {/* Header Section */}
         <div
           style={{

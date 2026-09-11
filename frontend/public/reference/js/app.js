@@ -2133,6 +2133,7 @@ const products = [
 ];
 
 function catalogScreen() {
+  return `<iframe id="products-management-iframe" src="/merchant/products" style="width:100%;min-height:calc(100vh - 68px);height:calc(100vh - 68px);border:0;background:transparent;display:block" title="Quản lý Sản phẩm và Giá"></iframe>`;
   const q = state.search.toLowerCase();
   const rows = products.filter((p) => p.join(" ").toLowerCase().includes(q));
   return `${header("Danh mục sản phẩm", "Cập nhật tồn kho, giá bán và mức hoa hồng riêng cho từng sản phẩm.", `<button class="btn">${icon("ph-plus")} Thêm sản phẩm</button>`)}<div class="toolbar"><label class="search">${icon("ph-magnifying-glass")}<input class="input" data-search placeholder="Tìm tên hoặc SKU" value="${state.search}" /></label><select class="select" style="width:auto"><option>Tất cả trạng thái</option><option>Đang bán</option><option>Hết hàng</option></select><button class="btn secondary">Bộ lọc</button></div><div class="table-wrap">${rows.length ? `<table><thead><tr><th><input type="checkbox" aria-label="Chọn tất cả" /></th><th>Sản phẩm</th><th>Giá</th><th>Hoa hồng</th><th>Tồn kho</th><th>Trạng thái</th><th></th></tr></thead><tbody>${rows.map((p, i) => `<tr><td><input type="checkbox" aria-label="Chọn ${p[1]}" /></td><td><div class="product-cell">${i === 0 ? `<img class="thumb" src="${productImage}" alt="${p[1]}" />` : `<span class="thumb" style="display:grid;place-items:center">${icon("ph-drop")}</span>`}<div><strong>${p[1]}</strong><div class="mono" style="color:var(--muted)">${p[0]}</div></div></div></td><td>${p[2]}</td><td><input class="input" style="width:72px" value="${p[3]}" aria-label="Hoa hồng ${p[1]}" /></td><td>${p[4]}</td><td>${status(p[5], p[5] === "Hết hàng" ? "danger" : p[5] === "Tạm dừng" ? "neutral" : "")}</td><td><button class="icon-btn" aria-label="Thêm thao tác">${icon("ph-dots-three")}</button></td></tr>`).join("")}</tbody></table>` : `<div class="empty">${icon("ph-magnifying-glass")}<h3>Không tìm thấy sản phẩm</h3><p>Thử tìm với tên hoặc mã SKU khác.</p></div>`}</div>`;
@@ -2516,6 +2517,7 @@ function leaderboardScreen() {
 // SCREEN MỚI CHO SHOP: QUẢN LÝ ĐỘI NGŨ CTV
 // ==========================================
 function shopCollaboratorsScreen() {
+  return `<iframe id="store-collaborators-iframe" src="/merchant/collaborators" style="width:100%;min-height:760px;height:calc(100vh - 125px);border:0;background:transparent;display:block" title="Quản lý Đội ngũ Cộng tác viên"></iframe>`;
   return `${header(
     "Quản lý Đội ngũ Cộng tác viên",
     "Theo dõi danh sách KOL/KOC đang chạy tiếp thị cho Sora Skin, doanh số mang về và thiết lập hoa hồng riêng.",
@@ -3285,13 +3287,13 @@ function kolBonusScreen() {
       localStorage.removeItem('token');
       localStorage.setItem('user', JSON.stringify({
         role: 'COLLABORATOR',
-        email: 'kol1@scanms.vn',
+        email: 'demo@scanms.vn',
         fullName: 'Trần Văn Nhật'
       }));
     } else if (!currentUserStr) {
       localStorage.setItem('user', JSON.stringify({
         role: 'COLLABORATOR',
-        email: 'kol1@scanms.vn',
+        email: 'demo@scanms.vn',
         fullName: 'Trần Văn Nhật'
       }));
     }
@@ -3302,7 +3304,7 @@ function kolBonusScreen() {
       fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'kol1@scanms.vn', password: 'Password@123' })
+        body: JSON.stringify({ email: 'demo@scanms.vn', password: 'Password@123' })
       }).then(r => r.json()).then(res => {
         const tok = res?.data?.accessToken || res?.accessToken;
         const u = res?.data?.user || res?.user;
@@ -3651,7 +3653,7 @@ function shell(content) {
         </div>
       </header>
       `}
-      <div class="page ${state.screen === 'kol-bonus' ? 'page-wide' : ''}">${content}</div>
+      <div class="page ${state.screen === 'kol-bonus' || state.screen === 'catalog' || state.screen === 'shop-collaborators' ? 'page-wide' : ''}">${content}</div>
     </main>
   </div>`;
 }
@@ -4540,6 +4542,18 @@ function bind(root = document) {
     state.navScrollTop = screenNav.scrollTop;
     state.navScrollLeft = screenNav.scrollLeft;
   }, { passive: true });
+  const sidebar = root.querySelector(".sidebar");
+  if (sidebar && !sidebar.__scanmsWheelBound) {
+    sidebar.__scanmsWheelBound = true;
+    sidebar.addEventListener("wheel", (e) => {
+      const nav = sidebar.querySelector(".screen-nav");
+      if (nav && nav.scrollHeight > nav.clientHeight) {
+        nav.scrollTop += e.deltaY;
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
+
   root.querySelectorAll("[data-go]").forEach((el) => el.addEventListener("click", () => go(el.dataset.go)));
   // data-theme also exists on <html>; bind ONLY the explicit button.
   root.querySelector("button[data-theme]")?.addEventListener("click", (event) => {
@@ -4654,6 +4668,16 @@ function bind(root = document) {
   if (!window.__scanmsIframeListenerAttached) {
     window.__scanmsIframeListenerAttached = true;
     window.addEventListener('message', function(e) {
+      if (e.origin === window.location.origin && (
+        e.data?.type === 'SCANMS_REFERRAL_MODAL_STATE' ||
+        e.data?.type === 'SCANMS_PRODUCT_MODAL_STATE' ||
+        e.data?.type === 'SCANMS_MODAL_STATE'
+      )) {
+        const isOpen = e.data.open === true;
+        document.body.classList.toggle('fr10-modal-open', isOpen);
+        document.body.classList.toggle('scanms-modal-open', isOpen);
+      }
+
       if (e.data && (e.data.type === 'SCANMS_IFRAME_RESIZE' || e.data.type === 'SCANMS_RESIZE_IFRAME') && typeof e.data.height === 'number') {
         const kolIframe = document.getElementById('kol-bonus-iframe');
         if (kolIframe) {
@@ -4662,6 +4686,10 @@ function bind(root = document) {
         const shopIframe = document.getElementById('commission-rules-iframe');
         if (shopIframe) {
           shopIframe.style.height = Math.max(e.data.height + 15, 480) + 'px';
+        }
+        const referralLinksIframe = document.getElementById('referral-links-iframe');
+        if (referralLinksIframe) {
+          referralLinksIframe.style.height = Math.max(e.data.height + 15, 760) + 'px';
         }
       }
     });
@@ -4688,14 +4716,14 @@ function bind(root = document) {
           localStorage.removeItem('token');
           localStorage.setItem('user', JSON.stringify({
             role: 'COLLABORATOR',
-            email: 'kol1@scanms.vn',
+            email: 'demo@scanms.vn',
             fullName: 'Trần Văn Nhật'
           }));
           // Lấy Access Token JWT thật từ backend
           fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: 'kol1@scanms.vn', password: 'Password@123' })
+            body: JSON.stringify({ email: 'demo@scanms.vn', password: 'Password@123' })
           }).then(r => r.json()).then(res => {
             const tok = res?.data?.accessToken || res?.accessToken;
             const u = res?.data?.user || res?.user;

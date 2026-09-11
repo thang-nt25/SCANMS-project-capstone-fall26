@@ -47,7 +47,7 @@ export class CollaboratorCommissionRulesController {
     @Query('discovery') discovery?: string,
   ) {
     if (!req.user?.id || req.user.role !== UserRole.COLLABORATOR) {
-      throw new UnauthorizedException('Yêu cầu tài khoản xác thực vai trò COLLABORATOR');
+      throw new UnauthorizedException('Yêu cầu tài khoản xác thực hợp lệ');
     }
     const isDiscovery = discovery === 'true' || discovery === '1';
     return this.commissionRulesService.getCollaboratorStores(req.user.id, isDiscovery);

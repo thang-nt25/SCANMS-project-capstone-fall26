@@ -53,7 +53,8 @@
 html {
   background: var(--canvas);
   overflow-x: hidden;
-  scrollbar-gutter: stable;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(180, 140, 75, 0.45) transparent;
 }
@@ -62,7 +63,6 @@ body {
   color: var(--ink);
   background: var(--canvas);
   min-width: 320px;
-  overflow-x: hidden;
 }
 
 /* ==========================================================================
@@ -92,19 +92,19 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(180, 140, 75, 0.38);
+  background-color: rgba(180, 140, 75, 0.42);
   border-radius: 9999px;
   border: 1.5px solid transparent;
   background-clip: padding-box;
-  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.15s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(158, 121, 51, 0.75);
+  background-color: rgba(158, 121, 51, 0.85);
 }
 
 ::-webkit-scrollbar-thumb:active {
-  background-color: rgba(135, 100, 38, 0.95);
+  background-color: rgba(135, 100, 38, 0.98);
 }
 
 /* Ẩn hoàn toàn nút mũi tên 2 đầu của thanh cuộn */
@@ -119,11 +119,11 @@ body {
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background-color: rgba(222, 190, 133, 0.3);
+  background-color: rgba(222, 190, 133, 0.35);
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(222, 190, 133, 0.6);
+  background-color: rgba(222, 190, 133, 0.7);
 }
 
 button, input, select, textarea { font: inherit; }
@@ -131,15 +131,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 img { display: block; max-width: 100%; }
 
-.prototype { min-height: 100dvh; display: grid; grid-template-columns: 246px minmax(0, 1fr); align-items: start; }
-.sidebar { align-self: start; position: sticky; top: 0; height: 100dvh; max-height: 100dvh; display: flex; flex-direction: column; padding: 16px 14px; background: var(--nav); color: var(--nav-ink, #2C2114); border-right: 1px solid var(--nav-line, #DEBE85); overflow: hidden; box-sizing: border-box; box-shadow: 2px 0 12px rgba(110, 84, 39, 0.06); }
+.prototype { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: 246px minmax(0, 1fr); align-items: start; }
+.sidebar { align-self: start; position: sticky; top: 0; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; display: flex; flex-direction: column; padding: 16px 14px; background: var(--nav); color: var(--nav-ink, #2C2114); border-right: 1px solid var(--nav-line, #DEBE85); overflow: hidden; box-sizing: border-box; box-shadow: 2px 0 12px rgba(110, 84, 39, 0.06); z-index: 30; }
 .brand { flex: 0 0 auto; display: flex; align-items: center; gap: 11px; padding: 0 10px 14px; }
 .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: #C9A363; color: #ffffff; font-weight: 850; letter-spacing: -1px; box-shadow: 0 2px 8px rgba(201, 163, 99, 0.35); }
 .brand strong { font-size: 18px; letter-spacing: -0.5px; color: var(--nav-ink, #2C2114); }
 .brand small { display: block; color: var(--nav-muted); margin-top: 2px; }
 .nav-label { flex: 0 0 auto; padding: 8px 10px 6px; color: var(--nav-muted); font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
-.screen-nav { min-width: 0; min-height: 0; flex: 1 1 0px; display: flex; flex-direction: column; gap: 3px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(201,163,99,.3) transparent; }
-.nav-item { width: 100%; min-width: 0; min-height: 38px; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 7px 10px; border: 0; border-radius: 10px; background: transparent; color: #5A472E; text-align: left; touch-action: manipulation; transition: background .12s, color .12s; font-size: 13.5px; }
+.screen-nav { min-width: 0; min-height: 0; flex: 1 1 0px; display: flex; flex-direction: column; gap: 3px; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(201,163,99,.5) transparent; -webkit-overflow-scrolling: touch; }
+.nav-item { width: 100%; min-width: 0; min-height: 38px; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 7px 10px; border: 0; border-radius: 10px; background: transparent; color: #5A472E; text-align: left; transition: background .12s, color .12s; font-size: 13.5px; }
 [data-theme="dark"] .nav-item { color: #C4B59E; }
 .nav-item > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-item:hover { background: rgba(201,163,99,.18); color: #2C2114; }
@@ -161,7 +161,49 @@ img { display: block; max-width: 100%; }
 .profile { display: flex; align-items: center; gap: 9px; padding-left: 7px; }
 .avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--brand-soft); color: var(--brand-strong); font-weight: 800; }
 .page { max-width: 1500px; margin: 0 auto; padding: 34px clamp(18px, 3vw, 42px) 70px; }
-.page.page-wide, .page:has(#kol-bonus-iframe) { max-width: 100% !important; padding: 10px 10px 48px !important; }
+.page.page-wide,
+.page:has(#kol-bonus-iframe),
+.page:has(#products-management-iframe),
+.page:has(#store-collaborators-iframe),
+.page:has(#referral-links-iframe) {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* Khi nhúng iframe toàn trang ở màn hình Sản phẩm & Giá, ẩn thanh cuộn của khung ngoài để không đè lỗi lên topbar */
+body:has(#products-management-iframe),
+.prototype:has(#products-management-iframe),
+.prototype > .main:has(#products-management-iframe) {
+  overflow: hidden !important;
+}
+
+/* FR-10 & SCANMS MODAL: Khi modal mở, iframe phủ toàn bộ màn hình, ẩn topbar và sidebar để chỉ hiện khung giữa */
+body.fr10-modal-open,
+body.scanms-modal-open {
+  overflow: hidden !important;
+}
+body.fr10-modal-open .prototype > .sidebar,
+body.fr10-modal-open .prototype > .main > .topbar,
+body.scanms-modal-open .prototype > .sidebar,
+body.scanms-modal-open .prototype > .main > .topbar {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body.fr10-modal-open #referral-links-iframe,
+body.scanms-modal-open #referral-links-iframe,
+body.scanms-modal-open #products-management-iframe,
+body.fr10-modal-open #products-management-iframe,
+body.scanms-modal-open #store-collaborators-iframe,
+body.fr10-modal-open #store-collaborators-iframe {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 25px; }
 .page-head h1 { margin: 0; font-size: clamp(26px, 3vw, 38px); line-height: 1.08; letter-spacing: -.04em; }
 .page-head p { max-width: 62ch; margin: 9px 0 0; color: var(--muted); line-height: 1.55; }

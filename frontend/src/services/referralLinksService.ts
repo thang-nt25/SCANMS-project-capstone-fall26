@@ -119,25 +119,25 @@ export const referralLinksService = {
   // Lấy chi tiết 1 link
   async getLinkDetail(id: string): Promise<ReferralLinkItem> {
     const res: any = await api.get(`/collaborator/referral-links/${id}`);
-    return res?.data || res;
+    return res?.data?.data || res?.data || res;
   },
 
   // Tạo link tiếp thị mới
   async createLink(payload: CreateReferralLinkPayload): Promise<ReferralLinkItem> {
     const res: any = await api.post('/collaborator/referral-links', payload);
-    return res?.data || res;
+    return res?.data?.data || res?.data || res;
   },
 
   // Cập nhật nhãn/kênh link
   async updateLink(id: string, payload: Partial<CreateReferralLinkPayload>): Promise<ReferralLinkItem> {
     const res: any = await api.patch(`/collaborator/referral-links/${id}`, payload);
-    return res?.data || res;
+    return res?.data?.data || res?.data || res;
   },
 
   // Tạm dừng / Kích hoạt lại
   async toggleStatus(id: string): Promise<ReferralLinkItem> {
     const res: any = await api.patch(`/collaborator/referral-links/${id}/status`);
-    return res?.data || res;
+    return res?.data?.data || res?.data || res;
   },
 
   // Xóa mềm link

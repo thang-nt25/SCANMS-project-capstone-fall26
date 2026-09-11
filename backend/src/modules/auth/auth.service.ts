@@ -479,6 +479,9 @@ export class AuthService {
     }
 
     const { passwordHash: _, ...safeUser } = user;
-    return safeUser;
+    return {
+      ...safeUser,
+      storeId: user.stores?.[0]?.id || null,
+    };
   }
 }

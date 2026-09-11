@@ -61,10 +61,8 @@
 
 html {
   background: var(--canvas);
-  scroll-behavior: auto !important;
-  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(180, 140, 75, 0.45) transparent;
 }
@@ -79,8 +77,7 @@ body {
   min-width: 320px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  scroll-behavior: auto !important;
-  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
   overflow-x: hidden;
 }
 
