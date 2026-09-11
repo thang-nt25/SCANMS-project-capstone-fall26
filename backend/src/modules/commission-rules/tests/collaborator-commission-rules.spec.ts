@@ -3,7 +3,7 @@ import { CollaboratorCommissionRulesController } from '../collaborator-commissio
 import { CommissionRulesService } from '../commission-rules.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../../core/database/prisma.service';
-import { JwtService } from '../../auth/jwt.service';
+import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 
 describe('CollaboratorCommissionRulesController', () => {

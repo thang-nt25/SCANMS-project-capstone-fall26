@@ -8,7 +8,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
-import { JwtService } from '../../auth/jwt.service';
+import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../core/database/prisma.service';
 

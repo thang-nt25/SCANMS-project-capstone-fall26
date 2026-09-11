@@ -6,7 +6,7 @@ import { AuthModule } from '../../auth/auth.module';
 import { PrismaModule } from '../../../core/database/prisma.module';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { AuthService } from '../../auth/auth.service';
-import { JwtService } from '../../auth/jwt.service';
+import { JwtService } from '@nestjs/jwt';
 import { UserRole, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 

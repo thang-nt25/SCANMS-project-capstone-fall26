@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StoreOwnerGuard } from '../guards/store-owner.guard';
 import { PrismaService } from '../../../core/database/prisma.service';
-import { JwtService } from '../../auth/jwt.service';
+import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import {
   ExecutionContext,
