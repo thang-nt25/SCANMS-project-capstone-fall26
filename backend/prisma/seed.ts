@@ -397,8 +397,7 @@ async function main() {
         productId: product1.id,
         shortCode: 'anc-pro-thang',
         customCouponCode: 'THANGVIP10',
-        qrCodeUrl:
-          'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://scanms.vn/r/anc-pro-thang',
+        qrCodeUrl: '/api/referral-links/anc-pro-thang/qr',
         totalClicks: 1450,
         totalOrders: 32,
       },

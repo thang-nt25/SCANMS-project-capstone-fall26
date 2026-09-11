@@ -203,16 +203,6 @@ export default function ProductManagementPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Xác nhận tạm dừng / ngừng kinh doanh sản phẩm này (Soft Delete)?')) return;
-    try {
-      await productService.softDeleteProduct(id);
-      showToast('Đã cập nhật trạng thái tạm dừng sản phẩm');
-      loadProducts();
-    } catch (err: any) {
-      showToast(err.message || 'Lỗi khi xóa sản phẩm');
-    }
-  };
 
   // Mock catalog fallback if server returns empty list
   const demoProducts =

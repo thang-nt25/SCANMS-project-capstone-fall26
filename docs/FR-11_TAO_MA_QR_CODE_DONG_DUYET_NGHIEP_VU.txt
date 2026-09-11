@@ -1,0 +1,599 @@
+ĐẶC TẢ NGHIỆP VỤ ĐỀ XUẤT ĐỂ DUYỆT
+FR-11 — TẠO MÃ QR CODE ĐỘNG
+
+Hướng dẫn duyệt từng mục:
+- Có: Giữ và áp dụng nội dung đề xuất.
+- Không: Bỏ nội dung đó khỏi FR-11.
+- Sửa: Ghi nội dung thay thế ngay sau chữ “Sửa”.
+- Chưa đánh dấu mục nào thì mục đó chưa được xem là đã duyệt.
+
+Quy ước trả lời:
+[ ] Có    [ ] Không    [ ] Sửa: ................................................
+
+======================================================================
+1. MỤC TIÊU CHỨC NĂNG
+======================================================================
+
+FR-11 cho phép KOL/CTV tạo và tải ảnh QR Code chứa short URL đã được tạo bởi FR-10.
+Ví dụ dữ liệu được mã hóa trong QR:
+https://scanms.vn/r/a7kp2m9q
+
+Khách quét QR sẽ đi qua đúng endpoint /r/{shortCode}; do đó click, attribution,
+cookie 30 ngày, trạng thái link và redirect được xử lý giống hệt khi khách bấm short link.
+
+Không tạo một referral link mới chỉ vì người dùng xem hoặc tải lại QR.
+
+Duyệt: [ ] Có    
+
+======================================================================
+2. GIẢI THÍCH “QR CODE ĐỘNG”
+======================================================================
+
+“Động” nghĩa là QR luôn chứa short URL ổn định /r/{shortCode}, không chứa URL sản
+phẩm cuối cùng. Khi slug/trang sản phẩm thay đổi, Backend cập nhật đích redirect;
+ảnh QR đã in trước đó vẫn dùng được mà không cần tạo lại.
+
+Không hiểu “động” là hình ảnh QR tự thay đổi theo thời gian.
+
+Duyệt: [ ] Có   
+
+======================================================================
+3. PHẠM VI FR-11
+======================================================================
+
+FR-11 chịu trách nhiệm:
+1. Nhận referralLinkId/shortCode hợp lệ.
+2. Xác minh quyền xem và tải QR.
+3. Lấy short URL chính thức từ Backend.
+4. Sinh QR Code có thể quét được.
+5. Xem trước QR.
+6. Tải QR PNG.
+7. Tải QR SVG nếu được duyệt.
+8. Sinh lại cùng một QR khi tải nhiều lần.
+9. Đặt tên file an toàn.
+10. Ghi audit hoặc sự kiện tải nếu chính sách yêu cầu.
+
+Không thuộc trách nhiệm chính của FR-11:
+- Sinh shortCode/referral link: FR-10.
+- Ghi click, unique click, cookie và attribution: Tracking/FR-14.
+- Tạo custom coupon: FR-12/FR-13.
+- Gắn đơn hàng và tính hoa hồng: Orders/Commission.
+- Quản lý sản phẩm: Catalog.
+
+Duyệt: [ ] Có    
+======================================================================
+4. ĐỐI TƯỢNG VÀ PHÂN QUYỀN
+======================================================================
+
+4.1 KOL/CTV
+- Xem và tải QR của link do chính mình sở hữu.
+- Không xem/tải QR của KOL khác bằng cách đổi ID trên URL.
+
+Duyệt: [ ] Có   
+
+4.2 Chủ Shop
+- Được xem/tải QR của các link tiếp thị sản phẩm thuộc Shop để hỗ trợ KOL.
+- Không được đổi chủ sở hữu link hay nội dung đích của QR.
+
+Duyệt: [ ] Có   
+
+4.3 SYSTEM_ADMIN
+- Được tra cứu/xem/tải QR phục vụ hỗ trợ và điều tra theo quyền được cấp.
+- Không được sửa QR để chuyển sang URL ngoài hệ thống.
+
+Duyệt: [ ] Có   
+
+4.4 Khách hàng
+- Không cần đăng nhập để quét QR và mở /r/{shortCode}.
+- Không có API xem thông tin nội bộ của KOL từ QR.
+
+Duyệt: [ ] Có   
+======================================================================
+5. ĐIỀU KIỆN TRƯỚC KHI TẠO/XEM QR
+======================================================================
+
+1. Referral link tồn tại và chưa bị xóa mềm.
+2. Link thuộc đúng KOL hoặc người gọi có quyền Shop/Admin phù hợp.
+3. shortCode đúng định dạng và short URL do Backend xây dựng.
+4. Không nhận destinationUrl tùy ý từ Frontend.
+5. QR chỉ mã hóa URL thuộc domain cấu hình của SCANMS.
+6. Không bắt buộc sản phẩm còn hoạt động chỉ để KOL tải lại QR cũ; trạng thái
+   redirect sẽ được kiểm tra tại thời điểm khách quét.
+
+Duyệt: [ ] Có    
+
+======================================================================
+6. LUỒNG CHÍNH
+======================================================================
+
+Bước 1: KOL vào “Link và QR”.
+Bước 2: KOL tạo link mới bằng FR-10 hoặc chọn một link đã có.
+Bước 3: KOL bấm biểu tượng/nút “Xem mã QR”.
+Bước 4: Frontend gửi referralLinkId tới Backend hoặc dùng shortUrl đã được Backend trả.
+Bước 5: Hệ thống kiểm tra quyền sở hữu và trạng thái bản ghi.
+Bước 6: Hệ thống sinh QR chứa chính xác short URL HTTPS.
+Bước 7: Hiển thị ảnh xem trước, tên sản phẩm, shortCode và short URL.
+Bước 8: KOL dùng camera điện thoại quét thử hoặc bấm “Tải ảnh QR”.
+Bước 9: Hệ thống tải file với tên ví dụ SCANMS-QR-a7kp2m9q.png.
+Bước 10: Quét ảnh đã tải phải mở /r/a7kp2m9q và chuyển đúng sản phẩm.
+
+Duyệt: [ ] Có    
+
+======================================================================
+7. THỜI ĐIỂM SINH QR
+======================================================================
+
+Đề xuất: QR được sinh ngay sau khi FR-10 tạo link thành công và cũng có thể được
+sinh lại khi KOL mở modal QR của link cũ. Việc sinh lại phải idempotent: cùng một
+short URL và cùng cấu hình cho ra QR tương đương, không tạo thêm referral link.
+
+Duyệt: [ ] Có   
+
+======================================================================
+8. NỘI DUNG ĐƯỢC MÃ HÓA TRONG QR
+======================================================================
+
+Chỉ mã hóa short URL HTTPS hoàn chỉnh, ví dụ:
+https://scanms.vn/r/a7kp2m9q
+
+Không mã hóa trực tiếp:
+- productId, collaboratorId, storeId.
+- JWT, cookie, email, số điện thoại.
+- URL sản phẩm dài.
+- destinationUrl do client gửi.
+- Dữ liệu JSON nội bộ.
+
+Duyệt: [ ] Có   
+
+======================================================================
+9. THAM SỐ UTM VÀ COUPON
+======================================================================
+
+QR chứa short URL của referral link. UTM, label, campaign và custom coupon đã gắn
+với referral link sẽ được Backend xử lý; không cần nhét lại toàn bộ tham số dài vào
+ảnh QR. Điều này làm QR ít dày hơn và dễ quét hơn.
+
+Duyệt: [ ] Có   
+
+======================================================================
+10. ĐỊNH DẠNG XUẤT
+======================================================================
+
+10.1 PNG
+- Bắt buộc hỗ trợ.
+- Nền trong suốt: không khuyến nghị mặc định.
+- Nền trắng, QR màu tối để dễ quét.
+
+Duyệt: [ ] Có   
+
+10.2 SVG
+- Khuyến nghị hỗ trợ để in ấn không vỡ hình.
+- Phải sanitize SVG; không chèn script hoặc nội dung bên ngoài.
+
+Duyệt: [ ] Có    
+
+10.3 PDF
+- Không nằm trong bản cốt lõi của FR-11; có thể bổ sung khi cần in poster.
+
+Duyệt: [ ] Có   
+======================================================================
+11. KÍCH THƯỚC VÀ CHẤT LƯỢNG ẢNH
+======================================================================
+
+Đề xuất PNG mặc định 1024x1024 px; tùy chọn 512x512 và 2048x2048.
+QR phải có vùng trắng yên tĩnh (quiet zone) tối thiểu 4 module xung quanh.
+Không làm mờ, kéo giãn hoặc nén JPEG ảnh QR.
+
+Duyệt: [ ] Có   
+
+======================================================================
+12. MỨC SỬA LỖI QR
+======================================================================
+
+Đề xuất mặc định Error Correction Level M khi không có logo.
+Nếu chèn logo, dùng Level Q hoặc H và giới hạn kích thước logo để vẫn quét được.
+
+Duyệt: [ ] Có    
+
+======================================================================
+13. MÀU SẮC
+======================================================================
+
+Đề xuất bản cốt lõi dùng QR đen/nâu rất đậm trên nền trắng.
+Nếu cho phép tùy chỉnh màu:
+- Màu điểm QR phải tối hơn nền rõ rệt.
+- Không dùng gradient phức tạp ở finder pattern.
+- Hệ thống từ chối tổ hợp tương phản thấp.
+- Luôn có nút “Khôi phục màu mặc định”.
+
+Duyệt: [ ] Có    
+
+======================================================================
+14. LOGO Ở GIỮA QR
+======================================================================
+
+Logo SCANMS là tùy chọn, không bắt buộc cho bản cốt lõi.
+Nếu bật logo:
+- Chỉ dùng logo hệ thống đã duyệt, không nhận URL logo tùy ý.
+- Logo không che finder pattern.
+- Logo không vượt quá khoảng 15–20% chiều rộng QR.
+- Bắt buộc kiểm thử quét sau khi render.
+
+Duyệt: [ ] không 
+
+======================================================================
+15. TÊN FILE TẢI XUỐNG
+======================================================================
+
+Tên file đề xuất: SCANMS-QR-{shortCode}.png hoặc .svg.
+Không đưa tên KOL, email, productId hay ký tự không an toàn vào tên file.
+Nếu muốn thêm label, label phải được sanitize và giới hạn độ dài.
+
+Duyệt: [ ] Có    
+
+======================================================================
+16. LƯU TRỮ QR
+======================================================================
+
+Phương án khuyến nghị: sinh QR theo yêu cầu từ dữ liệu short URL, không bắt buộc lưu
+file ảnh lâu dài. Database có thể để qrCodeUrl NULL hoặc lưu đường dẫn nội bộ nếu có
+CDN/object storage. Referral link mới là nguồn dữ liệu chính.
+
+Không lưu base64 QR trực tiếp trong PostgreSQL.
+
+Duyệt: [ ] Có    
+
+======================================================================
+17. DỊCH VỤ SINH QR
+======================================================================
+
+Khuyến nghị bắt buộc: Backend hoặc Frontend tự sinh QR bằng thư viện nội bộ đã khóa
+phiên bản; không gửi short URL sang dịch vụ QR công cộng.
+
+Lý do: triển khai hiện tại đang tạo URL qua api.qrserver.com, làm lộ short URL/UTM
+cho bên thứ ba, phụ thuộc Internet và có thể khiến QR hỏng khi dịch vụ ngoài dừng.
+
+Duyệt thay việc dùng dịch vụ công cộng bằng sinh QR nội bộ:
+[ ] Có    
+
+======================================================================
+18. ENDPOINT ĐỀ XUẤT
+======================================================================
+
+GET /api/referral-links/:id/qr?format=png&size=1024
+
+Yêu cầu:
+- JWT bắt buộc đối với API quản lý/tải QR.
+- Kiểm tra ownership/Shop/Admin.
+- format chỉ nhận png hoặc svg.
+- size chỉ nhận các mức cho phép.
+- Trả Content-Type chính xác.
+- Trả Content-Disposition với tên file an toàn khi download=true.
+- Có thể dùng ETag/Cache-Control phù hợp.
+
+Không nhận shortUrl hoặc destinationUrl tùy ý trong request body/query.
+
+Duyệt: [ ] Có   
+
+======================================================================
+19. RESPONSE VÀ HEADER
+======================================================================
+
+PNG: Content-Type: image/png
+SVG: Content-Type: image/svg+xml
+Download: Content-Disposition: attachment; filename="SCANMS-QR-a7kp2m9q.png"
+Preview: Content-Disposition: inline
+Thêm X-Content-Type-Options: nosniff.
+
+Duyệt: [ ] Có    
+
+======================================================================
+20. TRẠNG THÁI REFERRAL LINK KHI QUÉT QR
+======================================================================
+
+- ACTIVE: redirect và ghi attribution theo FR-10/Tracking.
+- PAUSED: vẫn redirect sản phẩm nhưng không ghi attribution mới.
+- BLOCKED: xử lý theo chính sách link bị khóa; không attribution.
+- EXPIRED: xử lý theo chính sách hết hạn; không attribution.
+- DELETED: không khôi phục attribution; trả trang thông báo chung hoặc 404.
+- Sản phẩm ngừng bán: chuyển trang “Sản phẩm không khả dụng” hoặc trang Shop theo
+  chính sách đã duyệt, tuyệt đối không open redirect.
+
+FR-11 không tự quyết định attribution; nó chỉ mã hóa short URL.
+
+Duyệt: [ ] Có   
+
+======================================================================
+21. QR ĐÃ IN KHI LINK BỊ KHÓA/XÓA
+======================================================================
+
+Ảnh QR không thể thu hồi khỏi giấy/post đã phát hành. Hệ thống phải kiểm tra trạng
+thái referral link mỗi lần khách quét tại endpoint /r/{shortCode}. Không được cho
+QR cũ bỏ qua trạng thái link.
+
+Duyệt: [ ] Có   
+
+======================================================================
+22. TRACKING KHI QUÉT
+======================================================================
+
+Quét QR được tính là một lượt truy cập referral link như click bình thường.
+Khuyến nghị gắn nguồn mặc định “qr” ở server hoặc giữ channel của link đã tạo.
+
+Chọn một chính sách:
+[ ] Có: Giữ nguyên channel, campaign và label của referral link.
+QR chứa short URL kèm tham số cố định via=qr. Backend ghi nhận
+accessMethod=QR để phân biệt với thao tác bấm link. via=qr chỉ dùng
+cho thống kê nguồn truy cập, không được ảnh hưởng quyền sở hữu,
+attribution, sản phẩm, tỷ lệ hoa hồng hoặc chuyển hướng.
+
+
+======================================================================
+23. SỐ LƯỢT TẢI QR
+======================================================================
+
+Số lượt tải QR không phải số lượt quét và không được cộng vào click.
+Đề xuất chỉ ghi sự kiện tải để phân tích sản phẩm, không tính hoa hồng.
+
+Duyệt: [ ] Có   
+======================================================================
+24. AUDIT LOG
+======================================================================
+
+Không bắt buộc ghi audit cho mỗi lần xem/tải QR của chính KOL để tránh log rác.
+Ghi audit nếu Admin/Shop tạo hoặc tải QR thay KOL, hoặc nếu thay đổi cấu hình QR
+được lưu lâu dài (màu/logo/template).
+
+Duyệt: [ ] Có    
+======================================================================
+25. RATE LIMIT
+======================================================================
+
+Đề xuất:
+- Preview: tối đa 60 request/phút/tài khoản.
+- Download/render độ phân giải cao: tối đa 20 request/phút/tài khoản.
+- Cache kết quả cùng link + format + size để giảm CPU.
+- Không áp rate limit QR image vào endpoint redirect; redirect có rate limit riêng.
+
+Duyệt: [ ] Có   
+
+======================================================================
+26. CACHE VÀ CẬP NHẬT
+======================================================================
+
+Vì QR chứa short URL ổn định, có thể cache lâu. Cache key gồm referralLinkId,
+shortCode, format, size, màu, logo và phiên bản template. Thay đổi đích sản phẩm
+không cần sinh QR mới. Nếu shortCode thay đổi (trường hợp đặc biệt), phải xóa cache.
+
+Duyệt: [ ] Có    
+
+======================================================================
+27. BẢO MẬT
+======================================================================
+
+1. Không tạo QR từ URL client cung cấp.
+2. Không open redirect.
+3. Kiểm tra quyền sở hữu referral link.
+4. Chỉ cho phép domain/protocol cấu hình sẵn.
+5. Không nhúng JWT, cookie hoặc PII vào QR.
+6. Validate format, size, màu, logo và filename.
+7. Sanitize SVG.
+8. Rate limit chống lạm dụng CPU/băng thông.
+9. Không log token/cookie đầy đủ.
+10. Không tiết lộ link/KOL khi người gọi không có quyền.
+11. Không phụ thuộc dịch vụ QR công cộng trong production.
+12. Thư viện QR phải được khóa phiên bản và cập nhật bản vá bảo mật.
+
+Duyệt toàn bộ 12 yêu cầu: [ ] Có   
+
+======================================================================
+28. UX/UI
+======================================================================
+
+Modal hoặc khu vực QR cần có:
+- Tiêu đề “Mã QR tiếp thị”.
+- Ảnh QR xem trước rõ ràng.
+- Tên sản phẩm, Shop, shortCode và short URL.
+- Nút “Quét thử/Mở link”.
+- Nút “Sao chép link”.
+- Nút “Tải PNG”.
+- Nút “Tải SVG” nếu được duyệt.
+- Loading khi đang sinh QR.
+- Success/error rõ ràng.
+- Không cho tải khi render thất bại.
+- Đóng bằng nút X, Escape và click nền nếu phù hợp.
+- Focus trap, label và điều khiển bàn phím.
+- Responsive trên mobile.
+
+Duyệt: [ ] Có    
+
+======================================================================
+29. KIỂM TRA QR TRƯỚC KHI CHO TẢI
+======================================================================
+
+Hệ thống phải bảo đảm QR được render thành công. Khuyến nghị test tự động decode
+ảnh QR trong Backend/test suite để so sánh giá trị decode với short URL mong đợi.
+Frontend hiển thị gợi ý KOL quét thử bằng điện thoại trước khi in số lượng lớn.
+
+Duyệt: [ ] Có    
+
+======================================================================
+30. ACCESSIBILITY
+======================================================================
+
+- Ảnh có alt “Mã QR tiếp thị cho {tên sản phẩm}”.
+- Không dùng QR làm cách truy cập duy nhất; luôn hiển thị nút sao chép short URL.
+- Trạng thái loading/error được screen reader nhận biết.
+- Nút tải có tên định dạng và kích thước rõ ràng.
+
+Duyệt: [ ] Có   
+
+======================================================================
+31. XỬ LÝ LỖI
+======================================================================
+
+- 400: format/size/màu không hợp lệ.
+- 401: chưa đăng nhập khi gọi API quản lý.
+- 403: không sở hữu/không có quyền với link.
+- 404: link không tồn tại hoặc đã xóa; không tiết lộ chủ sở hữu.
+- 409: dữ liệu link không thể render do trạng thái bất nhất.
+- 429: vượt rate limit.
+- 500/503: không thể sinh ảnh; cho phép thử lại, không hiện stack trace.
+
+Duyệt: [ ] Có   
+
+======================================================================
+32. HIỆU NĂNG VÀ TÍNH SẴN SÀNG
+======================================================================
+
+- p95 preview QR đã cache dưới 200 ms.
+- p95 render mới PNG 1024 dưới 500 ms trong môi trường production mục tiêu.
+- Không cần database transaction chỉ để render ảnh.
+- Nếu object storage/CDN lỗi, hệ thống có thể render lại từ short URL.
+- ReferralLink trong PostgreSQL là nguồn dữ liệu chính, không phải file QR.
+
+Duyệt: [ ] Có    
+
+======================================================================
+33. UNIT TEST BẮT BUỘC
+======================================================================
+
+1. QR mã hóa đúng short URL.
+2. Không dùng destinationUrl từ client.
+3. PNG có Content-Type đúng.
+4. SVG có Content-Type đúng và được sanitize.
+5. Filename an toàn.
+6. KOL xem QR của mình thành công.
+7. KOL A không xem QR của KOL B.
+8. Shop chỉ xem link thuộc Shop.
+9. Link không tồn tại trả 404.
+10. Link xóa mềm không tải được theo chính sách.
+11. Validate format/size/màu.
+12. Rate limit.
+13. Cache key không trùng cấu hình.
+14. Cùng input không tạo referral link mới.
+15. Decode QR trả đúng short URL.
+
+Duyệt: [ ] Có   
+
+======================================================================
+34. INTEGRATION/E2E TEST
+======================================================================
+
+1. Đăng nhập KOL thật và tạo referral link bằng FR-10.
+2. Mở modal QR từ link vừa tạo.
+3. Tải PNG và decode được /r/{shortCode}.
+4. Quét trên Android và iPhone.
+5. QR chuyển đúng sản phẩm.
+6. Click/attribution được ghi theo chính sách Tracking.
+7. Tạm ngừng link: vẫn redirect nhưng không attribution mới.
+8. Khóa/hết hạn/xóa link: áp đúng chính sách.
+9. Thay slug sản phẩm: QR cũ vẫn mở đúng sản phẩm.
+10. KOL khác đổi referralLinkId bị 403/404.
+11. File SVG in thử không vỡ nét nếu hỗ trợ.
+12. QR có logo/màu vẫn quét được nếu hỗ trợ.
+13. Dịch vụ ngoài mất mạng không làm hỏng sinh QR nội bộ.
+14. Tải lại nhiều lần không sinh thêm referral link/database row.
+
+Duyệt: [ ] Có   
+
+======================================================================
+35. DỮ LIỆU DATABASE
+======================================================================
+
+Tận dụng referral_links.qr_code_url nếu chọn lưu ảnh/CDN URL.
+Nếu sinh theo yêu cầu, qr_code_url có thể NULL và không phải lỗi.
+
+Nếu lưu tùy chỉnh QR lâu dài, đề xuất các trường riêng hoặc bảng qr_templates:
+- foregroundColor
+- backgroundColor
+- logoAssetId
+- errorCorrectionLevel
+- templateVersion
+- createdAt/updatedAt
+
+Không tạo bảng QR riêng nếu chỉ có một QR mặc định cho mỗi referral link.
+
+Duyệt: [ ] Có    
+
+======================================================================
+36. TIÊU CHÍ HOÀN THÀNH FR-11
+======================================================================
+
+1. KOL chọn được link của mình và xem QR.
+2. QR chứa đúng short URL HTTPS.
+3. Camera điện thoại quét được.
+4. Tải PNG thành công.
+5. Tải SVG thành công nếu được duyệt.
+6. QR cũ vẫn dùng khi slug sản phẩm đổi.
+7. Không tạo thêm referral link khi tải lại.
+8. Ownership được bảo vệ.
+9. Không open redirect/URL tùy ý.
+10. Không gửi dữ liệu sang dịch vụ QR công cộng nếu mục 17 được duyệt.
+11. Có loading, empty, error và success UI.
+12. Có unit test decode QR.
+13. Có integration/E2E test.
+14. Frontend và Backend build/test thành công.
+15. Swagger mô tả endpoint, tham số, response và lỗi.
+
+Duyệt: [ ] Có    
+======================================================================
+37. CÁC QUYẾT ĐỊNH QUAN TRỌNG CẦN CHỐT NHANH
+======================================================================
+
+1. QR chỉ chứa short URL /r/{shortCode}?
+[ ] Có    
+
+2. PNG là định dạng bắt buộc?
+[ ] Có   
+
+3. Có hỗ trợ SVG?
+[ ] Có    
+
+4. Kích thước PNG mặc định 1024x1024?
+[ ] Có    
+
+5. Sinh QR nội bộ, bỏ api.qrserver.com trong production?
+[ ] Có
+6. Có cho tùy chỉnh màu?
+[ ] Có:màu mặc định đi
+
+7. Có chèn logo SCANMS ở giữa?
+  [ ] Không    
+
+8. Có ghi số lượt tải QR?
+[ ] Có    
+
+9. Có phân biệt nguồn traffic “qr” với click link?
+[ ] Có    
+
+10. Link PAUSED vẫn redirect nhưng không attribution mới?
+[ ] Có    
+
+11. Link BLOCKED/EXPIRED/DELETED không attribution?
+[ ] Có    
+12. Shop/Admin được xem/tải QR trong phạm vi quyền?
+[ ] Có    
+13. Không lưu base64 QR trong PostgreSQL?
+[ ] Có   
+
+14. Không cần tải ảnh sản phẩm để tạo QR?
+[ ] Có   
+15. QR không chứa ảnh sản phẩm; ảnh sản phẩm chỉ hiển thị cạnh QR trên giao diện?
+[ ] Có    
+======================================================================
+38. GỢI Ý PHƯƠNG ÁN CỐT LÕI CHO ĐỒ ÁN
+======================================================================
+
+Khuyến nghị duyệt cho bản cốt lõi:
+- QR chứa duy nhất short URL của FR-10.
+- Sinh QR nội bộ, không dùng API công cộng.
+- PNG 1024x1024 bắt buộc, SVG tùy chọn.
+- Màu tối trên nền trắng, chưa cần tùy chỉnh màu/logo ở bản đầu.
+- Không lưu base64/database row mới; render và cache theo yêu cầu.
+- Ownership bắt buộc với API quản lý.
+- Trạng thái redirect/attribution do FR-10/Tracking quyết định tại lúc quét.
+- Có unit test decode và E2E quét QR thực tế.
+
+Duyệt toàn bộ phương án cốt lõi:
+[ ] Có    

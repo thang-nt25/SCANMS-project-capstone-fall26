@@ -12,7 +12,9 @@ import {
   Ip,
   HttpStatus,
   HttpCode,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -71,6 +73,45 @@ export class CollaboratorReferralLinksController {
     @Param('id') id: string,
   ) {
     return this.service.getLinkById(id, collaboratorId);
+  }
+
+  @Get([':id/qr', 'by-code/:id/qr'])
+  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ summary: 'Xem trước hoặc tải về ảnh mã QR Code động (FR-11)' })
+  @ApiParam({ name: 'id', description: 'ID hoặc shortCode của link tiếp thị' })
+  async getQrCode(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: UserRole },
+    @Query('format') format: string = 'png',
+    @Query('size') size: string = '1024',
+    @Query('download') download: string = 'false',
+    @Ip() ip: string,
+    @Res() res: Response,
+  ) {
+    const isDownload = download === 'true' || download === '1';
+    const parsedFormat = (format || 'png').toLowerCase();
+    const parsedSize = parseInt(size, 10) || 1024;
+
+    const qrResult = await this.service.generateQrCode(
+      id,
+      user,
+      {
+        format: parsedFormat as any,
+        size: parsedSize,
+        download: isDownload,
+      },
+      ip,
+    );
+
+    res.setHeader('Content-Type', qrResult.contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `${isDownload ? 'attachment' : 'inline'}; filename="${qrResult.filename}"`,
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+
+    return res.send(qrResult.buffer);
   }
 
   @Post()
@@ -161,6 +202,40 @@ export class StoreReferralLinksController {
   ) {
     return this.service.unblockLinkByShop(id, storeId, shopOwnerId, ip);
   }
+
+  @Get(':id/qr')
+  @ApiOperation({ summary: 'Chủ Shop xem hoặc tải ảnh mã QR của link tiếp thị' })
+  async getStoreQrCode(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: UserRole },
+    @Query('format') format: string = 'png',
+    @Query('size') size: string = '1024',
+    @Query('download') download: string = 'false',
+    @Ip() ip: string,
+    @Res() res: Response,
+  ) {
+    const isDownload = download === 'true' || download === '1';
+    const qrResult = await this.service.generateQrCode(
+      id,
+      user,
+      {
+        format: (format || 'png').toLowerCase() as any,
+        size: parseInt(size, 10) || 1024,
+        download: isDownload,
+      },
+      ip,
+    );
+
+    res.setHeader('Content-Type', qrResult.contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `${isDownload ? 'attachment' : 'inline'}; filename="${qrResult.filename}"`,
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+
+    return res.send(qrResult.buffer);
+  }
 }
 
 // ==========================================
@@ -184,6 +259,40 @@ export class AdminReferralLinksController {
   @ApiOperation({ summary: 'Quản trị viên xem chi tiết link tiếp thị' })
   async getAdminLinkDetail(@Param('id') id: string) {
     return this.service.getAdminLinkDetail(id);
+  }
+
+  @Get(':id/qr')
+  @ApiOperation({ summary: 'Quản trị viên tra cứu hoặc tải ảnh mã QR của link tiếp thị' })
+  async getAdminQrCode(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: UserRole },
+    @Query('format') format: string = 'png',
+    @Query('size') size: string = '1024',
+    @Query('download') download: string = 'false',
+    @Ip() ip: string,
+    @Res() res: Response,
+  ) {
+    const isDownload = download === 'true' || download === '1';
+    const qrResult = await this.service.generateQrCode(
+      id,
+      user,
+      {
+        format: (format || 'png').toLowerCase() as any,
+        size: parseInt(size, 10) || 1024,
+        download: isDownload,
+      },
+      ip,
+    );
+
+    res.setHeader('Content-Type', qrResult.contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `${isDownload ? 'attachment' : 'inline'}; filename="${qrResult.filename}"`,
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+
+    return res.send(qrResult.buffer);
   }
 
   @Patch(':id/block')

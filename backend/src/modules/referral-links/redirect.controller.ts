@@ -79,12 +79,17 @@ export class RedirectController {
         });
       }
 
+      // Nhận diện nguồn truy cập từ quét QR (tham số via=qr theo FR-11)
+      const via = typeof req.query?.via === 'string' ? req.query.via.toLowerCase() : null;
+      const isQr = via === 'qr';
+
       const clientInfo = {
         ip: rawIp,
         userAgent: userAgent || 'Unknown',
         referer: referer || undefined,
         deviceType: this.detectDeviceType(userAgent),
         sessionId: visitorId,
+        accessMethod: isQr ? ('QR' as const) : ('LINK' as const),
       };
 
       // 2. Xử lý nghiệp vụ chuyển hướng qua service (kiểm tra DELETED 404, BLOCKED 410, PAUSED/EXPIRED)

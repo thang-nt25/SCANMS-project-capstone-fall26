@@ -26,6 +26,7 @@ import {
   isSearchEngineBot,
 } from './utils/short-code.generator';
 import { CacheService } from '../../core/cache/cache.service';
+import * as QRCode from 'qrcode';
 
 export interface ClientTrackingInfo {
   ip: string;
@@ -34,6 +35,7 @@ export interface ClientTrackingInfo {
   fingerprint?: string;
   deviceType?: string;
   sessionId?: string;
+  accessMethod?: 'QR' | 'LINK';
 }
 
 /**
@@ -429,15 +431,16 @@ export class ReferralLinksService {
     while (retries > 0) {
       const shortCode = generateShortCode(8);
       const shortUrl = `${publicAppUrl}/r/${shortCode}`;
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-        shortUrl,
-      )}`;
+      const linkId = crypto.randomUUID();
+      // FR-11: Dùng endpoint nội bộ /api/referral-links/:id/qr, không dùng dịch vụ công cộng bên thứ ba
+      const qrCodeUrl = `/api/referral-links/${linkId}/qr`;
 
       try {
         // Giao dịch Transaction tạo link và AuditLog cùng nhau
         createdLink = await this.prisma.$transaction(async (tx) => {
           const newLink = await tx.referralLink.create({
             data: {
+              id: linkId,
               collaboratorId,
               storeId: product.storeId,
               productId: product.id,
@@ -1336,6 +1339,7 @@ export class ReferralLinksService {
           utmSource: link.utmSource || null,
           utmMedium: link.utmMedium || null,
           utmCampaign: link.utmCampaign || null,
+          accessMethod: clientInfo.accessMethod || null,
         });
       } else {
         try {
@@ -1365,8 +1369,10 @@ export class ReferralLinksService {
                 referralLinkId: link.id,
                 ipAddress: clientInfo.ip || '0.0.0.0',
                 userAgent: clientInfo.userAgent || null,
-                referrer: clientInfo.referer || null,
-                deviceFingerprint: clientInfo.fingerprint || null,
+                referrer: clientInfo.accessMethod === 'QR' ? (clientInfo.referer ? `${clientInfo.referer} [QR]` : 'QR_SCAN') : (clientInfo.referer || null),
+                deviceFingerprint: clientInfo.accessMethod === 'QR'
+                  ? (clientInfo.fingerprint ? `${clientInfo.fingerprint}|accessMethod:QR` : 'accessMethod:QR')
+                  : (clientInfo.fingerprint || null),
                 deviceType: clientInfo.deviceType || null,
                 sessionId: clientInfo.sessionId || null,
                 isValid: allowAttribution,
@@ -1614,5 +1620,216 @@ export class ReferralLinksService {
 
       return updatedLink;
     });
+  }
+
+  /**
+   * ======================================================================
+   * FR-11 — TẠO MÃ QR CODE ĐỘNG
+   * ======================================================================
+   * Sinh ảnh QR chứa duy nhất short URL HTTPS: `${publicAppUrl}/r/${link.shortCode}?via=qr`
+   * - Hỗ trợ format: 'png' (mặc định), 'svg'
+   * - Hỗ trợ size: 512, 1024 (mặc định), 2048 px
+   * - Error Correction Level: 'M' (chuẩn quét tốt)
+   * - Quiet Zone (margin): 4 modules
+   * - Màu: #1A1612 trên nền trắng #FFFFFF
+   * - Phân quyền:
+   *   + KOL: chỉ xem/tải link của mình
+   *   + Shop: xem/tải link tiếp thị sản phẩm của Shop
+   *   + Admin: xem/tải tra cứu toàn hệ thống
+   * - Ghi Audit Log khi Shop hoặc Admin xem/tải thay KOL
+   * - Ghi nhận lượt tải (qr_download_count)
+   * - Cache kết quả render theo (linkId, format, size) để tối ưu CPU (p95 < 200ms)
+   * - Hoàn toàn idempotent, không tạo thêm bản ghi link
+   */
+  async generateQrCode(
+    linkIdOrCode: string,
+    user: { id: string; role: UserRole },
+    options: {
+      format?: 'png' | 'svg';
+      size?: number;
+      download?: boolean;
+    },
+    ipAddress?: string,
+  ): Promise<{
+    buffer: Buffer | string;
+    contentType: string;
+    filename: string;
+    shortCode: string;
+    shortUrl: string;
+  }> {
+    const rawFormat = (options.format || 'png').toLowerCase();
+    if (rawFormat !== 'png' && rawFormat !== 'svg') {
+      throw new BadRequestException('Định dạng ảnh QR không hợp lệ. Hệ thống chỉ hỗ trợ "png" hoặc "svg".');
+    }
+    const format = rawFormat as 'png' | 'svg';
+
+    const rawSize = options.size ? Number(options.size) : 1024;
+    if (![512, 1024, 2048].includes(rawSize)) {
+      throw new BadRequestException('Kích thước ảnh QR không hợp lệ. Chỉ chấp nhận các kích thước 512, 1024 hoặc 2048 px.');
+    }
+    const size = rawSize;
+    const isDownload = Boolean(options.download);
+
+    // Tìm kiếm referral link theo id hoặc shortCode
+    const link = await this.prisma.referralLink.findFirst({
+      where: {
+        OR: [
+          { id: linkIdOrCode },
+          { shortCode: linkIdOrCode.toLowerCase() },
+        ],
+        deletedAt: null,
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            title: true,
+            storeId: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            ownerId: true,
+            name: true,
+          },
+        },
+        collaborator: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    if (!link) {
+      throw new NotFoundException('Liên kết tiếp thị không tồn tại hoặc đã bị xóa.');
+    }
+
+    // Kiểm tra phân quyền sở hữu
+    if (user.role === UserRole.COLLABORATOR) {
+      if (link.collaboratorId !== user.id) {
+        throw new ForbiddenException('Bạn không có quyền xem hoặc tải mã QR của liên kết này.');
+      }
+    } else if (user.role === UserRole.SHOP_MANAGER) {
+      if (link.store?.ownerId !== user.id && link.storeId !== user.id) {
+        throw new ForbiddenException('Bạn không có quyền xem mã QR của liên kết thuộc cửa hàng khác.');
+      }
+    } else if (user.role === UserRole.SYSTEM_ADMIN) {
+      // Cho phép tra cứu/hỗ trợ
+    } else {
+      throw new ForbiddenException('Vai trò người dùng không có quyền truy cập mã QR.');
+    }
+
+    // Ghi Audit Log nếu Admin hoặc Shop thao tác thay KOL (Mục 24)
+    if (
+      user.role === UserRole.SYSTEM_ADMIN ||
+      (user.role === UserRole.SHOP_MANAGER && link.collaboratorId !== user.id)
+    ) {
+      await this.prisma.auditLog
+        .create({
+          data: {
+            userId: user.id,
+            action: isDownload ? 'QR_DOWNLOAD_AUDIT' : 'QR_VIEW_AUDIT',
+            ipAddress: ipAddress || null,
+            details: {
+              referralLinkId: link.id,
+              shortCode: link.shortCode,
+              operatorRole: user.role,
+              ownerCollaboratorId: link.collaboratorId,
+              format,
+              size,
+            },
+          },
+        })
+        .catch((err) => {
+          this.logger.warn(`Lỗi ghi audit log khi thao tác QR: ${err.message}`);
+        });
+    }
+
+    // Đếm lượt tải QR (Mục 23 & 37.8 - không tính vào click)
+    if (isDownload) {
+      const downloadCounterKey = `qr_dl_count:${link.id}`;
+      await this.cacheService.getRedis()?.incr(downloadCounterKey).catch(() => {});
+    }
+
+    const publicAppUrl = this.getPublicAppUrl();
+    const shortUrl = `${publicAppUrl}/r/${link.shortCode}?via=qr`;
+    const filename = `SCANMS-QR-${link.shortCode}.${format}`;
+
+    // Kiểm tra cache đã render trước đó để tối ưu CPU (Mục 26 & 32)
+    const cacheKey = `qr_render:${link.id}:${format}:${size}`;
+    const cached = await this.cacheService.get<{ bufferBase64: string; contentType: string }>(cacheKey);
+
+    if (cached) {
+      const buffer = format === 'png'
+        ? Buffer.from(cached.bufferBase64, 'base64')
+        : cached.bufferBase64;
+      return {
+        buffer,
+        contentType: cached.contentType,
+        filename,
+        shortCode: link.shortCode,
+        shortUrl,
+      };
+    }
+
+    let buffer: Buffer | string;
+    let contentType: string;
+
+    if (format === 'png') {
+      buffer = await QRCode.toBuffer(shortUrl, {
+        type: 'png',
+        width: size,
+        margin: 4,
+        errorCorrectionLevel: 'M',
+        color: {
+          dark: '#1A1612',
+          light: '#FFFFFF',
+        },
+      });
+      contentType = 'image/png';
+
+      // Lưu cache 24h
+      await this.cacheService.set(cacheKey, {
+        bufferBase64: (buffer as Buffer).toString('base64'),
+        contentType,
+      }, 86400);
+    } else {
+      let svgContent = await QRCode.toString(shortUrl, {
+        type: 'svg',
+        width: size,
+        margin: 4,
+        errorCorrectionLevel: 'M',
+        color: {
+          dark: '#1A1612',
+          light: '#FFFFFF',
+        },
+      });
+
+      // Sanitize SVG chống XSS (Mục 10.2 & 27.7)
+      svgContent = svgContent
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+        .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+        .replace(/javascript\s*:/gi, '');
+
+      buffer = svgContent;
+      contentType = 'image/svg+xml; charset=utf-8';
+
+      // Lưu cache 24h
+      await this.cacheService.set(cacheKey, {
+        bufferBase64: svgContent,
+        contentType,
+      }, 86400);
+    }
+
+    return {
+      buffer,
+      contentType,
+      filename,
+      shortCode: link.shortCode,
+      shortUrl,
+    };
   }
 }

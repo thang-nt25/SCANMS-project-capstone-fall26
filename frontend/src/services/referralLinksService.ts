@@ -189,5 +189,38 @@ export const referralLinksService = {
     const res: any = await api.patch(`/admin/referral-links/${linkId}/unblock`);
     return res?.data || res;
   },
+
+  // ==========================================
+  // FR-11 — MÃ QR TIẾP THỊ ĐỘNG
+  // ==========================================
+  // Lấy URL xem trước / tải ảnh QR từ Backend
+  getQrDownloadUrl(id: string, format: 'png' | 'svg' = 'png', size: number = 1024): string {
+    const baseURL = (api.defaults.baseURL || '/api').replace(/\/$/, '');
+    return `${baseURL}/referral-links/${id}/qr?format=${format}&size=${size}&download=true`;
+  },
+
+  // Tải ảnh QR với tên file SCANMS-QR-{shortCode}.{format}
+  async downloadQrCode(
+    id: string,
+    shortCode: string,
+    format: 'png' | 'svg' = 'png',
+    size: number = 1024,
+  ): Promise<void> {
+    const res = await api.get(`/referral-links/${id}/qr`, {
+      params: { format, size, download: true },
+      responseType: 'blob',
+    });
+    const mimeType = format === 'png' ? 'image/png' : 'image/svg+xml;charset=utf-8';
+    const blob = new Blob([res.data], { type: mimeType });
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = `SCANMS-QR-${shortCode}.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+  },
 };
+
 
