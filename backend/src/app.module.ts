@@ -15,6 +15,7 @@ import { TiersModule } from './modules/tiers/tiers.module';
 import { StoresModule } from './modules/stores/stores.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
+import { OrdersModule } from './modules/orders/orders.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
@@ -44,6 +45,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     StoresModule,
     ProductsModule,
     MediaModule,
+    OrdersModule,
     // Quy's modules
     ChatModule,
     SamplesModule,

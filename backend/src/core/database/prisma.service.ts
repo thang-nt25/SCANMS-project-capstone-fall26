@@ -19,7 +19,14 @@ export class PrismaService
   constructor(@Optional() private readonly configService?: ConfigService) {
     const connectionString =
       configService?.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
-    const pool = new Pool({ connectionString });
+    const isRemote =
+      connectionString?.includes('supabase') ||
+      connectionString?.includes('pooler') ||
+      connectionString?.includes('sslmode');
+    const pool = new Pool({
+      connectionString,
+      ssl: isRemote ? { rejectUnauthorized: false } : undefined,
+    });
     const adapter = new PrismaPg(pool);
 
     super({ adapter });
