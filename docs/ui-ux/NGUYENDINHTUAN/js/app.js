@@ -1,4 +1,4 @@
-import { dashboard, bindDashboard, withdrawal } from './dashboard.js?v=61';
+import { dashboard, bindDashboard, withdrawal, kolProfileScreen, bindKolProfile, kolProfileState } from './dashboard.js?v=62';
 import { linksPage, bindLinks } from './links.js?v=50';
 import { mediaPage, bindMedia } from './media.js?v=50';
 import { samplesPage, bindSamples } from './samples.js?v=50';
@@ -7,6 +7,7 @@ import { storefrontScreen, bindStorefront } from './storefront.js?v=65';
 import { marketplaceScreen, bindMarketplace } from './marketplace.js?v=15';
 
 import {
+  managerState,
   managerDashboardScreen,
   managerStoresScreen,
   managerStoreDetailScreen,
@@ -14,10 +15,12 @@ import {
   managerFraudScreen,
   managerAuditScreen,
   managerProfileScreen,
+  managerProfileState,
   bindManager
-} from './manager.js';
+} from './manager.js?v=143';
 
 import {
+  customerState,
   customerProfileScreen,
   customerOrdersScreen,
   customerOrderDetailScreen,
@@ -27,15 +30,18 @@ import {
   customerSupportScreen,
   customerSecurityScreen,
   bindCustomer
-} from './customer.js?v=5';
+} from './customer.js?v=6';
 
 import {
   adminInternalAccountsScreen,
   adminRbacScreen,
   adminServiceHealthScreen,
   adminSystemConfigScreen,
-  bindAdmin
-} from './admin.js';
+  adminProfileScreen,
+  bindAdmin,
+  bindAdminProfile,
+  adminProfileState
+} from './admin.js?v=2';
 
 import {
   shopSamplesScreen,
@@ -43,8 +49,13 @@ import {
   shopCampaignsScreen,
   shopCustomerRequestsScreen,
   shopSettingsScreen,
-  bindShopOps
-} from './shop-ops.js';
+  shopProfileScreen,
+  bindShopOps,
+  bindShopProfile,
+  shopProfileState
+} from './shop-ops.js?v=2';
+
+import { compressAvatarImage, safeSaveProfile } from './image-utils.js';
 
 const productImage = "./assets/serum-hero-optimized.jpg";
 
@@ -57,8 +68,10 @@ const screens = [
   { id: "channels", label: "Kênh xã hội", icon: "ph-share-network", role: "kol" },
   { id: "media", label: "Kho nội dung", icon: "ph-images", role: "kol" },
   { id: "samples", label: "Hàng mẫu", icon: "ph-package", role: "kol" },
+  { id: "kol-bonus", label: "Thưởng doanh số", icon: "ph-medal", role: "kol" },
   { id: "leaderboard", label: "Bảng vinh danh", icon: "ph-trophy", role: "kol" },
   { id: "wallet", label: "Ví của tôi", icon: "ph-wallet", role: "kol" },
+  { id: "kol-profile", label: "Hồ sơ cá nhân", icon: "ph-user-gear", role: "kol" },
 
   // ==========================================
   // 2. NHÓM CHỨC NĂNG CHỦ SHOP (SHOP MANAGER)
@@ -66,6 +79,7 @@ const screens = [
   { id: "shop-dashboard", label: "Tổng quan Shop", icon: "ph-storefront", role: "shop" },
   { id: "catalog", label: "Sản phẩm & Giá", icon: "ph-cube", role: "shop" },
   { id: "shop-campaigns", label: "Chiến dịch & Hoa hồng", icon: "ph-tag", role: "shop" },
+  { id: "commission-rules", label: "Mốc thưởng Doanh số", icon: "ph-trophy", role: "shop" },
   { id: "shop-collaborators", label: "Đội ngũ CTV", icon: "ph-users-three", role: "shop" },
   { id: "orders", label: "Đối soát đơn", icon: "ph-receipt", role: "shop" },
   { id: "payouts", label: "Duyệt chi trả", icon: "ph-bank", role: "shop" },
@@ -74,6 +88,7 @@ const screens = [
   { id: "shop-customer-requests", label: "Yêu cầu khách mua", icon: "ph-hand-waving", role: "shop" },
   { id: "fraud", label: "AI Fraud", icon: "ph-shield-warning", role: "shop" },
   { id: "shop-settings", label: "Cài đặt Shop", icon: "ph-gear", role: "shop" },
+  { id: "shop-profile", label: "Hồ sơ Shop & Pháp lý", icon: "ph-identification-card", role: "shop" },
 
   // ==========================================
   // 3. NHÓM CHỨC NĂNG VẬN HÀNH NỀN TẢNG (SYSTEM MANAGER)
@@ -96,6 +111,7 @@ const screens = [
   { id: "admin-users", label: "Quản lý User & KOL", icon: "ph-users", role: "admin" },
   { id: "admin-audit", label: "Nhật ký An ninh (Audit)", icon: "ph-lock-key", role: "admin" },
   { id: "admin-config", label: "Cấu hình Sàn", icon: "ph-sliders", role: "admin" },
+  { id: "admin-profile", label: "Hồ sơ Quản trị Root", icon: "ph-shield-check", role: "admin" },
 
   // ==========================================
   // 5. NHÓM CHỨC NĂNG KHÁCH MUA HÀNG (CUSTOMER)
@@ -381,22 +397,57 @@ let savedChannels = null;
 try {
   const parsed = JSON.parse(localStorage.getItem("scanms-channels"));
   if (Array.isArray(parsed) && parsed.length > 0) savedChannels = parsed;
-} catch (e) {}
+} catch (e) { }
 
 const rawHash = location.hash.replace("#", "");
 const isRegHash = rawHash === "register" || rawHash === "auth-register";
 const isLoginHash = rawHash === "login" || rawHash === "auth" || rawHash === "auth-login";
 const isMarketplaceHash = rawHash === "" || rawHash === "marketplace" || rawHash === "home";
 
+// Khởi tạo role từ localStorage hoặc suy luận từ màn hình hiện tại
+let initialRole = "shop";
+try {
+  const savedRole = localStorage.getItem("scanms-current-role");
+  if (savedRole) initialRole = savedRole;
+} catch (e) { }
+
+const targetFromHash = screens.find((s) => s.id === rawHash);
+if (targetFromHash && targetFromHash.role && targetFromHash.role !== "both" && targetFromHash.role !== "public" && targetFromHash.role !== "auth") {
+  initialRole = targetFromHash.role;
+  try { localStorage.setItem("scanms-current-role", initialRole); } catch (e) { }
+}
+
+let savedScreen = null;
+try { savedScreen = localStorage.getItem("scanms-current-screen"); } catch (e) { }
+
+let savedPendingShop = null;
+try {
+  const raw = localStorage.getItem("scanms-pending-shop");
+  if (raw) savedPendingShop = JSON.parse(raw);
+} catch (e) { }
+
+let savedLastRegEmail = null;
+try {
+  savedLastRegEmail = localStorage.getItem("scanms-last-reg-email");
+} catch (e) { }
+
+if (savedPendingShop && !managerState.stores.some(s => s.id === savedPendingShop.id)) {
+  managerState.stores.unshift(savedPendingShop);
+}
+
 let state = {
-  screen: (isRegHash || isLoginHash) ? "auth" : (rawHash ? rawHash : "marketplace"),
+  screen: (isRegHash || isLoginHash) ? "auth" : (rawHash ? rawHash : (savedScreen || getDefaultScreenForRole(initialRole))),
   theme: localStorage.getItem("scanms-theme") || "light",
-  role: "kol",
+  role: initialRole,
   authMode: isRegHash ? "register" : "login", // 'login' | 'register'
   loginFeatureTab: "link-qr", // 'link-qr' | 'team-mgmt' | 'commission'
   search: "",
   navScrollTop: 0,
   navScrollLeft: 0,
+  pendingShop: savedPendingShop,
+  lastRegisteredEmail: savedLastRegEmail,
+  lastRegisteredRole: savedPendingShop ? "shop" : (savedLastRegEmail ? "kol" : null),
+  currentStore: savedPendingShop || null,
   regData: {
     name: "",
     email: "",
@@ -438,7 +489,7 @@ window.__SCANMS_CHANNELS__ = state.channels;
 function persistChannels() {
   try {
     localStorage.setItem("scanms-channels", JSON.stringify(state.channels));
-  } catch (e) {}
+  } catch (e) { }
   window.__SCANMS_CHANNELS__ = state.channels;
 }
 
@@ -687,7 +738,7 @@ function authScreen() {
   let artBadgeText = "Chuẩn Đề Án FA26SE032 • Quản Trị Mạng Lưới CTV Toàn Diện";
   let artTitleHtml = `Quản trị mạng lưới CTV <span class="art-hl">& bứt phá doanh số tiếp thị.</span>`;
   let artDesc = "Không gian hợp nhất kết nối hàng ngàn cộng tác viên bán hàng, phát hành link & QR định danh, đối soát hoa hồng minh bạch và mở rộng kênh phân phối vượt trội.";
-  
+
   let artStat1 = "Đa Nền Tảng";
   let artStatLabel1 = "TikTok, Shopee, Web";
   let artStatIcon1 = "ph-arrows-split";
@@ -933,7 +984,9 @@ function authScreen() {
     manager: "manager@scanms.vn",
     admin: "admin@scanms.vn"
   };
-  const demoEmail = demoEmailMap[state.role] || "demo@scanms.vn";
+  const isLastRegRoleMatch = Boolean(state.lastRegisteredRole === state.role && state.lastRegisteredEmail);
+  const demoEmail = isLastRegRoleMatch ? state.lastRegisteredEmail : (demoEmailMap[state.role] || "demo@scanms.vn");
+  const defaultPasswordVal = isLastRegRoleMatch ? "" : "12345678";
 
   const heroImageSrc = isRegister ? "./assets/affiliate-register-onboarding-3d.jpg" : "./assets/affiliate-ecosystem-3d.jpg";
   const heroImageAlt = isRegister ? "Khởi đầu sự nghiệp CTV bán hàng và tiếp thị liên kết SCANMS" : "Hệ sinh thái Quản lý CTV và Tiếp thị liên kết SCANMS";
@@ -1466,11 +1519,32 @@ function authScreen() {
             <!-- Form Fields -->
             <form class="auth-form" data-action="login">
               <div class="form-stack">
+                ${isLastRegRoleMatch ? `
+                  <div class="auth-notice-registered" style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 4px 14px rgba(245,158,11,0.12)">
+                    <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;color:#d97706;display:grid;place-items:center;font-size:20px;flex-shrink:0">
+                      <i class="ph ${state.role === 'shop' ? 'ph-hourglass-high' : 'ph-check-circle'}"></i>
+                    </div>
+                    <div style="font-size:12.5px;color:#78350f;line-height:1.5">
+                      <strong style="font-size:13.5px;color:#92400e;display:block;margin-bottom:3px">
+                        ${state.role === 'shop' ? `Đã tiếp nhận hồ sơ đăng ký gian hàng ${state.pendingShop ? `"${escapeHtml(state.pendingShop.name)}" (${state.pendingShop.id})` : ''}` : 'Đăng ký tài khoản thành công!'}
+                      </strong>
+                      ${state.role === 'shop' ? `
+                        <div style="color:#92400e;margin-bottom:4px">
+                          Trạng thái: <span class="badge warning" style="background:#fef3c7;color:#b45309;font-weight:700;padding:2px 6px;border-radius:4px;font-size:11px"><i class="ph ph-clock"></i> CHỜ DUYỆT BỞI ADMIN &amp; VẬN HÀNH</span>
+                        </div>
+                        <div style="color:#78350f">Vui lòng nhập mật khẩu tài khoản <strong>${escapeHtml(state.lastRegisteredEmail)}</strong> để đăng nhập vào trang theo dõi tiến độ thẩm định hồ sơ.</div>
+                      ` : `
+                        <div>Vui lòng nhập lại mật khẩu tài khoản <strong>${escapeHtml(state.lastRegisteredEmail)}</strong> để đăng nhập.</div>
+                      `}
+                    </div>
+                  </div>
+                ` : ''}
+
                 <div class="field">
                   <label for="login-email">Email đăng nhập</label>
                   <div class="auth-input-wrap has-lead-icon">
                     <i class="ph ph-envelope-simple auth-lead-icon"></i>
-                    <input id="login-email" class="input" type="email" value="${demoEmail}" placeholder="demo@scanms.vn" required />
+                    <input id="login-email" class="input" type="email" value="${escapeHtml(demoEmail)}" placeholder="demo@scanms.vn" required />
                   </div>
                 </div>
 
@@ -1481,7 +1555,7 @@ function authScreen() {
                   </div>
                   <div class="auth-input-wrap has-lead-icon">
                     <i class="ph ph-lock auth-lead-icon"></i>
-                    <input id="login-password" class="input" type="password" value="12345678" required />
+                    <input id="login-password" class="input" type="password" value="${defaultPasswordVal}" placeholder="${isLastRegRoleMatch ? 'Nhập mật khẩu vừa tạo' : '12345678'}" required />
                     <button type="button" class="auth-eye-btn" data-toggle-password="#login-password" title="Hiện/ẩn mật khẩu">
                       <i class="ph ph-eye"></i>
                     </button>
@@ -1589,14 +1663,14 @@ function kolDashboard() {
   return `${header("Hôm nay bạn bán được gì?", "Thu nhập, cấp bậc và hiệu suất của bạn được cập nhật theo thời gian thực.", `<button class="btn" data-go="links">${icon("ph-plus")} Tạo link tiếp thị</button>`)}
   <section class="wallet-hero card"><small>Số dư khả dụng</small><div class="balance">12.450.000 ₫</div><div class="wallet-meta"><button class="btn" data-modal="withdraw">Yêu cầu rút tiền</button><span>Chờ duyệt 1.850.000 ₫</span></div></section>
   <div class="grid kpis" style="margin-top:16px">${kpi("Lượt nhấp hôm nay", "1.426", "+18,4% so với hôm qua", "ph-cursor-click")}${kpi("Đơn thành công", "38", "+7 đơn mới", "ph-shopping-bag")}${kpi("Tỷ lệ chuyển đổi", "2,67%", "+0,31 điểm", "ph-funnel")}${kpi("Cấp bậc", "Vàng", "+3% hoa hồng", "ph-medal")}</div>
-  <div class="split"><section class="card"><div class="card-title"><h2>Hiệu suất 7 ngày</h2><span>Click / Đơn hàng</span></div>${bars([34,48,42,68,55,78,88],[12,18,16,31,24,35,43])}</section><section class="card"><div class="card-title"><h2>Hoa hồng gần đây</h2><button class="text-btn" data-go="wallet">Xem ví</button></div><div class="feed">${feedRow("ph-check-circle", "Đơn #IN23918", "Serum vitamin C, 2 sản phẩm", "+185.000 ₫")}${feedRow("ph-hourglass", "Đơn #IN23902", "Còn 9 ngày chờ đối soát", "+92.000 ₫")}${feedRow("ph-arrow-u-down-left", "Đơn #IN23845", "Khách hoàn trả sản phẩm", "-75.000 ₫", true)}</div></section></div>
+  <div class="split"><section class="card"><div class="card-title"><h2>Hiệu suất 7 ngày</h2><span>Click / Đơn hàng</span></div>${bars([34, 48, 42, 68, 55, 78, 88], [12, 18, 16, 31, 24, 35, 43])}</section><section class="card"><div class="card-title"><h2>Hoa hồng gần đây</h2><button class="text-btn" data-go="wallet">Xem ví</button></div><div class="feed">${feedRow("ph-check-circle", "Đơn #IN23918", "Serum vitamin C, 2 sản phẩm", "+185.000 ₫")}${feedRow("ph-hourglass", "Đơn #IN23902", "Còn 9 ngày chờ đối soát", "+92.000 ₫")}${feedRow("ph-arrow-u-down-left", "Đơn #IN23845", "Khách hoàn trả sản phẩm", "-75.000 ₫", true)}</div></section></div>
   <section class="card soft" style="margin-top:18px"><div class="card-title"><h2>Tiến độ lên hạng Kim Cương</h2><strong>74%</strong></div><div class="bar"><span style="width:74%"></span></div><p style="color:var(--muted);margin:12px 0 0">Còn 12.500.000 ₫ doanh số trong tháng để nhận thêm 5% hoa hồng.</p></section>`;
 }
 // Screen 3: Link và QR (được quản lý hoàn chỉnh trong links.js - linksPage / bindLinks)
 
 function channelsScreen() {
   const allChannels = state.channels || [];
-  
+
   // Aggregate KPIs
   const totalChannels = allChannels.length;
   const verifiedCount = allChannels.filter(c => c.verificationStatus === "verified").length;
@@ -1611,10 +1685,10 @@ function channelsScreen() {
     if (state.channelSearch) {
       const q = state.channelSearch.toLowerCase().trim();
       const match = (c.name && c.name.toLowerCase().includes(q)) ||
-                    (c.displayName && c.displayName.toLowerCase().includes(q)) ||
-                    (c.handle && c.handle.toLowerCase().includes(q)) ||
-                    (c.category && c.category.toLowerCase().includes(q)) ||
-                    (c.platform && c.platform.toLowerCase().includes(q));
+        (c.displayName && c.displayName.toLowerCase().includes(q)) ||
+        (c.handle && c.handle.toLowerCase().includes(q)) ||
+        (c.category && c.category.toLowerCase().includes(q)) ||
+        (c.platform && c.platform.toLowerCase().includes(q));
       if (!match) return false;
     }
     // Platform filter
@@ -1648,30 +1722,30 @@ function channelsScreen() {
   const cardsHtml = filtered.length > 0 ? `
     <div class="channel-grid-v2">
       ${filtered.map(c => {
-        const cfg = platformConfig[c.platform] || {
-          name: c.name || "Mạng xã hội",
-          icon: c.icon || "ph-share-network",
-          color: "var(--brand)",
-          bgColor: "var(--brand-soft)",
-          followerName: "Người theo dõi"
-        };
+    const cfg = platformConfig[c.platform] || {
+      name: c.name || "Mạng xã hội",
+      icon: c.icon || "ph-share-network",
+      color: "var(--brand)",
+      bgColor: "var(--brand-soft)",
+      followerName: "Người theo dõi"
+    };
 
-        let statusBadgeHtml = '';
-        if (c.verificationStatus === 'verified') {
-          statusBadgeHtml = `<span class="channel-status-badge verified" title="Kênh đã xác minh danh tính và API Creator"><i class="ph ph-seal-check"></i> ${c.verificationLabel || 'Đã xác minh'}</span>`;
-        } else if (c.verificationStatus === 'pending') {
-          statusBadgeHtml = `<span class="channel-status-badge pending" title="Đang chờ xét duyệt kết nối API"><i class="ph ph-clock-clockwise"></i> Chờ duyệt API</span>`;
-        } else {
-          statusBadgeHtml = `<span class="channel-status-badge unverified" title="Kênh tự khai báo thủ công"><i class="ph ph-shield-warning"></i> Tự khai báo</span>`;
-        }
+    let statusBadgeHtml = '';
+    if (c.verificationStatus === 'verified') {
+      statusBadgeHtml = `<span class="channel-status-badge verified" title="Kênh đã xác minh danh tính và API Creator"><i class="ph ph-seal-check"></i> ${c.verificationLabel || 'Đã xác minh'}</span>`;
+    } else if (c.verificationStatus === 'pending') {
+      statusBadgeHtml = `<span class="channel-status-badge pending" title="Đang chờ xét duyệt kết nối API"><i class="ph ph-clock-clockwise"></i> Chờ duyệt API</span>`;
+    } else {
+      statusBadgeHtml = `<span class="channel-status-badge unverified" title="Kênh tự khai báo thủ công"><i class="ph ph-shield-warning"></i> Tự khai báo</span>`;
+    }
 
-        const primaryStarHtml = c.isPrimary
-          ? `<span class="channel-primary-star" title="Kênh chính mặc định dùng khi tạo link tiếp thị"><i class="ph-fill ph-star"></i></span>`
-          : '';
+    const primaryStarHtml = c.isPrimary
+      ? `<span class="channel-primary-star" title="Kênh chính mặc định dùng khi tạo link tiếp thị"><i class="ph-fill ph-star"></i></span>`
+      : '';
 
-        const stats = c.stats || { clicks: 0, orders: 0, cvr: '0%', gmv: 0, commission: 0 };
+    const stats = c.stats || { clicks: 0, orders: 0, cvr: '0%', gmv: 0, commission: 0 };
 
-        return `
+    return `
           <article class="channel-card-v2 ${c.isPrimary ? 'is-primary-card' : ''}" data-channel-id="${c.id}">
             <!-- Card Head: icon 36px, tên 15px, platform & @handle 12-13px, badge nhỏ, sao kênh chính -->
             <div class="channel-card-head">
@@ -1758,7 +1832,7 @@ function channelsScreen() {
             </div>
           </article>
         `;
-      }).join('')}
+  }).join('')}
     </div>
   ` : `
     <div class="channel-empty-state card">
@@ -1894,11 +1968,161 @@ function samplesScreen() {
 }
 
 function walletScreen() {
-return `${header("Ví và lịch sử giao dịch", "Mọi biến động số dư đều được ghi nhận bất biến để bạn dễ dàng đối soát.", `<button class="btn" data-modal="withdraw">${icon("ph-bank")} Rút tiền</button>`)}<section class="wallet-hero card"><small>Số dư có thể rút</small><div class="balance">12.450.000 ₫</div><div class="wallet-meta"><span>Chờ duyệt 1.850.000 ₫</span><span>Đã rút tháng này 4.500.000 ₫</span></div></section><div class="grid kpis" style="margin-top:16px">${kpi("Hoa hồng đã duyệt", money(14320000), "42 giao dịch", "ph-check-circle")}${kpi("Đang giữ 14 ngày", money(1850000), "12 đơn hàng", "ph-hourglass")}${kpi("Thuế TNCN", money(450000), "Khấu trừ tháng 9", "ph-file-text")}${kpi("Tổng đã rút", money(32500000), "Từ tháng 1/2026", "ph-bank")}</div><section class="card" style="margin-top:18px"><div class="card-title"><h2>Lịch sử giao dịch</h2><button class="btn small secondary">${icon("ph-download-simple")} Xuất sao kê</button></div><div class="feed">${feedRow("ph-check-circle", "Hoa hồng đơn #IN23918", "Đã qua thời gian đối soát 14 ngày", "+185.000 ₫")}${feedRow("ph-hourglass", "Hoa hồng đơn #IN23902", "Khả dụng sau ngày 16/09", "+92.000 ₫")}${feedRow("ph-bank", "Rút tiền về Vietcombank", "Mã ngân hàng VCB090218", "-2.000.000 ₫", true)}${feedRow("ph-arrow-u-down-left", "Thu hồi đơn #IN23845", "Khách hoàn trả toàn bộ đơn hàng", "-75.000 ₫", true)}</div></section>`;
+  return `${header("Ví và lịch sử giao dịch", "Mọi biến động số dư đều được ghi nhận bất biến để bạn dễ dàng đối soát.", `<button class="btn" data-modal="withdraw">${icon("ph-bank")} Rút tiền</button>`)}<section class="wallet-hero card"><small>Số dư có thể rút</small><div class="balance">12.450.000 ₫</div><div class="wallet-meta"><span>Chờ duyệt 1.850.000 ₫</span><span>Đã rút tháng này 4.500.000 ₫</span></div></section><div class="grid kpis" style="margin-top:16px">${kpi("Hoa hồng đã duyệt", money(14320000), "42 giao dịch", "ph-check-circle")}${kpi("Đang giữ 14 ngày", money(1850000), "12 đơn hàng", "ph-hourglass")}${kpi("Thuế TNCN", money(450000), "Khấu trừ tháng 9", "ph-file-text")}${kpi("Tổng đã rút", money(32500000), "Từ tháng 1/2026", "ph-bank")}</div><section class="card" style="margin-top:18px"><div class="card-title"><h2>Lịch sử giao dịch</h2><button class="btn small secondary">${icon("ph-download-simple")} Xuất sao kê</button></div><div class="feed">${feedRow("ph-check-circle", "Hoa hồng đơn #IN23918", "Đã qua thời gian đối soát 14 ngày", "+185.000 ₫")}${feedRow("ph-hourglass", "Hoa hồng đơn #IN23902", "Khả dụng sau ngày 16/09", "+92.000 ₫")}${feedRow("ph-bank", "Rút tiền về Vietcombank", "Mã ngân hàng VCB090218", "-2.000.000 ₫", true)}${feedRow("ph-arrow-u-down-left", "Thu hồi đơn #IN23845", "Khách hoàn trả toàn bộ đơn hàng", "-75.000 ₫", true)}</div></section>`;
 }
 
 function shopDashboard() {
-  return `${header("Tổng quan Sora Skin", "Theo dõi doanh thu liên kết, chi phí hoa hồng và sức khỏe mạng lưới KOL.", `<button class="btn">${icon("ph-plus")} Tạo chiến dịch</button>`)}<div class="grid kpis">${kpi("Doanh thu liên kết", "684,2 tr ₫", "+12,8% trong 30 ngày", "ph-chart-line-up")}${kpi("Hoa hồng phải trả", "52,7 tr ₫", "7,7% doanh thu", "ph-coins")}${kpi("KOL đang hoạt động", "128", "+16 KOL mới", "ph-users-three")}${kpi("Tỷ lệ hoàn hàng", "3,18%", "-0,42 điểm", "ph-arrow-u-down-left")}</div><div class="split"><section class="card"><div class="card-title"><h2>Doanh thu và hoa hồng</h2><span>30 ngày gần nhất</span></div>${bars([28,38,45,37,61,70,88],[10,14,17,16,24,29,35])}</section><section class="card"><div class="card-title"><h2>Hoạt động trực tiếp</h2>${status("Đang cập nhật")}</div><div class="feed">${feedRow("ph-shopping-bag", "Đơn #IN23931", "Attribution qua coupon NHATXINH10", "+459.000 ₫")}${feedRow("ph-cursor-click", "218 click mới", "TikTok, 10 phút vừa qua", "")}${feedRow("ph-user-plus", "KOL mới tham gia", "Lê Mai Anh, ngành làm đẹp", "")}</div></section></div><section class="card" style="margin-top:18px"><div class="card-title"><h2>Sản phẩm dẫn đầu</h2><button class="text-btn" data-go="catalog">Quản lý danh mục</button></div><div class="table-wrap" style="border:0"><table><thead><tr><th>Sản phẩm</th><th>Doanh thu</th><th>Đơn hàng</th><th>Tỷ lệ chuyển đổi</th><th>Hoa hồng</th></tr></thead><tbody><tr><td><div class="product-cell"><img class="thumb" src="${productImage}" alt="Serum vitamin C" /><strong>Serum vitamin C 15%</strong></div></td><td>184.600.000 ₫</td><td>402</td><td>3,21%</td><td>8%</td></tr><tr><td><strong>Kem chống nắng SPF50+</strong></td><td>146.800.000 ₫</td><td>377</td><td>2,89%</td><td>10%</td></tr></tbody></table></div></section>`;
+  const currentStore = state.currentStore || state.pendingShop || managerState.stores.find(s => s.email === (state.lastRegisteredEmail || "shop@scanms.vn")) || managerState.stores[0];
+  const isPending = currentStore && (currentStore.status === "pending" || currentStore.status === "reviewing");
+  const storeDisplayName = currentStore ? currentStore.name : "Sora Skin";
+
+  if (isPending) {
+    return `
+      <header class="page-head">
+        <div>
+          <div class="crumb"><span>Chủ Shop / </span><strong>Hồ sơ gian hàng</strong></div>
+          <h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>Gian hàng: ${escapeHtml(storeDisplayName)}</span>
+            <span class="badge warning" style="background:#fef3c7;color:#b45309;border:1.5px solid #f59e0b;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px">
+              <i class="ph ph-clock"></i> CHỜ ADMIN &amp; VẬN HÀNH DUYỆT
+            </span>
+          </h1>
+          <p>Mã hồ sơ: <strong>${currentStore.id}</strong> • Đại diện: <strong>${escapeHtml(currentStore.owner)}</strong> • Nộp ngày: <em>${escapeHtml(currentStore.submittedAt || "Hôm nay")}</em></p>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" data-action="switch-to-manager" data-store-id="${currentStore.id}" style="background:#2563eb;color:#fff">
+            <i class="ph ph-shield-check"></i> Đến trang Vận Hành Sàn để duyệt (Demo)
+          </button>
+          <button type="button" class="btn secondary" data-action="quick-approve-shop" data-store-id="${currentStore.id}" style="border-color:#059669;color:#059669;font-weight:700">
+            <i class="ph ph-check-circle"></i> [DEMO] Phê duyệt nhanh ngay
+          </button>
+        </div>
+      </header>
+
+      <!-- BANNER TIẾP NHẬN & CẢNH BÁO -->
+      <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:14px;padding:20px;margin-bottom:24px;box-shadow:0 4px 16px rgba(245,158,11,0.12)">
+        <div style="display:flex;align-items:flex-start;gap:16px">
+          <div style="width:52px;height:52px;border-radius:14px;background:#fef3c7;color:#d97706;display:grid;place-items:center;font-size:28px;flex-shrink:0">
+            <i class="ph ph-hourglass-high"></i>
+          </div>
+          <div style="flex:1">
+            <h3 style="margin:0 0 6px;font-size:16px;color:#92400e;font-weight:800">
+              HỒ SƠ GIAN HÀNG ĐANG TRONG QUY TRÌNH THẨM ĐỊNH (CHƯA ĐƯỢC KÍCH HOẠT MỞ BÁN)
+            </h3>
+            <p style="margin:0 0 10px;font-size:13.5px;color:#78350f;line-height:1.55">
+              Gian hàng <strong>${escapeHtml(currentStore.name)}</strong> (Mã: <code>${currentStore.id}</code>) đã được hệ thống tiếp nhận.
+              Theo quy chuẩn quản trị sàn thương mại điện tử SCANMS, Ban Quản Trị &amp; Chuyên viên Vận Hành sàn đang thẩm định giấy phép kinh doanh, mã số thuế và phân loại ngành hàng trong vòng <strong>24 giờ làm việc</strong>.
+            </p>
+            <div style="font-size:13px;color:#b45309;background:#fef3c7;padding:10px 14px;border-radius:8px;border:1px solid #fde68a">
+              🔒 <strong>Giới hạn quyền hạn trong trạng thái Chờ duyệt:</strong> Gian hàng hiện đang ở chế độ xem trước (Sandbox). Bạn chưa thể đăng bán sản phẩm công khai, chưa thể tạo link tiếp thị cho KOL hoặc thực hiện rút tiền cho đến khi hồ sơ được phê duyệt chính thức.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIẾN TRÌNH 4 BƯỚC THẨM ĐỊNH -->
+      <section class="card" style="margin-bottom:24px;padding:22px">
+        <h2 style="font-size:16px;margin:0 0 18px;display:flex;align-items:center;gap:8px">
+          <i class="ph ph-steps" style="color:var(--brand)"></i>
+          Tiến Trình Thẩm Định Hồ Sơ Gian Hàng
+        </h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+          <div style="background:var(--surface-2);border:1.5px solid #10b981;border-radius:12px;padding:14px;position:relative">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:800;color:#059669">BƯỚC 1</span>
+              <span class="badge success" style="background:#d1fae5;color:#059669;font-size:11px;padding:2px 6px;border-radius:4px"><i class="ph ph-check"></i> HOÀN THÀNH</span>
+            </div>
+            <strong style="display:block;font-size:14px;margin-bottom:4px;color:var(--text)">Nộp hồ sơ trực tuyến</strong>
+            <small style="color:var(--muted);font-size:12px;line-height:1.4;display:block">Đã gửi thông tin đại diện &amp; tên thương hiệu vào hệ thống.</small>
+          </div>
+
+          <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:12px;padding:14px;position:relative">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:800;color:#b45309">BƯỚC 2</span>
+              <span class="badge warning" style="background:#fef3c7;color:#b45309;font-size:11px;padding:2px 6px;border-radius:4px"><i class="ph ph-hourglass"></i> ĐANG XỬ LÝ</span>
+            </div>
+            <strong style="display:block;font-size:14px;margin-bottom:4px;color:#92400e">Vận Hành sàn thẩm định</strong>
+            <small style="color:#78350f;font-size:12px;line-height:1.4;display:block">Kiểm tra GPKD, mã số thuế và chứng nhận chất lượng sản phẩm.</small>
+          </div>
+
+          <div style="background:var(--surface-2);border:1px dashed var(--line);border-radius:12px;padding:14px;opacity:0.75">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:700;color:var(--muted)">BƯỚC 3</span>
+              <span class="badge neutral" style="font-size:11px;padding:2px 6px;border-radius:4px">CHỜ DUYỆT</span>
+            </div>
+            <strong style="display:block;font-size:14px;margin-bottom:4px;color:var(--text)">Ký cam kết sàn</strong>
+            <small style="color:var(--muted);font-size:12px;line-height:1.4;display:block">Chính sách hoa hồng bậc thang &amp; thời gian đối soát 14 ngày.</small>
+          </div>
+
+          <div style="background:var(--surface-2);border:1px dashed var(--line);border-radius:12px;padding:14px;opacity:0.75">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:700;color:var(--muted)">BƯỚC 4</span>
+              <span class="badge neutral" style="font-size:11px;padding:2px 6px;border-radius:4px">CHƯA MỞ</span>
+            </div>
+            <strong style="display:block;font-size:14px;margin-bottom:4px;color:var(--text)">Kích hoạt gian hàng</strong>
+            <small style="color:var(--muted);font-size:12px;line-height:1.4;display:block">Mở bán toàn diện và kết nối mạng lưới 10,000+ CTV &amp; KOL.</small>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 CỘT THÔNG TIN: CHI TIẾT HỒ SƠ & HƯỚNG DẪN DEMO -->
+      <div class="split" style="grid-template-columns:1.2fr 0.8fr;gap:20px;margin-bottom:24px">
+        <section class="card" style="padding:22px">
+          <div class="card-title">
+            <h2 style="font-size:16px;margin:0"><i class="ph ph-file-text"></i> Thông tin hồ sơ đã tiếp nhận</h2>
+            <span class="badge warning" style="font-size:11px;background:#fef3c7;color:#b45309">Chờ kiểm duyệt</span>
+          </div>
+          <div class="feed" style="margin-top:14px">
+            ${feedRow("ph-storefront", escapeHtml(currentStore.name), `Mã gian hàng: ${currentStore.id}`, "")}
+            ${feedRow("ph-user", escapeHtml(currentStore.owner), "Người đại diện pháp luật", "")}
+            ${feedRow("ph-envelope-simple", escapeHtml(currentStore.email), "Email đăng nhập đối tác", "")}
+            ${feedRow("ph-phone", escapeHtml(currentStore.phone || "0787664860"), "Số điện thoại liên hệ", "")}
+            ${feedRow("ph-tag", currentStore.category || "Thương mại điện tử & Bán lẻ", "Ngành hàng đăng ký", "")}
+          </div>
+        </section>
+
+        <section class="card" style="padding:22px;background:var(--surface-alt)">
+          <div class="card-title">
+            <h2 style="font-size:16px;margin:0"><i class="ph ph-laptop"></i> Thao Tác Kiểm Thử (Demo)</h2>
+          </div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:12px 0 18px">
+            Hệ thống SCANMS mô phỏng đầy đủ quy trình hai chiều giữa <strong>Chủ Shop</strong> và <strong>Vận Hành Sàn</strong>.
+            Để xem gian hàng sau khi được duyệt, bạn có thể thực hiện theo 2 cách:
+          </p>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button type="button" class="btn" data-action="switch-to-manager" data-store-id="${currentStore.id}" style="width:100%;justify-content:center;background:#2563eb;color:#fff">
+              <i class="ph ph-shield-check"></i> 1. Chuyển sang Vận Hành Sàn để bấm Duyệt
+            </button>
+            <button type="button" class="btn secondary" data-action="quick-approve-shop" data-store-id="${currentStore.id}" style="width:100%;justify-content:center;border-color:#059669;color:#059669">
+              <i class="ph ph-check-circle"></i> 2. Phê duyệt nhanh ngay tại đây
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- BẢNG SẢN PHẨM TRẠNG THÁI CHỜ DUYỆT -->
+      <section class="card">
+        <div class="card-title">
+          <h2>Danh mục sản phẩm của gian hàng</h2>
+          <span class="badge neutral">Chưa kích hoạt</span>
+        </div>
+        <div style="text-align:center;padding:36px 20px;color:var(--muted)">
+          <div style="width:54px;height:54px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:26px;margin:0 auto 12px;color:var(--muted)">
+            <i class="ph ph-package"></i>
+          </div>
+          <strong style="font-size:15px;color:var(--text);display:block;margin-bottom:6px">Chưa có sản phẩm nào được công bố</strong>
+          <p style="font-size:13px;max-width:480px;margin:0 auto 16px;line-height:1.5">
+            Các chức năng đăng tải sản phẩm, cấu hình hoa hồng cho CTV và phát hành mã QR tiếp thị sẽ được mở khóa ngay sau khi hồ sơ gian hàng được Ban Quản Trị &amp; Vận Hành Sàn phê duyệt.
+          </p>
+        </div>
+      </section>
+    `;
+  }
+
+  return `${header(`Tổng quan ${storeDisplayName}`, "Theo dõi doanh thu liên kết, chi phí hoa hồng và sức khỏe mạng lưới KOL.", `<button class="btn">${icon("ph-plus")} Tạo chiến dịch</button>`)}
+  <div class="grid kpis">${kpi("Doanh thu liên kết", "684,2 tr ₫", "+12,8% trong 30 ngày", "ph-chart-line-up")}${kpi("Hoa hồng phải trả", "52,7 tr ₫", "7,7% doanh thu", "ph-coins")}${kpi("KOL đang hoạt động", "128", "+16 KOL mới", "ph-users-three")}${kpi("Tỷ lệ hoàn hàng", "3,18%", "-0,42 điểm", "ph-arrow-u-down-left")}</div>
+  <div class="split"><section class="card"><div class="card-title"><h2>Doanh thu và hoa hồng</h2><span>30 ngày gần nhất</span></div>${bars([28, 38, 45, 37, 61, 70, 88], [10, 14, 17, 16, 24, 29, 35])}</section><section class="card"><div class="card-title"><h2>Hoạt động trực tiếp</h2>${status("Đang cập nhật")}</div><div class="feed">${feedRow("ph-shopping-bag", "Đơn #IN23931", "Attribution qua coupon NHATXINH10", "+459.000 ₫")}${feedRow("ph-cursor-click", "218 click mới", "TikTok, 10 phút vừa qua", "")}${feedRow("ph-user-plus", "KOL mới tham gia", "Lê Mai Anh, ngành làm đẹp", "")}</div></section></div>
+  <section class="card" style="margin-top:18px"><div class="card-title"><h2>Sản phẩm dẫn đầu</h2><button class="text-btn" data-go="catalog">Quản lý danh mục</button></div><div class="table-wrap" style="border:0"><table><thead><tr><th>Sản phẩm</th><th>Doanh thu</th><th>Đơn hàng</th><th>Tỷ lệ chuyển đổi</th><th>Hoa hồng</th></tr></thead><tbody><tr><td><div class="product-cell"><img class="thumb" src="${productImage}" alt="Serum vitamin C" /><strong>Serum vitamin C 15%</strong></div></td><td>184.600.000 ₫</td><td>402</td><td>3,21%</td><td>8%</td></tr><tr><td><strong>Kem chống nắng SPF50+</strong></td><td>146.800.000 ₫</td><td>377</td><td>2,89%</td><td>10%</td></tr></tbody></table></div></section>`;
 }
 
 const products = [
@@ -2406,11 +2630,33 @@ function shopCollaboratorsScreen() {
 // SCREENS CHO QUẢN TRỊ SÀN (SYSTEM ADMIN)
 // ==========================================
 function adminDashboardScreen() {
+  const pendingStores = managerState.stores.filter(s => s.status === 'pending' || s.status === 'reviewing');
   return `${header(
     "Executive SaaS Super Admin",
     "Bảng điều phối trung tâm toàn bộ nền tảng SCANMS: giám sát dòng tiền, tổng GMV và tỷ lệ an toàn hệ thống (UI-19).",
     `<button class="btn secondary" data-toast="Đã làm mới dữ liệu realtime toàn sàn">${icon("ph-arrows-clockwise")} Làm mới dữ liệu</button>`
   )}
+  ${pendingStores.length > 0 ? `
+    <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 14px rgba(245,158,11,0.12)">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:44px;height:44px;border-radius:12px;background:#fef3c7;color:#d97706;display:grid;place-items:center;font-size:24px">
+          <i class="ph ph-hourglass-high"></i>
+        </div>
+        <div>
+          <strong style="font-size:14px;color:#92400e;display:block">Có ${pendingStores.length} hồ sơ gian hàng Shop đang chờ duyệt</strong>
+          <span style="font-size:12.5px;color:#78350f">Gian hàng mới nhất: <strong>${escapeHtml(pendingStores[0].name)} (${pendingStores[0].id})</strong> • Email: ${escapeHtml(pendingStores[0].email)}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn small" data-mgr-approve-store="${pendingStores[0].id}" style="background:#059669;color:#fff;font-weight:700">
+          <i class="ph ph-check"></i> Duyệt ngay
+        </button>
+        <button class="btn small secondary" data-go="manager-stores">
+          Xem tất cả (${pendingStores.length}) &rarr;
+        </button>
+      </div>
+    </div>
+  ` : ''}
   <div class="admin-hero">
     <div class="admin-hero-title">
       <div>
@@ -2466,7 +2712,7 @@ function adminDashboardScreen() {
     <section class="card">
       <div class="card-title">
         <h2>Top Gian hàng doanh số cao nhất</h2>
-        <button class="text-btn" data-go="admin-stores">Xem tất cả</button>
+        <button class="text-btn" data-go="manager-stores">Xem &amp; Duyệt tất cả &rarr;</button>
       </div>
       <div class="feed">
         ${feedRow("ph-storefront", "Sora Skin Official", "Doanh số: 684,2 Tr ₫ • 128 CTV", "+52,7 Tr HH")}
@@ -2629,20 +2875,31 @@ function adminUsersScreen() {
             </div>
           </td>
         </tr>
-        <tr>
-          <td><div class="person"><span class="avatar" style="background:#F5E7CC;color:#7A561B">S</span><strong>Sora Skin Official</strong></div></td>
-          <td>shop@scanms.vn</td>
-          <td><span class="status">Chủ Shop</span></td>
-          <td><span class="status">Đã xác minh (GPKD DN)</span></td>
-          <td>Gian hàng đối tác</td>
-          <td>02/02/2026</td>
-          <td>${status("Hoạt động")}</td>
-          <td>
-            <div class="actions">
-              <button class="btn small secondary" data-toast="Đã mở chi tiết hồ sơ Shop Sora Skin">Xem KYC</button>
-            </div>
-          </td>
-        </tr>
+        ${managerState.stores.map(st => `
+          <tr>
+            <td><div class="person"><span class="avatar" style="background:#F5E7CC;color:#7A561B">${escapeHtml(st.name.charAt(0).toUpperCase())}</span><strong>${escapeHtml(st.name)}</strong></div></td>
+            <td>${escapeHtml(st.email)}</td>
+            <td><span class="status">Chủ Shop</span></td>
+            <td><span class="status ${st.status === 'approved' ? '' : 'warning'}">${st.status === 'approved' ? 'Đã xác minh (GPKD DN)' : 'Chờ thẩm định GPKD'}</span></td>
+            <td>${escapeHtml(st.id)} • ${escapeHtml(st.owner)}</td>
+            <td>${st.submittedAt || '09/09/2026'}</td>
+            <td>${st.status === 'approved' ? status("Hoạt động") : `<span class="badge warning" style="background:#fef3c7;color:#d97706;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:600"><i class="ph ph-clock"></i> Chờ duyệt</span>`}</td>
+            <td>
+              <div class="actions">
+                ${st.status !== 'approved' ? `
+                  <button class="btn small" data-mgr-approve-store="${st.id}" style="background:#059669;color:#fff;font-size:11.5px;padding:3px 8px">
+                    <i class="ph ph-check"></i> Duyệt
+                  </button>
+                  <button class="btn small secondary" data-mgr-view-store="${st.id}" style="font-size:11.5px;padding:3px 8px">
+                    Thẩm định
+                  </button>
+                ` : `
+                  <button class="btn small secondary" data-mgr-view-store="${st.id}">Xem KYC</button>
+                `}
+              </div>
+            </td>
+          </tr>
+        `).join('')}
         <tr>
           <td><div class="person"><span class="avatar" style="background:#fef3c7;color:#b45309">Y</span><strong>Nguyễn Hải Yến</strong></div></td>
           <td>customer@scanms.vn</td>
@@ -2958,6 +3215,116 @@ function adminAuditScreen() {
   </div>`;
 }
 
+function commissionRulesScreen() {
+  try {
+    const currentToken = localStorage.getItem('token');
+    const currentUserStr = localStorage.getItem('user');
+    let currentRole = null;
+    if (currentUserStr) {
+      try { currentRole = JSON.parse(currentUserStr)?.role; } catch (e) {}
+    }
+
+    // Nếu đang lưu vai trò không tương thích (COLLABORATOR), xóa token cũ để tránh 403
+    const roleMismatch = currentRole && currentRole !== 'SHOP_MANAGER' && currentRole !== 'SYSTEM_ADMIN';
+    if (roleMismatch) {
+      localStorage.removeItem('token');
+      localStorage.setItem('user', JSON.stringify({
+        role: 'SHOP_MANAGER',
+        email: 'shop@techstore.vn',
+        fullName: 'Trần Văn Chủ Shop'
+      }));
+    } else if (!currentUserStr) {
+      localStorage.setItem('user', JSON.stringify({
+        role: 'SHOP_MANAGER',
+        email: 'shop@techstore.vn',
+        fullName: 'Trần Văn Chủ Shop'
+      }));
+    }
+
+    // Nếu chưa có token hoặc token cũ dạng session-, tự động lấy JWT thật
+    if (roleMismatch || !currentToken || currentToken.startsWith('session-')) {
+      localStorage.removeItem('token');
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'shop@techstore.vn', password: 'Password@123' })
+      }).then(r => r.json()).then(res => {
+        const tok = res?.data?.accessToken || res?.accessToken;
+        const u = res?.data?.user || res?.user;
+        if (tok && u) {
+          localStorage.setItem('token', tok);
+          localStorage.setItem('user', JSON.stringify(u));
+          const iframe = document.getElementById('commission-rules-iframe');
+          if (iframe && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage({ type: 'SCANMS_AUTH_SYNC' }, '*'); } catch (e) {}
+          }
+        }
+      }).catch(() => {});
+    }
+  } catch { }
+
+  return `
+    <div style="padding: 0; width: 100%; margin-top: -24px;">
+      <iframe id="commission-rules-iframe" src="/merchant/commission-rules" style="width: 100%; min-height: 520px; height: 850px; border: none; border-radius: 16px; background: transparent; display: block; transition: height 0.2s ease;" scrolling="auto" onload="window.handleIframeAutoHeight && window.handleIframeAutoHeight(this)" title="Cấu hình Mốc Thưởng Doanh Số"></iframe>
+    </div>
+  `;
+}
+
+function kolBonusScreen() {
+  try {
+    const currentToken = localStorage.getItem('token');
+    const currentUserStr = localStorage.getItem('user');
+    let currentRole = null;
+    if (currentUserStr) {
+      try { currentRole = JSON.parse(currentUserStr)?.role; } catch (e) {}
+    }
+
+    // Nếu đang lưu vai trò khác COLLABORATOR (ví dụ SHOP_MANAGER còn sót), xóa token cũ và đổi sang COLLABORATOR
+    const roleMismatch = currentRole && currentRole !== 'COLLABORATOR';
+    if (roleMismatch) {
+      localStorage.removeItem('token');
+      localStorage.setItem('user', JSON.stringify({
+        role: 'COLLABORATOR',
+        email: 'kol1@scanms.vn',
+        fullName: 'Trần Văn Nhật'
+      }));
+    } else if (!currentUserStr) {
+      localStorage.setItem('user', JSON.stringify({
+        role: 'COLLABORATOR',
+        email: 'kol1@scanms.vn',
+        fullName: 'Trần Văn Nhật'
+      }));
+    }
+
+    // Nếu chưa có token hoặc token cũ dạng session-, tự động lấy JWT thật
+    if (roleMismatch || !currentToken || currentToken.startsWith('session-')) {
+      localStorage.removeItem('token');
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'kol1@scanms.vn', password: 'Password@123' })
+      }).then(r => r.json()).then(res => {
+        const tok = res?.data?.accessToken || res?.accessToken;
+        const u = res?.data?.user || res?.user;
+        if (tok && u) {
+          localStorage.setItem('token', tok);
+          localStorage.setItem('user', JSON.stringify(u));
+          const iframe = document.getElementById('kol-bonus-iframe');
+          if (iframe && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage({ type: 'SCANMS_AUTH_SYNC' }, '*'); } catch (e) {}
+          }
+        }
+      }).catch(() => {});
+    }
+  } catch { }
+
+  return `
+    <div style="padding: 0; width: 100%; margin-top: -16px;">
+      <iframe id="kol-bonus-iframe" src="/collaborator/bonus-progress" style="width: 100%; min-height: 600px; height: 950px; border: none; border-radius: 18px; background: transparent; display: block; transition: height 0.2s ease;" scrolling="auto" onload="window.handleIframeAutoHeight && window.handleIframeAutoHeight(this)" title="Tiến Độ Mốc Thưởng Doanh Số"></iframe>
+    </div>
+  `;
+}
+
 const renderers = {
   auth: authScreen,
   "kol-dashboard": dashboard,
@@ -2965,12 +3332,15 @@ const renderers = {
   channels: channelsScreen,
   media: mediaPage,
   samples: samplesPage,
+  "kol-bonus": kolBonusScreen,
   leaderboard: leaderboardScreen,
   wallet: walletScreen,
+  "kol-profile": kolProfileScreen,
 
   "shop-dashboard": shopDashboard,
   catalog: catalogScreen,
   "shop-campaigns": shopCampaignsScreen,
+  "commission-rules": commissionRulesScreen,
   "shop-collaborators": shopCollaboratorsScreen,
   orders: ordersScreen,
   payouts: payoutsScreen,
@@ -2979,6 +3349,7 @@ const renderers = {
   "shop-customer-requests": shopCustomerRequestsScreen,
   fraud: fraudScreen,
   "shop-settings": shopSettingsScreen,
+  "shop-profile": shopProfileScreen,
 
   "manager-dashboard": managerDashboardScreen,
   "manager-stores": managerStoresScreen,
@@ -2995,6 +3366,7 @@ const renderers = {
   "admin-users": adminUsersScreen,
   "admin-audit": adminAuditScreen,
   "admin-config": adminSystemConfigScreen,
+  "admin-profile": adminProfileScreen,
 
   "customer-profile": customerProfileScreen,
   "customer-orders": customerOrdersScreen,
@@ -3052,8 +3424,8 @@ function forbiddenScreen(requiredRole, currentRole, screenId) {
         <button class="btn secondary" data-go="${defaultScreen}">
           <i class="ph ph-arrow-left"></i> Quay lại màn hình của tôi
         </button>
-        <button class="btn" data-switch-role-to="${requiredRole}" data-target-screen="${screenId}">
-          <i class="ph ph-swap"></i> Chuyển sang vai trò ${targetName} (Demo)
+        <button class="btn" onclick="window.logoutScanms(event)">
+          <i class="ph ph-sign-out"></i> Đăng xuất để đổi tài khoản
         </button>
       </div>
     </div>
@@ -3068,7 +3440,7 @@ function shell(content) {
   const isCustomer = state.role === "customer";
 
   let activeScreens = screens.filter(
-    (screen) => screen.role !== "auth" && (screen.role === state.role || screen.role === "both" || screen.role === "public")
+    (screen) => screen.role !== "auth" && (screen.role === state.role || screen.role === "both" || screen.role === "public" || (state.role === "admin" && screen.id === "manager-stores"))
   );
 
   if (isCustomer) {
@@ -3098,58 +3470,63 @@ function shell(content) {
   const isStorefront = state.screen === "storefront";
   const hideSidebar = isAuth || isMarketplace;
 
-  let userProfile = {
-    avatar: "N",
-    name: "Trần Văn Nhật",
-    sub: "KOL hạng Vàng (Collaborator)",
-    avatarBg: "var(--brand-soft)",
-    avatarColor: "var(--brand-strong)",
-  };
+  // Dynamic profiles loaded from localStorage
+  let kolSaved = null, shopSaved = null, mgrSaved = null, admSaved = null, custSaved = null;
+  try { kolSaved = JSON.parse(localStorage.getItem("scanms_profile_kol")); } catch (e) {}
+  try { shopSaved = JSON.parse(localStorage.getItem("scanms_profile_shop")); } catch (e) {}
+  try { mgrSaved = JSON.parse(localStorage.getItem("scanms_profile_manager")); } catch (e) {}
+  try { admSaved = JSON.parse(localStorage.getItem("scanms_profile_admin")); } catch (e) {}
+  try { custSaved = JSON.parse(localStorage.getItem("scanms_profile_customer")); } catch (e) {}
+
+  const kolName = kolSaved?.name || "Trần Văn Nhật";
+  const kolEmail = kolSaved?.email || "kol@scanms.vn";
+
+  const curSt = state.currentStore || state.pendingShop;
+  const isPending = curSt && (curSt.status === "pending" || curSt.status === "reviewing");
+  const shopName = shopSaved?.storeName || (curSt && curSt.name ? curSt.name : "Sora Skin Official");
+  const shopEmail = shopSaved?.email || "shop@techstore.vn";
+
+  const mgrName = mgrSaved?.name || "Lê Hồng Phúc";
+  const mgrEmail = mgrSaved?.email || "manager@scanms.vn";
+
+  const admName = admSaved?.name || "Nguyễn Thành Thắng";
+  const admEmail = admSaved?.email || "admin@scanms.vn";
+
+  const custName = custSaved?.name || "Nguyễn Hải Yến";
+  const custEmail = custSaved?.email || "haiyen.nguyen@gmail.com";
+
+  const kolAvatarImg = kolSaved?.avatarImg || null;
+  const shopAvatarImg = shopSaved?.avatarImg || null;
+  const mgrAvatarImg = mgrSaved?.avatarImg || null;
+  const admAvatarImg = admSaved?.avatarImg || null;
+  const custAvatarImg = custSaved?.avatarImg || null;
+
+  const allAccounts = [
+    { role: "kol", name: kolName, email: kolEmail, avatarImg: kolAvatarImg, sub: "KOL hạng Vàng (Collaborator)", roleTitle: "KOL / Tiếp Thị", roleBadge: "KOL Hạng Vàng", roleIcon: "ph-fill ph-sparkle", avatar: kolName.charAt(0).toUpperCase(), bg: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)", color: "#92400e", defaultScreen: "kol-dashboard", profileScreen: "kol-profile" },
+    { role: "shop", name: shopName, email: shopEmail, avatarImg: shopAvatarImg, sub: isPending ? "Chủ shop (Chờ duyệt)" : "Chủ gian hàng Mall", roleTitle: "Chủ Gian Hàng", roleBadge: isPending ? "Shop Chờ Duyệt" : "Mall Verified", roleIcon: "ph-fill ph-storefront", avatar: shopName.charAt(0).toUpperCase(), bg: isPending ? "linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%)" : "linear-gradient(135deg, #fed7aa 0%, #fcd34d 100%)", color: isPending ? "#b45309" : "#7c2d12", defaultScreen: "shop-dashboard", profileScreen: "shop-profile" },
+    { role: "manager", name: mgrName, email: mgrEmail, avatarImg: mgrAvatarImg, sub: "Vận hành sàn (SM-0042)", roleTitle: "Vận Hành Sàn", roleBadge: "SM-0042 • Vận Hành", roleIcon: "ph-fill ph-shield-check", avatar: "VH", bg: "linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)", color: "#3730a3", defaultScreen: "manager-dashboard", profileScreen: "manager-profile" },
+    { role: "admin", name: admName, email: admEmail, avatarImg: admAvatarImg, sub: "Quản trị hệ thống (Root)", roleTitle: "Quản Trị Root", roleBadge: "Master Root Admin", roleIcon: "ph-fill ph-lock-key", avatar: "QT", bg: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)", color: "#e0e7ff", defaultScreen: "admin-dashboard", profileScreen: "admin-profile" },
+    { role: "customer", name: custName, email: custEmail, avatarImg: custAvatarImg, sub: "Khách mua hàng VIP", roleTitle: "Khách Mua Hàng", roleBadge: "Customer VIP Gold", roleIcon: "ph-fill ph-crown", avatar: custName.charAt(0).toUpperCase(), bg: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)", color: "#166534", defaultScreen: "customer-profile", profileScreen: "customer-profile" },
+  ];
+
+  let userProfile = allAccounts.find(a => a.role === state.role) || allAccounts[0];
   let brandSub = "Không gian KOL / CTV";
   let navTitle = `Chức năng KOL / CTV (${activeScreens.length})`;
   let roleBadgeName = "KOL / CTV";
 
   if (isShop) {
-    userProfile = {
-      avatar: "S",
-      name: "Sora Skin Official",
-      sub: "Chủ gian hàng",
-      avatarBg: "#F5E7CC",
-      avatarColor: "#7A561B",
-    };
-    brandSub = "Không gian Chủ Shop";
+    brandSub = isPending ? "Hồ sơ đang chờ phê duyệt" : "Không gian Chủ Shop";
     navTitle = `Chức năng Chủ Shop (${activeScreens.length})`;
-    roleBadgeName = "Chủ Shop";
+    roleBadgeName = isPending ? "Chủ Shop • Chờ duyệt" : "Chủ Shop";
   } else if (isManager) {
-    userProfile = {
-      avatar: "VH",
-      name: "Lê Hồng Phúc",
-      sub: "Chuyên viên Vận Hành Sàn",
-      avatarBg: "#e0e7ff",
-      avatarColor: "#4338ca",
-    };
     brandSub = "Không gian Vận Hành Sàn";
     navTitle = `Vận Hành Nền Tảng (${activeScreens.length})`;
     roleBadgeName = "Vận Hành Sàn";
   } else if (isAdmin) {
-    userProfile = {
-      avatar: "QT",
-      name: "Nguyễn Thành Thắng",
-      sub: "Quản trị viên Hệ thống",
-      avatarBg: "#1e1b4b",
-      avatarColor: "#a5b4fc",
-    };
     brandSub = "Không gian Quản Trị Kỹ Thuật";
     navTitle = `Quản Trị Hệ Thống (${activeScreens.length})`;
     roleBadgeName = "Quản Trị Hệ Thống";
   } else if (isCustomer) {
-    userProfile = {
-      avatar: "KH",
-      name: "Nguyễn Hải Yến",
-      sub: "Khách Mua Hàng (Customer VIP)",
-      avatarBg: "#fef3c7",
-      avatarColor: "#b45309",
-    };
     brandSub = "Khu Vực Khách Hàng";
     navTitle = `Tài Khoản & Mua Sắm (${activeScreens.length})`;
     roleBadgeName = "Khách Hàng";
@@ -3206,21 +3583,75 @@ function shell(content) {
     <main class="main">
       ${hideSidebar ? "" : `
       <header class="topbar">
-        <div class="crumb"><span>Thiết kế / </span><strong>${current ? current.label : 'Màn hình'}</strong></div>
+        <div class="crumb"><strong>${current ? current.label : 'Màn hình'}</strong></div>
         <div class="top-actions">
           <a href="./figma-board.html" target="_blank" class="btn small secondary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid color-mix(in srgb, var(--brand) 40%, var(--line));color:var(--brand);font-weight:700" title="Mở Ma Trận 22 Màn Hình Figma Canvas">
             <i class="ph ph-squares-four"></i> Ma Trận Figma
           </a>
           <button class="icon-btn" data-theme aria-label="Đổi giao diện">${icon(state.theme === "dark" ? "ph-sun" : "ph-moon")}</button>
           <button class="icon-btn" aria-label="Thông báo">${icon("ph-bell")}</button>
-          <div class="profile">
-            <span class="avatar" style="background:${userProfile.avatarBg};color:${userProfile.avatarColor}">${userProfile.avatar}</span>
-            <div><strong>${userProfile.name}</strong><small>${userProfile.sub}</small></div>
+          
+          <!-- Redesigned Luxury Profile Button -->
+          <div class="profile topbar-profile-btn" id="topbar-profile-btn" onclick="window.toggleProfilePopover(event)" role="button" tabindex="0" title="Click để xem thông tin hồ sơ và đăng xuất">
+            <div class="profile-avatar-wrapper">
+              <div class="profile-avatar-circle" style="background:${userProfile.bg};color:${userProfile.color}">
+                ${userProfile.avatarImg ? `<img src="${userProfile.avatarImg}" alt="${userProfile.name}" />` : userProfile.avatar}
+              </div>
+              <span class="profile-online-badge" title="Tài khoản đang hoạt động"></span>
+            </div>
+            <div class="profile-text-block hide-mobile">
+              <div class="profile-name-line">${userProfile.name}</div>
+              <span class="profile-role-pill role-${userProfile.role}">
+                <i class="${userProfile.roleIcon}"></i> ${userProfile.roleBadge}
+              </span>
+            </div>
+            <div class="profile-caret-pill" title="Xem hồ sơ & Đăng xuất">
+              <i class="ph ph-caret-down"></i>
+            </div>
+
+            <!-- Glassmorphic Profile Popover -->
+            <div class="profile-popover" id="topbar-profile-popover" onclick="event.stopPropagation()">
+              <!-- Popover Header -->
+              <div class="profile-popover-header">
+                <div class="profile-avatar-wrapper">
+                  <div class="profile-popover-avatar" id="popover-avatar-trigger" onclick="window.triggerPopoverAvatarUpload(event)" style="background:${userProfile.bg};color:${userProfile.color}" title="Bấm vào ảnh để đổi Avatar từ máy tính">
+                    ${userProfile.avatarImg ? `<img src="${userProfile.avatarImg}" alt="${userProfile.name}" />` : userProfile.avatar}
+                    <div class="profile-popover-avatar-overlay">
+                      <i class="ph ph-camera"></i>
+                      <span>Đổi ảnh</span>
+                    </div>
+                  </div>
+                  <input type="file" id="popover-avatar-file" accept="image/*" style="display:none" onchange="window.handlePopoverAvatarChange(this)" />
+                  <span class="profile-online-badge" style="width:13px;height:13px;bottom:1px;right:1px"></span>
+                </div>
+                <div class="profile-popover-userinfo">
+                  <div class="profile-popover-name" title="${userProfile.name}">${userProfile.name}</div>
+                  <span class="profile-role-pill role-${userProfile.role}"><i class="${userProfile.roleIcon}"></i> ${userProfile.roleBadge}</span>
+                  <div class="profile-popover-email" title="${userProfile.email}">${userProfile.email}</div>
+                </div>
+              </div>
+
+              <!-- Profile Popover Actions -->
+              <div class="profile-popover-actions">
+                <button class="profile-popover-btn" onclick="window.openProfileScreen(event)" data-popover-action="view-profile">
+                  <i class="ph ph-user-circle"></i>
+                  <span>Hồ sơ chi tiết (${userProfile.roleTitle})</span>
+                </button>
+                <button class="profile-popover-btn" onclick="window.openProfileSecurity(event)" data-popover-action="change-password">
+                  <i class="ph ph-lock-key"></i>
+                  <span>Đổi mật khẩu & Bảo mật</span>
+                </button>
+                <button class="profile-popover-btn danger" onclick="window.logoutScanms(event)" data-popover-action="logout">
+                  <i class="ph ph-sign-out"></i>
+                  <span>Đăng xuất tài khoản</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </header>
       `}
-      <div class="page">${content}</div>
+      <div class="page ${state.screen === 'kol-bonus' ? 'page-wide' : ''}">${content}</div>
     </main>
   </div>`;
 }
@@ -3231,6 +3662,10 @@ function render() {
     state.role = prefRole;
     sessionStorage.removeItem("scanms-preferred-role");
   }
+  try {
+    localStorage.setItem("scanms-current-role", state.role);
+    localStorage.setItem("scanms-current-screen", state.screen);
+  } catch (e) { }
   const previousNav = document.querySelector(".screen-nav");
   if (previousNav) {
     state.navScrollTop = previousNav.scrollTop;
@@ -3253,7 +3688,7 @@ function render() {
   let pageContent = "";
   const isAuth = state.screen === "auth";
   const isPublic = targetScr && (targetScr.role === "both" || targetScr.role === "public" || targetScr.role === "auth");
-  const isAuthorized = isAuth || isPublic || (targetScr && targetScr.role === state.role);
+  const isAuthorized = isAuth || isPublic || (targetScr && (targetScr.role === state.role || (state.role === "admin" && (targetScr.role === "manager" || targetScr.id === "manager-stores" || targetScr.id === "manager-store-detail"))));
 
   if (targetScr && !isAuthorized) {
     // Show 403 Forbidden Screen without transforming user's role
@@ -3283,6 +3718,16 @@ function renderCurrentPage() {
 function go(screen) {
   state.screen = screen;
   state.search = "";
+  try {
+    localStorage.setItem("scanms-current-screen", screen);
+    const scrObj = screens.find(s => s.id === screen);
+    if (scrObj && scrObj.role && scrObj.role !== "both" && scrObj.role !== "public" && scrObj.role !== "auth") {
+      if (!(state.role === "admin" && (scrObj.role === "manager" || scrObj.id === "manager-stores" || scrObj.id === "manager-store-detail"))) {
+        state.role = scrObj.role;
+        localStorage.setItem("scanms-current-role", scrObj.role);
+      }
+    }
+  } catch (e) { }
   history.replaceState(null, "", `#${screen}`);
   render();
   scrollTo(0, 0);
@@ -3319,6 +3764,83 @@ function modal(type) {
 }
 
 function closeModal() { document.querySelector("#modal-root").innerHTML = ""; }
+
+function openPendingShopApprovalModal(store) {
+  const modalRoot = document.querySelector("#modal-root");
+  if (!modalRoot) return;
+
+  const content = `
+    <div class="pending-shop-modal" style="max-width:540px;width:100%;padding:4px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line,#e2e8f0)">
+        <div style="width:50px;height:50px;border-radius:14px;background:#fef3c7;color:#d97706;display:grid;place-items:center;font-size:26px;flex-shrink:0">
+          <i class="ph ph-hourglass-high"></i>
+        </div>
+        <div>
+          <h2 style="margin:0;font-size:18px;color:var(--text);font-weight:800">Đăng Ký Thành Công - Hồ Sơ Chờ Phê Duyệt</h2>
+          <p style="margin:2px 0 0;font-size:13px;color:var(--muted)">Hồ sơ gian hàng đã được chuyển đến Ban Quản Trị &amp; Vận Hành Sàn</p>
+        </div>
+      </div>
+
+      <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:14px 16px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:11.5px;font-weight:800;color:#92400e;letter-spacing:0.06em;text-transform:uppercase">Hồ sơ gian hàng mới tiếp nhận</span>
+          <span class="badge warning" style="background:#f59e0b;color:#fff;font-weight:700;font-size:11px;padding:3px 8px;border-radius:999px"><i class="ph ph-clock"></i> ĐANG CHỜ DUYỆT</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;color:#78350f">
+          <div>Mã hồ sơ: <strong style="color:#451a03">${store.id}</strong></div>
+          <div>Tên gian hàng: <strong style="color:#451a03">${escapeHtml(store.name)}</strong></div>
+          <div>Chủ sở hữu: <strong style="color:#451a03">${escapeHtml(store.owner)}</strong></div>
+          <div>Số điện thoại: <strong style="color:#451a03">${escapeHtml(store.phone)}</strong></div>
+          <div style="grid-column:span 2">Email đăng nhập: <strong style="color:#451a03">${escapeHtml(store.email)}</strong></div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface-alt,#f8fafc);border:1px solid var(--line,#e2e8f0);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:var(--text);line-height:1.55">
+        <strong style="display:flex;align-items:center;gap:6px;color:#b45309;margin-bottom:4px">
+          <i class="ph ph-shield-check"></i> Quy trình thẩm định bắt buộc của sàn:
+        </strong>
+        <p style="margin:0 0 6px">Theo quy chuẩn sàn SCANMS, gian hàng của bạn <strong>chưa thể mở bán ngay</strong> mà cần được <strong>Admin &amp; Chuyên viên Vận Hành sàn thẩm định giấy phép kinh doanh</strong> trong vòng <strong>24 giờ làm việc</strong>.</p>
+        <p style="margin:0;color:var(--muted)">Bây giờ hệ thống sẽ chuyển sang <strong>màn hình Đăng nhập</strong> để bạn nhập tài khoản và mật khẩu vừa tạo theo dõi tiến độ.</p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button type="button" class="btn btn-primary" id="btn-modal-to-login" style="width:100%;justify-content:center;background:linear-gradient(135deg,#eab308,#ca8a04);color:#fff;border:none;padding:11px;font-weight:700;border-radius:10px">
+          <i class="ph ph-sign-in"></i> Đã hiểu, chuyển sang Đăng nhập lại
+        </button>
+        <button type="button" class="btn secondary" id="btn-modal-demo-review" style="width:100%;justify-content:center;border-radius:10px;font-size:12.5px">
+          <i class="ph ph-shield-check" style="color:#2563eb"></i> [DEMO] Chuyển sang vai trò Vận Hành Sàn để duyệt hồ sơ này ngay
+        </button>
+      </div>
+    </div>
+  `;
+
+  modalRoot.innerHTML = `<div class="modal-backdrop" data-close-modal><section class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div>${content}</div><button class="icon-btn" data-close-modal aria-label="Đóng">${icon("ph-x")}</button></div></section></div>`;
+  const modalEl = modalRoot.querySelector(".modal");
+  const inner = modalEl.querySelector(".modal-head > div");
+  modalEl.innerHTML = `<div class="modal-head"><div></div><button class="icon-btn" data-close-modal aria-label="Đóng">${icon("ph-x")}</button></div>`;
+  modalEl.querySelector(".modal-head > div").replaceWith(inner);
+  bindModal();
+
+  modalRoot.querySelector("#btn-modal-to-login")?.addEventListener("click", () => {
+    closeModal();
+    const pwInput = document.querySelector("#login-password");
+    if (pwInput) {
+      pwInput.value = "";
+      pwInput.focus();
+    }
+    toast(`Vui lòng nhập mật khẩu tài khoản ${store.email} để đăng nhập.`);
+  });
+
+  modalRoot.querySelector("#btn-modal-demo-review")?.addEventListener("click", () => {
+    closeModal();
+    state.role = "manager";
+    managerState.activeStoreFilter = "pending";
+    managerState.selectedStoreDetailId = store.id;
+    try { localStorage.setItem("scanms-current-role", "manager"); } catch (e) { }
+    go("manager-stores");
+    toast(`Đã chuyển sang Vận Hành Sàn (Màn hình 16). Hãy nhấn 'Duyệt' để kích hoạt gian hàng ${store.name}.`);
+  });
+}
 
 function bindModal() {
   document.querySelectorAll("[data-close-modal]").forEach((el) => el.addEventListener("click", (event) => {
@@ -4038,6 +4560,291 @@ function bind(root = document) {
     toast("Đã sao chép vào bộ nhớ tạm.");
   }));
 
+  // Topbar Profile Popover Global Actions & Account Switcher
+  window.triggerPopoverAvatarUpload = function(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const fileInput = document.querySelector("#popover-avatar-file");
+    if (fileInput) {
+      fileInput.click();
+    }
+  };
+
+  window.handlePopoverAvatarChange = async function(input) {
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast("Vui lòng chọn tệp định dạng hình ảnh hợp lệ!", "error");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast("Kích thước ảnh tối đa là 10MB!", "error");
+      return;
+    }
+
+    try {
+      const base64 = await compressAvatarImage(file, 256, 0.82);
+      const curRole = state.role;
+      if (curRole === "kol") {
+        kolProfileState.profile.avatarImg = base64;
+        safeSaveProfile("scanms_profile_kol", kolProfileState.profile);
+      } else if (curRole === "shop") {
+        shopProfileState.profile.avatarImg = base64;
+        safeSaveProfile("scanms_profile_shop", shopProfileState.profile);
+      } else if (curRole === "manager") {
+        managerProfileState.profile.avatarImg = base64;
+        safeSaveProfile("scanms_profile_manager", managerProfileState.profile);
+      } else if (curRole === "admin") {
+        adminProfileState.profile.avatarImg = base64;
+        safeSaveProfile("scanms_profile_admin", adminProfileState.profile);
+      } else if (curRole === "customer") {
+        customerState.profile.avatarImg = base64;
+        safeSaveProfile("scanms_profile_customer", customerState.profile);
+      }
+
+      toast("Đã đổi ảnh đại diện tài khoản thành công!", "success");
+
+      // Re-render and keep the popover open so the user immediately sees the updated avatar!
+      render();
+      setTimeout(() => {
+        const popover = document.querySelector("#topbar-profile-popover");
+        const btn = document.querySelector("#topbar-profile-btn");
+        if (popover) popover.classList.add("show");
+        if (btn) btn.classList.add("popover-open");
+      }, 40);
+    } catch (err) {
+      console.error("Lỗi khi nén ảnh avatar từ popover:", err);
+      toast("Có lỗi khi xử lý ảnh đại diện. Vui lòng thử ảnh khác!", "error");
+    }
+  };
+
+  window.toggleProfilePopover = function(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const popover = document.querySelector("#topbar-profile-popover");
+    const btn = document.querySelector("#topbar-profile-btn");
+    if (!popover) return;
+    const isShow = popover.classList.contains("show");
+    if (isShow) {
+      popover.classList.remove("show");
+      btn?.classList.remove("popover-open");
+    } else {
+      popover.classList.add("show");
+      btn?.classList.add("popover-open");
+    }
+  };
+
+  window.handleIframeAutoHeight = function(iframe) {
+    if (!iframe) return;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      if (doc && doc.body) {
+        const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 480);
+        iframe.style.height = (h + 10) + 'px';
+      }
+    } catch (e) {}
+  };
+
+  // Lắng nghe thông điệp tự động co giãn chiều cao và đồng bộ xác thực từ ứng dụng React trong iframe
+  if (!window.__scanmsIframeListenerAttached) {
+    window.__scanmsIframeListenerAttached = true;
+    window.addEventListener('message', function(e) {
+      if (e.data && (e.data.type === 'SCANMS_IFRAME_RESIZE' || e.data.type === 'SCANMS_RESIZE_IFRAME') && typeof e.data.height === 'number') {
+        const kolIframe = document.getElementById('kol-bonus-iframe');
+        if (kolIframe) {
+          kolIframe.style.height = Math.max(e.data.height + 15, 480) + 'px';
+        }
+        const shopIframe = document.getElementById('commission-rules-iframe');
+        if (shopIframe) {
+          shopIframe.style.height = Math.max(e.data.height + 15, 480) + 'px';
+        }
+      }
+    });
+  }
+
+  window.switchScanmsRole = function(targetRole, e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const popover = document.querySelector("#topbar-profile-popover");
+    const btn = document.querySelector("#topbar-profile-btn");
+    if (popover) popover.classList.remove("show");
+    if (btn) btn.classList.remove("popover-open");
+
+    if (targetRole && targetRole !== state.role) {
+      state.role = targetRole;
+      try { localStorage.setItem("scanms-current-role", targetRole); } catch (err) {}
+
+      // Đồng bộ xác thực với ứng dụng React bên trong iframe
+      try {
+        if (targetRole === 'kol') {
+          // Xóa token / role của SHOP_MANAGER còn sót khi đổi sang KOL
+          localStorage.removeItem('token');
+          localStorage.setItem('user', JSON.stringify({
+            role: 'COLLABORATOR',
+            email: 'kol1@scanms.vn',
+            fullName: 'Trần Văn Nhật'
+          }));
+          // Lấy Access Token JWT thật từ backend
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'kol1@scanms.vn', password: 'Password@123' })
+          }).then(r => r.json()).then(res => {
+            const tok = res?.data?.accessToken || res?.accessToken;
+            const u = res?.data?.user || res?.user;
+            if (tok && u) {
+              localStorage.setItem('token', tok);
+              localStorage.setItem('user', JSON.stringify(u));
+              document.querySelectorAll('iframe').forEach(ifr => {
+                try { ifr.contentWindow.postMessage({ type: 'SCANMS_AUTH_SYNC' }, '*'); } catch (err) {}
+              });
+            }
+          }).catch(() => {});
+        } else if (targetRole === 'shop') {
+          // Xóa token / role của COLLABORATOR còn sót khi đổi sang Shop
+          localStorage.removeItem('token');
+          localStorage.setItem('user', JSON.stringify({
+            role: 'SHOP_MANAGER',
+            email: 'shop@techstore.vn',
+            fullName: 'Trần Văn Chủ Shop'
+          }));
+          // Lấy Access Token JWT thật từ backend
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'shop@techstore.vn', password: 'Password@123' })
+          }).then(r => r.json()).then(res => {
+            const tok = res?.data?.accessToken || res?.accessToken;
+            const u = res?.data?.user || res?.user;
+            if (tok && u) {
+              localStorage.setItem('token', tok);
+              localStorage.setItem('user', JSON.stringify(u));
+              document.querySelectorAll('iframe').forEach(ifr => {
+                try { ifr.contentWindow.postMessage({ type: 'SCANMS_AUTH_SYNC' }, '*'); } catch (err) {}
+              });
+            }
+          }).catch(() => {});
+        } else if (targetRole === 'admin') {
+          localStorage.removeItem('token');
+          localStorage.setItem('user', JSON.stringify({
+            role: 'SYSTEM_ADMIN',
+            email: 'admin@scanms.vn',
+            fullName: 'Nguyễn Thành Thắng'
+          }));
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'admin@scanms.vn', password: 'Password@123' })
+          }).then(r => r.json()).then(res => {
+            const tok = res?.data?.accessToken || res?.accessToken;
+            const u = res?.data?.user || res?.user;
+            if (tok && u) {
+              localStorage.setItem('token', tok);
+              localStorage.setItem('user', JSON.stringify(u));
+              document.querySelectorAll('iframe').forEach(ifr => {
+                try { ifr.contentWindow.postMessage({ type: 'SCANMS_AUTH_SYNC' }, '*'); } catch (err) {}
+              });
+            }
+          }).catch(() => {});
+        } else if (targetRole === 'manager') {
+          localStorage.removeItem('token');
+          localStorage.setItem('user', JSON.stringify({
+            role: 'SYSTEM_MANAGER',
+            email: 'manager@scanms.vn',
+            fullName: 'Lê Hồng Phúc'
+          }));
+        }
+      } catch (err) {}
+
+      const targetScreen = getDefaultScreenForRole(targetRole);
+      toast(`Đã chuyển vai trò sang: ${targetRole.toUpperCase()}`);
+      go(targetScreen);
+    }
+  };
+
+  window.openProfileScreen = function(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const popover = document.querySelector("#topbar-profile-popover");
+    const btn = document.querySelector("#topbar-profile-btn");
+    if (popover) popover.classList.remove("show");
+    if (btn) btn.classList.remove("popover-open");
+
+    const profileScreens = {
+      kol: "kol-profile",
+      shop: "shop-profile",
+      manager: "manager-profile",
+      admin: "admin-profile",
+      customer: "customer-profile"
+    };
+    go(profileScreens[state.role] || "kol-profile");
+  };
+
+  window.openProfileSecurity = function(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const popover = document.querySelector("#topbar-profile-popover");
+    const btn = document.querySelector("#topbar-profile-btn");
+    if (popover) popover.classList.remove("show");
+    if (btn) btn.classList.remove("popover-open");
+
+    if (state.role === "kol") {
+      try { kolProfileState.activeTab = "security"; } catch (err) {}
+    } else if (state.role === "shop") {
+      try { shopProfileState.activeTab = "security"; } catch (err) {}
+    } else if (state.role === "manager") {
+      try { managerProfileState.activeTab = "security"; } catch (err) {}
+    } else if (state.role === "admin") {
+      try { adminProfileState.activeTab = "security"; } catch (err) {}
+    } else if (state.role === "customer") {
+      try { customerState.activeProfileTab = "security"; } catch (err) {}
+    }
+    const profileScreens = {
+      kol: "kol-profile",
+      shop: "shop-profile",
+      manager: "manager-profile",
+      admin: "admin-profile",
+      customer: "customer-profile"
+    };
+    go(profileScreens[state.role] || "kol-profile");
+  };
+
+  window.logoutScanms = function(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const popover = document.querySelector("#topbar-profile-popover");
+    const btn = document.querySelector("#topbar-profile-btn");
+    if (popover) popover.classList.remove("show");
+    if (btn) btn.classList.remove("popover-open");
+
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("scanms_token");
+      localStorage.removeItem("scanms_user");
+      localStorage.removeItem("scanms-current-role");
+      sessionStorage.removeItem("scanms-preferred-role");
+    } catch (err) {}
+
+    state.screen = "auth";
+    state.authMode = "login";
+    toast("Đã đăng xuất tài khoản. Vui lòng đăng nhập vào vai trò bạn muốn.");
+    renderCurrentPage();
+  };
+
   // Auth Mode (Login vs Register) & Role switcher
   root.querySelectorAll("[data-auth-mode]").forEach((el) => el.addEventListener("click", () => {
     if (state.authMode === "register") {
@@ -4239,6 +5046,13 @@ function bind(root = document) {
   // Submit Login
   root.querySelector("[data-action='login']")?.addEventListener("submit", (event) => {
     event.preventDefault();
+    const pwInput = root.querySelector("#login-password")?.value;
+    if (!pwInput) {
+      toast("Vui lòng nhập mật khẩu để đăng nhập.");
+      root.querySelector("#login-password")?.focus();
+      return;
+    }
+
     const roleNames = {
       admin: "Quản Trị Hệ Thống",
       manager: "Vận Hành Sàn",
@@ -4248,6 +5062,20 @@ function bind(root = document) {
     };
     const roleName = roleNames[state.role] || "Thành viên";
     const targetScreen = getDefaultScreenForRole(state.role);
+
+    if (state.role === "shop") {
+      const emailInput = root.querySelector("#login-email")?.value.trim().toLowerCase();
+      const st = managerState.stores.find(s => s.email.toLowerCase() === emailInput) || state.pendingShop;
+      if (st) {
+        state.currentStore = st;
+      }
+      if (st && (st.status === "pending" || st.status === "reviewing")) {
+        toast(`Đăng nhập thành công! Gian hàng "${st.name}" đang trong trạng thái CHỜ XÉT DUYỆT.`);
+        go(targetScreen);
+        return;
+      }
+    }
+
     go(targetScreen);
     toast(`Đăng nhập thành công với vai trò ${roleName}.`);
   });
@@ -4257,16 +5085,18 @@ function bind(root = document) {
     event.preventDefault();
     saveCurrentRegFormValues(root);
     const name = state.regData?.name?.trim() || root.querySelector("#reg-name")?.value.trim() || "Thành viên mới";
+    const email = state.regData?.email?.trim() || root.querySelector("#reg-email")?.value.trim() || "";
+    const phone = state.regData?.phone?.trim() || root.querySelector("#reg-phone")?.value.trim() || "";
+    const shopName = state.regData?.shopName?.trim() || root.querySelector("#reg-shop-name")?.value.trim() || "Gian hàng mới";
     const pass = state.regData?.password || root.querySelector("#reg-password")?.value;
     const confirm = state.regData?.confirm || root.querySelector("#reg-confirm")?.value;
     const terms = state.regData?.terms || root.querySelector("#reg-terms")?.checked;
     const roleNames = {
-      kol: "Collaborator (KOL / CTV)",
-      shop: "Shop Manager (Chủ Shop)",
-      customer: "Customer (Khách mua hàng)"
+      kol: "Cộng Tác Viên (KOL / CTV)",
+      shop: "Chủ Cửa Hàng",
+      customer: "Khách Mua Hàng"
     };
     const roleName = roleNames[state.role] || "Thành viên";
-    const targetScreen = getDefaultScreenForRole(state.role);
 
     if (!terms) {
       toast("Vui lòng tích chọn đồng ý với Điều khoản dịch vụ & Chính sách của SCANMS.");
@@ -4281,13 +5111,123 @@ function bind(root = document) {
     const submitBtn = root.querySelector("#reg-submit-btn");
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `<i class="ph ph-spinner spin-icon"></i> Đang khởi tạo tài khoản...`;
+      submitBtn.innerHTML = `<i class="ph ph-spinner spin-icon"></i> Đang xử lý hồ sơ...`;
     }
 
     setTimeout(() => {
-      toast(`Đăng ký thành công! Chào mừng ${name} gia nhập hệ thống SCANMS (${roleName}).`);
-      go(targetScreen);
-    }, 600);
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="ph ph-key"></i> Đăng ký ngay`;
+      }
+
+      state.lastRegisteredEmail = email;
+      state.lastRegisteredRole = state.role;
+      try { localStorage.setItem("scanms-last-reg-email", email); } catch (e) { }
+
+      if (state.role === "shop") {
+        // Tạo hồ sơ gian hàng mới với trạng thái PENDING
+        const newStoreId = `STORE-${String(managerState.stores.length + 1).padStart(3, "0")}`;
+        const newStore = {
+          id: newStoreId,
+          name: shopName || "Gian hàng mới",
+          owner: name,
+          email: email,
+          phone: phone,
+          taxCode: "Chưa cập nhật",
+          category: "Thương mại điện tử & Bán lẻ",
+          submittedAt: new Date().toLocaleString("vi-VN"),
+          status: "pending", // CHƯA ĐƯỢC KÍCH HOẠT - CHỜ DUYỆT BỞI ADMIN/VẬN HÀNH
+          productsCount: 0,
+          kolCount: 0,
+          gmv: 0,
+          notes: `Hồ sơ đăng ký trực tuyến gửi bởi ${name}. Đang chờ Ban Quản Trị & Vận Hành Sàn SCANMS thẩm định pháp lý và ngành hàng.`,
+          rejectionReason: "",
+          documents: [`GPKD_${shopName.replace(/\s+/g, '_')}.pdf`, "GiayUyQuyenThuongHieu.pdf"]
+        };
+
+        // Thêm vào danh sách quản trị của Vận Hành Sàn
+        managerState.stores.unshift(newStore);
+        managerState.opsLogs.unshift({
+          id: `LOG-${Date.now().toString().slice(-4)}`,
+          time: "Vừa xong",
+          actor: "Hệ thống Đăng Ký (SCANMS Auth)",
+          action: "TIẾP NHẬN ĐĂNG KÝ SHOP",
+          target: `${newStore.id} (${newStore.name})`,
+          note: `Chủ shop ${name} nộp hồ sơ mở gian hàng mới. Trạng thái: Chờ Vận Hành thẩm định.`
+        });
+
+        state.pendingShop = newStore;
+        state.currentStore = newStore;
+        try { localStorage.setItem("scanms-pending-shop", JSON.stringify(newStore)); } catch (e) { }
+
+        // Chuyển thẳng sang màn hình đăng nhập (state.authMode = "login")
+        state.authMode = "login";
+        state.screen = "auth";
+        state.role = "shop";
+        location.hash = "login";
+        renderCurrentPage();
+
+        toast(`Hồ sơ gian hàng "${newStore.name}" (${newStore.id}) đã được tiếp nhận (Chờ duyệt). Vui lòng nhập mật khẩu để đăng nhập theo dõi tiến độ!`);
+        setTimeout(() => {
+          const pwInput = document.querySelector("#login-password");
+          if (pwInput) {
+            pwInput.value = "";
+            pwInput.focus();
+          }
+        }, 150);
+      } else {
+        // KOL hoặc Khách hàng: chuyển sang màn hình đăng nhập để nhập mật khẩu
+        state.authMode = "login";
+        state.screen = "auth";
+        location.hash = "login";
+        renderCurrentPage();
+        toast(`Đăng ký tài khoản ${roleName} thành công! Vui lòng nhập mật khẩu tài khoản ${email} để đăng nhập.`);
+        setTimeout(() => {
+          const pwInput = document.querySelector("#login-password");
+          if (pwInput) {
+            pwInput.value = "";
+            pwInput.focus();
+          }
+        }, 150);
+      }
+    }, 400);
+  });
+
+  // Quick approve shop action
+  root.querySelectorAll("[data-action='quick-approve-shop']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const storeId = btn.dataset.storeId;
+      const st = managerState.stores.find(s => s.id === storeId) || state.currentStore || state.pendingShop;
+      if (st) {
+        st.status = "approved";
+        if (state.currentStore) state.currentStore.status = "approved";
+        if (state.pendingShop) state.pendingShop.status = "approved";
+        try { localStorage.setItem("scanms-pending-shop", JSON.stringify(st)); } catch (e) { }
+        managerState.opsLogs.unshift({
+          id: `LOG-${Date.now().toString().slice(-4)}`,
+          time: "Vừa xong",
+          actor: "Admin / Chuyên viên Vận Hành",
+          action: "PHÊ DUYỆT GIAN HÀNG",
+          target: `${st.id} (${st.name})`,
+          note: "Đã thẩm định hồ sơ đạt tiêu chuẩn và kích hoạt gian hàng chính thức trên SCANMS."
+        });
+        toast(`Gian hàng "${st.name}" đã được phê duyệt và kích hoạt thành công trên SCANMS!`);
+        renderCurrentPage();
+      }
+    });
+  });
+
+  // Switch to manager review
+  root.querySelectorAll("[data-action='switch-to-manager']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const storeId = btn.dataset.storeId;
+      state.role = "manager";
+      managerState.activeStoreFilter = "pending";
+      if (storeId) managerState.selectedStoreDetailId = storeId;
+      try { localStorage.setItem("scanms-current-role", "manager"); } catch (e) { }
+      go("manager-stores");
+      toast("Đã chuyển sang vai trò Vận Hành Sàn để kiểm tra và duyệt hồ sơ gian hàng.");
+    });
   });
 
   root.querySelector("[data-action='logout']")?.addEventListener("click", () => {
@@ -4415,9 +5355,10 @@ function bind(root = document) {
       const targetRole = btn.dataset.switchRoleTo;
       const targetScr = btn.dataset.targetScreen;
       if (targetRole) {
-        state.role = targetRole;
-        toast(`Đã kích hoạt phiên làm việc vai trò ${targetRole.toUpperCase()}`);
-        go(targetScr || getDefaultScreenForRole(targetRole));
+        window.switchScanmsRole(targetRole);
+        if (targetScr) {
+          go(targetScr);
+        }
       }
     });
   });
@@ -4448,7 +5389,53 @@ function bind(root = document) {
   bindCustomer(root, { toast, go, renderCurrentPage, modal });
   bindAdmin(root, { toast, go, renderCurrentPage });
   bindShopOps(root, { toast, go, renderCurrentPage });
+  bindKolProfile(root, { toast, go, renderCurrentPage });
+  bindShopProfile(root, { toast, go, renderCurrentPage });
+  bindAdminProfile(root, { toast, go, renderCurrentPage });
+
+  // Tự động đồng bộ chiều cao Iframe mốc thưởng để loại bỏ hoàn toàn thanh cuộn lồng nhau (cuộn êm mượt 100%)
+  const crIframe = root.querySelector("#commission-rules-iframe") || root.querySelector("#kol-bonus-iframe");
+  if (crIframe) {
+    const syncIframeHeight = () => {
+      try {
+        if (crIframe.contentDocument && crIframe.contentDocument.body) {
+          const doc = crIframe.contentDocument;
+          doc.documentElement.style.overflow = "hidden";
+          doc.body.style.overflow = "hidden";
+          const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+          if (h > 600) {
+            const curH = parseInt(crIframe.style.height || "0", 10);
+            if (Math.abs(curH - h) > 10) {
+              crIframe.style.height = `${h}px`;
+            }
+          }
+        }
+      } catch (e) { }
+    };
+    crIframe.addEventListener("load", () => {
+      syncIframeHeight();
+      try {
+        if (crIframe.contentDocument && window.ResizeObserver) {
+          const ro = new ResizeObserver(() => syncIframeHeight());
+          ro.observe(crIframe.contentDocument.body);
+        }
+      } catch (e) { }
+    });
+  }
 }
+
+// Lắng nghe resize từ iframe để trang cuộn tự nhiên 1 thanh cuộn duy nhất mượt mà
+window.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SCANMS_RESIZE_IFRAME") {
+    const iframe = document.querySelector("#commission-rules-iframe") || document.querySelector("#kol-bonus-iframe");
+    if (iframe && event.data.height) {
+      const curH = parseInt(iframe.style.height || "0", 10);
+      if (Math.abs(curH - event.data.height) > 10) {
+        iframe.style.height = `${event.data.height}px`;
+      }
+    }
+  }
+});
 
 
 addEventListener("hashchange", () => {
@@ -4470,6 +5457,12 @@ addEventListener("hashchange", () => {
 });
 
 document.addEventListener("click", (e) => {
+  if (!e.target.closest("#topbar-profile-btn") && !e.target.closest("#topbar-profile-popover")) {
+    const p = document.querySelector("#topbar-profile-popover");
+    const b = document.querySelector("#topbar-profile-btn");
+    if (p) p.classList.remove("show");
+    if (b) b.classList.remove("popover-open");
+  }
   if (!e.target.closest(".channel-menu-wrap")) {
     document.querySelectorAll(".channel-action-popover.show").forEach(p => {
       p.classList.remove("show");
@@ -4481,6 +5474,10 @@ document.addEventListener("click", (e) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
+    const p = document.querySelector("#topbar-profile-popover");
+    const b = document.querySelector("#topbar-profile-btn");
+    if (p) p.classList.remove("show");
+    if (b) b.classList.remove("popover-open");
     document.querySelectorAll(".channel-action-popover.show").forEach(p => {
       p.classList.remove("show");
       const trigger = p.closest(".channel-menu-wrap")?.querySelector(".channel-more-btn");

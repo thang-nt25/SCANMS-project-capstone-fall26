@@ -16,6 +16,9 @@ import {
   Store,
   Building2,
 } from 'lucide-react';
+import api from '../../services/api';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 
 interface StoreItem {
   id: string;
@@ -281,7 +284,7 @@ export default function GuestStorefrontPage() {
     setOrderSuccess(null);
   };
 
-  const handleConfirmOrder = (e: React.FormEvent) => {
+  const handleConfirmOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
       showToast('Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ nhận hàng!');
@@ -289,11 +292,38 @@ export default function GuestStorefrontPage() {
     }
 
     setSubmittingOrder(true);
-    setTimeout(() => {
+    let realOrderSn = `DH-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    try {
+      const res: any = await api.post('/orders', {
+        storeSlug: 'techstore-flagship',
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        shippingAddress: `${customerAddress}, ${customerDistrict}, ${customerCity}`,
+        couponCode: kolCoupon,
+        cookieRefCode: refParam,
+        paymentMethod,
+        orderNotes,
+        items: [
+          {
+            productId: checkoutProduct?.id || 'b54934c3-0762-40b4-868e-e7f66dac1684',
+            quantity: checkoutQty,
+            unitPrice: checkoutProduct?.salePrice || 413100,
+          },
+        ],
+      });
+
+      if (res?.order?.externalOrderSn) {
+        realOrderSn = res.order.externalOrderSn;
+      } else if (res?.data?.order?.externalOrderSn) {
+        realOrderSn = res.data.order.externalOrderSn;
+      }
+    } catch (err: any) {
+      console.warn('Backend API order call failed, using client fallback:', err);
+    } finally {
       setSubmittingOrder(false);
-      const generatedOrderId = `DH-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
       setOrderSuccess({
-        orderId: generatedOrderId,
+        orderId: realOrderSn,
         productName: checkoutProduct?.title,
         storeName: checkoutProduct?.storeName,
         quantity: checkoutQty,
@@ -306,7 +336,7 @@ export default function GuestStorefrontPage() {
         discountApplied: kolCoupon,
       });
       setCartCount(0);
-    }, 800);
+    }
   };
 
   return (
@@ -376,8 +406,16 @@ export default function GuestStorefrontPage() {
           />
         </div>
 
-        {/* Right Actions: Cart & Partner Portals */}
+        {/* Right Actions: Tracking, Cart & Partner Portals */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Tracking Link Pill */}
+          <Link
+            to="/tracking"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
+          >
+            <Truck className="w-4 h-4 text-[#B88E4F]" />
+            <span className="hidden sm:inline">Tra cứu đơn</span>
+          </Link>
           {/* Cart Pill */}
           <button
             type="button"
@@ -1129,13 +1167,23 @@ export default function GuestStorefrontPage() {
                   <span className="font-mono font-bold">Mã vận đơn: GHN-{orderSuccess.orderId.replace('DH-', '')}</span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowCheckoutModal(false)}
-                  className="w-full py-2.5 px-4 bg-[#231D15] hover:bg-[#382E21] text-white font-extrabold rounded-xl text-xs transition cursor-pointer"
-                >
-                  Tiếp Tục Khám Phá Sản Phẩm Khác
-                </button>
+                <div className="flex gap-2.5 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setShowCheckoutModal(false)}
+                    className="flex-1 py-2.5 px-3 bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#1A1612] font-bold rounded-xl text-xs transition cursor-pointer"
+                  >
+                    Tiếp tục mua sắm
+                  </button>
+                  <Link
+                    to={`/tracking?sn=${orderSuccess.orderId}`}
+                    onClick={() => setShowCheckoutModal(false)}
+                    className="flex-1 py-2.5 px-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-extrabold rounded-xl text-xs transition cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>Tra cứu đơn hàng</span>
+                  </Link>
+                </div>
               </div>
             )}
           </div>

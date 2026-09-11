@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import api from '../../services/api';
 import type { Campaign } from '../../types/campaigns';
 import './CampaignsPage.css';
@@ -12,7 +11,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_COLOR: Record<string, string> = {
   INVITED: 'badge-pending', ACCEPTED: 'badge-approved', REJECTED: 'badge-rejected',
 };
-const fmtDate = (d: string) => format(new Date(d), 'dd/MM/yyyy', { locale: vi });
+const fmtDate = (d: string) => format(new Date(d), 'dd/MM/yyyy');
 const isExpired = (endDate: string) => new Date(endDate) < new Date();
 
 // ─── Create Campaign Modal ───────────────────────────────────────────────

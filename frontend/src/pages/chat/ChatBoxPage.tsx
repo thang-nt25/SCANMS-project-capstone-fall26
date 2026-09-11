@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import { getChatSocket } from '../../services/chatSocket';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '../../types/chat';
@@ -13,14 +12,14 @@ function formatMsgTime(dateStr: string) {
   const d = new Date(dateStr);
   if (isToday(d)) return format(d, 'HH:mm');
   if (isYesterday(d)) return `Hôm qua ${format(d, 'HH:mm')}`;
-  return format(d, 'dd/MM HH:mm', { locale: vi });
+  return format(d, 'dd/MM HH:mm');
 }
 
 function formatConvTime(dateStr: string) {
   const d = new Date(dateStr);
   if (isToday(d)) return format(d, 'HH:mm');
   if (isYesterday(d)) return 'Hôm qua';
-  return format(d, 'dd/MM/yy', { locale: vi });
+  return format(d, 'dd/MM/yy');
 }
 
 // ============================================================
@@ -359,7 +358,7 @@ export default function ChatBoxPage() {
                             ? 'Hôm nay'
                             : isYesterday(new Date(msg.createdAt))
                             ? 'Hôm qua'
-                            : format(new Date(msg.createdAt), 'dd/MM/yyyy', { locale: vi })}
+                            : format(new Date(msg.createdAt), 'dd/MM/yyyy')}
                         </span>
                       </div>
                     )}

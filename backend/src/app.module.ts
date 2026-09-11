@@ -8,13 +8,19 @@ import { PrismaModule } from './core/database/prisma.module';
 import { CloudinaryModule } from './core/cloudinary/cloudinary.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-// Thắng's modules (FR-01 ~ FR-08)
+import { CacheModule } from './core/cache/cache.module';
+import { CommissionRulesModule } from './modules/commission-rules/commission-rules.module';
+import { ReferralLinksModule } from './modules/referral-links/referral-links.module';
+import { CheckoutModule } from './modules/checkout/checkout.module';
+
+// Dev Modules (FR-01 ~ FR-08 & FR-25 ~ FR-32)
 import { KycModule } from './modules/kyc/kyc.module';
 import { SocialChannelsModule } from './modules/social-channels/social-channels.module';
 import { TiersModule } from './modules/tiers/tiers.module';
 import { StoresModule } from './modules/stores/stores.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
+import { OrdersModule } from './modules/orders/orders.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
@@ -27,6 +33,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    CacheModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       global: true,
@@ -37,13 +44,16 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     CloudinaryModule,
     UsersModule,
     AuthModule,
-    // Thắng's modules
+    CommissionRulesModule,
+    ReferralLinksModule,
+    CheckoutModule,
     KycModule,
     SocialChannelsModule,
     TiersModule,
     StoresModule,
     ProductsModule,
     MediaModule,
+    OrdersModule,
     // Quy's modules
     ChatModule,
     SamplesModule,

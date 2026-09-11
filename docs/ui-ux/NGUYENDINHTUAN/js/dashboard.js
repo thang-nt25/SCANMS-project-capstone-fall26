@@ -1,3 +1,5 @@
+import { compressAvatarImage, safeSaveProfile } from './image-utils.js';
+
 const cash = n => new Intl.NumberFormat('vi-VN').format(n) + ' ₫';
 const demo = { days: 7, mode: 'ready', metric: 'clicks', balance: 12450000, locked: 0, kyc: false, fail: false, selectedDay: null, showAllTasks: false };
 let restoreFocus;
@@ -801,3 +803,521 @@ export function bindDashboard(root, actions) {
     };
   });
 }
+
+// ==========================================================================
+// SCANMS KOL PROFILE & ACCOUNT MANAGEMENT
+// ==========================================================================
+export const kolProfileState = {
+  activeTab: 'personal', // 'personal' | 'social' | 'bank' | 'security'
+  profile: {
+    avatar: 'N',
+    name: 'Trần Văn Nhật',
+    nickname: 'nhatbeauty',
+    email: 'kol@scanms.vn',
+    phone: '0988 776 655',
+    dob: '1998-10-15',
+    gender: 'male',
+    idCard: '079098001234',
+    taxCode: '8492019281',
+    address: '12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP. Hồ Chí Minh',
+    kycStatus: 'verified', // 'verified' | 'pending'
+    tier: 'KOL Hạng Vàng',
+    tierBonus: '+3% hoa hồng',
+    bio: 'KOL chuyên review mỹ phẩm dưỡng da, đồ chăm sóc cơ thể & công nghệ làm đẹp. 3 năm đồng hành cùng SCANMS.',
+    categories: ['Mỹ phẩm & Skincare', 'Chăm sóc cá nhân', 'Review đồ công nghệ làm đẹp'],
+    channels: [
+      { platform: 'tiktok', name: 'TikTok', handle: '@nhatbeauty', followers: '185,400 followers', url: 'https://tiktok.com/@nhatbeauty', icon: 'ph-tiktok-logo', verified: true },
+      { platform: 'youtube', name: 'YouTube', handle: 'Nhật Beauty Official', followers: '42,800 subs', url: 'https://youtube.com/@nhatbeauty', icon: 'ph-youtube-logo', verified: true },
+      { platform: 'instagram', name: 'Instagram', handle: '@nhat.beauty', followers: '68,200 followers', url: 'https://instagram.com/nhat.beauty', icon: 'ph-instagram-logo', verified: true },
+      { platform: 'facebook', name: 'Facebook Fanpage', handle: 'Trần Văn Nhật - Beauty Care', followers: '35,000 followers', url: 'https://facebook.com/nhatbeauty', icon: 'ph-facebook-logo', verified: false },
+    ],
+    bank: {
+      bankName: 'Vietcombank - Ngân hàng Ngoại thương Việt Nam',
+      accountNumber: '1018928374',
+      accountName: 'TRAN VAN NHAT',
+      branch: 'Chi nhánh Nam Sài Gòn, TP.HCM',
+    }
+  }
+};
+
+// Khôi phục từ localStorage nếu có
+try {
+  const saved = localStorage.getItem('scanms_profile_kol');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    kolProfileState.profile = { ...kolProfileState.profile, ...parsed };
+  }
+} catch (e) {}
+
+export function kolProfileScreen() {
+  // Luôn đồng bộ dữ liệu mới nhất từ localStorage để cập nhật avatar kể cả sau khi đổi role hay F5
+  try {
+    const saved = localStorage.getItem('scanms_profile_kol');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      kolProfileState.profile = { ...kolProfileState.profile, ...parsed };
+    }
+  } catch (e) {}
+
+  const p = kolProfileState.profile;
+  const tab = kolProfileState.activeTab;
+
+  return `
+    <header class="page-head">
+      <div>
+        <div class="crumb"><span>KOL / </span><strong>Hồ sơ cá nhân</strong></div>
+        <h1>Hồ Sơ & Tài Khoản KOL / Creator</h1>
+        <p>Quản lý thông tin định danh KYC, liên kết mạng xã hội, tài khoản nhận hoa hồng VietQR và bảo mật đăng nhập.</p>
+      </div>
+      <div class="actions">
+        <span class="badge-kyc-verified"><i class="ph ph-check-circle"></i> ĐÃ XÁC THỰC KYC</span>
+        <span class="badge warning" style="font-size:12px"><i class="ph ph-crown"></i> ${p.tier}</span>
+      </div>
+    </header>
+
+    <div class="profile-view-wrap">
+      <!-- Navigation Tabs -->
+      <div class="profile-tab-nav" role="tablist">
+        <button class="profile-tab-btn ${tab === 'personal' ? 'active' : ''}" data-kol-tab="personal">
+          <i class="ph ph-user"></i> Thông tin cá nhân & KYC
+        </button>
+        <button class="profile-tab-btn ${tab === 'social' ? 'active' : ''}" data-kol-tab="social">
+          <i class="ph ph-share-network"></i> Kênh mạng xã hội & Bio
+        </button>
+        <button class="profile-tab-btn ${tab === 'bank' ? 'active' : ''}" data-kol-tab="bank">
+          <i class="ph ph-bank"></i> Ngân hàng nhận hoa hồng
+        </button>
+        <button class="profile-tab-btn ${tab === 'security' ? 'active' : ''}" data-kol-tab="security">
+          <i class="ph ph-lock-key"></i> Mật khẩu & Bảo mật 2FA
+        </button>
+      </div>
+
+      <!-- Tab 1: Thông tin cá nhân & KYC -->
+      ${tab === 'personal' ? `
+        <div class="split" style="grid-template-columns:1.2fr 0.8fr;gap:20px">
+          <div class="card" style="padding:26px">
+            <h3 style="margin-top:0;font-size:17px;font-weight:800;border-bottom:1px solid var(--line);padding-bottom:12px;color:var(--text)">
+              <i class="ph ph-identification-card" style="color:var(--brand)"></i> Thông tin định danh cá nhân
+            </h3>
+
+            <div class="profile-avatar-uploader">
+              <div class="profile-avatar-uploader-circle" id="kol-avatar-circle-trigger" onclick="document.getElementById('kol-avatar-file')?.click()" style="background:var(--brand-soft);color:var(--brand-strong);cursor:pointer" title="Click để chọn ảnh từ máy">
+                ${p.avatarImg ? `<img src="${p.avatarImg}" alt="${p.name}" />` : p.avatar}
+                <div class="profile-avatar-uploader-overlay">
+                  <i class="ph ph-camera"></i>
+                  <span>Đổi ảnh</span>
+                </div>
+              </div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <strong style="font-size:16px;color:var(--text)">${p.name}</strong>
+                  <span class="badge-kyc-verified"><i class="ph ph-shield-check"></i> Căn cước công dân đã đối soát</span>
+                </div>
+                <span style="font-size:12.5px;color:var(--muted);display:block;margin:3px 0 8px">Biệt danh Creator: <strong>@${p.nickname}</strong> • ${p.tier}</span>
+                <div class="profile-avatar-actions">
+                  <input type="file" id="kol-avatar-file" accept="image/*" style="display:none" />
+                  <label for="kol-avatar-file" class="btn small outline" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin:0">
+                    <i class="ph ph-upload-simple"></i> Tải ảnh từ máy
+                  </label>
+                  ${p.avatarImg ? `
+                    <button type="button" class="btn small text-danger" id="kol-avatar-remove-btn" style="border:1px solid #fecaca;background:#fef2f2;color:#dc2626;display:inline-flex;align-items:center;gap:6px;cursor:pointer" title="Gỡ ảnh đại diện">
+                      <i class="ph ph-trash"></i> Gỡ ảnh
+                    </button>
+                  ` : ''}
+                  <span style="font-size:11.5px;color:var(--muted)">Hỗ trợ JPG, PNG, WEBP, GIF (Tối đa 5MB)</span>
+                </div>
+              </div>
+            </div>
+
+            <form id="kol-personal-form" class="form-stack">
+              <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+                <div class="field">
+                  <label>Họ và tên *</label>
+                  <input class="input" id="kol-name" value="${p.name}" required />
+                </div>
+                <div class="field">
+                  <label>Biệt danh Creator</label>
+                  <input class="input" id="kol-nickname" value="${p.nickname}" required />
+                </div>
+              </div>
+
+              <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+                <div class="field">
+                  <label>Email liên hệ nhận báo cáo</label>
+                  <input class="input" id="kol-email" value="${p.email}" required />
+                </div>
+                <div class="field">
+                  <label>Số điện thoại xác thực OTP *</label>
+                  <input class="input" id="kol-phone" value="${p.phone}" required />
+                </div>
+              </div>
+
+              <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+                <div class="field">
+                  <label>Ngày sinh</label>
+                  <input class="input" type="date" id="kol-dob" value="${p.dob}" />
+                </div>
+                <div class="field">
+                  <label>Giới tính</label>
+                  <select class="select" id="kol-gender">
+                    <option value="male" ${p.gender === 'male' ? 'selected' : ''}>Nam</option>
+                    <option value="female" ${p.gender === 'female' ? 'selected' : ''}>Nữ</option>
+                    <option value="other" ${p.gender === 'other' ? 'selected' : ''}>Khác</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+                <div class="field">
+                  <label>Số CCCD / CMND (Đã xác minh)</label>
+                  <input class="input" id="kol-idcard" value="${p.idCard}" />
+                </div>
+                <div class="field">
+                  <label>Mã số thuế TNCN</label>
+                  <input class="input" id="kol-taxcode" value="${p.taxCode}" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Địa chỉ liên hệ nhận hàng mẫu & thư từ</label>
+                <input class="input" id="kol-address" value="${p.address}" required />
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:14px">
+                <button type="submit" class="btn" style="padding:10px 24px;font-weight:750">
+                  <i class="ph ph-floppy-disk"></i> Lưu thay đổi hồ sơ
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:18px">
+            <div class="card" style="padding:22px">
+              <h4 style="margin:0 0 14px;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+                <i class="ph ph-shield-star" style="color:#d97706"></i> Quyền lợi Hạng Vàng
+              </h4>
+              <ul style="margin:0;padding-left:18px;font-size:13px;color:var(--muted);line-height:1.7">
+                <li><strong style="color:var(--text)">+3.0% hoa hồng</strong> cộng dồn trên toàn bộ đơn hàng hợp lệ.</li>
+                <li>Hạn mức đăng ký nhận <strong>3 sản phẩm dùng thử</strong> miễn phí mỗi tháng.</li>
+                <li>Duyệt chi trả rút tiền siêu tốc trong <strong>4 giờ làm việc</strong>.</li>
+                <li>Có chuyên viên hỗ trợ 1-1 từ nhãn hàng độc quyền.</li>
+              </ul>
+            </div>
+
+            <div class="card" style="padding:22px">
+              <h4 style="margin:0 0 12px;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+                <i class="ph ph-clock-counter-clockwise" style="color:var(--brand)"></i> Hoạt động gần đây
+              </h4>
+              <div style="font-size:12.5px;color:var(--muted);line-height:1.6">
+                <div>• Cập nhật hồ sơ CCCD: <strong>Đã duyệt</strong></div>
+                <div>• Đơn rút tiền gần nhất: <strong>12.450.000 ₫ (Thành công)</strong></div>
+                <div>• Doanh số tháng này: <strong>38.620.000 ₫</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Tab 2: Kênh mạng xã hội & Bio -->
+      ${tab === 'social' ? `
+        <div class="card" style="padding:26px">
+          <h3 style="margin-top:0;font-size:17px;font-weight:800;border-bottom:1px solid var(--line);padding-bottom:12px;color:var(--text)">
+            <i class="ph ph-share-network" style="color:var(--brand)"></i> Kênh truyền thông & Lĩnh vực thế mạnh
+          </h3>
+
+          <div class="field" style="margin:16px 0">
+            <label>Tiểu sử Creator (Bio) - Hiển thị trên danh bạ KOL cho các Shop</label>
+            <textarea class="input" id="kol-bio" rows="3" style="resize:vertical">${p.bio}</textarea>
+          </div>
+
+          <h4 style="font-size:15px;font-weight:750;margin:22px 0 12px;color:var(--text)">Các kênh mạng xã hội đã kết nối</h4>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+            ${p.channels.map(ch => `
+              <div class="profile-social-item">
+                <i class="ph ${ch.icon}" style="color:var(--brand-strong)"></i>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <strong style="font-size:14px;color:var(--text)">${ch.name}</strong>
+                    ${ch.verified ? '<span class="badge success" style="font-size:10.5px">Đã liên kết</span>' : '<span class="badge" style="font-size:10.5px">Chưa xác minh</span>'}
+                  </div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:2px">${ch.handle} • <strong>${ch.followers}</strong></div>
+                  <a href="${ch.url}" target="_blank" style="font-size:11.5px;color:var(--brand);text-decoration:none;display:inline-block;margin-top:4px">${ch.url}</a>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end">
+            <button id="btn-save-social" class="btn" style="padding:10px 24px;font-weight:750">
+              <i class="ph ph-floppy-disk"></i> Lưu thông tin kênh & Bio
+            </button>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Tab 3: Ngân hàng nhận hoa hồng -->
+      ${tab === 'bank' ? `
+        <div class="split" style="grid-template-columns:1.2fr 0.8fr;gap:20px">
+          <div class="card" style="padding:26px">
+            <h3 style="margin-top:0;font-size:17px;font-weight:800;border-bottom:1px solid var(--line);padding-bottom:12px;color:var(--text)">
+              <i class="ph ph-bank" style="color:var(--brand)"></i> Tài khoản Ngân hàng nhận chi trả (VietQR / Napas)
+            </h3>
+            <p style="font-size:13px;color:var(--muted);margin:10px 0 18px">
+              Tài khoản này được dùng để nhận tiền khi bạn tạo yêu cầu rút hoa hồng. Tên chủ tài khoản phải trùng khớp 100% với tên trên CCCD định danh.
+            </p>
+
+            <form id="kol-bank-form" class="form-stack">
+              <div class="field">
+                <label>Ngân hàng thụ hưởng *</label>
+                <select class="select" id="kol-bankname">
+                  <option value="Vietcombank - Ngân hàng Ngoại thương Việt Nam" ${p.bank.bankName.includes('Vietcombank') ? 'selected' : ''}>Vietcombank - Ngân hàng Ngoại thương Việt Nam</option>
+                  <option value="MB Bank - Ngân hàng Quân Đội" ${p.bank.bankName.includes('MB') ? 'selected' : ''}>MB Bank - Ngân hàng Quân Đội</option>
+                  <option value="Techcombank - Ngân hàng Kỹ Thương" ${p.bank.bankName.includes('Techcombank') ? 'selected' : ''}>Techcombank - Ngân hàng Kỹ Thương</option>
+                  <option value="ACB - Ngân hàng Á Châu" ${p.bank.bankName.includes('ACB') ? 'selected' : ''}>ACB - Ngân hàng Á Châu</option>
+                  <option value="VPBank - Ngân hàng Việt Nam Thịnh Vượng" ${p.bank.bankName.includes('VPBank') ? 'selected' : ''}>VPBank - Ngân hàng Việt Nam Thịnh Vượng</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Số tài khoản ngân hàng *</label>
+                <input class="input" id="kol-accountnumber" value="${p.bank.accountNumber}" required />
+              </div>
+
+              <div class="field">
+                <label>Tên chủ tài khoản (In hoa không dấu) *</label>
+                <input class="input" id="kol-accountname" value="${p.bank.accountName}" required />
+              </div>
+
+              <div class="field">
+                <label>Chi nhánh mở tài khoản</label>
+                <input class="input" id="kol-branch" value="${p.bank.branch}" />
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;margin-top:14px">
+                <button type="submit" class="btn" style="padding:10px 24px;font-weight:750">
+                  <i class="ph ph-check"></i> Cập nhật tài khoản thanh toán
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card" style="padding:22px;background:linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%);color:#fff;border-radius:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
+              <span style="font-size:13px;font-weight:700;letter-spacing:1px;opacity:0.8">SCANMS PAYOUT CARD</span>
+              <i class="ph ph-contactless-payment" style="font-size:28px"></i>
+            </div>
+            <div style="font-size:20px;font-weight:800;letter-spacing:2px;font-family:monospace;margin-bottom:18px">
+              •••• •••• •••• ${p.bank.accountNumber.slice(-4) || '8374'}
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end">
+              <div>
+                <small style="font-size:10px;opacity:0.75;display:block">CHỦ TÀI KHOẢN</small>
+                <strong style="font-size:14px;letter-spacing:0.5px">${p.bank.accountName}</strong>
+              </div>
+              <div style="text-align:right">
+                <small style="font-size:10px;opacity:0.75;display:block">NGÂN HÀNG</small>
+                <strong style="font-size:13px">${p.bank.bankName.split(' - ')[0]}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Tab 4: Mật khẩu & Bảo mật 2FA -->
+      ${tab === 'security' ? `
+        <div class="split" style="grid-template-columns:1fr 1fr;gap:20px">
+          <div class="card" style="padding:26px">
+            <h3 style="margin-top:0;font-size:17px;font-weight:800;border-bottom:1px solid var(--line);padding-bottom:12px;color:var(--text)">
+              <i class="ph ph-lock-key" style="color:var(--brand)"></i> Đổi mật khẩu tài khoản
+            </h3>
+            <form id="kol-password-form" class="form-stack" style="margin-top:16px">
+              <div class="field">
+                <label>Mật khẩu hiện tại *</label>
+                <input class="input" type="password" id="kol-cur-pass" placeholder="••••••••" required />
+              </div>
+              <div class="field">
+                <label>Mật khẩu mới * (Tối thiểu 8 ký tự)</label>
+                <input class="input" type="password" id="kol-new-pass" placeholder="Nhập mật khẩu mới" required />
+              </div>
+              <div class="field">
+                <label>Xác nhận mật khẩu mới *</label>
+                <input class="input" type="password" id="kol-confirm-pass" placeholder="Nhập lại mật khẩu mới" required />
+              </div>
+              <button type="submit" class="btn" style="margin-top:8px;font-weight:750">
+                <i class="ph ph-shield-check"></i> Cập nhật mật khẩu mới
+              </button>
+            </form>
+          </div>
+
+          <div class="card" style="padding:26px">
+            <h3 style="margin-top:0;font-size:17px;font-weight:800;border-bottom:1px solid var(--line);padding-bottom:12px;color:var(--text)">
+              <i class="ph ph-shield" style="color:var(--brand)"></i> Xác thực 2 bước (2FA) & Phiên
+            </h3>
+            <div style="margin:16px 0;display:flex;align-items:center;justify-content:space-between;padding:14px;background:var(--surface-2);border-radius:12px">
+              <div>
+                <strong style="font-size:14px;display:block;color:var(--text)">Xác thực qua SMS / Email OTP</strong>
+                <span style="font-size:12px;color:var(--muted)">Gửi mã OTP khi đăng nhập từ thiết bị lạ</span>
+              </div>
+              <span class="badge success">Đang bật</span>
+            </div>
+            <div style="padding-top:14px;border-top:1px solid var(--line)">
+              <small style="color:var(--muted);display:block;margin-bottom:8px">Thiết bị đang hoạt động: <strong>Windows PC • Chrome 128 (TP.HCM)</strong></small>
+              <button id="btn-kol-logout-others" class="btn secondary danger small">Đăng xuất khỏi thiết bị khác</button>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+export function bindKolProfile(root, { toast, renderCurrentPage }) {
+  // Avatar upload & remove
+  const avatarCircle = root.querySelector('#kol-avatar-circle-trigger');
+  const avatarInput = root.querySelector('#kol-avatar-file');
+  const avatarRemoveBtn = root.querySelector('#kol-avatar-remove-btn');
+
+  if (avatarCircle && avatarInput) {
+    avatarCircle.addEventListener('click', () => {
+      avatarInput.click();
+    });
+  }
+
+  if (avatarInput) {
+    avatarInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        toast?.('Vui lòng chọn tệp định dạng hình ảnh hợp lệ!', 'error');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast?.('Kích thước ảnh tối đa là 10MB!', 'error');
+        return;
+      }
+
+      try {
+        const compressedBase64 = await compressAvatarImage(file, 256, 0.82);
+        kolProfileState.profile.avatarImg = compressedBase64;
+        safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
+        toast?.('Đã đổi ảnh đại diện KOL thành công!', 'success');
+        renderCurrentPage();
+      } catch (err) {
+        console.error('Lỗi khi nén ảnh đại diện KOL:', err);
+        toast?.('Không thể xử lý ảnh này. Vui lòng chọn ảnh khác!', 'error');
+      }
+    });
+  }
+
+  if (avatarRemoveBtn) {
+    avatarRemoveBtn.addEventListener('click', () => {
+      kolProfileState.profile.avatarImg = null;
+      safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
+      toast?.('Đã gỡ ảnh đại diện, chuyển về chữ cái mặc định!', 'info');
+      renderCurrentPage();
+    });
+  }
+
+  // Chuyển Tab
+  root.querySelectorAll('[data-kol-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      kolProfileState.activeTab = btn.dataset.kolTab;
+      renderCurrentPage();
+    });
+  });
+
+  // Lưu thông tin cá nhân
+  const personalForm = root.querySelector('#kol-personal-form');
+  if (personalForm) {
+    personalForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = root.querySelector('#kol-name')?.value || kolProfileState.profile.name;
+      const nickname = root.querySelector('#kol-nickname')?.value || kolProfileState.profile.nickname;
+      const email = root.querySelector('#kol-email')?.value || kolProfileState.profile.email;
+      const phone = root.querySelector('#kol-phone')?.value || kolProfileState.profile.phone;
+      const dob = root.querySelector('#kol-dob')?.value || kolProfileState.profile.dob;
+      const gender = root.querySelector('#kol-gender')?.value || kolProfileState.profile.gender;
+      const idCard = root.querySelector('#kol-idcard')?.value || kolProfileState.profile.idCard;
+      const taxCode = root.querySelector('#kol-taxcode')?.value || kolProfileState.profile.taxCode;
+      const address = root.querySelector('#kol-address')?.value || kolProfileState.profile.address;
+
+      kolProfileState.profile = {
+        ...kolProfileState.profile,
+        name,
+        avatar: name.charAt(0).toUpperCase(),
+        nickname,
+        email,
+        phone,
+        dob,
+        gender,
+        idCard,
+        taxCode,
+        address,
+      };
+
+      safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
+
+      toast?.('Đã cập nhật hồ sơ cá nhân KOL thành công!', 'success');
+      renderCurrentPage();
+    });
+  }
+
+  // Lưu Bio & Kênh
+  const btnSaveSocial = root.querySelector('#btn-save-social');
+  if (btnSaveSocial) {
+    btnSaveSocial.addEventListener('click', () => {
+      const bio = root.querySelector('#kol-bio')?.value || kolProfileState.profile.bio;
+      kolProfileState.profile.bio = bio;
+      safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
+      toast?.('Đã lưu thông tin tiểu sử & kênh mạng xã hội!', 'success');
+      renderCurrentPage();
+    });
+  }
+
+  // Lưu Ngân hàng
+  const bankForm = root.querySelector('#kol-bank-form');
+  if (bankForm) {
+    bankForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const bankName = root.querySelector('#kol-bankname')?.value || kolProfileState.profile.bank.bankName;
+      const accountNumber = root.querySelector('#kol-accountnumber')?.value || kolProfileState.profile.bank.accountNumber;
+      const accountName = (root.querySelector('#kol-accountname')?.value || kolProfileState.profile.bank.accountName).toUpperCase();
+      const branch = root.querySelector('#kol-branch')?.value || kolProfileState.profile.bank.branch;
+
+      kolProfileState.profile.bank = { bankName, accountNumber, accountName, branch };
+      safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
+      toast?.('Đã cập nhật tài khoản nhận thanh toán VietQR!', 'success');
+      renderCurrentPage();
+    });
+  }
+
+  // Đổi mật khẩu
+  const passForm = root.querySelector('#kol-password-form');
+  if (passForm) {
+    passForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newP = root.querySelector('#kol-new-pass')?.value;
+      const confP = root.querySelector('#kol-confirm-pass')?.value;
+      if (!newP || newP.length < 8) {
+        toast?.('Mật khẩu mới phải có tối thiểu 8 ký tự!', 'error');
+        return;
+      }
+      if (newP !== confP) {
+        toast?.('Mật khẩu xác nhận không khớp!', 'error');
+        return;
+      }
+      toast?.('Đã đổi mật khẩu thành công! Vui lòng sử dụng mật khẩu mới cho lần đăng nhập sau.', 'success');
+      passForm.reset();
+    });
+  }
+
+  // Đăng xuất phiên khác
+  const btnLogoutOthers = root.querySelector('#btn-kol-logout-others');
+  if (btnLogoutOthers) {
+    btnLogoutOthers.addEventListener('click', () => {
+      toast?.('Đã đăng xuất khỏi tất cả các thiết bị khác!', 'success');
+    });
+  }
+}
+

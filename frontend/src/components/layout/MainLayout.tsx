@@ -34,9 +34,14 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
-  if (isAuth) {
-    return <Outlet />;
+  if (isAuth || isIframe) {
+    return (
+      <main className="w-full">
+        <Outlet />
+      </main>
+    );
   }
 
   return (

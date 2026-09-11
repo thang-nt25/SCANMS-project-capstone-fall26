@@ -1,0 +1,105 @@
+/* Reuse the original design tokens/components; React owns events and state. */
+@import url('/reference/css/styles.css');
+@import url('/reference/css/storefront.css');
+@import url('/reference/css/marketplace.css');
+@import url('/reference/css/marketplace-refinement.css');
+
+.react-marketplace { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+.react-marketplace a { text-decoration: none; color: inherit; }
+.react-marketplace .mp-header { position: sticky; top: 0; flex-shrink: 0; background: #faf6f0; }
+.react-marketplace .mp-search-container { min-width: 0; }
+.react-marketplace .mp-search-box { min-height: 46px; }
+.react-marketplace .mp-search-input { min-width: 0; }
+.react-marketplace .mp-search-btn { flex-shrink: 0; }
+.react-marketplace .mp-hero-banner { grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); min-height: 390px; }
+.react-marketplace .mp-hero-title { font-size: clamp(28px,3vw,44px); line-height: 1.2; }
+.react-marketplace .mp-hero-cta-group { flex-wrap: wrap; }
+.react-marketplace .mp-hero-btn-primary { color: #fff; background: #89591d; }
+.react-marketplace .mp-benefit-item { text-align: left; }
+.react-marketplace .mp-creator-card { gap: 12px; }
+.react-marketplace .mp-niche-tag { white-space: normal; min-height: 42px; }
+.react-marketplace .mp-creator-select-btn { margin-top: auto; }
+.react-marketplace .mp-creator-select-btn.active { background: #89591d; color: #fff; }
+.react-marketplace .mp-creator-name { white-space: normal; }
+.react-marketplace .mp-voucher-code-group { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px; border: 1px dashed #c7ac7e; border-radius: 10px; background: #faf5eb; }
+.react-marketplace .mp-hero-content { z-index: auto; }
+.react-demo-banner { padding: 8px 24px; background: #f2e6cf; color: #634719; text-align: center; font-size: 12px; line-height: 1.6; }
+.react-demo-banner a { text-decoration: underline; margin-left: 10px; font-weight: 700; }
+.react-voucher { position: relative; border: 1px solid #dfc9a6; border-radius: 16px; padding: 24px; background: #fffcf7; }
+.react-voucher-heading { display: flex; gap: 14px; align-items: center; }
+.react-voucher-heading > i { font-size: 30px; padding: 12px; background: #f2e6cf; color: #89591d; border-radius: 12px; }
+.react-voucher-heading h2 { font-size: 18px; margin: 5px 0; }
+.react-voucher p { color: #735f48; font-size: 13px; line-height: 1.6; }
+.react-voucher .react-discount { font-size: 20px; color: #89591d; margin: 14px 0; }
+.react-discount strong { font-size: 50px; letter-spacing: -2px; }
+.react-monogram { flex: 0 0 46px; height: 46px; display: grid; place-items: center; border: 1px solid #deceb3; border-radius: 12px; background: #f3ead9; color: #80551d; font-weight: 800; }
+.react-section { width: 100%; max-width: 1440px; margin: 40px auto; padding-inline: clamp(16px,2.5vw,32px); scroll-margin-top: 150px; }
+.react-section h2 { font-size: 26px; letter-spacing: -.6px; }
+.react-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.react-section-heading span { color: #735f48; font-size: 13px; }
+.react-product-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 20px; }
+.react-product-card { overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e4d8c7; border-radius: 16px; background: #fffcf7; }
+.react-product-image { padding: 0; width: 100%; }
+.react-product-image img { width: 100%; height: 240px; object-fit: cover; }
+.react-product-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.react-product-body h3 { margin: 0; font-size: 14px; line-height: 1.6; min-height: 68px; }
+.react-product-body h3 button { padding: 0; text-align: left; color: inherit; font-weight: 700; }
+.react-product-body p { margin: 0; }
+.react-product-body small, .react-product-body del { font-size: 11px; color: #735f48; }
+.react-product-body .react-primary { margin-top: auto; }
+.react-rating { color: #89591d; font-size: 12px; }
+.react-rating span { color: #735f48; }
+.react-marketplace .react-primary, .react-modal .react-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #89591d; border-radius: 10px; background: #89591d; color: #fff; padding: 12px 16px; min-height: 44px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.react-marketplace .react-primary:hover, .react-modal .react-primary:hover { background: #714714; }
+.react-review { text-align: left; border-radius: 16px; overflow: hidden; background: #fffcf7 !important; border: 1px solid #e4d8c7 !important; padding: 0 0 16px; color: #352719; }
+.react-review img { width: 100%; height: 180px; object-fit: cover; }
+.react-review span, .react-review small { display: block; padding: 12px 16px 0; line-height: 1.6; }
+.react-review small { color: #735f48; }
+.react-empty { text-align: center; padding: 40px; border: 1px solid #e4d8c7; border-radius: 16px; }
+.react-tracking p { font-size: 14px; color: #735f48; line-height: 1.7; }
+.react-tracking form { max-width: 540px; }
+.react-tracking label, .react-modal label { display: block; margin: 12px 0 7px; font-size: 13px; font-weight: 600; }
+.react-inline { display: flex; gap: 10px; }
+.react-inline input { flex: 1; min-width: 0; }
+.react-tracking input, .react-modal input, .react-modal textarea, .react-modal select { box-sizing: border-box; width: 100%; min-height: 44px; border: 1px solid #c7ac7e; border-radius: 10px; padding: 10px; background: #fffcf7; color: #352719; }
+.react-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; padding: 28px 32px; border-top: 1px solid #e4d8c7; font-size: 13px; }
+.react-footer a { text-decoration: underline; }
+.react-notice { position: fixed; bottom: 20px; right: 20px; z-index: 110; max-width: min(440px,calc(100vw - 40px)); display: flex; align-items: center; gap: 16px; background: #352719; color: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 8px 24px #35271926; font-size: 13px; }
+.react-notice button { color: #fff; font-size: 24px; }
+.react-modal { width: min(620px,calc(100vw - 32px)); max-height: calc(100dvh - 48px); box-sizing: border-box; padding: 24px; border: 1px solid #deceb3; border-radius: 16px; background: #fffcf7; color: #352719; font-family: 'Plus Jakarta Sans',system-ui,sans-serif; overflow-y: auto; }
+.react-modal::backdrop { background: #21190eb3; }
+.react-modal header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.react-modal header h2 { font-size: 20px; margin: 0 0 18px; }
+.react-modal header button { font-size: 28px; border: 0; background: none; min-width: 44px; min-height: 44px; color: #735f48; }
+.react-modal p, .react-guide { font-size: 14px; line-height: 1.8; }
+.react-summary { display: grid; gap: 12px; margin: 24px 0; font-size: 13px; }
+.react-summary > div { display: flex; justify-content: space-between; gap: 20px; }
+.react-summary dd { margin: 0; text-align: right; max-width: 60%; }
+.react-summary dt { color: #735f48; }
+.react-product-detail > img { width: 100%; max-height: 280px; object-fit: contain; }
+.react-video { width: 100%; max-height: 400px; background: #21190e; }
+.react-cart-lines { display: grid; gap: 18px; margin: 20px 0; }
+.react-cart-line { display: flex; align-items: start; gap: 14px; font-size: 13px; }
+.react-cart-line img { flex-shrink: 0; object-fit: cover; border-radius: 10px; }
+.react-quantity { display: flex; align-items: center; gap: 14px; }
+.react-quantity button { min-width: 36px; min-height: 36px; border: 1px solid #deceb3; border-radius: 8px; background: #f5eddf; }
+.react-checkout button { margin-top: 20px; width: 100%; }
+.react-marketplace :focus-visible, .react-modal :focus-visible { outline: 3px solid #89591d; outline-offset: 3px; }
+.react-reference { min-height: 100dvh; display: flex; flex-direction: column; font-family: system-ui,sans-serif; }
+.react-reference > header { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; padding: 10px 20px; border-bottom: 1px solid #deceb3; font-size: 13px; }
+.react-reference iframe { border: 0; width: 100%; flex: 1; min-height: calc(100dvh - 62px); background: #faf6f0; }
+@media (max-width: 1100px) { .react-product-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .react-marketplace .mp-hero-banner { gap: 24px; padding: 28px; } }
+@media (max-width: 767px) {
+  .react-marketplace .mp-hero-banner { grid-template-columns: 1fr; padding: 24px; }
+  .react-marketplace .mp-header-main { height: auto; flex-wrap: wrap; }
+  .react-marketplace .mp-search-container { flex: 1 0 100%; order: 3; }
+  .react-marketplace .mp-header-actions { gap: 10px; }
+  .react-marketplace .mp-brand-subtitle { display: none; }
+  .react-marketplace .mp-hero-title { font-size: 32px; }
+  .react-marketplace .mp-hero-btn-primary, .react-marketplace .mp-hero-btn-secondary { width: 100%; justify-content: center; }
+  .react-product-grid { grid-template-columns: 1fr; }
+  .react-section { scroll-margin-top: 210px; }
+  .react-product-image img { height: 280px; }
+  .react-inline { flex-direction: column; }
+  .react-notice { bottom: 12px; right: 12px; }
+}
