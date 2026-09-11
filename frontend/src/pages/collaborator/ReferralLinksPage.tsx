@@ -2088,24 +2088,21 @@ export default function ReferralLinksPage() {
               </button>
             </div>
 
-            {/* Size selector for PNG */}
-            <div className="flex items-center justify-between gap-2 mb-3.5 px-0.5">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-[#5E5141]">
-                <span className="w-5 h-5 rounded-lg bg-[#9E7933]/10 border border-[#9E7933]/20 flex items-center justify-center text-[#9E7933]">
-                  <SlidersHorizontal className="w-3 h-3" />
-                </span>
+            {/* Size selector for PNG (Gọn gàng, thanh mảnh, không bị xuống dòng) */}
+            <div className="flex items-center justify-between gap-2 mb-3 text-xs">
+              <span className="text-[11px] font-bold text-[#7D6D55] whitespace-nowrap">
                 Kích thước PNG:
               </span>
-              <div className="inline-flex p-1 bg-[#F5EFE6]/80 rounded-xl border border-[#E8DAC4]/80 shadow-2xs gap-1">
+              <div className="flex items-center gap-1.5">
                 {([512, 1024, 2048] as const).map((sz) => (
                   <button
                     key={sz}
                     type="button"
                     onClick={() => setQrPngSize(sz)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap border transition-all cursor-pointer ${
                       qrPngSize === sz
-                        ? 'bg-gradient-to-r from-[#C59B58] to-[#9E7933] text-white shadow-xs'
-                        : 'text-[#7D6D55] hover:text-[#1A1612] hover:bg-white/60'
+                        ? 'bg-[#9E7933] text-white border-[#9E7933] shadow-2xs'
+                        : 'bg-[#FAF8F5] text-[#7D6D55] border-[#E8DAC4] hover:bg-[#F5EFE6] hover:text-[#1A1612]'
                     }`}
                   >
                     {sz === 1024 ? '1024 (Chuẩn)' : sz === 512 ? '512' : '2048 (In)'}
