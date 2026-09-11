@@ -7,18 +7,35 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
 import { CreateOrderReviewDto } from './dto/create-review.dto';
 import { OrderWebhookDto } from './dto/order-webhook.dto';
+import { CreateManualOrderDto } from './dto/create-manual-order.dto';
+import { ManualOrdersService } from './manual-orders.service';
+import type { OrderManagerIdentity } from './manual-orders.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Orders & Fulfillment')
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly manualOrdersService: ManualOrdersService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -45,6 +62,22 @@ export class OrdersController {
   @ApiResponse({ status: 400, description: 'Payload webhook không hợp lệ' })
   async receiveWebhook(@Body() dto: OrderWebhookDto) {
     return this.ordersService.receiveWebhook(dto);
+  }
+
+  @Post('manual')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'FR-20: Tạo đơn hàng thủ công' })
+  @ApiResponse({ status: 201, description: 'Tạo đơn thủ công thành công' })
+  @ApiResponse({ status: 400, description: 'Dữ liệu đơn hàng không hợp lệ' })
+  @ApiResponse({ status: 409, description: 'Mã đơn hàng đã tồn tại' })
+  async createManualOrder(
+    @CurrentUser() manager: OrderManagerIdentity,
+    @Body() dto: CreateManualOrderDto,
+  ) {
+    return this.manualOrdersService.createManualOrder(manager, dto);
   }
 
   @Get('track')
