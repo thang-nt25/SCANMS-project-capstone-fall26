@@ -44,42 +44,40 @@ InfluxNet serves two fundamentally distinct user behaviors on the same platform:
 ```
 
 ### 🚫 Anti-AI Design Mandates (Human-Crafted Elegance)
-* **NO generic purple/indigo AI gradients:** Use an authentic, trustworthy **Deep Emerald Fintech palette** paired with **Warm Amber**.
-* **NO washed-out muddy box shadows:** Use crisp, multi-layered ambient occlusions (`rgba(15, 23, 42, 0.06)`).
-* **NO over-rounded bubbly shapes:** Strict structural hierarchy with `8px` and `12px` radii for cards, `6px` for controls.
+* **NO generic purple/indigo AI gradients:** Use the authentic, refined **Vàng Be (Warm Sand & Brand Gold) identity** paired with **Warm Cream & Deep Ink**.
+* **NO washed-out muddy box shadows:** Use crisp, multi-layered ambient occlusions (`rgba(26, 22, 18, 0.06)`).
+* **NO over-rounded bubbly shapes:** Strict structural hierarchy with `12px` and `16px` radii for cards, `10px` for controls.
 * **NO vague filler copy:** Concrete financial language (*"Available Balance"*, *"14-Day Hold"*, *"Net Commission (10% PIT Deducted)"*).
 
 ---
 
 # 2. DESIGN SYSTEM & ATOMIC TOKENS
 
-## 2.1 Color Palette
+## 2.1 Color Palette: Vàng Be (Warm Sand, Cream & Brand Gold)
 
 ```
-   EMERALD ACCENT (Primary)        WARM AMBER (Accent/Tiers)         SLATE (Neutrals)
+   WARM SAND / CREAM (Canvas)      BRAND GOLD (Primary Accent)       DEEP INK (Typography)
  ┌─────────┬─────────┬─────────┐ ┌─────────┬─────────┬─────────┐ ┌─────────┬─────────┬─────────┐
- │ #0F766E │ #10B981 │ #D1FAE5 │ │ #D97706 │ #F59E0B │ #FEF3C7 │ │ #0B0F17 │ #1E293B │ #F8FAFC │
- │ Primary │ Bright  │ Soft BG │ │ Warning │ Golden  │ Soft BG │ │ Canvas  │ Card BG │ Light BG│
+ │ #FAF8F5 │ #F3EFE6 │ #FBF5EB │ │ #C59B58 │ #B88E4F │ #EEDFC6 │ │ #1A1612 │ #231D15 │ #7D715E │
+ │ Canvas  │ Sand BG │ Soft Gold│ │ Brand   │ Strong  │ Border  │ │ Ink     │ Dark CTA│ Muted   │
  └─────────┴─────────┴─────────┘ └─────────┴─────────┴─────────┘ └─────────┴─────────┴─────────┘
 ```
 
 | Token Name | Hex Code | Semantic Role |
 | :--- | :--- | :--- |
-| `color-primary-900` | `#0F766E` | Brand Primary, Active Navigation, Main CTA Buttons |
-| `color-primary-500` | `#10B981` | Positive Metrics, Approved Status, Available Wallet Balance |
-| `color-primary-50` | `#ECFDF5` | Success Badge Background, Highlight Pill Tint |
-| `color-accent-amber` | `#F59E0B` | Pending State, Tier Badges (Gold), Reward Announcements |
-| `color-accent-amber-soft` | `#FFFBEB` | Warning Alert Container, Pending Balance Pill |
-| `color-danger-600` | `#DC2626` | Reversals, Refund Clawback, Rejected Payout, Errors |
-| `color-danger-50` | `#FEF2F2` | Error Container Background, Revoked Commission Banner |
-| `color-canvas-light` | `#F8FAFC` | Main Light Mode Page Background |
-| `color-surface-white` | `#FFFFFF` | Card & Modal Surface in Light Mode |
-| `color-border-subtle` | `#E2E8F0` | Structural Dividers, Table Cell Borders |
-| `color-text-primary` | `#0F172A` | Primary Headings, Financial Figures, Main Body Text |
-| `color-text-secondary`| `#64748B` | Subtitles, Table Headers, Micro-labels, Timestamps |
-| `color-dark-canvas` | `#0B0F17` | Dark Mode Base Background |
-| `color-dark-surface` | `#131B2A` | Dark Mode Card Surface |
-| `color-dark-border` | `#1E293B` | Dark Mode Subtle Border Line |
+| `color-canvas` | `#FAF8F5` | Nền chính toàn bộ trang web (Warm Cream) |
+| `color-surface-sand` | `#F3EFE6` | Nền Sidebar, khay tab chọn vai trò, thẻ card phụ (Warm Sand) |
+| `color-surface-white` | `#FFFFFF` | Thẻ Card chính, ô form, modal |
+| `color-brand` | `#C59B58` | Nút hành động chính ("Đăng nhập an toàn", "Đặt mua ngay"), CTA chính |
+| `color-brand-strong` | `#B88E4F` | Điểm nhấn chữ, icon thương hiệu, viền active, hover của nút |
+| `color-brand-soft` | `#FBF5EB` | Nền badge ưu đãi, box giảm giá, nền tin nhắn nổi bật |
+| `color-brand-border` | `#EEDFC6` | Viền badge ưu đãi, viền hộp giảm giá |
+| `color-brand-dark` | `#231D15` | Nút tối màu sang trọng, nút cổng đối tác |
+| `color-border-line` | `#EAE4D7` | Viền ô nhập liệu (Input), viền thẻ Card, đường kẻ phân cách |
+| `color-text-ink` | `#1A1612` | Tiêu đề chính H1-H6, giá tiền, số liệu tài chính (Deep Ink) |
+| `color-text-muted` | `#7D715E` | Chữ phụ, mô tả, chú thích, nhãn phụ (Warm Muted) |
+| `color-danger` | `#DC2626` | Trạng thái lỗi, cảnh báo vi phạm |
+| `color-success` | `#059669` | Chỉ dùng cho icon tick xanh xác minh hoặc % tăng trưởng nhỏ |
 
 ---
 
@@ -192,7 +190,7 @@ border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 * **Key Components:**
   - Segmented Control: `[Tôi là KOL / CTV]` | `[Tôi là Chủ Shop]`
   - Floating label Inputs: Email, Password (with eye toggle).
-  - Primary CTA: *"Đăng Nhập"* (Full-width, Emerald `#0F766E`).
+  - Primary CTA: *"Đăng Nhập"* (Full-width, Brand Gold `#C59B58` / Dark Accent `#231D15`).
   - Secondary Link: *"Chưa có tài khoản? Đăng ký ngay"*.
 
 ### Screen 02: OTP 2-Factor Authentication & Password Recovery
@@ -210,7 +208,7 @@ border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 * **Goal:** The home base for KOLs to see earnings, rank status, and performance metrics.
 * **Desktop View:** 4 KPI Cards across top, 7-Day Performance Chart (Clicks vs Orders) on left, Recent Commissions feed on right.
 * **Mobile View:**
-  - **Hero Financial Card:** Gradient Slate-900 background, Displaying `Available Balance` in Emerald (`32px` bold), `Pending Balance` in Amber tag, and prominent `[Yêu Cầu Rút Tiền]` button.
+  - **Hero Financial Card:** Nền Dark Accent `#231D15` hoặc Warm Sand, Hiển thị `Available Balance` với Brand Gold `#C59B58` (`32px` bold), `Pending Balance` với Amber tag, và nút bấm `[Yêu Cầu Rút Tiền]` màu Brand Gold `#C59B58`.
   - **Tier Badge Widget:** Current Tier (`GOLD` - $+3\%$ bonus) with interactive progress bar to `PLATINUM` (e.g., *"Còn 12.500.000 ₫ để lên Platinum"*).
   - **Performance Carousel:** Swipeable cards for Clicks, Converted Orders, and Conversion Rate (CR%).
 
@@ -333,11 +331,11 @@ border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 # 6. FIGMA DESIGN COMPONENT MATRIX & READY-TO-USE PROMPTS
 
 ### 🎨 Component Set to Build in Figma:
-1. `Button` (Primary Emerald, Secondary Outline, Danger Reversal, Ghost, Icon Only)
+1. `Button` (Primary Gold `#C59B58`, Dark Accent `#231D15`, Secondary Sand `#F3EFE6`, Danger Reversal, Ghost, Icon Only)
 2. `Badge / Pill` (Tier Bronze/Silver/Gold/Platinum, Status Pending/Approved/Reversed, Primary Channel)
 3. `StatCard` (Metric Title, Big Counter, Trend Indicator % +/-, Icon Container)
 4. `DataTable` (Sortable Header, Checkbox Column, Inline Action Menu, Sticky Pagination)
-5. `WalletHeroCard` (Mobile Gradient, Available vs Pending Display, Withdraw CTA)
+5. `WalletHeroCard` (Dark Accent `#231D15` / Warm Sand `#F3EFE6`, Available vs Pending Display, Withdraw CTA Gold `#C59B58`)
 6. `ReferralLinkBox` (Shortcode field, Dynamic QR preview, Copy trigger, Social share icons)
 7. `ChatThreadItem` (Sender Bubble, Receiver Bubble, Campaign Card Attachment, Image Thumbnail)
 8. `TimelineTracker` (Horizontal desktop step-indicator, Vertical mobile step-indicator)
@@ -347,14 +345,14 @@ border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 ### 💬 Ready-to-Paste Prompt for Figma AI / Stitch / v0.dev:
 
 ```text
-Design a modern, high-end Fintech and Creator-Economy Web Portal named "InfluxNet" (E-Commerce Affiliate & KOL Management Platform).
+Design a modern, high-end Multi-Merchant E-Commerce Affiliate & Creator Network Web Portal named "SCANMS" (Sales Collaborator & Affiliate Network Management System).
 
 Design Requirements:
-- Aesthetic: Clean, human-crafted, premium aesthetic (NOT generic AI-style purple neon). 
-- Primary Colors: Deep Emerald (#0F766E, #10B981) for financial authority and growth, Warm Amber (#F59E0B) for Pending timers and Tier rank badges, layered Slate (#0B0F17 for dark canvas, #F8FAFC for light canvas).
+- Aesthetic: Clean, human-crafted, luxurious warm aesthetic (Warm Sand, Cream & Solid Gold).
+- Primary Colors (VÀNG BE): Brand Gold (#C59B58, #B88E4F) for primary actions and accents, Soft Warm Cream Canvas (#FAF8F5), Warm Sand (#F3EFE6) for sidebars and secondary surfaces, Dark Accent (#231D15) for high-contrast secondary buttons, Deep Ink (#1A1612) for headings and financial typography, Warm Amber (#F59E0B) for pending status. TUYỆT ĐỐI KHÔNG DÙNG MÀU XANH LÁ/EMERALD LÀM MÀU CHỦ ĐẠO.
 - Typography: Plus Jakarta Sans for big KPI numbers and headings, Inter for data tables and body text, JetBrains Mono for referral shortlinks and coupon codes.
 - Layouts:
-  1. Desktop View (1440px): 12-column grid with a 240px collapsible left sidebar, header with store selector, multi-metric KPI cards, interactive revenue vs commission line charts, and rich data tables with status badges.
-  2. Mobile View (390px): Single-column stack, sleek gradient Hero Wallet Card showing Available Balance vs 14-Day Pending Balance, quick action pills, swipeable performance carousels, and fixed 64px bottom navigation bar.
-- Key Screen to Render: Collaborator Mobile Dashboard & Shop Manager Reconciliation Portal with 1-click copy link widgets, dynamic QR codes, and refund clawback status indicators.
+  1. Desktop View (1440px): 12-column grid with a 256px warm sand left sidebar, header with multi-store switcher and search, multi-metric KPI cards, interactive revenue vs commission line charts, and rich data tables with status badges.
+  2. Mobile View (390px): Single-column stack, sleek Dark Accent / Sand Hero Wallet Card showing Available Balance vs 14-Day Pending Balance, quick action pills, swipeable performance carousels, and fixed 64px bottom navigation bar.
+- Key Screen to Render: Collaborator Mobile Dashboard, Multi-Merchant Public Storefront & Shop Manager Reconciliation Portal with 1-click copy link widgets, dynamic QR codes, and refund clawback status indicators.
 ```

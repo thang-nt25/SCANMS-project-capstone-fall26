@@ -26,6 +26,7 @@ jobs:
         run: cd backend && npx prisma generate
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
+          DIRECT_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
 
       - name: Build Backend (NestJS Compile Check)
         run: cd backend && npm run build
