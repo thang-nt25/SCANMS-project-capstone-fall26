@@ -2118,7 +2118,7 @@ export default function ReferralLinksPage() {
               </button>
 
               <a
-                href={selectedQrTargetUrl}
+                href={`/r/${selectedLinkForQr.shortCode}?via=qr`}
                 target="_blank"
                 rel="noreferrer"
                 className="py-2 px-2 bg-[#FAF8F5] hover:bg-[#F5E7CC] text-[#7D6D55] hover:text-[#9E7933] border border-[#E8DAC4] rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors"

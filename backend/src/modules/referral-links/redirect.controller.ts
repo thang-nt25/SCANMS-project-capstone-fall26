@@ -24,8 +24,8 @@ export class RedirectController {
 
   private getPublicAppUrl(): string {
     const raw =
-      this.configService.get<string>('PUBLIC_APP_URL') ||
       this.configService.get<string>('FRONTEND_URL') ||
+      this.configService.get<string>('PUBLIC_APP_URL') ||
       'http://localhost:5173';
 
     try {
