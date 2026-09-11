@@ -39,6 +39,8 @@ import MediaHubBrowserPage from '../pages/collaborator/MediaHubBrowserPage';
 import SamplesPage from '../pages/collaborator/SamplesPage';
 
 // Realtime Chat (Quý - FR-25)
+import OrderTrackingPage from '../pages/public/OrderTrackingPage';
+// Quy - FR-25: Chat Realtime
 import ChatBoxPage from '../pages/chat/ChatBoxPage';
 
 // Sample Product Workflow (Quý - FR-26)
@@ -73,6 +75,11 @@ function AppRoutes() {
         <Route path="/shop" element={<GuestStorefrontPage />} />
 
         {/* Cổng đăng nhập & đăng ký chính thức */}
+        {/* Cổng tra cứu tiến trình đơn hàng công khai (FR-17) */}
+        <Route path="/tracking" element={<OrderTrackingPage />} />
+        <Route path="/order-tracking" element={<OrderTrackingPage />} />
+
+        {/* Cổng đăng nhập & đăng ký riêng biệt */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 

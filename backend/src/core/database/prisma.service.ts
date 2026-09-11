@@ -24,6 +24,13 @@ export class PrismaService
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
+    const isRemote =
+      connectionString?.includes('supabase') ||
+      connectionString?.includes('pooler') ||
+      connectionString?.includes('sslmode');
+    const pool = new Pool({
+      connectionString,
+      ssl: isRemote ? { rejectUnauthorized: false } : undefined,
     });
     const adapter = new PrismaPg(pool);
 
