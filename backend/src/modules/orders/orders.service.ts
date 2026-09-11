@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../core/database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
+import { CreateOrderReviewDto } from './dto/create-review.dto';
 import {
   OrderStatus,
   AttributionMethod,
@@ -384,6 +385,75 @@ export class OrdersService {
     return {
       totalFound: formattedOrders.length,
       orders: formattedOrders,
+    };
+  }
+
+  /**
+   * FR-18: Gửi đánh giá 1-5 sao và nhận xét sau khi nhận hàng thành công
+   */
+  async addOrderReview(orderId: string, dto: CreateOrderReviewDto) {
+    // 1. Kiểm tra đơn hàng tồn tại
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        orderItems: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng yêu cầu');
+    }
+
+    // 2. Nghiệp vụ FR-18: Đơn hàng phải ở trạng thái DELIVERED hoặc COMPLETED mới được review
+    if (
+      order.status !== OrderStatus.DELIVERED &&
+      order.status !== OrderStatus.COMPLETED
+    ) {
+      throw new BadRequestException(
+        'Chỉ có thể gửi đánh giá khi đơn hàng đã được giao nhận thành công (Trạng thái DELIVERED hoặc COMPLETED).',
+      );
+    }
+
+    // 3. Kiểm tra sản phẩm có thuộc đơn hàng này không
+    const itemInOrder = order.orderItems.find(
+      (item) => item.productId === dto.productId,
+    );
+    if (!itemInOrder) {
+      throw new BadRequestException(
+        'Sản phẩm này không nằm trong danh mục sản phẩm của đơn hàng.',
+      );
+    }
+
+    // 4. Chống gửi review trùng lặp cho cùng 1 sản phẩm trong 1 đơn hàng
+    const existingReview = await this.prisma.productReview.findFirst({
+      where: {
+        orderId: order.id,
+        productId: dto.productId,
+      },
+    });
+
+    if (existingReview) {
+      throw new BadRequestException(
+        'Bạn đã gửi đánh giá cho sản phẩm này trong đơn hàng rồi.',
+      );
+    }
+
+    // 5. Lưu đánh giá vào bảng product_reviews
+    const review = await this.prisma.productReview.create({
+      data: {
+        orderId: order.id,
+        productId: dto.productId,
+        customerName: dto.customerName || order.customerName || 'Khách mua hàng',
+        rating: dto.rating,
+        comment: dto.comment,
+        reviewImageUrl: dto.reviewImageUrl || null,
+        isApproved: true,
+      },
+    });
+
+    return {
+      message: 'Cảm ơn bạn đã gửi đánh giá sản phẩm thành công!',
+      review,
     };
   }
 }

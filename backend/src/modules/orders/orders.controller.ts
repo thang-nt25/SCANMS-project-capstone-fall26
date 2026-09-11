@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Param,
   Query,
   HttpCode,
   HttpStatus,
@@ -11,6 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
+import { CreateOrderReviewDto } from './dto/create-review.dto';
 
 @ApiTags('Orders & Fulfillment')
 @Controller('orders')
@@ -36,5 +38,19 @@ export class OrdersController {
   })
   async trackOrder(@Query() query: TrackOrderQueryDto) {
     return this.ordersService.trackOrderByPhoneOrSn(query);
+  }
+
+  @Post(':id/review')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'FR-18: Gửi đánh giá & review 5 sao sau khi nhận hàng thành công',
+    description:
+      'Khách hàng gửi số sao (1-5★) và nhận xét cho sản phẩm trong đơn đã giao (DELIVERED hoặc COMPLETED).',
+  })
+  async addReview(
+    @Param('id') orderId: string,
+    @Body() dto: CreateOrderReviewDto,
+  ) {
+    return this.ordersService.addOrderReview(orderId, dto);
   }
 }
