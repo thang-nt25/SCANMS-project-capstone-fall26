@@ -1,42 +1,66 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
 
+@theme {
+  --color-canvas: #FAF8F5;
+  --color-surface: #ffffff;
+  --color-surface-sand: #F3EFE6;
+  --color-brand: #C59B58;
+  --color-brand-strong: #B88E4F;
+  --color-brand-dark: #231D15;
+  --color-brand-soft: #FBF5EB;
+  --color-brand-border: #EEDFC6;
+  --color-ink: #1A1612;
+  --color-muted: #7D715E;
+  --color-line: #EAE4D7;
+}
+
+/* === FIGMA DESIGN TOKENS === */
 :root {
+  color-scheme: light;
   --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   
   /* Tone màu Vàng Be / Kem sang trọng chuẩn Figma Thanh Quản Trị */
-  --canvas: #FAF6F0;
+  --canvas: #FAF8F5;
   --surface: #ffffff;
+  --surface-sand: #F3EFE6;
   --surface-2: #F6EFE3;
   --surface-3: #ECE1CD;
-  --ink: #2C2114;
+  --ink: #1A1612;
   --muted: #7D6D55;
   --line: #E8DAC4;
   --line-strong: #DEBE85;
 
-  --brand: #C9A363;
-  --brand-strong: #9E7933;
-  --brand-soft: #F5E7CC;
+  --brand: #C59B58;
+  --brand-strong: #B88E4F;
+  --brand-soft: #FBF5EB;
+  --brand-border: #EEDFC6;
+  --brand-dark: #231D15;
   --brand-beige: #EAD2A3;
   --brand-gold: #DEBE85;
 
-  --warning: #C27803;
-  --warning-soft: #FFF3DD;
-  --danger: #b83a42;
-  --danger-soft: #fdebed;
+  --warning: #D97706;
+  --warning-soft: #FEF3C7;
+  --danger: #DC2626;
+  --danger-soft: #FEE2E2;
   --success: #15803d;
   --success-soft: #eafaf1;
 
+  --shadow: 0 1px 3px 0 rgba(26, 22, 18, 0.06), 0 1px 2px -1px rgba(26, 22, 18, 0.04);
   --shadow-card: 0 8px 30px rgba(110, 84, 39, 0.07);
   --shadow-glow: 0 4px 14px rgba(201, 163, 99, 0.25);
-  
+  --radius: 14px;
+  --radius-sm: 9px;
+}
+
+/* === BASE RESETS === */
+* {
   box-sizing: border-box;
 }
 
-*, *::before, *::after {
-  box-sizing: inherit;
-}
-
 html {
+  background: var(--canvas);
   scroll-behavior: auto !important;
   overscroll-behavior-y: contain;
   overflow-x: hidden;
@@ -48,10 +72,11 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--canvas, #FAF6F0);
-  color: var(--ink, #2C2114);
+  background-color: var(--canvas);
+  color: var(--ink);
   font-family: var(--font-sans);
   min-height: 100vh;
+  min-width: 320px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: auto !important;
@@ -108,12 +133,28 @@ body {
 
 a {
   color: inherit;
-  text-decoration: none;
+  text-decoration: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, input, select, textarea {
+  font: inherit;
 }
 
 button {
-  font-family: inherit;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-container {
@@ -122,4 +163,92 @@ button {
   margin: 0 auto;
   padding: 6px 22px 36px 22px;
   box-sizing: border-box;
+}
+
+/* === SHARED UTILITIES & FALLBACKS === */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.card.soft {
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--brand-strong);
+}
+
+.btn.secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.btn.secondary:hover {
+  background: var(--surface-2);
+}
+
+.btn.danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn.small {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/* Global Toast */
+.toast {
+  position: fixed;
+  z-index: 9999;
+  top: 20px;
+  right: 20px;
+  max-width: min(420px, calc(100vw - 40px));
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #0F172A;
+  color: #F8FAFC;
+  border: 1px solid #334155;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+  transition: all 0.25s ease-in-out;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
 }
