@@ -1038,7 +1038,7 @@ export default function ReferralLinksPage() {
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Mở link thử nghiệm */}
                           <a
-                            href={link.shortUrl}
+                            href={`/r/${link.shortCode}`}
                             target="_blank"
                             rel="noreferrer"
                             className="p-2 text-[#7D6D55] hover:text-[#C59B58] hover:bg-[#FAF8F5] rounded-xl transition-colors"
