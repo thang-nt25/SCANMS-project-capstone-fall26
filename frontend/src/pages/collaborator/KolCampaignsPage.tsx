@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { vi } from 'date-fns/locale/vi';
 import api from '../../services/api';
 import type { CampaignParticipant } from '../../types/campaigns';
 import './KolCampaignsPage.css';
