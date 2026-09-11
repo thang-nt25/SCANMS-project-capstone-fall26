@@ -1,0 +1,145 @@
+/* ===================================================
+   KolCampaignsPage.css — KOL side — FR-27
+   =================================================== */
+@import '../merchant/CampaignsPage.css';
+
+.kc-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.kc-header { }
+.kc-title {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 1.6rem; font-weight: 800; margin: 0;
+  background: linear-gradient(135deg, #f59e0b, #6366f1);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.kc-subtitle { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+/* Stats */
+.kc-stats {
+  display: flex; gap: 1rem; flex-wrap: wrap;
+}
+.kc-stat-item {
+  background: rgba(17,24,39,0.7); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 0.875rem; padding: 1rem 1.5rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+  flex: 1; min-width: 100px;
+}
+.kc-stat-num { font-size: 1.8rem; font-weight: 800; color: #f59e0b; }
+.kc-stat-item.accepted .kc-stat-num { color: #10b981; }
+.kc-stat-item.total .kc-stat-num { color: var(--text-primary); }
+.kc-stat-label { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Section */
+.kc-section-title { font-size: 1rem; font-weight: 700; color: var(--text-secondary); margin: 0.5rem 0; }
+
+/* KOL VIP Invite Cards */
+.kc-cards { display: flex; flex-direction: column; gap: 1rem; }
+
+.kc-card {
+  background: rgba(17,24,39,0.8);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kc-card.vip {
+  border-color: rgba(245,158,11,0.25);
+  background: linear-gradient(135deg, rgba(17,24,39,0.9), rgba(245,158,11,0.04));
+}
+.kc-card.vip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(245,158,11,0.12);
+}
+.kc-card.vip::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+
+.kc-card-badge {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.1));
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 2rem; padding: 0.2rem 0.75rem;
+  font-size: 0.72rem; font-weight: 700; color: #f59e0b;
+  align-self: flex-start;
+}
+
+.kc-card-store { display: flex; align-items: center; gap: 0.75rem; }
+.kc-store-logo { width: 40px; height: 40px; border-radius: 0.5rem; object-fit: cover; flex-shrink: 0; }
+.kc-store-avatar { width: 40px; height: 40px; border-radius: 0.5rem; background: linear-gradient(135deg, #f59e0b, #ef4444); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.kc-store-name { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+.kc-invite-label { font-size: 0.72rem; color: var(--text-muted); }
+
+.kc-campaign-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+
+.kc-commission-highlight {
+  background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.07));
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+.kc-commission-label { font-size: 0.75rem; color: var(--text-muted); }
+.kc-commission-value { font-size: 2.2rem; font-weight: 900; color: #f59e0b; line-height: 1.1; }
+.kc-commission-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+.kc-dates { font-size: 0.78rem; color: var(--text-muted); }
+
+.kc-actions { display: flex; gap: 0.75rem; }
+.kc-btn {
+  flex: 1; padding: 0.625rem 1rem; border-radius: 0.625rem;
+  font-size: 0.875rem; font-weight: 600; cursor: pointer; border: 1px solid transparent;
+  transition: all 0.2s ease; text-align: center;
+}
+.kc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.kc-btn-accept {
+  background: linear-gradient(135deg, #10b981, #059669); color: #fff;
+}
+.kc-btn-accept:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.35); }
+.kc-btn-reject {
+  background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444;
+}
+.kc-btn-reject:hover:not(:disabled) { background: rgba(239,68,68,0.18); }
+
+/* History */
+.kc-history-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.kc-history-row {
+  display: flex; align-items: center; gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: rgba(17,24,39,0.6); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 0.75rem;
+}
+.kc-history-icon { font-size: 1.2rem; flex-shrink: 0; }
+.kc-history-info { flex: 1; }
+.kc-history-campaign { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+.kc-history-store { font-size: 0.75rem; color: var(--text-muted); }
+
+.kc-badge { display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 2rem; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+
+.kc-loading { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--text-muted); }
+.kc-spinner { width: 22px; height: 22px; border: 2.5px solid rgba(255,255,255,0.1); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.7s linear infinite; }
+.kc-empty { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+.kc-empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+.kc-empty h3 { font-size: 1.1rem; color: var(--text-secondary); margin: 0 0 0.5rem; }
+.kc-empty p { font-size: 0.875rem; margin: 0; }
+.kc-toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 0.875rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 600; z-index: 300; animation: slideUp 0.3s ease; max-width: 360px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.kc-toast.success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #10b981; }
+.kc-toast.error   { background: rgba(239,68,68,0.15);  border: 1px solid rgba(239,68,68,0.4);  color: #ef4444; }
+
+@media (max-width: 640px) { .kc-actions { flex-direction: column; } }
