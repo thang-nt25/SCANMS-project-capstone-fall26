@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale/vi';
 import api from '../../services/api';
 import type { SampleRequest, SampleRequestStatus } from '../../types/samples';
 import './SampleRequestsPage.css';
@@ -28,7 +27,7 @@ const STATUS_ICON: Record<SampleRequestStatus, string> = {
 };
 
 function formatDate(d: string) {
-  return format(new Date(d), 'dd/MM/yyyy HH:mm', { locale: vi });
+  return format(new Date(d), 'dd/MM/yyyy HH:mm');
 }
 
 // ─── KOL: Form xin mẫu ──────────────────────────────────────────────────

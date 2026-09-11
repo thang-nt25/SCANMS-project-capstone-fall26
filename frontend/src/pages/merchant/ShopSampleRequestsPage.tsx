@@ -1,25 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale/vi';
 import api from '../../services/api';
 import type { SampleRequest, SampleRequestStatus, ShopStats } from '../../types/samples';
 import './ShopSampleRequestsPage.css';
 
-const STATUS_LABEL: Record<SampleRequestStatus, string> = {
+const STATUS_LABEL: Record<string, string> = {
   PENDING: 'Chờ duyệt',
   APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
-  SHIPPED: 'Đang giao',
+  SHIPPED: 'Đã giao hàng',
+  DELIVERED: 'Đã nhận',
+  COMPLETED: 'Hoàn thành (Đã lên bài)',
+  REJECTED: 'Đã từ chối',
 };
-const STATUS_ICON: Record<SampleRequestStatus, string> = {
-  PENDING: '⏳', APPROVED: '✅', REJECTED: '❌', SHIPPED: '🚚',
+
+const STATUS_COLOR: Record<string, string> = {
+  PENDING: 'badge-pending',
+  APPROVED: 'badge-approved',
+  SHIPPED: 'badge-shipped',
+  DELIVERED: 'badge-delivered',
+  COMPLETED: 'badge-completed',
+  REJECTED: 'badge-rejected',
 };
-const STATUS_COLOR: Record<SampleRequestStatus, string> = {
-  PENDING: 'badge-pending', APPROVED: 'badge-approved', REJECTED: 'badge-rejected', SHIPPED: 'badge-shipped',
+
+const STATUS_ICON: Record<string, string> = {
+  PENDING: '⏳',
+  APPROVED: '✅',
+  SHIPPED: '🚚',
+  DELIVERED: '📦',
+  COMPLETED: '🎉',
+  REJECTED: '❌',
 };
 
 function formatDate(d: string) {
-  return format(new Date(d), 'dd/MM/yyyy HH:mm', { locale: vi });
+  if (!d) return '—';
+  return format(new Date(d), 'dd/MM/yyyy HH:mm');
 }
 
 // ─── Tracking Number Modal ───────────────────────────────────────────────
