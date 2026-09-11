@@ -12,6 +12,7 @@ import { TiersModule } from './modules/tiers/tiers.module';
 import { StoresModule } from './modules/stores/stores.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { MediaModule } from './modules/media/media.module';
     StoresModule,
     ProductsModule,
     MediaModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

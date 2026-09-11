@@ -15,6 +15,7 @@ import KycSubmissionPage from '../pages/collaborator/KycSubmissionPage';
 import MediaHubBrowserPage from '../pages/collaborator/MediaHubBrowserPage';
 import LinksPage from '../pages/collaborator/LinksPage';
 import SamplesPage from '../pages/collaborator/SamplesPage';
+import OrderTrackingPage from '../pages/public/OrderTrackingPage';
 
 function AppRoutes() {
   return (
@@ -25,6 +26,10 @@ function AppRoutes() {
         <Route path="/store" element={<GuestStorefrontPage />} />
         <Route path="/storefront" element={<GuestStorefrontPage />} />
         <Route path="/shop" element={<GuestStorefrontPage />} />
+
+        {/* Cổng tra cứu tiến trình đơn hàng công khai (FR-17) */}
+        <Route path="/tracking" element={<OrderTrackingPage />} />
+        <Route path="/order-tracking" element={<OrderTrackingPage />} />
 
         {/* Cổng đăng nhập & đăng ký riêng biệt */}
         <Route path="/login" element={<LoginPage />} />
