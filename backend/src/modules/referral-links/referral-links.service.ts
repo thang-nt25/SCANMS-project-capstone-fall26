@@ -1369,10 +1369,9 @@ export class ReferralLinksService {
                 referralLinkId: link.id,
                 ipAddress: clientInfo.ip || '0.0.0.0',
                 userAgent: clientInfo.userAgent || null,
-                referrer: clientInfo.accessMethod === 'QR' ? (clientInfo.referer ? `${clientInfo.referer} [QR]` : 'QR_SCAN') : (clientInfo.referer || null),
-                deviceFingerprint: clientInfo.accessMethod === 'QR'
-                  ? (clientInfo.fingerprint ? `${clientInfo.fingerprint}|accessMethod:QR` : 'accessMethod:QR')
-                  : (clientInfo.fingerprint || null),
+                referrer: clientInfo.referer || (clientInfo.accessMethod === 'QR' ? 'QR_SCAN' : null),
+                accessMethod: clientInfo.accessMethod === 'QR' ? 'QR' : 'LINK',
+                deviceFingerprint: clientInfo.fingerprint || null,
                 deviceType: clientInfo.deviceType || null,
                 sessionId: clientInfo.sessionId || null,
                 isValid: allowAttribution,
@@ -1713,13 +1712,24 @@ export class ReferralLinksService {
         throw new ForbiddenException('Bạn không có quyền xem hoặc tải mã QR của liên kết này.');
       }
     } else if (user.role === UserRole.SHOP_MANAGER) {
-      if (link.store?.ownerId !== user.id && link.storeId !== user.id) {
+      if (link.store?.ownerId !== user.id) {
         throw new ForbiddenException('Bạn không có quyền xem mã QR của liên kết thuộc cửa hàng khác.');
       }
     } else if (user.role === UserRole.SYSTEM_ADMIN) {
       // Cho phép tra cứu/hỗ trợ
     } else {
       throw new ForbiddenException('Vai trò người dùng không có quyền truy cập mã QR.');
+    }
+
+    // Rate limiting riêng cho API QR: Preview tối đa 60 req/phút, Render/Download tối đa 20 req/phút
+    const maxReq = isDownload ? 20 : 60;
+    const rateLimitKey = `qr_rl:${user.id}:${isDownload ? 'dl' : 'prev'}`;
+    const rateLimit = await this.cacheService.checkRateLimit(rateLimitKey, maxReq, 60);
+    if (!rateLimit.allowed) {
+      throw new HttpException(
+        `Vượt quá giới hạn yêu cầu mã QR (tối đa ${maxReq} yêu cầu/phút). Vui lòng thử lại sau.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
     // Ghi Audit Log nếu Admin hoặc Shop thao tác thay KOL (Mục 24)
@@ -1748,10 +1758,26 @@ export class ReferralLinksService {
         });
     }
 
-    // Đếm lượt tải QR (Mục 23 & 37.8 - không tính vào click)
+    // Đếm lượt tải QR (Mục 23 & 37.8 - không tính vào click, lưu bền vững vào PostgreSQL và Redis)
     if (isDownload) {
       const downloadCounterKey = `qr_dl_count:${link.id}`;
-      await this.cacheService.getRedis()?.incr(downloadCounterKey).catch(() => {});
+      const redis = this.cacheService.getRedis();
+      if (redis) {
+        if (typeof redis.incr === 'function') {
+          await redis.incr(downloadCounterKey).catch(() => {});
+        }
+        if (typeof redis.expire === 'function') {
+          await redis.expire(downloadCounterKey, 86400 * 30).catch(() => {});
+        }
+      }
+      await this.prisma.referralLink
+        .update({
+          where: { id: link.id },
+          data: { qrDownloadCount: { increment: 1 } },
+        })
+        .catch((err: any) => {
+          this.logger.warn(`Lỗi tăng qrDownloadCount trong DB: ${err.message}`);
+        });
     }
 
     const publicAppUrl = this.getPublicAppUrl();

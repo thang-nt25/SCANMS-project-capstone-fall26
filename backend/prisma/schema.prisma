@@ -55,6 +55,11 @@ enum AttributionMethod {
   FINGERPRINT
 }
 
+enum AccessMethod {
+  LINK
+  QR
+}
+
 enum OrderStatus {
   PENDING
   SHIPPING
@@ -94,6 +99,7 @@ enum ReferralLinkStatus {
   ACTIVE
   PAUSED
   BLOCKED
+  EXPIRED
 }
 
 enum StoreCollaboratorStatus {
@@ -430,6 +436,7 @@ model ReferralLink {
   lastAccessedAt   DateTime?          @map("last_accessed_at") @db.Timestamptz(6)
   customCouponCode String?            @map("custom_coupon_code") @db.VarChar(50)
   qrCodeUrl        String?            @map("qr_code_url")
+  qrDownloadCount  Int                @default(0) @map("qr_download_count")
   totalClicks      Int                @default(0) @map("total_clicks")
   uniqueClicks     Int                @default(0) @map("unique_clicks")
   totalOrders      Int                @default(0) @map("total_orders")
@@ -457,15 +464,16 @@ model ReferralLink {
 }
 
 model ClickTrafficLog {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  referralLinkId    String   @map("referral_link_id") @db.Uuid
-  ipAddress         String   @map("ip_address") @db.VarChar(45)
-  userAgent         String?  @map("user_agent")
-  deviceFingerprint String?  @map("device_fingerprint") @db.VarChar(255)
-  deviceType        String?  @map("device_type") @db.VarChar(50)
-  referrer          String?  @map("referrer") @db.VarChar(255)
-  sessionId         String?  @map("session_id") @db.VarChar(100)
-  isValid           Boolean  @default(true) @map("is_valid")
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referralLinkId    String       @map("referral_link_id") @db.Uuid
+  ipAddress         String       @map("ip_address") @db.VarChar(45)
+  userAgent         String?      @map("user_agent")
+  deviceFingerprint String?      @map("device_fingerprint") @db.VarChar(255)
+  deviceType        String?      @map("device_type") @db.VarChar(50)
+  referrer          String?      @map("referrer") @db.VarChar(255)
+  sessionId         String?      @map("session_id") @db.VarChar(100)
+  accessMethod      AccessMethod @default(LINK) @map("access_method")
+  isValid           Boolean      @default(true) @map("is_valid")
   rejectionReason   String?  @map("rejection_reason") @db.VarChar(150)
   utmSource         String?  @map("utm_source") @db.VarChar(100)
   utmMedium         String?  @map("utm_medium") @db.VarChar(100)

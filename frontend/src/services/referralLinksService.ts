@@ -44,6 +44,7 @@ export interface ReferralLinkItem {
   lastAccessedAt: string | null;
   customCouponCode: string | null;
   qrCodeUrl: string | null;
+  qrDownloadCount?: number;
   totalClicks: number;
   uniqueClicks: number;
   totalOrders: number;
@@ -211,7 +212,11 @@ export const referralLinksService = {
       responseType: 'blob',
     });
     const mimeType = format === 'png' ? 'image/png' : 'image/svg+xml;charset=utf-8';
-    const blob = new Blob([res.data], { type: mimeType });
+    const responseData = res instanceof Blob ? res : (res as any)?.data ?? res;
+    const blob =
+      responseData instanceof Blob
+        ? responseData
+        : new Blob([responseData], { type: mimeType });
     const blobUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;

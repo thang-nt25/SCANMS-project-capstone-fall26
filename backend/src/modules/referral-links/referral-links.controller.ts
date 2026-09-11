@@ -109,7 +109,7 @@ export class CollaboratorReferralLinksController {
       `${isDownload ? 'attachment' : 'inline'}; filename="${qrResult.filename}"`,
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    res.setHeader('Cache-Control', 'private, max-age=86400');
 
     return res.send(qrResult.buffer);
   }

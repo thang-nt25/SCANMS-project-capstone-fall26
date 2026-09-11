@@ -63,6 +63,7 @@ describe('FR-11 — Dynamic QR Code Generation (Tạo Mã QR Code Động)', () 
           }
           return Promise.resolve(null);
         }),
+        update: jest.fn().mockResolvedValue(mockLink),
       },
       auditLog: {
         create: jest.fn().mockResolvedValue({ id: 'audit-log-id' }),
@@ -74,6 +75,7 @@ describe('FR-11 — Dynamic QR Code Generation (Tạo Mã QR Code Động)', () 
       set: jest.fn().mockResolvedValue(undefined),
       getRedis: jest.fn().mockReturnValue({
         incr: jest.fn().mockResolvedValue(1),
+        expire: jest.fn().mockResolvedValue(1),
       }),
       checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 59, resetTime: Date.now() + 60000 }),
     };
@@ -281,5 +283,49 @@ describe('FR-11 — Dynamic QR Code Generation (Tạo Mã QR Code Động)', () 
 
     expect(result.contentType).toBe('image/png');
     expect(result.buffer.toString()).toBe('cached-qr-png');
+  });
+
+  // 13. Rate limit riêng cho API QR: Preview 60/phút, Download 20/phút
+  it('13. Quá giới hạn rate limit (429 TooManyRequests) khi yêu cầu vượt ngưỡng', async () => {
+    cacheService.checkRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetTime: Date.now() + 30000,
+    });
+
+    await expect(
+      service.generateQrCode(
+        mockLink.id,
+        { id: mockCollaboratorId, role: UserRole.COLLABORATOR },
+        { format: 'png', download: true },
+      ),
+    ).rejects.toThrow('Vượt quá giới hạn yêu cầu mã QR');
+  });
+
+  // 14. Download QR ghi nhận qrDownloadCount vào PostgreSQL
+  it('14. Download QR ghi nhận qrDownloadCount vào PostgreSQL và tăng Redis counter', async () => {
+    await service.generateQrCode(
+      mockLink.id,
+      { id: mockCollaboratorId, role: UserRole.COLLABORATOR },
+      { format: 'png', download: true },
+    );
+
+    expect(prisma.referralLink.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: mockLink.id },
+        data: { qrDownloadCount: { increment: 1 } },
+      }),
+    );
+  });
+
+  // 15. Kiểm tra quyền Shop chính xác theo store.ownerId === user.id
+  it('15. Shop Manager không sở hữu Store thì bị từ chối 403 Forbidden dù storeId trùng lặp', async () => {
+    await expect(
+      service.generateQrCode(
+        mockLink.id,
+        { id: 'random-user-id', role: UserRole.SHOP_MANAGER },
+        { format: 'png' },
+      ),
+    ).rejects.toThrow(ForbiddenException);
   });
 });

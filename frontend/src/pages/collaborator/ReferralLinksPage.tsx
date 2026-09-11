@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { format } from 'date-fns';
 import api from '../../services/api';
 import {
@@ -49,12 +49,27 @@ import QRCode from 'qrcode';
 
 function useQrDataUrl(value?: string | null) {
   const [dataUrl, setDataUrl] = useState('');
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const retry = useCallback(() => {
+    setRetryCount((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     let active = true;
     setDataUrl('');
-    if (!value) return () => { active = false; };
+    setQrError(false);
 
+    if (!value) {
+      setQrLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setQrLoading(true);
     QRCode.toDataURL(value, {
       margin: 4,
       width: 512,
@@ -65,17 +80,26 @@ function useQrDataUrl(value?: string | null) {
       },
     })
       .then((url) => {
-        if (active) setDataUrl(url);
+        if (active) {
+          setDataUrl(url);
+          setQrLoading(false);
+        }
       })
       .catch((err) => {
         console.error('Lỗi sinh ảnh QR nội bộ:', err);
-        if (active) setDataUrl('');
+        if (active) {
+          setDataUrl('');
+          setQrLoading(false);
+          setQrError(true);
+        }
       });
 
-    return () => { active = false; };
-  }, [value]);
+  return () => {
+    active = false;
+  };
+  }, [value, retryCount]);
 
-  return dataUrl;
+  return { dataUrl, qrLoading, qrError, retry };
 }
 
 export default function ReferralLinksPage() {
@@ -137,60 +161,140 @@ export default function ReferralLinksPage() {
       : `${selectedLinkForQr.shortUrl}?via=qr`;
   }, [selectedLinkForQr?.shortUrl]);
 
-  const createdQrDataUrl = useQrDataUrl(createdQrTargetUrl);
-  const selectedQrDataUrl = useQrDataUrl(selectedQrTargetUrl);
+  const {
+    dataUrl: createdQrDataUrl,
+    qrLoading: createdQrLoading,
+    qrError: createdQrError,
+    retry: retryCreatedQr,
+  } = useQrDataUrl(createdQrTargetUrl);
+
+  const {
+    dataUrl: selectedQrDataUrl,
+    qrLoading: selectedQrLoading,
+    qrError: selectedQrError,
+    retry: retrySelectedQr,
+  } = useQrDataUrl(selectedQrTargetUrl);
+
   const [qrPngSize, setQrPngSize] = useState<512 | 1024 | 2048>(1024);
   const [isDownloadingQr, setIsDownloadingQr] = useState<boolean>(false);
+  const [qrDownloadError, setQrDownloadError] = useState<string | null>(null);
+  const [isDownloadingSuccessQr, setIsDownloadingSuccessQr] = useState<boolean>(false);
+  const [successQrDownloadError, setSuccessQrDownloadError] = useState<string | null>(null);
+
+  // Focus trap ref cho modal QR
+  const qrModalRef = useRef<HTMLDivElement>(null);
+  const qrCloseBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (!isQrModalOpen) return;
+
+    // Tự động focus vào nút đóng khi modal mở (Item 8)
+    const timer = setTimeout(() => {
+      qrCloseBtnRef.current?.focus();
+    }, 50);
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isQrModalOpen) {
+      if (e.key === 'Escape') {
         setIsQrModalOpen(false);
+        return;
+      }
+
+      // Focus trap (Item 8)
+      if (e.key === 'Tab' && qrModalRef.current) {
+        const focusableElements = qrModalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        const focusable = Array.from(focusableElements);
+        if (focusable.length === 0) return;
+
+        const firstElement = focusable[0];
+        const lastElement = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isQrModalOpen]);
 
+  // Tải QR chính thức qua Backend (không fallback client để đảm bảo bảo mật và audit log - Item 6)
   const handleDownloadQr = async (format: 'png' | 'svg') => {
     if (!selectedLinkForQr) return;
     try {
       setIsDownloadingQr(true);
+      setQrDownloadError(null);
       await referralLinksService.downloadQrCode(
         selectedLinkForQr.id,
         selectedLinkForQr.shortCode,
         format,
         qrPngSize,
       );
-    } catch (err) {
-      console.warn('Backend download failed, falling back to local client render:', err);
-      if (format === 'png' && selectedQrDataUrl) {
-        const link = document.createElement('a');
-        link.href = selectedQrDataUrl;
-        link.download = `SCANMS-QR-${selectedLinkForQr.shortCode}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else if (format === 'svg') {
-        const svgContent = await QRCode.toString(selectedQrTargetUrl, {
-          type: 'svg',
-          width: qrPngSize,
-          margin: 4,
-          errorCorrectionLevel: 'M',
-          color: { dark: '#1A1612', light: '#FFFFFF' },
-        });
-        const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = `SCANMS-QR-${selectedLinkForQr.shortCode}.svg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-      }
+      // Tăng số lượt tải hiển thị cục bộ (Item 4)
+      setSelectedLinkForQr((prev) =>
+        prev ? { ...prev, qrDownloadCount: (prev.qrDownloadCount || 0) + 1 } : null
+      );
+      setLinks((prev) =>
+        prev.map((l) =>
+          l.id === selectedLinkForQr.id
+            ? { ...l, qrDownloadCount: (l.qrDownloadCount || 0) + 1 }
+            : l
+        )
+      );
+    } catch (err: any) {
+      console.error('Lỗi khi tải mã QR từ máy chủ:', err);
+      const msg =
+        err?.response?.data?.message ||
+        (err?.response?.status === 429
+          ? 'Vượt quá giới hạn tải mã QR (tối đa 20 lượt tải/phút). Vui lòng thử lại sau.'
+          : 'Không thể tải mã QR từ máy chủ. Vui lòng kiểm tra quyền và trạng thái liên kết.');
+      setQrDownloadError(msg);
     } finally {
       setIsDownloadingQr(false);
+    }
+  };
+
+  // Tải bản QR chuẩn 1024x1024 sau khi vừa tạo link thành công (Item 2)
+  const handleDownloadSuccessQr = async (linkItem: ReferralLinkItem) => {
+    try {
+      setIsDownloadingSuccessQr(true);
+      setSuccessQrDownloadError(null);
+      await referralLinksService.downloadQrCode(
+        linkItem.id,
+        linkItem.shortCode,
+        'png',
+        1024,
+      );
+      setLinks((prev) =>
+        prev.map((l) =>
+          l.id === linkItem.id
+            ? { ...l, qrDownloadCount: (l.qrDownloadCount || 0) + 1 }
+            : l
+        )
+      );
+    } catch (err: any) {
+      console.error('Lỗi khi tải mã QR sau khi tạo:', err);
+      const msg =
+        err?.response?.data?.message ||
+        (err?.response?.status === 429
+          ? 'Vượt quá giới hạn tải mã QR (tối đa 20 lượt tải/phút). Vui lòng thử lại sau.'
+          : 'Không thể tải mã QR chuẩn 1024×1024 từ máy chủ. Vui lòng thử lại.');
+      setSuccessQrDownloadError(msg);
+    } finally {
+      setIsDownloadingSuccessQr(false);
     }
   };
 
@@ -1063,24 +1167,53 @@ export default function ReferralLinksPage() {
                   </div>
                 </div>
 
-                {/* Xem trước QR */}
-                {(createdQrDataUrl || createdSuccessLink.qrCodeUrl) && (
-                  <div className="flex flex-col items-center justify-center mb-4">
-                    <img
-                      src={createdQrDataUrl || ''}
-                      alt={`Mã QR tiếp thị cho ${createdSuccessLink.product?.title || 'sản phẩm'}`}
-                      className="w-28 h-28 border border-[#E8DAC4] rounded-xl p-1 bg-white shadow-xs"
-                    />
-                    <a
-                      href={createdQrDataUrl || ''}
-                      download={`SCANMS-QR-${createdSuccessLink.shortCode}.png`}
-                      className="mt-1.5 text-[11px] text-[#9E7933] hover:text-[#7D6D55] hover:underline flex items-center gap-1 font-semibold"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Tải ảnh QR (SCANMS-QR-{createdSuccessLink.shortCode}.png)
-                    </a>
+                {/* Xem trước QR và Tải PNG 1024x1024 chính thức (Item 2 & 7) */}
+                <div className="flex flex-col items-center justify-center mb-4">
+                  <div className="w-28 h-28 border border-[#E8DAC4] rounded-xl p-1 bg-white shadow-xs flex items-center justify-center mb-1.5">
+                    {createdQrLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-[#9E7933]" />
+                    ) : createdQrError ? (
+                      <div className="flex flex-col items-center p-1 text-center">
+                        <AlertCircle className="w-4 h-4 text-rose-500 mb-0.5" />
+                        <span className="text-[10px] text-rose-600 font-medium">Lỗi QR</span>
+                        <button
+                          type="button"
+                          onClick={retryCreatedQr}
+                          className="text-[9px] text-[#9E7933] underline mt-0.5 font-semibold cursor-pointer"
+                        >
+                          Thử lại
+                        </button>
+                      </div>
+                    ) : createdQrDataUrl ? (
+                      <img
+                        src={createdQrDataUrl}
+                        alt={`Mã QR tiếp thị cho ${createdSuccessLink.product?.title || 'sản phẩm'}`}
+                        className="w-full h-full rounded-lg object-contain"
+                      />
+                    ) : null}
                   </div>
-                )}
+                  <button
+                    type="button"
+                    disabled={isDownloadingSuccessQr}
+                    onClick={() => handleDownloadSuccessQr(createdSuccessLink)}
+                    className="text-[11px] text-[#9E7933] hover:text-[#7D6D55] hover:underline flex items-center gap-1 font-semibold cursor-pointer disabled:opacity-50"
+                  >
+                    {isDownloadingSuccessQr ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Đang tải PNG 1024×1024...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Tải PNG 1024×1024 (SCANMS-QR-{createdSuccessLink.shortCode}.png)</span>
+                      </>
+                    )}
+                  </button>
+                  {successQrDownloadError && (
+                    <p className="text-[10px] text-rose-600 mt-1 font-medium">{successQrDownloadError}</p>
+                  )}
+                </div>
 
                 <div className="flex items-center justify-center gap-2.5">
                   <button
@@ -1809,7 +1942,10 @@ export default function ReferralLinksPage() {
           aria-modal="true"
           aria-labelledby="qr-modal-title"
         >
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#E8DAC4] w-full max-w-md p-5 sm:p-6 text-center animate-in zoom-in-95 duration-150 relative">
+          <div
+            ref={qrModalRef}
+            className="bg-white rounded-2xl shadow-2xl border border-[#E8DAC4] w-full max-w-md p-5 sm:p-6 text-center animate-in zoom-in-95 duration-150 relative"
+          >
             {/* Header */}
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8DAC4]/60">
               <div className="flex items-center gap-2 text-left">
@@ -1826,6 +1962,7 @@ export default function ReferralLinksPage() {
                 </div>
               </div>
               <button
+                ref={qrCloseBtnRef}
                 type="button"
                 onClick={() => setIsQrModalOpen(false)}
                 className="p-1.5 text-[#A49B8B] hover:text-[#1A1612] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
@@ -1835,9 +1972,26 @@ export default function ReferralLinksPage() {
               </button>
             </div>
 
-            {/* QR Preview Box with quiet zone */}
+            {/* QR Preview Box with quiet zone (Item 7: qrLoading & qrError) */}
             <div className="relative p-3.5 bg-white rounded-2xl border-2 border-[#E8DAC4] shadow-xs inline-block mb-3.5">
-              {selectedQrDataUrl ? (
+              {selectedQrLoading ? (
+                <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 text-[#7D715E]">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#9E7933]" />
+                  <span className="text-xs font-medium">Đang dựng ảnh QR…</span>
+                </div>
+              ) : selectedQrError ? (
+                <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 p-3 text-center">
+                  <AlertCircle className="w-8 h-8 text-rose-500 mb-1" />
+                  <span className="text-xs font-bold text-[#1A1612]">Không thể tạo mã QR.</span>
+                  <button
+                    type="button"
+                    onClick={retrySelectedQr}
+                    className="mt-1 px-3 py-1.5 bg-[#FAF3E8] hover:bg-[#F5E7CC] text-[#9E7933] border border-[#DEBE85] rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Vui lòng thử lại
+                  </button>
+                </div>
+              ) : selectedQrDataUrl ? (
                 <img
                   src={selectedQrDataUrl}
                   alt={`Mã QR tiếp thị cho ${selectedLinkForQr.product?.title || 'sản phẩm'}`}
@@ -1846,7 +2000,7 @@ export default function ReferralLinksPage() {
               ) : (
                 <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 text-[#7D715E]">
                   <Loader2 className="w-6 h-6 animate-spin text-[#9E7933]" />
-                  <span className="text-xs">Đang dựng ảnh QR...</span>
+                  <span className="text-xs">Đang dựng ảnh QR…</span>
                 </div>
               )}
             </div>
@@ -1855,7 +2009,7 @@ export default function ReferralLinksPage() {
             <div className="text-xs font-bold text-[#1A1612] line-clamp-2 mb-1 px-2">
               {selectedLinkForQr.product?.title}
             </div>
-            <div className="flex items-center justify-center gap-2 text-[11px] text-[#7D6D55] mb-3">
+            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#7D6D55] mb-3">
               {selectedLinkForQr.product?.store?.name && (
                 <span className="flex items-center gap-1 bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#E8DAC4]/60">
                   <Store className="w-3 h-3 text-[#9E7933]" />
@@ -1864,6 +2018,10 @@ export default function ReferralLinksPage() {
               )}
               <span className="font-mono font-bold text-[#9E7933] bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#E8DAC4]/60">
                 Mã: {selectedLinkForQr.shortCode}
+              </span>
+              <span className="flex items-center gap-1 bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#E8DAC4]/60" title="Tổng số lượt tải ảnh QR">
+                <Download className="w-3 h-3 text-[#9E7933]" />
+                Lượt tải: <strong>{selectedLinkForQr.qrDownloadCount || 0}</strong>
               </span>
             </div>
 
@@ -1915,6 +2073,23 @@ export default function ReferralLinksPage() {
                 ))}
               </div>
             </div>
+
+            {/* Thông báo lỗi tải QR nếu Backend từ chối hoặc quá rate limit (Item 6) */}
+            {qrDownloadError && (
+              <div className="mb-3 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center justify-between gap-2 text-left animate-fadeIn">
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{qrDownloadError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setQrDownloadError(null)}
+                  className="text-rose-500 hover:text-rose-700 p-0.5 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* Action buttons */}
             <div className="grid grid-cols-3 gap-2 mb-3">

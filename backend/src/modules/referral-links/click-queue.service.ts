@@ -86,10 +86,9 @@ export class ClickQueueService implements OnModuleDestroy {
                 referralLinkId: job.linkId,
                 ipAddress: job.ip,
                 userAgent: job.userAgent || null,
-                referrer: job.accessMethod === 'QR' ? (job.referer ? `${job.referer} [QR]` : 'QR_SCAN') : (job.referer || null),
-                deviceFingerprint: job.accessMethod === 'QR'
-                  ? (job.fingerprint ? `${job.fingerprint}|accessMethod:QR` : 'accessMethod:QR')
-                  : (job.fingerprint || null),
+                referrer: job.referer || (job.accessMethod === 'QR' ? 'QR_SCAN' : null),
+                accessMethod: job.accessMethod === 'QR' ? 'QR' : 'LINK',
+                deviceFingerprint: job.fingerprint || null,
                 deviceType: job.deviceType || null,
                 sessionId: job.sessionId || null,
                 isValid: job.isValid,
