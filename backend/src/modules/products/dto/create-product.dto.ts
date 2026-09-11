@@ -5,10 +5,16 @@ import {
   IsString,
   Max,
   Min,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateProductDto {
+  @ApiPropertyOptional({ description: 'Cửa hàng nhận sản phẩm khi Chủ Shop quản lý nhiều gian hàng' })
+  @IsOptional()
+  @IsUUID('4', { message: 'Mã cửa hàng không hợp lệ' })
+  storeId?: string;
+
   @ApiProperty({ example: 'TECH-ANC-01', description: 'Mã SKU duy nhất của sản phẩm' })
   @IsString({ message: 'Mã SKU không hợp lệ' })
   @IsNotEmpty({ message: 'Mã SKU không được để trống' })

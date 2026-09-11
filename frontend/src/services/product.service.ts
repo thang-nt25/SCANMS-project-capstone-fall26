@@ -2,6 +2,7 @@ import api from './api';
 
 export interface Product {
   id: string;
+  storeId?: string;
   sku: string;
   title: string;
   categoryName?: string;
@@ -20,7 +21,7 @@ export interface Product {
 }
 
 export const productService = {
-  async getProducts(params?: { search?: string; category?: string; page?: number; limit?: number }) {
+  async getProducts(params?: { search?: string; category?: string; page?: number; limit?: number; storeId?: string }) {
     const res: any = await api.get('/products', { params });
     return res.data;
   },
@@ -30,7 +31,7 @@ export const productService = {
     return res.data;
   },
 
-  async createProduct(data: Partial<Product>) {
+  async createProduct(data: Partial<Product> & { storeId?: string }) {
     const res: any = await api.post('/products', data);
     return res.data;
   },
