@@ -7,181 +7,6 @@ import type { ChatMessage, Conversation } from '../../types/chat';
 import './ChatBoxPage.css';
 
 // ============================================================
-// Helper: detect & parse campaign invite card
-// ============================================================
-function tryParseCampaignCard(text: string) {
-  try {
-    const obj = JSON.parse(text);
-    if (['CAMPAIGN_INVITE', 'CAMPAIGN_ACCEPTED', 'CAMPAIGN_REJECTED'].includes(obj.type)) return obj;
-  } catch { /* not JSON */ }
-  return null;
-}
-
-// Campaign Invite Card UI
-function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
-  card: any; isMine: boolean; participantId?: string; onRespond?: () => void;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const handleAccept = async () => {
-    if (!participantId) return;
-    setLoading(true);
-    await api.patch(`/campaigns/invitations/${participantId}/accept`, {});
-    setDone(true); setLoading(false);
-    onRespond?.();
-  };
-  const handleReject = async () => {
-    if (!participantId) return;
-    setLoading(true);
-    await api.patch(`/campaigns/invitations/${participantId}/reject`, {});
-    setDone(true); setLoading(false);
-    onRespond?.();
-  };
-
-  if (card.type === 'CAMPAIGN_ACCEPTED') return (
-    <div className="chat-card chat-card-accepted">✅ Đã chấp nhận tham gia chiến dịch <strong>{card.campaignName}</strong></div>
-  );
-  if (card.type === 'CAMPAIGN_REJECTED') return (
-    <div className="chat-card chat-card-rejected">❌ Đã từ chối chiến dịch <strong>{card.campaignName}</strong></div>
-  );
-
-  return (
-    <div className="chat-card chat-card-invite">
-      <div className="chat-card-badge">🌟 Thẻ Mời VIP</div>
-      <div className="chat-card-name">🎯 {card.campaignName}</div>
-      <div className="chat-card-rate">+{card.bonusCommissionRate}% hoa hồng thưởng</div>
-      <div className="chat-card-dates">
-        {card.startDate ? new Date(card.startDate).toLocaleDateString('vi-VN') : ''} →{' '}
-        {card.endDate ? new Date(card.endDate).toLocaleDateString('vi-VN') : ''}
-      </div>
-      {!isMine && !done && (
-        <div className="chat-card-actions">
-          <button className="chat-card-btn accept" disabled={loading} onClick={handleAccept}>
-            {loading ? '⏳' : '✅ Chấp nhận'}
-          </button>
-          <button className="chat-card-btn reject" disabled={loading} onClick={handleReject}>
-            {loading ? '⏳' : '❌ Từ chối'}
-          </button>
-        </div>
-      )}
-      {done && <div className="chat-card-done">Đã phản hồi ✓</div>}
-    </div>
-  );
-}
-
-// ============================================================
-// New Conversation Modal (thông minh theo role)
-// ============================================================
-function NewConversationModal({ onClose, onCreated, isShop }: {
-  onClose: () => void; onCreated: (conv: Conversation) => void; isShop: boolean;
-}) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState<string | null>(null);
-
-  const search = useCallback(async (q: string) => {
-    setLoading(true);
-    try {
-      // Shop tìm KOL, KOL tìm Shop
-      const endpoint = isShop
-        ? `/chat/search-collaborators?q=${encodeURIComponent(q.trim())}`
-        : `/chat/search-stores?q=${encodeURIComponent(q.trim())}`;
-      const res: any = await api.get(endpoint);
-      const list = Array.isArray(res) ? res : (res?.data || []);
-      setResults(list);
-    } catch { setResults([]); }
-    finally { setLoading(false); }
-  }, [isShop]);
-
-  useEffect(() => {
-    const t = setTimeout(() => search(query), 300);
-    return () => clearTimeout(t);
-  }, [query, search]);
-
-  const startChat = async (item: any) => {
-    const id = item.id;
-    setCreating(id);
-    try {
-      // Shop truyền collaboratorId, KOL truyền storeId
-      const body = isShop
-        ? { collaboratorId: id }
-        : { storeId: id };
-      const res: any = await api.post('/chat/conversations', body);
-      const conv = (res && res.id) ? res : (res?.data || res);
-      if (conv && conv.id) {
-        onCreated(conv);
-      }
-      onClose();
-    } catch (err) {
-      console.error('Error starting chat:', err);
-    } finally {
-      setCreating(null);
-    }
-  };
-
-  return (
-    <div className="chat-overlay" onClick={onClose}>
-      <div className="chat-new-modal" onClick={e => e.stopPropagation()}>
-        <div className="chat-new-header">
-          <div className="chat-new-title">
-            <span className="chat-new-title-icon">💬</span>
-            <h3>{isShop ? 'Bắt đầu chat với KOL / CTV' : 'Bắt đầu chat với Shop / Cửa hàng'}</h3>
-          </div>
-          <button className="chat-new-close" onClick={onClose} title="Đóng">✕</button>
-        </div>
-        <div className="chat-new-search">
-          <div className="chat-new-input-wrapper">
-            <span className="chat-new-search-icon">🔍</span>
-            <input
-              id="new-chat-search"
-              autoFocus
-              placeholder={isShop ? 'Gõ tên hoặc email KOL để tìm kiếm...' : 'Gõ tên cửa hàng để tìm kiếm...'}
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="chat-new-input"
-            />
-            {query && (
-              <button className="chat-new-clear-btn" onClick={() => setQuery('')}>✕</button>
-            )}
-          </div>
-        </div>
-        <div className="chat-new-results">
-          {loading && <div className="chat-new-loading">⏳ Đang tìm kiếm...</div>}
-          {!loading && results.length === 0 && (
-            <div className="chat-new-empty">
-              <span>🔍</span>
-              <p>Không tìm thấy {isShop ? 'KOL/CTV nào' : 'Cửa hàng nào'}</p>
-            </div>
-          )}
-          {!loading && results.map((item: any) => (
-            <div key={item.id} className="chat-new-result-row" id={`new-chat-${item.id}`}>
-              <div className="chat-new-avatar">
-                {isShop ? (item.fullName?.[0]?.toUpperCase() || '?') : (item.name?.[0]?.toUpperCase() || '?')}
-              </div>
-              <div className="chat-new-info">
-                <div className="chat-new-name">{isShop ? item.fullName : item.name}</div>
-                <div className="chat-new-email">
-                  {isShop ? item.email : `Chủ shop: ${item.owner?.fullName || item.owner?.email || 'N/A'}`}
-                </div>
-              </div>
-              <button
-                className="chat-new-start-btn"
-                disabled={creating === item.id}
-                onClick={() => startChat(item)}
-              >
-                {creating === item.id ? 'Đang tạo...' : 'Nhắn tin'}
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
 // Helper: format timestamp
 // ============================================================
 function formatMsgTime(dateStr: string) {
@@ -221,8 +46,6 @@ export default function ChatBoxPage() {
   const [hasMore, setHasMore] = useState(false);
   const [oldestMsgId, setOldestMsgId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showNewChat, setShowNewChat] = useState(false);
-  const isShop = currentUser?.role === 'SHOP_MANAGER';
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -236,11 +59,7 @@ export default function ChatBoxPage() {
   // ---- Load conversations ----
   useEffect(() => {
     api.get('/chat/conversations').then((res: any) => {
-      const list: Conversation[] = Array.isArray(res) ? res : (res?.data || []);
-      setConversations(list);
-      if (list.length > 0 && !activeConvId) {
-        openConversation(list[0]);
-      }
+      setConversations(res.data || []);
     }).catch(console.error);
   }, []);
 
@@ -291,7 +110,6 @@ export default function ChatBoxPage() {
 
   // ---- Open conversation ----
   const openConversation = async (conv: Conversation) => {
-    if (!conv || !conv.id) return;
     const socket = getChatSocket();
 
     // Leave previous
@@ -305,7 +123,7 @@ export default function ChatBoxPage() {
 
     try {
       const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`);
-      const msgs: ChatMessage[] = Array.isArray(res) ? res : (res?.data || []);
+      const msgs: ChatMessage[] = res.data || [];
       setMessages(msgs);
       setHasMore(msgs.length === 50);
       setOldestMsgId(msgs[0]?.id);
@@ -327,7 +145,7 @@ export default function ChatBoxPage() {
 
     try {
       const res: any = await api.get(`/chat/conversations/${activeConvId}/messages?take=50&cursor=${oldestMsgId}`);
-      const older: ChatMessage[] = Array.isArray(res) ? res : (res?.data || []);
+      const older: ChatMessage[] = res.data || [];
       setMessages(prev => [...older, ...prev]);
       setHasMore(older.length === 50);
       setOldestMsgId(older[0]?.id);
@@ -381,22 +199,22 @@ export default function ChatBoxPage() {
 
   const activeConv = conversations.find(c => c.id === activeConvId);
   const filteredConversations = conversations.filter(c =>
-    (c.store?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.collaborator?.fullName || '').toLowerCase().includes(searchQuery.toLowerCase())
+    c.store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.collaborator.fullName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getOtherParty = (conv: Conversation) => {
-    if (!currentUser) return conv.store?.name || 'Cửa hàng';
+    if (!currentUser) return conv.store.name;
     return currentUser.role === 'COLLABORATOR'
-      ? (conv.store?.name || 'Cửa hàng')
-      : (conv.collaborator?.fullName || 'KOL / CTV');
+      ? conv.store.name
+      : conv.collaborator.fullName;
   };
 
   const getOtherAvatar = (conv: Conversation) => {
-    if (!currentUser) return conv.store?.name?.[0]?.toUpperCase() || '💬';
+    if (!currentUser) return conv.store.name[0];
     return currentUser.role === 'COLLABORATOR'
-      ? (conv.store?.logoUrl ? null : (conv.store?.name?.[0]?.toUpperCase() || '🏪'))
-      : (conv.collaborator?.fullName?.[0]?.toUpperCase() || '👤');
+      ? (conv.store.logoUrl ? null : conv.store.name[0])
+      : conv.collaborator.fullName[0];
   };
 
   return (
@@ -408,16 +226,8 @@ export default function ChatBoxPage() {
             <span className="chat-title-icon">💬</span>
             <h1>Tin nhắn</h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button
-              id="btn-new-conversation"
-              className="chat-new-btn"
-              title="Tạo cuộc trò chuyện mới"
-              onClick={() => setShowNewChat(true)}
-            >✏️</button>
-            <div className={`chat-status-dot ${isConnected ? 'online' : 'offline'}`}
-              title={isConnected ? 'Đang kết nối' : 'Mất kết nối'} />
-          </div>
+          <div className={`chat-status-dot ${isConnected ? 'online' : 'offline'}`}
+            title={isConnected ? 'Đang kết nối' : 'Mất kết nối'} />
         </div>
 
         <div className="chat-search-wrapper">
@@ -563,25 +373,17 @@ export default function ChatBoxPage() {
                         {!isMine && (
                           <div className="chat-msg-sender">{msg.sender.fullName}</div>
                         )}
-                        {(() => {
-                          const card = tryParseCampaignCard(msg.messageText);
-                          if (card) return (
-                            <CampaignCardBubble card={card} isMine={isMine} />
-                          );
-                          return (
-                            <div className={`chat-msg-bubble ${isMine ? 'mine' : 'theirs'}`}>
-                              {msg.mediaUrl && (
-                                <img
-                                  src={msg.mediaUrl}
-                                  alt="media"
-                                  className="chat-msg-media"
-                                  onClick={() => window.open(msg.mediaUrl, '_blank')}
-                                />
-                              )}
-                              <p>{msg.messageText}</p>
-                            </div>
-                          );
-                        })()}
+                        <div className={`chat-msg-bubble ${isMine ? 'mine' : 'theirs'}`}>
+                          {msg.mediaUrl && (
+                            <img
+                              src={msg.mediaUrl}
+                              alt="media"
+                              className="chat-msg-media"
+                              onClick={() => window.open(msg.mediaUrl, '_blank')}
+                            />
+                          )}
+                          <p>{msg.messageText}</p>
+                        </div>
                         <div className="chat-msg-meta">
                           <span className="chat-msg-time">{formatMsgTime(msg.createdAt)}</span>
                           {isMine && (
@@ -657,27 +459,6 @@ export default function ChatBoxPage() {
           </>
         )}
       </main>
-
-      {/* New Conversation Modal */}
-      {showNewChat && (
-        <NewConversationModal
-          isShop={isShop}
-          onClose={() => setShowNewChat(false)}
-          onCreated={(conv) => {
-            if (!conv || !conv.id) return;
-            setConversations(prev => {
-              const exists = prev.find(c => c.id === conv.id);
-              if (exists) {
-                setTimeout(() => openConversation(exists), 50);
-                return prev;
-              }
-              const updated = [conv, ...prev];
-              setTimeout(() => openConversation(conv), 50);
-              return updated;
-            });
-          }}
-        />
-      )}
     </div>
   );
 }
