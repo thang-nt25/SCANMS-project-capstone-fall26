@@ -1,11 +1,12 @@
 /* ===================================================
-   DashboardPage.css — FR-28 — Quy
+   DashboardPage.css — FR-28 — Realtime Analytics
+   Chuẩn hóa Design System: Vàng Be (Warm Sand & Brand Gold)
    =================================================== */
 
 .db-page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
@@ -24,18 +25,17 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 800;
   margin: 0;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--ink, #1A1612);
+  letter-spacing: -0.01em;
 }
 
 .db-subtitle {
   margin: 0.25rem 0 0;
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  color: var(--muted, #7D6D55);
+  font-size: 0.88rem;
 }
 
 /* ── Period tabs ── */
@@ -48,19 +48,22 @@
   padding: 0.4rem 0.875rem;
   border-radius: 2rem;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-muted);
+  border: 1px solid var(--line, #E8DAC4);
+  background: var(--surface, #ffffff);
+  color: var(--muted, #7D6D55);
   transition: all 0.2s ease;
 }
 
-.db-tab:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
+.db-tab:hover {
+  background: var(--surface-sand, #F3EFE6);
+  color: var(--ink, #1A1612);
+}
 .db-tab.active {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #3b82f6;
+  background: var(--brand-soft, #FBF5EB);
+  border-color: var(--brand-border, #EEDFC6);
+  color: var(--brand-strong, #B88E4F);
 }
 
 /* ── Stats Grid ── */
@@ -71,39 +74,48 @@
 }
 
 .db-stat-card {
-  background: rgba(17, 24, 39, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 1rem;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #E8DAC4);
+  border-radius: var(--radius, 14px);
   padding: 1.1rem 1rem;
   display: flex;
   align-items: center;
   gap: 0.875rem;
+  box-shadow: var(--shadow-card, 0 8px 30px rgba(110, 84, 39, 0.07));
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .db-stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 32px rgba(110, 84, 39, 0.12);
+  border-color: var(--brand-strong, #B88E4F);
 }
 
-.db-stat-icon { font-size: 1.6rem; flex-shrink: 0; }
+.db-stat-icon { font-size: 1.5rem; flex-shrink: 0; }
 .db-stat-body { flex: 1; min-width: 0; }
-.db-stat-value { font-size: 1.25rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.db-stat-label { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
-.db-stat-sub { font-size: 0.65rem; color: var(--text-muted); margin-top: 1px; opacity: 0.7; }
+.db-stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ink, #1A1612);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.db-stat-label { font-size: 0.72rem; color: var(--muted, #7D6D55); margin-top: 2px; font-weight: 600; }
+.db-stat-sub { font-size: 0.65rem; color: var(--muted, #7D6D55); margin-top: 1px; opacity: 0.8; }
 
 /* Color accents */
-.db-stat-blue   { border-color: rgba(59,  130, 246, 0.2); }
-.db-stat-green  { border-color: rgba(16,  185, 129, 0.2); }
-.db-stat-purple { border-color: rgba(139, 92,  246, 0.2); }
-.db-stat-orange { border-color: rgba(245, 158, 11,  0.2); }
-.db-stat-pink   { border-color: rgba(236, 72,  153, 0.2); }
+.db-stat-blue   { border-color: var(--line, #E8DAC4); }
+.db-stat-green  { border-color: var(--brand-border, #EEDFC6); }
+.db-stat-purple { border-color: var(--line, #E8DAC4); }
+.db-stat-orange { border-color: var(--brand-border, #EEDFC6); }
+.db-stat-pink   { border-color: var(--line, #E8DAC4); }
 
-.db-stat-blue   .db-stat-value { color: #3b82f6; }
-.db-stat-green  .db-stat-value { color: #10b981; }
-.db-stat-purple .db-stat-value { color: #8b5cf6; }
-.db-stat-orange .db-stat-value { color: #f59e0b; }
-.db-stat-pink   .db-stat-value { color: #ec4899; }
+.db-stat-blue   .db-stat-value { color: var(--brand-strong, #B88E4F); }
+.db-stat-green  .db-stat-value { color: var(--ink, #1A1612); }
+.db-stat-purple .db-stat-value { color: var(--ink, #1A1612); }
+.db-stat-orange .db-stat-value { color: var(--brand-strong, #B88E4F); }
+.db-stat-pink   .db-stat-value { color: var(--ink, #1A1612); }
 
 /* ── Charts ── */
 .db-charts {
@@ -113,10 +125,11 @@
 }
 
 .db-chart-card {
-  background: rgba(17, 24, 39, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 1rem;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #E8DAC4);
+  border-radius: var(--radius, 14px);
   padding: 1.25rem;
+  box-shadow: var(--shadow-card, 0 8px 30px rgba(110, 84, 39, 0.07));
 }
 
 .db-chart-card.wide {
@@ -124,31 +137,31 @@
 }
 
 .db-chart-title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ink, #1A1612);
   margin: 0 0 1.1rem;
 }
 
 /* ── Recharts overrides ── */
-.recharts-cartesian-axis-tick-value { fill: #6b7280 !important; font-size: 11px !important; }
+.recharts-cartesian-axis-tick-value { fill: #7D6D55 !important; font-size: 11px !important; }
 .recharts-tooltip-wrapper { outline: none; }
 
 /* ── Custom Tooltip ── */
 .db-tooltip {
-  background: rgba(17, 24, 39, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #E8DAC4);
   border-radius: 0.625rem;
   padding: 0.625rem 0.875rem;
   min-width: 150px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-card, 0 8px 30px rgba(110, 84, 39, 0.12));
 }
 
 .db-tooltip-date {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--muted, #7D6D55);
   margin-bottom: 0.35rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .db-tooltip-row {
@@ -159,8 +172,8 @@
   font-size: 0.8rem;
 }
 
-.db-tooltip-row span { color: var(--text-muted); }
-.db-tooltip-row strong { font-weight: 700; }
+.db-tooltip-row span { color: var(--muted, #7D6D55); }
+.db-tooltip-row strong { font-weight: 800; color: var(--ink, #1A1612); }
 
 /* ── Loading ── */
 .db-loading {
@@ -169,14 +182,14 @@
   justify-content: center;
   gap: 0.75rem;
   padding: 5rem;
-  color: var(--text-muted);
+  color: var(--muted, #7D6D55);
 }
 
 .db-spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #3b82f6;
+  border: 3px solid rgba(197, 155, 88, 0.2);
+  border-top-color: var(--brand, #C59B58);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

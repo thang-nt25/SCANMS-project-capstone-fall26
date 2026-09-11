@@ -17,8 +17,6 @@ import {
   Building2,
 } from 'lucide-react';
 import api from '../../services/api';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
 
 interface StoreItem {
   id: string;
