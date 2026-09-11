@@ -1947,14 +1947,18 @@ export default function ReferralLinksPage() {
             className="bg-white rounded-2xl shadow-2xl border border-[#E8DAC4] w-full max-w-md p-5 sm:p-6 text-center animate-in zoom-in-95 duration-150 relative"
           >
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8DAC4]/60">
-              <div className="flex items-center gap-2 text-left">
-                <div className="w-8 h-8 rounded-xl bg-[#FAF8F5] border border-[#E8DAC4] flex items-center justify-center text-[#9E7933]">
-                  <QrCode className="w-4 h-4" />
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-[#E8DAC4]/60">
+              <div className="flex items-center gap-2.5 text-left">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#FDFBF7] via-[#FAF8F5] to-[#F5EFE6] border border-[#E8DAC4] shadow-2xs flex items-center justify-center text-[#9E7933] ring-2 ring-[#9E7933]/10 flex-shrink-0">
+                  <QrCode className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <h3 id="qr-modal-title" className="text-sm sm:text-base font-bold text-[#1A1612] m-0">
-                    Mã QR Tiếp Thị (FR-11)
+                  <h3 id="qr-modal-title" className="text-sm sm:text-base font-black text-[#1A1612] tracking-tight m-0 flex items-center gap-1.5">
+                    Mã QR Tiếp Thị
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#9E7933]/10 text-[#9E7933] border border-[#9E7933]/20 rounded-md">
+                      FR-11
+                    </span>
                   </h3>
                   <p className="text-[11px] text-[#7D715E] m-0 mt-0.5">
                     QR động trỏ về short URL chính thức kèm nhận diện traffic
@@ -1965,7 +1969,7 @@ export default function ReferralLinksPage() {
                 ref={qrCloseBtnRef}
                 type="button"
                 onClick={() => setIsQrModalOpen(false)}
-                className="p-1.5 text-[#A49B8B] hover:text-[#1A1612] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                className="w-8 h-8 flex items-center justify-center text-[#A49B8B] hover:text-[#1A1612] hover:bg-[#FAF8F5] rounded-xl border border-transparent hover:border-[#E8DAC4] transition-all cursor-pointer"
                 aria-label="Đóng cửa sổ"
               >
                 <X className="w-4 h-4" />
@@ -1973,20 +1977,22 @@ export default function ReferralLinksPage() {
             </div>
 
             {/* QR Preview Box with quiet zone (Item 7: qrLoading & qrError) */}
-            <div className="relative p-3.5 bg-white rounded-2xl border-2 border-[#E8DAC4] shadow-xs inline-block mb-3.5">
+            <div className="relative p-4 bg-gradient-to-b from-white via-white to-[#FDFBF7] rounded-3xl border-2 border-[#E8DAC4] shadow-lg shadow-[#9E7933]/5 inline-block mb-3.5 transition-all hover:border-[#C59B58]">
               {selectedQrLoading ? (
                 <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 text-[#7D715E]">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#9E7933]" />
-                  <span className="text-xs font-medium">Đang dựng ảnh QR…</span>
+                  <Loader2 className="w-7 h-7 animate-spin text-[#9E7933]" />
+                  <span className="text-xs font-semibold">Đang dựng ảnh QR…</span>
                 </div>
               ) : selectedQrError ? (
                 <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 p-3 text-center">
-                  <AlertCircle className="w-8 h-8 text-rose-500 mb-1" />
+                  <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200/80 flex items-center justify-center text-rose-600 mb-1 shadow-2xs">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
                   <span className="text-xs font-bold text-[#1A1612]">Không thể tạo mã QR.</span>
                   <button
                     type="button"
                     onClick={retrySelectedQr}
-                    className="mt-1 px-3 py-1.5 bg-[#FAF3E8] hover:bg-[#F5E7CC] text-[#9E7933] border border-[#DEBE85] rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    className="mt-1 px-3 py-1.5 bg-gradient-to-r from-[#FAF3E8] to-[#F5E7CC] hover:from-[#F5E7CC] hover:to-[#ECD9B8] text-[#9E7933] border border-[#DEBE85] rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
                   >
                     Vui lòng thử lại
                   </button>
@@ -1995,58 +2001,87 @@ export default function ReferralLinksPage() {
                 <img
                   src={selectedQrDataUrl}
                   alt={`Mã QR tiếp thị cho ${selectedLinkForQr.product?.title || 'sản phẩm'}`}
-                  className="w-48 h-48 rounded-xl object-contain bg-white block"
+                  className="w-48 h-48 rounded-2xl object-contain bg-white block shadow-2xs"
                 />
               ) : (
                 <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 text-[#7D715E]">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#9E7933]" />
+                  <Loader2 className="w-7 h-7 animate-spin text-[#9E7933]" />
                   <span className="text-xs">Đang dựng ảnh QR…</span>
                 </div>
               )}
             </div>
 
             {/* Product & Store info */}
-            <div className="text-xs font-bold text-[#1A1612] line-clamp-2 mb-1 px-2">
+            <div className="text-sm font-black text-[#1A1612] line-clamp-2 mb-2 px-2 tracking-tight">
               {selectedLinkForQr.product?.title}
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#7D6D55] mb-3">
+
+            {/* Badges xịn sò */}
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs mb-3.5">
               {selectedLinkForQr.product?.store?.name && (
-                <span className="flex items-center gap-1 bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#E8DAC4]/60">
-                  <Store className="w-3 h-3 text-[#9E7933]" />
-                  {selectedLinkForQr.product.store.name}
-                </span>
+                <div className="inline-flex items-center gap-1.5 bg-gradient-to-b from-[#FAF8F5] via-[#FFFFFF] to-[#F5EFE6] px-2.5 py-1 rounded-xl border border-[#E8DAC4]/90 shadow-2xs">
+                  <span className="w-5 h-5 rounded-lg bg-[#9E7933]/12 border border-[#9E7933]/20 flex items-center justify-center text-[#9E7933] shadow-2xs flex-shrink-0">
+                    <Store className="w-3 h-3" />
+                  </span>
+                  <span className="font-semibold text-[#5E5141] text-[11px] max-w-[130px] truncate">
+                    {selectedLinkForQr.product.store.name}
+                  </span>
+                </div>
               )}
-              <span className="font-mono font-bold text-[#9E7933] bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#E8DAC4]/60">
-                Mã: {selectedLinkForQr.shortCode}
-              </span>
-              <span className="flex items-center gap-1 bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#E8DAC4]/60" title="Tổng số lượt tải ảnh QR">
-                <Download className="w-3 h-3 text-[#9E7933]" />
-                Lượt tải: <strong>{selectedLinkForQr.qrDownloadCount || 0}</strong>
-              </span>
+              <div className="inline-flex items-center gap-1.5 bg-gradient-to-b from-[#FAF8F5] via-[#FFFFFF] to-[#F5EFE6] px-2.5 py-1 rounded-xl border border-[#E8DAC4]/90 shadow-2xs">
+                <span className="w-5 h-5 rounded-lg bg-[#9E7933]/12 border border-[#9E7933]/20 flex items-center justify-center text-[#9E7933] shadow-2xs flex-shrink-0 font-black text-[11px]">
+                  #
+                </span>
+                <span className="font-mono font-black text-[#9E7933] text-[11px]">
+                  {selectedLinkForQr.shortCode}
+                </span>
+              </div>
+              <div 
+                className="inline-flex items-center gap-1.5 bg-gradient-to-b from-amber-50/90 via-amber-50/60 to-amber-100/50 px-2.5 py-1 rounded-xl border border-amber-200/90 shadow-2xs text-amber-900" 
+                title="Tổng số lượt tải ảnh QR"
+              >
+                <span className="w-5 h-5 rounded-lg bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-700 shadow-2xs flex-shrink-0">
+                  <Download className="w-3 h-3" />
+                </span>
+                <span className="text-[11px] font-medium text-amber-800">
+                  Lượt tải: <strong className="font-black text-amber-950">{selectedLinkForQr.qrDownloadCount || 0}</strong>
+                </span>
+              </div>
             </div>
 
             {/* Short URL with copy */}
-            <div className="mb-4 flex items-center gap-1.5 bg-[#FAF8F5] p-1.5 rounded-xl border border-[#E8DAC4]">
+            <div className="mb-3.5 group flex items-center gap-2 bg-gradient-to-r from-[#FAF8F5] via-[#FFFFFF] to-[#FAF8F5] p-1.5 pl-2.5 rounded-2xl border border-[#E8DAC4] shadow-xs focus-within:border-[#B88E4F] focus-within:ring-2 focus-within:ring-[#B88E4F]/20 transition-all">
+              <span className="w-6 h-6 rounded-lg bg-[#9E7933]/10 border border-[#9E7933]/20 flex items-center justify-center text-[#9E7933] flex-shrink-0">
+                <Globe className="w-3.5 h-3.5" />
+              </span>
               <input
                 type="text"
                 readOnly
                 value={selectedQrTargetUrl}
-                className="font-mono text-[11px] text-[#5E5141] bg-transparent flex-1 px-2 outline-none select-all"
+                className="font-mono text-[11px] text-[#4A3E31] bg-transparent flex-1 outline-none select-all tracking-tight font-medium"
                 title="Short URL mã hóa trong QR"
               />
               <button
                 type="button"
                 onClick={() => handleCopyLink(selectedQrTargetUrl, selectedLinkForQr.shortCode)}
-                className="px-2.5 py-1 text-[11px] font-semibold bg-white hover:bg-[#F5E7CC] text-[#7D6D55] hover:text-[#9E7933] border border-[#E8DAC4] rounded-lg flex items-center gap-1 transition-colors cursor-pointer flex-shrink-0"
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer flex-shrink-0 active:scale-95 border ${
+                  copiedCode === selectedLinkForQr.shortCode
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : 'bg-gradient-to-b from-white to-[#F7F2EB] hover:from-[#F7F2EB] hover:to-[#EFE6D8] text-[#7D6D55] hover:text-[#9E7933] border-[#E8DAC4]'
+                }`}
               >
                 {copiedCode === selectedLinkForQr.shortCode ? (
                   <>
-                    <Check className="w-3 h-3 text-emerald-600" />
+                    <span className="w-4 h-4 rounded-md bg-emerald-500/15 flex items-center justify-center text-emerald-700">
+                      <Check className="w-2.5 h-2.5" />
+                    </span>
                     Đã chép
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3 h-3" />
+                    <span className="w-4 h-4 rounded-md bg-[#9E7933]/10 flex items-center justify-center text-[#9E7933]">
+                      <Copy className="w-2.5 h-2.5" />
+                    </span>
                     Chép link
                   </>
                 )}
@@ -2054,18 +2089,23 @@ export default function ReferralLinksPage() {
             </div>
 
             {/* Size selector for PNG */}
-            <div className="flex items-center justify-between gap-2 mb-3 text-xs">
-              <span className="text-[11px] font-semibold text-[#7D715E]">Kích thước PNG:</span>
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between gap-2 mb-3.5 px-0.5">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-[#5E5141]">
+                <span className="w-5 h-5 rounded-lg bg-[#9E7933]/10 border border-[#9E7933]/20 flex items-center justify-center text-[#9E7933]">
+                  <SlidersHorizontal className="w-3 h-3" />
+                </span>
+                Kích thước PNG:
+              </span>
+              <div className="inline-flex p-1 bg-[#F5EFE6]/80 rounded-xl border border-[#E8DAC4]/80 shadow-2xs gap-1">
                 {([512, 1024, 2048] as const).map((sz) => (
                   <button
                     key={sz}
                     type="button"
                     onClick={() => setQrPngSize(sz)}
-                    className={`px-2 py-0.5 rounded-lg text-[11px] font-medium border transition-colors cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       qrPngSize === sz
-                        ? 'bg-[#9E7933] text-white border-[#9E7933] font-bold shadow-2xs'
-                        : 'bg-white text-[#7D715E] border-[#E8DAC4] hover:bg-[#FAF8F5]'
+                        ? 'bg-gradient-to-r from-[#C59B58] to-[#9E7933] text-white shadow-xs'
+                        : 'text-[#7D6D55] hover:text-[#1A1612] hover:bg-white/60'
                     }`}
                   >
                     {sz === 1024 ? '1024 (Chuẩn)' : sz === 512 ? '512' : '2048 (In)'}
@@ -2092,18 +2132,20 @@ export default function ReferralLinksPage() {
             )}
 
             {/* Action buttons */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-3 gap-2.5 mb-3.5">
               <button
                 type="button"
                 onClick={() => handleDownloadQr('png')}
                 disabled={isDownloadingQr}
-                className="py-2 px-2 bg-gradient-to-r from-[#C59B58] via-[#B88E4F] to-[#9E7933] hover:from-[#B88E4F] hover:to-[#8C682A] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow transition-all cursor-pointer disabled:opacity-50"
+                className="py-2.5 px-2 bg-gradient-to-r from-[#D4AF37] via-[#B88E4F] to-[#8C682A] hover:from-[#B88E4F] hover:to-[#73531F] text-white rounded-2xl text-xs font-black tracking-wide flex items-center justify-center gap-1.5 shadow-md shadow-[#9E7933]/20 hover:shadow-lg hover:shadow-[#9E7933]/30 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 border border-[#E2C792]/40"
               >
-                {isDownloadingQr ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Download className="w-3.5 h-3.5" />
-                )}
+                <span className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0 backdrop-blur-xs">
+                  {isDownloadingQr ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-white" />
+                  ) : (
+                    <Download className="w-3 h-3 text-white" />
+                  )}
+                </span>
                 Tải PNG
               </button>
 
@@ -2111,9 +2153,11 @@ export default function ReferralLinksPage() {
                 type="button"
                 onClick={() => handleDownloadQr('svg')}
                 disabled={isDownloadingQr}
-                className="py-2 px-2 bg-white hover:bg-[#FAF8F5] text-[#7D6D55] hover:text-[#9E7933] border border-[#E8DAC4] rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                className="py-2.5 px-2 bg-gradient-to-b from-white via-white to-[#FAF8F5] hover:from-[#FAF8F5] hover:to-[#F3ECE0] text-[#7D6D55] hover:text-[#9E7933] border border-[#E8DAC4] rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
-                <Download className="w-3.5 h-3.5 text-[#9E7933]" />
+                <span className="w-5 h-5 rounded-lg bg-[#9E7933]/10 border border-[#9E7933]/20 flex items-center justify-center text-[#9E7933] flex-shrink-0">
+                  <Download className="w-3 h-3" />
+                </span>
                 Tải SVG
               </button>
 
@@ -2121,18 +2165,22 @@ export default function ReferralLinksPage() {
                 href={`/r/${selectedLinkForQr.shortCode}?via=qr`}
                 target="_blank"
                 rel="noreferrer"
-                className="py-2 px-2 bg-[#FAF8F5] hover:bg-[#F5E7CC] text-[#7D6D55] hover:text-[#9E7933] border border-[#E8DAC4] rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
+                className="py-2.5 px-2 bg-gradient-to-b from-[#FAF8F5] via-white to-[#F5EFE6] hover:from-[#F5E7CC] hover:to-[#ECD9B8] text-[#7D6D55] hover:text-[#8C682A] border border-[#E8DAC4] rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-[0.98] transition-all cursor-pointer"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
+                <span className="w-5 h-5 rounded-lg bg-[#9E7933]/12 border border-[#9E7933]/25 flex items-center justify-center text-[#9E7933] flex-shrink-0">
+                  <ExternalLink className="w-3 h-3" />
+                </span>
                 Quét thử
               </a>
             </div>
 
             {/* Hint Notice according to Section 29 */}
-            <div className="p-2.5 bg-[#FAF8F5] rounded-xl border border-[#E8DAC4]/70 text-[11px] text-[#7D6D55] flex items-center gap-2 text-left leading-relaxed">
-              <Lightbulb className="w-4 h-4 text-[#C59B58] flex-shrink-0" />
-              <span>
-                <strong>Gợi ý:</strong> Quét thử bằng camera điện thoại để kiểm tra chuyển hướng trước khi in ấn số lượng lớn.
+            <div className="p-3 bg-gradient-to-r from-[#FAF8F5] via-[#FFFDF9] to-[#FAF8F5] rounded-2xl border border-[#E8DAC4]/90 text-xs text-[#7D6D55] flex items-center gap-3 text-left shadow-2xs leading-relaxed">
+              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200/70 border border-amber-300/80 flex items-center justify-center text-amber-800 flex-shrink-0 shadow-2xs ring-2 ring-amber-50">
+                <Lightbulb className="w-4 h-4" />
+              </span>
+              <span className="text-[11px] leading-relaxed text-[#5E5141]">
+                <strong className="text-[#1A1612] font-bold">Mẹo nhỏ:</strong> Quét thử bằng camera điện thoại để kiểm tra chuyển hướng trước khi in ấn số lượng lớn.
               </span>
             </div>
           </div>
