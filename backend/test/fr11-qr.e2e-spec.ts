@@ -161,11 +161,6 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     tokenOtherShop = loginOtherShop.body.accessToken || loginOtherShop.body.token || loginOtherShop.body.data?.token || loginOtherShop.body.data?.accessToken;
   });
 
-  afterAll(async () => {
-    await cleanup();
-    await app.close();
-  });
-
   // 1. Kiểm tra tải ảnh PNG 1024x1024, headers và decode QR
   it('1. Tải PNG 1024x1024 thành công, headers chuẩn, decode đúng URL có via=qr', async () => {
     const res = await request(app.getHttpServer())
@@ -306,4 +301,30 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     const res = await request(app.getHttpServer()).get(`/api/r/${shortCode}?via=qr`);
     expect([200, 302, 307]).toContain(res.status);
   });
+
+  afterAll(async () => {
+    try {
+      await cleanup();
+    } catch (e) {
+      // ignore
+    }
+    const clickQueue = app.get(ClickQueueService, { strict: false });
+    if (clickQueue) {
+      await clickQueue.onModuleDestroy();
+    }
+    if (cacheService) {
+      await cacheService.onModuleDestroy();
+    }
+    if (prisma) {
+      await prisma.$disconnect();
+    }
+    if (app) {
+      const server = app.getHttpServer();
+      if (server && typeof server.close === 'function') {
+        server.close();
+      }
+      await app.close();
+    }
+  });
 });
+

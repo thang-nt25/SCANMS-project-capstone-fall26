@@ -77,12 +77,18 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  onModuleDestroy() {
+  async onModuleDestroy() {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
     }
     if (this.redisClient) {
-      this.redisClient.disconnect();
+      try {
+        await this.redisClient.quit();
+      } catch {
+        this.redisClient.disconnect(false);
+      }
+      this.redisClient = null;
+      this.isConnectedToRedis = false;
     }
   }
 

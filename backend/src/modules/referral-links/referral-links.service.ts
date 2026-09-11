@@ -1758,28 +1758,6 @@ export class ReferralLinksService {
         });
     }
 
-    // Đếm lượt tải QR (Mục 23 & 37.8 - không tính vào click, lưu bền vững vào PostgreSQL và Redis)
-    if (isDownload) {
-      const downloadCounterKey = `qr_dl_count:${link.id}`;
-      const redis = this.cacheService.getRedis();
-      if (redis) {
-        if (typeof redis.incr === 'function') {
-          await redis.incr(downloadCounterKey).catch(() => {});
-        }
-        if (typeof redis.expire === 'function') {
-          await redis.expire(downloadCounterKey, 86400 * 30).catch(() => {});
-        }
-      }
-      await this.prisma.referralLink
-        .update({
-          where: { id: link.id },
-          data: { qrDownloadCount: { increment: 1 } },
-        })
-        .catch((err: any) => {
-          this.logger.warn(`Lỗi tăng qrDownloadCount trong DB: ${err.message}`);
-        });
-    }
-
     const publicAppUrl = this.getPublicAppUrl();
     const shortUrl = `${publicAppUrl}/r/${link.shortCode}?via=qr`;
     const filename = `SCANMS-QR-${link.shortCode}.${format}`;
@@ -1788,23 +1766,15 @@ export class ReferralLinksService {
     const cacheKey = `qr_render:${link.id}:${format}:${size}`;
     const cached = await this.cacheService.get<{ bufferBase64: string; contentType: string }>(cacheKey);
 
-    if (cached) {
-      const buffer = format === 'png'
-        ? Buffer.from(cached.bufferBase64, 'base64')
-        : cached.bufferBase64;
-      return {
-        buffer,
-        contentType: cached.contentType,
-        filename,
-        shortCode: link.shortCode,
-        shortUrl,
-      };
-    }
-
     let buffer: Buffer | string;
     let contentType: string;
 
-    if (format === 'png') {
+    if (cached) {
+      buffer = format === 'png'
+        ? Buffer.from(cached.bufferBase64, 'base64')
+        : cached.bufferBase64;
+      contentType = cached.contentType;
+    } else if (format === 'png') {
       buffer = await QRCode.toBuffer(shortUrl, {
         type: 'png',
         width: size,
@@ -1848,6 +1818,28 @@ export class ReferralLinksService {
         bufferBase64: svgContent,
         contentType,
       }, 86400);
+    }
+
+    // Đếm lượt tải QR (Mục 23 & 37.8 - chỉ tăng sau khi ảnh đã render hoặc lấy cache thành công)
+    if (isDownload) {
+      const downloadCounterKey = `qr_dl_count:${link.id}`;
+      const redis = this.cacheService.getRedis();
+      if (redis) {
+        if (typeof redis.incr === 'function') {
+          await redis.incr(downloadCounterKey).catch(() => {});
+        }
+        if (typeof redis.expire === 'function') {
+          await redis.expire(downloadCounterKey, 86400 * 30).catch(() => {});
+        }
+      }
+      await this.prisma.referralLink
+        .update({
+          where: { id: link.id },
+          data: { qrDownloadCount: { increment: 1 } },
+        })
+        .catch((err: any) => {
+          this.logger.warn(`Lỗi tăng qrDownloadCount trong DB: ${err.message}`);
+        });
     }
 
     return {

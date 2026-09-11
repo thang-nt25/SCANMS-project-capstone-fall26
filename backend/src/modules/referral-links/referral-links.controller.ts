@@ -21,6 +21,8 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
+  ApiProduces,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -79,6 +81,17 @@ export class CollaboratorReferralLinksController {
   @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiOperation({ summary: 'Xem trước hoặc tải về ảnh mã QR Code động (FR-11)' })
   @ApiParam({ name: 'id', description: 'ID hoặc shortCode của link tiếp thị' })
+  @ApiProduces('image/png', 'image/svg+xml')
+  @ApiQuery({ name: 'format', required: false, enum: ['png', 'svg'], description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.', example: 'png' })
+  @ApiQuery({ name: 'size', required: false, enum: [512, 1024, 2048], description: 'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.', example: 1024 })
+  @ApiQuery({ name: 'download', required: false, type: Boolean, description: 'True để tải về (attachment), False để xem trước (inline).', example: false })
+  @ApiResponse({ status: 200, description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)', schema: { type: 'string', format: 'binary' } })
+  @ApiResponse({ status: 400, description: 'Yêu cầu không hợp lệ (format/size không đúng danh mục cho phép)' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực JWT' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xem hoặc tải mã QR của liên kết này' })
+  @ApiResponse({ status: 404, description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa' })
+  @ApiResponse({ status: 429, description: 'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)' })
+  @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR' })
   async getQrCode(
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: UserRole },
@@ -205,6 +218,19 @@ export class StoreReferralLinksController {
 
   @Get(':id/qr')
   @ApiOperation({ summary: 'Chủ Shop xem hoặc tải ảnh mã QR của link tiếp thị' })
+  @ApiParam({ name: 'id', description: 'ID của link tiếp thị thuộc cửa hàng' })
+  @ApiParam({ name: 'storeId', description: 'ID của cửa hàng' })
+  @ApiProduces('image/png', 'image/svg+xml')
+  @ApiQuery({ name: 'format', required: false, enum: ['png', 'svg'], description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.', example: 'png' })
+  @ApiQuery({ name: 'size', required: false, enum: [512, 1024, 2048], description: 'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.', example: 1024 })
+  @ApiQuery({ name: 'download', required: false, type: Boolean, description: 'True để tải về (attachment), False để xem trước (inline).', example: false })
+  @ApiResponse({ status: 200, description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)', schema: { type: 'string', format: 'binary' } })
+  @ApiResponse({ status: 400, description: 'Yêu cầu không hợp lệ (format/size không đúng)' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực JWT' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xem mã QR của liên kết thuộc cửa hàng khác' })
+  @ApiResponse({ status: 404, description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa' })
+  @ApiResponse({ status: 429, description: 'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)' })
+  @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR' })
   async getStoreQrCode(
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: UserRole },
@@ -232,7 +258,7 @@ export class StoreReferralLinksController {
       `${isDownload ? 'attachment' : 'inline'}; filename="${qrResult.filename}"`,
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    res.setHeader('Cache-Control', 'private, max-age=86400');
 
     return res.send(qrResult.buffer);
   }
@@ -263,6 +289,18 @@ export class AdminReferralLinksController {
 
   @Get(':id/qr')
   @ApiOperation({ summary: 'Quản trị viên tra cứu hoặc tải ảnh mã QR của link tiếp thị' })
+  @ApiParam({ name: 'id', description: 'ID hoặc shortCode của link tiếp thị' })
+  @ApiProduces('image/png', 'image/svg+xml')
+  @ApiQuery({ name: 'format', required: false, enum: ['png', 'svg'], description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.', example: 'png' })
+  @ApiQuery({ name: 'size', required: false, enum: [512, 1024, 2048], description: 'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.', example: 1024 })
+  @ApiQuery({ name: 'download', required: false, type: Boolean, description: 'True để tải về (attachment), False để xem trước (inline).', example: false })
+  @ApiResponse({ status: 200, description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)', schema: { type: 'string', format: 'binary' } })
+  @ApiResponse({ status: 400, description: 'Yêu cầu không hợp lệ (format/size không đúng)' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực JWT' })
+  @ApiResponse({ status: 403, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa' })
+  @ApiResponse({ status: 429, description: 'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)' })
+  @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR' })
   async getAdminQrCode(
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: UserRole },
@@ -290,7 +328,7 @@ export class AdminReferralLinksController {
       `${isDownload ? 'attachment' : 'inline'}; filename="${qrResult.filename}"`,
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    res.setHeader('Cache-Control', 'private, max-age=86400');
 
     return res.send(qrResult.buffer);
   }
