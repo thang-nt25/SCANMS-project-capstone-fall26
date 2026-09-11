@@ -385,7 +385,6 @@ async function main() {
   await prisma.payoutRequest.create({
     data: {
       collaboratorId: kol1.id,
-      storeId: store.id,
       amount: 2500000, // Rút 2.5 triệu
       taxAmount: 250000, // 10% thuế TNCN
       netAmount: 2250000, // Thực nhận 90%
