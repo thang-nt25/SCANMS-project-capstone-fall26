@@ -2,6 +2,8 @@
 // SCANMS SYSTEM MANAGER MODULE (Vận Hành Nền Tảng)
 // ==========================================================================
 
+import { compressAvatarImage, safeSaveProfile } from './image-utils.js';
+
 const icon = (name) => `<i class="ph ${name}" aria-hidden="true"></i>`;
 const money = (v) => `${new Intl.NumberFormat("vi-VN").format(v)} ₫`;
 
@@ -926,6 +928,15 @@ try {
 } catch (e) {}
 
 export function managerProfileScreen() {
+  // Luôn đồng bộ dữ liệu mới nhất từ localStorage để cập nhật avatar kể cả sau khi đổi role hay F5
+  try {
+    const saved = localStorage.getItem('scanms_profile_manager');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      managerProfileState.profile = { ...managerProfileState.profile, ...parsed };
+    }
+  } catch (e) {}
+
   const p = managerProfileState.profile;
   const tab = managerProfileState.activeTab;
 
@@ -1336,7 +1347,7 @@ export function bindManager(root, { toast, go, renderCurrentPage }) {
   }
 
   if (mgrAvatarInput) {
-    mgrAvatarInput.addEventListener('change', (e) => {
+    mgrAvatarInput.addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
@@ -1344,33 +1355,28 @@ export function bindManager(root, { toast, go, renderCurrentPage }) {
         toast?.('Vui lòng chọn tệp định dạng hình ảnh hợp lệ!', 'error');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast?.('Kích thước ảnh tối đa là 5MB!', 'error');
+      if (file.size > 10 * 1024 * 1024) {
+        toast?.('Kích thước ảnh tối đa là 10MB!', 'error');
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (loadEvt) => {
-        const base64 = loadEvt.target?.result;
-        if (base64) {
-          managerProfileState.profile.avatarImg = base64;
-          try {
-            localStorage.setItem('scanms_profile_manager', JSON.stringify(managerProfileState.profile));
-          } catch (err) {}
-          toast?.('Đã đổi ảnh đại diện cán bộ vận hành thành công!', 'success');
-          renderCurrentPage();
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressAvatarImage(file, 256, 0.82);
+        managerProfileState.profile.avatarImg = compressedBase64;
+        safeSaveProfile('scanms_profile_manager', managerProfileState.profile);
+        toast?.('Đã đổi ảnh đại diện cán bộ vận hành thành công!', 'success');
+        renderCurrentPage();
+      } catch (err) {
+        console.error('Lỗi khi nén ảnh đại diện manager:', err);
+        toast?.('Không thể xử lý ảnh này. Vui lòng chọn ảnh khác!', 'error');
+      }
     });
   }
 
   if (mgrAvatarRemoveBtn) {
     mgrAvatarRemoveBtn.addEventListener('click', () => {
       managerProfileState.profile.avatarImg = null;
-      try {
-        localStorage.setItem('scanms_profile_manager', JSON.stringify(managerProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_manager', managerProfileState.profile);
       toast?.('Đã gỡ ảnh đại diện, chuyển về chữ cái mặc định!', 'info');
       renderCurrentPage();
     });
@@ -1399,9 +1405,7 @@ export function bindManager(root, { toast, go, renderCurrentPage }) {
         internalExt: ext,
         title,
       };
-      try {
-        localStorage.setItem('scanms_profile_manager', JSON.stringify(managerProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_manager', managerProfileState.profile);
       toast?.('Đã cập nhật thông tin cán bộ Vận Hành Sàn thành công!', 'success');
       renderCurrentPage();
     });

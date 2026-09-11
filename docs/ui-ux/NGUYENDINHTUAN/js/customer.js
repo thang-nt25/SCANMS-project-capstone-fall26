@@ -2,6 +2,8 @@
 // SCANMS CUSTOMER MODULE (Khu Vực Tài Khoản Khách Mua Hàng)
 // ==========================================================================
 
+import { compressAvatarImage, safeSaveProfile } from './image-utils.js';
+
 const icon = (name) => `<i class="ph ${name}" aria-hidden="true"></i>`;
 const money = (v) => `${new Intl.NumberFormat("vi-VN").format(v)} ₫`;
 
@@ -218,6 +220,15 @@ if (!customerState.activeProfileTab) {
 }
 
 export function customerProfileScreen() {
+  // Luôn đồng bộ dữ liệu mới nhất từ localStorage để cập nhật avatar kể cả sau khi đổi role hay F5
+  try {
+    const saved = localStorage.getItem('scanms_profile_customer');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      customerState.profile = { ...customerState.profile, ...parsed };
+    }
+  } catch (e) {}
+
   const p = customerState.profile;
   const tab = customerState.activeProfileTab;
 
@@ -1203,7 +1214,7 @@ export function bindCustomer(root, { toast, go, renderCurrentPage, modal }) {
   }
 
   if (custAvatarInput) {
-    custAvatarInput.addEventListener('change', (e) => {
+    custAvatarInput.addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
@@ -1211,33 +1222,28 @@ export function bindCustomer(root, { toast, go, renderCurrentPage, modal }) {
         toast?.('Vui lòng chọn tệp định dạng hình ảnh hợp lệ!', 'error');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast?.('Kích thước ảnh tối đa là 5MB!', 'error');
+      if (file.size > 10 * 1024 * 1024) {
+        toast?.('Kích thước ảnh tối đa là 10MB!', 'error');
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (loadEvt) => {
-        const base64 = loadEvt.target?.result;
-        if (base64) {
-          customerState.profile.avatarImg = base64;
-          try {
-            localStorage.setItem('scanms_profile_customer', JSON.stringify(customerState.profile));
-          } catch (err) {}
-          toast?.('Đã đổi ảnh đại diện khách hàng thành công!', 'success');
-          renderCurrentPage();
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressAvatarImage(file, 256, 0.82);
+        customerState.profile.avatarImg = compressedBase64;
+        safeSaveProfile('scanms_profile_customer', customerState.profile);
+        toast?.('Đã đổi ảnh đại diện khách hàng thành công!', 'success');
+        renderCurrentPage();
+      } catch (err) {
+        console.error('Lỗi khi nén ảnh đại diện customer:', err);
+        toast?.('Không thể xử lý ảnh này. Vui lòng chọn ảnh khác!', 'error');
+      }
     });
   }
 
   if (custAvatarRemoveBtn) {
     custAvatarRemoveBtn.addEventListener('click', () => {
       customerState.profile.avatarImg = null;
-      try {
-        localStorage.setItem('scanms_profile_customer', JSON.stringify(customerState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_customer', customerState.profile);
       toast?.('Đã gỡ ảnh đại diện, chuyển về chữ cái mặc định!', 'info');
       renderCurrentPage();
     });
@@ -1269,9 +1275,7 @@ export function bindCustomer(root, { toast, go, renderCurrentPage, modal }) {
     if (dob) customerState.profile.dob = dob;
     if (gender) customerState.profile.gender = gender;
 
-    try {
-      localStorage.setItem("scanms_profile_customer", JSON.stringify(customerState.profile));
-    } catch (err) {}
+    safeSaveProfile("scanms_profile_customer", customerState.profile);
 
     toast("Đã lưu thông tin hồ sơ khách hàng thành công!");
     renderCurrentPage();

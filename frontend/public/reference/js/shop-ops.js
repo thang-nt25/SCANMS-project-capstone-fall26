@@ -2,6 +2,8 @@
 // SCANMS SHOP MANAGER OPERATIONS MODULE (Nghiệp Vụ Chủ Shop Mở Rộng)
 // ==========================================================================
 
+import { compressAvatarImage, safeSaveProfile } from './image-utils.js';
+
 const icon = (name) => `<i class="ph ${name}" aria-hidden="true"></i>`;
 const money = (v) => `${new Intl.NumberFormat("vi-VN").format(v)} ₫`;
 
@@ -567,6 +569,15 @@ try {
 } catch (e) {}
 
 export function shopProfileScreen() {
+  // Luôn đồng bộ dữ liệu mới nhất từ localStorage để cập nhật avatar kể cả sau khi đổi role hay F5
+  try {
+    const saved = localStorage.getItem('scanms_profile_shop');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      shopProfileState.profile = { ...shopProfileState.profile, ...parsed };
+    }
+  } catch (e) {}
+
   const p = shopProfileState.profile;
   const tab = shopProfileState.activeTab;
 
@@ -915,7 +926,7 @@ export function bindShopProfile(root, { toast, renderCurrentPage }) {
   }
 
   if (avatarInput) {
-    avatarInput.addEventListener('change', (e) => {
+    avatarInput.addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
@@ -923,33 +934,28 @@ export function bindShopProfile(root, { toast, renderCurrentPage }) {
         toast?.('Vui lòng chọn tệp định dạng hình ảnh hợp lệ!', 'error');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast?.('Kích thước ảnh tối đa là 5MB!', 'error');
+      if (file.size > 10 * 1024 * 1024) {
+        toast?.('Kích thước ảnh tối đa là 10MB!', 'error');
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (loadEvt) => {
-        const base64 = loadEvt.target?.result;
-        if (base64) {
-          shopProfileState.profile.avatarImg = base64;
-          try {
-            localStorage.setItem('scanms_profile_shop', JSON.stringify(shopProfileState.profile));
-          } catch (err) {}
-          toast?.('Đã đổi ảnh đại diện chủ gian hàng thành công!', 'success');
-          renderCurrentPage();
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressAvatarImage(file, 256, 0.82);
+        shopProfileState.profile.avatarImg = compressedBase64;
+        safeSaveProfile('scanms_profile_shop', shopProfileState.profile);
+        toast?.('Đã đổi ảnh đại diện chủ gian hàng thành công!', 'success');
+        renderCurrentPage();
+      } catch (err) {
+        console.error('Lỗi khi nén ảnh đại diện shop:', err);
+        toast?.('Không thể xử lý ảnh này. Vui lòng chọn ảnh khác!', 'error');
+      }
     });
   }
 
   if (avatarRemoveBtn) {
     avatarRemoveBtn.addEventListener('click', () => {
       shopProfileState.profile.avatarImg = null;
-      try {
-        localStorage.setItem('scanms_profile_shop', JSON.stringify(shopProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_shop', shopProfileState.profile);
       toast?.('Đã gỡ ảnh đại diện, chuyển về chữ cái mặc định!', 'info');
       renderCurrentPage();
     });
@@ -980,9 +986,7 @@ export function bindShopProfile(root, { toast, renderCurrentPage }) {
         ownerPhone,
         ownerIdCard,
       };
-      try {
-        localStorage.setItem('scanms_profile_shop', JSON.stringify(shopProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_shop', shopProfileState.profile);
       toast?.('Đã cập nhật thông tin chủ sở hữu gian hàng thành công!', 'success');
       renderCurrentPage();
     });
@@ -1014,9 +1018,7 @@ export function bindShopProfile(root, { toast, renderCurrentPage }) {
         warehouseAddress,
         returnAddress,
       };
-      try {
-        localStorage.setItem('scanms_profile_shop', JSON.stringify(shopProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_shop', shopProfileState.profile);
       toast?.('Đã cập nhật hồ sơ gian hàng & kho vận thành công!', 'success');
       renderCurrentPage();
     });
@@ -1036,9 +1038,7 @@ export function bindShopProfile(root, { toast, renderCurrentPage }) {
         taxCode,
         businessLicense,
       };
-      try {
-        localStorage.setItem('scanms_profile_shop', JSON.stringify(shopProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_shop', shopProfileState.profile);
       toast?.('Đã cập nhật thông tin pháp lý doanh nghiệp thành công!', 'success');
       renderCurrentPage();
     });
@@ -1061,9 +1061,7 @@ export function bindShopProfile(root, { toast, renderCurrentPage }) {
         accountName,
         branch,
       };
-      try {
-        localStorage.setItem('scanms_profile_shop', JSON.stringify(shopProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_shop', shopProfileState.profile);
       toast?.('Đã cập nhật tài khoản ngân hàng đối soát doanh thu!', 'success');
       renderCurrentPage();
     });

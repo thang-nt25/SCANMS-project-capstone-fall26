@@ -1,0 +1,918 @@
+Đặc tả nghiệp vụ đầy đủ FR-10 — Tạo Link Tiếp Thị Rút Gọn
+FR-10 — Tạo Link Tiếp Thị Rút Gọn: KOL chọn sản phẩm → Hệ thống sinh link scanms.vn/r/{short_code}.
+
+Đây là bản đặc tả đã tổng hợp các quyết định nghiệp vụ được duyệt cho FR-10.
+1. Mục tiêu chức năng
+Cho phép KOL/cộng tác viên chọn một sản phẩm của Shop và tạo đường dẫn tiếp thị rút gọn duy nhất.
+Ví dụ:
+Link sản phẩm gốc:
+https://scanms.vn/products/kem-chong-nang-spf50
+
+Link tiếp thị:
+https://scanms.vn/r/a7kp2m9q
+Khi khách hàng mở link tiếp thị:
+1. Hệ thống nhận diện link.
+2. Ghi nhận lượt truy cập.
+3. Xác định KOL giới thiệu.
+4. Xác định Shop và sản phẩm.
+5. Ghi nhận attribution/cookie theo quy định.
+6. Chuyển khách đến trang sản phẩm.
+7. Nếu khách mua hàng hợp lệ, đơn hàng được liên kết với KOL.
+Đã duyệt: Có.
+Mỗi referral link phải liên kết chính xác với một productId tồn tại trong database. Backend lấy storeId, thông tin sản phẩm và đường dẫn đích trực tiếp từ database; không sử dụng URL, storeId hoặc thông tin sản phẩm do Frontend tự khai báo. Khi khách mở short link, hệ thống chuyển đến đúng sản phẩm nguồn mà KOL đã chọn. Nếu slug sản phẩm thay đổi, Backend dùng productId để lấy slug mới nhất.
+2. Phạm vi FR-10
+FR-10 chịu trách nhiệm chính:
+1. KOL chọn sản phẩm.
+2. Kiểm tra KOL có quyền tiếp thị sản phẩm.
+3. Tạo mã rút gọn shortCode.
+4. Bảo đảm mã không trùng.
+5. Lưu link vào database.
+6. Trả đường dẫn hoàn chỉnh cho KOL.
+7. Hiển thị danh sách link đã tạo.
+8. Cho phép sao chép link.
+9. Cho phép kích hoạt hoặc tạm ngừng link.
+10. Cho phép xóa mềm link.
+11. Cung cấp endpoint chuyển hướng /r/:shortCode.
+12. Ghi audit log cho thao tác quan trọng.
+Các phần liên quan nhưng có thể thuộc chức năng khác:
+- Ghi log click chi tiết: module Tracking/FR-14.
+- Cookie attribution 30 ngày: module Tracking.
+- QR Code: FR-11.
+- Custom Coupon: FR-12 hoặc FR-13.
+- Ghi nhận đơn hàng: Checkout/Orders.
+- Tính hoa hồng: Commission.
+- Chống click ảo: Fraud/Rate Limit.
+Đã duyệt: Có.
+3. Đối tượng sử dụng
+3.1. KOL/cộng tác viên — COLLABORATOR
+KOL được:
+- Xem sản phẩm có thể tiếp thị.
+- Tạo link cho sản phẩm.
+- Xem link của chính mình.
+- Sao chép link.
+- Xem trạng thái link.
+- Tạm ngừng hoặc kích hoạt lại link.
+- Xóa mềm link.
+- Xem số lượt click và đơn hàng phát sinh nếu được tích hợp.
+KOL không được:
+- Tạo link thay KOL khác.
+- Xem hoặc sửa link của KOL khác.
+- Tạo link cho sản phẩm không được phép tiếp thị.
+- Tự thay đổi storeId, collaboratorId trong request.
+- Tự khai báo tỷ lệ hoa hồng.
+- Chỉ định tùy ý trang chuyển hướng ngoài hệ thống.
+Đã duyệt: Có.
+3.2. Chủ Shop — SHOP_MANAGER
+Chủ Shop có thể:
+- Xem các link đang tiếp thị sản phẩm của Shop.
+- Xem KOL nào tạo link.
+- Xem thống kê click và chuyển đổi.
+- Khóa link vi phạm và bắt buộc nhập lý do.
+- Ngừng sản phẩm, khiến các link liên quan không tiếp tục bán.
+Chủ Shop không được sửa chủ sở hữu của link.
+Đã duyệt: Có.
+3.3. Quản trị viên — SYSTEM_ADMIN
+Admin được:
+- Tra cứu link để hỗ trợ.
+- Khóa link gian lận.
+- Xem audit log.
+- Xem thông tin tracking theo quyền được cấp.
+Admin không được chỉnh sửa nội dung link; chỉ được khóa hoặc mở khóa và bắt buộc nhập lý do.
+Đã duyệt: Có.
+3.4. Khách truy cập
+Khách hàng:
+- Không cần đăng nhập để mở link.
+- Được chuyển đến đúng trang sản phẩm.
+- Không được xem thông tin nội bộ của KOL.
+- Được ghi cookie attribution khi link hợp lệ theo chính sách hệ thống.
+Đã duyệt: Có.
+4. Điều kiện trước khi tạo link
+KOL chỉ được tạo link khi:
+1. Đã đăng nhập bằng JWT hợp lệ.
+2. Tài khoản chưa bị khóa hoặc xóa.
+3. Vai trò là COLLABORATOR.
+4. Hồ sơ đã đạt trạng thái được phép tiếp thị.
+5. Sản phẩm tồn tại.
+6. Sản phẩm chưa bị xóa.
+7. Sản phẩm đang hoạt động.
+8. Shop tồn tại và đang hoạt động.
+9. Sản phẩm cho phép affiliate.
+10. KOL được phép tiếp thị sản phẩm hoặc tham gia chương trình của Shop.
+11. Chính sách hoa hồng đang có hiệu lực.
+12. KOL chưa vượt giới hạn tạo link.
+Nếu không đáp ứng, hệ thống từ chối tạo link và trả thông báo rõ ràng.
+Đã duyệt: Có.
+5. Luồng chính tạo link
+Bước 1: KOL mở màn hình Link và QR
+Hệ thống hiển thị:
+- Danh sách sản phẩm được phép tiếp thị.
+- Shop sở hữu sản phẩm.
+- Giá sản phẩm.
+- Tỷ lệ hoa hồng dự kiến.
+- Trạng thái sản phẩm.
+- Tìm kiếm và bộ lọc sản phẩm.
+Bước 2: KOL chọn sản phẩm
+KOL có thể:
+- Tìm kiếm theo tên.
+- Lọc theo Shop.
+- Lọc theo ngành hàng.
+- Lọc theo mức hoa hồng.
+- Xem nhanh thông tin sản phẩm.
+- Chọn đúng một sản phẩm để tạo link.
+Bước 3: KOL bấm “Tạo link tiếp thị”
+Frontend chỉ gửi tối thiểu:
+{
+  "productId": "uuid-san-pham"
+}
+Không gửi từ client:
+collaboratorId
+storeId
+commissionRate
+shortCode
+destinationUrl tùy ý
+Backend tự xác định những dữ liệu này.
+Bước 4: Backend xác thực và kiểm tra quyền
+Backend:
+1. Xác thực Bearer token.
+2. Lấy collaboratorId từ JWT.
+3. Kiểm tra tài khoản.
+4. Lấy sản phẩm từ database.
+5. Xác định Shop từ sản phẩm.
+6. Kiểm tra sản phẩm được affiliate.
+7. Kiểm tra quan hệ KOL–Shop/chương trình.
+8. Kiểm tra giới hạn tạo link.
+9. Kiểm tra link trùng theo chính sách.
+Bước 5: Sinh shortCode
+Ví dụ:
+a7kp2m9q
+Yêu cầu:
+- Duy nhất toàn hệ thống.
+- Chỉ gồm 8 ký tự Base36 viết thường và không phân biệt chữ hoa/thường khi tra cứu.
+- Không chứa ký tự dễ nhầm nếu cần.
+- Không chứa thông tin nhạy cảm.
+- Không dùng ID tăng dần.
+- Không thể đoán dễ dàng.
+- Đủ không gian mã để hạn chế va chạm.
+Bước 6: Lưu database
+Hệ thống lưu:
+KOL
+Shop
+Sản phẩm
+shortCode
+URL đích
+trạng thái
+thời gian tạo
+thời gian hết hạn nếu có
+Bước 7: Trả kết quả
+{
+  "id": "uuid-link",
+  "shortCode": "a7kp2m9q",
+  "shortUrl": "https://scanms.vn/r/a7kp2m9q",
+  "productId": "uuid-san-pham",
+  "storeId": "uuid-shop",
+  "status": "ACTIVE",
+  "createdAt": "2026-09-10T10:00:00+07:00"
+}
+Bước 8: Frontend hiển thị kết quả
+Frontend cho phép:
+- Sao chép link.
+- Mở thử link.
+- Tạo QR từ link.
+- Chia sẻ mạng xã hội.
+- Xem sản phẩm đích.
+- Xem link trong lịch sử.
+Đã duyệt toàn bộ luồng: Có.
+6. Quy tắc sinh shortCode
+6.1. Độ dài mã
+Khuyến nghị:
+7–10 ký tự
+Ví dụ:
+a7kp2m9q
+Không nên chỉ dùng 4–5 ký tự nếu hệ thống có nhiều link vì nguy cơ trùng và dò mã cao hơn.
+Đã duyệt: 8 ký tự.
+6.2. Bộ ký tự
+Đã chốt: Sử dụng Base36 gồm chữ thường a-z và chữ số 0-9.
+shortCode dài 8 ký tự và không phân biệt chữ hoa/thường.
+Không dùng:
+- Khoảng trắng.
+- Ký tự tiếng Việt.
+- Dấu /.
+- ?, #, &.
+- Ký tự điều khiển.
+Đã duyệt: Có.
+6.3. Phân biệt chữ hoa và chữ thường
+Hai lựa chọn:
+Phương án A — Có phân biệt
+abc123 khác Abc123
+Ưu điểm: không gian mã lớn hơn.
+Nhược điểm: người dùng dễ nhập sai.
+Phương án B — Không phân biệt
+Mọi mã được chuẩn hóa thành chữ thường.
+Ưu điểm: dễ nhập, dễ đọc và ít nhầm.
+Khuyến nghị cho đồ án:
+Chỉ dùng chữ thường a-z và số 0-9
+Độ dài 8 ký tự
+Đã duyệt: Không phân biệt chữ hoa/thường.
+Đã duyệt: Có.
+6.4. Mã không được chứa dữ liệu nội bộ
+Không tạo mã dạng:
+product-123
+kol-456
+store-10-product-20
+Vì có thể:
+- Lộ ID.
+- Bị đoán.
+- Bị quét tuần tự.
+- Cho biết cấu trúc dữ liệu.
+Đã duyệt: Có.
+6.5. Xử lý va chạm
+Quy trình:
+1. Sinh mã ngẫu nhiên bằng bộ sinh mật mã an toàn.
+2. Thử tạo bản ghi.
+3. Database phát hiện unique conflict nếu trùng.
+4. Sinh mã mới và retry.
+5. Giới hạn số lần thử, ví dụ 5 lần.
+6. Nếu vẫn thất bại, trả lỗi hệ thống.
+Không chỉ kiểm tra trước bằng findFirst, vì hai request đồng thời vẫn có thể sinh trùng.
+Đã duyệt: Có.
+7. Chính sách link trùng sản phẩm
+Đã chốt: Phương án B — Một KOL được tạo nhiều link cho cùng một sản phẩm.
+Mỗi link có thêm các trường phân loại và đo lường:
+- campaignId (Chiến dịch nếu có)
+- channel (Kênh quảng bá: TIKTOK, YOUTUBE, FACEBOOK, INSTAGRAM, LIVESTREAM...)
+- label (Nhãn gợi nhớ cho link)
+- utmSource, utmMedium, utmCampaign, utmContent
+Ưu điểm:
+- Theo dõi hiệu quả tiếp thị theo từng kênh, từng video hoặc chiến dịch cụ thể.
+- Phù hợp marketing chuyên nghiệp và tối ưu hóa hiệu suất tiếp thị (Performance Marketing).
+Biện pháp kiểm soát rác:
+- Giới hạn tối đa 20 link hoạt động cho mỗi sản phẩm/KOL để tránh spam.
+- Bắt buộc nhập nhãn gợi nhớ cho từng link.
+Đã duyệt: Phương án B. Một KOL được tạo nhiều link cho cùng một sản phẩm để đo lường riêng từng kênh, nội dung và chiến dịch. Mỗi link bắt buộc phải có nhãn, kênh và tuân thủ giới hạn số lượng.
+
+Dưới đây là phân tích chi tiết vì sao các hệ thống thực tế (Shopee Affiliate, AccessTrade, TikTok Shop, Amazon Associates) đều đi theo hướng này:
+
+1. Tại sao xét theo nghiệp vụ thực tế BẮT BUỘC phải là Phương án B?
+📌 Bản chất của Affiliate là "Performance Marketing" (Tiếp thị hiệu suất)
+KOL/KOC làm affiliate chuyên nghiệp không bao giờ rải cùng 1 link ở tất cả mọi nơi:
+
+Kênh chuyển đổi khác nhau: Một KOL sẽ đặt link ở Bio TikTok, mô tả video YouTube, bài viết Facebook, hoặc ghim trong một buổi Livestream xả kho.
+Nhu cầu đo lường (Attribution):
+Giả sử KOL bán được 100 đơn hàng. Nếu dùng Phương án A, họ chỉ biết tổng là 100 đơn.
+Nếu dùng Phương án B, họ biết: 70 đơn đến từ TikTok, 25 đơn từ YouTube, 5 đơn từ Facebook.
+👉 Ý nghĩa nghiệp vụ: KOL biết kênh nào mang lại doanh thu tốt nhất để tập trung nguồn lực sản xuất nội dung, còn Store/Nhãn hàng cũng biết KOL đó mạnh ở tệp người xem nào.
+8. Nhãn và nguồn của link
+Nếu cho tạo nhiều link trên cùng sản phẩm, mỗi link có thể gồm:
+Trường	Ví dụ
+label	Video review tháng 9
+channel	TIKTOK
+campaignId	UUID chiến dịch
+utmSource	tiktok
+utmMedium	creator
+utmCampaign	sunscreen_sep
+utmContent	review_video_01
+
+
+KOL chỉ được nhập giá trị hợp lệ và có giới hạn độ dài.
+Backend không nên cho KOL chèn URL hoặc script vào UTM.
+Đã duyệt: Có.
+9. Dữ liệu database
+Bảng referral_links nên có:
+Trường	Ý nghĩa
+id	UUID của link
+shortCode	Mã rút gọn duy nhất
+collaboratorId	KOL sở hữu
+storeId	Shop của sản phẩm
+productId	Sản phẩm đích
+campaignId	Chiến dịch nếu có
+label	Tên gợi nhớ
+channel	Kênh quảng bá
+destinationPath	Đường dẫn nội bộ đích
+utmSource	Nguồn
+utmMedium	Loại traffic
+utmCampaign	Chiến dịch
+utmContent	Nội dung
+status	Trạng thái kỹ thuật: ACTIVE, PAUSED hoặc BLOCKED
+expiresAt	Thời gian hết hạn
+disabledReason	Lý do khóa
+disabledBy	Người thực hiện khóa
+disabledAt	Thời điểm khóa
+lastAccessedAt	Lần truy cập gần nhất
+clickCount	Số click tổng hợp nếu cần
+deletedAt	Thời điểm xóa
+createdAt	Thời điểm tạo
+updatedAt	Thời điểm cập nhật
+
+
+Các quan hệ:
+ReferralLink → User(COLLABORATOR)
+ReferralLink → Store
+ReferralLink → Product
+ReferralLink → Campaign (không bắt buộc)
+ReferralLink → ClickTrafficLog[]
+Đã duyệt: Có, sử dụng mô hình cho phép một KOL tạo nhiều link cho cùng một sản phẩm.
+10. Ràng buộc database
+Bắt buộc:
+shortCode UNIQUE
+Index đề xuất:
+INDEX(collaboratorId, createdAt)
+INDEX(productId)
+INDEX(storeId)
+INDEX(campaignId)
+INDEX(status, expiresAt)
+Nếu chỉ cho một link mỗi KOL–sản phẩm:
+UNIQUE(collaboratorId, productId)
+WHERE is_deleted = false
+Nếu cho nhiều link, không thêm unique KOL–sản phẩm.
+Đã duyệt: Có.
+11. Link hoàn chỉnh
+Link production:
+https://scanms.vn/r/{shortCode}
+Môi trường development:
+http://localhost:5173/r/{shortCode}
+Hoặc Backend trực tiếp xử lý:
+http://localhost:3000/api/r/{shortCode}
+Khuyến nghị production:
+GET https://scanms.vn/r/{shortCode}
+Reverse proxy chuyển request tới Backend để tracking và redirect.
+Domain không được hard-code trong Service. Lấy từ biến môi trường:
+PUBLIC_APP_URL=https://scanms.vn
+Đã duyệt: Có.
+12. Luồng khách mở link
+Khi khách mở:
+GET /r/a7kp2m9q
+Backend thực hiện:
+1. Chuẩn hóa và validate shortCode.
+2. Tìm link chưa bị xóa.
+3. Kiểm tra trạng thái.
+4. Kiểm tra hết hạn.
+5. Kiểm tra Shop.
+6. Kiểm tra sản phẩm.
+7. Kiểm tra chiến dịch nếu có.
+8. Ghi nhận click.
+9. Ghi cookie attribution.
+10. Chuyển hướng bằng HTTP redirect.
+Response:
+302 Found
+Location: https://scanms.vn/products/{slug}
+Có thể dùng 302 hoặc 307; khuyến nghị 302 cho link marketing thông thường.
+Đã duyệt: Có.
+13. Trang đích
+Không lưu URL tùy ý do KOL nhập nếu chỉ chuyển trong hệ thống.
+Backend tự tạo trang đích từ sản phẩm:
+/products/{productSlug}
+Có thể bổ sung tham số nội bộ:
+/products/{productSlug}?ref={shortCode}
+Tuy nhiên, attribution chính phải dựa trên cookie/server-side record, không chỉ dựa vào query string vì người dùng có thể xóa query.
+Không cho chuyển hướng tới:
+javascript:
+data:
+file:
+URL bên ngoài chưa được cho phép
+Điều này ngăn open redirect và phishing.
+Đã duyệt: Có.
+14. Cookie attribution
+Phần này thuộc Tracking nhưng liên quan trực tiếp đến việc link hoạt động.
+Backend tạo attribution token và đặt cookie thông qua response header Set-Cookie.
+
+Cookie:
+- Tên: scanms_attribution.
+- HttpOnly: true.
+- Secure: true trong production.
+- SameSite: Lax.
+- Path: /.
+- Max-Age: 30 ngày.
+
+Frontend không tự tạo hoặc chỉnh sửa cookie attribution.
+Không lưu attribution ở phía client dưới dạng dữ liệu có thể tự sửa.
+Đã duyệt: Có.
+15. Quy tắc attribution khi khách mở nhiều link
+Đã chốt chính sách: Phương án A — Last Click Attribution trong 30 ngày.
+Link hợp lệ được mở gần nhất trong vòng 30 ngày trước khi mua hàng được ưu tiên nhận attribution.
+Ví dụ:
+Ngày 1: khách mở link KOL A
+Ngày 5: khách mở link KOL B
+Ngày 6: khách mua hàng
+→ KOL B được ghi nhận hoa hồng.
+
+Quy tắc attribution cho giỏ hàng có nhiều sản phẩm:
+- Attribution được xác định theo từng Shop và từng sản phẩm đủ điều kiện.
+- Nếu khách mở nhiều referral link hợp lệ, link hợp lệ được mở gần nhất trong vòng 30 ngày được ưu tiên.
+- Khi đơn hàng có nhiều sản phẩm:
+  + Chỉ dòng sản phẩm đủ điều kiện affiliate mới được ghi nhận hoa hồng.
+  + Không tự động tính hoa hồng cho toàn bộ giỏ hàng.
+  + Không gắn KOL cho sản phẩm thuộc Shop khác.
+- Hiệu lực của attribution khi trạng thái link thay đổi trước thời điểm đặt hàng:
+  + Link bị BLOCKED trước khi tạo đơn sẽ làm attribution đó MẤT HIỆU LỰC (không tính hoa hồng cho link vi phạm/bị khóa).
+  + Link chỉ bị PAUSED bởi KOL thì attribution hợp lệ đã ghi nhận trước đó VẪN CÒN HIỆU LỰC.
+- Phân biệt rõ ràng giữa hai cơ chế hoa hồng trong hệ thống:
+  + Hoa hồng đơn hàng (FR-10): Tính trực tiếp theo Product.customCommissionRate (hoặc Store.defaultCommissionRate) + Campaign.bonusCommissionRate (nếu chiến dịch còn hiệu lực). Hoa hồng được snapshot trực tiếp vào từng dòng OrderItem khi tạo đơn (OrderItem.appliedCommissionRate & OrderItem.calculatedCommissionAmount).
+  + Thưởng mốc doanh số tháng (FR-09): Sử dụng bảng commission_rules để tính toán lũy tiến/bậc thang khi chốt kỳ thưởng tháng định kỳ cho KOL. Bảng commission_rules KHÔNG dùng để tính hoa hồng từng đơn hàng.
+- Tính bất biến của Attribution trên đơn hàng (Attribution Immutability): Nếu đơn hàng đã được gắn attribution với link A, hệ thống từ chối thay đổi attribution sang link B.
+Đã duyệt: Có.
+16. Ghi nhận click
+Mỗi lần redirect có thể tạo click_traffic_logs gồm:
+- referralLinkId.
+- Thời gian click.
+- IP đã được xử lý theo chính sách bảo mật.
+- User-Agent.
+- Loại thiết bị.
+- Referrer.
+- Session ID.
+- Fingerprint nếu được phép.
+- Quốc gia/khu vực nếu có.
+- Trạng thái hợp lệ hoặc nghi ngờ.
+- Lý do từ chối.
+- utmSource, utmMedium, utmCampaign.
+- Request ID.
+Không ghi dữ liệu nhạy cảm vượt nhu cầu nghiệp vụ.
+Đã duyệt: Có.
+17. Chống spam và click ảo
+Endpoint /r/:shortCode là endpoint public, nên cần:
+1. Rate limit theo IP.
+2. Rate limit theo fingerprint/session.
+3. Không tính bot phổ biến là click hợp lệ.
+4. Không tính refresh liên tục là nhiều click hợp lệ.
+5. Ghi log bất thường.
+6. Không để tracking làm chậm redirect quá lâu.
+7. Tracking lỗi vẫn có thể redirect nếu link hợp lệ.
+8. Không cộng hoa hồng chỉ vì có click.
+9. Hoa hồng chỉ phát sinh khi có đơn hợp lệ.
+Ví dụ:
+Cùng IP + link + thiết bị trong 30 giây:
+→ Có thể chỉ tính một unique click
+→ Các request sau vẫn redirect nhưng không tăng unique click
+Đã duyệt: Có.
+18. Trạng thái link
+Hệ thống quản lý các trạng thái kỹ thuật:
+- ACTIVE
+- PAUSED
+- EXPIRED
+- BLOCKED
+- DELETED
+
+Quy tắc lưu trữ database và xác định trạng thái:
+status chỉ lưu:
+- ACTIVE
+- PAUSED
+- BLOCKED
+
+Các trạng thái còn lại được xác định:
+- DELETED khi deletedAt khác null.
+- EXPIRED khi expiresAt nhỏ hơn thời gian hiện tại.
+
+Thứ tự ưu tiên xác định trạng thái thực tế:
+DELETED → BLOCKED → EXPIRED → PAUSED → ACTIVE.
+
+Quy tắc hiển thị đa ngôn ngữ (Backend giữ tên tiếng Anh, Frontend hiển thị tiếng Việt):
+| Giá trị Backend | Nội dung giao diện |
+| :--- | :--- |
+| ACTIVE | Đang hoạt động |
+| PAUSED | Tạm ngừng |
+| EXPIRED | Đã hết hạn |
+| BLOCKED | Đã bị khóa |
+| DELETED | Đã xóa mềm |
+| disabledReason | Lý do khóa |
+| disabledBy | Người thực hiện khóa |
+| disabledAt | Thời điểm khóa |
+
+Đã duyệt: Có.
+19. Hành vi khi link không hoạt động
+Đã chốt rõ hành vi xử lý thống nhất:
+- ACTIVE: redirect và ghi attribution.
+- PAUSED: vẫn đến sản phẩm nhưng không ghi attribution mới.
+- EXPIRED: vẫn đến sản phẩm nhưng không ghi attribution mới.
+- BLOCKED: hiển thị trang thông báo link bị khóa, không redirect và không attribution (HTTP 410 Gone).
+- DELETED: hiển thị trang 404 an toàn.
+- Sản phẩm ngừng bán: vào trang sản phẩm hết hàng, không attribution mới.
+- Shop bị khóa: hiển thị trang Shop tạm ngừng hoạt động.
+Đã duyệt: Có.
+20. Tạm ngừng và kích hoạt lại link
+KOL được tạm ngừng link của mình.
+Khi tạm ngừng:
+- Không ghi attribution mới.
+- Không xóa lịch sử click.
+- Không ảnh hưởng đơn đã ghi nhận trước đó.
+- Có thể kích hoạt lại nếu sản phẩm và Shop vẫn hợp lệ.
+Shop/Admin khóa link phải lưu thêm:
+disabledReason
+disabledBy
+disabledAt
+KOL không được tự mở link bị Admin khóa.
+Backend giữ tên trường kỹ thuật bằng tiếng Anh; Frontend hiển thị:
+- disabledReason: Lý do khóa.
+- disabledBy: Người thực hiện khóa.
+- disabledAt: Thời điểm khóa.
+Đã duyệt: Có.
+21. Xóa mềm
+Khi KOL xóa link:
+deletedAt = now()
+Trạng thái hiệu lực được xác định là DELETED và được ưu tiên cao nhất.
+Không xóa vật lý vì link có thể đang được tham chiếu bởi:
+- Click logs.
+- Attribution.
+- Đơn hàng.
+- Hoa hồng.
+- Audit log.
+Link đã xóa không được tái sử dụng shortCode cho link khác.
+Đã duyệt: Có.
+22. Thời hạn link
+Cần chọn:
+Phương án A — Không hết hạn mặc định
+Link hoạt động cho đến khi:
+- KOL tạm ngừng.
+- Shop khóa.
+- Sản phẩm ngừng bán.
+- Admin khóa.
+Phương án B — Có ngày hết hạn
+KOL hoặc chiến dịch quy định expiresAt.
+Khuyến nghị:
+- Link sản phẩm thông thường: không hết hạn.
+- Link chiến dịch: hết hạn theo chiến dịch.
+- Coupon đi kèm: theo hạn coupon.
+Đã duyệt: Có.
+23. Tỷ lệ hoa hồng
+Referral link không nên coi tỷ lệ hoa hồng hiện tại là giá trị cố định vĩnh viễn, trừ khi nghiệp vụ yêu cầu snapshot.
+Khi khách mua:
+- Module Commission lấy chính sách có hiệu lực tại thời điểm hợp lệ.
+- Hoặc dùng snapshot chiến dịch tại thời điểm click/order.
+Các phương án đã xem xét:
+1. Hoa hồng lấy theo thời điểm click.
+2. Hoa hồng lấy theo thời điểm đặt hàng.
+3. Hoa hồng lấy theo thời điểm đơn hoàn thành.
+Khuyến nghị:
+Snapshot tỷ lệ khi đơn hàng được tạo
+và chỉ chốt trả khi đơn COMPLETED.
+Đã duyệt: Snapshot tỷ lệ hoa hồng khi đơn hàng được tạo và chỉ chốt trả khi đơn COMPLETED.
+24. Custom Coupon
+Coupon không bắt buộc để tạo link FR-10.
+Một link có thể:
+- Không có coupon.
+- Gắn coupon có sẵn.
+- Dùng custom coupon của KOL nếu FR liên quan cho phép.
+Nếu coupon hết hạn:
+- Link vẫn hoạt động.
+- Coupon không còn giảm giá.
+- Hệ thống thông báo rõ trên trang sản phẩm.
+Không nên làm việc tạo coupon trở thành điều kiện bắt buộc của FR-10.
+Đã duyệt: Có.
+25. QR Code
+QR Code là cách biểu diễn của short URL:
+https://scanms.vn/r/a7kp2m9q
+FR-10 tạo link trước. FR-11 sử dụng link đó để tạo:
+- QR PNG.
+- QR SVG.
+- Tải xuống.
+- Tùy chọn logo/màu nếu có.
+Không cần lưu một referral link mới chỉ vì KOL tải QR nhiều lần.
+Đã duyệt: Có.
+26. Danh sách link của KOL
+Màn hình danh sách nên hiển thị:
+- Mã rút gọn.
+- Tên sản phẩm.
+- Ảnh sản phẩm.
+- Shop.
+- Nhãn link.
+- Kênh.
+- Trạng thái.
+- Ngày tạo.
+- Ngày hết hạn.
+- Tổng click.
+- Unique click.
+- Số đơn hợp lệ.
+- Doanh số.
+- Hoa hồng dự kiến.
+- Tỷ lệ chuyển đổi.
+Thao tác:
+- Sao chép.
+- Mở link.
+- Xem QR.
+- Xem thống kê.
+- Tạm ngừng/kích hoạt.
+- Xóa.
+- Tạo link mới cùng sản phẩm.
+Đã duyệt: Có.
+27. Tìm kiếm, lọc và phân trang
+Danh sách link cần hỗ trợ:
+- Tìm theo mã.
+- Tìm theo tên sản phẩm.
+- Lọc theo Shop.
+- Lọc theo trạng thái.
+- Lọc theo kênh.
+- Lọc theo chiến dịch.
+- Lọc theo ngày tạo.
+- Sắp xếp theo click, đơn hàng hoặc doanh số.
+- Phân trang.
+Tham số ví dụ:
+GET /collaborator/referral-links
+    ?page=1
+    &limit=20
+    &status=ACTIVE
+    &channel=TIKTOK
+    &search=kem-chong-nang
+Đã duyệt: Có.
+28. API đề xuất
+API cho KOL
+GET    /collaborator/referral-links/products
+GET    /collaborator/referral-links
+GET    /collaborator/referral-links/:id
+POST   /collaborator/referral-links
+PATCH  /collaborator/referral-links/:id
+PATCH  /collaborator/referral-links/:id/status
+DELETE /collaborator/referral-links/:id
+API redirect public
+GET /r/:shortCode
+API Shop/Admin
+GET   /stores/:storeId/referral-links
+PATCH /stores/:storeId/referral-links/:id/block
+PATCH /admin/referral-links/:id/block
+Tên API cuối cùng cần tuân theo convention chung của dự án.
+Đã duyệt: Có.
+29. Request tạo link
+Nếu chọn mô hình nhiều link cho cùng sản phẩm:
+{
+  "productId": "uuid",
+  "campaignId": "uuid-hoac-null",
+  "label": "Video TikTok tháng 9",
+  "channel": "TIKTOK",
+  "utmSource": "tiktok",
+  "utmMedium": "creator",
+  "utmCampaign": "sunscreen_sep",
+  "utmContent": "review_01",
+  "expiresAt": null
+}
+Backend tự xác định:
+collaboratorId
+storeId
+shortCode
+destinationPath
+createdAt
+Đã duyệt: Có.
+30. Response tạo link
+{
+  "id": "uuid",
+  "shortCode": "a7kp2m9q",
+  "shortUrl": "https://scanms.vn/r/a7kp2m9q",
+  "label": "Video TikTok tháng 9",
+  "channel": "TIKTOK",
+  "status": "ACTIVE",
+  "product": {
+    "id": "uuid",
+    "name": "Kem chống nắng SPF50",
+    "slug": "kem-chong-nang-spf50",
+    "thumbnailUrl": "https://..."
+  },
+  "store": {
+    "id": "uuid",
+    "name": "Lumière Beauty"
+  },
+  "createdAt": "2026-09-10T10:00:00.000Z",
+  "expiresAt": null
+}
+Không trả thông tin nhạy cảm của KOL hoặc Shop.
+Đã duyệt: Có.
+31. Mã lỗi nghiệp vụ & Chuẩn hóa mã HTTP
+Thống nhất chuẩn hóa mã HTTP:
+- Sản phẩm không cho affiliate: 403 Forbidden.
+- KOL chưa được Shop duyệt: 403 Forbidden.
+- Link không tồn tại hoặc đã xóa: 404 Not Found.
+- Link bị khóa: trang HTML an toàn với HTTP 410 Gone.
+- Link hết hạn: redirect sản phẩm không attribution (HTTP 302 Found).
+- Vượt giới hạn tạo link: 429 Too Many Requests.
+- Chưa đăng nhập hoặc token không hợp lệ: 401 Unauthorized.
+- KOL bị khóa: 403 Forbidden.
+- Sản phẩm hoặc Shop không tồn tại: 404 Not Found.
+- Mã chiến dịch không hợp lệ: 400 Bad Request.
+- Chiến dịch hết hạn: 409 Conflict.
+- Mã rút gọn va chạm: Backend retry tự động tối đa 5 lần.
+
+Thông báo lỗi phải rõ ràng và không làm lộ dữ liệu nội bộ.
+Đã duyệt: Có.
+32. Giới hạn tạo link
+Để tránh spam, cần quy định:
+- Giới hạn số request tạo link mỗi phút.
+- Giới hạn tổng link hoạt động mỗi KOL.
+- Giới hạn link trên cùng sản phẩm.
+- Giới hạn độ dài label và UTM.
+- Không cho tạo hàng nghìn link bằng script.
+Đề xuất ban đầu:
+Tối đa 10 link/phút/KOL
+Tối đa 500 link hoạt động/KOL
+Tối đa 20 link/sản phẩm/KOL
+Các con số này cần nhóm duyệt.
+Đã duyệt: Có.
+33. Audit log
+Ghi audit khi:
+- Tạo link.
+- Sửa nhãn/kênh.
+- Tạm ngừng.
+- Kích hoạt lại.
+- Xóa mềm.
+- Shop khóa.
+- Admin khóa.
+- Khôi phục nếu có.
+Audit gồm:
+- Người thực hiện.
+- Vai trò.
+- Link.
+- KOL.
+- Shop.
+- Sản phẩm.
+- Hành động.
+- Dữ liệu cũ.
+- Dữ liệu mới.
+- IP.
+- User-Agent nếu cần.
+- Thời gian.
+- Lý do khóa.
+Không cần ghi audit cho từng click; click phải nằm trong click_traffic_logs.
+Đã duyệt: Có.
+34. Bảo mật
+Bắt buộc:
+1. Xác thực JWT cho API quản lý.
+2. Không nhận collaboratorId từ client khi tạo.
+3. Kiểm tra quyền sở hữu từng link.
+4. Không cho open redirect.
+5. shortCode không đoán được.
+6. Database unique constraint.
+7. Rate limit API tạo link.
+8. Rate limit endpoint redirect.
+9. Sanitize label và UTM.
+10. Không ghi token/cookie đầy đủ vào log.
+11. Cookie dùng HttpOnly, Secure, SameSite.
+12. Không tin giá, hoa hồng hoặc Shop gửi từ Frontend.
+13. Kiểm tra sản phẩm lại khi redirect và checkout.
+14. Không tiết lộ KOL khi link không tồn tại.
+Đã duyệt: Có, toàn bộ 14 yêu cầu bảo mật là bắt buộc.
+35. Hiệu năng
+Endpoint redirect cần phản hồi nhanh.
+Khuyến nghị:
+- Tra cứu shortCode bằng unique index.
+- Có thể cache link đang hoạt động trong Redis.
+- Ghi click qua queue nếu ghi đồng bộ làm chậm redirect.
+- Có timeout/fallback.
+- Cache phải được xóa khi link bị khóa hoặc cập nhật.
+- Không cache vĩnh viễn.
+- Không để Redis là nguồn dữ liệu chính.
+Mục tiêu đề xuất:
+p95 redirect < 300 ms
+Đã duyệt: Có.
+36. Khả năng SEO
+Short link chủ yếu dùng để redirect, không phải trang SEO chính.
+Khuyến nghị:
+- Không index /r/:shortCode.
+- Trang sản phẩm thật mới có metadata SEO.
+- Redirect giữ nguyên các tham số hợp lệ.
+- Không tạo nội dung trùng lặp.
+- Có thể dùng header:
+X-Robots-Tag: noindex, nofollow
+Đã duyệt: Có.
+37. Accessibility và UX
+Frontend cần:
+- Nút tạo link có label rõ.
+- Có loading khi đang tạo.
+- Không cho bấm hai lần.
+- Thông báo tạo thành công.
+- Nút sao chép có phản hồi “Đã sao chép”.
+- Có trạng thái empty/error/loading.
+- Form dùng label đúng.
+- Điều khiển bằng bàn phím.
+- Không chỉ dùng màu để phân biệt trạng thái.
+- Responsive trên mobile.
+- Link hiển thị đầy đủ nhưng không làm vỡ layout.
+Đã duyệt: Có.
+38. Trạng thái giao diện
+Loading
+Đang tải sản phẩm…
+Đang tạo link…
+Empty
+Bạn chưa tạo link tiếp thị nào.
+Chọn sản phẩm đầu tiên để bắt đầu.
+Error
+Không thể tạo link.
+Vui lòng kiểm tra sản phẩm hoặc thử lại.
+Success
+Đã tạo link tiếp thị thành công.
+Product unavailable
+Sản phẩm hiện không còn tham gia chương trình tiếp thị.
+Đã duyệt: Có.
+39. Unit test bắt buộc
+Backend cần kiểm thử:
+1. Sinh short code đúng định dạng.
+2. Short code đủ độ dài.
+3. Retry khi mã trùng.
+4. Thất bại sau số lần retry tối đa.
+5. KOL hợp lệ tạo link thành công.
+6. Không phải KOL bị từ chối.
+7. KOL bị khóa bị từ chối.
+8. Sản phẩm không tồn tại.
+9. Sản phẩm bị xóa.
+10. Sản phẩm không hoạt động.
+11. Sản phẩm không cho affiliate.
+12. KOL không thuộc chương trình.
+13. Không tin collaboratorId từ client.
+14. Không cho sửa link người khác.
+15. Tạm ngừng link.
+16. Xóa mềm link.
+17. Link hết hạn.
+18. Validate label/UTM.
+19. Chống open redirect.
+20. Audit log và transaction.
+40. Integration/E2E test
+Cần kiểm thử với PostgreSQL và Redis thật hoặc môi trường test:
+1. JWT thật.
+2. Tạo link và lưu PostgreSQL.
+3. Unique constraint của shortCode.
+4. Hai request đồng thời sinh mã trùng.
+5. KOL A không đọc link của KOL B.
+6. Redirect đúng sản phẩm.
+7. Link khóa không attribution.
+8. Link hết hạn không attribution.
+9. Cookie được ghi đúng.
+10. Last Click hoạt động.
+11. Click log được tạo.
+12. Rate limit hoạt động.
+13. Transaction rollback nếu audit thất bại.
+14. Redis cache được xóa khi link bị khóa.
+15. Xóa link không làm mất click/order cũ.
+41. Tiêu chí hoàn thành FR-10
+FR-10 được xem là hoàn thành khi:
+1. KOL đăng nhập và xem được sản phẩm hợp lệ.
+2. KOL chọn sản phẩm và tạo được short link.
+3. Link có dạng scanms.vn/r/{shortCode}.
+4. shortCode duy nhất và khó đoán.
+5. Database chống mã trùng.
+6. KOL chỉ quản lý link của mình.
+7. Không tạo link cho sản phẩm không hợp lệ.
+8. Link redirect đúng sản phẩm.
+9. Link ghi nhận attribution đúng chính sách.
+10. Có trạng thái hoạt động/tạm ngừng/khóa/xóa.
+11. Link hết hạn được xử lý.
+12. Có audit log.
+13. Có rate limit.
+14. Có loading, error, empty và success UI.
+15. Có unit test.
+16. Có integration test PostgreSQL.
+17. Backend build/test thành công.
+18. Frontend build/test thành công.
+19. Swagger mô tả request, response và lỗi.
+20. Không có open redirect hoặc giả mạo KOL.
+42. Phân chia trách nhiệm
+referral-links
+Chịu trách nhiệm:
+- CRUD link.
+- Sinh shortCode.
+- Unique constraint.
+- Trạng thái link.
+- URL đích nội bộ.
+- Quyền sở hữu.
+- Audit log cấu hình.
+tracking
+Chịu trách nhiệm:
+- Click logs.
+- Cookie 30 ngày.
+- Last Click.
+- Rate limit redirect.
+- Bot/fraud detection.
+- Unique click.
+catalog/products
+Chịu trách nhiệm:
+- Sản phẩm tồn tại.
+- Trạng thái sản phẩm.
+- Sản phẩm có được affiliate không.
+- Giá và thông tin sản phẩm.
+checkout/orders
+Chịu trách nhiệm:
+- Đọc attribution.
+- Gắn KOL vào đơn.
+- Lưu referral link đã tạo ra đơn.
+- Không tin attribution tùy ý từ client.
+commission
+Chịu trách nhiệm:
+- Lấy chính sách hoa hồng.
+- Tính hoa hồng đơn.
+- Chốt khi đơn hoàn thành.
+- Xử lý hủy/hoàn.
+43. Tổng hợp các nội dung đã duyệt
+1. Một KOL được tạo nhiều link cho cùng một sản phẩm không?
+Đã duyệt: Có, để đo lường từng kênh.
+2. Short code có phân biệt chữ hoa/thường không?
+Đã duyệt: Không; dùng 8 ký tự chữ thường và số theo Base36.
+3. Link có hết hạn không?
+Đã duyệt: Link thường không hết hạn; link chiến dịch hết hạn theo chiến dịch.
+4. Attribution theo cách nào?
+Đã duyệt: Last Click trong 30 ngày, theo từng Shop và từng sản phẩm đủ điều kiện.
+5. Khi link bị tạm ngừng, khách có được chuyển tới sản phẩm không?
+Đã duyệt: Vẫn chuyển đến sản phẩm nhưng không ghi attribution mới.
+6. Shop có được khóa link của KOL không?
+Đã duyệt: Có, bắt buộc nhập lý do.
+7. KOL có bắt buộc phải được Shop duyệt trước khi tạo link không?
+Đã duyệt: Có.
+8. Tỷ lệ hoa hồng lấy theo thời điểm nào?
+Đã duyệt: Snapshot khi tạo đơn, chỉ trả khi đơn COMPLETED.
+9. Có cho KOL nhập UTM và nhãn link không?
+Đã duyệt: Có, nhưng Backend phải validate và sanitize.
+10. Giới hạn số link?
+Đã duyệt: 10 link/phút, 500 link hoạt động/KOL,
+20 link/KOL/sản phẩm.
+Đây là bản đặc tả đầy đủ để duyệt. Phần cốt lõi bắt buộc của FR-10 là: chọn sản phẩm → xác minh quyền → sinh mã duy nhất → lưu link → trả short URL → redirect an toàn → ghi attribution → bảo vệ quyền sở hữu.

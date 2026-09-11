@@ -423,27 +423,7 @@ export function marketplaceScreen() {
 
   return `
     <div class="storefront-wrapper mp-page-wrapper">
-      <!-- 1. TOP ANNOUNCEMENT BAR (TINH GỌN, KHÔNG NHỒI NHÉT) -->
-      <div class="mp-header-top">
-        <div class="mp-header-top-commitments">
-          <span><i class="ph-fill ph-shield-check"></i> Bảo hộ đổi trả 14 ngày & Escrow</span>
-          <span class="mp-top-sep">•</span>
-          <span><i class="ph-fill ph-seal-check"></i> 100% hàng chính hãng</span>
-          <span class="mp-top-sep">•</span>
-          <span><i class="ph-fill ph-lightning"></i> Mua ngay không cần tài khoản</span>
-        </div>
-        <div class="mp-header-top-links">
-          <button class="mp-header-top-link" data-action="open-chat">
-            <i class="ph ph-chat-circle-dots"></i> Tư vấn trực tuyến 24/7
-          </button>
-          <span class="mp-top-sep">|</span>
-          <a href="#auth" class="mp-header-top-link mp-header-top-auth">
-            <i class="ph ph-sign-in"></i> Đăng nhập hệ thống
-          </a>
-        </div>
-      </div>
-
-      <!-- 2. MAIN HEADER BAR (ĐỒNG BỘ 1400PX, STICKY TIỆN LỢI, CHIỀU CAO 72PX) -->
+      <!-- 2. MAIN HEADER BAR (ĐỒNG BỘ 1400PX, STICKY TOÀN BỘ) -->
       <header class="mp-header">
         <div class="mp-header-main">
           <!-- Logo Brand -->

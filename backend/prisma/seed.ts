@@ -258,6 +258,56 @@ async function main() {
     });
   }
 
+  // 4.1 Gian hàng Sora Skin Official (Khớp ID nguyên mẫu UI/UX)
+  const soraStoreId = '8ca136c3-9202-4254-bd4c-3704a840fa7b';
+  const soraStore = await prisma.store.upsert({
+    where: { id: soraStoreId },
+    update: {
+      ownerId: shopOwner.id,
+    },
+    create: {
+      id: soraStoreId,
+      ownerId: shopOwner.id,
+      name: 'Sora Skin Official',
+      slug: 'sora-skin-official',
+      logoUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200',
+      description: 'Gian hàng phân phối chính hãng dòng sản phẩm chăm sóc da chuyên sâu Sora Skin Flagship.',
+      websiteUrl: 'https://soraskin.vn',
+      defaultCommissionRate: 15.0,
+      attributionWindowDays: 30,
+      minPayoutAmount: 200000,
+    },
+  });
+
+  const soraExistingRule1 = await prisma.commissionRule.findFirst({
+    where: { storeId: soraStoreId, minMonthlyRevenue: 50000000, isDeleted: false },
+  });
+  if (!soraExistingRule1) {
+    await prisma.commissionRule.create({
+      data: {
+        storeId: soraStoreId,
+        name: 'Thưởng Doanh Số Sora Skin Vàng (> 50 Triệu)',
+        minMonthlyRevenue: 50000000,
+        bonusPercentage: 2.5,
+        achievementBonus: 1000000,
+      },
+    });
+  }
+  const soraExistingRule2 = await prisma.commissionRule.findFirst({
+    where: { storeId: soraStoreId, minMonthlyRevenue: 100000000, isDeleted: false },
+  });
+  if (!soraExistingRule2) {
+    await prisma.commissionRule.create({
+      data: {
+        storeId: soraStoreId,
+        name: 'Thưởng Doanh Số Sora Skin Kim Cương (> 100 Triệu)',
+        minMonthlyRevenue: 100000000,
+        bonusPercentage: 4.0,
+        achievementBonus: 3000000,
+      },
+    });
+  }
+
   // ==========================================
   // 5. SẢN PHẨM & KHO MEDIA MARKETING - Idempotent
   // ==========================================
@@ -343,6 +393,7 @@ async function main() {
     refLink1 = await prisma.referralLink.create({
       data: {
         collaboratorId: kol1.id,
+        storeId: store.id,
         productId: product1.id,
         shortCode: 'anc-pro-thang',
         customCouponCode: 'THANGVIP10',

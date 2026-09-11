@@ -1,3 +1,5 @@
+import { compressAvatarImage, safeSaveProfile } from './image-utils.js';
+
 const cash = n => new Intl.NumberFormat('vi-VN').format(n) + ' ₫';
 const demo = { days: 7, mode: 'ready', metric: 'clicks', balance: 12450000, locked: 0, kyc: false, fail: false, selectedDay: null, showAllTasks: false };
 let restoreFocus;
@@ -848,6 +850,15 @@ try {
 } catch (e) {}
 
 export function kolProfileScreen() {
+  // Luôn đồng bộ dữ liệu mới nhất từ localStorage để cập nhật avatar kể cả sau khi đổi role hay F5
+  try {
+    const saved = localStorage.getItem('scanms_profile_kol');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      kolProfileState.profile = { ...kolProfileState.profile, ...parsed };
+    }
+  } catch (e) {}
+
   const p = kolProfileState.profile;
   const tab = kolProfileState.activeTab;
 
@@ -1173,7 +1184,7 @@ export function bindKolProfile(root, { toast, renderCurrentPage }) {
   }
 
   if (avatarInput) {
-    avatarInput.addEventListener('change', (e) => {
+    avatarInput.addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
@@ -1181,33 +1192,28 @@ export function bindKolProfile(root, { toast, renderCurrentPage }) {
         toast?.('Vui lòng chọn tệp định dạng hình ảnh hợp lệ!', 'error');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast?.('Kích thước ảnh tối đa là 5MB!', 'error');
+      if (file.size > 10 * 1024 * 1024) {
+        toast?.('Kích thước ảnh tối đa là 10MB!', 'error');
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (loadEvt) => {
-        const base64 = loadEvt.target?.result;
-        if (base64) {
-          kolProfileState.profile.avatarImg = base64;
-          try {
-            localStorage.setItem('scanms_profile_kol', JSON.stringify(kolProfileState.profile));
-          } catch (err) {}
-          toast?.('Đã đổi ảnh đại diện KOL thành công!', 'success');
-          renderCurrentPage();
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressAvatarImage(file, 256, 0.82);
+        kolProfileState.profile.avatarImg = compressedBase64;
+        safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
+        toast?.('Đã đổi ảnh đại diện KOL thành công!', 'success');
+        renderCurrentPage();
+      } catch (err) {
+        console.error('Lỗi khi nén ảnh đại diện KOL:', err);
+        toast?.('Không thể xử lý ảnh này. Vui lòng chọn ảnh khác!', 'error');
+      }
     });
   }
 
   if (avatarRemoveBtn) {
     avatarRemoveBtn.addEventListener('click', () => {
       kolProfileState.profile.avatarImg = null;
-      try {
-        localStorage.setItem('scanms_profile_kol', JSON.stringify(kolProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
       toast?.('Đã gỡ ảnh đại diện, chuyển về chữ cái mặc định!', 'info');
       renderCurrentPage();
     });
@@ -1250,9 +1256,7 @@ export function bindKolProfile(root, { toast, renderCurrentPage }) {
         address,
       };
 
-      try {
-        localStorage.setItem('scanms_profile_kol', JSON.stringify(kolProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
 
       toast?.('Đã cập nhật hồ sơ cá nhân KOL thành công!', 'success');
       renderCurrentPage();
@@ -1265,9 +1269,7 @@ export function bindKolProfile(root, { toast, renderCurrentPage }) {
     btnSaveSocial.addEventListener('click', () => {
       const bio = root.querySelector('#kol-bio')?.value || kolProfileState.profile.bio;
       kolProfileState.profile.bio = bio;
-      try {
-        localStorage.setItem('scanms_profile_kol', JSON.stringify(kolProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
       toast?.('Đã lưu thông tin tiểu sử & kênh mạng xã hội!', 'success');
       renderCurrentPage();
     });
@@ -1284,9 +1286,7 @@ export function bindKolProfile(root, { toast, renderCurrentPage }) {
       const branch = root.querySelector('#kol-branch')?.value || kolProfileState.profile.bank.branch;
 
       kolProfileState.profile.bank = { bankName, accountNumber, accountName, branch };
-      try {
-        localStorage.setItem('scanms_profile_kol', JSON.stringify(kolProfileState.profile));
-      } catch (err) {}
+      safeSaveProfile('scanms_profile_kol', kolProfileState.profile);
       toast?.('Đã cập nhật tài khoản nhận thanh toán VietQR!', 'success');
       renderCurrentPage();
     });

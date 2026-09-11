@@ -35,7 +35,7 @@ export default function UiReferencePage() {
   const safeScreen = /^[a-z0-9-]+$/.test(screen) ? screen : defaultScreenForRole;
 
   return (
-    <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', maxWidth: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <iframe
         title="SCANMS UI/UX Prototype - Nguyễn Đình Tuấn"
         src={`/reference/index.html#${safeScreen}`}

@@ -7,9 +7,10 @@ export class JwtService {
   constructor(private readonly configService: ConfigService) {}
 
   sign(payload: any, options?: jwt.SignOptions): string {
-    const secret =
-      this.configService.get<string>('JWT_SECRET') ||
-      'scanms_super_secret_jwt_token_key_2026_fa26se032';
+    const secret = this.configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('Cấu hình JWT_SECRET bị thiếu trong hệ thống!');
+    }
     const expiresIn =
       (this.configService.get<string>('JWT_EXPIRATION') || '7d') as any;
 
@@ -20,9 +21,10 @@ export class JwtService {
   }
 
   verify<T = any>(token: string): T {
-    const secret =
-      this.configService.get<string>('JWT_SECRET') ||
-      'scanms_super_secret_jwt_token_key_2026_fa26se032';
+    const secret = this.configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('Cấu hình JWT_SECRET bị thiếu trong hệ thống!');
+    }
 
     return jwt.verify(token, secret) as T;
   }

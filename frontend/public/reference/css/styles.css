@@ -50,8 +50,82 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--canvas); }
-body { margin: 0; color: var(--ink); background: var(--canvas); min-width: 320px; }
+html {
+  background: var(--canvas);
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 140, 75, 0.45) transparent;
+}
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--canvas);
+  min-width: 320px;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   CUSTOM SLEEK MODERN SCROLLBAR (Chuẩn Gọn Gàng & Chuyên Nghiệp)
+   - Bỏ hoàn toàn các nút mũi tên xám thô của Windows
+   - Thanh kéo dạng floating pill bo tròn sang trọng
+   - Chiều rộng/chiều cao thanh mảnh 7px
+   - Hài hòa với tone Vàng Be / Kem ấm cao cấp
+   ========================================================================== */
+*, html, body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 140, 75, 0.42) transparent;
+}
+
+[data-theme="dark"] *, [data-theme="dark"] html, [data-theme="dark"] body {
+  scrollbar-color: rgba(222, 190, 133, 0.35) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(180, 140, 75, 0.38);
+  border-radius: 9999px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(158, 121, 51, 0.75);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: rgba(135, 100, 38, 0.95);
+}
+
+/* Ẩn hoàn toàn nút mũi tên 2 đầu của thanh cuộn */
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: rgba(222, 190, 133, 0.3);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(222, 190, 133, 0.6);
+}
+
 button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }

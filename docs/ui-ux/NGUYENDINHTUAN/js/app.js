@@ -1,4 +1,4 @@
-import { dashboard, bindDashboard, withdrawal, kolProfileScreen, bindKolProfile, kolProfileState } from './dashboard.js?v=61';
+import { dashboard, bindDashboard, withdrawal, kolProfileScreen, bindKolProfile, kolProfileState } from './dashboard.js?v=62';
 import { linksPage, bindLinks } from './links.js?v=50';
 import { mediaPage, bindMedia } from './media.js?v=50';
 import { samplesPage, bindSamples } from './samples.js?v=50';
@@ -17,7 +17,7 @@ import {
   managerProfileScreen,
   managerProfileState,
   bindManager
-} from './manager.js?v=142';
+} from './manager.js?v=143';
 
 import {
   customerState,
@@ -30,7 +30,7 @@ import {
   customerSupportScreen,
   customerSecurityScreen,
   bindCustomer
-} from './customer.js?v=5';
+} from './customer.js?v=6';
 
 import {
   adminInternalAccountsScreen,
@@ -41,7 +41,7 @@ import {
   bindAdmin,
   bindAdminProfile,
   adminProfileState
-} from './admin.js';
+} from './admin.js?v=2';
 
 import {
   shopSamplesScreen,
@@ -53,7 +53,9 @@ import {
   bindShopOps,
   bindShopProfile,
   shopProfileState
-} from './shop-ops.js';
+} from './shop-ops.js?v=2';
+
+import { compressAvatarImage, safeSaveProfile } from './image-utils.js';
 
 const productImage = "./assets/serum-hero-optimized.jpg";
 
@@ -4570,7 +4572,7 @@ function bind(root = document) {
     }
   };
 
-  window.handlePopoverAvatarChange = function(input) {
+  window.handlePopoverAvatarChange = async function(input) {
     const file = input?.files?.[0];
     if (!file) return;
 
@@ -4578,32 +4580,29 @@ function bind(root = document) {
       toast("Vui lòng chọn tệp định dạng hình ảnh hợp lệ!", "error");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast("Kích thước ảnh tối đa là 5MB!", "error");
+    if (file.size > 10 * 1024 * 1024) {
+      toast("Kích thước ảnh tối đa là 10MB!", "error");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(loadEvt) {
-      const base64 = loadEvt.target?.result;
-      if (!base64) return;
-
+    try {
+      const base64 = await compressAvatarImage(file, 256, 0.82);
       const curRole = state.role;
       if (curRole === "kol") {
         kolProfileState.profile.avatarImg = base64;
-        try { localStorage.setItem("scanms_profile_kol", JSON.stringify(kolProfileState.profile)); } catch (err) {}
+        safeSaveProfile("scanms_profile_kol", kolProfileState.profile);
       } else if (curRole === "shop") {
         shopProfileState.profile.avatarImg = base64;
-        try { localStorage.setItem("scanms_profile_shop", JSON.stringify(shopProfileState.profile)); } catch (err) {}
+        safeSaveProfile("scanms_profile_shop", shopProfileState.profile);
       } else if (curRole === "manager") {
         managerProfileState.profile.avatarImg = base64;
-        try { localStorage.setItem("scanms_profile_manager", JSON.stringify(managerProfileState.profile)); } catch (err) {}
+        safeSaveProfile("scanms_profile_manager", managerProfileState.profile);
       } else if (curRole === "admin") {
         adminProfileState.profile.avatarImg = base64;
-        try { localStorage.setItem("scanms_profile_admin", JSON.stringify(adminProfileState.profile)); } catch (err) {}
+        safeSaveProfile("scanms_profile_admin", adminProfileState.profile);
       } else if (curRole === "customer") {
         customerState.profile.avatarImg = base64;
-        try { localStorage.setItem("scanms_profile_customer", JSON.stringify(customerState.profile)); } catch (err) {}
+        safeSaveProfile("scanms_profile_customer", customerState.profile);
       }
 
       toast("Đã đổi ảnh đại diện tài khoản thành công!", "success");
@@ -4616,8 +4615,10 @@ function bind(root = document) {
         if (popover) popover.classList.add("show");
         if (btn) btn.classList.add("popover-open");
       }, 40);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Lỗi khi nén ảnh avatar từ popover:", err);
+      toast("Có lỗi khi xử lý ảnh đại diện. Vui lòng thử ảnh khác!", "error");
+    }
   };
 
   window.toggleProfilePopover = function(e) {
