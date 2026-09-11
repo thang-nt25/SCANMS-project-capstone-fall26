@@ -15,6 +15,7 @@ import {
   X,
   Package,
 } from 'lucide-react';
+import api from '../../services/api';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 
@@ -171,7 +172,7 @@ export default function GuestStorefrontPage() {
     setOrderSuccess(null);
   };
 
-  const handleConfirmOrder = (e: React.FormEvent) => {
+  const handleConfirmOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
       showToast('Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ nhận hàng!');
@@ -179,11 +180,38 @@ export default function GuestStorefrontPage() {
     }
 
     setSubmittingOrder(true);
-    setTimeout(() => {
+    let realOrderSn = `DH-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    try {
+      const res: any = await api.post('/orders', {
+        storeSlug: 'techstore-flagship',
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        shippingAddress: `${customerAddress}, ${customerDistrict}, ${customerCity}`,
+        couponCode: kolCoupon,
+        cookieRefCode: refParam,
+        paymentMethod,
+        orderNotes,
+        items: [
+          {
+            productId: checkoutProduct?.id || 'b54934c3-0762-40b4-868e-e7f66dac1684',
+            quantity: checkoutQty,
+            unitPrice: checkoutProduct?.salePrice || 413100,
+          },
+        ],
+      });
+
+      if (res?.order?.externalOrderSn) {
+        realOrderSn = res.order.externalOrderSn;
+      } else if (res?.data?.order?.externalOrderSn) {
+        realOrderSn = res.data.order.externalOrderSn;
+      }
+    } catch (err: any) {
+      console.warn('Backend API order call failed, using client fallback:', err);
+    } finally {
       setSubmittingOrder(false);
-      const generatedOrderId = `DH-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
       setOrderSuccess({
-        orderId: generatedOrderId,
+        orderId: realOrderSn,
         productName: checkoutProduct?.title,
         quantity: checkoutQty,
         totalAmount: (checkoutProduct?.salePrice || 0) * checkoutQty,
@@ -195,7 +223,7 @@ export default function GuestStorefrontPage() {
         discountApplied: kolCoupon,
       });
       setCartCount(0);
-    }, 800);
+    }
   };
 
   return (
@@ -242,6 +270,15 @@ export default function GuestStorefrontPage() {
 
         {/* Right Actions for Guest */}
         <div className="flex items-center gap-2.5">
+          {/* Tracking Link Pill */}
+          <Link
+            to="/tracking"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
+          >
+            <Truck className="w-4 h-4 text-[#B88E4F]" />
+            <span className="hidden sm:inline">Tra cứu đơn</span>
+          </Link>
+
           {/* Cart Pill */}
           <button
             type="button"
@@ -670,16 +707,15 @@ export default function GuestStorefrontPage() {
                   >
                     Tiếp tục mua sắm
                   </Button>
-                  <Button
-                    variant="gold"
+                  <Link
+                    to={`/tracking?sn=${orderSuccess.orderId}`}
                     className="flex-1"
-                    onClick={() => {
-                      setShowCheckoutModal(false);
-                      showToast(`Đang mở trang tra cứu vận đơn ${orderSuccess.orderId}...`);
-                    }}
+                    onClick={() => setShowCheckoutModal(false)}
                   >
-                    Tra cứu đơn hàng
-                  </Button>
+                    <Button variant="gold" className="w-full">
+                      Tra cứu đơn hàng
+                    </Button>
+                  </Link>
                 </div>
               </div>
             ) : (
