@@ -7,13 +7,18 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { OrdersService } from './orders.service';
@@ -28,6 +33,11 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import {
+  ExcelOrderImportService,
+  MAX_EXCEL_FILE_SIZE_BYTES,
+} from './excel-order-import.service';
+import { ImportOrdersDto } from './dto/import-orders.dto';
 
 @ApiTags('Orders & Fulfillment')
 @Controller('orders')
@@ -35,6 +45,7 @@ export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly manualOrdersService: ManualOrdersService,
+    private readonly excelOrderImportService: ExcelOrderImportService,
   ) {}
 
   @Post()
@@ -80,9 +91,45 @@ export class OrdersController {
     return this.manualOrdersService.createManualOrder(manager, dto);
   }
 
+  @Post('import-excel')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_EXCEL_FILE_SIZE_BYTES },
+    }),
+  )
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        storeId: { type: 'string', format: 'uuid' },
+        file: { type: 'string', format: 'binary' },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiOperation({ summary: 'FR-20: Import danh sách đơn hàng từ Excel' })
+  @ApiResponse({
+    status: 200,
+    description: 'Trả kết quả import theo từng dòng',
+  })
+  @ApiResponse({ status: 400, description: 'File hoặc dữ liệu không hợp lệ' })
+  async importExcelOrders(
+    @CurrentUser() manager: OrderManagerIdentity,
+    @Body() dto: ImportOrdersDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.excelOrderImportService.importOrders(manager, dto, file);
+  }
+
   @Get('track')
   @ApiOperation({
-    summary: 'FR-17: Tra cứu tiến trình đơn hàng công khai bằng SĐT hoặc Mã đơn',
+    summary:
+      'FR-17: Tra cứu tiến trình đơn hàng công khai bằng SĐT hoặc Mã đơn',
     description:
       'Khách mua hàng nhập số điện thoại hoặc mã đơn hàng để tra cứu lộ trình vận chuyển: Đã tiếp nhận -> Đang đóng gói -> Đang giao GHN/GHTK -> Giao thành công.',
   })

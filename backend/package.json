@@ -39,6 +39,7 @@
     "class-validator": "^0.15.1",
     "cloudinary": "^2.11.0",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "google-auth-library": "^11.0.2",
     "nodemailer": "^10.0.1",
     "otplib": "^13.5.0",

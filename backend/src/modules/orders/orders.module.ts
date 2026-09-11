@@ -4,6 +4,7 @@ import { OrdersService } from './orders.service';
 import { PrismaModule } from '../../core/database/prisma.module';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
 import { ManualOrdersService } from './manual-orders.service';
+import { ExcelOrderImportService } from './excel-order-import.service';
 
 @Module({
   imports: [PrismaModule],
@@ -12,6 +13,7 @@ import { ManualOrdersService } from './manual-orders.service';
     OrdersService,
     OrderWebhookNormalizerService,
     ManualOrdersService,
+    ExcelOrderImportService,
   ],
   exports: [OrdersService],
 })

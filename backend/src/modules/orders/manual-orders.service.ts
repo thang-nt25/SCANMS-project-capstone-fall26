@@ -55,12 +55,16 @@ export class ManualOrdersService {
     dto: CreateManualOrderDto,
   ) {
     const store = await this.resolveManagedStore(manager, dto.storeId);
+    return this.createManualOrderForStore(store.id, dto);
+  }
+
+  async createManualOrderForStore(storeId: string, dto: CreateManualOrderDto) {
     const externalOrderSn =
       dto.externalOrderSn?.trim() || this.generateManualOrderCode();
 
-    await this.ensureOrderDoesNotExist(store.id, externalOrderSn);
+    await this.ensureOrderDoesNotExist(storeId, externalOrderSn);
 
-    const resolvedItems = await this.resolveProducts(store.id, dto);
+    const resolvedItems = await this.resolveProducts(storeId, dto);
     const subtotalAmount = resolvedItems.reduce(
       (total, item) => total + item.unitPrice * item.quantity,
       0,
@@ -76,7 +80,7 @@ export class ManualOrdersService {
       const order = await this.prisma.$transaction((tx) =>
         tx.order.create({
           data: {
-            storeId: store.id,
+            storeId,
             sourcePlatform: OrderSourcePlatform.INTERNAL,
             externalOrderSn,
             customerName: dto.customerName.trim(),
