@@ -468,7 +468,10 @@ model Commission {
   collaboratorId   String           @map("collaborator_id") @db.Uuid
   commissionAmount Decimal          @map("commission_amount") @db.Decimal(15, 2)
   status           CommissionStatus @default(PENDING)
+  eligibleAt       DateTime         @map("eligible_at") @db.Timestamptz(6)
+  availableAt      DateTime         @map("available_at") @db.Timestamptz(6)
   approvedAt       DateTime?        @map("approved_at") @db.Timestamptz(6)
+  reversedAt       DateTime?        @map("reversed_at") @db.Timestamptz(6)
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
@@ -478,6 +481,7 @@ model Commission {
   @@unique([orderId, collaboratorId], map: "idx_unique_commission_order_collab")
   @@index([orderId], map: "idx_fk_commissions_order")
   @@index([collaboratorId, status], map: "idx_commissions_collab_status")
+  @@index([status, availableAt], map: "idx_commissions_status_available")
   @@map("commissions")
 }
 

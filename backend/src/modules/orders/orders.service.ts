@@ -13,7 +13,6 @@ import { CreateOrderReviewDto } from './dto/create-review.dto';
 import {
   OrderStatus,
   AttributionMethod,
-  CommissionStatus,
   OrderSourcePlatform,
   Prisma,
 } from '@prisma/client';
@@ -404,19 +403,8 @@ export class OrdersService {
       }
     }
 
-    // 3. Lấy thông tin cấp bậc Tier của KOL để tính thêm % thưởng (nếu có)
-    let extraTierRate = 0;
-    if (attributedCollaboratorId) {
-      const collabProfile = await this.prisma.collaboratorProfile.findUnique({
-        where: { userId: attributedCollaboratorId },
-        include: { tier: true },
-      });
-      if (collabProfile?.tier?.extraBonusPercentage) {
-        extraTierRate = Number(collabProfile.tier.extraBonusPercentage);
-      }
-    }
-
-    // 4. Lấy danh sách sản phẩm từ DB và tính toán tiền hàng & hoa hồng
+    // 3. Lấy danh sách sản phẩm từ DB và tính tiền hàng.
+    // FR-21 chốt tỷ lệ hoa hồng tại thời điểm đơn giao thành công.
     const productIds = dto.items.map((i) => i.productId);
     const dbProducts = await this.prisma.product.findMany({
       where: {
@@ -428,7 +416,6 @@ export class OrdersService {
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
 
     let subtotalAmount = 0;
-    let totalCommissionAmount = 0;
     const orderItemsToCreate: Array<{
       productId: string;
       quantity: number;
@@ -441,23 +428,16 @@ export class OrdersService {
       const prod = productMap.get(item.productId);
       const unitPrice = prod ? Number(prod.price) : (item.unitPrice || 413100);
       const quantity = item.quantity;
-      const baseCommissionRate = prod?.customCommissionRate
-        ? Number(prod.customCommissionRate)
-        : Number(store.defaultCommissionRate || 10);
-
-      const finalCommissionRate = baseCommissionRate + extraTierRate;
       const itemSubtotal = unitPrice * quantity;
-      const itemCommission = itemSubtotal * (finalCommissionRate / 100);
 
       subtotalAmount += itemSubtotal;
-      totalCommissionAmount += itemCommission;
 
       orderItemsToCreate.push({
         productId: prod ? prod.id : item.productId,
         quantity,
         unitPrice,
-        appliedCommissionRate: finalCommissionRate,
-        calculatedCommissionAmount: itemCommission,
+        appliedCommissionRate: 0,
+        calculatedCommissionAmount: 0,
       });
     }
 
@@ -473,7 +453,7 @@ export class OrdersService {
       10000 + Math.random() * 90000,
     )}`;
 
-    // 5. Thực thi Lưu đơn hàng và Phân bổ Hoa hồng trong một Transaction
+    // 4. Lưu đơn hàng. Commission chỉ được tạo sau khi giao thành công.
     const createdOrder = await this.prisma.$transaction(async (tx) => {
       // 5.1 Lưu đơn hàng
       const order = await tx.order.create({
@@ -524,39 +504,11 @@ export class OrdersService {
         },
       });
 
-      // 5.2 Nếu có KOL được hưởng hoa hồng -> Tạo bản ghi hoa hồng và cộng vào ví chờ
-      if (attributedCollaboratorId && totalCommissionAmount > 0) {
-        // Ghi bản ghi Commission PENDING (Escrow 14 ngày)
-        await tx.commission.create({
-          data: {
-            orderId: order.id,
-            collaboratorId: attributedCollaboratorId,
-            commissionAmount: totalCommissionAmount,
-            status: CommissionStatus.PENDING,
-          },
+      if (matchedLink) {
+        await tx.referralLink.update({
+          where: { id: matchedLink.id },
+          data: { totalOrders: { increment: 1 } },
         });
-
-        // Cộng số dư ví chờ (Pending Balance) của KOL
-        await tx.wallet.upsert({
-          where: { collaboratorId: attributedCollaboratorId },
-          update: {
-            pendingBalance: { increment: totalCommissionAmount },
-          },
-          create: {
-            collaboratorId: attributedCollaboratorId,
-            availableBalance: 0,
-            pendingBalance: totalCommissionAmount,
-            version: 1,
-          },
-        });
-
-        // Tăng đếm lượt chuyển đổi của Link tiếp thị
-        if (matchedLink) {
-          await tx.referralLink.update({
-            where: { id: matchedLink.id },
-            data: { totalOrders: { increment: 1 } },
-          });
-        }
       }
 
       return order;

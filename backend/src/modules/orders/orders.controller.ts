@@ -53,7 +53,7 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Đặt hàng mới (Guest Storefront hoặc Khách hàng trực tuyến)',
     description:
-      'Nhận diện mã Coupon hoặc Link rút gọn của KOL, tự động lưu thông tin đơn hàng, tính chiết khấu và phân bổ hoa hồng vào ví chờ.',
+      'Nhận diện mã Coupon hoặc Link rút gọn của KOL và lưu đơn hàng. Hoa hồng được chuyển vào ví chờ sau khi giao hàng thành công.',
   })
   async createOrder(@Body() dto: CreateOrderDto) {
     return this.ordersService.createOrder(dto);

@@ -377,6 +377,8 @@ async function main() {
       collaboratorId: kol1.id,
       commissionAmount: 193500,
       status: CommissionStatus.APPROVED,
+      eligibleAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      availableAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
       approvedAt: new Date(),
     },
   });
