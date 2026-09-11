@@ -20,7 +20,13 @@ export interface Product {
 }
 
 export const productService = {
-  async getProducts(params?: { search?: string; category?: string; page?: number; limit?: number }) {
+  async getProducts(params?: {
+    storeId?: string;
+    search?: string;
+    category?: string;
+    page?: number;
+    limit?: number;
+  }) {
     const res: any = await api.get('/products', { params });
     return res.data;
   },

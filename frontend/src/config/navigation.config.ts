@@ -56,10 +56,11 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/merchant/dashboard', label: 'Tổng quan Shop', icon: Store, numBadge: '01' },
       { path: '/merchant/products', label: 'Danh mục sản phẩm', icon: Box, numBadge: '02' },
-      { path: '/collaborator/media-hub', label: 'Kho tài nguyên', icon: Images, numBadge: '03' },
-      { path: '/merchant/settings', label: 'Cài đặt gian hàng', icon: Settings, numBadge: '04' },
-      { path: '/merchant/kyc-approval', label: 'Duyệt KYC CTV', icon: ShieldCheck, numBadge: '05' },
-      { path: '/merchant/messages', label: 'Tin nhắn hỗ trợ', icon: MessageSquare, numBadge: '06' },
+      { path: '/merchant/orders', label: 'Quản lý đơn hàng', icon: ShoppingBag, numBadge: '03' },
+      { path: '/collaborator/media-hub', label: 'Kho tài nguyên', icon: Images, numBadge: '04' },
+      { path: '/merchant/settings', label: 'Cài đặt gian hàng', icon: Settings, numBadge: '05' },
+      { path: '/merchant/kyc-approval', label: 'Duyệt KYC CTV', icon: ShieldCheck, numBadge: '06' },
+      { path: '/merchant/messages', label: 'Tin nhắn hỗ trợ', icon: MessageSquare, numBadge: '07' },
     ],
   },
   SYSTEM_ADMIN: {

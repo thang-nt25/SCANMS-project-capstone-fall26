@@ -12,6 +12,7 @@ import ProductManagementPage from '../pages/merchant/ProductManagementPage';
 import ShopDashboardPage from '../pages/merchant/ShopDashboardPage';
 import ShopSettingsPage from '../pages/merchant/ShopSettingsPage';
 import KycApprovalPage from '../pages/merchant/KycApprovalPage';
+import OrdersManagementPage from '../pages/merchant/OrdersManagementPage';
 // Collaborator (Thắng - FR-01~08)
 import KolTierStatusPage from '../pages/collaborator/KolTierStatusPage';
 import SocialChannelsPage from '../pages/collaborator/SocialChannelsPage';
@@ -63,6 +64,7 @@ function AppRoutes() {
           <Route path="merchant/products" element={<ProductManagementPage />} />
           <Route path="merchant/settings" element={<ShopSettingsPage />} />
           <Route path="merchant/kyc-approval" element={<KycApprovalPage />} />
+          <Route path="merchant/orders" element={<OrdersManagementPage />} />
 
           {/* ── Collaborator (Thắng - FR-01~08) ── */}
           <Route path="collaborator/dashboard" element={<HomePage />} />
