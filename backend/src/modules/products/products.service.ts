@@ -117,7 +117,7 @@ export class ProductsService {
    */
   async create(ownerId: string, dto: CreateProductDto) {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId, isDeleted: false },
+      where: { id: dto.storeId, ownerId, isDeleted: false },
     });
 
     if (!store) {

@@ -162,8 +162,8 @@ Mỗi thành viên trong nhóm phụ trách trọn gói từ **Giao diện Front
 | Thành Viên | Vai Trò & Phân Hệ Cốt Lõi | Các Chức Năng Chính Đảm Nhận |
 | :--- | :--- | :--- |
 | **1. Nguyễn Thành Thắng** *(Leader)* | **Tài chính, Ví tiền, Khóa dòng & Payout Engine** | `FR-24` đến `FR-28` (Ví tiền, Khóa `SELECT FOR UPDATE`, Sổ cái tài chính, Thuế TNCN 10%, Xuất file VietQR, Màn hình Super Admin). |
-| **2. Nguyễn Đình Tuấn** | **Tracking, Link/QR, Webhook & Động cơ Hoa hồng** | `FR-10` đến `FR-14`, `FR-19`, `FR-21` đến `FR-23` (Sinh Link/QR, Cookie 30 ngày, Last-Click, Redis Rate Limit, Webhook đơn hàng, Tính hoa hồng từng món, Duyệt 14 ngày & Thu hồi đơn hủy). |
-| **3. Nguyễn Phú Quý** | **Cửa hàng, Sản phẩm, Media Hub & Hàng mẫu** | `FR-06` đến `FR-09`, `FR-30` (Cấu hình Store, CRUD Sản phẩm Soft Delete, Kho media 1-click copy, Mốc thưởng doanh số, Luồng xin hàng mẫu kèm mã vận đơn). |
+| **2. Nguyễn Đình Tuấn** | **Tracking, Mốc Thưởng, Link/QR & Động cơ Hoa hồng** | `FR-09` đến `FR-14`, `FR-19`, `FR-21` đến `FR-23` (Cấu hình mốc thưởng doanh số tháng, Sinh Link/QR, Cookie 30 ngày, Last-Click, Redis Rate Limit, Webhook đơn hàng, Tính hoa hồng từng món, Duyệt 14 ngày & Thu hồi đơn hủy). |
+| **3. Nguyễn Phú Quý** | **Cửa hàng, Sản phẩm, Media Hub & Hàng mẫu** | `FR-06` đến `FR-08`, `FR-30` (Cấu hình Store, CRUD Sản phẩm Soft Delete, Kho media 1-click copy, Luồng xin hàng mẫu kèm mã vận đơn). |
 | **4. Phan Xuân Thịnh** | **Xác thực IAM, Phân quyền RBAC, KYC & Chat Realtime** | `FR-01` đến `FR-05`, `FR-29`, `FR-31` (Đăng ký/Đăng nhập JWT, 2FA OTP, Role Guards 5 vai trò, KYC tài chính, Đa kênh MXH, Chat realtime 1-1 Socket.io). |
 | **5. Trần Văn Nhật** | **Trải nghiệm Mua hàng, Dashboard & 2 Động cơ AI** | `FR-15` đến `FR-18`, `FR-32` đến `FR-35` (Trang Landing Page mua hàng, Guest Checkout, Tra cứu đơn SĐT, Review 5 sao, Dashboard biểu đồ, Bảng vinh danh Top KOL, AI Gợi ý KOL & AI Bắt gian lận). |
 

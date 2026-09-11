@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import api from '../../services/api';
 import type { CampaignParticipant } from '../../types/campaigns';
 import './KolCampaignsPage.css';
@@ -14,7 +13,7 @@ const STATUS_COLOR: Record<string, string> = {
 const STATUS_ICON: Record<string, string> = {
   INVITED: '💌', ACCEPTED: '✅', REJECTED: '❌',
 };
-const fmtDate = (d: string) => format(new Date(d), 'dd/MM/yyyy', { locale: vi });
+const fmtDate = (d: string) => format(new Date(d), 'dd/MM/yyyy');
 
 export default function KolCampaignsPage() {
   const [invitations, setInvitations] = useState<CampaignParticipant[]>([]);
