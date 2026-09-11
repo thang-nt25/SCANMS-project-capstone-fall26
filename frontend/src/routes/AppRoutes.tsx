@@ -73,6 +73,8 @@ function AppRoutes() {
 
           {/* ── Quy - FR-25: Chat Realtime ── */}
           <Route path="chat" element={<ChatBoxPage />} />
+          <Route path="collaborator/messages" element={<ChatBoxPage />} />
+          <Route path="merchant/messages" element={<ChatBoxPage />} />
 
           {/* ── Quy - FR-26: Sample Product Workflow ── */}
           <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />

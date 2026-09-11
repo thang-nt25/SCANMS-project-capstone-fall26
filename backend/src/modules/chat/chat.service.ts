@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CreateConversationDto } from './dto/send-message.dto';
 
@@ -8,21 +8,49 @@ export class ChatService {
 
   // ---- Conversation ----
 
-  async getOrCreateConversation(dto: CreateConversationDto) {
+  // KOL/Shop tạo hoặc lấy conversation
+  // - Shop gọi: truyền collaboratorId (storeId tự lấy từ userId)
+  // - KOL gọi: truyền storeId (collaboratorId = userId)
+  async getOrCreateConversation(dto: CreateConversationDto, userId: string) {
+    let storeId = dto.storeId;
+    let collaboratorId = dto.collaboratorId;
+
+    // Nếu shop gọi (có collaboratorId, không có storeId) → tự lấy storeId
+    if (!storeId && collaboratorId) {
+      const store = await this.prisma.store.findFirst({
+        where: { ownerId: userId, isDeleted: false },
+      });
+      if (!store) throw new BadRequestException('Tài khoản Shop này chưa có cửa hàng nào');
+      storeId = store.id;
+    }
+
+    // Nếu KOL gọi (có storeId, không có collaboratorId) → collaboratorId = userId
+    if (!collaboratorId && storeId) {
+      collaboratorId = userId;
+    }
+
+    if (!storeId || !collaboratorId) {
+      throw new BadRequestException('Thông tin cửa hàng hoặc người nhận không hợp lệ');
+    }
+
     const existing = await this.prisma.conversation.findFirst({
-      where: { storeId: dto.storeId, collaboratorId: dto.collaboratorId },
+      where: { storeId, collaboratorId },
       include: {
-        store: { select: { id: true, name: true } },
+        store: { select: { id: true, name: true, logoUrl: true } },
         collaborator: { select: { id: true, fullName: true, role: true } },
+        chatMessages: { orderBy: { createdAt: 'desc' }, take: 1,
+          select: { messageText: true, createdAt: true, senderId: true, isRead: true } },
       },
     });
     if (existing) return existing;
 
     return this.prisma.conversation.create({
-      data: { storeId: dto.storeId, collaboratorId: dto.collaboratorId },
+      data: { storeId, collaboratorId },
       include: {
-        store: { select: { id: true, name: true } },
+        store: { select: { id: true, name: true, logoUrl: true } },
         collaborator: { select: { id: true, fullName: true, role: true } },
+        chatMessages: { orderBy: { createdAt: 'desc' }, take: 1,
+          select: { messageText: true, createdAt: true, senderId: true, isRead: true } },
       },
     });
   }
@@ -133,4 +161,50 @@ export class ChatService {
       },
     });
   }
+
+  // ---- Shop tìm kiếm KOL/CTV để bắt đầu chat ----
+  async searchCollaborators(q?: string) {
+    const trimmed = (q || '').trim();
+    return this.prisma.user.findMany({
+      where: {
+        role: 'COLLABORATOR',
+        isActive: true,
+        isDeleted: false,
+        ...(trimmed
+          ? {
+              OR: [
+                { fullName: { contains: trimmed, mode: 'insensitive' } },
+                { email: { contains: trimmed, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      select: { id: true, fullName: true, email: true },
+      take: 20,
+    });
+  }
+
+  // ---- KOL tìm kiếm Shop để bắt đầu chat ----
+  async searchStores(q?: string) {
+    const trimmed = (q || '').trim();
+    return this.prisma.store.findMany({
+      where: {
+        isDeleted: false,
+        ...(trimmed
+          ? {
+              name: { contains: trimmed, mode: 'insensitive' },
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        owner: { select: { id: true, fullName: true, email: true } },
+      },
+      take: 20,
+    });
+  }
 }
+
+
