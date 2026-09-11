@@ -2,6 +2,9 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  HttpException,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -11,12 +14,325 @@ import {
   OrderStatus,
   AttributionMethod,
   CommissionStatus,
-  TransactionType,
+  OrderSourcePlatform,
+  Prisma,
 } from '@prisma/client';
+import {
+  ExternalOrderPlatform,
+  OrderWebhookDto,
+} from './dto/order-webhook.dto';
+import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
+import { NormalizedExternalOrder } from './normalizers/external-order-normalizer.interface';
+
+const WEBHOOK_PLATFORM_MAP: Record<ExternalOrderPlatform, OrderSourcePlatform> =
+  {
+    [ExternalOrderPlatform.SHOPEE]: OrderSourcePlatform.SHOPEE,
+    [ExternalOrderPlatform.TIKTOK]: OrderSourcePlatform.TIKTOK,
+    [ExternalOrderPlatform.SHOPIFY]: OrderSourcePlatform.SHOPIFY,
+  };
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(OrdersService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly webhookNormalizer: OrderWebhookNormalizerService,
+  ) {}
+
+  /**
+   * FR-19: Tiếp nhận đơn từ sàn ngoài theo cơ chế idempotent.
+   * Việc tính hoa hồng và cập nhật ví thuộc FR-21, không được thực hiện tại đây.
+   */
+  async receiveWebhook(dto: OrderWebhookDto) {
+    let normalizedOrder: NormalizedExternalOrder;
+
+    try {
+      normalizedOrder = this.webhookNormalizer.normalize(
+        dto.source,
+        dto.payload,
+      );
+      this.validateNormalizedOrder(normalizedOrder);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Rejected invalid order webhook: source=${dto.source}, reason=${this.getErrorMessage(error)}`,
+      );
+      throw error;
+    }
+
+    const store = await this.findWebhookStore(dto);
+    const sourcePlatform = WEBHOOK_PLATFORM_MAP[normalizedOrder.platform];
+    const logContext = `source=${dto.source}, externalOrderId=${normalizedOrder.externalOrderId}, storeId=${store.id}`;
+
+    this.logger.log(`Received order webhook: ${logContext}`);
+
+    const existingOrder = await this.findWebhookOrder(
+      store.id,
+      sourcePlatform,
+      normalizedOrder.externalOrderId,
+    );
+    if (existingOrder) {
+      this.logger.log(`Ignored duplicate order webhook: ${logContext}`);
+      return this.buildWebhookResponse(existingOrder, false);
+    }
+
+    const resolvedItems = await this.resolveWebhookProducts(
+      store.id,
+      normalizedOrder,
+    );
+    const calculatedSubtotal = resolvedItems.reduce(
+      (total, item) => total + item.unitPrice * item.quantity,
+      0,
+    );
+    const subtotalAmount = normalizedOrder.subtotalAmount ?? calculatedSubtotal;
+    const finalAmount =
+      normalizedOrder.totalAmount ??
+      Math.max(0, subtotalAmount - (normalizedOrder.discountAmount ?? 0));
+    const discountAmount =
+      normalizedOrder.discountAmount ??
+      Math.max(0, subtotalAmount - finalAmount);
+
+    try {
+      const createdOrder = await this.prisma.$transaction((tx) =>
+        tx.order.create({
+          data: {
+            storeId: store.id,
+            sourcePlatform,
+            externalOrderSn: normalizedOrder.externalOrderId,
+            rawPayload: dto.payload as Prisma.InputJsonValue,
+            customerName: normalizedOrder.customerName,
+            customerPhone: normalizedOrder.customerPhone,
+            shippingAddress: normalizedOrder.shippingAddress,
+            subtotalAmount,
+            discountAmount,
+            finalAmount,
+            status: normalizedOrder.status,
+            orderItems: {
+              create: resolvedItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                // FR-21 will calculate and persist commission values later.
+                appliedCommissionRate: 0,
+                calculatedCommissionAmount: 0,
+              })),
+            },
+          },
+          select: this.webhookOrderSelect,
+        }),
+      );
+
+      this.logger.log(`Created order from webhook: ${logContext}`);
+      return this.buildWebhookResponse(createdOrder, true);
+    } catch (error: unknown) {
+      if (this.isUniqueConstraintError(error)) {
+        const concurrentOrder = await this.findWebhookOrder(
+          store.id,
+          sourcePlatform,
+          normalizedOrder.externalOrderId,
+        );
+        if (concurrentOrder) {
+          this.logger.log(
+            `Ignored concurrent duplicate order webhook: ${logContext}`,
+          );
+          return this.buildWebhookResponse(concurrentOrder, false);
+        }
+      }
+
+      this.logger.error(
+        `Failed to persist order webhook: ${logContext}, reason=${this.getErrorMessage(error)}`,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Không thể tiếp nhận đơn hàng từ webhook',
+      );
+    }
+  }
+
+  private readonly webhookOrderSelect = {
+    id: true,
+    storeId: true,
+    sourcePlatform: true,
+    externalOrderSn: true,
+    customerName: true,
+    customerPhone: true,
+    shippingAddress: true,
+    subtotalAmount: true,
+    discountAmount: true,
+    finalAmount: true,
+    status: true,
+    createdAt: true,
+    updatedAt: true,
+    orderItems: {
+      select: {
+        id: true,
+        quantity: true,
+        unitPrice: true,
+        product: {
+          select: {
+            id: true,
+            sku: true,
+            title: true,
+          },
+        },
+      },
+    },
+  } satisfies Prisma.OrderSelect;
+
+  private async findWebhookStore(dto: OrderWebhookDto) {
+    if (!dto.storeId && !dto.storeSlug?.trim()) {
+      throw new BadRequestException(
+        'Webhook phải cung cấp storeId hoặc storeSlug',
+      );
+    }
+
+    const store = dto.storeId
+      ? await this.prisma.store.findUnique({ where: { id: dto.storeId } })
+      : await this.prisma.store.findUnique({
+          where: { slug: dto.storeSlug?.trim() },
+        });
+
+    if (!store || store.isDeleted) {
+      throw new BadRequestException('Không tìm thấy cửa hàng nhận webhook');
+    }
+    return store;
+  }
+
+  private findWebhookOrder(
+    storeId: string,
+    sourcePlatform: OrderSourcePlatform,
+    externalOrderSn: string,
+  ) {
+    return this.prisma.order.findFirst({
+      where: { storeId, sourcePlatform, externalOrderSn },
+      select: this.webhookOrderSelect,
+    });
+  }
+
+  private async resolveWebhookProducts(
+    storeId: string,
+    order: NormalizedExternalOrder,
+  ) {
+    const productIds = order.items
+      .map((item) => item.productId)
+      .filter((id): id is string => Boolean(id));
+    const skus = order.items
+      .map((item) => item.sku)
+      .filter((sku): sku is string => Boolean(sku));
+
+    if (order.items.some((item) => !item.productId && !item.sku)) {
+      throw new BadRequestException(
+        'Mỗi sản phẩm webhook phải có SKU hoặc internal_product_id',
+      );
+    }
+
+    const skuFilters = skus.map((sku) => ({
+      sku: { equals: sku, mode: 'insensitive' as const },
+    }));
+    const products = await this.prisma.product.findMany({
+      where: {
+        storeId,
+        isDeleted: false,
+        OR: [
+          ...(productIds.length > 0 ? [{ id: { in: productIds } }] : []),
+          ...skuFilters,
+        ],
+      },
+      select: { id: true, sku: true, title: true },
+    });
+    const productsById = new Map(
+      products.map((product) => [product.id, product]),
+    );
+    const productsBySku = new Map(
+      products.map((product) => [product.sku.toUpperCase(), product]),
+    );
+
+    const unresolvedItems: string[] = [];
+    const resolvedItems = order.items.map((item) => {
+      const product =
+        (item.productId ? productsById.get(item.productId) : undefined) ??
+        (item.sku ? productsBySku.get(item.sku.toUpperCase()) : undefined);
+
+      if (!product) {
+        unresolvedItems.push(item.sku ?? item.productId ?? item.name);
+      }
+
+      return {
+        productId: product?.id ?? '',
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      };
+    });
+
+    if (unresolvedItems.length > 0) {
+      throw new BadRequestException(
+        `Không tìm thấy sản phẩm trong cửa hàng theo SKU/ID: ${unresolvedItems.join(', ')}`,
+      );
+    }
+
+    return resolvedItems;
+  }
+
+  private validateNormalizedOrder(order: NormalizedExternalOrder): void {
+    if (order.externalOrderId.length > 100) {
+      throw new BadRequestException(
+        'Mã đơn hàng từ sàn không được vượt quá 100 ký tự',
+      );
+    }
+    if (order.customerName && order.customerName.length > 150) {
+      throw new BadRequestException(
+        'Tên khách hàng không được vượt quá 150 ký tự',
+      );
+    }
+    if (order.customerPhone && order.customerPhone.length > 20) {
+      throw new BadRequestException(
+        'Số điện thoại khách hàng không được vượt quá 20 ký tự',
+      );
+    }
+
+    const amounts = [
+      order.subtotalAmount,
+      order.discountAmount,
+      order.totalAmount,
+    ];
+    if (
+      amounts.some(
+        (amount) =>
+          amount !== undefined && (!Number.isFinite(amount) || amount < 0),
+      )
+    ) {
+      throw new BadRequestException(
+        'Các giá trị tiền trong payload không hợp lệ',
+      );
+    }
+  }
+
+  private buildWebhookResponse(
+    order: Awaited<ReturnType<OrdersService['findWebhookOrder']>>,
+    created: boolean,
+  ) {
+    return {
+      message: created
+        ? 'Tiếp nhận đơn hàng từ webhook thành công'
+        : 'Đơn hàng đã tồn tại, không tạo bản ghi trùng',
+      created,
+      idempotent: !created,
+      order,
+    };
+  }
+
+  private isUniqueConstraintError(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    );
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+  }
 
   /**
    * Tạo đơn hàng mới (Dành cho Guest Storefront hoặc giỏ hàng)

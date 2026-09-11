@@ -64,6 +64,13 @@ enum OrderStatus {
   RETURNED
 }
 
+enum OrderSourcePlatform {
+  INTERNAL
+  SHOPEE
+  TIKTOK
+  SHOPIFY
+}
+
 enum CommissionStatus {
   PENDING
   APPROVED
@@ -405,20 +412,22 @@ model CampaignParticipant {
 // ==========================================
 
 model Order {
-  id                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storeId                  String             @map("store_id") @db.Uuid
-  externalOrderSn          String             @map("external_order_sn") @db.VarChar(100)
-  attributedCollaboratorId String?            @map("attributed_collaborator_id") @db.Uuid
-  attributionMethod        AttributionMethod? @map("attribution_method")
-  customerName             String?            @map("customer_name") @db.VarChar(150)
-  customerPhone            String?            @map("customer_phone") @db.VarChar(20)
-  shippingAddress          String?            @map("shipping_address")
-  subtotalAmount           Decimal            @map("subtotal_amount") @db.Decimal(15, 2)
-  discountAmount           Decimal            @default(0.00) @map("discount_amount") @db.Decimal(15, 2)
-  finalAmount              Decimal            @map("final_amount") @db.Decimal(15, 2)
-  status                   OrderStatus        @default(PENDING)
-  createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                       String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId                  String              @map("store_id") @db.Uuid
+  sourcePlatform           OrderSourcePlatform @default(INTERNAL) @map("source_platform")
+  externalOrderSn          String              @map("external_order_sn") @db.VarChar(100)
+  rawPayload               Json?               @map("raw_payload")
+  attributedCollaboratorId String?             @map("attributed_collaborator_id") @db.Uuid
+  attributionMethod        AttributionMethod?  @map("attribution_method")
+  customerName             String?             @map("customer_name") @db.VarChar(150)
+  customerPhone            String?             @map("customer_phone") @db.VarChar(20)
+  shippingAddress          String?             @map("shipping_address")
+  subtotalAmount           Decimal             @map("subtotal_amount") @db.Decimal(15, 2)
+  discountAmount           Decimal             @default(0.00) @map("discount_amount") @db.Decimal(15, 2)
+  finalAmount              Decimal             @map("final_amount") @db.Decimal(15, 2)
+  status                   OrderStatus         @default(PENDING)
+  createdAt                DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   store                  Store           @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -427,7 +436,7 @@ model Order {
   commissions            Commission[]
   productReviews         ProductReview[]
 
-  @@unique([storeId, externalOrderSn], map: "idx_unique_store_external_order")
+  @@unique([storeId, sourcePlatform, externalOrderSn], map: "idx_unique_store_platform_external_order")
   @@index([storeId], map: "idx_fk_orders_store")
   @@index([attributedCollaboratorId], map: "idx_fk_orders_collab")
   @@index([status, createdAt], map: "idx_orders_status_created")

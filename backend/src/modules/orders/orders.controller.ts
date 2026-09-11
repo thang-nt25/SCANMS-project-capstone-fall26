@@ -13,6 +13,7 @@ import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
 import { CreateOrderReviewDto } from './dto/create-review.dto';
+import { OrderWebhookDto } from './dto/order-webhook.dto';
 
 @ApiTags('Orders & Fulfillment')
 @Controller('orders')
@@ -28,6 +29,22 @@ export class OrdersController {
   })
   async createOrder(@Body() dto: CreateOrderDto) {
     return this.ordersService.createOrder(dto);
+  }
+
+  @Post('webhook')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'FR-19: Tiếp nhận đơn hàng từ sàn thương mại điện tử',
+    description:
+      'Chuẩn hóa và lưu đơn hàng từ Shopee, TikTok Shop hoặc Shopify theo cơ chế idempotent.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Đơn đã được tiếp nhận hoặc đã tồn tại',
+  })
+  @ApiResponse({ status: 400, description: 'Payload webhook không hợp lệ' })
+  async receiveWebhook(@Body() dto: OrderWebhookDto) {
+    return this.ordersService.receiveWebhook(dto);
   }
 
   @Get('track')
