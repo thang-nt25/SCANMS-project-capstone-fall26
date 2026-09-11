@@ -50,7 +50,7 @@ export class OrdersService {
       matchedLink = await this.prisma.referralLink.findFirst({
         where: {
           customCouponCode: { equals: cleanCoupon, mode: 'insensitive' },
-          isDeleted: false,
+          deletedAt: null,
         },
         include: { collaborator: true },
       });
@@ -66,7 +66,7 @@ export class OrdersService {
       matchedLink = await this.prisma.referralLink.findFirst({
         where: {
           shortCode: cleanRef,
-          isDeleted: false,
+          deletedAt: null,
         },
         include: { collaborator: true },
       });

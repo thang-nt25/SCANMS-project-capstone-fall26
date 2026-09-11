@@ -67,14 +67,12 @@ function AppRoutes() {
         <Route path="/marketplace" element={<UiReferencePage />} />
         <Route path="/app" element={<UiReferencePage />} />
         <Route path="/app/:screenId" element={<UiReferencePage />} />
-        <Route path="/tracking" element={<UiReferencePage />} />
 
-        {/* Sora Skin Storefront cho khách mua hàng */}
+        {/* SCANMS Multi-Merchant Storefront cho khách mua hàng */}
         <Route path="/store" element={<GuestStorefrontPage />} />
         <Route path="/storefront" element={<GuestStorefrontPage />} />
         <Route path="/shop" element={<GuestStorefrontPage />} />
 
-        {/* Cổng đăng nhập & đăng ký chính thức */}
         {/* Cổng tra cứu tiến trình đơn hàng công khai (FR-17) */}
         <Route path="/tracking" element={<OrderTrackingPage />} />
         <Route path="/order-tracking" element={<OrderTrackingPage />} />

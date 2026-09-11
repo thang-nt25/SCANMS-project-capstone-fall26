@@ -2,6 +2,9 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
   --color-canvas: #FAF8F5;
   --color-surface: #ffffff;
   --color-surface-sand: #F3EFE6;
@@ -18,9 +21,10 @@
 /* === FIGMA DESIGN TOKENS === */
 :root {
   color-scheme: light;
-  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-family: var(--font-sans);
-  
+
   /* Tone màu Vàng Be / Kem sang trọng chuẩn Figma Thanh Quản Trị */
   --canvas: #FAF8F5;
   --surface: #ffffff;
@@ -77,8 +81,25 @@ body {
   min-width: 320px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   scroll-behavior: smooth;
   overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-heading);
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+p, .font-body {
+  text-wrap: pretty;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ==========================================================================
