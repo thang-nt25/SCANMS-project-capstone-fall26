@@ -11,7 +11,7 @@ function removeAccents(str: string): string {
 }
 
 const BAD_WORDS: string[] = [
-  // Viết tắt & teencode chửi bậy
+  // Viết tắt / Acronyms / Teencode
   'dm',
   'dcm',
   'dkm',
@@ -30,6 +30,22 @@ const BAD_WORDS: string[] = [
   'đcm',
   'đm',
   'đkm',
+
+  // Đéo / Dell / Del
+  'deo',
+  'dell',
+  'del',
+
+  // Lol / Lz / Loz / Lồn
+  'lol',
+  'lolz',
+  'lozl',
+  'loll',
+  'loz',
+  'lz',
+  'lon me',
+  'lon ma',
+  'lon',
 
   // Cụm từ chửi thề: Đụ / Địt
   'du me',
@@ -52,41 +68,57 @@ const BAD_WORDS: string[] = [
   'dit me m',
   'dit',
 
-  // Cụm từ xúc phạm: Con mẹ / Mẹ mày / Bố mày
+  // Cụm từ xúc phạm: Mẹ / Bố / Con mẹ / Tiên sư / Cút
   'con me m',
   'con me may',
   'con me no',
   'con me',
   'me may',
   'me m',
+  'me no',
+  'me cha',
+  'me kiep',
+  'me',
   'bo may',
   'bo m',
   'to cha',
   'to su',
   'tien su',
+  'to me',
+  'tien me',
   'mat day',
   'mat nap',
   'chet me',
   'chet tiet',
+  'chet cha',
+  'chet ba',
+  'cut di',
+  'cut me di',
+  'cut',
+  'bien di',
+  'bien me di',
+  'khon nan',
+  'do khon',
+  'vo hoc',
+  'do hen',
+  'do ban',
 
   // Bộ phận nhạy cảm / Thô tục
   'cac',
   'cak',
   'cack',
   'buoi',
-  'loz',
-  'lz',
-  'lon me',
-  'lon ma',
-  'lon',
+  'chim',
   'dam tac',
   'cu to',
+  'cu',
 
   // Lăng mạ, sỉ nhục
   'cho de',
   'cho chet',
   'cho ngu',
   'cho dien',
+  'cho ma',
   'oc cho',
   'suc vat',
   'do ngu',

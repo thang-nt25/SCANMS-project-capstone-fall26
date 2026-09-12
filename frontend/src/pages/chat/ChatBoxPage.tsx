@@ -30,11 +30,15 @@ function removeAccents(str: string): string {
 
 const BAD_WORDS: string[] = [
   'dm', 'dcm', 'dkm', 'cmm', 'clm', 'vcl', 'vcc', 'vkl', 'vl', 'cl', 'cc', 'ccl', 'clgt', 'dmm', 'đmm', 'đcm', 'đm', 'đkm',
+  'deo', 'dell', 'del',
+  'lol', 'lolz', 'lozl', 'loll', 'loz', 'lz', 'lon me', 'lon ma', 'lon',
   'du me', 'du ma', 'du cha', 'du ba', 'du con me', 'dume', 'duma', 'du me may', 'du me m', 'du',
   'dit me', 'dit ma', 'dit ba', 'dit con me', 'dit cu', 'ditme', 'dit me may', 'dit me m', 'dit',
-  'con me m', 'con me may', 'con me no', 'con me', 'me may', 'me m', 'bo may', 'bo m', 'to cha', 'to su', 'tien su', 'mat day', 'mat nap', 'chet me', 'chet tiet',
-  'cac', 'cak', 'cack', 'buoi', 'loz', 'lz', 'lon me', 'lon ma', 'lon', 'dam tac', 'cu to',
-  'cho de', 'cho chet', 'cho ngu', 'cho dien', 'oc cho', 'suc vat', 'do ngu', 'do cho', 'thang cho', 'con cho', 'thang khung', 'con khung', 'con di', 'di tho', 'cave', 'gai goi', 'gai bao', 'lam di',
+  'con me m', 'con me may', 'con me no', 'con me', 'me may', 'me m', 'me no', 'me cha', 'me kiep', 'me',
+  'bo may', 'bo m', 'to cha', 'to su', 'tien su', 'to me', 'tien me', 'mat day', 'mat nap', 'chet me', 'chet tiet', 'chet cha', 'chet ba',
+  'cut di', 'cut me di', 'cut', 'bien di', 'bien me di', 'khon nan', 'do khon', 'vo hoc', 'do hen', 'do ban',
+  'cac', 'cak', 'cack', 'buoi', 'chim', 'dam tac', 'cu to', 'cu',
+  'cho de', 'cho chet', 'cho ngu', 'cho dien', 'cho ma', 'oc cho', 'suc vat', 'do ngu', 'do cho', 'thang cho', 'con cho', 'thang khung', 'con khung', 'con di', 'di tho', 'cave', 'gai goi', 'gai bao', 'lam di',
   'fuck', 'fucking', 'fucker', 'fck', 'shit', 'bullshit', 'bitch', 'btch', 'asshole', 'bastard', 'dick', 'pussy', 'cunt', 'slut', 'whore', 'motherfucker'
 ];
 

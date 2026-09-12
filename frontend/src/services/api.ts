@@ -14,8 +14,6 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
   const currentPath = (typeof window !== 'undefined' ? window.location?.pathname || '' : '').toLowerCase();
 
   // StoreCollaborator có cả API của Shop và KOL. Phải phân loại trước
-  // kiểm tra chuỗi `/collaborator`, nếu không `/store-collaborators/shop`
-  // sẽ bị hiểu nhầm là API KOL và tự gắn sai JWT.
   if (
     reqUrl.includes('/store-collaborators/shop') ||
     reqUrl.includes('/store-collaborators/invite')
@@ -29,13 +27,26 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
     return 'COLLABORATOR';
   }
 
+  // Sample Requests (FR-26) có cả API của Shop và KOL.
+  if (
+    reqUrl.includes('/sample-requests/shop') ||
+    /\/sample-requests\/[^/]+\/(approve|reject|ship)(?:\?|$)/.test(reqUrl)
+  ) {
+    return 'SHOP_MANAGER';
+  }
+  if (
+    reqUrl.includes('/sample-requests/my') ||
+    (reqUrl.includes('/sample-requests') && !currentPath.includes('/merchant'))
+  ) {
+    return 'COLLABORATOR';
+  }
+
   // 1. COLLABORATOR / KOL routes:
   // MUST CHECK FIRST: routes like /collaborator/stores/... contain both /collaborator and /stores/!
   if (
     reqUrl.includes('/collaborator') ||
     reqUrl.includes('/kol') ||
     reqUrl.includes('/referral-links') ||
-    reqUrl.includes('/sample-requests') ||
     reqUrl.includes('/campaigns/my-invitations') ||
     currentPath.includes('/collaborator') ||
     currentPath.includes('/kol')
