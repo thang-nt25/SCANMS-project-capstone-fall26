@@ -2178,6 +2178,8 @@ export class ReferralLinksService {
                 collaboratorId: dto.newCollaboratorId,
                 commissionAmount: existingCommission.commissionAmount,
                 status: CommissionStatus.PENDING,
+                eligibleAt: existingCommission.eligibleAt,
+                availableAt: existingCommission.availableAt,
               },
               update: {
                 commissionAmount: existingCommission.commissionAmount,

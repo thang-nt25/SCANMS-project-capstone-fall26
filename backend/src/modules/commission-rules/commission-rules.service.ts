@@ -8,17 +8,20 @@ import {
   Prisma,
   CommissionStatus,
   CouponRedemptionStatus,
-  TransactionType,
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { WalletsService } from '../wallets/wallets.service';
 import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { UpdateCommissionRuleDto } from './dto/update-commission-rule.dto';
 import { BonusPreviewResultDto } from './dto/commission-rule-response.dto';
 
 @Injectable()
 export class CommissionRulesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly walletsService: WalletsService,
+  ) {}
 
   private async verifyStoreExists(storeId: string) {
     const store = await this.prisma.store.findUnique({
@@ -1521,53 +1524,17 @@ export class CommissionRulesService {
         );
       }
 
-      // 1. Tìm hoặc tạo ví
-      let wallet = await tx.wallet.findUnique({
-        where: { collaboratorId: settlement.collaboratorId },
-      });
-
-      if (!wallet) {
-        wallet = await tx.wallet.create({
-          data: {
-            collaboratorId: settlement.collaboratorId,
-            availableBalance: new Prisma.Decimal(0),
-            pendingBalance: new Prisma.Decimal(0),
-          },
-        });
-      }
-
-      const balanceBefore = wallet.availableBalance;
-      const balanceAfter = balanceBefore.add(settlement.bonusAmount);
-
-      // 2. Cập nhật số dư ví khả dụng với Optimistic Lock (kiểm tra wallet.version)
-      const walletUpdate = await tx.wallet.updateMany({
-        where: {
-          id: wallet.id,
-          version: wallet.version,
-        },
-        data: {
-          availableBalance: balanceAfter,
-          version: { increment: 1 },
-        },
-      });
-
-      if (walletUpdate.count === 0) {
-        throw new ConflictException(
-          'Xung đột đồng thời khi cập nhật số dư ví. Vui lòng thử lại.',
+      // Locked wallet credit and append-only ledger share the settlement transaction.
+      const { wallet, ledger } =
+        await this.walletsService.creditAvailableBalance(
+          tx,
+          settlement.collaboratorId,
+          settlement.bonusAmount,
+          { id: settlement.id, type: 'MONTHLY_BONUS' },
+          settlement.storeId,
         );
-      }
-
-      // 3. Tạo bản ghi Sổ cái tài chính (Unique index trên reference_id ngăn chặn giao dịch trùng lặp)
-      const ledger = await tx.financialLedger.create({
-        data: {
-          walletId: wallet.id,
-          transactionType: TransactionType.COMMISSION_APPROVED,
-          amount: settlement.bonusAmount,
-          balanceBefore,
-          balanceAfter,
-          referenceId: settlement.id,
-        },
-      });
+      const balanceBefore = ledger.balanceBefore;
+      const balanceAfter = ledger.balanceAfter;
 
       // 4. Cập nhật mã giao dịch ví vào bản ghi chốt thưởng
       const paidSettlement = await tx.monthlyBonusResult.update({
@@ -1820,12 +1787,15 @@ export class CommissionRulesService {
               },
             });
 
-            await tx.wallet.update({
-              where: { collaboratorId: comm.collaboratorId },
-              data: {
-                pendingBalance: { decrement: comm.commissionAmount },
-              },
-            });
+            if (comm.commissionAmount.greaterThan(0)) {
+              await this.walletsService.reversePendingBalance(
+                tx,
+                comm.collaboratorId,
+                comm.commissionAmount,
+                { id: refundRecord.id, type: 'ORDER_REFUND' },
+                comm.storeWalletTracked ? storeId : undefined,
+              );
+            }
           } else {
             const commReversal = comm.commissionAmount
               .mul(refundRatio)
@@ -1842,12 +1812,15 @@ export class CommissionRulesService {
               },
             });
 
-            await tx.wallet.update({
-              where: { collaboratorId: comm.collaboratorId },
-              data: {
-                pendingBalance: { decrement: commReversal },
-              },
-            });
+            if (commReversal.greaterThan(0)) {
+              await this.walletsService.reversePendingBalance(
+                tx,
+                comm.collaboratorId,
+                commReversal,
+                { id: refundRecord.id, type: 'ORDER_REFUND' },
+                comm.storeWalletTracked ? storeId : undefined,
+              );
+            }
           }
         }
       }

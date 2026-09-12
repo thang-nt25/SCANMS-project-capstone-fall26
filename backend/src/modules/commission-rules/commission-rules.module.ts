@@ -8,9 +8,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthModule } from '../auth/auth.module';
 import { StoreCollaboratorsController } from './store-collaborators.controller';
 import { StoreCollaboratorsService } from './store-collaborators.service';
+import { WalletsModule } from '../wallets/wallets.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, WalletsModule],
   controllers: [
     CommissionRulesController,
     CollaboratorCommissionRulesController,

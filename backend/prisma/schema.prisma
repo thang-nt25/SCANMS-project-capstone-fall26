@@ -70,6 +70,13 @@ enum OrderStatus {
   RETURNED
 }
 
+enum OrderSourcePlatform {
+  INTERNAL
+  SHOPEE
+  TIKTOK
+  SHOPIFY
+}
+
 enum CommissionStatus {
   PENDING
   APPROVED
@@ -78,14 +85,21 @@ enum CommissionStatus {
 }
 
 enum TransactionType {
+  COMMISSION_PENDING
   COMMISSION_APPROVED
   PAYOUT_WITHDRAW
   REVERSAL
   PAYOUT_REJECT_REFUND
 }
 
+enum WalletBalanceBucket {
+  AVAILABLE
+  PENDING
+}
+
 enum PayoutStatus {
   PENDING
+  PROCESSING
   APPROVED
   REJECTED
 }
@@ -184,40 +198,46 @@ model User {
   notifications             Notification[]
   attributionSessions       AttributionSession[]
   attributionAdjustments    AttributionAdjustment[]
+  approvedPayouts           PayoutRequest[]             @relation("PayoutApprover")
+  createdPayoutBatches      PayoutBatch[]               @relation("PayoutBatchCreator")
 
   @@map("users")
 }
 
 model Store {
-  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ownerId                String    @map("owner_id") @db.Uuid
-  name                   String    @db.VarChar(200)
-  slug                   String    @unique @db.VarChar(200)
-  logoUrl                String?   @map("logo_url")
-  description            String?
-  websiteUrl             String?   @map("website_url") @db.VarChar(255)
-  defaultCommissionRate  Decimal   @default(10.00) @map("default_commission_rate") @db.Decimal(5, 2)
-  attributionWindowDays  Int       @default(30) @map("attribution_window_days")
-  minPayoutAmount        Decimal   @default(200000.00) @map("min_payout_amount") @db.Decimal(15, 2)
-  isDeleted              Boolean   @default(false) @map("is_deleted")
-  deletedAt              DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId               String    @map("owner_id") @db.Uuid
+  name                  String    @db.VarChar(200)
+  slug                  String    @unique @db.VarChar(200)
+  logoUrl               String?   @map("logo_url")
+  description           String?
+  websiteUrl            String?   @map("website_url") @db.VarChar(255)
+  defaultCommissionRate Decimal   @default(10.00) @map("default_commission_rate") @db.Decimal(5, 2)
+  attributionWindowDays Int       @default(30) @map("attribution_window_days")
+  minPayoutAmount       Decimal   @default(200000.00) @map("min_payout_amount") @db.Decimal(15, 2)
+  isDeleted             Boolean   @default(false) @map("is_deleted")
+  deletedAt             DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  owner                  User                @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  products               Product[]
-  mediaAssets            MediaAsset[]
-  commissionRules        CommissionRule[]
-  campaigns              Campaign[]
-  orders                 Order[]
-  conversations          Conversation[]
-  payoutRequests         PayoutRequest[]
-  monthlyBonusResults    MonthlyBonusResult[]
-  referralLinks          ReferralLink[]
-  storeCollaborators     StoreCollaborator[]
-  coupons                Coupon[]
-  attributionSessions    AttributionSession[]
+  owner               User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products            Product[]
+  mediaAssets         MediaAsset[]
+  commissionRules     CommissionRule[]
+  campaigns           Campaign[]
+  orders              Order[]
+  conversations       Conversation[]
+  payoutRequests      PayoutRequest[]
+  monthlyBonusResults MonthlyBonusResult[]
+  referralLinks       ReferralLink[]
+  storeCollaborators  StoreCollaborator[]
+  coupons             Coupon[]
+  attributionSessions AttributionSession[]
+
+  storeWallets     StoreWallet[]
+  financialLedgers FinancialLedger[]
+  payoutBatches    PayoutBatch[]
 
   @@index([ownerId], map: "idx_fk_stores_owner")
   @@map("stores")
@@ -350,7 +370,7 @@ model ProductReview {
 
   // Relations
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([productId], map: "idx_fk_product_reviews_product")
   @@index([orderId], map: "idx_fk_product_reviews_order")
@@ -405,24 +425,24 @@ model CommissionRule {
 }
 
 model MonthlyBonusResult {
-  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storeId             String            @map("store_id") @db.Uuid
-  collaboratorId      String            @map("collaborator_id") @db.Uuid
-  yearMonth           String            @map("year_month") @db.VarChar(7) // Định dạng YYYY-MM (VD: 2026-09)
-  validRevenue        Decimal           @map("valid_revenue") @db.Decimal(15, 2)
-  appliedRuleId       String?           @map("applied_rule_id") @db.Uuid
-  appliedRuleName     String?           @map("applied_rule_name") @db.VarChar(150)
-  bonusPercentage     Decimal?          @map("bonus_percentage") @db.Decimal(5, 2)
-  achievementBonus    Decimal           @default(0.00) @map("achievement_bonus") @db.Decimal(15, 2)
-  bonusAmount         Decimal           @map("bonus_amount") @db.Decimal(15, 2)
-  ruleSnapshot        Json?             @map("rule_snapshot")
-  status              CommissionStatus  @default(PENDING)
-  settledAt           DateTime          @default(now()) @map("settled_at") @db.Timestamptz(6)
-  approvedAt          DateTime?         @map("approved_at") @db.Timestamptz(6)
-  paidAt              DateTime?         @map("paid_at") @db.Timestamptz(6)
-  walletTransactionId String?           @map("wallet_transaction_id") @db.Uuid
-  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId             String           @map("store_id") @db.Uuid
+  collaboratorId      String           @map("collaborator_id") @db.Uuid
+  yearMonth           String           @map("year_month") @db.VarChar(7) // Định dạng YYYY-MM (VD: 2026-09)
+  validRevenue        Decimal          @map("valid_revenue") @db.Decimal(15, 2)
+  appliedRuleId       String?          @map("applied_rule_id") @db.Uuid
+  appliedRuleName     String?          @map("applied_rule_name") @db.VarChar(150)
+  bonusPercentage     Decimal?         @map("bonus_percentage") @db.Decimal(5, 2)
+  achievementBonus    Decimal          @default(0.00) @map("achievement_bonus") @db.Decimal(15, 2)
+  bonusAmount         Decimal          @map("bonus_amount") @db.Decimal(15, 2)
+  ruleSnapshot        Json?            @map("rule_snapshot")
+  status              CommissionStatus @default(PENDING)
+  settledAt           DateTime         @default(now()) @map("settled_at") @db.Timestamptz(6)
+  approvedAt          DateTime?        @map("approved_at") @db.Timestamptz(6)
+  paidAt              DateTime?        @map("paid_at") @db.Timestamptz(6)
+  walletTransactionId String?          @map("wallet_transaction_id") @db.Uuid
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   store        Store             @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -490,10 +510,10 @@ model ReferralLink {
   updatedAt        DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  collaborator     User              @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  store            Store             @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  campaign         Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  collaborator        User                 @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  store               Store                @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product             Product              @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campaign            Campaign?            @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   clickTrafficLogs    ClickTrafficLog[]
   orders              Order[]
   orderItems          OrderItem[]
@@ -585,11 +605,11 @@ model Campaign {
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  store        Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  participants CampaignParticipant[]
-  referralLinks ReferralLink[]
+  store            Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participants     CampaignParticipant[]
+  referralLinks    ReferralLink[]
   campaignProducts CampaignProduct[]
-  coupons       Coupon[]
+  coupons          Coupon[]
 
   @@index([storeId], map: "idx_fk_campaigns_store")
   @@map("campaigns")
@@ -670,14 +690,14 @@ model Coupon {
   updatedAt                    DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  collaborator                 User                @relation("CollaboratorCoupons", fields: [collaboratorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  store                        Store               @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  campaign                     Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  approver                     User?               @relation("CouponApprover", fields: [approvedBy], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  couponProducts               CouponProduct[]
-  couponCategories             CouponCategory[]
-  redemptions                  CouponRedemption[]
-  orders                       Order[]
+  collaborator     User               @relation("CollaboratorCoupons", fields: [collaboratorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  store            Store              @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  campaign         Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  approver         User?              @relation("CouponApprover", fields: [approvedBy], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  couponProducts   CouponProduct[]
+  couponCategories CouponCategory[]
+  redemptions      CouponRedemption[]
+  orders           Order[]
 
   @@index([collaboratorId], map: "idx_fk_coupons_collaborator")
   @@index([storeId], map: "idx_fk_coupons_store")
@@ -692,8 +712,8 @@ model CouponProduct {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  coupon  Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([couponId, productId], map: "idx_unique_coupon_product")
   @@index([couponId], map: "idx_fk_coupon_prod_coupon")
@@ -708,7 +728,7 @@ model CouponCategory {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  coupon       Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([couponId, categoryName], map: "idx_unique_coupon_category")
   @@index([couponId], map: "idx_fk_coupon_cat_coupon")
@@ -735,8 +755,8 @@ model CouponRedemption {
   updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  coupon                Coupon                 @relation(fields: [couponId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  order                 Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([couponId], map: "idx_fk_redemptions_coupon")
   @@index([collaboratorId], map: "idx_fk_redemptions_collab")
@@ -750,44 +770,46 @@ model CouponRedemption {
 // ==========================================
 
 model Order {
-  id                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storeId                  String             @map("store_id") @db.Uuid
-  externalOrderSn          String             @map("external_order_sn") @db.VarChar(100)
-  idempotencyKey           String?            @unique @map("idempotency_key") @db.VarChar(100)
-  cancellationToken        String?            @map("cancellation_token") @db.VarChar(100)
-  attributedCollaboratorId String?            @map("attributed_collaborator_id") @db.Uuid
-  attributionMethod        AttributionMethod? @map("attribution_method")
-  referralLinkId           String?            @map("referral_link_id") @db.Uuid
-  couponId                 String?            @map("coupon_id") @db.Uuid
-  couponCodeSnapshot       String?            @map("coupon_code_snapshot") @db.VarChar(20)
-  couponDiscountAmount     Decimal?           @default(0.00) @map("coupon_discount_amount") @db.Decimal(15, 2)
-  overrideReason           String?            @map("override_reason") @db.VarChar(255)
-  originalAttributionMethod AttributionMethod? @map("original_attribution_method")
-  originalCollaboratorId   String?            @map("original_collaborator_id") @db.Uuid
-  attributionSessionId     String?            @map("attribution_session_id") @db.Uuid
-  clickId                  String?            @map("click_id") @db.Uuid
-  attributionConfidence    String?            @map("attribution_confidence") @db.VarChar(20)
-  attributionSnapshot      Json?              @map("attribution_snapshot")
-  attributedAt             DateTime?          @map("attributed_at") @db.Timestamptz(6)
-  clickedAt                DateTime?          @map("clicked_at") @db.Timestamptz(6)
-  customerName             String?            @map("customer_name") @db.VarChar(150)
-  customerPhone            String?            @map("customer_phone") @db.VarChar(20)
-  shippingAddress          String?            @map("shipping_address")
-  subtotalAmount           Decimal            @map("subtotal_amount") @db.Decimal(15, 2)
-  discountAmount           Decimal            @default(0.00) @map("discount_amount") @db.Decimal(15, 2)
-  shippingFee              Decimal            @default(0.00) @map("shipping_fee") @db.Decimal(12, 2)
-  finalAmount              Decimal            @map("final_amount") @db.Decimal(15, 2)
-  status                   OrderStatus        @default(PENDING)
-  completedAt              DateTime?          @map("completed_at") @db.Timestamptz(6)
-  refundedAmount           Decimal            @default(0.00) @map("refunded_amount") @db.Decimal(15, 2)
-  createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId                   String              @map("store_id") @db.Uuid
+  sourcePlatform            OrderSourcePlatform @default(INTERNAL) @map("source_platform")
+  rawPayload                Json?               @map("raw_payload")
+  externalOrderSn           String              @map("external_order_sn") @db.VarChar(100)
+  idempotencyKey            String?             @unique @map("idempotency_key") @db.VarChar(100)
+  cancellationToken         String?             @map("cancellation_token") @db.VarChar(100)
+  attributedCollaboratorId  String?             @map("attributed_collaborator_id") @db.Uuid
+  attributionMethod         AttributionMethod?  @map("attribution_method")
+  referralLinkId            String?             @map("referral_link_id") @db.Uuid
+  couponId                  String?             @map("coupon_id") @db.Uuid
+  couponCodeSnapshot        String?             @map("coupon_code_snapshot") @db.VarChar(20)
+  couponDiscountAmount      Decimal?            @default(0.00) @map("coupon_discount_amount") @db.Decimal(15, 2)
+  overrideReason            String?             @map("override_reason") @db.VarChar(255)
+  originalAttributionMethod AttributionMethod?  @map("original_attribution_method")
+  originalCollaboratorId    String?             @map("original_collaborator_id") @db.Uuid
+  attributionSessionId      String?             @map("attribution_session_id") @db.Uuid
+  clickId                   String?             @map("click_id") @db.Uuid
+  attributionConfidence     String?             @map("attribution_confidence") @db.VarChar(20)
+  attributionSnapshot       Json?               @map("attribution_snapshot")
+  attributedAt              DateTime?           @map("attributed_at") @db.Timestamptz(6)
+  clickedAt                 DateTime?           @map("clicked_at") @db.Timestamptz(6)
+  customerName              String?             @map("customer_name") @db.VarChar(150)
+  customerPhone             String?             @map("customer_phone") @db.VarChar(20)
+  shippingAddress           String?             @map("shipping_address")
+  subtotalAmount            Decimal             @map("subtotal_amount") @db.Decimal(15, 2)
+  discountAmount            Decimal             @default(0.00) @map("discount_amount") @db.Decimal(15, 2)
+  shippingFee               Decimal             @default(0.00) @map("shipping_fee") @db.Decimal(12, 2)
+  finalAmount               Decimal             @map("final_amount") @db.Decimal(15, 2)
+  status                    OrderStatus         @default(PENDING)
+  completedAt               DateTime?           @map("completed_at") @db.Timestamptz(6)
+  refundedAmount            Decimal             @default(0.00) @map("refunded_amount") @db.Decimal(15, 2)
+  createdAt                 DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  store                  Store           @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  attributedCollaborator User?           @relation("AttributedCollaboratorOrders", fields: [attributedCollaboratorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  referralLink           ReferralLink?   @relation(fields: [referralLinkId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  coupon                 Coupon?         @relation(fields: [couponId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  store                  Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  attributedCollaborator User?                   @relation("AttributedCollaboratorOrders", fields: [attributedCollaboratorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  referralLink           ReferralLink?           @relation(fields: [referralLinkId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  coupon                 Coupon?                 @relation(fields: [couponId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   couponRedemption       CouponRedemption?
   orderItems             OrderItem[]
   commissions            Commission[]
@@ -795,7 +817,7 @@ model Order {
   refunds                OrderRefund[]
   attributionAdjustments AttributionAdjustment[]
 
-  @@unique([storeId, externalOrderSn], map: "idx_unique_store_external_order")
+  @@unique([storeId, sourcePlatform, externalOrderSn], map: "idx_unique_store_platform_external_order")
   @@index([storeId], map: "idx_fk_orders_store")
   @@index([attributedCollaboratorId], map: "idx_fk_orders_collab")
   @@index([referralLinkId], map: "idx_fk_orders_referral_link")
@@ -806,13 +828,13 @@ model Order {
 }
 
 model OrderRefund {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId     String            @map("order_id") @db.Uuid
-  amount      Decimal           @db.Decimal(15, 2)
-  reason      String?
-  status      String            @default("COMPLETED") @db.VarChar(50)
-  refundedAt  DateTime          @default(now()) @map("refunded_at") @db.Timestamptz(6)
-  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId    String   @map("order_id") @db.Uuid
+  amount     Decimal  @db.Decimal(15, 2)
+  reason     String?
+  status     String   @default("COMPLETED") @db.VarChar(50)
+  refundedAt DateTime @default(now()) @map("refunded_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
   order       Order             @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -823,20 +845,20 @@ model OrderRefund {
 }
 
 model BonusAdjustment {
-  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storeId              String              @map("store_id") @db.Uuid
-  collaboratorId       String              @map("collaborator_id") @db.Uuid
-  originalSettlementId String?             @map("original_settlement_id") @db.Uuid
-  refundId             String?             @map("refund_id") @db.Uuid
-  targetYearMonth      String              @map("target_year_month") @db.VarChar(7)
-  adjustmentAmount     Decimal             @map("adjustment_amount") @db.Decimal(15, 2)
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId              String   @map("store_id") @db.Uuid
+  collaboratorId       String   @map("collaborator_id") @db.Uuid
+  originalSettlementId String?  @map("original_settlement_id") @db.Uuid
+  refundId             String?  @map("refund_id") @db.Uuid
+  targetYearMonth      String   @map("target_year_month") @db.VarChar(7)
+  adjustmentAmount     Decimal  @map("adjustment_amount") @db.Decimal(15, 2)
   reason               String
-  status               String              @default("PENDING") @db.VarChar(50)
-  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  status               String   @default("PENDING") @db.VarChar(50)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  originalSettlement   MonthlyBonusResult? @relation(fields: [originalSettlementId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  refund               OrderRefund?        @relation(fields: [refundId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  originalSettlement MonthlyBonusResult? @relation(fields: [originalSettlementId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  refund             OrderRefund?        @relation(fields: [refundId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([storeId, collaboratorId, targetYearMonth], map: "idx_bonus_adjustments_target")
   @@map("bonus_adjustments")
@@ -869,15 +891,15 @@ model AttributionAdjustment {
 }
 
 model OrderItem {
-  id                         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId                    String        @map("order_id") @db.Uuid
-  productId                  String        @map("product_id") @db.Uuid
-  referralLinkId             String?       @map("referral_link_id") @db.Uuid
+  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId                    String   @map("order_id") @db.Uuid
+  productId                  String   @map("product_id") @db.Uuid
+  referralLinkId             String?  @map("referral_link_id") @db.Uuid
   quantity                   Int
-  unitPrice                  Decimal       @map("unit_price") @db.Decimal(15, 2)
-  appliedCommissionRate      Decimal       @map("applied_commission_rate") @db.Decimal(5, 2)
-  calculatedCommissionAmount Decimal       @map("calculated_commission_amount") @db.Decimal(15, 2)
-  createdAt                  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  unitPrice                  Decimal  @map("unit_price") @db.Decimal(15, 2)
+  appliedCommissionRate      Decimal  @map("applied_commission_rate") @db.Decimal(5, 2)
+  calculatedCommissionAmount Decimal  @map("calculated_commission_amount") @db.Decimal(15, 2)
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
   order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -891,13 +913,17 @@ model OrderItem {
 }
 
 model Commission {
-  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId          String           @map("order_id") @db.Uuid
-  collaboratorId   String           @map("collaborator_id") @db.Uuid
-  commissionAmount Decimal          @map("commission_amount") @db.Decimal(15, 2)
-  status           CommissionStatus @default(PENDING)
-  approvedAt       DateTime?        @map("approved_at") @db.Timestamptz(6)
-  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId            String           @map("order_id") @db.Uuid
+  collaboratorId     String           @map("collaborator_id") @db.Uuid
+  commissionAmount   Decimal          @map("commission_amount") @db.Decimal(15, 2)
+  storeWalletTracked Boolean          @default(false) @map("store_wallet_tracked")
+  status             CommissionStatus @default(PENDING)
+  eligibleAt         DateTime         @map("eligible_at") @db.Timestamptz(6)
+  availableAt        DateTime         @map("available_at") @db.Timestamptz(6)
+  approvedAt         DateTime?        @map("approved_at") @db.Timestamptz(6)
+  reversedAt         DateTime?        @map("reversed_at") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
   order                    Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -908,6 +934,7 @@ model Commission {
   @@unique([orderId, collaboratorId], map: "idx_unique_commission_order_collab")
   @@index([orderId], map: "idx_fk_commissions_order")
   @@index([collaboratorId, status], map: "idx_commissions_collab_status")
+  @@index([status, availableAt], map: "idx_commissions_status_available")
   @@map("commissions")
 }
 
@@ -926,51 +953,100 @@ model Wallet {
   // Relations
   collaborator     User              @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   financialLedgers FinancialLedger[]
+  storeWallets     StoreWallet[]
 
   @@map("wallets")
 }
 
 model FinancialLedger {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  walletId        String          @map("wallet_id") @db.Uuid
-  transactionType TransactionType @map("transaction_type")
-  amount          Decimal         @db.Decimal(15, 2)
-  balanceBefore   Decimal         @map("balance_before") @db.Decimal(15, 2)
-  balanceAfter    Decimal         @map("balance_after") @db.Decimal(15, 2)
-  referenceId     String?         @map("reference_id") @db.Uuid
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  walletId           String              @map("wallet_id") @db.Uuid
+  transactionType    TransactionType     @map("transaction_type")
+  balanceBucket      WalletBalanceBucket @default(AVAILABLE) @map("balance_bucket")
+  amount             Decimal             @db.Decimal(15, 2)
+  balanceBefore      Decimal             @map("balance_before") @db.Decimal(15, 2)
+  balanceAfter       Decimal             @map("balance_after") @db.Decimal(15, 2)
+  referenceId        String?             @map("reference_id") @db.Uuid
+  referenceType      String?             @map("reference_type") @db.VarChar(30)
+  storeId            String?             @map("store_id") @db.Uuid
+  storeBalanceBefore Decimal?            @map("store_balance_before") @db.Decimal(15, 2)
+  storeBalanceAfter  Decimal?            @map("store_balance_after") @db.Decimal(15, 2)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  store  Store? @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([walletId, createdAt(sort: Desc)], map: "idx_ledgers_wallet_date")
+  @@index([storeId, createdAt(sort: Desc)], map: "idx_ledgers_store_date")
   @@map("financial_ledgers")
 }
 
 model PayoutRequest {
-  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  collaboratorId    String       @map("collaborator_id") @db.Uuid
-  storeId           String?      @map("store_id") @db.Uuid
-  amount            Decimal      @db.Decimal(15, 2) // Gross Amount
-  taxAmount         Decimal      @default(0.00) @map("tax_amount") @db.Decimal(15, 2) // 10% PIT Tax
-  netAmount         Decimal      @default(0.00) @map("net_amount") @db.Decimal(15, 2) // Net Amount after tax
-  status            PayoutStatus @default(PENDING)
-  bankName          String?      @map("bank_name") @db.VarChar(100)
-  bankAccountNumber String?      @map("bank_account_number") @db.VarChar(50)
-  bankAccountName   String?      @map("bank_account_name") @db.VarChar(150)
-  bankRefCode       String?      @map("bank_ref_code") @db.VarChar(100)
-  proofImageUrl     String?      @map("proof_image_url")
-  rejectedReason    String?      @map("rejected_reason")
-  processedAt       DateTime?    @map("processed_at") @db.Timestamptz(6)
-  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId     String       @map("collaborator_id") @db.Uuid
+  storeId            String?      @map("store_id") @db.Uuid
+  amount             Decimal      @db.Decimal(15, 2) // Gross Amount
+  taxAmount          Decimal      @default(0.00) @map("tax_amount") @db.Decimal(15, 2) // 10% PIT Tax
+  netAmount          Decimal      @default(0.00) @map("net_amount") @db.Decimal(15, 2) // Net Amount after tax
+  status             PayoutStatus @default(PENDING)
+  bankName           String?      @map("bank_name") @db.VarChar(100)
+  bankAccountNumber  String?      @map("bank_account_number") @db.VarChar(50)
+  bankAccountName    String?      @map("bank_account_name") @db.VarChar(150)
+  bankRefCode        String?      @map("bank_ref_code") @db.VarChar(100)
+  proofImageUrl      String?      @map("proof_image_url")
+  proofImagePublicId String?      @map("proof_image_public_id")
+  proofImageFormat   String?      @map("proof_image_format") @db.VarChar(10)
+  proofImageSha256   String?      @unique(map: "idx_payouts_unique_bill_hash") @map("proof_image_sha256") @db.VarChar(64)
+  approvedById       String?      @map("approved_by_id") @db.Uuid
+  batchId            String?      @map("batch_id") @db.Uuid
+  rejectedReason     String?      @map("rejected_reason")
+  processedAt        DateTime?    @map("processed_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  collaborator User   @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  store        Store? @relation(fields: [storeId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  collaborator User         @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  store        Store?       @relation(fields: [storeId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  approvedBy   User?        @relation("PayoutApprover", fields: [approvedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  batch        PayoutBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
+  @@unique([storeId, bankRefCode], map: "idx_payouts_store_bank_ref")
   @@index([storeId, status], map: "idx_payouts_store_status")
   @@index([collaboratorId, createdAt], map: "idx_payouts_pending")
+  @@index([approvedById], map: "idx_payouts_approver")
+  @@index([batchId], map: "idx_payouts_batch")
   @@map("payout_requests")
+}
+
+model StoreWallet {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  walletId         String   @map("wallet_id") @db.Uuid
+  storeId          String   @map("store_id") @db.Uuid
+  availableBalance Decimal  @default(0.00) @map("available_balance") @db.Decimal(15, 2)
+  pendingBalance   Decimal  @default(0.00) @map("pending_balance") @db.Decimal(15, 2)
+  version          Int      @default(0)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  wallet           Wallet   @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  store            Store    @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([walletId, storeId], map: "idx_store_wallets_wallet_store")
+  @@index([storeId], map: "idx_store_wallets_store")
+  @@map("store_wallets")
+}
+
+model PayoutBatch {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String          @map("store_id") @db.Uuid
+  createdById String          @map("created_by_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  fileData    Bytes           @map("file_data")
+  store       Store           @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  createdBy   User            @relation("PayoutBatchCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payouts     PayoutRequest[]
+
+  @@index([storeId, createdAt], map: "idx_payout_batches_store_date")
+  @@index([createdById], map: "idx_payout_batches_creator")
+  @@map("payout_batches")
 }
 
 // ==========================================
@@ -1013,12 +1089,12 @@ model ChatMessage {
 }
 
 model AuditLog {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String?  @map("user_id") @db.Uuid
-  action     String   @db.VarChar(100)
-  details    Json?
-  ipAddress  String?  @map("ip_address") @db.VarChar(45)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String   @db.VarChar(100)
+  details   Json?
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -1037,9 +1113,8 @@ model Notification {
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead], map: "idx_notifications_user_read")
   @@map("notifications")
 }
-
