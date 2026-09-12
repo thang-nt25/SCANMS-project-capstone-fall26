@@ -128,14 +128,50 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
     await this.reclaimStuckJobs();
   }
 
+  /**
+   * Đợi toàn bộ hàng đợi (cả RAM và Redis) được xử lý hoàn tất (Dùng trong Teardown & Graceful Shutdown)
+   */
+  async waitUntilIdle(maxWaitMs: number = 5000): Promise<void> {
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxWaitMs) {
+      await this.processQueue();
+
+      let redisPending = 0;
+      let redisProcessing = 0;
+      const redis = this.cacheService?.getRedisClient();
+      if (redis) {
+        try {
+          redisPending = (await redis.llen(this.redisQueueKey)) || 0;
+          redisProcessing = (await redis.zcard(this.redisProcessingKey)) || 0;
+        } catch {}
+      }
+
+      const memPending = this.queue.length;
+      const memInFlight = this.inFlightMemQueue.size;
+
+      if (
+        memPending === 0 &&
+        memInFlight === 0 &&
+        redisPending === 0 &&
+        redisProcessing === 0 &&
+        !this.isProcessing
+      ) {
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
   async onModuleDestroy() {
-    this.isDestroyed = true;
     if (this.flushInterval) {
       clearInterval(this.flushInterval);
     }
     if (this.reclaimInterval) {
       clearInterval(this.reclaimInterval);
     }
+    await this.waitUntilIdle(2000).catch(() => {});
+    this.isDestroyed = true;
   }
 
   /**
@@ -466,6 +502,17 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
       }
       // Nếu đụng unique constraint eventId (P2002) thì an toàn bỏ qua (idempotent)
       if (dbErr?.code === 'P2002') {
+        return;
+      }
+      // Nếu link đã bị xóa khỏi hệ thống (P2003 trên referral_link_id_fkey), bỏ qua click job không retry vô ích
+      if (
+        dbErr?.code === 'P2003' &&
+        (dbErr?.message?.includes('referral_link_id_fkey') ||
+          dbErr?.meta?.field_name?.includes('referral_link_id'))
+      ) {
+        this.logger.warn(
+          `[CLICK_QUEUE_ORPHAN] Referral link ${job.linkId} đã bị xóa khỏi DB. Hủy bỏ click job an toàn.`,
+        );
         return;
       }
       throw dbErr;
