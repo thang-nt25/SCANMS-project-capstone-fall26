@@ -15,10 +15,41 @@ import {
   Gift,
   CheckCircle2,
   XCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { getChatSocket } from '../../services/chatSocket';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '../../types/chat';
+
+// ============================================================
+// Helper: Profanity filter (Kiểm tra từ ngữ thô tục / cấm kỵ)
+// ============================================================
+const PROFANITY_PATTERNS: RegExp[] = [
+  /\b(đ[iị]t|d[iị]t|d[iị]ch)\b/i,
+  /\b(đ[uụ]\s*m[aá]|d[uụ]\s*m[aá]|duma|dume|đume|đụ|dụ\s*má)\b/i,
+  /\b(đ[iị]t\s*m[eẹ]|ditme|dcm|đcm|dm|đm|dkm|đkm|vcl|vcc|vl|cl|ccl)\b/i,
+  /\b(c[aặ][c̣k]|k[aặ][c̣k]|bu[oồ]i|b[uù]i|d[aá]i|d[aá]y|c[uụ]|chim)\b/i,
+  /\b(l[oồ]n|l[oồ]ng|loz|lz|l0n|l0z)\b/i,
+  /\b(ch[oó]\s*đ[eẻ]|ch[oó]\s*m[aá]|ch[oó]\s*ngu|óc\s*ch[oó]|oc\s*cho|s[uú]c\s*v[aậ]t|suc\s*vat)\b/i,
+  /\b(con\s*đ[iĩ]|đ[iĩ]\s*th[oỏ]|c[aà]ve|g[aá]i\s*b[aao]o|g[aá]i\s*g[oọ]i)\b/i,
+  /\b(m[eẹ]\s*m[aà]y|b[oố]\s*m[aà]y|t[oổ]\s*s[uư]|m[aẹ]\s*ki[eế]p)\b/i,
+  /\b(ngu\s*nh[uư]\s*ch[oó]|ngu\s*d[oố]t|đ[oồ]\s*ch[oó]|đ[oồ]\s*ngu)\b/i,
+  /\b(fuck|fucking|fucker|fck|motherfucker|shit|bitch|asshole|bastard|dick|pussy|cunt)\b/i,
+];
+
+function isProfaneText(text: string): boolean {
+  if (!text) return false;
+  const normalized = text
+    .toLowerCase()
+    .replace(/[@]/g, 'a')
+    .replace(/[0]/g, 'o')
+    .replace(/[1!]/g, 'i')
+    .replace(/[3]/g, 'e')
+    .replace(/[$]/g, 's')
+    .replace(/[*_~`]/g, '');
+
+  return PROFANITY_PATTERNS.some(p => p.test(normalized) || p.test(text));
+}
 
 // ============================================================
 // Helper: detect & parse campaign invite card
@@ -386,6 +417,13 @@ export default function ChatBoxPage() {
       .catch(console.error);
   }, []);
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const showErrorToast = (msg: string) => {
+    setErrorMessage(msg);
+    setTimeout(() => setErrorMessage(null), 4000);
+  };
+
   // ---- Socket.io setup ----
   useEffect(() => {
     const socket = getChatSocket();
@@ -434,6 +472,7 @@ export default function ChatBoxPage() {
 
     socket.on('error', (err: { message: string }) => {
       console.error('Socket error:', err.message);
+      showErrorToast(err.message || 'Lỗi gửi tin nhắn');
     });
 
     return () => {
@@ -501,12 +540,22 @@ export default function ChatBoxPage() {
 
   // ---- Send message ----
   const sendMessage = useCallback(() => {
-    if (!inputText.trim() || !activeConvId || isSending) return;
+    const trimmed = inputText.trim();
+    if (!trimmed || !activeConvId || isSending) return;
+
+    // Kiểm tra từ ngữ thô tục / cấm kỵ ngay tại Client
+    if (isProfaneText(trimmed)) {
+      showErrorToast(
+        '⚠️ Tin nhắn chứa từ ngữ không phù hợp hoặc vi phạm chuẩn mực. Vui lòng giao tiếp văn minh lịch sự!'
+      );
+      return;
+    }
+
     const socket = getChatSocket();
     setIsSending(true);
     socket.emit('send_message', {
       conversationId: activeConvId,
-      messageText: inputText.trim(),
+      messageText: trimmed,
     });
     setInputText('');
     setIsSending(false);
@@ -892,6 +941,20 @@ export default function ChatBoxPage() {
           </>
         )}
       </main>
+
+      {/* Toast Error Notification */}
+      {errorMessage && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-rose-600 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <AlertTriangle className="w-5 h-5 text-rose-200 flex-shrink-0" />
+          <p className="text-xs font-semibold flex-1 leading-snug">{errorMessage}</p>
+          <button
+            className="text-rose-200 hover:text-white p-1"
+            onClick={() => setErrorMessage(null)}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* New Conversation Modal */}
       {showNewChat && (

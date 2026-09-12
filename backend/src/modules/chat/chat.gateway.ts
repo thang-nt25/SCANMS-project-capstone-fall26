@@ -12,6 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { UseGuards, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
+import { checkProfanity } from './profanity-filter';
 
 // Map userId -> Set of socket IDs (hỗ trợ multi-tab)
 const userSocketMap = new Map<string, Set<string>>();
@@ -128,6 +129,16 @@ export class ChatGateway
     if (!data.conversationId || !data.messageText?.trim()) {
       client.emit('error', {
         message: 'Thiếu conversationId hoặc nội dung tin nhắn',
+      });
+      return;
+    }
+
+    // Kiểm tra từ ngữ thô tục / xúc phạm
+    const profanityCheck = checkProfanity(data.messageText);
+    if (profanityCheck.isProfane) {
+      client.emit('error', {
+        message:
+          'Tin nhắn bị chặn: Vui lòng không sử dụng từ ngữ thô tục, chửi thề hoặc vi phạm chuẩn mực văn minh.',
       });
       return;
     }
