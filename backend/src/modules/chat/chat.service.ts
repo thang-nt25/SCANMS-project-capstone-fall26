@@ -175,6 +175,7 @@ export class ChatService {
               OR: [
                 { fullName: { contains: trimmed, mode: 'insensitive' } },
                 { email: { contains: trimmed, mode: 'insensitive' } },
+                { phoneNumber: { contains: trimmed, mode: 'insensitive' } },
               ],
             }
           : {}),
@@ -192,7 +193,13 @@ export class ChatService {
         isDeleted: false,
         ...(trimmed
           ? {
-              name: { contains: trimmed, mode: 'insensitive' },
+              OR: [
+                { name: { contains: trimmed, mode: 'insensitive' } },
+                { description: { contains: trimmed, mode: 'insensitive' } },
+                { slug: { contains: trimmed, mode: 'insensitive' } },
+                { owner: { fullName: { contains: trimmed, mode: 'insensitive' } } },
+                { owner: { email: { contains: trimmed, mode: 'insensitive' } } },
+              ],
             }
           : {}),
       },
