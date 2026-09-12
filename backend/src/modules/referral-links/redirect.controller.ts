@@ -23,6 +23,7 @@ import {
   verifyOpaqueVisitorToken,
   escapeHtml,
 } from './utils/short-code.generator';
+import { extractTrustedClientIp } from './utils/client-ip.util';
 
 @ApiTags('Public - Referral Link Redirect & Tracking Engine (FR-13)')
 @Controller()
@@ -146,6 +147,15 @@ export class RedirectController {
     });
   }
 
+  @Get(['r/rate-limit/health', 'api/referral-links/rate-limit/health'])
+  @ApiOperation({
+    summary: 'Kiểm tra trạng thái sức khỏe Redis Rate Limiter (FR-14 Mục 23, 29)',
+    description: 'Cung cấp thông tin trạng thái Redis, chế độ fallback degraded, và số liệu metric.',
+  })
+  async getRateLimitHealth() {
+    return this.service.getRateLimitHealth();
+  }
+
   @Get(['r/:shortCode', 'api/r/:shortCode'])
   @ApiOperation({
     summary:
@@ -196,12 +206,14 @@ export class RedirectController {
     @Headers('referer') referer?: string,
   ) {
     try {
-      // 1. Thu thập thông tin client & Visitor Session an toàn (FR-13 Mục 10)
-      const rawIp =
-        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-        req.ip ||
-        req.socket.remoteAddress ||
-        '127.0.0.1';
+      // 1. Thu thập thông tin client & Visitor Session an toàn (FR-13 Mục 10 & FR-14 Mục 8, 9)
+      const trustProxy =
+        this.configService.get<string>('TRUST_PROXY') === 'true' ||
+        process.env.TRUST_PROXY === 'true';
+      const trustedProxies =
+        this.configService.get<string>('TRUSTED_PROXIES') ||
+        process.env.TRUSTED_PROXIES;
+      const rawIp = extractTrustedClientIp(req, trustProxy, trustedProxies);
 
       const jwtSecret = this.getJwtSecret();
       const existingCookie =

@@ -41,6 +41,7 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
   let app: INestApplication;
   let prisma: PrismaService;
   let cacheService: CacheService;
+  let clickQueueService: ClickQueueService;
 
   let secret = 'fr13-super-secret-jwt-key-for-testing-123456';
 
@@ -72,6 +73,27 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
 
   async function cleanup() {
     try {
+      if (clickQueueService) {
+        await clickQueueService.waitUntilIdle().catch(() => {});
+      }
+      if (cacheService) {
+        const redis = cacheService.getRedisClient();
+        if (redis) {
+          await redis
+            .del(
+              'scanms:click_queue:pending',
+              'scanms:click_queue:processing_zset',
+              'scanms:click_queue:dlq',
+            )
+            .catch(() => {});
+        }
+      }
+
+      await prisma.$executeRawUnsafe(`
+        UPDATE attribution_sessions SET latest_click_id = NULL 
+        WHERE store_id IN ('${store1Id}', '${store2Id}')
+      `).catch(() => {});
+
       await prisma.attributionAdjustment.deleteMany({
         where: { order: { storeId: { in: [store1Id, store2Id] } } },
       });
@@ -91,13 +113,24 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         where: { id: couponId },
       });
       await prisma.clickTrafficLog.deleteMany({
-        where: { referralLinkId: { in: [link1KolAId, link2KolBId, link3KolCId] } },
+        where: {
+          OR: [
+            { referralLinkId: { in: [link1KolAId, link2KolBId, link3KolCId] } },
+            { referralLink: { storeId: { in: [store1Id, store2Id] } } },
+          ],
+        },
       });
       await prisma.attributionSession.deleteMany({
         where: { storeId: { in: [store1Id, store2Id] } },
       });
       await prisma.referralLink.deleteMany({
-        where: { id: { in: [link1KolAId, link2KolBId, link3KolCId] } },
+        where: {
+          OR: [
+            { id: { in: [link1KolAId, link2KolBId, link3KolCId] } },
+            { storeId: { in: [store1Id, store2Id] } },
+            { shortCode: 'scam1234' },
+          ],
+        },
       });
       await prisma.product.deleteMany({
         where: { id: { in: [product1Id, product2Id] } },
@@ -118,7 +151,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         where: { id: { in: [kolAId, kolBId, kolCId, shopOwner1Id, shopOwner2Id, adminId] } },
       });
     } catch (e) {
-      console.warn('Cleanup error (ignored):', e);
+      if (!String(e).includes('pool after calling end')) {
+        console.warn('Cleanup error (ignored):', e);
+      }
     }
   }
 
@@ -143,6 +178,7 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
 
     prisma = app.get(PrismaService);
     cacheService = app.get(CacheService);
+    clickQueueService = app.get(ClickQueueService);
     const configService = app.get(ConfigService);
     secret = configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET || 'fr13-super-secret-jwt-key-for-testing-123456';
 
@@ -323,11 +359,6 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       .post('/api/auth/login')
       .send({ email: 'admin.fr13@scanms.vn', password: 'Password@123' });
     tokenAdmin = resAdmin.body?.accessToken || resAdmin.body?.token;
-  });
-
-  afterAll(async () => {
-    await cleanup();
-    await app.close();
   });
 
   // =========================================================================
@@ -845,9 +876,21 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
     });
 
     it('5.5 Điều chỉnh attribution: Kiểm tra điều kiện KOL mới (Role, Approved Store relation) và tạo bản ghi AttributionAdjustment bảo toàn lịch sử đơn (Issue 9 & 10)', async () => {
-      const order = await prisma.order.findFirst({
+      let order = await prisma.order.findFirst({
         where: { storeId: store1Id, attributedCollaboratorId: { not: null } },
       });
+      if (!order) {
+        order = await prisma.order.create({
+          data: {
+            storeId: store1Id,
+            externalOrderSn: `DH-ADJ-${Date.now()}`,
+            subtotalAmount: 500000,
+            finalAmount: 500000,
+            attributedCollaboratorId: kolAId,
+            attributionMethod: AttributionMethod.COOKIE,
+          },
+        });
+      }
       expect(order).toBeDefined();
       const originalCollabId = order!.attributedCollaboratorId;
 
@@ -1113,5 +1156,29 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         expect(res.body.effectiveCollaborator.email).not.toContain('***@');
       }
     });
+  });
+
+  afterAll(async () => {
+    if (clickQueueService) {
+      await clickQueueService.waitUntilIdle().catch(() => {});
+      await clickQueueService.processQueue().catch(() => {});
+      await clickQueueService.onModuleDestroy().catch(() => {});
+    }
+    if (cacheService) {
+      const redis = cacheService.getRedisClient();
+      if (redis) {
+        await redis
+          .del(
+            'scanms:click_queue:pending',
+            'scanms:click_queue:processing_zset',
+            'scanms:click_queue:dlq',
+          )
+          .catch(() => {});
+      }
+    }
+    await cleanup();
+    if (app) {
+      await app.close();
+    }
   });
 });

@@ -36,6 +36,10 @@ import {
   normalizeUserAgent,
   generateDeviceFingerprint,
 } from './utils/short-code.generator';
+import {
+  normalizeClientIp,
+  hashIpForRateLimit,
+} from './utils/client-ip.util';
 import { CacheService } from '../../core/cache/cache.service';
 import * as QRCode from 'qrcode';
 import * as crypto from 'crypto';
@@ -1339,15 +1343,26 @@ export class ReferralLinksService {
       );
     }
 
-    // 1. Rate limit kép qua Redis: 10 req/giây và 60 req/phút theo IP/Session (FR-13 Mục 25)
-    const secKey = `rl:sec:${rawIp}`;
-    const minKey = `rl:min:${rawIp}`;
-    const [secLimit, minLimit] = await Promise.all([
-      this.cacheService.checkRateLimit(secKey, 10, 1),
-      this.cacheService.checkRateLimit(minKey, 60, 60),
-    ]);
+    // 1. Rate limit kép nguyên tử qua Redis: 10 req/giây và 60 req/phút theo IP (FR-14 Mục 5, 6, 7, 10, 11, 20)
+    const normalizedIp = normalizeClientIp(rawIp);
+    const rateLimitIpHash = hashIpForRateLimit(normalizedIp, jwtSecret);
+    const secLimit = Number(this.configService.get<number>('CLICK_RATE_LIMIT_SEC') || process.env.CLICK_RATE_LIMIT_SEC || 10);
+    const minLimit = Number(this.configService.get<number>('CLICK_RATE_LIMIT_MIN') || process.env.CLICK_RATE_LIMIT_MIN || 60);
 
-    const isRateLimited = !secLimit.allowed || !minLimit.allowed;
+    const timeoutMs = Number(
+      this.configService.get<number>('CLICK_RATE_LIMIT_TIMEOUT_MS') ||
+        process.env.CLICK_RATE_LIMIT_TIMEOUT_MS ||
+        50,
+    );
+
+    const rateLimitRes = await this.cacheService.checkClickRateLimitAtomic({
+      ipHash: rateLimitIpHash,
+      secLimit,
+      minLimit,
+      timeoutMs,
+    });
+
+    const isRateLimited = !rateLimitRes.allowed;
 
     const normalizedCode = shortCode.trim().toLowerCase();
     const cacheKey = `ref_link:${normalizedCode}`;
@@ -1398,6 +1413,14 @@ export class ReferralLinksService {
       );
     }
 
+    // Ghi nhận thống kê đột biến lưu lượng (Spike) theo Link, Shop, KOL (FR-14 Mục 29)
+    this.cacheService.recordClickSpike({
+      linkId: link.id,
+      storeId: link.storeId,
+      collaboratorId: link.collaboratorId,
+      isBlocked: isRateLimited,
+    });
+
     const effectiveStatus = computeEffectiveStatus(link);
 
     if (effectiveStatus === 'DELETED') {
@@ -1417,28 +1440,29 @@ export class ReferralLinksService {
     const destinationPath =
       link.destinationPath || `/products/${link.productId}`;
 
-    // Xác định cờ tính hợp lệ & lý do từ chối attribution (nếu có)
+    // Xác định cờ tính hợp lệ & danh sách lý do từ chối attribution (nếu có)
     let allowAttribution = true;
-    let riskReason: string | null = null;
+    const riskReasons: string[] = [];
 
     // Vượt rate limit: vẫn redirect nhưng không attribution (Mục 25)
     if (isRateLimited) {
       allowAttribution = false;
-      riskReason = 'CLICK_RATE_LIMITED';
+      riskReasons.push('CLICK_RATE_LIMITED');
     }
 
     // Bot detection (Mục 25)
     const isBot = isSearchEngineBot(clientInfo.userAgent);
     if (isBot) {
       allowAttribution = false;
-      riskReason = 'BOT_CRAWLER';
+      riskReasons.push('BOT_CRAWLER');
     }
 
     // Link PAUSED hoặc EXPIRED: vẫn đến sản phẩm nhưng không ghi attribution mới (Mục 20)
     if (effectiveStatus === 'PAUSED' || effectiveStatus === 'EXPIRED') {
       allowAttribution = false;
-      riskReason =
-        effectiveStatus === 'PAUSED' ? 'LINK_PAUSED' : 'LINK_EXPIRED';
+      riskReasons.push(
+        effectiveStatus === 'PAUSED' ? 'LINK_PAUSED' : 'LINK_EXPIRED',
+      );
     }
 
     // Kiểm tra tính hợp lệ của sản phẩm / gian hàng (Mục 4)
@@ -1452,14 +1476,17 @@ export class ReferralLinksService {
       !link.collaborator?.isActive
     ) {
       allowAttribution = false;
-      riskReason = 'PRODUCT_OR_STORE_INACTIVE';
+      riskReasons.push('PRODUCT_OR_STORE_INACTIVE');
     }
 
     // Kiểm tra khách hàng từ chối theo dõi (Privacy Consent: DNT / GPC / Opt-out - Lỗi 6)
     if (clientInfo.isOptedOut) {
       allowAttribution = false;
-      riskReason = 'CLIENT_OPTED_OUT_PRIVACY';
+      riskReasons.push('CLIENT_OPTED_OUT_PRIVACY');
     }
+
+    // Ghép các lý do rủi ro bằng dấu phẩy để lưu trữ độc lập, không ghi đè lẫn nhau
+    const riskReason = riskReasons.length > 0 ? riskReasons.join(',') : null;
 
     // 2. Chuẩn hóa Subnet IP & Server-Side HMAC Device Fingerprint (Mục 7, 8, 9)
     const { prefix: ipPrefix, hash: ipHash } = hashIpAddress(rawIp, jwtSecret);
@@ -1528,7 +1555,16 @@ export class ReferralLinksService {
         });
         attributionSessionId = sessionRecord.id;
       } catch (sessionErr: any) {
-        this.logger.error(`Lỗi tạo AttributionSession: ${sessionErr.message}`);
+        if (
+          sessionErr?.code === 'P2003' ||
+          sessionErr?.message?.includes('fk_attr_sess_link')
+        ) {
+          this.logger.warn(
+            `Referral link ${link.id} có thể đã bị xóa đồng thời khi tạo AttributionSession (${sessionErr.message}).`,
+          );
+        } else {
+          this.logger.error(`Lỗi tạo AttributionSession: ${sessionErr.message}`);
+        }
         // Không cấp cookie nếu session thất bại để chống việc client nhận cookie nhưng DB không có session (Lỗi 1)
         allowAttribution = false;
         attributionSessionId = null;
@@ -1657,12 +1693,14 @@ export class ReferralLinksService {
       );
     }
 
-    // Đếm các loại click trong database
+    // Đếm các loại click trong database (FR-14 Mục 27: Tách bạch raw, valid, unique, rate-limited, bot)
     const [
       rawClicks,
       validClicks,
       uniqueClicks,
       suspiciousClicks,
+      rateLimitedClicks,
+      botClicks,
       qrClicks,
       linkClicks,
       attributedOrders,
@@ -1676,6 +1714,18 @@ export class ReferralLinksService {
       }),
       this.prisma.clickTrafficLog.count({
         where: { referralLinkId: linkId, isValid: false },
+      }),
+      this.prisma.clickTrafficLog.count({
+        where: {
+          referralLinkId: linkId,
+          riskReason: { contains: 'CLICK_RATE_LIMITED' },
+        },
+      }),
+      this.prisma.clickTrafficLog.count({
+        where: {
+          referralLinkId: linkId,
+          riskReason: { contains: 'BOT_CRAWLER' },
+        },
       }),
       this.prisma.clickTrafficLog.count({
         where: { referralLinkId: linkId, accessMethod: 'QR' },
@@ -1704,8 +1754,9 @@ export class ReferralLinksService {
     ]);
 
     const conversions = attributedOrders.length;
+    // FR-14 Mục 27: Raw click, bot và rate-limited clicks tuyệt đối không dùng tính conversion rate
     const conversionRate =
-      rawClicks > 0 ? Number(((conversions / rawClicks) * 100).toFixed(2)) : 0;
+      validClicks > 0 ? Number(((conversions / validClicks) * 100).toFixed(2)) : 0;
     let totalRevenue = 0;
     let totalCommission = 0;
 
@@ -1729,6 +1780,8 @@ export class ReferralLinksService {
         validClicks,
         uniqueClicks,
         suspiciousClicks,
+        rateLimitedClicks,
+        botClicks,
         qrClicks,
         linkClicks,
       },
@@ -1787,7 +1840,11 @@ export class ReferralLinksService {
    * - Admin xem danh sách sự kiện click, phát hiện dấu hiệu bất thường
    * - IP được che mờ (masking) để bảo vệ quyền riêng tư
    */
-  async getAdminTrackingEvents(query: QueryTrackingEventsDto) {
+  async getAdminTrackingEvents(
+    query: QueryTrackingEventsDto,
+    adminId?: string,
+    ipAddress?: string,
+  ) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
@@ -1832,7 +1889,7 @@ export class ReferralLinksService {
       }),
     ]);
 
-    // Mask IP address (VD: 192.168.1.***)
+    // 1. Loại bỏ triệt để các trường băm/nhạy cảm nguyên thủy qua destructuring (Lỗi 1)
     const maskedItems = items.map((item) => {
       const parts = (item.ipAddress || '').split('.');
       const maskedIp =
@@ -1840,14 +1897,61 @@ export class ReferralLinksService {
           ? `${parts[0]}.${parts[1]}.${parts[2]}.***`
           : '***.***.***.***';
 
+      const {
+        ipHash,
+        fingerprintHash,
+        deviceFingerprint,
+        sessionId,
+        userAgent,
+        ...safeItem
+      } = item;
+
       return {
-        ...item,
+        ...safeItem,
         ipAddress: maskedIp,
-        deviceFingerprint: item.fingerprintHash
-          ? `${item.fingerprintHash.slice(0, 8)}...`
+        deviceFingerprint: fingerprintHash
+          ? `${fingerprintHash.slice(0, 8)}...`
           : null,
+        maskedFingerprint: fingerprintHash
+          ? `${fingerprintHash.slice(0, 8)}...`
+          : null,
+        maskedSessionId: sessionId ? `${sessionId.slice(0, 8)}...` : null,
       };
     });
+
+    // 2. Ghi nhận AuditLog bắt buộc khi Quản trị viên truy cập dữ liệu kỹ thuật nhạy cảm (Fail-closed)
+    if (adminId && this.prisma.auditLog) {
+      try {
+        await this.prisma.auditLog.create({
+          data: {
+            userId: adminId,
+            action: 'ADMIN_VIEW_TRACKING_EVENTS',
+            ipAddress: ipAddress || null,
+            details: {
+              filter: {
+                referralLinkId: query.referralLinkId,
+                storeId: query.storeId,
+                collaboratorId: query.collaboratorId,
+                isValid: query.isValid,
+                accessMethod: query.accessMethod,
+                from: query.from,
+                to: query.to,
+              },
+              page,
+              limit,
+              totalResults: total,
+            },
+          },
+        });
+      } catch (auditErr: any) {
+        this.logger.error(
+          `[FAIL-CLOSED] Ghi nhận AuditLog ADMIN_VIEW_TRACKING_EVENTS thất bại: ${auditErr.message}`,
+        );
+        throw new InternalServerErrorException(
+          'Không thể ghi nhận nhật ký kiểm toán bắt buộc khi truy cập dữ liệu kỹ thuật nhạy cảm.',
+        );
+      }
+    }
 
     return {
       total,
@@ -2698,5 +2802,31 @@ export class ReferralLinksService {
         err.stack,
       );
     }
+  }
+
+  /**
+   * Cung cấp trạng thái sức khỏe Redis Rate Limiter phục vụ giám sát vận hành (FR-14 Mục 23, 29)
+   */
+  getRateLimitHealth() {
+    return this.cacheService.getHealthStatus();
+  }
+
+  /**
+   * Cung cấp dữ liệu Dashboard vận hành toàn diện cho Quản trị viên (FR-14 Mục 29, 36)
+   */
+  getRateLimitDashboard() {
+    const health = this.cacheService.getHealthStatus();
+    const systemStatus = health.isDegraded
+      ? 'DEGRADED'
+      : health.metrics.isBlockedRateHigh || health.metrics.redisTimeoutCount > 0
+        ? 'WARNING'
+        : 'HEALTHY';
+
+    return {
+      success: true,
+      systemStatus,
+      timestamp: new Date().toISOString(),
+      health,
+    };
   }
 }
