@@ -23,6 +23,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { CommissionsModule } from './modules/commissions/commissions.module';
+import { PayoutsModule } from './modules/payouts/payouts.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
@@ -72,6 +73,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     MediaModule,
     OrdersModule,
     CommissionsModule,
+    PayoutsModule,
     CouponsModule,
     // Quy's modules
     ChatModule,
