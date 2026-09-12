@@ -1,24 +1,124 @@
 /**
  * Profanity Filter (Bộ lọc từ ngữ thô tục & vi phạm chuẩn mực cộng đồng)
- * Hỗ trợ nhận diện các từ ngữ thô tục, xúc phạm, chửi thề (Tiếng Việt & Tiếng Anh, teencode, ký tự che giấu).
+ * Hỗ trợ nhận diện các từ ngữ thô tục, xúc phạm, chửi thề (Tiếng Việt & Tiếng Anh, teencode, viết tắt, không dấu).
  */
 
-const PROFANITY_PATTERNS: RegExp[] = [
-  // Tiếng Việt chửi thề / thô tục viết tắt & biến thể
-  /\b(đ[iị]t|d[iị]t|d[iị]ch)\b/i,
-  /\b(đ[uụ]\s*m[aá]|d[uụ]\s*m[aá]|duma|dume|đume|đụ|dụ\s*má)\b/i,
-  /\b(đ[oồ]ng\s*ch[ií]\s*đ[oồ]ng\s*b[aà]o)?\b(đ[iị]t\s*m[eẹ]|ditme|dcm|đcm|dm|đm|dkm|đkm|vcl|vcc|vl|cl|ccl)\b/i,
-  /\b(c[aặ][c̣k]|k[aặ][c̣k]|bu[oồ]i|b[uù]i|d[aá]i|d[aá]y|c[uụ]|chim)\b/i,
-  /\b(l[oồ]n|l[oồ]ng|loz|lz|l0n|l0z)\b/i,
-  /\b(ch[oó]\s*đ[eẻ]|ch[oó]\s*m[aá]|ch[oó]\s*ngu|óc\s*ch[oó]|oc\s*cho|s[uú]c\s*v[aậ]t|suc\s*vat)\b/i,
-  /\b(con\s*đ[iĩ]|đ[iĩ]\s*th[oỏ]|c[aà]ve|g[aá]i\s*b[aao]o|g[aá]i\s*g[oọ]i)\b/i,
-  /\b(m[eẹ]\s*m[aà]y|b[oố]\s*m[aà]y|t[oổ]\s*s[uư]|m[aẹ]\s*ki[eế]p)\b/i,
-  /\b(ngu\s*nh[uư]\s*ch[oó]|ngu\s*d[oố]t|đ[oồ]\s*ch[oó]|đ[oồ]\s*ngu)\b/i,
-  /\b(th[aằ]ng\s*ch[oó]|con\s*ch[oó]|th[aằ]ng\s*kh[oồ]ng|con\s*m[eẹ]\s*n[oó])\b/i,
+function removeAccents(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd');
+}
+
+const BAD_WORDS: string[] = [
+  // Viết tắt & teencode chửi bậy
+  'dm',
+  'dcm',
+  'dkm',
+  'cmm',
+  'clm',
+  'vcl',
+  'vcc',
+  'vkl',
+  'vl',
+  'cl',
+  'cc',
+  'ccl',
+  'clgt',
+  'dmm',
+  'đmm',
+  'đcm',
+  'đm',
+  'đkm',
+
+  // Cụm từ chửi thề: Đụ / Địt
+  'du me',
+  'du ma',
+  'du cha',
+  'du ba',
+  'du con me',
+  'dume',
+  'duma',
+  'du me may',
+  'du me m',
+  'du',
+  'dit me',
+  'dit ma',
+  'dit ba',
+  'dit con me',
+  'dit cu',
+  'ditme',
+  'dit me may',
+  'dit me m',
+  'dit',
+
+  // Cụm từ xúc phạm: Con mẹ / Mẹ mày / Bố mày
+  'con me m',
+  'con me may',
+  'con me no',
+  'con me',
+  'me may',
+  'me m',
+  'bo may',
+  'bo m',
+  'to cha',
+  'to su',
+  'tien su',
+  'mat day',
+  'mat nap',
+  'chet me',
+  'chet tiet',
+
+  // Bộ phận nhạy cảm / Thô tục
+  'cac',
+  'cak',
+  'cack',
+  'buoi',
+  'loz',
+  'lz',
+  'lon me',
+  'lon ma',
+  'lon',
+  'dam tac',
+  'cu to',
+
+  // Lăng mạ, sỉ nhục
+  'cho de',
+  'cho chet',
+  'cho ngu',
+  'cho dien',
+  'oc cho',
+  'suc vat',
+  'do ngu',
+  'do cho',
+  'thang cho',
+  'con cho',
+  'thang khung',
+  'con khung',
+  'con di',
+  'di tho',
+  'cave',
+  'gai goi',
+  'gai bao',
+  'lam di',
 
   // Tiếng Anh
-  /\b(fuck|fucking|fucker|fck|f\*ck|motherfucker)\b/i,
-  /\b(shit|bullshit|bitch|btch|asshole|bastard|dick|pussy|cunt|slut|whore)\b/i,
+  'fuck',
+  'fucking',
+  'fucker',
+  'fck',
+  'shit',
+  'bullshit',
+  'bitch',
+  'btch',
+  'asshole',
+  'bastard',
+  'dick',
+  'pussy',
+  'cunt',
+  'slut',
+  'whore',
+  'motherfucker',
 ];
 
 /**
@@ -27,23 +127,23 @@ const PROFANITY_PATTERNS: RegExp[] = [
 export function checkProfanity(text: string): { isProfane: boolean; matched?: string } {
   if (!text) return { isProfane: false };
 
-  // Chuẩn hóa văn bản loại bỏ khoảng trắng thừa và ký tự đặc biệt lặp
-  const normalized = text
-    .toLowerCase()
+  const raw = text.toLowerCase();
+  const unaccented = removeAccents(raw)
     .replace(/[@]/g, 'a')
     .replace(/[0]/g, 'o')
-    .replace(/[1!]/g, 'i')
+    .replace(/[1!|]/g, 'i')
     .replace(/[3]/g, 'e')
     .replace(/[$]/g, 's')
-    .replace(/[*_~`]/g, '');
+    .replace(/[7]/g, 't')
+    .replace(/[._\-*~`+]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  for (const pattern of PROFANITY_PATTERNS) {
-    const match = normalized.match(pattern) || text.match(pattern);
-    if (match) {
-      return {
-        isProfane: true,
-        matched: match[0],
-      };
+  for (const bw of BAD_WORDS) {
+    const escaped = bw.replace(/\s+/g, '\\s+');
+    const regex = new RegExp('(^|\\s|[.,!?])' + escaped + '($|\\s|[.,!?])', 'i');
+    if (regex.test(unaccented) || regex.test(raw)) {
+      return { isProfane: true, matched: bw };
     }
   }
 
