@@ -29,15 +29,15 @@ function removeAccents(str: string): string {
 }
 
 const BAD_WORDS: string[] = [
-  'dm', 'dcm', 'dkm', 'cmm', 'clm', 'vcl', 'vcc', 'vkl', 'vl', 'cl', 'cc', 'ccl', 'clgt', 'dmm', 'đmm', 'đcm', 'đm', 'đkm',
-  'deo', 'dell', 'del',
-  'lol', 'lolz', 'lozl', 'loll', 'loz', 'lz', 'lon me', 'lon ma', 'lon',
-  'du me', 'du ma', 'du cha', 'du ba', 'du con me', 'dume', 'duma', 'du me may', 'du me m', 'du',
-  'dit me', 'dit ma', 'dit ba', 'dit con me', 'dit cu', 'ditme', 'dit me may', 'dit me m', 'dit',
-  'con me m', 'con me may', 'con me no', 'con me', 'me may', 'me m', 'me no', 'me cha', 'me kiep', 'me',
+  'dm', 'dcm', 'dkm', 'cmm', 'clm', 'vcl', 'vcc', 'vkl', 'vl', 'ccl', 'clgt', 'dmm', 'đmm', 'đcm', 'đm', 'đkm',
+  'deo', 'dell',
+  'lol', 'lolz', 'lozl', 'loll', 'loz', 'lz', 'lon me', 'lon ma', 'cai lon', 'con lon', 'do lon', 'ham lon',
+  'du me', 'du ma', 'du cha', 'du ba', 'du con me', 'dume', 'duma', 'du me may', 'du me m',
+  'dit me', 'dit ma', 'dit ba', 'dit con me', 'dit cu', 'ditme', 'dit me may', 'dit me m', 'dit nhau',
+  'con me m', 'con me may', 'con me no', 'con me', 'me may', 'me m', 'me no', 'me cha', 'me kiep',
   'bo may', 'bo m', 'to cha', 'to su', 'tien su', 'to me', 'tien me', 'mat day', 'mat nap', 'chet me', 'chet tiet', 'chet cha', 'chet ba',
   'cut di', 'cut me di', 'cut', 'bien di', 'bien me di', 'khon nan', 'do khon', 'vo hoc', 'do hen', 'do ban',
-  'cac', 'cak', 'cack', 'buoi', 'chim', 'dam tac', 'cu to', 'cu',
+  'cac', 'cak', 'cack', 'buoi', 'dam tac', 'cu to',
   'cho de', 'cho chet', 'cho ngu', 'cho dien', 'cho ma', 'oc cho', 'suc vat', 'do ngu', 'do cho', 'thang cho', 'con cho', 'thang khung', 'con khung', 'con di', 'di tho', 'cave', 'gai goi', 'gai bao', 'lam di',
   'fuck', 'fucking', 'fucker', 'fck', 'shit', 'bullshit', 'bitch', 'btch', 'asshole', 'bastard', 'dick', 'pussy', 'cunt', 'slut', 'whore', 'motherfucker'
 ];
@@ -169,14 +169,14 @@ function CampaignCardBubble({
       {!isMine && !done && (
         <div className="flex items-center gap-2 pt-1">
           <button
-            className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+            className="flex-1 py-1.5 px-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white rounded-lg text-xs font-bold transition-all shadow-xs disabled:opacity-50"
             disabled={loading}
             onClick={handleAccept}
           >
             {loading ? '⏳' : '✅ Chấp nhận'}
           </button>
           <button
-            className="flex-1 py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+            className="flex-1 py-1.5 px-3 bg-stone-700 hover:bg-stone-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs disabled:opacity-50"
             disabled={loading}
             onClick={handleReject}
           >
@@ -186,7 +186,7 @@ function CampaignCardBubble({
       )}
 
       {done && (
-        <div className="text-center text-xs font-bold text-emerald-700 pt-1">
+        <div className="text-center text-xs font-bold text-[#B88E4F] pt-1">
           Đã phản hồi ✓
         </div>
       )}

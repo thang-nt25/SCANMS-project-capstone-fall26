@@ -20,14 +20,21 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  // Cấu hình Trust Proxy để Express đọc chính xác client IP qua reverse proxy an toàn
+  // Cấu hình Trust Proxy an toàn: Mặc định false, chỉ bật khi cấu hình rõ ràng với proxy tin cậy
   const httpAdapter = app.getHttpAdapter().getInstance();
   if (typeof httpAdapter?.set === 'function') {
-    httpAdapter.set('trust proxy', 1);
+    const isTrustProxy = process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1';
+    const trustedProxies = process.env.TRUSTED_PROXIES || 'loopback';
+    httpAdapter.set('trust proxy', isTrustProxy ? trustedProxies : false);
   }
 
   app.setGlobalPrefix('api', {
-    exclude: ['r/:shortCode', 'api/r/:shortCode'],
+    exclude: [
+      'r/:shortCode',
+      'api/r/:shortCode',
+      'r/rate-limit/health',
+      'api/referral-links/rate-limit/health',
+    ],
   });
   const allowedOrigins = (
     process.env.CORS_ORIGINS ||

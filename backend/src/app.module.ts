@@ -32,10 +32,13 @@ import { SamplesModule } from './modules/samples/samples.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 
+import { validateEnv } from './core/config/env.validation';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnv,
     }),
     ScheduleModule.forRoot(),
     CacheModule,

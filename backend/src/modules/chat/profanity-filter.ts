@@ -21,8 +21,6 @@ const BAD_WORDS: string[] = [
   'vcc',
   'vkl',
   'vl',
-  'cl',
-  'cc',
   'ccl',
   'clgt',
   'dmm',
@@ -31,10 +29,9 @@ const BAD_WORDS: string[] = [
   'đm',
   'đkm',
 
-  // Đéo / Dell / Del
+  // Đéo / Dell
   'deo',
   'dell',
-  'del',
 
   // Lol / Lz / Loz / Lồn
   'lol',
@@ -45,7 +42,10 @@ const BAD_WORDS: string[] = [
   'lz',
   'lon me',
   'lon ma',
-  'lon',
+  'cai lon',
+  'con lon',
+  'do lon',
+  'ham lon',
 
   // Cụm từ chửi thề: Đụ / Địt
   'du me',
@@ -57,7 +57,6 @@ const BAD_WORDS: string[] = [
   'duma',
   'du me may',
   'du me m',
-  'du',
   'dit me',
   'dit ma',
   'dit ba',
@@ -66,7 +65,7 @@ const BAD_WORDS: string[] = [
   'ditme',
   'dit me may',
   'dit me m',
-  'dit',
+  'dit nhau',
 
   // Cụm từ xúc phạm: Mẹ / Bố / Con mẹ / Tiên sư / Cút
   'con me m',
@@ -78,7 +77,6 @@ const BAD_WORDS: string[] = [
   'me no',
   'me cha',
   'me kiep',
-  'me',
   'bo may',
   'bo m',
   'to cha',
@@ -108,10 +106,8 @@ const BAD_WORDS: string[] = [
   'cak',
   'cack',
   'buoi',
-  'chim',
   'dam tac',
   'cu to',
-  'cu',
 
   // Lăng mạ, sỉ nhục
   'cho de',
