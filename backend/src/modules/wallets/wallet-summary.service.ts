@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { KycStatus } from '@prisma/client';
+import { KycStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { WithdrawalPolicyService } from './withdrawal-policy.service';
 import {
@@ -17,7 +17,23 @@ export class WalletSummaryService {
 
   async getMyWallet(collaboratorId: string) {
     const [wallet, profile] = await Promise.all([
-      this.prisma.wallet.findUnique({ where: { collaboratorId } }),
+      this.prisma.wallet.findUnique({
+        where: { collaboratorId },
+        include: {
+          storeWallets: {
+            include: {
+              store: {
+                select: {
+                  name: true,
+                  isDeleted: true,
+                  owner: { select: { isActive: true, isDeleted: true } },
+                },
+              },
+            },
+            orderBy: { storeId: 'asc' },
+          },
+        },
+      }),
       this.prisma.collaboratorProfile.findUnique({
         where: { userId: collaboratorId },
         select: {
@@ -38,6 +54,36 @@ export class WalletSummaryService {
     return {
       pendingBalance: wallet?.pendingBalance.toFixed(2) ?? '0.00',
       availableBalance: wallet?.availableBalance.toFixed(2) ?? '0.00',
+      stores: (wallet?.storeWallets ?? []).map((balance) => ({
+        storeId: balance.storeId,
+        storeName: balance.store.name,
+        availableBalance: balance.availableBalance.toFixed(2),
+        pendingBalance: balance.pendingBalance.toFixed(2),
+        isActive:
+          !balance.store.isDeleted &&
+          balance.store.owner.isActive &&
+          !balance.store.owner.isDeleted,
+      })),
+      unallocatedAvailableBalance: (
+        wallet?.availableBalance ?? new Prisma.Decimal(0)
+      )
+        .minus(
+          (wallet?.storeWallets ?? []).reduce(
+            (sum, item) => sum.plus(item.availableBalance),
+            new Prisma.Decimal(0),
+          ),
+        )
+        .toFixed(2),
+      unallocatedPendingBalance: (
+        wallet?.pendingBalance ?? new Prisma.Decimal(0)
+      )
+        .minus(
+          (wallet?.storeWallets ?? []).reduce(
+            (sum, item) => sum.plus(item.pendingBalance),
+            new Prisma.Decimal(0),
+          ),
+        )
+        .toFixed(2),
       minimumWithdrawalAmount: this.policy.minimumAmount.toFixed(2),
       withdrawalTaxPolicy: {
         threshold: PAYOUT_TAX_THRESHOLD,
@@ -47,6 +93,17 @@ export class WalletSummaryService {
       canWithdraw:
         profile?.kycStatus === KycStatus.VERIFIED &&
         hasBankAccount &&
+        Boolean(
+          wallet?.storeWallets.some(
+            (balance) =>
+              !balance.store.isDeleted &&
+              balance.store.owner.isActive &&
+              !balance.store.owner.isDeleted &&
+              balance.availableBalance.greaterThanOrEqualTo(
+                this.policy.minimumAmount,
+              ),
+          ),
+        ) &&
         Boolean(
           wallet?.availableBalance.greaterThanOrEqualTo(
             this.policy.minimumAmount,
@@ -80,6 +137,8 @@ export class WalletSummaryService {
         amount: entry.amount.toFixed(2),
         balanceBefore: entry.balanceBefore.toFixed(2),
         balanceAfter: entry.balanceAfter.toFixed(2),
+        storeBalanceBefore: entry.storeBalanceBefore?.toFixed(2) ?? null,
+        storeBalanceAfter: entry.storeBalanceAfter?.toFixed(2) ?? null,
       })),
       total,
       page: query.page,

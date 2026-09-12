@@ -99,6 +99,7 @@ enum WalletBalanceBucket {
 
 enum PayoutStatus {
   PENDING
+  PROCESSING
   APPROVED
   REJECTED
 }
@@ -197,6 +198,8 @@ model User {
   notifications             Notification[]
   attributionSessions       AttributionSession[]
   attributionAdjustments    AttributionAdjustment[]
+  approvedPayouts           PayoutRequest[]             @relation("PayoutApprover")
+  createdPayoutBatches      PayoutBatch[]               @relation("PayoutBatchCreator")
 
   @@map("users")
 }
@@ -231,6 +234,10 @@ model Store {
   storeCollaborators  StoreCollaborator[]
   coupons             Coupon[]
   attributionSessions AttributionSession[]
+
+  storeWallets     StoreWallet[]
+  financialLedgers FinancialLedger[]
+  payoutBatches    PayoutBatch[]
 
   @@index([ownerId], map: "idx_fk_stores_owner")
   @@map("stores")
@@ -906,16 +913,17 @@ model OrderItem {
 }
 
 model Commission {
-  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId          String           @map("order_id") @db.Uuid
-  collaboratorId   String           @map("collaborator_id") @db.Uuid
-  commissionAmount Decimal          @map("commission_amount") @db.Decimal(15, 2)
-  status           CommissionStatus @default(PENDING)
-  eligibleAt       DateTime         @map("eligible_at") @db.Timestamptz(6)
-  availableAt      DateTime         @map("available_at") @db.Timestamptz(6)
-  approvedAt       DateTime?        @map("approved_at") @db.Timestamptz(6)
-  reversedAt       DateTime?        @map("reversed_at") @db.Timestamptz(6)
-  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId            String           @map("order_id") @db.Uuid
+  collaboratorId     String           @map("collaborator_id") @db.Uuid
+  commissionAmount   Decimal          @map("commission_amount") @db.Decimal(15, 2)
+  storeWalletTracked Boolean          @default(false) @map("store_wallet_tracked")
+  status             CommissionStatus @default(PENDING)
+  eligibleAt         DateTime         @map("eligible_at") @db.Timestamptz(6)
+  availableAt        DateTime         @map("available_at") @db.Timestamptz(6)
+  approvedAt         DateTime?        @map("approved_at") @db.Timestamptz(6)
+  reversedAt         DateTime?        @map("reversed_at") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
   order                    Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -945,53 +953,100 @@ model Wallet {
   // Relations
   collaborator     User              @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   financialLedgers FinancialLedger[]
+  storeWallets     StoreWallet[]
 
   @@map("wallets")
 }
 
 model FinancialLedger {
-  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  walletId        String              @map("wallet_id") @db.Uuid
-  transactionType TransactionType     @map("transaction_type")
-  balanceBucket   WalletBalanceBucket @default(AVAILABLE) @map("balance_bucket")
-  amount          Decimal             @db.Decimal(15, 2)
-  balanceBefore   Decimal             @map("balance_before") @db.Decimal(15, 2)
-  balanceAfter    Decimal             @map("balance_after") @db.Decimal(15, 2)
-  referenceId     String?             @map("reference_id") @db.Uuid
-  referenceType   String?             @map("reference_type") @db.VarChar(30)
-  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  walletId           String              @map("wallet_id") @db.Uuid
+  transactionType    TransactionType     @map("transaction_type")
+  balanceBucket      WalletBalanceBucket @default(AVAILABLE) @map("balance_bucket")
+  amount             Decimal             @db.Decimal(15, 2)
+  balanceBefore      Decimal             @map("balance_before") @db.Decimal(15, 2)
+  balanceAfter       Decimal             @map("balance_after") @db.Decimal(15, 2)
+  referenceId        String?             @map("reference_id") @db.Uuid
+  referenceType      String?             @map("reference_type") @db.VarChar(30)
+  storeId            String?             @map("store_id") @db.Uuid
+  storeBalanceBefore Decimal?            @map("store_balance_before") @db.Decimal(15, 2)
+  storeBalanceAfter  Decimal?            @map("store_balance_after") @db.Decimal(15, 2)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  store  Store? @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([walletId, createdAt(sort: Desc)], map: "idx_ledgers_wallet_date")
+  @@index([storeId, createdAt(sort: Desc)], map: "idx_ledgers_store_date")
   @@map("financial_ledgers")
 }
 
 model PayoutRequest {
-  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  collaboratorId    String       @map("collaborator_id") @db.Uuid
-  storeId           String?      @map("store_id") @db.Uuid
-  amount            Decimal      @db.Decimal(15, 2) // Gross Amount
-  taxAmount         Decimal      @default(0.00) @map("tax_amount") @db.Decimal(15, 2) // 10% PIT Tax
-  netAmount         Decimal      @default(0.00) @map("net_amount") @db.Decimal(15, 2) // Net Amount after tax
-  status            PayoutStatus @default(PENDING)
-  bankName          String?      @map("bank_name") @db.VarChar(100)
-  bankAccountNumber String?      @map("bank_account_number") @db.VarChar(50)
-  bankAccountName   String?      @map("bank_account_name") @db.VarChar(150)
-  bankRefCode       String?      @map("bank_ref_code") @db.VarChar(100)
-  proofImageUrl     String?      @map("proof_image_url")
-  rejectedReason    String?      @map("rejected_reason")
-  processedAt       DateTime?    @map("processed_at") @db.Timestamptz(6)
-  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId     String       @map("collaborator_id") @db.Uuid
+  storeId            String?      @map("store_id") @db.Uuid
+  amount             Decimal      @db.Decimal(15, 2) // Gross Amount
+  taxAmount          Decimal      @default(0.00) @map("tax_amount") @db.Decimal(15, 2) // 10% PIT Tax
+  netAmount          Decimal      @default(0.00) @map("net_amount") @db.Decimal(15, 2) // Net Amount after tax
+  status             PayoutStatus @default(PENDING)
+  bankName           String?      @map("bank_name") @db.VarChar(100)
+  bankAccountNumber  String?      @map("bank_account_number") @db.VarChar(50)
+  bankAccountName    String?      @map("bank_account_name") @db.VarChar(150)
+  bankRefCode        String?      @map("bank_ref_code") @db.VarChar(100)
+  proofImageUrl      String?      @map("proof_image_url")
+  proofImagePublicId String?      @map("proof_image_public_id")
+  proofImageFormat   String?      @map("proof_image_format") @db.VarChar(10)
+  proofImageSha256   String?      @unique(map: "idx_payouts_unique_bill_hash") @map("proof_image_sha256") @db.VarChar(64)
+  approvedById       String?      @map("approved_by_id") @db.Uuid
+  batchId            String?      @map("batch_id") @db.Uuid
+  rejectedReason     String?      @map("rejected_reason")
+  processedAt        DateTime?    @map("processed_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  collaborator User   @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  store        Store? @relation(fields: [storeId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  collaborator User         @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  store        Store?       @relation(fields: [storeId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  approvedBy   User?        @relation("PayoutApprover", fields: [approvedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  batch        PayoutBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
+  @@unique([storeId, bankRefCode], map: "idx_payouts_store_bank_ref")
   @@index([storeId, status], map: "idx_payouts_store_status")
   @@index([collaboratorId, createdAt], map: "idx_payouts_pending")
+  @@index([approvedById], map: "idx_payouts_approver")
+  @@index([batchId], map: "idx_payouts_batch")
   @@map("payout_requests")
+}
+
+model StoreWallet {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  walletId         String   @map("wallet_id") @db.Uuid
+  storeId          String   @map("store_id") @db.Uuid
+  availableBalance Decimal  @default(0.00) @map("available_balance") @db.Decimal(15, 2)
+  pendingBalance   Decimal  @default(0.00) @map("pending_balance") @db.Decimal(15, 2)
+  version          Int      @default(0)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  wallet           Wallet   @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  store            Store    @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([walletId, storeId], map: "idx_store_wallets_wallet_store")
+  @@index([storeId], map: "idx_store_wallets_store")
+  @@map("store_wallets")
+}
+
+model PayoutBatch {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String          @map("store_id") @db.Uuid
+  createdById String          @map("created_by_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  fileData    Bytes           @map("file_data")
+  store       Store           @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  createdBy   User            @relation("PayoutBatchCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payouts     PayoutRequest[]
+
+  @@index([storeId, createdAt], map: "idx_payout_batches_store_date")
+  @@index([createdById], map: "idx_payout_batches_creator")
+  @@map("payout_batches")
 }
 
 // ==========================================

@@ -1531,6 +1531,7 @@ export class CommissionRulesService {
           settlement.collaboratorId,
           settlement.bonusAmount,
           { id: settlement.id, type: 'MONTHLY_BONUS' },
+          settlement.storeId,
         );
       const balanceBefore = ledger.balanceBefore;
       const balanceAfter = ledger.balanceAfter;
@@ -1792,6 +1793,7 @@ export class CommissionRulesService {
                 comm.collaboratorId,
                 comm.commissionAmount,
                 { id: refundRecord.id, type: 'ORDER_REFUND' },
+                comm.storeWalletTracked ? storeId : undefined,
               );
             }
           } else {
@@ -1816,6 +1818,7 @@ export class CommissionRulesService {
                 comm.collaboratorId,
                 commReversal,
                 { id: refundRecord.id, type: 'ORDER_REFUND' },
+                comm.storeWalletTracked ? storeId : undefined,
               );
             }
           }

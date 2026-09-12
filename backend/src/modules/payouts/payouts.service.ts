@@ -18,6 +18,10 @@ import { PayoutTaxService } from './payout-tax.service';
 // FR-24 owns processing and approval.
 const PAYOUT_SUMMARY_SELECT = {
   id: true,
+  storeId: true,
+  batchId: true,
+  bankRefCode: true,
+  store: { select: { name: true } },
   amount: true,
   taxAmount: true,
   netAmount: true,
@@ -46,6 +50,14 @@ export class PayoutsService {
       throw new BadRequestException('Số tiền rút không hợp lệ');
     }
     const amount = new Prisma.Decimal(dto.amount);
+    if (
+      typeof dto.storeId !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        dto.storeId,
+      )
+    ) {
+      throw new BadRequestException('Chọn shop hợp lệ để yêu cầu rút tiền');
+    }
     const taxCalculation = this.taxService.calculateTax(amount);
     if (amount.lessThan(this.policy.minimumAmount)) {
       throw new BadRequestException(
@@ -55,6 +67,20 @@ export class PayoutsService {
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
+        const store = await tx.store.findUnique({
+          where: { id: dto.storeId },
+          include: { owner: { select: { isActive: true, isDeleted: true } } },
+        });
+        if (
+          !store ||
+          store.isDeleted ||
+          !store.owner.isActive ||
+          store.owner.isDeleted
+        ) {
+          throw new BadRequestException(
+            'Shop không tồn tại hoặc không hoạt động',
+          );
+        }
         const user = await tx.user.findUnique({
           where: { id: collaboratorId },
           select: {
@@ -102,11 +128,13 @@ export class PayoutsService {
             collaboratorId,
             amount,
             { id: requestId, type: 'PAYOUT_REQUEST' },
+            store.id,
           );
         const request = await tx.payoutRequest.create({
           data: {
             id: requestId,
             collaboratorId,
+            storeId: store.id,
             amount,
             taxAmount: taxCalculation.taxAmount,
             netAmount: taxCalculation.netAmount,
@@ -114,7 +142,7 @@ export class PayoutsService {
             bankName: profile.bankName.trim(),
             bankAccountNumber: profile.bankAccountNumber.trim(),
             bankAccountName: profile.bankAccountName.trim(),
-            // Global wallet: no unvalidated merchant/store ID from the client.
+            // Only funds attributed to this validated store can be withdrawn.
             // Gross is debited once. Tax is withheld from it, not debited again.
             // Bank transfers and approval remain outside FR-23.
           },

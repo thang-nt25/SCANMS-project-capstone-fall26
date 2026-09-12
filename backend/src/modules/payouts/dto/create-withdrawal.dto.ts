@@ -1,7 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, Matches } from 'class-validator';
+import { IsString, IsUUID, Matches } from 'class-validator';
 
 export class CreateWithdrawalDto {
+  @ApiProperty({
+    description: 'Shop có số dư khả dụng để chi trả',
+    format: 'uuid',
+  })
+  @IsUUID('4', { message: 'Shop phải có UUID hợp lệ' })
+  storeId: string;
+
   @ApiProperty({
     type: String,
     example: '500000.00',

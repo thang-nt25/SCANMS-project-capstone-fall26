@@ -14,6 +14,7 @@ import { FinancialLedgerService } from '../wallets/financial-ledger.service';
 
 describe('PayoutsService FR-22', () => {
   const collaboratorId = '28b2b124-12d2-47f8-881f-c3107ee71084';
+  const storeId = '38b2b124-12d2-47f8-881f-c3107ee71084';
 
   function createService(balance = '500000.31') {
     let availableBalance = new Prisma.Decimal(balance);
@@ -31,6 +32,25 @@ describe('PayoutsService FR-22', () => {
       collaboratorProfile: profile,
     };
     const tx = {
+      store: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: storeId,
+          isDeleted: false,
+          owner: { isActive: true, isDeleted: false },
+        }),
+      },
+      storeWallet: {
+        upsert: jest.fn().mockResolvedValue({}),
+        findUniqueOrThrow: jest.fn(() =>
+          Promise.resolve({
+            id: 'store-wallet-id',
+            storeId,
+            availableBalance,
+            pendingBalance: new Prisma.Decimal(0),
+          }),
+        ),
+        update: jest.fn().mockResolvedValue({}),
+      },
       user: { findUnique: jest.fn().mockResolvedValue(user) },
       wallet: {
         upsert: jest.fn().mockResolvedValue({}),
@@ -111,6 +131,7 @@ describe('PayoutsService FR-22', () => {
   it('debits available balance and creates PENDING request in the same transaction', async () => {
     const { service, prisma, tx, getBalance } = createService();
     const response = await service.createWithdrawal(collaboratorId, {
+      storeId,
       amount: '200000.10',
     });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
@@ -132,14 +153,14 @@ describe('PayoutsService FR-22', () => {
     expect(response.request.taxAmount).toBe('0.00');
     expect(response.request.netAmount).toBe('200000.10');
     expect(tx.financialLedger.create).toHaveBeenCalledTimes(1);
-    expect(createInput.data.storeId).toBeUndefined();
+    expect(createInput.data.storeId).toBe(storeId);
   });
 
   it('rolls back the debit if payout persistence fails', async () => {
     const { service, tx, getBalance, getRequests } = createService();
     tx.payoutRequest.create.mockRejectedValueOnce(new Error('database error'));
     await expect(
-      service.createWithdrawal(collaboratorId, { amount: '200000' }),
+      service.createWithdrawal(collaboratorId, { storeId, amount: '200000' }),
     ).rejects.toBeInstanceOf(InternalServerErrorException);
     expect(getBalance()).toBe('500000.31');
     expect(getRequests()).toBe(0);
@@ -148,7 +169,7 @@ describe('PayoutsService FR-22', () => {
   it('does not create a request when available funds are insufficient', async () => {
     const { service, tx, getBalance } = createService('100000');
     await expect(
-      service.createWithdrawal(collaboratorId, { amount: '200000' }),
+      service.createWithdrawal(collaboratorId, { storeId, amount: '200000' }),
     ).rejects.toThrow('Số dư khả dụng không đủ');
     expect(tx.payoutRequest.create).not.toHaveBeenCalled();
     expect(getBalance()).toBe('100000.00');
@@ -167,7 +188,7 @@ describe('PayoutsService FR-22', () => {
   ])('rejects invalid or below-minimum amount %s', async (amount) => {
     const { service, prisma } = createService();
     await expect(
-      service.createWithdrawal(collaboratorId, { amount }),
+      service.createWithdrawal(collaboratorId, { storeId, amount }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
@@ -176,7 +197,7 @@ describe('PayoutsService FR-22', () => {
     const { service, profile, tx } = createService();
     profile.kycStatus = KycStatus.UNVERIFIED;
     await expect(
-      service.createWithdrawal(collaboratorId, { amount: '200000' }),
+      service.createWithdrawal(collaboratorId, { storeId, amount: '200000' }),
     ).rejects.toThrow('xác minh KYC');
     expect(tx.$queryRaw).not.toHaveBeenCalled();
   });
@@ -185,7 +206,7 @@ describe('PayoutsService FR-22', () => {
     const { service, profile, tx } = createService();
     profile.bankAccountNumber = ' ';
     await expect(
-      service.createWithdrawal(collaboratorId, { amount: '200000' }),
+      service.createWithdrawal(collaboratorId, { storeId, amount: '200000' }),
     ).rejects.toThrow('tài khoản ngân hàng');
     expect(tx.wallet.update).not.toHaveBeenCalled();
   });
@@ -194,7 +215,7 @@ describe('PayoutsService FR-22', () => {
     const { service, user, tx } = createService();
     user.isActive = false;
     await expect(
-      service.createWithdrawal(collaboratorId, { amount: '200000' }),
+      service.createWithdrawal(collaboratorId, { storeId, amount: '200000' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(tx.wallet.update).not.toHaveBeenCalled();
   });

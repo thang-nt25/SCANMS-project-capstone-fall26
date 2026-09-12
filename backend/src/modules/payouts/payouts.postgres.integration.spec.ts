@@ -37,6 +37,7 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
   const testJwtSecret = 'fr22-isolated-integration-test-key';
   let collaboratorId: string;
   let otherCollaboratorId: string;
+  let storeId: string;
 
   beforeAll(async () => {
     const databaseUrl = new URL(testDatabaseUrl!);
@@ -97,6 +98,7 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
   });
 
   beforeEach(async () => {
+    storeId = (await createTestStore()).id;
     collaboratorId = randomUUID();
     otherCollaboratorId = randomUUID();
     for (const id of [collaboratorId, otherCollaboratorId]) {
@@ -116,7 +118,17 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
             },
           },
           wallet: {
-            create: { availableBalance: '500000.31', pendingBalance: '900000' },
+            create: {
+              availableBalance: '500000.31',
+              pendingBalance: '900000',
+              storeWallets: {
+                create: {
+                  storeId,
+                  availableBalance: '500000.31',
+                  pendingBalance: '900000',
+                },
+              },
+            },
           },
         },
       });
@@ -137,8 +149,14 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
 
   it('serializes simultaneous withdrawals so only one can spend the funds', async () => {
     const outcomes = await Promise.allSettled([
-      service.createWithdrawal(collaboratorId, { amount: '400000.10' }),
-      service.createWithdrawal(collaboratorId, { amount: '400000.10' }),
+      service.createWithdrawal(collaboratorId, {
+        storeId,
+        amount: '400000.10',
+      }),
+      service.createWithdrawal(collaboratorId, {
+        storeId,
+        amount: '400000.10',
+      }),
     ]);
     expect(
       outcomes.filter((result) => result.status === 'fulfilled'),
@@ -191,7 +209,10 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
       new PayoutTaxService(),
     );
     await expect(
-      failingService.createWithdrawal(collaboratorId, { amount: '200000' }),
+      failingService.createWithdrawal(collaboratorId, {
+        storeId,
+        amount: '200000',
+      }),
     ).rejects.toBeInstanceOf(InternalServerErrorException);
     const wallet = await prisma.wallet.findUniqueOrThrow({
       where: { collaboratorId },
@@ -206,9 +227,12 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
   });
 
   it('allows an exact-balance withdrawal and blocks further spending of pending money', async () => {
-    await service.createWithdrawal(collaboratorId, { amount: '500000.31' });
+    await service.createWithdrawal(collaboratorId, {
+      storeId,
+      amount: '500000.31',
+    });
     await expect(
-      service.createWithdrawal(collaboratorId, { amount: '200000' }),
+      service.createWithdrawal(collaboratorId, { storeId, amount: '200000' }),
     ).rejects.toThrow('Số dư khả dụng không đủ');
     const wallet = await prisma.wallet.findUniqueOrThrow({
       where: { collaboratorId },
@@ -222,9 +246,13 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
 
   it('returns only the authenticated owner history and masks bank details', async () => {
     const ownRequest = await service.createWithdrawal(collaboratorId, {
+      storeId,
       amount: '200000.10',
     });
-    await service.createWithdrawal(otherCollaboratorId, { amount: '300000' });
+    await service.createWithdrawal(otherCollaboratorId, {
+      storeId,
+      amount: '300000',
+    });
     const history = await service.getMyWithdrawals(collaboratorId, {
       page: 1,
       limit: 10,
@@ -277,7 +305,7 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
           Authorization: `Bearer ${otherToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ amount: '200000' }),
+        body: JSON.stringify({ storeId, amount: '200000' }),
       });
       expect(response.status).toBe(403);
     } finally {
@@ -296,7 +324,7 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
     const created = await fetch(`${apiUrl}/api/wallets/withdrawals`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ amount: '200000.10' }),
+      body: JSON.stringify({ storeId, amount: '200000.10' }),
     });
     expect(created.status).toBe(201);
     const body = (await created.json()) as {
@@ -333,9 +361,13 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
           collaboratorId,
           new Prisma.Decimal('2500000'),
           { id: randomUUID(), type: 'MONTHLY_BONUS' },
+          storeId,
         ),
       );
-      const result = await service.createWithdrawal(collaboratorId, { amount });
+      const result = await service.createWithdrawal(collaboratorId, {
+        storeId,
+        amount,
+      });
       expect(result.request.taxAmount).toBe(tax);
       expect(result.request.netAmount).toBe(net);
       expect(result.availableBalance).toBe(
@@ -370,7 +402,10 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
       new PayoutTaxService(),
     );
     await expect(
-      failingService.createWithdrawal(collaboratorId, { amount: '200000' }),
+      failingService.createWithdrawal(collaboratorId, {
+        storeId,
+        amount: '200000',
+      }),
     ).rejects.toBeInstanceOf(InternalServerErrorException);
     const wallet = await prisma.wallet.findUniqueOrThrow({
       where: { collaboratorId },
@@ -482,6 +517,7 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
 
   it('enforces append-only UPDATE/DELETE/TRUNCATE and protects parent deletion in PostgreSQL', async () => {
     const result = await service.createWithdrawal(collaboratorId, {
+      storeId,
       amount: '200000',
     });
     const entry = await prisma.financialLedger.findFirstOrThrow({
@@ -668,9 +704,13 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
 
   it('enforces signed balance invariants and owner-only ledger HTTP history', async () => {
     const result = await service.createWithdrawal(collaboratorId, {
+      storeId,
       amount: '200000',
     });
-    await service.createWithdrawal(otherCollaboratorId, { amount: '200000' });
+    await service.createWithdrawal(otherCollaboratorId, {
+      storeId,
+      amount: '200000',
+    });
     const entry = await prisma.financialLedger.findFirstOrThrow({
       where: { referenceId: result.request.id },
     });

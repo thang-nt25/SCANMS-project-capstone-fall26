@@ -183,6 +183,7 @@ export class CommissionsService {
             orderId: order.id,
             collaboratorId: collaborator.id,
             commissionAmount: calculation.totalCommissionAmount,
+            storeWalletTracked: true,
             status: hasPayableCommission
               ? CommissionStatus.PENDING
               : CommissionStatus.APPROVED,
@@ -197,6 +198,7 @@ export class CommissionsService {
             collaborator.id,
             calculation.totalCommissionAmount,
             { id: commission.id, type: 'COMMISSION' },
+            order.storeId,
           );
         }
 
@@ -224,7 +226,7 @@ export class CommissionsService {
       await this.lockCommission(tx, commissionId);
       const commission = await tx.commission.findUnique({
         where: { id: commissionId },
-        include: { order: { select: { status: true } } },
+        include: { order: { select: { status: true, storeId: true } } },
       });
       if (
         !commission ||
@@ -241,6 +243,7 @@ export class CommissionsService {
           commission.collaboratorId,
           commission.commissionAmount,
           { id: commission.id, type: 'COMMISSION' },
+          commission.storeWalletTracked ? commission.order.storeId : undefined,
         );
       }
       await tx.commission.update({
@@ -269,7 +272,7 @@ export class CommissionsService {
       await this.lockCommission(tx, commissionId);
       const commission = await tx.commission.findUnique({
         where: { id: commissionId },
-        include: { order: { select: { status: true } } },
+        include: { order: { select: { status: true, storeId: true } } },
       });
       if (
         !commission ||
@@ -286,6 +289,9 @@ export class CommissionsService {
             commission.collaboratorId,
             commission.commissionAmount,
             { id: commission.id, type: 'COMMISSION' },
+            commission.storeWalletTracked
+              ? commission.order.storeId
+              : undefined,
           );
         } else {
           await this.walletsService.reverseAvailableBalance(
@@ -293,6 +299,9 @@ export class CommissionsService {
             commission.collaboratorId,
             commission.commissionAmount,
             { id: commission.id, type: 'COMMISSION' },
+            commission.storeWalletTracked
+              ? commission.order.storeId
+              : undefined,
           );
         }
       }

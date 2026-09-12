@@ -29,6 +29,7 @@ export class WalletsService {
     collaboratorId: string,
     amount: Prisma.Decimal,
     reference: LedgerReference,
+    storeId?: string,
   ) {
     if (
       !amount.isFinite() ||
@@ -49,14 +50,20 @@ export class WalletsService {
     }
 
     return (
-      await this.applyBalanceChanges(tx, wallet, reference, [
-        this.buildChange(
-          WalletBalanceBucket.AVAILABLE,
-          TransactionType.PAYOUT_WITHDRAW,
-          wallet.availableBalance,
-          amount.negated(),
-        ),
-      ])
+      await this.applyBalanceChanges(
+        tx,
+        wallet,
+        reference,
+        [
+          this.buildChange(
+            WalletBalanceBucket.AVAILABLE,
+            TransactionType.PAYOUT_WITHDRAW,
+            wallet.availableBalance,
+            amount.negated(),
+          ),
+        ],
+        storeId,
+      )
     ).wallet;
   }
 
@@ -65,19 +72,26 @@ export class WalletsService {
     collaboratorId: string,
     amount: Prisma.Decimal,
     reference: LedgerReference,
+    storeId?: string,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
 
     return (
-      await this.applyBalanceChanges(tx, wallet, reference, [
-        this.buildChange(
-          WalletBalanceBucket.PENDING,
-          TransactionType.COMMISSION_PENDING,
-          wallet.pendingBalance,
-          amount,
-        ),
-      ])
+      await this.applyBalanceChanges(
+        tx,
+        wallet,
+        reference,
+        [
+          this.buildChange(
+            WalletBalanceBucket.PENDING,
+            TransactionType.COMMISSION_PENDING,
+            wallet.pendingBalance,
+            amount,
+          ),
+        ],
+        storeId,
+      )
     ).wallet;
   }
 
@@ -86,6 +100,7 @@ export class WalletsService {
     collaboratorId: string,
     amount: Prisma.Decimal,
     reference: LedgerReference,
+    storeId?: string,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
@@ -96,20 +111,26 @@ export class WalletsService {
     }
 
     return (
-      await this.applyBalanceChanges(tx, wallet, reference, [
-        this.buildChange(
-          WalletBalanceBucket.PENDING,
-          TransactionType.COMMISSION_APPROVED,
-          wallet.pendingBalance,
-          amount.negated(),
-        ),
-        this.buildChange(
-          WalletBalanceBucket.AVAILABLE,
-          TransactionType.COMMISSION_APPROVED,
-          wallet.availableBalance,
-          amount,
-        ),
-      ])
+      await this.applyBalanceChanges(
+        tx,
+        wallet,
+        reference,
+        [
+          this.buildChange(
+            WalletBalanceBucket.PENDING,
+            TransactionType.COMMISSION_APPROVED,
+            wallet.pendingBalance,
+            amount.negated(),
+          ),
+          this.buildChange(
+            WalletBalanceBucket.AVAILABLE,
+            TransactionType.COMMISSION_APPROVED,
+            wallet.availableBalance,
+            amount,
+          ),
+        ],
+        storeId,
+      )
     ).wallet;
   }
 
@@ -118,6 +139,7 @@ export class WalletsService {
     collaboratorId: string,
     amount: Prisma.Decimal,
     reference: LedgerReference,
+    storeId?: string,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
@@ -128,14 +150,20 @@ export class WalletsService {
     }
 
     return (
-      await this.applyBalanceChanges(tx, wallet, reference, [
-        this.buildChange(
-          WalletBalanceBucket.PENDING,
-          TransactionType.REVERSAL,
-          wallet.pendingBalance,
-          amount.negated(),
-        ),
-      ])
+      await this.applyBalanceChanges(
+        tx,
+        wallet,
+        reference,
+        [
+          this.buildChange(
+            WalletBalanceBucket.PENDING,
+            TransactionType.REVERSAL,
+            wallet.pendingBalance,
+            amount.negated(),
+          ),
+        ],
+        storeId,
+      )
     ).wallet;
   }
 
@@ -144,20 +172,27 @@ export class WalletsService {
     collaboratorId: string,
     amount: Prisma.Decimal,
     reference: LedgerReference,
+    storeId?: string,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
 
     // Keep FR-21's recoverable clawback debt behavior; withdrawals remain blocked.
     return (
-      await this.applyBalanceChanges(tx, wallet, reference, [
-        this.buildChange(
-          WalletBalanceBucket.AVAILABLE,
-          TransactionType.REVERSAL,
-          wallet.availableBalance,
-          amount.negated(),
-        ),
-      ])
+      await this.applyBalanceChanges(
+        tx,
+        wallet,
+        reference,
+        [
+          this.buildChange(
+            WalletBalanceBucket.AVAILABLE,
+            TransactionType.REVERSAL,
+            wallet.availableBalance,
+            amount.negated(),
+          ),
+        ],
+        storeId,
+      )
     ).wallet;
   }
 
@@ -166,17 +201,24 @@ export class WalletsService {
     collaboratorId: string,
     amount: Prisma.Decimal,
     reference: LedgerReference,
+    storeId?: string,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
-    const result = await this.applyBalanceChanges(tx, wallet, reference, [
-      this.buildChange(
-        WalletBalanceBucket.AVAILABLE,
-        TransactionType.COMMISSION_APPROVED,
-        wallet.availableBalance,
-        amount,
-      ),
-    ]);
+    const result = await this.applyBalanceChanges(
+      tx,
+      wallet,
+      reference,
+      [
+        this.buildChange(
+          WalletBalanceBucket.AVAILABLE,
+          TransactionType.COMMISSION_APPROVED,
+          wallet.availableBalance,
+          amount,
+        ),
+      ],
+      storeId,
+    );
     return { wallet: result.wallet, ledger: result.entries[0] };
   }
 
@@ -200,7 +242,42 @@ export class WalletsService {
     wallet: Wallet,
     reference: LedgerReference,
     changes: LedgerBalanceChange[],
+    storeId?: string,
   ) {
+    // Consistent lock order: global wallet first, then store wallet.
+    const storeWallet = storeId
+      ? await this.lockStoreWallet(tx, wallet.id, storeId)
+      : null;
+    const storeData: Prisma.StoreWalletUpdateInput = {
+      version: { increment: 1 },
+    };
+    const storeBalances = changes.map((change) => {
+      if (!storeWallet) return undefined;
+      const before =
+        change.bucket === WalletBalanceBucket.PENDING
+          ? storeWallet.pendingBalance
+          : storeWallet.availableBalance;
+      const after = before.plus(change.amount);
+      if (after.lessThan(0) && change.bucket === WalletBalanceBucket.PENDING) {
+        throw new WalletBalanceInvariantError('Ví shop không đủ số dư chờ');
+      }
+      if (
+        after.lessThan(0) &&
+        change.transactionType === TransactionType.PAYOUT_WITHDRAW
+      ) {
+        throw new BadRequestException(
+          'Số dư khả dụng tại shop không đủ để rút tiền',
+        );
+      }
+      if (change.bucket === WalletBalanceBucket.PENDING)
+        storeData.pendingBalance = after;
+      else storeData.availableBalance = after;
+      return {
+        storeId: storeWallet.storeId,
+        storeBalanceBefore: before,
+        storeBalanceAfter: after,
+      };
+    });
     const data: Prisma.WalletUpdateInput = { version: { increment: 1 } };
     for (const change of changes) {
       if (change.bucket === WalletBalanceBucket.PENDING)
@@ -211,10 +288,22 @@ export class WalletsService {
       where: { id: wallet.id },
       data,
     });
+    if (storeWallet) {
+      await tx.storeWallet.update({
+        where: { id: storeWallet.id },
+        data: storeData,
+      });
+    }
     const entries: FinancialLedger[] = [];
-    for (const change of changes) {
+    for (const [index, change] of changes.entries()) {
       entries.push(
-        await this.ledgerService.appendEntry(tx, wallet.id, reference, change),
+        await this.ledgerService.appendEntry(
+          tx,
+          wallet.id,
+          reference,
+          change,
+          storeBalances[index],
+        ),
       );
     }
     return { wallet: updatedWallet, entries };
@@ -251,5 +340,50 @@ export class WalletsService {
         'Số tiền thay đổi số dư ví phải lớn hơn 0',
       );
     }
+  }
+
+  private async lockStoreWallet(
+    tx: Prisma.TransactionClient,
+    walletId: string,
+    storeId: string,
+  ) {
+    await tx.storeWallet.upsert({
+      where: { walletId_storeId: { walletId, storeId } },
+      update: {},
+      create: { walletId, storeId },
+    });
+    await tx.$queryRaw(
+      Prisma.sql`SELECT id FROM store_wallets WHERE wallet_id = ${walletId}::uuid AND store_id = ${storeId}::uuid FOR UPDATE`,
+    );
+    return tx.storeWallet.findUniqueOrThrow({
+      where: { walletId_storeId: { walletId, storeId } },
+    });
+  }
+
+  async refundRejectedWithdrawal(
+    tx: Prisma.TransactionClient,
+    collaboratorId: string,
+    amount: Prisma.Decimal,
+    reference: LedgerReference,
+    storeId: string,
+  ) {
+    this.assertPositiveAmount(amount);
+    const wallet = await this.lockWallet(tx, collaboratorId);
+    return (
+      await this.applyBalanceChanges(
+        tx,
+        wallet,
+        reference,
+        [
+          this.buildChange(
+            WalletBalanceBucket.AVAILABLE,
+            TransactionType.PAYOUT_REJECT_REFUND,
+            wallet.availableBalance,
+            amount,
+          ),
+        ],
+        storeId,
+      )
+    ).wallet;
   }
 }

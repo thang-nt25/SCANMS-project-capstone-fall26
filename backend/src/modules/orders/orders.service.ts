@@ -1374,6 +1374,7 @@ export class OrdersService {
                 comm.collaboratorId,
                 comm.commissionAmount,
                 { id: comm.id, type: 'COMMISSION' },
+                comm.storeWalletTracked ? order.storeId : undefined,
               );
             }
           }
