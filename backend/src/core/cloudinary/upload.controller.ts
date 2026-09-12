@@ -14,7 +14,10 @@ import {
   ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
-import { CloudinaryService, CloudinaryUploadResult } from './cloudinary.service';
+import {
+  CloudinaryService,
+  CloudinaryUploadResult,
+} from './cloudinary.service';
 
 @ApiTags('upload')
 @Controller('upload')
@@ -22,7 +25,9 @@ export class UploadController {
   constructor(private readonly cloudinaryService: CloudinaryService) {}
 
   @Post('image')
-  @ApiOperation({ summary: 'Tải ảnh lên Cloudinary (Sản phẩm, Avatar, Bill chuyển khoản)' })
+  @ApiOperation({
+    summary: 'Tải ảnh lên Cloudinary (Sản phẩm, Avatar, Bill chuyển khoản)',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiQuery({
     name: 'folder',
@@ -42,17 +47,25 @@ export class UploadController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Tải ảnh thành công, trả về link secure_url' })
+  @ApiResponse({
+    status: 201,
+    description: 'Tải ảnh thành công, trả về link secure_url',
+  })
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
     @UploadedFile() file: Express.Multer.File,
     @Query('folder') folder?: string,
   ): Promise<CloudinaryUploadResult> {
-    return this.cloudinaryService.uploadImage(file, folder || 'influxnet/images');
+    return this.cloudinaryService.uploadImage(
+      file,
+      folder || 'influxnet/images',
+    );
   }
 
   @Post('video')
-  @ApiOperation({ summary: 'Tải video review lên Cloudinary (Video KOL review, unbox)' })
+  @ApiOperation({
+    summary: 'Tải video review lên Cloudinary (Video KOL review, unbox)',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiQuery({
     name: 'folder',
@@ -72,12 +85,18 @@ export class UploadController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Tải video thành công, trả về link secure_url' })
+  @ApiResponse({
+    status: 201,
+    description: 'Tải video thành công, trả về link secure_url',
+  })
   @UseInterceptors(FileInterceptor('file'))
   async uploadVideo(
     @UploadedFile() file: Express.Multer.File,
     @Query('folder') folder?: string,
   ): Promise<CloudinaryUploadResult> {
-    return this.cloudinaryService.uploadVideo(file, folder || 'influxnet/videos');
+    return this.cloudinaryService.uploadVideo(
+      file,
+      folder || 'influxnet/videos',
+    );
   }
 }

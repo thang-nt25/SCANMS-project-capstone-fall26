@@ -18,7 +18,7 @@ const statusText: Record<string, string> = {
 };
 
 export default function StoreCollaboratorsPage() {
-  const storeId = localStorage.getItem('current_store_id') || '8ca136c3-9202-4254-bd4c-3704a840fa7b';
+  const [storeId, setStoreId] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
   const [storeName, setStoreName] = useState('Cửa hàng');
   const [email, setEmail] = useState('demo@scanms.vn');
@@ -30,19 +30,29 @@ export default function StoreCollaboratorsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res: any = await api.get('/store-collaborators/shop', { params: { storeId } });
+      // Resolve the shop from the authenticated account. A store id cached by a
+      // previous role/account can point at another owner's shop and cause a 404.
+      const res: any = await api.get('/store-collaborators/shop');
       const body = res?.data || res;
       setMembers(body.members || []);
       setStoreName(body.store?.name || 'Cửa hàng');
+      if (body.store?.id) {
+        setStoreId(body.store.id);
+        localStorage.setItem('current_store_id', body.store.id);
+      }
     } catch (e: any) {
       setMessage({ text: e.message || 'Không thể tải đội ngũ CTV', error: true });
     } finally { setLoading(false); }
-  }, [storeId]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const invite = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!storeId) {
+      setMessage({ text: 'Không xác định được gian hàng của tài khoản hiện tại', error: true });
+      return;
+    }
     setSubmitting(true);
     try {
       const res: any = await api.post('/store-collaborators/invite', { storeId, email });

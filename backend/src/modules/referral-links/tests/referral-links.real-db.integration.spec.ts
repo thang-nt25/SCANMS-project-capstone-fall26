@@ -46,7 +46,9 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
 
     // 1. Tạo Admin
     let admin = await prisma.user.findFirst({
-      where: { OR: [{ id: testAdminId }, { email: 'real_admin_fr10@scanms.vn' }] },
+      where: {
+        OR: [{ id: testAdminId }, { email: 'real_admin_fr10@scanms.vn' }],
+      },
     });
     if (!admin) {
       admin = await prisma.user.create({
@@ -63,7 +65,9 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
 
     // 2. Tạo Owner thật trong PostgreSQL
     let owner = await prisma.user.findFirst({
-      where: { OR: [{ id: testOwnerId }, { email: 'real_owner_fr10@scanms.vn' }] },
+      where: {
+        OR: [{ id: testOwnerId }, { email: 'real_owner_fr10@scanms.vn' }],
+      },
     });
     if (!owner) {
       owner = await prisma.user.create({
@@ -142,7 +146,9 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     });
 
     // 6. Tạo Product thật (có bật affiliate)
-    let product = await prisma.product.findUnique({ where: { id: testProductId } });
+    let product = await prisma.product.findUnique({
+      where: { id: testProductId },
+    });
     if (!product) {
       product = await prisma.product.create({
         data: {
@@ -160,7 +166,9 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     }
 
     // 7. Tạo Campaign thật
-    let campaign = await prisma.campaign.findUnique({ where: { id: testCampaignId } });
+    let campaign = await prisma.campaign.findUnique({
+      where: { id: testCampaignId },
+    });
     if (!campaign) {
       campaign = await prisma.campaign.create({
         data: {
@@ -306,19 +314,25 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
       }),
     ).rejects.toThrow('Chiến dịch tiếp thị chưa bắt đầu');
 
-    await prisma.campaignParticipant.deleteMany({ where: { campaignId: futureCampaign.id } });
+    await prisma.campaignParticipant.deleteMany({
+      where: { campaignId: futureCampaign.id },
+    });
     await prisma.campaign.delete({ where: { id: futureCampaign.id } });
   });
 
   it('3. Lọc danh sách sản phẩm getEligibleProducts chỉ trả về sản phẩm đã được Shop duyệt', async () => {
-    const products = await service.getEligibleProducts(testKolId, { storeId: testStoreId });
+    const products = await service.getEligibleProducts(testKolId, {
+      storeId: testStoreId,
+    });
     expect(products.length).toBeGreaterThan(0);
     expect(products[0].id).toBe(testProductId);
     expect(products[0].estimatedCommissionRate).toBe(15);
 
     // Thử với KOL khác chưa được duyệt -> trả về rỗng
     const strangerKolId = '88888888-8888-8888-8888-888888888888';
-    const strangerProducts = await service.getEligibleProducts(strangerKolId, { storeId: testStoreId });
+    const strangerProducts = await service.getEligibleProducts(strangerKolId, {
+      storeId: testStoreId,
+    });
     expect(strangerProducts).toEqual([]);
   });
 
@@ -333,7 +347,9 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     const paused = await service.toggleLinkStatus(linkId, testKolId);
     expect(paused.status).toBe(ReferralLinkStatus.PAUSED);
 
-    let dbCheck = await prisma.referralLink.findUnique({ where: { id: linkId } });
+    let dbCheck = await prisma.referralLink.findUnique({
+      where: { id: linkId },
+    });
     expect(dbCheck?.status).toBe(ReferralLinkStatus.PAUSED);
 
     // Kích hoạt lại
@@ -359,7 +375,9 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     );
 
     expect(blocked.status).toBe(ReferralLinkStatus.BLOCKED);
-    expect(blocked.disabledReason).toBe('Vi phạm quy định quảng cáo sai sự thật về công dụng');
+    expect(blocked.disabledReason).toBe(
+      'Vi phạm quy định quảng cáo sai sự thật về công dụng',
+    );
     expect(blocked.disabledBy).toBe(testOwnerId);
     expect(blocked.disabledAt).not.toBeNull();
 
@@ -367,7 +385,11 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     await expect(service.toggleLinkStatus(linkId, testKolId)).rejects.toThrow();
 
     // Chủ Shop mở khóa lại
-    const unblocked = await service.unblockLinkByShop(linkId, testStoreId, testOwnerId);
+    const unblocked = await service.unblockLinkByShop(
+      linkId,
+      testStoreId,
+      testOwnerId,
+    );
     expect(unblocked.status).toBe(ReferralLinkStatus.ACTIVE);
     expect(unblocked.disabledReason).toBeNull();
   });
@@ -380,12 +402,18 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     const linkId = links[0].id;
 
     // Admin tra cứu danh sách
-    const adminList = await service.getAdminReferralLinks({ search: links[0].shortCode });
+    const adminList = await service.getAdminReferralLinks({
+      search: links[0].shortCode,
+    });
     expect(adminList.data.length).toBeGreaterThan(0);
     expect(adminList.data[0].id).toBe(linkId);
 
     // Admin khóa vi phạm
-    const blocked = await service.blockLinkByAdmin(linkId, testAdminId, 'Admin khóa do vi phạm chính sách sàn');
+    const blocked = await service.blockLinkByAdmin(
+      linkId,
+      testAdminId,
+      'Admin khóa do vi phạm chính sách sàn',
+    );
     expect(blocked.status).toBe(ReferralLinkStatus.BLOCKED);
     expect(blocked.disabledReason).toBe('Admin khóa do vi phạm chính sách sàn');
 
@@ -532,13 +560,17 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     expect(updatedOrder?.attributedCollaboratorId).toBe(testKolId);
 
     // Dòng sản phẩm khớp: ĐƯỢC GẮN link và SNAPSHOT hoa hồng
-    const matchedItem = updatedOrder?.orderItems.find((i) => i.productId === testProductId);
+    const matchedItem = updatedOrder?.orderItems.find(
+      (i) => i.productId === testProductId,
+    );
     expect(matchedItem?.referralLinkId).toBe(link.id);
     expect(Number(matchedItem?.appliedCommissionRate)).toBe(20);
     expect(Number(matchedItem?.calculatedCommissionAmount)).toBe(70000);
 
     // Dòng sản phẩm khác: KHÔNG bị gắn nhầm link
-    const otherItem = updatedOrder?.orderItems.find((i) => i.productId === otherProductId);
+    const otherItem = updatedOrder?.orderItems.find(
+      (i) => i.productId === otherProductId,
+    );
     expect(otherItem?.referralLinkId).toBeNull();
     expect(Number(otherItem?.appliedCommissionRate)).toBe(0);
 
@@ -573,7 +605,9 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
         referralLinkId: linkB.id,
         collaboratorId: testKolId,
       }),
-    ).rejects.toThrow('Đơn hàng đã được ghi nhận attribution cho liên kết khác. Không thể thay đổi.');
+    ).rejects.toThrow(
+      'Đơn hàng đã được ghi nhận attribution cho liên kết khác. Không thể thay đổi.',
+    );
   });
 
   it('9. Xóa mềm link (deletedAt) trong PostgreSQL và không trả về ở danh sách thông thường', async () => {
@@ -617,7 +651,11 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     expect(verified?.exp).toBeGreaterThan(verified?.iat);
 
     // c. Token quá hạn bị từ chối
-    const expiredToken = signAttributionToken({ collaboratorId: '123' }, secret, -1);
+    const expiredToken = signAttributionToken(
+      { collaboratorId: '123' },
+      secret,
+      -1,
+    );
     const expiredVerified = verifyAttributionToken(expiredToken, secret);
     expect(expiredVerified).toBeNull();
   });
@@ -666,7 +704,9 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
         },
         '127.0.0.1',
       ),
-    ).rejects.toThrow('Sản phẩm đã chọn không nằm trong danh mục áp dụng của chiến dịch này.');
+    ).rejects.toThrow(
+      'Sản phẩm đã chọn không nằm trong danh mục áp dụng của chiến dịch này.',
+    );
   });
 
   afterAll(async () => {

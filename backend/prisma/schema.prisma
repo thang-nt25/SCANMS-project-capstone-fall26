@@ -109,6 +109,42 @@ enum StoreCollaboratorStatus {
   BLOCKED
 }
 
+enum CouponStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  PAUSED
+  REJECTED
+  EXPIRED
+  BLOCKED
+  DELETED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum CouponScope {
+  STORE_WIDE
+  PRODUCTS
+  CATEGORIES
+  CAMPAIGN
+}
+
+enum CouponFundingSource {
+  SHOP_FUNDED
+  CO_FUNDED
+  PLATFORM_FUNDED
+}
+
+enum CouponRedemptionStatus {
+  RESERVED
+  USED
+  CANCELLED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
 // ==========================================
 // 2. USER & COLLABORATOR SUBSYSTEM
 // ==========================================
@@ -142,6 +178,9 @@ model User {
   storeCollaborations       StoreCollaborator[]         @relation("CollaboratorStoreRelations")
   monthlyBonusResults       MonthlyBonusResult[]        @relation("CollaboratorMonthlyBonusResults")
   auditLogs                 AuditLog[]
+  coupons                   Coupon[]                    @relation("CollaboratorCoupons")
+  approvedCoupons           Coupon[]                    @relation("CouponApprover")
+  notifications             Notification[]
 
   @@map("users")
 }
@@ -174,6 +213,7 @@ model Store {
   monthlyBonusResults    MonthlyBonusResult[]
   referralLinks          ReferralLink[]
   storeCollaborators     StoreCollaborator[]
+  coupons                Coupon[]
 
   @@index([ownerId], map: "idx_fk_stores_owner")
   @@map("stores")
@@ -287,6 +327,7 @@ model Product {
   orderItems            OrderItem[]
   productReviews        ProductReview[]
   campaignProducts      CampaignProduct[]
+  couponProducts        CouponProduct[]
 
   @@index([storeId], map: "idx_fk_products_store")
   @@map("products")
@@ -502,6 +543,7 @@ model Campaign {
   participants CampaignParticipant[]
   referralLinks ReferralLink[]
   campaignProducts CampaignProduct[]
+  coupons       Coupon[]
 
   @@index([storeId], map: "idx_fk_campaigns_store")
   @@map("campaigns")
@@ -542,6 +584,122 @@ model CampaignProduct {
 }
 
 // ==========================================
+// 4.5 COUPON & ATTRIBUTION SUBSYSTEM (FR-12)
+// ==========================================
+
+model Coupon {
+  id                           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codeNormalized               String              @unique @map("code_normalized") @db.VarChar(20)
+  displayCode                  String              @map("display_code") @db.VarChar(20)
+  collaboratorId               String              @map("collaborator_id") @db.Uuid
+  storeId                      String              @map("store_id") @db.Uuid
+  campaignId                   String?             @map("campaign_id") @db.Uuid
+  status                       CouponStatus        @default(PENDING_APPROVAL)
+  discountType                 DiscountType        @default(PERCENTAGE) @map("discount_type")
+  discountValue                Decimal             @default(0.00) @map("discount_value") @db.Decimal(15, 2)
+  minimumOrderAmount           Decimal?            @map("minimum_order_amount") @db.Decimal(15, 2)
+  maximumDiscountAmount        Decimal?            @map("maximum_discount_amount") @db.Decimal(15, 2)
+  usageLimitTotal              Int?                @map("usage_limit_total")
+  usageLimitPerCustomer        Int                 @default(1) @map("usage_limit_per_customer")
+  usageCount                   Int                 @default(0) @map("usage_count")
+  budgetTotal                  Decimal?            @map("budget_total") @db.Decimal(15, 2)
+  budgetUsed                   Decimal             @default(0.00) @map("budget_used") @db.Decimal(15, 2)
+  startsAt                     DateTime?           @map("starts_at") @db.Timestamptz(6)
+  expiresAt                    DateTime?           @map("expires_at") @db.Timestamptz(6)
+  scopeType                    CouponScope         @default(STORE_WIDE) @map("scope_type")
+  fundingSource                CouponFundingSource @default(SHOP_FUNDED) @map("funding_source")
+  shopFundingRate              Decimal             @default(100.00) @map("shop_funding_rate") @db.Decimal(5, 2)
+  platformFundingRate          Decimal             @default(0.00) @map("platform_funding_rate") @db.Decimal(5, 2)
+  stackableWithProductDiscount Boolean             @default(false) @map("stackable_with_product_discount")
+  stackableWithShopVoucher     Boolean             @default(false) @map("stackable_with_shop_voucher")
+  stackableWithPlatformVoucher Boolean             @default(false) @map("stackable_with_platform_voucher")
+  approvedBy                   String?             @map("approved_by") @db.Uuid
+  approvedAt                   DateTime?           @map("approved_at") @db.Timestamptz(6)
+  rejectedReason               String?             @map("rejected_reason") @db.VarChar(255)
+  blockedReason                String?             @map("blocked_reason") @db.VarChar(255)
+  deletedBy                    String?             @map("deleted_by") @db.Uuid
+  deleteReason                 String?             @map("delete_reason") @db.VarChar(255)
+  deletedAt                    DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  createdAt                    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  collaborator                 User                @relation("CollaboratorCoupons", fields: [collaboratorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  store                        Store               @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  campaign                     Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  approver                     User?               @relation("CouponApprover", fields: [approvedBy], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  couponProducts               CouponProduct[]
+  couponCategories             CouponCategory[]
+  redemptions                  CouponRedemption[]
+  orders                       Order[]
+
+  @@index([collaboratorId], map: "idx_fk_coupons_collaborator")
+  @@index([storeId], map: "idx_fk_coupons_store")
+  @@index([status, expiresAt], map: "idx_coupons_status_expires")
+  @@map("coupons")
+}
+
+model CouponProduct {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  couponId  String   @map("coupon_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([couponId, productId], map: "idx_unique_coupon_product")
+  @@index([couponId], map: "idx_fk_coupon_prod_coupon")
+  @@index([productId], map: "idx_fk_coupon_prod_product")
+  @@map("coupon_products")
+}
+
+model CouponCategory {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  couponId     String   @map("coupon_id") @db.Uuid
+  categoryName String   @map("category_name") @db.VarChar(100)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  coupon       Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([couponId, categoryName], map: "idx_unique_coupon_category")
+  @@index([couponId], map: "idx_fk_coupon_cat_coupon")
+  @@map("coupon_categories")
+}
+
+model CouponRedemption {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  couponId              String                 @map("coupon_id") @db.Uuid
+  orderId               String                 @unique @map("order_id") @db.Uuid
+  collaboratorId        String                 @map("collaborator_id") @db.Uuid
+  storeId               String                 @map("store_id") @db.Uuid
+  customerId            String?                @map("customer_id") @db.Uuid
+  customerPhone         String?                @map("customer_phone") @db.VarChar(20)
+  status                CouponRedemptionStatus @default(USED)
+  discountAmount        Decimal                @map("discount_amount") @db.Decimal(15, 2)
+  shopFundedAmount      Decimal                @default(0.00) @map("shop_funded_amount") @db.Decimal(15, 2)
+  platformFundedAmount  Decimal                @default(0.00) @map("platform_funded_amount") @db.Decimal(15, 2)
+  eligibleSubtotal      Decimal                @map("eligible_subtotal") @db.Decimal(15, 2)
+  couponCodeSnapshot    String                 @map("coupon_code_snapshot") @db.VarChar(20)
+  discountTypeSnapshot  DiscountType           @map("discount_type_snapshot")
+  discountValueSnapshot Decimal                @map("discount_value_snapshot") @db.Decimal(15, 2)
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  coupon                Coupon                 @relation(fields: [couponId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  order                 Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([couponId], map: "idx_fk_redemptions_coupon")
+  @@index([collaboratorId], map: "idx_fk_redemptions_collab")
+  @@index([storeId], map: "idx_fk_redemptions_store")
+  @@index([customerPhone], map: "idx_redemptions_phone")
+  @@map("coupon_redemptions")
+}
+
+// ==========================================
 // 5. ORDER & COMMISSION SUBSYSTEM
 // ==========================================
 
@@ -549,9 +707,17 @@ model Order {
   id                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   storeId                  String             @map("store_id") @db.Uuid
   externalOrderSn          String             @map("external_order_sn") @db.VarChar(100)
+  idempotencyKey           String?            @unique @map("idempotency_key") @db.VarChar(100)
+  cancellationToken        String?            @map("cancellation_token") @db.VarChar(100)
   attributedCollaboratorId String?            @map("attributed_collaborator_id") @db.Uuid
   attributionMethod        AttributionMethod? @map("attribution_method")
   referralLinkId           String?            @map("referral_link_id") @db.Uuid
+  couponId                 String?            @map("coupon_id") @db.Uuid
+  couponCodeSnapshot       String?            @map("coupon_code_snapshot") @db.VarChar(20)
+  couponDiscountAmount     Decimal?           @default(0.00) @map("coupon_discount_amount") @db.Decimal(15, 2)
+  overrideReason           String?            @map("override_reason") @db.VarChar(255)
+  originalAttributionMethod AttributionMethod? @map("original_attribution_method")
+  originalCollaboratorId   String?            @map("original_collaborator_id") @db.Uuid
   customerName             String?            @map("customer_name") @db.VarChar(150)
   customerPhone            String?            @map("customer_phone") @db.VarChar(20)
   shippingAddress          String?            @map("shipping_address")
@@ -569,6 +735,8 @@ model Order {
   store                  Store           @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   attributedCollaborator User?           @relation("AttributedCollaboratorOrders", fields: [attributedCollaboratorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   referralLink           ReferralLink?   @relation(fields: [referralLinkId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  coupon                 Coupon?         @relation(fields: [couponId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  couponRedemption       CouponRedemption?
   orderItems             OrderItem[]
   commissions            Commission[]
   productReviews         ProductReview[]
@@ -578,6 +746,7 @@ model Order {
   @@index([storeId], map: "idx_fk_orders_store")
   @@index([attributedCollaboratorId], map: "idx_fk_orders_collab")
   @@index([referralLinkId], map: "idx_fk_orders_referral_link")
+  @@index([couponId], map: "idx_fk_orders_coupon")
   @@index([status, completedAt], map: "idx_orders_status_completed")
   @@index([status, createdAt], map: "idx_orders_status_created")
   @@map("orders")
@@ -776,3 +945,20 @@ model AuditLog {
   @@index([userId], map: "idx_fk_audit_logs_user")
   @@map("audit_logs")
 }
+
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String   @db.VarChar(255)
+  message   String   @db.Text
+  type      String   @db.VarChar(50)
+  data      Json?    @db.JsonB
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead], map: "idx_notifications_user_read")
+  @@map("notifications")
+}
+

@@ -21,6 +21,7 @@ import { StoresModule } from './modules/stores/stores.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
@@ -38,7 +39,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET || 'scanms-secret-key',
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any },
+      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
     }),
     PrismaModule,
     CloudinaryModule,
@@ -54,6 +55,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     ProductsModule,
     MediaModule,
     OrdersModule,
+    CouponsModule,
     // Quy's modules
     ChatModule,
     SamplesModule,

@@ -40,7 +40,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!user || !user.isActive || user.isDeleted) {
-      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
+      throw new UnauthorizedException(
+        'Tài khoản không tồn tại hoặc đã bị khóa',
+      );
     }
 
     return user;

@@ -36,7 +36,8 @@ export class RegisterDto {
 
   @ApiProperty({
     example: '123456',
-    description: 'Mã OTP 6 chữ số nhận từ Email (hoặc 123456 ở môi trường test)',
+    description:
+      'Mã OTP 6 chữ số nhận từ Email (hoặc 123456 ở môi trường test)',
   })
   @IsString({ message: 'Mã xác thực OTP là bắt buộc khi đăng ký' })
   @Length(6, 6, { message: 'Mã OTP phải bao gồm đúng 6 chữ số' })

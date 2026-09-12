@@ -62,13 +62,14 @@ export class ClickQueueService implements OnModuleDestroy {
         try {
           // Kiểm tra chống spam: click trùng từ cùng IP + link trong 30 giây
           const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
-          const duplicateRecentClick = await this.prisma.clickTrafficLog.findFirst({
-            where: {
-              referralLinkId: job.linkId,
-              ipAddress: job.ip,
-              createdAt: { gte: thirtySecondsAgo },
-            },
-          });
+          const duplicateRecentClick =
+            await this.prisma.clickTrafficLog.findFirst({
+              where: {
+                referralLinkId: job.linkId,
+                ipAddress: job.ip,
+                createdAt: { gte: thirtySecondsAgo },
+              },
+            });
 
           const isUnique = !duplicateRecentClick;
 
@@ -86,7 +87,8 @@ export class ClickQueueService implements OnModuleDestroy {
                 referralLinkId: job.linkId,
                 ipAddress: job.ip,
                 userAgent: job.userAgent || null,
-                referrer: job.referer || (job.accessMethod === 'QR' ? 'QR_SCAN' : null),
+                referrer:
+                  job.referer || (job.accessMethod === 'QR' ? 'QR_SCAN' : null),
                 accessMethod: job.accessMethod === 'QR' ? 'QR' : 'LINK',
                 deviceFingerprint: job.fingerprint || null,
                 deviceType: job.deviceType || null,
@@ -99,7 +101,9 @@ export class ClickQueueService implements OnModuleDestroy {
             }),
           ]);
         } catch (jobErr) {
-          this.logger.warn(`Bỏ qua click job lỗi cho linkId ${job.linkId}: ${jobErr.message}`);
+          this.logger.warn(
+            `Bỏ qua click job lỗi cho linkId ${job.linkId}: ${jobErr.message}`,
+          );
         }
       }
     } catch (error: any) {

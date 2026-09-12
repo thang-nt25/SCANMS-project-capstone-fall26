@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { CampaignsService } from './campaigns.service';
 import { CreateCampaignDto, InviteCollaboratorDto } from './dto/campaign.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -39,13 +47,19 @@ export class CampaignsController {
 
   // ─── KOL: Chấp nhận lời mời ──────────────────────────────────────────
   @Patch('invitations/:participantId/accept')
-  acceptInvitation(@CurrentUser() user: any, @Param('participantId') participantId: string) {
+  acceptInvitation(
+    @CurrentUser() user: any,
+    @Param('participantId') participantId: string,
+  ) {
     return this.campaignsService.acceptInvitation(user.id, participantId);
   }
 
   // ─── KOL: Từ chối lời mời ────────────────────────────────────────────
   @Patch('invitations/:participantId/reject')
-  rejectInvitation(@CurrentUser() user: any, @Param('participantId') participantId: string) {
+  rejectInvitation(
+    @CurrentUser() user: any,
+    @Param('participantId') participantId: string,
+  ) {
     return this.campaignsService.rejectInvitation(user.id, participantId);
   }
 

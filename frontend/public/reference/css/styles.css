@@ -162,19 +162,72 @@ img { display: block; max-width: 100%; }
 .avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--brand-soft); color: var(--brand-strong); font-weight: 800; }
 .page { max-width: 1500px; margin: 0 auto; padding: 34px clamp(18px, 3vw, 42px) 70px; }
 .page.page-wide,
-.page:has(#kol-bonus-iframe),
 .page:has(#products-management-iframe),
 .page:has(#store-collaborators-iframe),
-.page:has(#referral-links-iframe) {
+.page:has(#referral-links-iframe),
+.page:has(#kol-coupons-iframe),
+.page:has(#shop-coupons-iframe),
+.page:has(#admin-coupons-iframe),
+.page:has(#kol-bonus-iframe),
+.page:has(#commission-rules-iframe),
+.page.page-full-iframe {
   max-width: 100% !important;
   padding: 0 !important;
+  margin: 0 !important;
+  height: calc(100vh - 68px) !important;
+  height: calc(100dvh - 68px) !important;
+  overflow: hidden !important;
 }
 
-/* Khi nhúng iframe toàn trang ở màn hình Sản phẩm & Giá, ẩn thanh cuộn của khung ngoài để không đè lỗi lên topbar */
+#kol-coupons-iframe,
+#shop-coupons-iframe,
+#admin-coupons-iframe,
+#kol-bonus-iframe,
+#commission-rules-iframe {
+  width: 100% !important;
+  height: calc(100vh - 68px) !important;
+  height: calc(100dvh - 68px) !important;
+  min-height: calc(100vh - 68px) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  display: block !important;
+}
+
+/* Khi nhúng iframe toàn trang (Coupon, Sản phẩm, Mốc thưởng), ẩn thanh cuộn của khung ngoài */
+html:has(#products-management-iframe),
+html:has(#kol-coupons-iframe),
+html:has(#shop-coupons-iframe),
+html:has(#admin-coupons-iframe),
+html:has(#kol-bonus-iframe),
+html:has(#commission-rules-iframe),
+html:has(.page-full-iframe),
 body:has(#products-management-iframe),
+body:has(#kol-coupons-iframe),
+body:has(#shop-coupons-iframe),
+body:has(#admin-coupons-iframe),
+body:has(#kol-bonus-iframe),
+body:has(#commission-rules-iframe),
+body:has(.page-full-iframe),
 .prototype:has(#products-management-iframe),
-.prototype > .main:has(#products-management-iframe) {
+.prototype:has(#kol-coupons-iframe),
+.prototype:has(#shop-coupons-iframe),
+.prototype:has(#admin-coupons-iframe),
+.prototype:has(#kol-bonus-iframe),
+.prototype:has(#commission-rules-iframe),
+.prototype:has(.page-full-iframe),
+.prototype > .main:has(#products-management-iframe),
+.prototype > .main:has(#kol-coupons-iframe),
+.prototype > .main:has(#shop-coupons-iframe),
+.prototype > .main:has(#admin-coupons-iframe),
+.prototype > .main:has(#kol-bonus-iframe),
+.prototype > .main:has(#commission-rules-iframe),
+.prototype > .main:has(.page-full-iframe) {
   overflow: hidden !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
 }
 
 /* FR-10 & SCANMS MODAL: Khi modal mở, iframe phủ toàn bộ màn hình, ẩn topbar và sidebar để chỉ hiện khung giữa */

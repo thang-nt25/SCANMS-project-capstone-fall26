@@ -40,7 +40,10 @@ export function escapeHtml(text: string | number | null | undefined): string {
 /**
  * Chuẩn hóa và làm sạch chuỗi UTM / Label chống injection
  */
-export function sanitizeUtmString(text: string, maxLength: number = 100): string {
+export function sanitizeUtmString(
+  text: string,
+  maxLength: number = 100,
+): string {
   if (!text || typeof text !== 'string') return '';
   return text
     .trim()
@@ -64,7 +67,9 @@ export function signAttributionToken(
     iat: now,
     exp: now + expiresInDays * 24 * 60 * 60,
   };
-  const dataStr = Buffer.from(JSON.stringify(fullPayload)).toString('base64url');
+  const dataStr = Buffer.from(JSON.stringify(fullPayload)).toString(
+    'base64url',
+  );
   const hmac = crypto.createHmac('sha256', secret);
   hmac.update(dataStr);
   const signature = hmac.digest('base64url');
@@ -75,7 +80,10 @@ export function signAttributionToken(
  * Xác thực và giải mã token attribution từ cookie
  * Kiểm tra chữ ký HMAC-SHA256 và thời hạn hiệu lực (exp) trên server
  */
-export function verifyAttributionToken(token: string, secret: string): Record<string, any> | null {
+export function verifyAttributionToken(
+  token: string,
+  secret: string,
+): Record<string, any> | null {
   if (!token || typeof token !== 'string') return null;
   const parts = token.split('.');
   if (parts.length !== 2) return null;
@@ -87,7 +95,10 @@ export function verifyAttributionToken(token: string, secret: string): Record<st
 
   const sigBuf = Buffer.from(signature);
   const expBuf = Buffer.from(expectedSig);
-  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+  if (
+    sigBuf.length !== expBuf.length ||
+    !crypto.timingSafeEqual(sigBuf, expBuf)
+  ) {
     return null;
   }
 

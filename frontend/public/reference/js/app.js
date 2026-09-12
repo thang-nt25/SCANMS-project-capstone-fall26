@@ -65,6 +65,7 @@ const screens = [
   // ==========================================
   { id: "kol-dashboard", label: "Tổng quan KOL", icon: "ph-chart-line-up", role: "kol" },
   { id: "links", label: "Link và QR", icon: "ph-link", role: "kol" },
+  { id: "kol-coupons", label: "Mã giảm giá (Coupon)", icon: "ph-tag", role: "kol" },
   { id: "channels", label: "Kênh xã hội", icon: "ph-share-network", role: "kol" },
   { id: "media", label: "Kho nội dung", icon: "ph-images", role: "kol" },
   { id: "samples", label: "Hàng mẫu", icon: "ph-package", role: "kol" },
@@ -79,6 +80,7 @@ const screens = [
   { id: "shop-dashboard", label: "Tổng quan Shop", icon: "ph-storefront", role: "shop" },
   { id: "catalog", label: "Sản phẩm & Giá", icon: "ph-cube", role: "shop" },
   { id: "shop-campaigns", label: "Chiến dịch & Hoa hồng", icon: "ph-tag", role: "shop" },
+  { id: "shop-coupons", label: "Quản lý Coupon (FR-12)", icon: "ph-ticket", role: "shop" },
   { id: "commission-rules", label: "Mốc thưởng Doanh số", icon: "ph-trophy", role: "shop" },
   { id: "shop-collaborators", label: "Đội ngũ CTV", icon: "ph-users-three", role: "shop" },
   { id: "orders", label: "Đối soát đơn", icon: "ph-receipt", role: "shop" },
@@ -109,6 +111,7 @@ const screens = [
   { id: "admin-internal", label: "Tài khoản Nội bộ", icon: "ph-user-gear", role: "admin" },
   { id: "admin-rbac", label: "Ma trận Phân quyền", icon: "ph-shield-checkered", role: "admin" },
   { id: "admin-users", label: "Quản lý User & KOL", icon: "ph-users", role: "admin" },
+  { id: "admin-coupons", label: "Quản trị Coupon (FR-12)", icon: "ph-tag", role: "admin" },
   { id: "admin-audit", label: "Nhật ký An ninh (Audit)", icon: "ph-lock-key", role: "admin" },
   { id: "admin-config", label: "Cấu hình Sàn", icon: "ph-sliders", role: "admin" },
   { id: "admin-profile", label: "Hồ sơ Quản trị Root", icon: "ph-shield-check", role: "admin" },
@@ -3232,13 +3235,13 @@ function commissionRulesScreen() {
       localStorage.removeItem('token');
       localStorage.setItem('user', JSON.stringify({
         role: 'SHOP_MANAGER',
-        email: 'shop@techstore.vn',
+        email: 'shop@scanms.vn',
         fullName: 'Trần Văn Chủ Shop'
       }));
     } else if (!currentUserStr) {
       localStorage.setItem('user', JSON.stringify({
         role: 'SHOP_MANAGER',
-        email: 'shop@techstore.vn',
+        email: 'shop@scanms.vn',
         fullName: 'Trần Văn Chủ Shop'
       }));
     }
@@ -3249,11 +3252,11 @@ function commissionRulesScreen() {
       fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'shop@techstore.vn', password: 'Password@123' })
+        body: JSON.stringify({ email: 'shop@scanms.vn', password: 'Password@123' })
       }).then(r => r.json()).then(res => {
         const tok = res?.data?.accessToken || res?.accessToken;
         const u = res?.data?.user || res?.user;
-        if (tok && u) {
+        if (tok && u && localStorage.getItem('scanms-current-role') === 'shop') {
           localStorage.setItem('token', tok);
           localStorage.setItem('user', JSON.stringify(u));
           const iframe = document.getElementById('commission-rules-iframe');
@@ -3266,8 +3269,8 @@ function commissionRulesScreen() {
   } catch { }
 
   return `
-    <div style="padding: 0; width: 100%; margin-top: -24px;">
-      <iframe id="commission-rules-iframe" src="/merchant/commission-rules" style="width: 100%; min-height: 520px; height: 850px; border: none; border-radius: 16px; background: transparent; display: block; transition: height 0.2s ease;" scrolling="auto" onload="window.handleIframeAutoHeight && window.handleIframeAutoHeight(this)" title="Cấu hình Mốc Thưởng Doanh Số"></iframe>
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);">
+      <iframe id="commission-rules-iframe" src="/merchant/commission-rules" style="width: 100%; height: 100%; border: none; background: transparent; display: block;" title="Cấu hình Mốc Thưởng Doanh Số"></iframe>
     </div>
   `;
 }
@@ -3308,7 +3311,7 @@ function kolBonusScreen() {
       }).then(r => r.json()).then(res => {
         const tok = res?.data?.accessToken || res?.accessToken;
         const u = res?.data?.user || res?.user;
-        if (tok && u) {
+        if (tok && u && localStorage.getItem('scanms-current-role') === 'kol') {
           localStorage.setItem('token', tok);
           localStorage.setItem('user', JSON.stringify(u));
           const iframe = document.getElementById('kol-bonus-iframe');
@@ -3321,8 +3324,123 @@ function kolBonusScreen() {
   } catch { }
 
   return `
-    <div style="padding: 0; width: 100%; margin-top: -16px;">
-      <iframe id="kol-bonus-iframe" src="/collaborator/bonus-progress" style="width: 100%; min-height: 600px; height: 950px; border: none; border-radius: 18px; background: transparent; display: block; transition: height 0.2s ease;" scrolling="auto" onload="window.handleIframeAutoHeight && window.handleIframeAutoHeight(this)" title="Tiến Độ Mốc Thưởng Doanh Số"></iframe>
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);">
+      <iframe id="kol-bonus-iframe" src="/collaborator/bonus-progress" style="width: 100%; height: 100%; border: none; background: transparent; display: block;" title="Tiến Độ Mốc Thưởng Doanh Số"></iframe>
+    </div>
+  `;
+}
+
+function kolCouponsScreen() {
+  try {
+    const currentToken = localStorage.getItem('token');
+    const currentUserStr = localStorage.getItem('user');
+    let roleMismatch = false;
+    if (currentUserStr) {
+      try {
+        const parsed = JSON.parse(currentUserStr);
+        if (parsed.role !== 'COLLABORATOR') {
+          roleMismatch = true;
+        }
+      } catch (e) {}
+    }
+    if (roleMismatch || !currentToken || currentToken.startsWith('session-')) {
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'demo@scanms.vn', password: 'Password@123' })
+      }).then(r => r.json()).then(res => {
+        const tok = res?.data?.accessToken || res?.accessToken;
+        const u = res?.data?.user || res?.user;
+        if (tok && u && localStorage.getItem('scanms-current-role') === 'kol') {
+          localStorage.setItem('token', tok);
+          localStorage.setItem('user', JSON.stringify(u));
+          document.querySelectorAll('iframe').forEach(ifr => {
+            try { ifr.contentWindow.postMessage({ type: 'SCANMS_AUTH_SYNC' }, '*'); } catch (e) {}
+          });
+        }
+      }).catch(() => {});
+    }
+  } catch {}
+
+  return `
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);height:calc(100dvh - 68px);min-height:calc(100vh - 68px);min-height:calc(100dvh - 68px);position:relative;overflow:hidden;">
+      <iframe id="kol-coupons-iframe" src="/collaborator/coupons" style="width: 100%; height: 100%; border: none; border-radius: 0; background: transparent; display: block;" scrolling="auto" title="Mã Giảm Giá Riêng (Coupon Attribution)"></iframe>
+    </div>
+  `;
+}
+
+function shopCouponsScreen() {
+  try {
+    const currentToken = localStorage.getItem('token');
+    const currentUserStr = localStorage.getItem('user');
+    let roleMismatch = false;
+    if (currentUserStr) {
+      try {
+        const parsed = JSON.parse(currentUserStr);
+        if (parsed.role !== 'SHOP_MANAGER') {
+          roleMismatch = true;
+        }
+      } catch (e) {}
+    }
+    if (roleMismatch || !currentToken || currentToken.startsWith('session-')) {
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'shop@scanms.vn', password: 'Password@123' })
+      }).then(r => r.json()).then(res => {
+        const tok = res?.data?.accessToken || res?.accessToken;
+        const u = res?.data?.user || res?.user;
+        if (tok && u && localStorage.getItem('scanms-current-role') === 'shop') {
+          localStorage.setItem('token', tok);
+          localStorage.setItem('user', JSON.stringify(u));
+          document.querySelectorAll('iframe').forEach(ifr => {
+            try { ifr.contentWindow.postMessage({ type: 'SCANMS_AUTH_SYNC' }, '*'); } catch (e) {}
+          });
+        }
+      }).catch(() => {});
+    }
+  } catch {}
+
+  return `
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);height:calc(100dvh - 68px);min-height:calc(100vh - 68px);min-height:calc(100dvh - 68px);position:relative;overflow:hidden;">
+      <iframe id="shop-coupons-iframe" src="/merchant/coupons" style="width: 100%; height: 100%; border: none; border-radius: 0; background: transparent; display: block;" scrolling="auto" title="Quản Lý Mã Giảm Giá Gian Hàng"></iframe>
+    </div>
+  `;
+}
+
+function adminCouponsScreen() {
+  try {
+    const currentToken = localStorage.getItem('token');
+    const currentUserStr = localStorage.getItem('user');
+    let roleMismatch = false;
+    if (currentUserStr) {
+      try {
+        const parsed = JSON.parse(currentUserStr);
+        if (parsed.role !== 'SYSTEM_ADMIN') {
+          roleMismatch = true;
+        }
+      } catch (e) {}
+    }
+    if (roleMismatch || !currentToken || currentToken.startsWith('session-')) {
+      localStorage.removeItem('token');
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'admin@scanms.vn', password: 'Password@123' })
+      }).then(r => r.json()).then(res => {
+        const tok = res?.data?.accessToken || res?.accessToken;
+        const u = res?.data?.user || res?.user;
+        if (tok && u && localStorage.getItem('scanms-current-role') === 'admin') {
+          localStorage.setItem('token', tok);
+          localStorage.setItem('user', JSON.stringify(u));
+        }
+      }).catch(() => {});
+    }
+  } catch {}
+
+  return `
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);height:calc(100dvh - 68px);min-height:calc(100vh - 68px);min-height:calc(100dvh - 68px);position:relative;overflow:hidden;">
+      <iframe id="admin-coupons-iframe" src="/admin/coupons" style="width: 100%; height: 100%; border: none; border-radius: 0; background: transparent; display: block;" scrolling="auto" title="Quản Trị Coupon Toàn Sàn"></iframe>
     </div>
   `;
 }
@@ -3331,6 +3449,7 @@ const renderers = {
   auth: authScreen,
   "kol-dashboard": dashboard,
   links: linksPage,
+  "kol-coupons": kolCouponsScreen,
   channels: channelsScreen,
   media: mediaPage,
   samples: samplesPage,
@@ -3342,6 +3461,7 @@ const renderers = {
   "shop-dashboard": shopDashboard,
   catalog: catalogScreen,
   "shop-campaigns": shopCampaignsScreen,
+  "shop-coupons": shopCouponsScreen,
   "commission-rules": commissionRulesScreen,
   "shop-collaborators": shopCollaboratorsScreen,
   orders: ordersScreen,
@@ -3366,6 +3486,7 @@ const renderers = {
   "admin-internal": adminInternalAccountsScreen,
   "admin-rbac": adminRbacScreen,
   "admin-users": adminUsersScreen,
+  "admin-coupons": adminCouponsScreen,
   "admin-audit": adminAuditScreen,
   "admin-config": adminSystemConfigScreen,
   "admin-profile": adminProfileScreen,
@@ -3486,7 +3607,7 @@ function shell(content) {
   const curSt = state.currentStore || state.pendingShop;
   const isPending = curSt && (curSt.status === "pending" || curSt.status === "reviewing");
   const shopName = shopSaved?.storeName || (curSt && curSt.name ? curSt.name : "Sora Skin Official");
-  const shopEmail = shopSaved?.email || "shop@techstore.vn";
+  const shopEmail = shopSaved?.email || "shop@scanms.vn";
 
   const mgrName = mgrSaved?.name || "Lê Hồng Phúc";
   const mgrEmail = mgrSaved?.email || "manager@scanms.vn";
@@ -3653,12 +3774,33 @@ function shell(content) {
         </div>
       </header>
       `}
-      <div class="page ${state.screen === 'kol-bonus' || state.screen === 'catalog' || state.screen === 'shop-collaborators' ? 'page-wide' : ''}">${content}</div>
+      <div class="page ${['kol-bonus', 'commission-rules', 'kol-coupons', 'shop-coupons', 'admin-coupons', 'catalog', 'shop-collaborators'].includes(state.screen) ? 'page-wide page-full-iframe' : ''}">${content}</div>
     </main>
   </div>`;
 }
 
 function render() {
+  const isIframeScreen = ['kol-bonus', 'commission-rules', 'kol-coupons', 'shop-coupons', 'admin-coupons'].includes(state.screen);
+  if (isIframeScreen) {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    const main = document.querySelector('.main');
+    if (main) {
+      main.style.overflow = 'hidden';
+      main.scrollTop = 0;
+    }
+  } else {
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+    const main = document.querySelector('.main');
+    if (main) main.style.overflow = '';
+  }
+
+  if (state.screen !== 'kol-coupons' && state.screen !== 'shop-coupons' && state.screen !== 'admin-coupons') {
+    document.body.classList.remove('scanms-modal-open', 'fr10-modal-open');
+    const topbar = document.querySelector('.topbar') || document.querySelector('header.topbar');
+    if (topbar) topbar.style.display = '';
+  }
   const prefRole = sessionStorage.getItem("scanms-preferred-role");
   if (prefRole) {
     state.role = prefRole;
@@ -3718,6 +3860,12 @@ function renderCurrentPage() {
 }
 
 function go(screen) {
+  document.body.classList.remove('scanms-modal-open', 'fr10-modal-open');
+  document.body.style.overflow = '';
+  const topbar = document.querySelector('.topbar') || document.querySelector('header.topbar');
+  if (topbar) topbar.style.display = '';
+  const main = document.querySelector('.main');
+  if (main) main.scrollTop = 0;
   state.screen = screen;
   state.search = "";
   try {
@@ -4676,21 +4824,29 @@ function bind(root = document) {
         const isOpen = e.data.open === true;
         document.body.classList.toggle('fr10-modal-open', isOpen);
         document.body.classList.toggle('scanms-modal-open', isOpen);
+        const topbar = document.querySelector('.topbar') || document.querySelector('header.topbar');
+        if (topbar) {
+          topbar.style.display = isOpen ? 'none' : '';
+        }
       }
 
       if (e.data && (e.data.type === 'SCANMS_IFRAME_RESIZE' || e.data.type === 'SCANMS_RESIZE_IFRAME') && typeof e.data.height === 'number') {
         const kolIframe = document.getElementById('kol-bonus-iframe');
         if (kolIframe) {
-          kolIframe.style.height = Math.max(e.data.height + 15, 480) + 'px';
+          kolIframe.style.height = Math.max(e.data.height + 35, 680) + 'px';
         }
         const shopIframe = document.getElementById('commission-rules-iframe');
         if (shopIframe) {
-          shopIframe.style.height = Math.max(e.data.height + 15, 480) + 'px';
+          shopIframe.style.height = Math.max(e.data.height + 35, 680) + 'px';
         }
         const referralLinksIframe = document.getElementById('referral-links-iframe');
         if (referralLinksIframe) {
           referralLinksIframe.style.height = Math.max(e.data.height + 15, 760) + 'px';
         }
+      }
+
+      if (e.origin === window.location.origin && e.data?.type === 'SCANMS_TOAST' && e.data?.message) {
+        toast(e.data.message);
       }
     });
   }
@@ -4727,7 +4883,7 @@ function bind(root = document) {
           }).then(r => r.json()).then(res => {
             const tok = res?.data?.accessToken || res?.accessToken;
             const u = res?.data?.user || res?.user;
-            if (tok && u) {
+            if (tok && u && localStorage.getItem('scanms-current-role') === 'kol') {
               localStorage.setItem('token', tok);
               localStorage.setItem('user', JSON.stringify(u));
               document.querySelectorAll('iframe').forEach(ifr => {
@@ -4740,18 +4896,18 @@ function bind(root = document) {
           localStorage.removeItem('token');
           localStorage.setItem('user', JSON.stringify({
             role: 'SHOP_MANAGER',
-            email: 'shop@techstore.vn',
-            fullName: 'Trần Văn Chủ Shop'
+            email: 'shop@scanms.vn',
+            fullName: 'Sora Skin Official'
           }));
           // Lấy Access Token JWT thật từ backend
           fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: 'shop@techstore.vn', password: 'Password@123' })
+            body: JSON.stringify({ email: 'shop@scanms.vn', password: 'Password@123' })
           }).then(r => r.json()).then(res => {
             const tok = res?.data?.accessToken || res?.accessToken;
             const u = res?.data?.user || res?.user;
-            if (tok && u) {
+            if (tok && u && localStorage.getItem('scanms-current-role') === 'shop') {
               localStorage.setItem('token', tok);
               localStorage.setItem('user', JSON.stringify(u));
               document.querySelectorAll('iframe').forEach(ifr => {
@@ -4773,7 +4929,7 @@ function bind(root = document) {
           }).then(r => r.json()).then(res => {
             const tok = res?.data?.accessToken || res?.accessToken;
             const u = res?.data?.user || res?.user;
-            if (tok && u) {
+            if (tok && u && localStorage.getItem('scanms-current-role') === 'admin') {
               localStorage.setItem('token', tok);
               localStorage.setItem('user', JSON.stringify(u));
               document.querySelectorAll('iframe').forEach(ifr => {
@@ -5516,5 +5672,14 @@ document.addEventListener("keydown", (e) => {
     }
   }
 });
+
+window.addEventListener("wheel", (e) => {
+  const activeIframe = document.querySelector("#kol-bonus-iframe, #commission-rules-iframe, #kol-coupons-iframe, #shop-coupons-iframe, #admin-coupons-iframe");
+  if (activeIframe && activeIframe.contentWindow) {
+    try {
+      activeIframe.contentWindow.scrollBy({ top: e.deltaY, behavior: "auto" });
+    } catch {}
+  }
+}, { passive: true });
 
 render();

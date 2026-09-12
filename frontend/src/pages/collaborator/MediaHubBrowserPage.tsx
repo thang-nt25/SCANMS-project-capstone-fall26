@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Download,
   Copy,
@@ -11,19 +11,48 @@ import {
   Sparkles,
   FileCheck,
   ChevronDown,
+  Tag,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
+import { couponService, type CouponItem } from '../../services/coupon.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 
 export default function MediaHubBrowserPage() {
   const currentUser = authService.getCurrentUser();
   const userName = currentUser?.fullName || 'Nguyễn Thành Thắng';
-  const couponCode = currentUser?.fullName?.includes('Nhật') ? 'NHATXINH10' : 'THANGVIP10';
   const isShopOrAdmin =
     currentUser?.role === 'SHOP_MANAGER' ||
     currentUser?.role === 'SYSTEM_ADMIN' ||
     currentUser?.role === 'SYSTEM_MANAGER';
+
+  const [activeCoupons, setActiveCoupons] = useState<CouponItem[]>([]);
+  const [selectedCouponId, setSelectedCouponId] = useState<string>('');
+
+  useEffect(() => {
+    if (!isShopOrAdmin) {
+      couponService
+        .getKolCoupons({ status: 'ACTIVE' })
+        .then((res) => {
+          const list = res.coupons || [];
+          setActiveCoupons(list);
+          if (list.length > 0) {
+            setSelectedCouponId(list[0].id);
+          }
+        })
+        .catch(() => {
+          setActiveCoupons([]);
+        });
+    }
+  }, [isShopOrAdmin]);
+
+  const selectedCoupon = activeCoupons.find((c) => c.id === selectedCouponId) || activeCoupons[0];
+  const couponCode = selectedCoupon?.displayCode;
+  const discountText = selectedCoupon
+    ? selectedCoupon.discountType === 'PERCENTAGE'
+      ? `giảm thêm ${selectedCoupon.discountValue}%`
+      : `giảm thêm ${Number(selectedCoupon.discountValue).toLocaleString('vi-VN')} ₫`
+    : '';
 
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('ALL');
@@ -38,12 +67,20 @@ export default function MediaHubBrowserPage() {
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  // 4 Caption Templates according to Figma specifications
+  // Caption Templates generated dynamically without hardcoded coupons or 10% fallbacks
   const captionTemplates = {
-    short: `Gợi ý chăm sóc da sáng khỏe mỗi ngày cùng Serum Vitamin C 15% ✨\n\nTinh chất mỏng nhẹ, thẩm thấu nhanh, hỗ trợ cấp ẩm và cải thiện bề mặt da mềm mịn.\n\n👉 Đặt mua chính hãng qua link: https://scanms.vn/l/skin-c15\n🎁 Nhập ngay mã ${couponCode} để giảm thêm 10%!\n\n#SCANMS #SerumVitaminC #SkincareRoutine #Affiliate`,
-    review: `[GÓC REVIEW TỪ ${userName.toUpperCase()}]\nTrải nghiệm thực tế khi sử dụng Serum Vitamin C 15%:\n\n💧 Cảm quan kết cấu: Tinh chất mỏng nhẹ, thấm nhanh trong 15s, không gây bóng nhờn.\n🔬 Thành phần: 15% Vitamin C tinh khiết kết hợp Hyaluronic Acid cấp ẩm sâu.\n🎯 Cảm nhận sau 3 tuần: Da trông tươi sáng, ẩm mịn và rạng rỡ rõ rệt.\n\n💰 Giá tham khảo: 459.000 ₫\n🛒 Link mua hàng chính hãng: https://scanms.vn/l/skin-c15\n🏷️ Mã ưu đãi độc quyền: ${couponCode} (-10%)\n\n#SCANMS #SerumC #BeautyReview #SkincareTips`,
-    offer: `🎁 ƯU ĐÃI ĐẶC BIỆT DÀNH CHO CỘNG ĐỒNG ${userName.toUpperCase()}!\n\nChương trình Flash Sale độc quyền cho Serum Vitamin C 15%:\n⚡ Giá ưu đãi chỉ: 459.000 ₫\n⚡ Tặng kèm quà tặng sample dùng thử độc quyền cho 50 đơn đầu tiên\n⚡ Nhập mã ${couponCode} tại bước thanh toán để giảm thêm 10%!\n\n👉 Mua ngay tại: https://scanms.vn/l/skin-c15`,
-    livestream: `🌟 GỢI Ý KỊCH BẢN CHIA SẺ TRÊN LIVESTREAM:\n\n1. Mở đầu: Cầm sản phẩm Serum Vitamin C 15%, zoom cận cảnh kết cấu tinh chất lên camera.\n2. Trải nghiệm: Thoa thử lên mu bàn tay, chia sẻ cảm giác mát mịn và thấm nhanh không nhờn dính.\n3. Kêu gọi: Hướng dẫn người xem bấm vào link ghim, nhập mã ${couponCode} để nhận ưu đãi từ Shop Sora Skin!`,
+    short: couponCode
+      ? `Gợi ý chăm sóc da sáng khỏe mỗi ngày cùng Serum Vitamin C 15% ✨\n\nTinh chất mỏng nhẹ, thẩm thấu nhanh, hỗ trợ cấp ẩm và cải thiện bề mặt da mềm mịn.\n\n👉 Đặt mua chính hãng qua link: https://scanms.vn/l/skin-c15\n🎁 Nhập ngay mã ${couponCode} để ${discountText}!\n\n#SCANMS #SerumVitaminC #SkincareRoutine #Affiliate`
+      : `Gợi ý chăm sóc da sáng khỏe mỗi ngày cùng Serum Vitamin C 15% ✨\n\nTinh chất mỏng nhẹ, thẩm thấu nhanh, hỗ trợ cấp ẩm và cải thiện bề mặt da mềm mịn.\n\n👉 Đặt mua chính hãng qua link giới thiệu: https://scanms.vn/l/skin-c15\n\n#SCANMS #SerumVitaminC #SkincareRoutine #Affiliate`,
+    review: couponCode
+      ? `[GÓC REVIEW TỪ ${userName.toUpperCase()}]\nTrải nghiệm thực tế khi sử dụng Serum Vitamin C 15%:\n\n💧 Cảm quan kết cấu: Tinh chất mỏng nhẹ, thấm nhanh trong 15s, không gây bóng nhờn.\n🔬 Thành phần: 15% Vitamin C tinh khiết kết hợp Hyaluronic Acid cấp ẩm sâu.\n🎯 Cảm nhận sau 3 tuần: Da trông tươi sáng, ẩm mịn và rạng rỡ rõ rệt.\n\n💰 Giá tham khảo: 459.000 ₫\n🛒 Link mua hàng chính hãng: https://scanms.vn/l/skin-c15\n🏷️ Mã ưu đãi độc quyền: ${couponCode} (${selectedCoupon.discountType === 'PERCENTAGE' ? `-${selectedCoupon.discountValue}%` : `-${Number(selectedCoupon.discountValue).toLocaleString('vi-VN')} ₫`})\n\n#SCANMS #SerumC #BeautyReview #SkincareTips`
+      : `[GÓC REVIEW TỪ ${userName.toUpperCase()}]\nTrải nghiệm thực tế khi sử dụng Serum Vitamin C 15%:\n\n💧 Cảm quan kết cấu: Tinh chất mỏng nhẹ, thấm nhanh trong 15s, không gây bóng nhờn.\n🔬 Thành phần: 15% Vitamin C tinh khiết kết hợp Hyaluronic Acid cấp ẩm sâu.\n🎯 Cảm nhận sau 3 tuần: Da trông tươi sáng, ẩm mịn và rạng rỡ rõ rệt.\n\n💰 Giá tham khảo: 459.000 ₫\n🛒 Link mua hàng chính hãng: https://scanms.vn/l/skin-c15\n\n#SCANMS #SerumC #BeautyReview #SkincareTips`,
+    offer: couponCode
+      ? `🎁 ƯU ĐÃI ĐẶC BIỆT DÀNH CHO CỘNG ĐỒNG ${userName.toUpperCase()}!\n\nChương trình Flash Sale độc quyền cho Serum Vitamin C 15%:\n⚡ Giá ưu đãi chỉ: 459.000 ₫\n⚡ Tặng kèm quà tặng sample dùng thử độc quyền cho 50 đơn đầu tiên\n⚡ Nhập mã ${couponCode} tại bước thanh toán để ${discountText}!\n\n👉 Mua ngay tại: https://scanms.vn/l/skin-c15`
+      : `🎁 ƯU ĐÃI ĐẶC BIỆT DÀNH CHO CỘNG ĐỒNG ${userName.toUpperCase()}!\n\nChương trình Flash Sale độc quyền cho Serum Vitamin C 15%:\n⚡ Giá ưu đãi chỉ: 459.000 ₫\n⚡ Tặng kèm quà tặng sample dùng thử độc quyền cho 50 đơn đầu tiên\n\n👉 Mua ngay tại: https://scanms.vn/l/skin-c15`,
+    livestream: couponCode
+      ? `🌟 GỢI Ý KỊCH BẢN CHIA SẺ TRÊN LIVESTREAM:\n\n1. Mở đầu: Cầm sản phẩm Serum Vitamin C 15%, zoom cận cảnh kết cấu tinh chất lên camera.\n2. Trải nghiệm: Thoa thử lên mu bàn tay, chia sẻ cảm giác mát mịn và thấm nhanh không nhờn dính.\n3. Kêu gọi: Hướng dẫn người xem bấm vào link ghim, nhập mã ${couponCode} để nhận ưu đãi (${discountText}) từ Shop Sora Skin!`
+      : `🌟 GỢI Ý KỊCH BẢN CHIA SẺ TRÊN LIVESTREAM:\n\n1. Mở đầu: Cầm sản phẩm Serum Vitamin C 15%, zoom cận cảnh kết cấu tinh chất lên camera.\n2. Trải nghiệm: Thoa thử lên mu bàn tay, chia sẻ cảm giác mát mịn và thấm nhanh không nhờn dính.\n3. Kêu gọi: Hướng dẫn người xem bấm vào link ghim để nhận ưu đãi chính hãng từ Shop Sora Skin!`,
   };
 
   const handleCopyCaption = () => {
@@ -458,6 +495,31 @@ export default function MediaHubBrowserPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Coupon selector in caption studio */}
+                {activeCoupons.length > 0 ? (
+                  <div className="flex items-center justify-between text-xs bg-[#FAF8F5] px-3 py-2 rounded-xl border border-[#EAE4D7]">
+                    <span className="flex items-center gap-1.5 font-bold text-[#1A1612]">
+                      <Tag className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      Mã ưu đãi áp dụng trong kịch bản:
+                    </span>
+                    <select
+                      value={selectedCouponId}
+                      onChange={(e) => setSelectedCouponId(e.target.value)}
+                      className="bg-white border border-[#EAE4D7] rounded-lg px-2 py-1 text-xs font-bold text-[#B88E4F] outline-none cursor-pointer"
+                    >
+                      {activeCoupons.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.displayCode} ({c.discountType === 'PERCENTAGE' ? `-${c.discountValue}%` : `-${Number(c.discountValue).toLocaleString('vi-VN')} ₫`})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-[#7D715E] bg-[#FAF8F5] px-3 py-1.5 rounded-xl border border-[#EAE4D7]">
+                    ℹ️ Chưa có mã giảm giá đang kích hoạt. Kịch bản đang tạo sẵn theo link tiếp thị chuẩn.
+                  </div>
+                )}
 
                 {/* Caption Textarea */}
                 <textarea

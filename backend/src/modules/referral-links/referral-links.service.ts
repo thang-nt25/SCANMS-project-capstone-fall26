@@ -96,14 +96,18 @@ export class ReferralLinksService {
     query: { search?: string; storeId?: string },
   ) {
     // 1. Tìm các Store ID mà KOL đã được Shop duyệt chính thức
-    const approvedStoreRelations = await this.prisma.storeCollaborator.findMany({
-      where: {
-        collaboratorId,
-        status: StoreCollaboratorStatus.APPROVED,
+    const approvedStoreRelations = await this.prisma.storeCollaborator.findMany(
+      {
+        where: {
+          collaboratorId,
+          status: StoreCollaboratorStatus.APPROVED,
+        },
+        select: { storeId: true },
       },
-      select: { storeId: true },
-    });
-    const eligibleStoreIds = new Set<string>(approvedStoreRelations.map((r) => r.storeId));
+    );
+    const eligibleStoreIds = new Set<string>(
+      approvedStoreRelations.map((r) => r.storeId),
+    );
 
     // 2. Tìm các Store ID mà KOL đã tham gia chiến dịch còn hiệu lực
     const now = new Date();
@@ -222,15 +226,21 @@ export class ReferralLinksService {
     });
 
     if (!collaborator || collaborator.deletedAt) {
-      throw new NotFoundException('Tài khoản Cộng tác viên không tồn tại hoặc đã bị xóa.');
+      throw new NotFoundException(
+        'Tài khoản Cộng tác viên không tồn tại hoặc đã bị xóa.',
+      );
     }
 
     if (!collaborator.isActive) {
-      throw new ForbiddenException('Tài khoản Cộng tác viên hiện đang bị khóa.');
+      throw new ForbiddenException(
+        'Tài khoản Cộng tác viên hiện đang bị khóa.',
+      );
     }
 
     if (collaborator.role !== UserRole.COLLABORATOR) {
-      throw new ForbiddenException('Chỉ tài khoản vai trò COLLABORATOR mới được quyền tạo liên kết tiếp thị.');
+      throw new ForbiddenException(
+        'Chỉ tài khoản vai trò COLLABORATOR mới được quyền tạo liên kết tiếp thị.',
+      );
     }
 
     // 2.3 Kiểm tra sản phẩm và Cửa hàng
@@ -248,12 +258,16 @@ export class ReferralLinksService {
     }
 
     if (!product.store || product.store.deletedAt) {
-      throw new BadRequestException('Cửa hàng sở hữu sản phẩm này không còn hoạt động.');
+      throw new BadRequestException(
+        'Cửa hàng sở hữu sản phẩm này không còn hoạt động.',
+      );
     }
 
     // Kiểm tra sản phẩm có cho affiliate không
     if (!product.isAffiliateEnabled) {
-      throw new ForbiddenException('Sản phẩm này hiện không áp dụng chương trình tiếp thị liên kết (403 Forbidden).');
+      throw new ForbiddenException(
+        'Sản phẩm này hiện không áp dụng chương trình tiếp thị liên kết (403 Forbidden).',
+      );
     }
 
     const commissionRate =
@@ -262,7 +276,9 @@ export class ReferralLinksService {
         : Number(product.store.defaultCommissionRate);
 
     if (commissionRate <= 0) {
-      throw new ForbiddenException('Sản phẩm này hiện có tỷ lệ hoa hồng bằng 0 (403 Forbidden).');
+      throw new ForbiddenException(
+        'Sản phẩm này hiện có tỷ lệ hoa hồng bằng 0 (403 Forbidden).',
+      );
     }
 
     // 2.4 Kiểm tra chiến dịch và quan hệ KOL–Shop chính thức
@@ -279,11 +295,15 @@ export class ReferralLinksService {
       }
 
       if (campaign.storeId !== product.storeId) {
-        throw new BadRequestException('Chiến dịch không thuộc Cửa hàng sở hữu sản phẩm này.');
+        throw new BadRequestException(
+          'Chiến dịch không thuộc Cửa hàng sở hữu sản phẩm này.',
+        );
       }
 
       if (!campaign.isActive) {
-        throw new BadRequestException('Chiến dịch tiếp thị hiện đang tạm ngừng.');
+        throw new BadRequestException(
+          'Chiến dịch tiếp thị hiện đang tạm ngừng.',
+        );
       }
 
       if (now < new Date(campaign.startDate)) {
@@ -291,7 +311,10 @@ export class ReferralLinksService {
       }
 
       if (now > new Date(campaign.endDate)) {
-        throw new HttpException('Chiến dịch tiếp thị đã hết hạn (409 Conflict).', HttpStatus.CONFLICT);
+        throw new HttpException(
+          'Chiến dịch tiếp thị đã hết hạn (409 Conflict).',
+          HttpStatus.CONFLICT,
+        );
       }
 
       // Kiểm tra KOL đã tham gia chiến dịch với trạng thái ACCEPTED chưa
@@ -304,7 +327,10 @@ export class ReferralLinksService {
         },
       });
 
-      if (!participant || participant.status !== CampaignParticipantStatus.ACCEPTED) {
+      if (
+        !participant ||
+        participant.status !== CampaignParticipantStatus.ACCEPTED
+      ) {
         throw new ForbiddenException(
           'KOL chưa được phê duyệt tham gia chiến dịch này (CampaignParticipantStatus phải là ACCEPTED).',
         );
@@ -315,14 +341,15 @@ export class ReferralLinksService {
         where: { campaignId: dto.campaignId },
       });
       if (campaignProductCount > 0) {
-        const isProductInCampaign = await this.prisma.campaignProduct.findUnique({
-          where: {
-            campaignId_productId: {
-              campaignId: dto.campaignId,
-              productId: dto.productId,
+        const isProductInCampaign =
+          await this.prisma.campaignProduct.findUnique({
+            where: {
+              campaignId_productId: {
+                campaignId: dto.campaignId,
+                productId: dto.productId,
+              },
             },
-          },
-        });
+          });
         if (!isProductInCampaign) {
           throw new BadRequestException(
             'Sản phẩm đã chọn không nằm trong danh mục áp dụng của chiến dịch này.',
@@ -336,10 +363,14 @@ export class ReferralLinksService {
       } else {
         const linkExpiry = new Date(dto.expiresAt);
         if (linkExpiry <= now) {
-          throw new BadRequestException('Thời hạn hết hạn của liên kết (expiresAt) phải nằm trong tương lai.');
+          throw new BadRequestException(
+            'Thời hạn hết hạn của liên kết (expiresAt) phải nằm trong tương lai.',
+          );
         }
         if (linkExpiry > new Date(campaign.endDate)) {
-          throw new BadRequestException('Thời hạn liên kết không được vượt quá thời gian kết thúc của chiến dịch.');
+          throw new BadRequestException(
+            'Thời hạn liên kết không được vượt quá thời gian kết thúc của chiến dịch.',
+          );
         }
       }
 
@@ -354,13 +385,14 @@ export class ReferralLinksService {
         },
       });
 
-      const hasAcceptedCampaign = await this.prisma.campaignParticipant.findFirst({
-        where: {
-          collaboratorId,
-          campaign: { storeId: product.storeId, isActive: true },
-          status: CampaignParticipantStatus.ACCEPTED,
-        },
-      });
+      const hasAcceptedCampaign =
+        await this.prisma.campaignParticipant.findFirst({
+          where: {
+            collaboratorId,
+            campaign: { storeId: product.storeId, isActive: true },
+            status: CampaignParticipantStatus.ACCEPTED,
+          },
+        });
 
       if (!officialCollab && !hasAcceptedCampaign) {
         throw new ForbiddenException(
@@ -369,7 +401,9 @@ export class ReferralLinksService {
       }
 
       if (dto.expiresAt && new Date(dto.expiresAt) <= now) {
-        throw new BadRequestException('Thời hạn hết hạn của liên kết (expiresAt) phải nằm trong tương lai.');
+        throw new BadRequestException(
+          'Thời hạn hết hạn của liên kết (expiresAt) phải nằm trong tương lai.',
+        );
       }
     }
 
@@ -449,11 +483,20 @@ export class ReferralLinksService {
               label: sanitizeUtmString(dto.label, 150),
               channel: dto.channel,
               destinationPath,
-              utmSource: dto.utmSource ? sanitizeUtmString(dto.utmSource, 100) : null,
-              utmMedium: dto.utmMedium ? sanitizeUtmString(dto.utmMedium, 100) : null,
-              utmCampaign: dto.utmCampaign ? sanitizeUtmString(dto.utmCampaign, 100) : null,
-              utmContent: dto.utmContent ? sanitizeUtmString(dto.utmContent, 100) : null,
-              customCouponCode: dto.customCouponCode?.trim().toUpperCase() || null,
+              utmSource: dto.utmSource
+                ? sanitizeUtmString(dto.utmSource, 100)
+                : null,
+              utmMedium: dto.utmMedium
+                ? sanitizeUtmString(dto.utmMedium, 100)
+                : null,
+              utmCampaign: dto.utmCampaign
+                ? sanitizeUtmString(dto.utmCampaign, 100)
+                : null,
+              utmContent: dto.utmContent
+                ? sanitizeUtmString(dto.utmContent, 100)
+                : null,
+              customCouponCode:
+                dto.customCouponCode?.trim().toUpperCase() || null,
               qrCodeUrl,
               status: ReferralLinkStatus.ACTIVE,
               expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
@@ -500,11 +543,19 @@ export class ReferralLinksService {
         break;
       } catch (err: any) {
         // Nếu đụng unique constraint P2002 trên shortCode -> retry sinh mã mới
-        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
           retries--;
-          this.logger.warn(`Va chạm shortCode ngẫu nhiên. Thử lại sinh mã mới... (còn ${retries} lần)`);
+          this.logger.warn(
+            `Va chạm shortCode ngẫu nhiên. Thử lại sinh mã mới... (còn ${retries} lần)`,
+          );
           if (retries === 0) {
-            throw new HttpException('Hệ thống bận, không thể sinh mã rút gọn duy nhất. Vui lòng thử lại.', HttpStatus.CONFLICT);
+            throw new HttpException(
+              'Hệ thống bận, không thể sinh mã rút gọn duy nhất. Vui lòng thử lại.',
+              HttpStatus.CONFLICT,
+            );
           }
           continue;
         }
@@ -521,7 +572,10 @@ export class ReferralLinksService {
   /**
    * 3. Lấy danh sách link tiếp thị của KOL (tìm kiếm, lọc, phân trang)
    */
-  async getCollaboratorLinks(collaboratorId: string, query: QueryReferralLinksDto) {
+  async getCollaboratorLinks(
+    collaboratorId: string,
+    query: QueryReferralLinksDto,
+  ) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
@@ -557,8 +611,15 @@ export class ReferralLinksService {
     }
 
     const orderBy: Prisma.ReferralLinkOrderByWithRelationInput = {};
-    const validSortFields = ['createdAt', 'totalClicks', 'uniqueClicks', 'totalOrders'];
-    const sortField = validSortFields.includes(query.sortBy || '') ? query.sortBy! : 'createdAt';
+    const validSortFields = [
+      'createdAt',
+      'totalClicks',
+      'uniqueClicks',
+      'totalOrders',
+    ];
+    const sortField = validSortFields.includes(query.sortBy || '')
+      ? query.sortBy!
+      : 'createdAt';
     orderBy[sortField] = query.sortOrder === 'asc' ? 'asc' : 'desc';
 
     const [total, items] = await Promise.all([
@@ -702,11 +763,21 @@ export class ReferralLinksService {
         data: {
           label: dto.label ? sanitizeUtmString(dto.label, 150) : link.label,
           channel: dto.channel || link.channel,
-          customCouponCode: dto.customCouponCode ? dto.customCouponCode.trim().toUpperCase() : link.customCouponCode,
-          utmSource: dto.utmSource ? sanitizeUtmString(dto.utmSource, 100) : link.utmSource,
-          utmMedium: dto.utmMedium ? sanitizeUtmString(dto.utmMedium, 100) : link.utmMedium,
-          utmCampaign: dto.utmCampaign ? sanitizeUtmString(dto.utmCampaign, 100) : link.utmCampaign,
-          utmContent: dto.utmContent ? sanitizeUtmString(dto.utmContent, 100) : link.utmContent,
+          customCouponCode: dto.customCouponCode
+            ? dto.customCouponCode.trim().toUpperCase()
+            : link.customCouponCode,
+          utmSource: dto.utmSource
+            ? sanitizeUtmString(dto.utmSource, 100)
+            : link.utmSource,
+          utmMedium: dto.utmMedium
+            ? sanitizeUtmString(dto.utmMedium, 100)
+            : link.utmMedium,
+          utmCampaign: dto.utmCampaign
+            ? sanitizeUtmString(dto.utmCampaign, 100)
+            : link.utmCampaign,
+          utmContent: dto.utmContent
+            ? sanitizeUtmString(dto.utmContent, 100)
+            : link.utmContent,
         },
       });
 
@@ -739,7 +810,11 @@ export class ReferralLinksService {
   /**
    * 6. Chuyển đổi trạng thái Tạm ngừng (PAUSED) hoặc Kích hoạt (ACTIVE)
    */
-  async toggleLinkStatus(id: string, collaboratorId: string, ipAddress?: string) {
+  async toggleLinkStatus(
+    id: string,
+    collaboratorId: string,
+    ipAddress?: string,
+  ) {
     const link = await this.prisma.referralLink.findFirst({
       where: { id, collaboratorId, deletedAt: null },
     });
@@ -852,7 +927,9 @@ export class ReferralLinksService {
         where: { id: storeId, ownerId: shopOwnerId, deletedAt: null },
       });
       if (!store) {
-        throw new ForbiddenException('Bạn không có quyền quản lý cửa hàng này.');
+        throw new ForbiddenException(
+          'Bạn không có quyền quản lý cửa hàng này.',
+        );
       }
     }
 
@@ -947,7 +1024,9 @@ export class ReferralLinksService {
       where: { id: linkId, storeId, deletedAt: null },
     });
     if (!link) {
-      throw new NotFoundException('Liên kết tiếp thị không tồn tại trong cửa hàng này.');
+      throw new NotFoundException(
+        'Liên kết tiếp thị không tồn tại trong cửa hàng này.',
+      );
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -1003,7 +1082,9 @@ export class ReferralLinksService {
       where: { id: linkId, storeId, deletedAt: null },
     });
     if (!link) {
-      throw new NotFoundException('Liên kết tiếp thị không tồn tại trong cửa hàng này.');
+      throw new NotFoundException(
+        'Liên kết tiếp thị không tồn tại trong cửa hàng này.',
+      );
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -1176,7 +1257,11 @@ export class ReferralLinksService {
   /**
    * 14. Quản trị viên (Admin) mở khóa link
    */
-  async unblockLinkByAdmin(linkId: string, adminId: string, ipAddress?: string) {
+  async unblockLinkByAdmin(
+    linkId: string,
+    adminId: string,
+    ipAddress?: string,
+  ) {
     const link = await this.prisma.referralLink.findFirst({
       where: { id: linkId, deletedAt: null },
     });
@@ -1281,13 +1366,17 @@ export class ReferralLinksService {
     }
 
     if (!link || link.deletedAt) {
-      throw new NotFoundException('Liên kết tiếp thị không tồn tại hoặc đã bị xóa.');
+      throw new NotFoundException(
+        'Liên kết tiếp thị không tồn tại hoặc đã bị xóa.',
+      );
     }
 
     const effectiveStatus = computeEffectiveStatus(link);
 
     if (effectiveStatus === 'DELETED') {
-      throw new NotFoundException('Liên kết tiếp thị không tồn tại hoặc đã bị xóa.');
+      throw new NotFoundException(
+        'Liên kết tiếp thị không tồn tại hoặc đã bị xóa.',
+      );
     }
 
     // BLOCKED: HTTP 410 Gone, không redirect và không attribution
@@ -1298,7 +1387,8 @@ export class ReferralLinksService {
       );
     }
 
-    const destinationPath = link.destinationPath || `/products/${link.productId}`;
+    const destinationPath =
+      link.destinationPath || `/products/${link.productId}`;
 
     // PAUSED và EXPIRED: vẫn đến sản phẩm nhưng không ghi attribution mới
     let allowAttribution = true;
@@ -1345,13 +1435,14 @@ export class ReferralLinksService {
         try {
           // Chống spam: kiểm tra lượt click trùng từ cùng IP + link trong vòng 30 giây
           const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
-          const duplicateRecentClick = await this.prisma.clickTrafficLog.findFirst({
-            where: {
-              referralLinkId: link.id,
-              ipAddress: clientInfo.ip || '0.0.0.0',
-              createdAt: { gte: thirtySecondsAgo },
-            },
-          });
+          const duplicateRecentClick =
+            await this.prisma.clickTrafficLog.findFirst({
+              where: {
+                referralLinkId: link.id,
+                ipAddress: clientInfo.ip || '0.0.0.0',
+                createdAt: { gte: thirtySecondsAgo },
+              },
+            });
 
           const isUnique = !duplicateRecentClick;
 
@@ -1369,7 +1460,9 @@ export class ReferralLinksService {
                 referralLinkId: link.id,
                 ipAddress: clientInfo.ip || '0.0.0.0',
                 userAgent: clientInfo.userAgent || null,
-                referrer: clientInfo.referer || (clientInfo.accessMethod === 'QR' ? 'QR_SCAN' : null),
+                referrer:
+                  clientInfo.referer ||
+                  (clientInfo.accessMethod === 'QR' ? 'QR_SCAN' : null),
                 accessMethod: clientInfo.accessMethod === 'QR' ? 'QR' : 'LINK',
                 deviceFingerprint: clientInfo.fingerprint || null,
                 deviceType: clientInfo.deviceType || null,
@@ -1445,19 +1538,26 @@ export class ReferralLinksService {
     });
 
     if (!link || link.deletedAt) {
-      return { isValid: false, reason: 'Liên kết không tồn tại hoặc đã bị xóa.' };
+      return {
+        isValid: false,
+        reason: 'Liên kết không tồn tại hoặc đã bị xóa.',
+      };
     }
 
     // Link bị BLOCKED trước khi đặt hàng -> mất hiệu lực hoàn toàn
     if (link.status === ReferralLinkStatus.BLOCKED) {
       return {
         isValid: false,
-        reason: 'Liên kết tiếp thị đã bị khóa trước thời điểm đặt hàng. Attribution không còn hiệu lực.',
+        reason:
+          'Liên kết tiếp thị đã bị khóa trước thời điểm đặt hàng. Attribution không còn hiệu lực.',
       };
     }
 
     // Kiểm tra khớp Shop & Sản phẩm
-    if (link.storeId !== params.storeId || link.productId !== params.productId) {
+    if (
+      link.storeId !== params.storeId ||
+      link.productId !== params.productId
+    ) {
       return {
         isValid: false,
         reason: 'Sản phẩm hoặc Cửa hàng không khớp với liên kết tiếp thị này.',
@@ -1484,7 +1584,11 @@ export class ReferralLinksService {
         : Number(link.store.defaultCommissionRate);
 
     // Cộng thưởng chiến dịch nếu chiến dịch còn hiệu lực
-    if (link.campaign && link.campaign.isActive && new Date(link.campaign.endDate) >= new Date()) {
+    if (
+      link.campaign &&
+      link.campaign.isActive &&
+      new Date(link.campaign.endDate) >= new Date()
+    ) {
       commissionRate += Number(link.campaign.bonusCommissionRate || 0);
     }
 
@@ -1528,12 +1632,18 @@ export class ReferralLinksService {
       }
 
       // BẢO VỆ ATTRIBUTION: Nếu đơn hàng đã gắn link A, từ chối ghi đè sang link B
-      if (order.referralLinkId && order.referralLinkId !== params.referralLinkId) {
-        throw new BadRequestException('Đơn hàng đã được ghi nhận attribution cho liên kết khác. Không thể thay đổi.');
+      if (
+        order.referralLinkId &&
+        order.referralLinkId !== params.referralLinkId
+      ) {
+        throw new BadRequestException(
+          'Đơn hàng đã được ghi nhận attribution cho liên kết khác. Không thể thay đổi.',
+        );
       }
 
       // IDEMPOTENCY: Nếu đơn hàng đã gắn link này rồi, không tăng totalOrders lặp lại
-      const isAlreadyAttributed = order.referralLinkId === params.referralLinkId;
+      const isAlreadyAttributed =
+        order.referralLinkId === params.referralLinkId;
 
       const link = await tx.referralLink.findUnique({
         where: { id: params.referralLinkId },
@@ -1558,9 +1668,9 @@ export class ReferralLinksService {
       const rate =
         params.appliedCommissionRate !== undefined
           ? params.appliedCommissionRate
-          : (link.product.customCommissionRate !== null
-              ? Number(link.product.customCommissionRate)
-              : 5);
+          : link.product.customCommissionRate !== null
+            ? Number(link.product.customCommissionRate)
+            : 5;
 
       const totalCommission =
         params.calculatedCommissionAmount !== undefined
@@ -1658,13 +1768,17 @@ export class ReferralLinksService {
   }> {
     const rawFormat = (options.format || 'png').toLowerCase();
     if (rawFormat !== 'png' && rawFormat !== 'svg') {
-      throw new BadRequestException('Định dạng ảnh QR không hợp lệ. Hệ thống chỉ hỗ trợ "png" hoặc "svg".');
+      throw new BadRequestException(
+        'Định dạng ảnh QR không hợp lệ. Hệ thống chỉ hỗ trợ "png" hoặc "svg".',
+      );
     }
-    const format = rawFormat as 'png' | 'svg';
+    const format = rawFormat;
 
     const rawSize = options.size ? Number(options.size) : 1024;
     if (![512, 1024, 2048].includes(rawSize)) {
-      throw new BadRequestException('Kích thước ảnh QR không hợp lệ. Chỉ chấp nhận các kích thước 512, 1024 hoặc 2048 px.');
+      throw new BadRequestException(
+        'Kích thước ảnh QR không hợp lệ. Chỉ chấp nhận các kích thước 512, 1024 hoặc 2048 px.',
+      );
     }
     const size = rawSize;
     const isDownload = Boolean(options.download);
@@ -1672,10 +1786,7 @@ export class ReferralLinksService {
     // Tìm kiếm referral link theo id hoặc shortCode
     const link = await this.prisma.referralLink.findFirst({
       where: {
-        OR: [
-          { id: linkIdOrCode },
-          { shortCode: linkIdOrCode.toLowerCase() },
-        ],
+        OR: [{ id: linkIdOrCode }, { shortCode: linkIdOrCode.toLowerCase() }],
         deletedAt: null,
       },
       include: {
@@ -1703,28 +1814,40 @@ export class ReferralLinksService {
     });
 
     if (!link) {
-      throw new NotFoundException('Liên kết tiếp thị không tồn tại hoặc đã bị xóa.');
+      throw new NotFoundException(
+        'Liên kết tiếp thị không tồn tại hoặc đã bị xóa.',
+      );
     }
 
     // Kiểm tra phân quyền sở hữu
     if (user.role === UserRole.COLLABORATOR) {
       if (link.collaboratorId !== user.id) {
-        throw new ForbiddenException('Bạn không có quyền xem hoặc tải mã QR của liên kết này.');
+        throw new ForbiddenException(
+          'Bạn không có quyền xem hoặc tải mã QR của liên kết này.',
+        );
       }
     } else if (user.role === UserRole.SHOP_MANAGER) {
       if (link.store?.ownerId !== user.id) {
-        throw new ForbiddenException('Bạn không có quyền xem mã QR của liên kết thuộc cửa hàng khác.');
+        throw new ForbiddenException(
+          'Bạn không có quyền xem mã QR của liên kết thuộc cửa hàng khác.',
+        );
       }
     } else if (user.role === UserRole.SYSTEM_ADMIN) {
       // Cho phép tra cứu/hỗ trợ
     } else {
-      throw new ForbiddenException('Vai trò người dùng không có quyền truy cập mã QR.');
+      throw new ForbiddenException(
+        'Vai trò người dùng không có quyền truy cập mã QR.',
+      );
     }
 
     // Rate limiting riêng cho API QR: Preview tối đa 60 req/phút, Render/Download tối đa 20 req/phút
     const maxReq = isDownload ? 20 : 60;
     const rateLimitKey = `qr_rl:${user.id}:${isDownload ? 'dl' : 'prev'}`;
-    const rateLimit = await this.cacheService.checkRateLimit(rateLimitKey, maxReq, 60);
+    const rateLimit = await this.cacheService.checkRateLimit(
+      rateLimitKey,
+      maxReq,
+      60,
+    );
     if (!rateLimit.allowed) {
       throw new HttpException(
         `Vượt quá giới hạn yêu cầu mã QR (tối đa ${maxReq} yêu cầu/phút). Vui lòng thử lại sau.`,
@@ -1764,15 +1887,19 @@ export class ReferralLinksService {
 
     // Kiểm tra cache đã render trước đó để tối ưu CPU (Mục 26 & 32)
     const cacheKey = `qr_render:${link.id}:${format}:${size}`;
-    const cached = await this.cacheService.get<{ bufferBase64: string; contentType: string }>(cacheKey);
+    const cached = await this.cacheService.get<{
+      bufferBase64: string;
+      contentType: string;
+    }>(cacheKey);
 
     let buffer: Buffer | string;
     let contentType: string;
 
     if (cached) {
-      buffer = format === 'png'
-        ? Buffer.from(cached.bufferBase64, 'base64')
-        : cached.bufferBase64;
+      buffer =
+        format === 'png'
+          ? Buffer.from(cached.bufferBase64, 'base64')
+          : cached.bufferBase64;
       contentType = cached.contentType;
     } else if (format === 'png') {
       buffer = await QRCode.toBuffer(shortUrl, {
@@ -1788,10 +1915,14 @@ export class ReferralLinksService {
       contentType = 'image/png';
 
       // Lưu cache 24h
-      await this.cacheService.set(cacheKey, {
-        bufferBase64: (buffer as Buffer).toString('base64'),
-        contentType,
-      }, 86400);
+      await this.cacheService.set(
+        cacheKey,
+        {
+          bufferBase64: buffer.toString('base64'),
+          contentType,
+        },
+        86400,
+      );
     } else {
       let svgContent = await QRCode.toString(shortUrl, {
         type: 'svg',
@@ -1814,10 +1945,14 @@ export class ReferralLinksService {
       contentType = 'image/svg+xml; charset=utf-8';
 
       // Lưu cache 24h
-      await this.cacheService.set(cacheKey, {
-        bufferBase64: svgContent,
-        contentType,
-      }, 86400);
+      await this.cacheService.set(
+        cacheKey,
+        {
+          bufferBase64: svgContent,
+          contentType,
+        },
+        86400,
+      );
     }
 
     // Đếm lượt tải QR (Mục 23 & 37.8 - chỉ tăng sau khi ảnh đã render hoặc lấy cache thành công)

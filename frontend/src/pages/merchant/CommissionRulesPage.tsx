@@ -91,7 +91,7 @@ export const CommissionRulesPage: React.FC = () => {
 
   // Tải danh sách mốc thưởng
   const loadRules = useCallback(async (targetStoreId?: string) => {
-    const sId = targetStoreId || storeId || '8ca136c3-9202-4254-bd4c-3704a840fa7b';
+    const sId = targetStoreId || storeId;
     if (!sId) {
       setLoading(false);
       return;
@@ -110,7 +110,7 @@ export const CommissionRulesPage: React.FC = () => {
 
   // Tải lịch sử chốt thưởng
   const loadHistory = useCallback(async (targetMonth?: string, targetStoreId?: string) => {
-    const sId = targetStoreId || storeId || '8ca136c3-9202-4254-bd4c-3704a840fa7b';
+    const sId = targetStoreId || storeId;
     if (!sId) {
       setHistoryLoading(false);
       return;
@@ -161,10 +161,7 @@ export const CommissionRulesPage: React.FC = () => {
         }
 
         if (!token) {
-          const fallbackStoreId =
-            storeId ||
-            localStorage.getItem('current_store_id') ||
-            '8ca136c3-9202-4254-bd4c-3704a840fa7b';
+          const fallbackStoreId = 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
           setStoreId(fallbackStoreId);
           loadRules(fallbackStoreId);
           loadHistory(settleYearMonth, fallbackStoreId);
@@ -178,13 +175,15 @@ export const CommissionRulesPage: React.FC = () => {
             setCurrentUserRole(authUser.role);
             localStorage.setItem('user', JSON.stringify(authUser));
           }
-          let effectiveStoreId =
+          // Ưu tiên cửa hàng mà tài khoản Shop Manager thực sự sở hữu
+          const myStore =
+            authUser.stores?.find((s: any) => s.id === storeId) ||
+            authUser.stores?.[0] ||
+            authUser.stores?.find((s: any) => s.id === 'a7e7bd20-bebc-44c9-a98b-004de44cf773');
+          const effectiveStoreId =
+            myStore?.id ||
             authUser.storeId ||
-            authUser.stores?.find((s: any) => s.id === '8ca136c3-9202-4254-bd4c-3704a840fa7b')?.id ||
-            authUser.stores?.[0]?.id ||
-            storeId ||
-            localStorage.getItem('current_store_id') ||
-            '8ca136c3-9202-4254-bd4c-3704a840fa7b';
+            'a7e7bd20-bebc-44c9-a98b-004de44cf773';
 
           if (effectiveStoreId) {
             setStoreId(effectiveStoreId);
@@ -201,10 +200,7 @@ export const CommissionRulesPage: React.FC = () => {
       } catch (err: any) {
         console.warn('Xác thực auth/me thất bại:', err?.message);
         if (isCurrent) {
-          const fallbackStoreId =
-            storeId ||
-            localStorage.getItem('current_store_id') ||
-            '8ca136c3-9202-4254-bd4c-3704a840fa7b';
+          const fallbackStoreId = 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
           setStoreId(fallbackStoreId);
           loadRules(fallbackStoreId);
           loadHistory(settleYearMonth, fallbackStoreId);
@@ -253,81 +249,25 @@ export const CommissionRulesPage: React.FC = () => {
     } catch {}
   }, [isAnyModalOpen]);
 
-  // 1. Tự động thông báo chiều cao thực tế cho iframe cha và chuyển tiếp sự kiện cuộn chuột (Mouse Wheel) tức thì 60fps/120fps
+  // Tự động báo chiều cao đầy đủ ra khung cha để trang cha cuộn mượt mà tự nhiên 100% (không bị 2 thanh cuộn)
   useEffect(() => {
-    if (typeof window === 'undefined' || window.self === window.top) {
-      document.documentElement.style.overflow = 'auto';
-      document.body.style.overflow = 'auto';
-      return;
+    if (window.parent && window.parent !== window) {
+      const sendHeight = () => {
+        const rootEl = document.body;
+        const h = Math.max(rootEl.scrollHeight, document.documentElement.scrollHeight, 680);
+        window.parent.postMessage({ type: 'SCANMS_IFRAME_RESIZE', height: h }, '*');
+        window.parent.postMessage({ type: 'SCANMS_RESIZE_IFRAME', height: h }, '*');
+      };
+      sendHeight();
+      const observer = new ResizeObserver(() => sendHeight());
+      observer.observe(document.body);
+      const timer = setTimeout(sendHeight, 200);
+      return () => {
+        observer.disconnect();
+        clearTimeout(timer);
+      };
     }
-
-    // Loại bỏ thanh cuộn bên trong iframe để dùng 1 thanh cuộn duy nhất của trang ngoài
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-
-    let lastSentHeight = 0;
-    const sendHeightToParent = () => {
-      try {
-        const height = Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight,
-          480
-        );
-        // Chỉ gửi khi chiều cao thay đổi thực tế trên 10px để triệt tiêu reflow loop
-        if (Math.abs(height - lastSentHeight) > 10) {
-          lastSentHeight = height;
-          window.parent.postMessage({ type: 'SCANMS_RESIZE_IFRAME', height }, '*');
-          window.parent.postMessage({ type: 'SCANMS_IFRAME_RESIZE', height }, '*');
-          if (window.frameElement) {
-            (window.frameElement as HTMLElement).style.height = `${height}px`;
-          }
-        }
-      } catch {}
-    };
-
-    sendHeightToParent();
-    const timeoutId = setTimeout(sendHeightToParent, 150);
-
-    let resizeObserver: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(() => {
-        sendHeightToParent();
-      });
-      resizeObserver.observe(document.body);
-    }
-
-    // CHUYỂN TIẾP CUỘN CHUỘT (MOUSE WHEEL) TRỰC TIẾP:
-    // Khắc phục triệt để hiện tượng chuột lăn bị khựng / đơ / trễ khi con trỏ ở trong iframe
-    const handleWheel = (e: WheelEvent) => {
-      // Khi modal đang mở, modal đã được mount lên modal-root của window ngoài và body ngoài đã bị khóa cuộn
-      if (isAnyModalOpen) return;
-      try {
-        if (window.parent && window.parent !== window) {
-          // Nếu chuột đang nằm trên vùng có thanh cuộn ngang, ưu tiên cuộn ngang
-          const target = e.target as HTMLElement | null;
-          const scrollableX = target?.closest('[data-scrollable-x="true"]');
-          if (scrollableX && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-            return;
-          }
-
-          e.preventDefault();
-          window.parent.scrollBy({
-            top: e.deltaY,
-            left: e.deltaX,
-            behavior: 'auto'
-          });
-        }
-      } catch {}
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: false });
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (resizeObserver) resizeObserver.disconnect();
-      window.removeEventListener('wheel', handleWheel);
-    };
-  }, [rules, simResult, historyList, isAnyModalOpen]);
+  }, [loading, rules, historyList, storeId]);
 
   // Chạy mô phỏng tính thưởng theo công thức lũy tiến
   const runSimulation = useCallback(async (revenueVal: string) => {
@@ -347,11 +287,12 @@ export const CommissionRulesPage: React.FC = () => {
   }, [storeId]);
 
   useEffect(() => {
+    if (loading || !storeId) return;
     const timer = setTimeout(() => {
       runSimulation(simRevenue);
     }, 400);
     return () => clearTimeout(timer);
-  }, [simRevenue, rules, runSimulation]);
+  }, [simRevenue, rules, runSimulation, loading, storeId]);
 
   // Submit tạo mốc thưởng
   const handleCreate = async (e: React.FormEvent) => {
@@ -487,7 +428,38 @@ export const CommissionRulesPage: React.FC = () => {
   };
 
   return (
-    <div className="app-container" style={{ padding: '10px 26px 48px 26px', width: '100%', maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+    <div className="app-container" style={{ padding: '24px 26px 48px 26px', width: '100%', maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+      <style>{`
+        html, body {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(180, 140, 75, 0.45) transparent;
+          overflow-y: auto !important;
+          scroll-behavior: smooth;
+        }
+        ::-webkit-scrollbar {
+          width: 7px;
+          height: 7px;
+          background-color: transparent;
+        }
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+          background-color: rgba(180, 140, 75, 0.45);
+          border-radius: 9999px;
+          border: 1.5px solid transparent;
+          background-clip: padding-box;
+          transition: background-color 0.15s ease;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(158, 121, 51, 0.85);
+        }
+        ::-webkit-scrollbar-button {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
+        }
+      `}</style>
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>

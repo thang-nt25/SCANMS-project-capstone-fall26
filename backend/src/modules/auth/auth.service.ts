@@ -248,7 +248,9 @@ export class AuthService {
     }
 
     if (!user.isActive) {
-      throw new ForbiddenException('Tài khoản của bạn đã bị vô hiệu hóa hoặc khóa');
+      throw new ForbiddenException(
+        'Tài khoản của bạn đã bị vô hiệu hóa hoặc khóa',
+      );
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
@@ -262,14 +264,19 @@ export class AuthService {
         const loginTime = new Date().toLocaleString('vi-VN', {
           timeZone: 'Asia/Ho_Chi_Minh',
         });
-        const device = meta?.userAgent || 'Trình duyệt Web (Chrome / Safari / Edge)';
+        const device =
+          meta?.userAgent || 'Trình duyệt Web (Chrome / Safari / Edge)';
         const ip = meta?.ipAddress || '127.0.0.1';
 
-        await this.mailService.sendLoginSecurityAlert(user.email, user.fullName, {
-          ipAddress: ip,
-          userAgent: device,
-          time: loginTime,
-        });
+        await this.mailService.sendLoginSecurityAlert(
+          user.email,
+          user.fullName,
+          {
+            ipAddress: ip,
+            userAgent: device,
+            time: loginTime,
+          },
+        );
       } catch (e) {
         // Email alert failure is non-blocking
       }
@@ -369,7 +376,8 @@ export class AuthService {
         });
       } else if (desiredRole === UserRole.SHOP_MANAGER) {
         // Nếu là Shop: Tạo store mặc định
-        const storeName = dto.storeName?.trim() || `${createdUser.fullName} Store`;
+        const storeName =
+          dto.storeName?.trim() || `${createdUser.fullName} Store`;
         const slug =
           storeName
             .toLowerCase()
@@ -417,14 +425,19 @@ export class AuthService {
         const loginTime = new Date().toLocaleString('vi-VN', {
           timeZone: 'Asia/Ho_Chi_Minh',
         });
-        const device = meta?.userAgent || 'Google OAuth (Chrome / Safari / Edge)';
+        const device =
+          meta?.userAgent || 'Google OAuth (Chrome / Safari / Edge)';
         const ip = meta?.ipAddress || '127.0.0.1';
 
-        await this.mailService.sendLoginSecurityAlert(user.email, user.fullName, {
-          ipAddress: ip,
-          userAgent: device,
-          time: loginTime,
-        });
+        await this.mailService.sendLoginSecurityAlert(
+          user.email,
+          user.fullName,
+          {
+            ipAddress: ip,
+            userAgent: device,
+            time: loginTime,
+          },
+        );
       } catch (e) {
         // Non-blocking
       }
@@ -459,7 +472,9 @@ export class AuthService {
    */
   async getMe(userId: string) {
     if (!userId) {
-      throw new UnauthorizedException('Không tìm thấy định danh người dùng trong token');
+      throw new UnauthorizedException(
+        'Không tìm thấy định danh người dùng trong token',
+      );
     }
 
     const user = await this.prisma.user.findUnique({
@@ -475,7 +490,9 @@ export class AuthService {
     });
 
     if (!user || user.isDeleted || !user.isActive) {
-      throw new UnauthorizedException('Tài khoản không tồn tại, đã bị khóa hoặc bị xóa');
+      throw new UnauthorizedException(
+        'Tài khoản không tồn tại, đã bị khóa hoặc bị xóa',
+      );
     }
 
     const { passwordHash: _, ...safeUser } = user;

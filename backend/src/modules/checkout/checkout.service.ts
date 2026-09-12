@@ -87,7 +87,8 @@ export class CheckoutService {
               collaboratorId: verification.collaboratorId,
               referralLinkId: verification.referralLinkId,
               appliedCommissionRate: verification.appliedCommissionRate,
-              calculatedCommissionAmount: verification.calculatedCommissionAmount,
+              calculatedCommissionAmount:
+                verification.calculatedCommissionAmount,
               attributedProductId: matchingItem.productId,
             };
           }
@@ -128,7 +129,7 @@ export class CheckoutService {
           ? (attributionResult.appliedCommissionRate ?? 5)
           : 0;
         const amount = isAttributed
-          ? ((item.quantity * item.unitPrice * rate) / 100)
+          ? (item.quantity * item.unitPrice * rate) / 100
           : 0;
 
         await tx.orderItem.create({
@@ -137,7 +138,9 @@ export class CheckoutService {
             productId: item.productId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            referralLinkId: isAttributed ? attributionResult.referralLinkId : null,
+            referralLinkId: isAttributed
+              ? attributionResult.referralLinkId
+              : null,
             appliedCommissionRate: rate,
             calculatedCommissionAmount: amount,
           },

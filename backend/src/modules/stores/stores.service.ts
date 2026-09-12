@@ -29,7 +29,9 @@ export class StoresService {
 
     // Nếu chưa có store (chủ shop vừa đăng ký), tự tạo mới
     if (!store) {
-      const user = await this.prisma.user.findUnique({ where: { id: ownerId } });
+      const user = await this.prisma.user.findUnique({
+        where: { id: ownerId },
+      });
       const storeName = user ? `${user.fullName} Store` : 'Cửa Hàng Chính Hãng';
       const slug =
         storeName
@@ -79,9 +81,13 @@ export class StoresService {
       where: { id: store.id },
       data: {
         ...(dto.name && { name: dto.name.trim() }),
-        ...(dto.description !== undefined && { description: dto.description?.trim() }),
+        ...(dto.description !== undefined && {
+          description: dto.description?.trim(),
+        }),
         ...(dto.logoUrl !== undefined && { logoUrl: dto.logoUrl?.trim() }),
-        ...(dto.websiteUrl !== undefined && { websiteUrl: dto.websiteUrl?.trim() }),
+        ...(dto.websiteUrl !== undefined && {
+          websiteUrl: dto.websiteUrl?.trim(),
+        }),
         ...(dto.defaultCommissionRate !== undefined && {
           defaultCommissionRate: dto.defaultCommissionRate,
         }),
@@ -118,7 +124,9 @@ export class StoresService {
     });
 
     if (!store) {
-      throw new NotFoundException('Cửa hàng không tồn tại hoặc đã ngừng hoạt động');
+      throw new NotFoundException(
+        'Cửa hàng không tồn tại hoặc đã ngừng hoạt động',
+      );
     }
 
     return store;

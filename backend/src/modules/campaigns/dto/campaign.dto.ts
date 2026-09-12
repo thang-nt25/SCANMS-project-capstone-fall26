@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsNumber, IsDateString, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsDateString,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class CreateCampaignDto {
   @IsString()
