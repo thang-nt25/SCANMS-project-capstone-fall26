@@ -1,0 +1,854 @@
+ĐẶC TẢ NGHIỆP VỤ ĐỀ XUẤT ĐỂ DUYỆT
+FR-13 — ĐỘNG CƠ TRACKING LAST-CLICK & COOKIE
+
+Yêu cầu gốc:
+Ghi IP, User-Agent, Fingerprint, cài Cookie 30 ngày và áp dụng luật Last-Click Wins.
+
+Hướng dẫn duyệt:
+- Có: Giữ và triển khai nội dung đề xuất.
+- Không: Bỏ nội dung khỏi FR-13.
+- Sửa: Ghi nội dung thay thế sau chữ “Sửa”.
+- Chưa đánh dấu thì chưa được xem là đã duyệt.
+
+Mẫu duyệt:
+[ ] Có    [ ] Không    [ ] Sửa: ................................................
+
+======================================================================
+1. MỤC TIÊU
+======================================================================
+
+Khi khách mở link/QR tiếp thị hợp lệ của KOL, hệ thống ghi nhận lượt truy cập,
+thiết lập dấu vết attribution có thời hạn và xác định KOL nhận đơn theo lượt click
+hợp lệ cuối cùng trước khi khách đặt hàng.
+
+FR-13 chỉ xác định nguồn/KOL của đơn. Việc tính và chi hoa hồng thuộc các chức năng
+Commission, đối soát và ví.
+
+Duyệt: [ ] Có    
+
+======================================================================
+2. PHẠM VI FR-13
+======================================================================
+
+Bao gồm:
+1. Nhận request từ short URL /r/{shortCode} của FR-10/FR-11.
+2. Kiểm tra link, KOL, Shop, sản phẩm và trạng thái hợp lệ.
+3. Thu thập metadata kỹ thuật cần thiết của lượt click.
+4. Chống spam/rate limit trước khi công nhận click.
+5. Ghi click hợp lệ và tăng bộ đếm theo cơ chế chống trùng.
+6. Cài/cập nhật cookie attribution.
+7. Áp dụng Last-Click Wins.
+8. Đọc attribution khi checkout/webhook.
+9. Lưu snapshot nguồn attribution trên đơn.
+10. Fallback fingerprint có giới hạn.
+11. Audit, bảo mật, quyền riêng tư, retention và giám sát.
+
+Không bao gồm:
+- Tạo link: FR-10.
+- Sinh ảnh QR: FR-11.
+- Tạo/duyệt coupon: FR-12.
+- Tính hoa hồng chi tiết: FR-14/Commission.
+- Toàn bộ hệ thống phát hiện gian lận nâng cao.
+
+Duyệt: [ ] Có    
+
+======================================================================
+3. THUẬT NGỮ
+======================================================================
+
+- Click hợp lệ: lượt mở link vượt qua kiểm tra trạng thái và chống spam.
+- Attribution: bằng chứng dùng để gắn đơn cho KOL/Shop/link.
+- Last-Click Wins: click hợp lệ gần thời điểm đặt đơn nhất được ưu tiên.
+- Attribution window: thời gian click còn quyền nhận attribution.
+- Fingerprint: mã băm giả danh từ tín hiệu kỹ thuật tối thiểu; không phải định danh
+  tuyệt đối và không được xem là bằng chứng duy nhất có độ tin cậy cao.
+- Conversion: hành động đặt đơn hợp lệ được gắn với attribution.
+
+Duyệt: [ ] Có    
+
+======================================================================
+4. ĐIỀU KIỆN TRƯỚC KHI TRACKING
+======================================================================
+
+Chỉ công nhận attribution khi:
+- shortCode tồn tại và không bị xóa mềm.
+- Link ACTIVE, chưa hết hạn, không BLOCKED.
+- KOL còn hoạt động và được phép tiếp thị Shop đó.
+- Shop còn hoạt động.
+- Sản phẩm/chiến dịch đích còn hợp lệ nếu link bị giới hạn theo đối tượng.
+
+Link không hợp lệ phải xử lý theo chính sách redirect của FR-10 nhưng không tạo
+attribution mới.
+
+Duyệt: [ ] Có   
+
+======================================================================
+5. LUỒNG CLICK THÀNH CÔNG CHUẨN
+======================================================================
+
+Khách mở /r/{shortCode}
+→ Backend giải mã/tra cứu link
+→ kiểm tra trạng thái và rate limit
+→ lấy metadata từ request
+→ tạo click event bất biến
+→ tạo/cập nhật attribution session
+→ Set-Cookie từ Backend
+→ redirect 302/303 tới trang sản phẩm/landing page của đúng Shop
+→ khách tiếp tục mua hàng.
+
+Tracking không được làm khách chờ lâu; nếu hàng đợi thống kê phụ lỗi, ưu tiên vẫn
+phải redirect an toàn, nhưng cookie chỉ được ghi khi link đã được xác thực hợp lệ.
+
+Duyệt: [ ] Có    
+
+======================================================================
+6. DỮ LIỆU GHI NHẬN CHO MỖI CLICK
+======================================================================
+
+Đề xuất lưu:
+- clickId/eventId duy nhất.
+- referralLinkId, shortCode nội bộ.
+- collaboratorId, storeId, productId/campaignId nếu có.
+- clickedAt theo UTC và receivedAt của server.
+- IP đã chuẩn hóa; ưu tiên lưu dạng mã băm/rút gọn cho analytics dài hạn.
+- User-Agent có giới hạn độ dài.
+- deviceFingerprintHash, không lưu fingerprint thô.
+- sessionId/visitorId dạng ngẫu nhiên, không chứa PII.
+- channel, label và UTM đã được chuẩn hóa.
+- via=link hoặc via=qr.
+- landing URL đã kiểm tra.
+- trạng thái valid/invalid/suspicious và lý do.
+- requestId/correlationId để audit.
+
+Không ghi mật khẩu, token đăng nhập, cookie phiên, dữ liệu form hoặc toàn bộ header.
+
+Duyệt: [ ] Có    
+
+======================================================================
+7. XỬ LÝ ĐỊA CHỈ IP QUA PROXY
+======================================================================
+
+Chỉ tin X-Forwarded-For/CF-Connecting-IP khi request đi qua reverse proxy/CDN đã
+được cấu hình tin cậy. Không tin header IP do client gửi trực tiếp. Backend xác định
+IP chuẩn sau cùng và không trả IP về giao diện KOL/Shop.
+
+Duyệt: [ ] Có   
+
+======================================================================
+8. USER-AGENT
+======================================================================
+
+User-Agent chỉ dùng cho phân tích thiết bị, chống gian lận và tạo fingerprint giới
+hạn. Chuẩn hóa, giới hạn độ dài (đề xuất 512 ký tự) và không dùng trực tiếp để ra
+quyết định tài chính nếu thiếu bằng chứng khác.
+
+Duyệt: [ ] Có    
+
+======================================================================
+9. FINGERPRINT
+======================================================================
+
+Đề xuất fingerprint phía server:
+HMAC(secret, normalized IP prefix + normalized User-Agent + tín hiệu tối thiểu).
+
+- Không lưu chuỗi đầu vào fingerprint thô trong trường fingerprint.
+- Secret nằm trong secret manager/env và có cơ chế xoay khóa.
+- Không dùng canvas/audio/font fingerprint xâm lấn trong bản cốt lõi.
+- Fingerprint chỉ là fallback, có thể sai khi nhiều người dùng chung mạng/thiết bị.
+- Không dùng fingerprint để theo dõi ngoài phạm vi attribution SCANMS.
+
+Duyệt: [ ] Có   
+
+======================================================================
+10. COOKIE ATTRIBUTION
+======================================================================
+
+Đề xuất cookie tên `scanms_attr` (thay cho tên mô tả trực tiếp KOL). Cookie chỉ chứa
+opaque attributionSessionId hoặc payload đã ký/mã hóa; không chứa PII, IP, User-Agent,
+email hoặc collaboratorId dạng đọc được.
+
+Thuộc tính:
+- HttpOnly.
+- Secure trong HTTPS production.
+- SameSite=Lax.
+- Path=/.
+- Domain theo domain SCANMS hợp lệ; không mở rộng tùy tiện sang domain bên thứ ba.
+- Max-Age theo attribution window.
+- Payload có version để nâng cấp định dạng.
+
+Duyệt: [ ] Có    
+
+======================================================================
+11. THỜI HẠN COOKIE
+======================================================================
+
+Mặc định 30 ngày tính từ click hợp lệ cuối cùng. Shop có thể cấu hình từ 1–365 ngày.
+Mỗi click hợp lệ mới được phép gia hạn cửa sổ theo chính sách của Shop tại thời điểm
+click. Thời điểm hết hạn thật phải được kiểm tra ở server, không chỉ tin expiry của
+trình duyệt.
+
+Duyệt: [ ] Có    
+
+======================================================================
+12. LAST-CLICK WINS
+======================================================================
+
+Nếu khách click link KOL A rồi click link KOL B cho cùng Shop trước khi đặt đơn,
+click hợp lệ gần nhất thắng và đơn được attribution cho KOL B.
+
+Chỉ click hợp lệ mới được thay attribution. Bot/spam, link BLOCKED, link hết hạn hoặc
+click bị từ chối không được ghi đè click hợp lệ trước đó.
+
+Duyệt: [ ] Có   
+
+======================================================================
+13. PHẠM VI LAST-CLICK TRONG HỆ THỐNG NHIỀU SHOP
+======================================================================
+
+Đề xuất lưu attribution theo từng Shop, không để click của Shop B xóa attribution
+đang còn hạn của Shop A. Khi giỏ hàng có sản phẩm nhiều Shop, backend chia đơn/dòng
+theo Shop và chọn last-click tương ứng của từng Shop.
+
+Ví dụ:
+- Click KOL A của Sora → attribution Sora = A.
+- Sau đó click KOL B của TechStore → attribution TechStore = B.
+- Mua cả hai Shop → phần Sora thuộc A, phần TechStore thuộc B.
+
+Duyệt: [ ] Có   
+
+======================================================================
+14. CLICK LẠI CÙNG MỘT LINK
+======================================================================
+
+Click lại cùng link có thể cập nhật clickedAt/gia hạn cookie nếu vượt chống spam.
+Thống kê raw click và unique click phải tách riêng. Không tăng unique click nhiều lần
+trong cùng cửa sổ dedup đề xuất 30 phút cho cùng link + visitor/fingerprint.
+
+Duyệt: [ ] Có    
+
+======================================================================
+15. THỨ TỰ ƯU TIÊN ATTRIBUTION KHI CHECKOUT
+======================================================================
+
+Theo nghiệp vụ đã có:
+P1. Coupon KOL hợp lệ do khách nhập (FR-12).
+P2. Cookie last-click hợp lệ theo đúng Shop.
+P3. Fingerprint fallback hợp lệ trong thời gian cho phép.
+P4. Không xác định nguồn → đơn organic/direct, không tự gán KOL.
+
+Nếu coupon KOL B ghi đè cookie KOL A, phải lưu cả nguồn click A và lý do override
+`COUPON_OVERRIDE` để audit.
+
+Duyệt: [ ] Có   
+======================================================================
+16. FINGERPRINT FALLBACK
+======================================================================
+
+Chỉ dùng khi không có coupon và không có cookie hợp lệ. Đề xuất chỉ khớp click hợp lệ
+gần nhất trong 24 giờ, đồng thời phải đúng Shop. Nếu có nhiều kết quả mơ hồ cùng thời
+điểm/thiết bị dùng chung, đánh dấu UNATTRIBUTED hoặc REVIEW thay vì gán tùy tiện.
+
+Duyệt: [ ] Có   
+======================================================================
+17. KHÁCH ĐĂNG NHẬP VÀ GUEST CHECKOUT
+======================================================================
+
+- Guest: dùng attributionSessionId/cookie và fingerprint fallback.
+- Khách đăng nhập: có thể liên kết visitor session với customerId nội bộ sau đăng
+  nhập, nhưng không cho một tài khoản tự sửa nguồn attribution.
+- Đăng nhập không tự xóa click hợp lệ trước đó.
+- Không đồng bộ tracking marketing qua thiết bị khác nếu chưa có chính sách/đồng ý.
+
+Duyệt: [ ] Có   
+
+======================================================================
+18. TAB ẨN DANH, XÓA COOKIE VÀ CHẶN COOKIE
+======================================================================
+
+Không cam kết attribution tuyệt đối. Khi cookie mất, hệ thống chỉ thử fingerprint
+fallback 24 giờ. Không dùng kỹ thuật né quyền riêng tư để tái tạo cookie bí mật.
+
+Duyệt: [ ] Có   
+
+======================================================================
+19. THIẾT BỊ DÙNG CHUNG / NAT / VPN
+======================================================================
+
+IP hoặc fingerprint trùng không đủ để khẳng định cùng khách. Với mạng công ty, quán
+cà phê, VPN hoặc thiết bị dùng chung, fallback phải giảm độ tin cậy. Không gán đơn
+nếu kết quả mơ hồ; lưu lý do để Admin đối soát.
+
+Duyệt: [ ] Có    
+
+======================================================================
+20. XỬ LÝ LINK THEO TRẠNG THÁI
+======================================================================
+
+- ACTIVE: tracking và attribution bình thường.
+- PAUSED: đề xuất vẫn redirect an toàn nhưng không tạo attribution mới.
+- BLOCKED: không attribution; chuyển trang cảnh báo/đích an toàn.
+- EXPIRED: không attribution; chuyển trang hết hạn/đích an toàn.
+- DELETED: không attribution; trả 404/410 hoặc trang an toàn.
+
+Cookie đã tạo trước khi link bị BLOCKED/DELETED phải bị từ chối khi checkout nếu
+chính sách yêu cầu link còn hợp lệ tại thời điểm tạo đơn.
+
+Duyệt: [ ] Có   
+======================================================================
+21. LINK CỦA KOL/SHOP BỊ KHÓA SAU KHI CLICK
+======================================================================
+
+Đề xuất: tại checkout phải kiểm tra lại KOL, Shop, quan hệ hợp tác và link. Nếu bị
+khóa vì gian lận trước khi đơn tạo, không attribution đơn mới. Không sửa/xóa lịch sử
+đơn đã tạo trước đó; xử lý qua quy trình audit/clawback riêng.
+
+Duyệt: [ ] Có   
+======================================================================
+22. QR VÀ LINK THƯỜNG
+======================================================================
+
+Quét QR vẫn đi qua /r/{shortCode} và dùng cùng engine Last-Click. Lưu `via=qr` để
+phân tích nguồn, nhưng vẫn giữ channel/label/UTM gốc của link. Không tạo một luật
+attribution khác chỉ vì khách quét QR.
+
+Duyệt: [ ] Có   
+
+======================================================================
+23. UTM VÀ KÊNH QUẢNG BÁ
+======================================================================
+
+UTM/channel/label dùng cho báo cáo, không tự quyết định KOL. KOL/linkId lấy từ bản
+ghi server. Chuẩn hóa độ dài và ký tự; không tin collaboratorId/KOL id do query string
+client tự gửi.
+
+Duyệt: [ ] Có   
+
+======================================================================
+24. REDIRECT AN TOÀN
+======================================================================
+
+Chỉ redirect tới URL/domain đã được phép hoặc landing URL được xây từ dữ liệu nội
+bộ. Chống open redirect, javascript: URL và CRLF injection. Khi đích lỗi, chuyển tới
+trang sản phẩm/Shop an toàn của SCANMS.
+
+Duyệt: [ ] Có   
+
+======================================================================
+25. CHỐNG CLICK SPAM VÀ BOT
+======================================================================
+
+Đề xuất:
+- Rate limit theo IP + fingerprint/session bằng Redis.
+- Mốc khởi đầu: tối đa 10 request/giây/IP và thêm giới hạn theo phút.
+- Bot/crawler/preview mạng xã hội được nhận diện và không tính conversion click.
+- Click vượt ngưỡng vẫn redirect nếu an toàn nhưng không ghi cookie/attribution.
+- Phân biệt raw click, valid click, unique click, suspicious click.
+- Không dùng Map RAM làm giới hạn chính khi chạy nhiều instance production.
+
+Duyệt: [ ] Có   
+======================================================================
+26. IDEMPOTENCY VÀ CHỐNG GHI TRÙNG
+======================================================================
+
+Mỗi request/click event có eventId. Queue retry không được tăng click nhiều lần hoặc
+tạo nhiều attribution session cho cùng event. Database có unique constraint phù hợp
+và consumer xử lý idempotent.
+
+Duyệt: [ ] Có   
+
+======================================================================
+27. QUEUE/REDIS BỊ LỖI
+======================================================================
+
+- Kiểm tra link và tạo cookie attribution cốt lõi phải có chiến lược nhất quán.
+- Thống kê phụ có thể đưa vào queue và retry.
+- Không tự công nhận click spam khi Redis rate limit bị mất; áp dụng fallback giới
+  hạn bảo thủ tại instance và cảnh báo vận hành.
+- Có dead-letter queue cho event xử lý thất bại.
+
+Duyệt: [ ] Có   
+
+======================================================================
+28. CHECKOUT PHẢI TÍNH LẠI Ở BACKEND
+======================================================================
+
+Client chỉ gửi cookie/session/coupon và giỏ hàng. Backend tự tra cứu attribution,
+kiểm tra thời hạn/trạng thái và xác định KOL trong transaction tạo đơn. Không nhận
+collaboratorId, commission rate hoặc clickedAt do client khai báo làm nguồn tin cậy.
+
+Duyệt: [ ] Có    
+
+======================================================================
+29. SNAPSHOT ATTRIBUTION TRÊN ĐƠN
+======================================================================
+
+Khi tạo đơn phải lưu snapshot bất biến tối thiểu:
+- attributionType: COUPON / COOKIE / FINGERPRINT / ORGANIC.
+- collaboratorId, storeId, referralLinkId, clickId/sessionId nếu có.
+- attributedAt và clickAt.
+- attribution window/chính sách áp dụng.
+- channel, via, label/UTM cần thiết.
+- độ tin cậy và lý do override/fallback.
+- coupon source và click source trước đó nếu coupon override.
+
+Không đọc lại cookie để thay đổi attribution của đơn sau khi đơn đã tạo.
+
+Duyệt: [ ] Có    
+
+======================================================================
+30. ĐƠN NHIỀU SẢN PHẨM / NHIỀU SHOP
+======================================================================
+
+Attribution phải tính theo Shop và, nếu chính sách link giới hạn sản phẩm, theo từng
+dòng hàng đủ điều kiện. Không gán hoa hồng cho sản phẩm Shop khác chỉ vì cùng giỏ.
+Nếu kiến trúc tách một checkout thành nhiều order theo Shop, mỗi order lưu snapshot
+riêng.
+
+Duyệt: [ ] Có    
+
+======================================================================
+31. ĐƠN HỦY/HOÀN VÀ ATTRIBUTION
+======================================================================
+
+Không xóa attribution snapshot khi đơn hủy/hoàn. Attribution dùng để audit; hoa hồng
+được thu hồi/điều chỉnh ở Commission. Conversion thành công và doanh thu báo cáo phải
+phản ánh trạng thái hủy/hoàn, không cộng doanh thu ảo.
+
+Duyệt: [ ] Có   
+
+======================================================================
+32. ĐƠN TỪ WEBHOOK/EXCEL/SÀN NGOÀI
+======================================================================
+
+Nếu không có cookie trình duyệt, ưu tiên coupon hợp lệ hoặc tracking token đã được ký
+từ nguồn tích hợp. Không dựa vào IP/User-Agent thiếu tin cậy từ file Excel. Webhook
+phải xác thực chữ ký và idempotency trước khi attribution.
+
+Duyệt: [ ] Có    
+
+======================================================================
+33. COOKIE CONSENT VÀ QUYỀN RIÊNG TƯ
+======================================================================
+
+Phải phân loại cookie attribution theo chính sách pháp lý/consent của thị trường vận
+hành. Hiển thị thông báo rõ mục đích, thời hạn và chính sách riêng tư; hỗ trợ từ chối
+nếu luật yêu cầu. Khi khách từ chối, không dùng tracking không thiết yếu và đơn có thể
+trở thành ORGANIC trừ khi có coupon khách chủ động nhập.
+
+Duyệt: [ ] Có   
+======================================================================
+34. QUYỀN XÓA/ẨN DANH DỮ LIỆU
+======================================================================
+
+Có quy trình đáp ứng yêu cầu quyền riêng tư. Xóa/ẩn danh PII không được phá vỡ số liệu
+tài chính bắt buộc lưu; giữ ID giả danh và snapshot cần thiết theo thời hạn pháp lý.
+Không cho KOL tải danh sách IP/fingerprint của khách.
+
+Duyệt: [ ] Có    
+======================================================================
+35. THỜI HẠN LƯU DỮ LIỆU
+======================================================================
+
+Đề xuất ban đầu:
+- Cookie attribution: theo Shop, mặc định 30 ngày.
+- Fingerprint fallback: có hiệu lực tối đa 24 giờ.
+- IP/User-Agent thô phục vụ chống gian lận: thời hạn ngắn, đề xuất 30–90 ngày.
+- Click đã băm/ẩn danh cho thống kê: theo chính sách dữ liệu, đề xuất 24 tháng.
+- Snapshot trên đơn/audit tài chính: theo thời hạn lưu chứng từ và pháp luật.
+
+Duyệt: [ ] Có    
+======================================================================
+36. MÃ HÓA VÀ QUẢN LÝ SECRET
+======================================================================
+
+- HTTPS bắt buộc production.
+- Cookie được ký chống sửa; dữ liệu nhạy cảm mã hóa khi lưu/truyền.
+- Dùng HMAC có secret, không dùng SHA đơn thuần cho IP/fingerprint dễ dò.
+- Secret không commit Git, không trả frontend, có version/key rotation.
+- Cookie sai chữ ký/hết hạn bị bỏ qua và không gây lỗi checkout.
+
+Duyệt: [ ] Có    
+
+======================================================================
+37. PHÂN QUYỀN
+======================================================================
+
+KOL:
+- Xem thống kê tổng hợp của link mình; không xem IP/fingerprint/PII.
+
+Chủ Shop:
+- Xem thống kê tổng hợp của Shop mình; không truy cập Shop khác hoặc dữ liệu nhận dạng
+  thô của khách.
+
+Admin/Vận hành được phân quyền:
+- Tra cứu sự kiện phục vụ gian lận/khiếu nại, mọi truy cập nhạy cảm có audit.
+
+Khách:
+- Không cần đăng nhập để redirect; không được gọi API đọc click log nội bộ.
+
+Duyệt: [ ] Có   
+
+======================================================================
+38. AUDIT LOG
+======================================================================
+
+Ghi audit cho thay đổi attribution window, khóa/mở link/KOL, điều chỉnh attribution
+thủ công, xem/xuất dữ liệu nhạy cảm và thay đổi cấu hình chống gian lận. Audit gồm
+actor, action, target, before/after, reason, time, IP quản trị và requestId.
+
+Duyệt: [ ] Có   
+
+======================================================================
+39. ĐIỀU CHỈNH ATTRIBUTION THỦ CÔNG
+======================================================================
+
+Mặc định không sửa trực tiếp snapshot đơn. Nếu xử lý tranh chấp, chỉ Admin/Vận hành
+có quyền tạo adjustment bất biến, bắt buộc lý do và bằng chứng; không UPDATE/DELETE
+lịch sử gốc.
+
+Duyệt: [ ] Có   
+
+======================================================================
+40. BÁO CÁO VÀ CHỈ SỐ
+======================================================================
+
+Tách rõ:
+- Raw clicks.
+- Valid clicks.
+- Unique clicks.
+- Suspicious/blocked clicks.
+- Conversions.
+- Conversion rate.
+- Doanh thu attributed sau hủy/hoàn.
+- Attribution theo link/QR/channel/coupon/cookie/fingerprint/organic.
+
+Số liệu KOL và Shop phải cùng định nghĩa để tránh tranh chấp đối soát.
+
+Duyệt: [ ] Có    
+======================================================================
+41. HIỆU NĂNG VÀ KHẢ DỤNG
+======================================================================
+
+Đề xuất mục tiêu:
+- Redirect p95 dưới 300 ms trong điều kiện bình thường.
+- Không render QR hoặc ảnh sản phẩm trong đường xử lý redirect.
+- Index shortCode, storeId, clickedAt, fingerprintHash và attributionSessionId.
+- Queue thống kê có retry/idempotency; có health check Redis/queue/database.
+- Không log đồng bộ quá nặng làm chậm khách.
+
+Duyệt: [ ] Có    
+======================================================================
+42. MÃ LỖI NGHIỆP VỤ
+======================================================================
+
+- REFERRAL_LINK_NOT_FOUND.
+- REFERRAL_LINK_PAUSED.
+- REFERRAL_LINK_BLOCKED.
+- REFERRAL_LINK_EXPIRED.
+- COLLABORATOR_NOT_ELIGIBLE.
+- STORE_NOT_ACTIVE.
+- PRODUCT_NOT_ACTIVE.
+- CLICK_RATE_LIMITED.
+- CLICK_SUSPECTED_BOT.
+- ATTRIBUTION_COOKIE_INVALID.
+- ATTRIBUTION_COOKIE_EXPIRED.
+- ATTRIBUTION_NOT_FOUND.
+- ATTRIBUTION_AMBIGUOUS.
+- TRACKING_TEMPORARILY_UNAVAILABLE.
+
+Khách nhận thông báo tiếng Việt dễ hiểu/trang chuyển hướng an toàn; log nội bộ giữ mã
+lỗi kỹ thuật. Không hiển thị IP, fingerprint, stack trace hoặc secret.
+
+Duyệt: [ ] Có    
+======================================================================
+43. API/ENDPOINT ĐỀ XUẤT
+======================================================================
+
+Công khai:
+- GET /r/:shortCode — xác thực, tracking, Set-Cookie và redirect.
+
+Nội bộ checkout:
+- Resolve attribution bằng service nội bộ trong transaction, không mở endpoint cho
+  client tự yêu cầu gán KOL.
+
+Theo quyền:
+- GET /collaborator/referral-links/:id/analytics.
+- GET /stores/:storeId/referral-links/:id/analytics.
+- GET /admin/tracking/events (lọc và che dữ liệu nhạy cảm).
+
+Swagger mô tả redirect, Set-Cookie, response 302/400/404/410/429/500 và bảo mật.
+
+Duyệt: [ ] Có    
+
+======================================================================
+44. MÔ HÌNH DỮ LIỆU ĐỀ XUẤT
+======================================================================
+
+ClickEvent/click_traffic_logs:
+- id, eventId unique, referralLinkId, collaboratorId, storeId.
+- productId/campaignId nullable.
+- clickedAt, ipHash/ipEncrypted nullable, userAgentNormalized.
+- fingerprintHash, visitor/sessionIdHash.
+- channel, via, UTM, validity, riskReason, requestId.
+
+AttributionSession:
+- id opaque, storeId, latestClickId, referralLinkId, collaboratorId.
+- firstClickedAt, lastClickedAt, expiresAt, status, version.
+- unique(storeId, visitor/session key) phù hợp kiến trúc.
+
+Order attribution snapshot:
+- attributionType/source, clickId/sessionId, collaboratorId/storeId/linkId.
+- timestamps, overrideReason, confidence và metadata đã chuẩn hóa.
+
+Migration database bắt buộc; không chỉ dùng prisma db push.
+
+Duyệt: [ ] Có   
+
+======================================================================
+45. INDEX VÀ RÀNG BUỘC DATABASE
+======================================================================
+
+- shortCode unique theo chuẩn FR-10.
+- eventId unique chống queue retry ghi trùng.
+- Index referralLinkId + clickedAt.
+- Index storeId + clickedAt.
+- Index fingerprintHash + clickedAt cho cửa sổ fallback.
+- Index attributionSessionId/expiresAt.
+- Foreign key phù hợp và ưu tiên soft delete; không cascade xóa lịch sử click/đơn.
+
+Duyệt: [ ] Có   
+
+======================================================================
+46. OBSERVABILITY VÀ CẢNH BÁO
+======================================================================
+
+Theo dõi redirect latency/error rate, Redis/queue backlog, tỷ lệ cookie invalid,
+rate-limited clicks, bot clicks, fingerprint fallback, ambiguous attribution và biến
+động conversion bất thường. Log có correlationId nhưng phải che IP/cookie/secret.
+
+Duyệt: [ ] Có   
+
+======================================================================
+47. KIỂM THỬ BẮT BUỘC
+======================================================================
+
+Unit test:
+- Cookie ký/mã hóa, expiry, key version.
+- Last-click cùng Shop và tách theo nhiều Shop.
+- Coupon > cookie > fingerprint > organic.
+- Link status, thời hạn, dedup, fingerprint window.
+
+Integration/E2E:
+- /r/:code ghi click, Set-Cookie và redirect đúng.
+- A → B → checkout gán B.
+- Shop A không bị click Shop B ghi đè.
+- QR lưu via=qr.
+- Cookie giả mạo/hết hạn không attribution.
+- Spam/bot không ghi đè cookie cũ.
+- Checkout không tin KOL id từ client.
+- Queue retry không nhân đôi click.
+- Hủy/hoàn giữ snapshot nhưng sửa báo cáo conversion/doanh thu.
+- RBAC ngăn KOL/Shop xem IP/fingerprint hoặc dữ liệu Shop khác.
+- Test đồng thời và nhiều instance Redis.
+
+Duyệt: [ ] Có    
+
+======================================================================
+48. TIÊU CHÍ HOÀN THÀNH FR-13
+======================================================================
+
+FR-13 chỉ được đánh dấu hoàn thành khi:
+1. Có migration và schema tracking/attribution đầy đủ.
+2. Redirect thật ghi click hợp lệ và cookie bảo mật.
+3. Last-click đúng cùng Shop và đúng hệ thống multi-merchant.
+4. Checkout resolve ở backend và lưu snapshot bất biến.
+5. Thứ tự coupon > cookie > fingerprint > organic hoạt động.
+6. Redis rate limit, dedup và idempotency hoạt động nhiều instance.
+7. Không lộ IP/fingerprint/PII cho KOL/Shop.
+8. Retention/consent/audit được triển khai theo quyết định đã duyệt.
+9. Unit, integration và E2E đạt; không còn open handle.
+10. Swagger, monitoring và mã lỗi hoàn chỉnh.
+
+Duyệt: [ ] Có    
+
+======================================================================
+49. CÁC QUYẾT ĐỊNH QUAN TRỌNG CẦN CHỐT NHANH
+======================================================================
+
+1. Cookie chỉ chứa attributionSessionId/payload đã ký, không chứa PII?
+[ ] Có    
+Cookie không nên chứa tên, email, IP hay mã KOL đọc được. Chỉ lưu mã phiên ngẫu nhiên hoặc dữ liệu đã ký để chống khách sửa cookie nhằm chuyển hoa hồng.
+2. Cookie mặc định 30 ngày và Shop được cấu hình 1–365 ngày?
+[ ] Có    
+Đúng yêu cầu FR-13:
+- Mặc định: 30 ngày.
+- Shop có thể rút ngắn hoặc kéo dài.
+- Backend phải lưu thời hạn áp dụng tại lúc click.
+- Không được chỉ tin ngày hết hạn phía trình duyệt.
+Nếu muốn chính sách bảo mật chặt hơn, có thể sửa giới hạn tối đa thành 90 ngày. Nhưng theo Business Rules hiện tại của dự án thì 1–365 ngày là đúng.
+3. Cookie production dùng HttpOnly + Secure + SameSite=Lax?
+[ ] Có    
+Đây là cấu hình an toàn:
+- HttpOnly: JavaScript không đọc được cookie, giảm nguy cơ đánh cắp.
+- Secure: chỉ truyền qua HTTPS ở production.
+- SameSite=Lax: hạn chế gửi cookie từ website lạ.
+Ở localhost, Secure có thể tắt trong development.
+4. Last-click chỉ tính click hợp lệ gần nhất?
+[ ] Có    
+Last-click không có nghĩa mọi request cuối cùng đều thắng. Click spam, bot, link hết hạn hoặc link bị khóa không được ghi đè attribution cũ.
+Ví dụ:
+Click KOL A hợp lệ
+→ click KOL B bị phát hiện spam
+→ đơn vẫn thuộc KOL A
+5. Attribution tách theo từng Shop trong hệ thống multi-merchant?
+[ ] Có   
+Đây là yêu cầu bắt buộc cho SCANMS multi-merchant.
+Click Shop B không được xóa attribution Shop A:
+Sora Skin → KOL A
+TechStore → KOL B
+Nếu mua sản phẩm của cả hai Shop, từng phần đơn được attribution riêng.
+6. Coupon hợp lệ ưu tiên hơn cookie last-click?
+[ ] Có    
+Khách chủ động nhập coupon KOL B thì coupon B ưu tiên hơn cookie KOL A. Hệ thống vẫn lưu nguồn click A và lý do bị coupon ghi đè để đối soát.
+Thứ tự:
+Coupon → Cookie → Fingerprint → Organic
+7. Fingerprint chỉ fallback khi không có coupon/cookie?
+[ ] Có   
+Fingerprint không chính xác tuyệt đối. Chỉ sử dụng khi:
+- Không có coupon.
+- Không có cookie hợp lệ.
+- Có click fingerprint phù hợp trong thời hạn.
+
+8. Fingerprint fallback tối đa 24 giờ và phải đúng Shop?
+[ ] Có   
+Điều này giảm nguy cơ gán nhầm người dùng chung Wi-Fi, VPN hoặc thiết bị.
+Không được lấy fingerprint của Sora để attribution cho đơn TechStore. 
+9. Fingerprint dùng HMAC và không lưu fingerprint thô?
+[ ] Có   
+Nên tạo dạng:
+HMAC(secret, IP chuẩn hóa + User-Agent chuẩn hóa)
+Không lưu chuỗi fingerprint thô. Không dùng SHA đơn giản vì IP/User-Agent có thể bị dò ngược.
+10. Không dùng canvas/audio fingerprint xâm lấn trong bản cốt lõi?
+[ ] Có    
+Canvas/audio fingerprint mang tính xâm lấn và phức tạp về quyền riêng tư. FR-13 bản cốt lõi chỉ cần tín hiệu tối thiểu phía server.
+11. Click spam/bot không được ghi đè attribution hợp lệ trước đó?
+[ ] Có    
+Nếu bot hoặc spam có thể ghi đè cookie thì đối thủ có thể phá attribution của KOL thật.
+12. Click vượt rate limit vẫn redirect an toàn nhưng không Set-Cookie?
+[ ] Có 
+Khách vẫn xem được sản phẩm, nhưng request vượt giới hạn:
+- Không tăng valid click.
+- Không tạo attribution.
+- Không thay cookie đang hợp lệ.  
+13. Redis là rate-limit store production, không dùng Map RAM làm nguồn chính?
+[ ] Có    
+Map trong RAM chỉ phù hợp chạy thử. Khi restart server hoặc chạy nhiều backend instance, dữ liệu rate limit trong RAM sẽ mất hoặc không đồng bộ.
+Redis phải là nguồn chính trong production.
+14. QR và link thường dùng chung engine, QR chỉ thêm via=qr?
+[ ] Có    
+QR chỉ chứa URL /r/{shortCode} nên vẫn chạy cùng engine. Khác biệt duy nhất là lưu:
+via=qr
+để báo cáo nguồn quét QR.
+15. Backend tự resolve attribution trong transaction checkout?
+[ ] Có    
+Khi đặt hàng, backend phải tự:
+1. Kiểm tra coupon.
+2. Kiểm tra cookie.
+3. Kiểm tra fingerprint.
+4. Kiểm tra trạng thái link/KOL/Shop.
+5. Lưu đơn và snapshot attribution trong transaction.
+Điều này tránh attribution thay đổi giữa lúc kiểm tra và tạo đơn.
+16. Không tin collaboratorId, commission hoặc giá trị tracking do client gửi?
+[ ] Có   
+Client có thể bị sửa bằng DevTools. Backend không được tin các trường client gửi như:
+collaboratorId
+commissionRate
+clickTime
+attributionType
+Backend phải tra cứu từ cookie đã ký và database.
+17. Lưu snapshot attribution bất biến trên đơn?
+[ ] Có    
+Khi tạo đơn phải chụp lại nguồn attribution. Sau này link bị đổi hoặc xóa thì đơn cũ vẫn biết chính xác trước đây thuộc KOL nào.
+Không đọc cookie lại để thay đổi đơn đã tạo.
+18. Link/KOL/Shop bị khóa trước checkout thì không attribution đơn mới?
+[ ] Có    
+Nếu bị BLOCKED, DELETED, hết hạn hoặc mất quyền hợp tác trước checkout thì không attribution đơn mới.
+Đơn cũ không bị xóa; xử lý bằng đối soát hoặc clawback.
+19. Đơn không đủ bằng chứng được ghi ORGANIC, không tự gán KOL?
+[ ] Có    
+Không được đoán KOL. Khi không có coupon, cookie hoặc fingerprint đáng tin cậy:
+attributionType = ORGANIC
+collaboratorId = null
+20. KOL/Shop không được xem IP, fingerprint hoặc PII khách?
+[ ] Sửa   
+Câu hiện tại quá rộng vì Chủ Shop vẫn cần tên, số điện thoại, địa chỉ để giao hàng.
+Nên sửa thành:
+KOL không được xem IP, fingerprint hoặc PII khách hàng.
+Chủ Shop không được xem IP/fingerprint trong báo cáo tracking, nhưng được
+xem PII tối thiểu cần thiết của đơn thuộc Shop để thanh toán, giao hàng,
+chăm sóc khách và xử lý khiếu nại.
+21. Có thông báo/consent cookie và cơ chế từ chối theo luật áp dụng?
+[ ] Có    
+Nên có thông báo mục đích, thời hạn và chính sách riêng tư. Việc có bắt buộc khách bấm đồng ý hay không phụ thuộc thị trường/pháp luật nơi SCANMS vận hành.
+Khách từ chối tracking vẫn phải xem và mua hàng được; đơn có thể thành ORGANIC, trừ khi họ chủ động nhập coupon.
+22. IP/User-Agent thô chỉ lưu ngắn hạn; dữ liệu dài hạn phải băm/ẩn danh?
+[ ] Có    
+Đề xuất:
+- IP/User-Agent thô: 30–90 ngày.
+- Fingerprint fallback: 24 giờ.
+- Dữ liệu thống kê dài hạn: băm hoặc ẩn danh.
+- Snapshot tài chính: lưu theo thời hạn chứng từ.
+23. Điều chỉnh attribution thủ công chỉ bằng adjustment có audit, không sửa lịch sử?
+[ ] Có    
+Không sửa trực tiếp lịch sử attribution. Khi xử lý tranh chấp phải tạo bản ghi điều chỉnh gồm:
+- Người thực hiện.
+- Lý do.
+- Bằng chứng.
+- Giá trị cũ và mới.
+- Thời gian.
+24. Queue click phải idempotent và eventId unique?
+[ ] Có   
+Nếu queue retry cùng một event, hệ thống không được:
+- Tăng click hai lần.
+- Tạo hai attribution session.
+- Tính hai conversion.
+Database cần unique constraint cho eventId.
+25. Không cascade xóa click/snapshot đã liên quan đơn?
+[ ] Có   
+Xóa KOL, link hoặc Shop không được kéo theo việc xóa click và snapshot đã liên quan đến đơn hàng. Nên soft delete và giữ lịch sử phục vụ đối soát.
+26. Có tách raw/valid/unique/suspicious clicks trong báo cáo?
+[ ] Có    
+Phải phân biệt:
+- raw: mọi request.
+- valid: click hợp lệ.
+- unique: khách/phiên duy nhất.
+- suspicious: nghi bot/gian lận.
+- blocked: vượt giới hạn hoặc bị chặn.
+Nếu chỉ có một số “lượt click”, báo cáo conversion sẽ sai.
+27. Có migration, Swagger, monitoring và E2E trước khi đánh dấu hoàn thành?
+[ ] Có    
+Đây là tiêu chí hoàn thành kỹ thuật bắt buộc:
+- Migration giúp database mới triển khai được.
+- Swagger mô tả API.
+- Monitoring phát hiện lỗi Redis/queue/redirect.
+- E2E chứng minh Last-Click hoạt động thực tế.
+======================================================================
+50. LUỒNG TÓM TẮT ĐỂ DUYỆT
+======================================================================
+
+KOL tạo link/QR hợp lệ
+→ khách mở /r/{shortCode}
+→ Backend xác thực link/KOL/Shop
+→ rate limit và nhận diện bot
+→ ghi click event idempotent
+→ cập nhật last-click riêng cho Shop
+→ Set-Cookie bảo mật mặc định 30 ngày
+→ redirect trang sản phẩm
+→ khách checkout
+→ Backend ưu tiên Coupon > Cookie > Fingerprint > Organic
+→ kiểm tra lại trạng thái/thời hạn
+→ lưu snapshot attribution bất biến trên đơn
+→ Commission dùng snapshot để tính và đối soát hoa hồng.
+
+Duyệt: [ ] Có   
+

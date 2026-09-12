@@ -7,7 +7,6 @@ import { AuthController } from './auth.controller';
 import { MailService } from './mail.service';
 import { JwtStrategy } from '../../common/strategies/jwt.strategy';
 import { PrismaModule } from '../../core/database/prisma.module';
-import { PrismaService } from '../../core/database/prisma.service';
 import { UsersModule } from '../users/users.module';
 
 @Module({
@@ -17,19 +16,24 @@ import { UsersModule } from '../users/users.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret:
-          configService.get<string>('JWT_SECRET') ||
-          'scanms_super_secret_jwt_token_key_2026_fa26se032',
-        signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRATION') || '7d') as any,
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const secret =
+          configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
+        if (!secret || !secret.trim()) {
+          throw new Error('FATAL: JWT_SECRET must be configured');
+        }
+        return {
+          secret,
+          signOptions: {
+            expiresIn: configService.get<string>('JWT_EXPIRATION') || '7d',
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, MailService, JwtStrategy, PrismaService],
+  providers: [AuthService, MailService, JwtStrategy],
   exports: [AuthService, MailService, JwtStrategy, PassportModule, JwtModule],
 })
 export class AuthModule {}

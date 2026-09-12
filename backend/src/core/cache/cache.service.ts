@@ -11,12 +11,10 @@ interface CacheEntry {
   value: any;
   expiresAt: number;
 }
-
 interface RateLimitEntry {
   count: number;
   resetAt: number;
 }
-
 @Injectable()
 export class CacheService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CacheService.name);
@@ -27,6 +25,8 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   private readonly memoryCache = new Map<string, CacheEntry>();
   private readonly rateLimitMap = new Map<string, RateLimitEntry>();
   private readonly cleanupInterval: NodeJS.Timeout;
+  private degradedSince: Date | null = null;
+  private degradationAlertCount = 0;
 
   constructor(private readonly configService: ConfigService) {
     this.cleanupInterval = setInterval(() => {
@@ -237,12 +237,35 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         const allowed = current <= maxRequests;
         const remaining = Math.max(0, maxRequests - current);
 
+        if (this.degradedSince) {
+          this.logger.log(
+            '✔ [OPERATIONAL RECOVERY] Kết nối Redis rate limiting đã được khôi phục.',
+          );
+          this.degradedSince = null;
+          this.degradationAlertCount = 0;
+        }
+
         return { allowed, remaining, resetTime };
       } catch (err) {
         this.logger.warn(
           `Lỗi Redis checkRateLimit, fallback sang in-memory: ${err}`,
         );
       }
+    }
+
+    // Cảnh báo vận hành khi rơi vào trạng thái suy thoái (Degraded State - Lỗi 4)
+    if (!this.degradedSince) {
+      this.degradedSince = new Date();
+    }
+    this.degradationAlertCount += 1;
+    if (
+      this.degradationAlertCount === 1 ||
+      this.degradationAlertCount % 100 === 0
+    ) {
+      this.logger.error(
+        `[OPERATIONAL ALERT - REDIS DEGRADED] Rate limiting đang hoạt động ở chế độ fallback memory RAM cục bộ (${this.degradationAlertCount} lần)! ` +
+          `Cảnh báo: Tính năng rate-limit phân tán giữa nhiều instance (multi-instance) đang bị suy giảm.`,
+      );
     }
 
     const now = Date.now();
@@ -259,5 +282,28 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     const remaining = Math.max(0, maxRequests - entry.count);
 
     return { allowed, remaining, resetTime: entry.resetAt };
+  }
+
+  /**
+   * Cung cấp chỉ số sức khỏe và trạng thái vận hành của hệ thống Cache & Rate Limit (Lỗi 4)
+   */
+  getHealthStatus() {
+    const isRedisLive = this.isRedisActive();
+    return {
+      isRedisActive: isRedisLive,
+      isDistributedEnforced: isRedisLive,
+      isDegraded: !isRedisLive,
+      degradedSince: this.degradedSince,
+      degradationAlertCount: this.degradationAlertCount,
+      memoryEntriesCount: this.memoryCache.size,
+      rateLimitEntriesCount: this.rateLimitMap.size,
+    };
+  }
+
+  /**
+   * Lấy Redis Client phục vụ cho các subsystem khác (như Click Queue Redis List)
+   */
+  getRedisClient(): Redis | null {
+    return this.isRedisActive() ? this.redisClient : null;
   }
 }

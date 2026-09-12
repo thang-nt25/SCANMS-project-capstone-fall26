@@ -15,7 +15,6 @@ export function generateShortCode(length: number = SHORT_CODE_LENGTH): string {
   }
   return result;
 }
-
 /**
  * Kiểm tra mã rút gọn hợp lệ (đúng 8 ký tự Base36, chỉ gồm chữ thường a-z và số 0-9)
  */
@@ -119,7 +118,6 @@ export function verifyAttributionToken(
     return null;
   }
 }
-
 /**
  * Nhận diện Bot công cụ tìm kiếm / crawler qua User-Agent
  */
@@ -168,4 +166,269 @@ export function slugify(text: string): string {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Cấu trúc dữ liệu Attribution từng Shop trong Cookie scanms_attr (FR-13)
+ */
+export interface ShopAttributionEntry {
+  sessionId: string;
+  collaboratorId: string;
+  referralLinkId: string;
+  shortCode: string;
+  productId?: string;
+  channel?: string | null;
+  utmSource?: string | null;
+  clickedAt: string;
+  expiresAt: string;
+  via?: 'LINK' | 'QR';
+}
+
+export interface MultiShopAttributionPayload {
+  v: number;
+  vid: string;
+  shops: Record<string, ShopAttributionEntry>;
+  iat?: number;
+  exp?: number;
+}
+
+/**
+ * Chuẩn hóa địa chỉ IP thành subnet prefix (IPv4 /24, IPv6 /48) và băm HMAC
+ * Bảo vệ quyền riêng tư người dùng theo quy định FR-13
+ */
+export function hashIpAddress(
+  ip: string,
+  secret: string,
+): { prefix: string; hash: string } {
+  if (!ip || typeof ip !== 'string') {
+    return {
+      prefix: '0.0.0.0/24',
+      hash: crypto
+        .createHmac('sha256', secret)
+        .update('0.0.0.0/24')
+        .digest('hex'),
+    };
+  }
+  const cleanIp = ip.trim().replace(/^::ffff:/, '');
+  let prefix = cleanIp;
+
+  if (cleanIp.includes('.')) {
+    // IPv4: Lấy 3 octet đầu
+    const parts = cleanIp.split('.');
+    if (parts.length === 4) {
+      prefix = `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
+    }
+  } else if (cleanIp.includes(':')) {
+    // IPv6: Lấy 3 nhóm đầu
+    const parts = cleanIp.split(':');
+    prefix = `${parts.slice(0, 3).join(':')}::/48`;
+  }
+
+  const hash = crypto.createHmac('sha256', secret).update(prefix).digest('hex');
+  return { prefix, hash };
+}
+
+/**
+ * Chuẩn hóa User-Agent: giới hạn tối đa 512 ký tự, loại bỏ khoảng trắng dư thừa
+ */
+export function normalizeUserAgent(
+  userAgent?: string,
+  maxLength: number = 512,
+): string {
+  if (!userAgent || typeof userAgent !== 'string') return 'Unknown';
+  return userAgent.trim().replace(/\s+/g, ' ').slice(0, maxLength);
+}
+
+/**
+ * Tạo Server-Side HMAC Device Fingerprint (FR-13 Mục 9)
+ * HMAC(secret, normalized IP prefix + normalized User-Agent)
+ * Không bao giờ lưu fingerprint thô
+ */
+export function generateDeviceFingerprint(
+  ip: string,
+  userAgent: string,
+  secret: string,
+): string {
+  const { prefix } = hashIpAddress(ip, secret);
+  const normalizedUa = normalizeUserAgent(userAgent);
+  const signal = `${prefix}|${normalizedUa}`;
+  return crypto.createHmac('sha256', secret).update(signal).digest('hex');
+}
+
+/**
+ * Ký token Attribution Đa Gian Hàng (Multi-Shop) bằng HMAC-SHA256
+ */
+export function signMultiShopAttributionToken(
+  payload: MultiShopAttributionPayload,
+  secret: string,
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  // Tìm thời điểm hết hạn xa nhất trong các shop, tối thiểu 30 ngày
+  let maxExp = now + 30 * 24 * 60 * 60;
+  for (const shop of Object.values(payload.shops || {})) {
+    if (shop.expiresAt) {
+      const shopExp = Math.floor(new Date(shop.expiresAt).getTime() / 1000);
+      if (shopExp > maxExp) maxExp = shopExp;
+    }
+  }
+
+  const fullPayload: MultiShopAttributionPayload = {
+    v: payload.v || 1,
+    vid: payload.vid,
+    shops: payload.shops || {},
+    iat: now,
+    exp: maxExp,
+  };
+
+  const dataStr = Buffer.from(JSON.stringify(fullPayload)).toString(
+    'base64url',
+  );
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(dataStr);
+  const signature = hmac.digest('base64url');
+  return `${dataStr}.${signature}`;
+}
+
+/**
+ * Giải mã và kiểm tra tính toàn vẹn của Token Attribution Đa Gian Hàng
+ * Hỗ trợ tương thích ngược với token cũ
+ */
+export function verifyMultiShopAttributionToken(
+  token: string,
+  secret: string,
+): MultiShopAttributionPayload | null {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+
+  const [dataStr, signature] = parts;
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(dataStr);
+  const expectedSig = hmac.digest('base64url');
+
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSig);
+  if (
+    sigBuf.length !== expBuf.length ||
+    !crypto.timingSafeEqual(sigBuf, expBuf)
+  ) {
+    return null;
+  }
+
+  try {
+    const jsonStr = Buffer.from(dataStr, 'base64url').toString('utf8');
+    const parsed = JSON.parse(jsonStr);
+    const now = Math.floor(Date.now() / 1000);
+
+    // Kiểm tra exp tổng quát
+    if (typeof parsed.exp === 'number' && parsed.exp <= now) {
+      return null;
+    }
+
+    // Nếu là định dạng Multi-Shop v1
+    if (parsed.shops && typeof parsed.shops === 'object') {
+      // Lọc bỏ các shop đã hết hạn
+      const activeShops: Record<string, ShopAttributionEntry> = {};
+      const nowDate = new Date();
+      for (const [storeId, entry] of Object.entries(
+        parsed.shops as Record<string, ShopAttributionEntry>,
+      )) {
+        if (entry.expiresAt && new Date(entry.expiresAt) > nowDate) {
+          activeShops[storeId] = entry;
+        }
+      }
+      return {
+        v: parsed.v || 1,
+        vid: parsed.vid || crypto.randomUUID(),
+        shops: activeShops,
+        iat: parsed.iat,
+        exp: parsed.exp,
+      };
+    }
+
+    // Tương thích ngược với định dạng token đơn cũ (single shop token)
+    if (parsed.storeId && parsed.collaboratorId) {
+      const singleShopEntry: ShopAttributionEntry = {
+        sessionId: crypto.randomUUID(),
+        collaboratorId: parsed.collaboratorId,
+        referralLinkId: parsed.referralLinkId || '',
+        shortCode: parsed.shortCode || '',
+        productId: parsed.productId,
+        channel: parsed.channel,
+        utmSource: parsed.utmSource,
+        clickedAt: parsed.clickedAt || new Date().toISOString(),
+        expiresAt: parsed.exp
+          ? new Date(parsed.exp * 1000).toISOString()
+          : new Date(Date.now() + 30 * 86400000).toISOString(),
+      };
+      return {
+        v: 1,
+        vid: crypto.randomUUID(),
+        shops: {
+          [parsed.storeId]: singleShopEntry,
+        },
+        iat: parsed.iat,
+        exp: parsed.exp,
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+/**
+ * Ký token visitor ngẫu nhiên (Opaque Visitor Token) theo FR-13 Mục 10.
+ * Cookie chỉ chứa visitorId được ký bằng HMAC-SHA256, không chứa PII, IP, User-Agent,
+ * collaboratorId, referralLinkId hay thông tin gian hàng.
+ */
+export function signOpaqueVisitorToken(
+  visitorId: string,
+  secret: string,
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { v: 1, vid: visitorId, iat: now };
+  const dataStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(dataStr);
+  const signature = hmac.digest('base64url');
+  return `${dataStr}.${signature}`;
+}
+
+/**
+ * Giải mã và kiểm tra tính toàn vẹn của Opaque Visitor Token.
+ * Trả về visitorId nếu hợp lệ, ngược lại trả về null.
+ */
+export function verifyOpaqueVisitorToken(
+  token: string,
+  secret: string,
+): string | null {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+
+  const [dataStr, signature] = parts;
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(dataStr);
+  const expectedSig = hmac.digest('base64url');
+
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSig);
+  if (
+    sigBuf.length !== expBuf.length ||
+    !crypto.timingSafeEqual(sigBuf, expBuf)
+  ) {
+    return null;
+  }
+
+  try {
+    const jsonStr = Buffer.from(dataStr, 'base64url').toString('utf8');
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && typeof parsed.vid === 'string' && parsed.vid.trim()) {
+      return parsed.vid.trim();
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
