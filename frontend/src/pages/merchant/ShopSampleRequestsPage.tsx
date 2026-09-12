@@ -181,10 +181,13 @@ export default function ShopSampleRequestsPage() {
         api.get('/sample-requests/shop'),
         api.get('/sample-requests/shop/stats'),
       ]);
-      setRequests(reqRes.data || []);
-      setStats(statsRes.data || null);
+      const list = Array.isArray(reqRes) ? reqRes : Array.isArray(reqRes?.data) ? reqRes.data : [];
+      const statsObj = statsRes?.data || statsRes || null;
+      setRequests(list);
+      setStats(statsObj);
     } catch (err) {
       console.error(err);
+      setRequests([]);
     } finally {
       setLoading(false);
     }

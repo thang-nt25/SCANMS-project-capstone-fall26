@@ -189,6 +189,9 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
 
   async function cleanup() {
     try {
+      await prisma.attributionAdjustment.deleteMany({
+        where: { order: { storeId: { in: [storeAId, storeBId] } } },
+      });
       await prisma.orderItem.deleteMany({
         where: { order: { storeId: { in: [storeAId, storeBId] } } },
       });
@@ -197,6 +200,9 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
       });
       await prisma.clickTrafficLog.deleteMany({
         where: { referralLink: { storeId: { in: [storeAId, storeBId] } } },
+      });
+      await prisma.attributionSession.deleteMany({
+        where: { storeId: { in: [storeAId, storeBId] } },
       });
       await prisma.referralLink.deleteMany({
         where: { storeId: { in: [storeAId, storeBId] } },
@@ -267,7 +273,9 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
     const cookies: string[] = res.headers['set-cookie'] || [];
     expect(cookies.length).toBeGreaterThan(0);
 
-    const attributionCookie = cookies.find((c) => c.includes('scanms_attribution='));
+    const attributionCookie = cookies.find((c) =>
+      c.includes('scanms_attribution='),
+    );
     expect(attributionCookie).toBeDefined();
     expect(attributionCookie).toContain('HttpOnly');
     expect(attributionCookie).toContain('Path=/');
@@ -293,7 +301,9 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
 
     expect(res.body.success).toBe(true);
     expect(res.body.data.status).toBe('BLOCKED');
-    expect(res.body.data.disabledReason).toBe('Nội dung review sai lệch công dụng sản phẩm');
+    expect(res.body.data.disabledReason).toBe(
+      'Nội dung review sai lệch công dụng sản phẩm',
+    );
   });
 
   it('6. [E2E] Khi link bị BLOCKED: truy cập HTTP trả về 410 Gone', async () => {

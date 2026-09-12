@@ -29,7 +29,9 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
 
     // Khởi tạo người dùng và cửa hàng thật trong PostgreSQL (dùng findUnique + create để tránh đổi primary key)
     const existingOwner = await prisma.user.findFirst({
-      where: { OR: [{ id: testOwnerId }, { email: 'real_owner_test@scanms.vn' }] },
+      where: {
+        OR: [{ id: testOwnerId }, { email: 'real_owner_test@scanms.vn' }],
+      },
     });
     if (!existingOwner) {
       await prisma.user.create({
@@ -82,40 +84,70 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
 
   async function cleanupTestData() {
     try {
-      await prisma.bonusAdjustment.deleteMany({ where: { storeId: testStoreId } });
+      await prisma.bonusAdjustment.deleteMany({
+        where: { storeId: testStoreId },
+      });
       await prisma.financialLedger.deleteMany({
         where: { wallet: { collaboratorId: testKolId } },
       });
       await prisma.wallet.deleteMany({ where: { collaboratorId: testKolId } });
       await prisma.monthlyBonusResult.deleteMany({
-        where: { OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }] },
+        where: {
+          OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }],
+        },
       });
       await prisma.orderRefund.deleteMany({
         where: { order: { storeId: testStoreId } },
       });
       await prisma.commission.deleteMany({
-        where: { OR: [{ order: { storeId: testStoreId } }, { collaboratorId: testKolId }] },
+        where: {
+          OR: [
+            { order: { storeId: testStoreId } },
+            { collaboratorId: testKolId },
+          ],
+        },
       });
       await prisma.orderItem.deleteMany({
         where: { order: { storeId: testStoreId } },
       });
       await prisma.order.deleteMany({
-        where: { OR: [{ storeId: testStoreId }, { attributedCollaboratorId: testKolId }] },
+        where: {
+          OR: [
+            { storeId: testStoreId },
+            { attributedCollaboratorId: testKolId },
+          ],
+        },
       });
-      await prisma.commissionRule.deleteMany({ where: { storeId: testStoreId } });
-      await prisma.campaignParticipant.deleteMany({ where: { collaboratorId: testKolId } });
-      await prisma.referralLink.deleteMany({ where: { collaboratorId: testKolId } });
-      await prisma.sampleProductRequest.deleteMany({ where: { collaboratorId: testKolId } });
-      await prisma.collaboratorSocialChannel.deleteMany({ where: { collaboratorId: testKolId } });
-      await prisma.collaboratorProfile.deleteMany({ where: { userId: testKolId } });
+      await prisma.commissionRule.deleteMany({
+        where: { storeId: testStoreId },
+      });
+      await prisma.campaignParticipant.deleteMany({
+        where: { collaboratorId: testKolId },
+      });
+      await prisma.referralLink.deleteMany({
+        where: { collaboratorId: testKolId },
+      });
+      await prisma.sampleProductRequest.deleteMany({
+        where: { collaboratorId: testKolId },
+      });
+      await prisma.collaboratorSocialChannel.deleteMany({
+        where: { collaboratorId: testKolId },
+      });
+      await prisma.collaboratorProfile.deleteMany({
+        where: { userId: testKolId },
+      });
       await prisma.chatMessage.deleteMany({
         where: { senderId: { in: [testOwnerId, testKolId] } },
       });
       await prisma.conversation.deleteMany({
-        where: { OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }] },
+        where: {
+          OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }],
+        },
       });
       await prisma.payoutRequest.deleteMany({
-        where: { OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }] },
+        where: {
+          OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }],
+        },
       });
       await prisma.auditLog.deleteMany({
         where: { userId: { in: [testOwnerId, testKolId] } },
@@ -130,7 +162,11 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
         where: {
           OR: [
             { id: { in: [testOwnerId, testKolId] } },
-            { email: { in: ['real_owner_test@scanms.vn', 'real_kol_test@scanms.vn'] } },
+            {
+              email: {
+                in: ['real_owner_test@scanms.vn', 'real_kol_test@scanms.vn'],
+              },
+            },
           ],
         },
       });
@@ -236,7 +272,8 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
   describe('3. Real Orders Aggregation with completedAt, shippingFee, and refunds', () => {
     it('should aggregate only orders with status COMPLETED and completedAt in calendar month', async () => {
       const yearMonth = '2026-08';
-      const { startOfMonth, endOfMonth } = service.getVietnamMonthDateRange(yearMonth);
+      const { startOfMonth, endOfMonth } =
+        service.getVietnamMonthDateRange(yearMonth);
 
       // 1. Đơn 1: Thuộc tháng 8 (completedAt trong tháng 8)
       // subtotal 30M, discount 0, shipping 50k -> finalAmount = 30.050.000đ
@@ -382,7 +419,9 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
       // 1. Thử payout khi đang PENDING -> Phải báo lỗi
       await expect(
         service.payoutSettlement(testStoreId, settlement!.id, testOwnerId),
-      ).rejects.toThrow('Kỳ thưởng phải được APPROVED trước khi tiến hành thanh toán vào ví');
+      ).rejects.toThrow(
+        'Kỳ thưởng phải được APPROVED trước khi tiến hành thanh toán vào ví',
+      );
 
       // 2. Duyệt kỳ thưởng (PENDING -> APPROVED)
       const approved = await service.approveSettlement(

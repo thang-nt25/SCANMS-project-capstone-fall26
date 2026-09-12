@@ -96,7 +96,10 @@ describe('CommissionRules Integration & Security Test', () => {
         return (
           inMemoryRules.find((r) => {
             if (r.storeId !== where.storeId) return false;
-            if (where.isDeleted !== undefined && r.isDeleted !== where.isDeleted)
+            if (
+              where.isDeleted !== undefined &&
+              r.isDeleted !== where.isDeleted
+            )
               return false;
             if (where.id && where.id !== r.id) return false;
             if (where.id?.not && where.id.not === r.id) return false;

@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -14,13 +24,19 @@ export class StoreCollaboratorsController {
 
   @Get('shop')
   @Roles(UserRole.SHOP_MANAGER)
-  getShopTeam(@Req() req: AuthenticatedRequest, @Query('storeId') storeId?: string) {
+  getShopTeam(
+    @Req() req: AuthenticatedRequest,
+    @Query('storeId') storeId?: string,
+  ) {
     return this.service.getShopTeam(req.user!.id, storeId);
   }
 
   @Post('invite')
   @Roles(UserRole.SHOP_MANAGER)
-  invite(@Req() req: AuthenticatedRequest, @Body() dto: InviteStoreCollaboratorDto) {
+  invite(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: InviteStoreCollaboratorDto,
+  ) {
     return this.service.invite(req.user!.id, dto);
   }
 

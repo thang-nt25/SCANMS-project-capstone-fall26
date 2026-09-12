@@ -15,8 +15,11 @@ import {
   X,
   Store,
   Building2,
+  Tag,
+  Loader2,
 } from 'lucide-react';
 import api from '../../services/api';
+import { couponService } from '../../services/coupon.service';
 
 interface StoreItem {
   id: string;
@@ -56,9 +59,15 @@ export default function GuestStorefrontPage() {
   const [searchParams] = useSearchParams();
 
   // Affiliate attribution tracking (from ?ref=...)
-  const refParam = searchParams.get('ref') || 'kol1';
-  const kolName = refParam.includes('thang') || refParam === 'kol1' ? 'Nguyễn Thành Thắng' : 'Trần Văn Nhật';
-  const kolCoupon = refParam.includes('thang') || refParam === 'kol1' ? 'THANGVIP10' : 'NHATXINH10';
+  const refParam = searchParams.get('ref') || '';
+  const queryCoupon = searchParams.get('coupon') || '';
+  const kolName = refParam.includes('thang') ? 'Nguyễn Thành Thắng' : refParam.includes('nhat') ? 'Trần Văn Nhật' : 'Đối tác SCANMS';
+
+  // Coupon state (FR-12)
+  const [couponInput, setCouponInput] = useState(queryCoupon);
+  const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   // State
   const [activeStore, setActiveStore] = useState('ALL');
@@ -275,11 +284,66 @@ export default function GuestStorefrontPage() {
     return matchStore && matchCat && matchSearch;
   });
 
+  const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string>('');
+
+  const generateNewIdempotencyKey = () => {
+    return typeof window !== 'undefined' && window.crypto && typeof window.crypto.randomUUID === 'function'
+      ? window.crypto.randomUUID()
+      : `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  };
+
   const handleOpenBuyNow = (prod: ProductItem, qty: number = 1) => {
     setCheckoutProduct(prod);
     setCheckoutQty(qty);
+    setCheckoutIdempotencyKey(generateNewIdempotencyKey());
     setShowCheckoutModal(true);
     setOrderSuccess(null);
+    setCouponError(null);
+    if (couponInput.trim()) {
+      handleApplyCoupon(couponInput.trim(), prod, qty);
+    }
+  };
+
+  const handleApplyCoupon = async (codeToApply?: string, prodOverride?: ProductItem, qtyOverride?: number) => {
+    const code = (codeToApply || couponInput).trim().toUpperCase();
+    const targetProd = prodOverride || checkoutProduct;
+    const targetQty = qtyOverride || checkoutQty;
+    if (!code || !targetProd) return;
+
+    setValidatingCoupon(true);
+    setCouponError(null);
+
+    try {
+      const res = await couponService.validateCoupon({
+        code,
+        customerPhone: customerPhone.trim() || undefined,
+        items: [
+          {
+            productId: targetProd.id || 'b54934c3-0762-40b4-868e-e7f66dac1684',
+            quantity: targetQty,
+          },
+        ],
+      });
+      setAppliedCoupon(res);
+      setCouponInput(res.code);
+      showToast(`Áp dụng mã ${res.code} thành công: Giảm ${res.discountAmount.toLocaleString('vi-VN')} ₫`);
+    } catch (err: any) {
+      setAppliedCoupon(null);
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Mã giảm giá không hợp lệ hoặc chưa đủ điều kiện';
+      setCouponError(msg);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError(null);
+    showToast('Đã gỡ mã giảm giá');
   };
 
   const handleConfirmOrder = async (e: React.FormEvent) => {
@@ -292,16 +356,28 @@ export default function GuestStorefrontPage() {
     setSubmittingOrder(true);
     let realOrderSn = `DH-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
 
+    const subtotal = (checkoutProduct?.salePrice || 0) * checkoutQty;
+    const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+    const finalTotal = Math.max(0, subtotal - discount);
+
+    // Reuse existing key on retries of the same checkout session (Issue 4)
+    const activeKey = checkoutIdempotencyKey || generateNewIdempotencyKey();
+    if (!checkoutIdempotencyKey) {
+      setCheckoutIdempotencyKey(activeKey);
+    }
+
     try {
       const res: any = await api.post('/orders', {
-        storeSlug: 'techstore-flagship',
+        storeId: checkoutProduct?.storeId || undefined,
+        storeSlug: (checkoutProduct as any)?.storeSlug || undefined,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         shippingAddress: `${customerAddress}, ${customerDistrict}, ${customerCity}`,
-        couponCode: kolCoupon,
-        cookieRefCode: refParam,
+        couponCode: appliedCoupon?.code || undefined,
+        cookieRefCode: refParam || undefined,
         paymentMethod,
         orderNotes,
+        idempotencyKey: activeKey,
         items: [
           {
             productId: checkoutProduct?.id || 'b54934c3-0762-40b4-868e-e7f66dac1684',
@@ -325,15 +401,17 @@ export default function GuestStorefrontPage() {
         productName: checkoutProduct?.title,
         storeName: checkoutProduct?.storeName,
         quantity: checkoutQty,
-        totalAmount: (checkoutProduct?.salePrice || 0) * checkoutQty,
+        totalAmount: finalTotal,
+        discountAmount: discount,
         recipient: customerName,
         phone: customerPhone,
         address: `${customerAddress}, ${customerDistrict}, ${customerCity}`,
         payment: paymentMethod === 'COD' ? 'Tiền mặt khi nhận hàng (COD)' : 'Chuyển khoản VietQR 24/7',
         kolRef: kolName,
-        discountApplied: kolCoupon,
+        discountApplied: appliedCoupon?.code || null,
       });
       setCartCount(0);
+      setCheckoutIdempotencyKey('');
     }
   };
 
@@ -463,9 +541,9 @@ export default function GuestStorefrontPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 rounded-md bg-white border border-[#EEDFC6] text-[#B88E4F] font-mono font-bold text-[11px]">
-              Mã ưu đãi toàn sàn: {kolCoupon} (-10%)
+              Ưu đãi tiếp thị liên kết: {appliedCoupon?.code || queryCoupon || 'COUPON ĐỐI TÁC'}
             </span>
-            <span className="text-[#059669] font-bold hidden sm:inline">✓ Đã áp dụng tự động</span>
+            <span className="text-[#059669] font-bold hidden sm:inline">✓ Nhập tại checkout</span>
           </div>
         </div>
       </div>
@@ -704,7 +782,7 @@ export default function GuestStorefrontPage() {
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1 border-t border-[#EEDFC6]/60">
                   <span className="font-bold text-[#B88E4F]">
-                    ↳ Áp dụng mã ưu đãi: {kolCoupon}
+                    ↳ Nhập mã coupon riêng của KOL tại checkout để giảm thêm
                   </span>
                   <span className="font-bold text-[#7D715E]">
                     Hoa hồng chi trả KOL: <strong className="text-[#B88E4F]">{selectedProduct.commissionRate}%</strong> (~{selectedProduct.commissionAmount.toLocaleString('vi-VN')} ₫)
@@ -1085,20 +1163,102 @@ export default function GuestStorefrontPage() {
                   </div>
                 </div>
 
+                {/* Coupon Code Input (FR-12) */}
+                <div>
+                  <label className="text-xs font-bold text-[#1A1612] block mb-1">
+                    Mã giảm giá KOL / Voucher Shop:
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(e) => {
+                          setCouponInput(e.target.value.toUpperCase());
+                          setCouponError(null);
+                        }}
+                        disabled={!!appliedCoupon || validatingCoupon}
+                        placeholder="Nhập mã (ví dụ: THANGVIP10)..."
+                        className="w-full pl-9 pr-3 py-2 text-xs font-mono font-bold uppercase bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:bg-white focus:border-[#C59B58] outline-none disabled:bg-stone-100 disabled:text-stone-500"
+                      />
+                    </div>
+                    {appliedCoupon ? (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition cursor-pointer"
+                      >
+                        Gỡ mã
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleApplyCoupon()}
+                        disabled={!couponInput.trim() || validatingCoupon}
+                        className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                      >
+                        {validatingCoupon ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Kiểm tra
+                          </>
+                        ) : (
+                          'Áp dụng'
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {couponError && (
+                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                      <span>⚠️</span> {couponError}
+                    </p>
+                  )}
+
+                  {appliedCoupon && (
+                    <div className="mt-2 p-2.5 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <span className="font-bold text-[#1A1612]">
+                            Mã {appliedCoupon.code}
+                          </span>
+                          <span className="text-[11px] text-[#7D715E] block">
+                            Gian hàng: {appliedCoupon.storeName}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-extrabold text-[#B88E4F]">
+                        - {appliedCoupon.discountAmount.toLocaleString('vi-VN')} ₫
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 {/* Pricing Summary */}
                 <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex flex-col gap-1.5 text-xs">
                   <div className="flex justify-between text-[#7D715E]">
-                    <span>Tạm tính:</span>
+                    <span>Tạm tính ({checkoutQty} sản phẩm):</span>
                     <span>{(checkoutProduct.salePrice * checkoutQty).toLocaleString('vi-VN')} ₫</span>
                   </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-[#B88E4F] font-semibold">
+                      <span>Giảm giá coupon ({appliedCoupon.code}):</span>
+                      <span>-{appliedCoupon.discountAmount.toLocaleString('vi-VN')} ₫</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-[#059669]">
-                    <span>Ưu đãi tiếp thị ({kolCoupon}):</span>
-                    <span>Miễn phí vận chuyển toàn quốc</span>
+                    <span>Phí vận chuyển:</span>
+                    <span>Miễn phí toàn quốc</span>
                   </div>
                   <div className="pt-2 border-t border-[#EAE4D7] flex justify-between font-extrabold text-sm text-[#1A1612]">
                     <span>Tổng tiền thanh toán:</span>
                     <span className="text-[#B88E4F] text-base">
-                      {(checkoutProduct.salePrice * checkoutQty).toLocaleString('vi-VN')} ₫
+                      {Math.max(
+                        0,
+                        checkoutProduct.salePrice * checkoutQty - (appliedCoupon?.discountAmount || 0)
+                      ).toLocaleString('vi-VN')} ₫
                     </span>
                   </div>
                 </div>

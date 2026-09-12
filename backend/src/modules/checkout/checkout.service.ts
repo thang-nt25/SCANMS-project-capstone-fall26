@@ -7,7 +7,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/database/prisma.service';
 import { ReferralLinksService } from '../referral-links/referral-links.service';
-import { verifyAttributionToken } from '../referral-links/utils/short-code.generator';
+import * as crypto from 'crypto';
+import {
+  verifyAttributionToken,
+  verifyMultiShopAttributionToken,
+  verifyOpaqueVisitorToken,
+} from '../referral-links/utils/short-code.generator';
 import { CreateOrderDto } from './dto/create-order.dto';
 
 @Injectable()
@@ -60,25 +65,44 @@ export class CheckoutService {
     } = { isValid: false };
 
     if (attributionCookie && attributionCookie.trim()) {
-      const decodedPayload = verifyAttributionToken(
-        attributionCookie,
-        this.getJwtSecret(),
+      const jwtSecret = this.getJwtSecret();
+
+      // (A) Ưu tiên 1: Đọc Opaque Visitor Token & Bảng AttributionSession theo chuẩn FR-13
+      const visitorId = verifyOpaqueVisitorToken(
+        attributionCookie.trim(),
+        jwtSecret,
       );
+      if (visitorId) {
+        const visitorIdHash = crypto
+          .createHmac('sha256', jwtSecret)
+          .update(visitorId)
+          .digest('hex');
 
-      if (decodedPayload && decodedPayload.shortCode) {
-        // Kiểm tra xem giỏ hàng có chứa sản phẩm trong cookie attribution không
-        const matchingItem = dto.items.find(
-          (item) =>
-            item.productId === decodedPayload.productId &&
-            dto.storeId === decodedPayload.storeId,
-        );
+        const session = await this.prisma.attributionSession.findUnique({
+          where: {
+            storeId_visitorIdHash: {
+              storeId: dto.storeId,
+              visitorIdHash,
+            },
+          },
+          include: {
+            referralLink: true,
+          },
+        });
 
-        if (matchingItem) {
+        if (
+          session &&
+          session.status === 'ACTIVE' &&
+          new Date(session.expiresAt) > new Date() &&
+          session.referralLink &&
+          !session.referralLink.deletedAt &&
+          session.referralLink.status === 'ACTIVE'
+        ) {
           const verification =
             await this.referralLinksService.verifyAttributionForOrder({
-              shortCode: decodedPayload.shortCode,
+              shortCode: session.referralLink.shortCode,
               storeId: dto.storeId,
-              productId: matchingItem.productId,
+              productId: dto.items[0]?.productId,
             });
 
           if (verification.isValid) {
@@ -87,9 +111,81 @@ export class CheckoutService {
               collaboratorId: verification.collaboratorId,
               referralLinkId: verification.referralLinkId,
               appliedCommissionRate: verification.appliedCommissionRate,
-              calculatedCommissionAmount: verification.calculatedCommissionAmount,
-              attributedProductId: matchingItem.productId,
+              calculatedCommissionAmount:
+                verification.calculatedCommissionAmount,
+              attributedProductId: dto.items[0]?.productId,
             };
+          }
+        }
+      }
+
+      // (B) Tương thích ngược: Multi-Shop Payload hoặc Single-Shop Payload cũ
+      if (!attributionResult.isValid) {
+        const multiPayload = verifyMultiShopAttributionToken(
+          attributionCookie,
+          jwtSecret,
+        );
+
+        const shopEntry = multiPayload?.shops?.[dto.storeId];
+        if (shopEntry && shopEntry.shortCode) {
+          const matchingItem = shopEntry.productId
+            ? dto.items.find((item) => item.productId === shopEntry.productId)
+            : dto.items[0];
+
+          if (matchingItem) {
+            const verification =
+              await this.referralLinksService.verifyAttributionForOrder({
+                shortCode: shopEntry.shortCode,
+                storeId: dto.storeId,
+                productId: matchingItem.productId,
+              });
+
+            if (verification.isValid) {
+              attributionResult = {
+                isValid: true,
+                collaboratorId: verification.collaboratorId,
+                referralLinkId: verification.referralLinkId,
+                appliedCommissionRate: verification.appliedCommissionRate,
+                calculatedCommissionAmount:
+                  verification.calculatedCommissionAmount,
+                attributedProductId: matchingItem.productId,
+              };
+            }
+          }
+        } else {
+          const decodedPayload = verifyAttributionToken(
+            attributionCookie,
+            jwtSecret,
+          );
+
+          if (decodedPayload && decodedPayload.shortCode) {
+            // Kiểm tra xem giỏ hàng có chứa sản phẩm trong cookie attribution không
+            const matchingItem = dto.items.find(
+              (item) =>
+                item.productId === decodedPayload.productId &&
+                dto.storeId === decodedPayload.storeId,
+            );
+
+            if (matchingItem) {
+              const verification =
+                await this.referralLinksService.verifyAttributionForOrder({
+                  shortCode: decodedPayload.shortCode,
+                  storeId: dto.storeId,
+                  productId: matchingItem.productId,
+                });
+
+              if (verification.isValid) {
+                attributionResult = {
+                  isValid: true,
+                  collaboratorId: verification.collaboratorId,
+                  referralLinkId: verification.referralLinkId,
+                  appliedCommissionRate: verification.appliedCommissionRate,
+                  calculatedCommissionAmount:
+                    verification.calculatedCommissionAmount,
+                  attributedProductId: matchingItem.productId,
+                };
+              }
+            }
           }
         }
       }
@@ -128,7 +224,7 @@ export class CheckoutService {
           ? (attributionResult.appliedCommissionRate ?? 5)
           : 0;
         const amount = isAttributed
-          ? ((item.quantity * item.unitPrice * rate) / 100)
+          ? (item.quantity * item.unitPrice * rate) / 100
           : 0;
 
         await tx.orderItem.create({
@@ -137,7 +233,9 @@ export class CheckoutService {
             productId: item.productId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            referralLinkId: isAttributed ? attributionResult.referralLinkId : null,
+            referralLinkId: isAttributed
+              ? attributionResult.referralLinkId
+              : null,
             appliedCommissionRate: rate,
             calculatedCommissionAmount: amount,
           },

@@ -19,12 +19,14 @@ export class CheckoutController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Tạo đơn hàng thanh toán (Checkout) và tự động ghi nhận Cookie Attribution',
+    summary:
+      'Tạo đơn hàng thanh toán (Checkout) và tự động ghi nhận Cookie Attribution',
   })
   @ApiResponse({ status: 201, description: 'Tạo đơn hàng thành công' })
   async checkout(@Body() dto: CreateOrderDto, @Req() req: Request) {
-    // Đọc cookie attribution HttpOnly hoặc header dự phòng
+    // Đọc cookie attribution HttpOnly (scanms_attr chuẩn FR-13 hoặc fallback)
     const attributionCookie =
+      req.cookies?.['scanms_attr'] ||
       req.cookies?.['scanms_attribution'] ||
       (req.headers['x-attribution-token'] as string) ||
       undefined;

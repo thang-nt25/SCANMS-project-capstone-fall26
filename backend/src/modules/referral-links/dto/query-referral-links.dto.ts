@@ -4,14 +4,20 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ReferralLinkStatus, SocialPlatform } from '@prisma/client';
 
 export class QueryReferralLinksDto {
-  @ApiPropertyOptional({ description: 'Trang hiện tại (mặc định 1)', default: 1 })
+  @ApiPropertyOptional({
+    description: 'Trang hiện tại (mặc định 1)',
+    default: 1,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ description: 'Số lượng link mỗi trang (mặc định 20)', default: 20 })
+  @ApiPropertyOptional({
+    description: 'Số lượng link mỗi trang (mặc định 20)',
+    default: 20,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -64,12 +70,14 @@ export class QueryReferralLinksDto {
   search?: string;
 
   @ApiPropertyOptional({
-    description: 'Cột sắp xếp: createdAt | totalClicks | uniqueClicks | totalOrders',
+    description:
+      'Cột sắp xếp: createdAt | totalClicks | uniqueClicks | totalOrders',
     default: 'createdAt',
   })
   @IsOptional()
   @IsString()
-  sortBy?: 'createdAt' | 'totalClicks' | 'uniqueClicks' | 'totalOrders' = 'createdAt';
+  sortBy?: 'createdAt' | 'totalClicks' | 'uniqueClicks' | 'totalOrders' =
+    'createdAt';
 
   @ApiPropertyOptional({
     description: 'Thứ tự sắp xếp: asc | desc',

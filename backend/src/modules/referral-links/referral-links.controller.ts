@@ -34,6 +34,10 @@ import { CreateReferralLinkDto } from './dto/create-referral-link.dto';
 import { UpdateReferralLinkDto } from './dto/update-referral-link.dto';
 import { BlockReferralLinkDto } from './dto/block-referral-link.dto';
 import { QueryReferralLinksDto } from './dto/query-referral-links.dto';
+import {
+  QueryTrackingEventsDto,
+  AttributionAdjustmentDto,
+} from './dto/tracking-analytics.dto';
 
 // ==========================================
 // 1. COLLABORATOR CONTROLLER
@@ -47,19 +51,30 @@ export class CollaboratorReferralLinksController {
   constructor(private readonly service: ReferralLinksService) {}
 
   @Get('products')
-  @ApiOperation({ summary: 'Lấy danh sách sản phẩm được phép tạo link tiếp thị' })
-  @ApiResponse({ status: 200, description: 'Danh sách sản phẩm kèm mức hoa hồng dự kiến' })
+  @ApiOperation({
+    summary: 'Lấy danh sách sản phẩm được phép tạo link tiếp thị',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách sản phẩm kèm mức hoa hồng dự kiến',
+  })
   async getEligibleProducts(
     @CurrentUser('id') collaboratorId: string,
     @Query('search') search?: string,
     @Query('storeId') storeId?: string,
   ) {
-    return this.service.getEligibleProducts(collaboratorId, { search, storeId });
+    return this.service.getEligibleProducts(collaboratorId, {
+      search,
+      storeId,
+    });
   }
 
   @Get()
   @ApiOperation({ summary: 'Xem danh sách link tiếp thị của KOL' })
-  @ApiResponse({ status: 200, description: 'Danh sách link kèm phân trang và số liệu click/đơn' })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách link kèm phân trang và số liệu click/đơn',
+  })
   async getMyLinks(
     @CurrentUser('id') collaboratorId: string,
     @Query() query: QueryReferralLinksDto,
@@ -77,21 +92,96 @@ export class CollaboratorReferralLinksController {
     return this.service.getLinkById(id, collaboratorId);
   }
 
+  @Get(':id/analytics')
+  @ApiOperation({
+    summary: 'Thống kê tracking & attribution của link tiếp thị (FR-13)',
+    description:
+      'Trả về số liệu tách bạch: Raw clicks, Valid clicks, Unique clicks, Suspicious clicks, Đơn hàng, Tỷ lệ chuyển đổi và doanh thu hoa hồng.',
+  })
+  @ApiParam({ name: 'id', description: 'ID của link tiếp thị' })
+  async getLinkAnalytics(
+    @Param('id') id: string,
+    @CurrentUser('id') collaboratorId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    const data = await this.service.getLinkAnalytics(id, collaboratorId, role);
+    return {
+      success: true,
+      analytics: {
+        ...data,
+        rawClicks: data.clicks.rawClicks,
+        validClicks: data.clicks.validClicks,
+        uniqueClicks: data.clicks.uniqueClicks,
+        suspiciousClicks: data.clicks.suspiciousClicks,
+        conversions: data.conversions.totalOrders,
+        conversionRate: data.conversions.conversionRate,
+        totalRevenue: data.conversions.totalRevenue,
+        totalCommission: data.conversions.totalCommission,
+        breakdownByVia: {
+          link: data.clicks.linkClicks,
+          qr: data.clicks.qrClicks,
+        },
+      },
+    };
+  }
+
   @Get([':id/qr', 'by-code/:id/qr'])
   @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
-  @ApiOperation({ summary: 'Xem trước hoặc tải về ảnh mã QR Code động (FR-11)' })
+  @ApiOperation({
+    summary: 'Xem trước hoặc tải về ảnh mã QR Code động (FR-11)',
+  })
   @ApiParam({ name: 'id', description: 'ID hoặc shortCode của link tiếp thị' })
   @ApiProduces('image/png', 'image/svg+xml')
-  @ApiQuery({ name: 'format', required: false, enum: ['png', 'svg'], description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.', example: 'png' })
-  @ApiQuery({ name: 'size', required: false, enum: [512, 1024, 2048], description: 'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.', example: 1024 })
-  @ApiQuery({ name: 'download', required: false, type: Boolean, description: 'True để tải về (attachment), False để xem trước (inline).', example: false })
-  @ApiResponse({ status: 200, description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)', schema: { type: 'string', format: 'binary' } })
-  @ApiResponse({ status: 400, description: 'Yêu cầu không hợp lệ (format/size không đúng danh mục cho phép)' })
+  @ApiQuery({
+    name: 'format',
+    required: false,
+    enum: ['png', 'svg'],
+    description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.',
+    example: 'png',
+  })
+  @ApiQuery({
+    name: 'size',
+    required: false,
+    enum: [512, 1024, 2048],
+    description:
+      'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.',
+    example: 1024,
+  })
+  @ApiQuery({
+    name: 'download',
+    required: false,
+    type: Boolean,
+    description: 'True để tải về (attachment), False để xem trước (inline).',
+    example: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Yêu cầu không hợp lệ (format/size không đúng danh mục cho phép)',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực JWT' })
-  @ApiResponse({ status: 403, description: 'Không có quyền xem hoặc tải mã QR của liên kết này' })
-  @ApiResponse({ status: 404, description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa' })
-  @ApiResponse({ status: 429, description: 'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)' })
-  @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền xem hoặc tải mã QR của liên kết này',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa',
+  })
+  @ApiResponse({
+    status: 429,
+    description:
+      'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR',
+  })
   async getQrCode(
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: UserRole },
@@ -130,7 +220,10 @@ export class CollaboratorReferralLinksController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Tạo link tiếp thị rút gọn mới' })
-  @ApiResponse({ status: 201, description: 'Link tiếp thị được tạo thành công' })
+  @ApiResponse({
+    status: 201,
+    description: 'Link tiếp thị được tạo thành công',
+  })
   async createLink(
     @CurrentUser('id') collaboratorId: string,
     @Body() dto: CreateReferralLinkDto,
@@ -183,7 +276,9 @@ export class StoreReferralLinksController {
   constructor(private readonly service: ReferralLinksService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Chủ Shop xem các link đang tiếp thị sản phẩm của Shop' })
+  @ApiOperation({
+    summary: 'Chủ Shop xem các link đang tiếp thị sản phẩm của Shop',
+  })
   async getStoreLinks(
     @Param('storeId') storeId: string,
     @CurrentUser('id') userId: string,
@@ -193,8 +288,43 @@ export class StoreReferralLinksController {
     return this.service.getStoreReferralLinks(storeId, userId, userRole, query);
   }
 
+  @Get(':id/analytics')
+  @ApiOperation({
+    summary: 'Chủ Shop xem thống kê tracking & attribution của link (FR-13)',
+  })
+  @ApiParam({ name: 'id', description: 'ID của link tiếp thị' })
+  @ApiParam({ name: 'storeId', description: 'ID của cửa hàng' })
+  async getStoreLinkAnalytics(
+    @Param('storeId') storeId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    const data = await this.service.getStoreLinkAnalytics(storeId, id, userId, role);
+    return {
+      success: true,
+      analytics: {
+        ...data,
+        rawClicks: data.clicks.rawClicks,
+        validClicks: data.clicks.validClicks,
+        uniqueClicks: data.clicks.uniqueClicks,
+        suspiciousClicks: data.clicks.suspiciousClicks,
+        conversions: data.conversions.totalOrders,
+        conversionRate: data.conversions.conversionRate,
+        totalRevenue: data.conversions.totalRevenue,
+        totalCommission: data.conversions.totalCommission,
+        breakdownByVia: {
+          link: data.clicks.linkClicks,
+          qr: data.clicks.qrClicks,
+        },
+      },
+    };
+  }
+
   @Patch(':id/block')
-  @ApiOperation({ summary: 'Chủ Shop khóa link tiếp thị vi phạm (bắt buộc lý do)' })
+  @ApiOperation({
+    summary: 'Chủ Shop khóa link tiếp thị vi phạm (bắt buộc lý do)',
+  })
   async blockLink(
     @Param('storeId') storeId: string,
     @Param('id') id: string,
@@ -202,7 +332,13 @@ export class StoreReferralLinksController {
     @Body() dto: BlockReferralLinkDto,
     @Ip() ip: string,
   ) {
-    return this.service.blockLinkByShop(id, storeId, shopOwnerId, dto.reason, ip);
+    return this.service.blockLinkByShop(
+      id,
+      storeId,
+      shopOwnerId,
+      dto.reason,
+      ip,
+    );
   }
 
   @Patch(':id/unblock')
@@ -217,20 +353,61 @@ export class StoreReferralLinksController {
   }
 
   @Get(':id/qr')
-  @ApiOperation({ summary: 'Chủ Shop xem hoặc tải ảnh mã QR của link tiếp thị' })
+  @ApiOperation({
+    summary: 'Chủ Shop xem hoặc tải ảnh mã QR của link tiếp thị',
+  })
   @ApiParam({ name: 'id', description: 'ID của link tiếp thị thuộc cửa hàng' })
   @ApiParam({ name: 'storeId', description: 'ID của cửa hàng' })
   @ApiProduces('image/png', 'image/svg+xml')
-  @ApiQuery({ name: 'format', required: false, enum: ['png', 'svg'], description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.', example: 'png' })
-  @ApiQuery({ name: 'size', required: false, enum: [512, 1024, 2048], description: 'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.', example: 1024 })
-  @ApiQuery({ name: 'download', required: false, type: Boolean, description: 'True để tải về (attachment), False để xem trước (inline).', example: false })
-  @ApiResponse({ status: 200, description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)', schema: { type: 'string', format: 'binary' } })
-  @ApiResponse({ status: 400, description: 'Yêu cầu không hợp lệ (format/size không đúng)' })
+  @ApiQuery({
+    name: 'format',
+    required: false,
+    enum: ['png', 'svg'],
+    description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.',
+    example: 'png',
+  })
+  @ApiQuery({
+    name: 'size',
+    required: false,
+    enum: [512, 1024, 2048],
+    description:
+      'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.',
+    example: 1024,
+  })
+  @ApiQuery({
+    name: 'download',
+    required: false,
+    type: Boolean,
+    description: 'True để tải về (attachment), False để xem trước (inline).',
+    example: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Yêu cầu không hợp lệ (format/size không đúng)',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực JWT' })
-  @ApiResponse({ status: 403, description: 'Không có quyền xem mã QR của liên kết thuộc cửa hàng khác' })
-  @ApiResponse({ status: 404, description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa' })
-  @ApiResponse({ status: 429, description: 'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)' })
-  @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền xem mã QR của liên kết thuộc cửa hàng khác',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa',
+  })
+  @ApiResponse({
+    status: 429,
+    description:
+      'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR',
+  })
   async getStoreQrCode(
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: UserRole },
@@ -262,6 +439,26 @@ export class StoreReferralLinksController {
 
     return res.send(qrResult.buffer);
   }
+
+  @Get('orders/:orderId/effective-attribution')
+  @ApiOperation({
+    summary: 'Chủ Shop tra cứu KOL hiệu lực và lịch sử điều chỉnh của đơn hàng (FR-13 - Issue 3 & Issue 1)',
+    description:
+      'Chỉ cho phép tra cứu đơn hàng thuộc đúng StoreId trên URL và người gọi phải là chủ sở hữu gian hàng.',
+  })
+  async getEffectiveOrderAttribution(
+    @Param('storeId') storeId: string,
+    @Param('orderId') orderId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.resolveEffectiveOrderAttribution(
+      orderId,
+      storeId,
+      userId,
+      role,
+    );
+  }
 }
 
 // ==========================================
@@ -288,19 +485,57 @@ export class AdminReferralLinksController {
   }
 
   @Get(':id/qr')
-  @ApiOperation({ summary: 'Quản trị viên tra cứu hoặc tải ảnh mã QR của link tiếp thị' })
+  @ApiOperation({
+    summary: 'Quản trị viên tra cứu hoặc tải ảnh mã QR của link tiếp thị',
+  })
   @ApiParam({ name: 'id', description: 'ID hoặc shortCode của link tiếp thị' })
   @ApiProduces('image/png', 'image/svg+xml')
-  @ApiQuery({ name: 'format', required: false, enum: ['png', 'svg'], description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.', example: 'png' })
-  @ApiQuery({ name: 'size', required: false, enum: [512, 1024, 2048], description: 'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.', example: 1024 })
-  @ApiQuery({ name: 'download', required: false, type: Boolean, description: 'True để tải về (attachment), False để xem trước (inline).', example: false })
-  @ApiResponse({ status: 200, description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)', schema: { type: 'string', format: 'binary' } })
-  @ApiResponse({ status: 400, description: 'Yêu cầu không hợp lệ (format/size không đúng)' })
+  @ApiQuery({
+    name: 'format',
+    required: false,
+    enum: ['png', 'svg'],
+    description: 'Định dạng ảnh xuất ra (png hoặc svg). Mặc định là png.',
+    example: 'png',
+  })
+  @ApiQuery({
+    name: 'size',
+    required: false,
+    enum: [512, 1024, 2048],
+    description:
+      'Kích thước cạnh ảnh (pixel): 512, 1024 (mặc định), hoặc 2048.',
+    example: 1024,
+  })
+  @ApiQuery({
+    name: 'download',
+    required: false,
+    type: Boolean,
+    description: 'True để tải về (attachment), False để xem trước (inline).',
+    example: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Dữ liệu nhị phân ảnh QR Code (PNG hoặc SVG)',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Yêu cầu không hợp lệ (format/size không đúng)',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực JWT' })
   @ApiResponse({ status: 403, description: 'Không có quyền truy cập' })
-  @ApiResponse({ status: 404, description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa' })
-  @ApiResponse({ status: 429, description: 'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)' })
-  @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR' })
+  @ApiResponse({
+    status: 404,
+    description: 'Liên kết tiếp thị không tồn tại hoặc đã bị xóa',
+  })
+  @ApiResponse({
+    status: 429,
+    description:
+      'Vượt quá giới hạn rate limit (tối đa 20 lượt tải hoặc 60 lượt xem/phút)',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Lỗi máy chủ nội bộ trong quá trình dựng ảnh QR',
+  })
   async getAdminQrCode(
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: UserRole },
@@ -352,5 +587,48 @@ export class AdminReferralLinksController {
     @Ip() ip: string,
   ) {
     return this.service.unblockLinkByAdmin(id, adminId, ip);
+  }
+
+  @Get('tracking/events')
+  @ApiOperation({
+    summary: 'Quản trị viên tra cứu nhật ký sự kiện click/attribution (FR-13)',
+    description: 'Tra cứu sự kiện phục vụ điều tra gian lận, IP được che mờ bảo vệ riêng tư.',
+  })
+  async getAdminTrackingEvents(@Query() query: QueryTrackingEventsDto) {
+    return this.service.getAdminTrackingEvents(query);
+  }
+
+  @Post('orders/:orderId/attribution-adjustment')
+  @ApiOperation({
+    summary: 'Quản trị viên điều chỉnh nguồn attribution của đơn hàng (FR-13)',
+    description: 'Tạo bản ghi điều chỉnh bất biến và lưu audit log giải quyết khiếu nại.',
+  })
+  async adjustOrderAttribution(
+    @Param('orderId') orderId: string,
+    @Body() dto: AttributionAdjustmentDto,
+    @CurrentUser('id') adminId: string,
+    @Ip() ip: string,
+  ) {
+    return this.service.adjustOrderAttribution(orderId, dto, adminId, ip);
+  }
+
+  @Get('orders/:orderId/effective-attribution')
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiOperation({
+    summary: 'Quản trị viên tra cứu KOL hiệu lực và thông tin điều chỉnh của đơn hàng (FR-13 - Issue 3)',
+    description:
+      'Chỉ dành riêng cho Quản trị viên hệ thống (SYSTEM_ADMIN) phục vụ đối soát và báo cáo.',
+  })
+  async getEffectiveOrderAttribution(
+    @Param('orderId') orderId: string,
+    @CurrentUser('id') adminId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.resolveEffectiveOrderAttribution(
+      orderId,
+      undefined,
+      adminId,
+      role,
+    );
   }
 }

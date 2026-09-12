@@ -21,17 +21,31 @@ export default function ProductDetailPage() {
     // Cookie attribution được quản lý 100% phía Backend với HttpOnly: true để bảo mật.
     // Frontend không đọc hoặc chỉnh sửa cookie attribution.
 
-    // 2. Lấy thông tin sản phẩm từ backend
+    // 2. Lấy thông tin sản phẩm từ backend bằng API công khai (Public API - cho phép khách vãng lai)
     async function loadProduct() {
       setLoading(true);
       try {
-        // Lấy danh sách sản phẩm để tìm theo id hoặc slug
-        const res: any = await api.get('/collaborator/referral-links/products');
-        const prods = res?.data || res || [];
+        if (slug) {
+          // 1. Thử lấy trực tiếp chi tiết sản phẩm qua API public /products/:id
+          try {
+            const detailRes: any = await api.get(`/products/${slug}`);
+            const detailData = detailRes?.data || detailRes;
+            if (detailData && (detailData.id || detailData.title)) {
+              setProduct(detailData);
+              return;
+            }
+          } catch {}
+        }
+        // 2. Fallback: Lấy danh sách sản phẩm public /products
+        const res: any = await api.get('/products');
+        const listData = res?.data?.items || res?.data || res || [];
+        const prods = Array.isArray(listData) ? listData : [];
         const found = prods.find((p: any) => p.id === slug || p.sku === slug) || prods[0];
-        setProduct(found);
+        if (found) {
+          setProduct(found);
+        }
       } catch (err) {
-        console.error('Lỗi khi tải sản phẩm:', err);
+        console.warn('Lỗi khi tải thông tin sản phẩm từ server:', err);
       } finally {
         setLoading(false);
       }

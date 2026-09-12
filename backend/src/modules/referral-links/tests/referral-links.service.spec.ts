@@ -319,7 +319,9 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
     it('Chống Race Condition: bắt lỗi P2002 và retry sinh mã mới thành công', async () => {
       prisma.user.findUnique.mockResolvedValue(defaultUserMock);
       prisma.product.findUnique.mockResolvedValue(defaultProductMock);
-      prisma.campaignParticipant.findFirst.mockResolvedValue({ status: 'ACCEPTED' });
+      prisma.campaignParticipant.findFirst.mockResolvedValue({
+        status: 'ACCEPTED',
+      });
       prisma.referralLink.count.mockResolvedValue(0);
 
       // Lần đầu gặp lỗi P2002 trùng mã, lần 2 tạo thành công
@@ -353,7 +355,9 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
     it('Chặn khi vượt quá 10 link / phút / KOL (Mục 32)', async () => {
       prisma.user.findUnique.mockResolvedValue(defaultUserMock);
       prisma.product.findUnique.mockResolvedValue(defaultProductMock);
-      prisma.campaignParticipant.findFirst.mockResolvedValue({ status: 'ACCEPTED' });
+      prisma.campaignParticipant.findFirst.mockResolvedValue({
+        status: 'ACCEPTED',
+      });
       prisma.referralLink.count.mockResolvedValueOnce(10); // 10 links in last minute
 
       await expect(
@@ -368,7 +372,9 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
     it('Chặn khi vượt quá 20 link / sản phẩm / KOL (Mục 32)', async () => {
       prisma.user.findUnique.mockResolvedValue(defaultUserMock);
       prisma.product.findUnique.mockResolvedValue(defaultProductMock);
-      prisma.campaignParticipant.findFirst.mockResolvedValue({ status: 'ACCEPTED' });
+      prisma.campaignParticipant.findFirst.mockResolvedValue({
+        status: 'ACCEPTED',
+      });
       prisma.referralLink.count
         .mockResolvedValueOnce(0) // last minute
         .mockResolvedValueOnce(5) // active links
@@ -413,14 +419,23 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         deletedAt: null,
       });
 
-      await expect(service.toggleLinkStatus('link-blocked', 'collab-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.toggleLinkStatus('link-blocked', 'collab-1'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('Chủ Shop khóa link phải lưu lý do khóa (disabledReason)', async () => {
-      prisma.store.findFirst.mockResolvedValue({ id: 'store-1', ownerId: 'shop-owner-1', deletedAt: null });
-      prisma.referralLink.findFirst.mockResolvedValue({ id: 'link-1', shortCode: 'abc12345', storeId: 'store-1', deletedAt: null });
+      prisma.store.findFirst.mockResolvedValue({
+        id: 'store-1',
+        ownerId: 'shop-owner-1',
+        deletedAt: null,
+      });
+      prisma.referralLink.findFirst.mockResolvedValue({
+        id: 'link-1',
+        shortCode: 'abc12345',
+        storeId: 'store-1',
+        deletedAt: null,
+      });
       prisma.referralLink.update.mockResolvedValue({
         id: 'link-1',
         shortCode: 'abc12345',
@@ -468,9 +483,18 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         storeId: 'store-1',
         status: ReferralLinkStatus.ACTIVE,
         deletedAt: null,
-        product: { id: 'prod-1', isActive: true, isAffiliateEnabled: true, deletedAt: null },
+        product: {
+          id: 'prod-1',
+          isActive: true,
+          isAffiliateEnabled: true,
+          deletedAt: null,
+        },
         store: { id: 'store-1', deletedAt: null },
-        collaborator: { id: 'collab-1', fullName: 'Thắng Đặng', isActive: true },
+        collaborator: {
+          id: 'collab-1',
+          fullName: 'Thắng Đặng',
+          isActive: true,
+        },
       });
 
       prisma.clickTrafficLog.findFirst.mockResolvedValue(null); // Không click trùng trong 30s
@@ -496,12 +520,17 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         deletedAt: null,
         product: { id: 'prod-1', isActive: true, deletedAt: null },
         store: { id: 'store-1', deletedAt: null },
-        collaborator: { id: 'collab-1', fullName: 'Thắng Đặng', isActive: true },
+        collaborator: {
+          id: 'collab-1',
+          fullName: 'Thắng Đặng',
+          isActive: true,
+        },
       });
 
       const redirectRes = await service.handleRedirect('botlink1', {
         ip: '66.249.66.1',
-        userAgent: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+        userAgent:
+          'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
       });
 
       expect(isSearchEngineBot('Googlebot/2.1')).toBe(true);
@@ -520,10 +549,16 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         deletedAt: null,
         product: { id: 'prod-1', isActive: true, deletedAt: null },
         store: { id: 'store-1', deletedAt: null },
-        collaborator: { id: 'collab-1', fullName: 'Thắng Đặng', isActive: true },
+        collaborator: {
+          id: 'collab-1',
+          fullName: 'Thắng Đặng',
+          isActive: true,
+        },
       });
 
-      const redirectRes = await service.handleRedirect('paused12', { ip: '1.2.3.4' });
+      const redirectRes = await service.handleRedirect('paused12', {
+        ip: '1.2.3.4',
+      });
       expect(redirectRes.status).toBe('PAUSED');
       expect(redirectRes.allowAttribution).toBe(false);
       expect(redirectRes.attributionData).toBeNull();

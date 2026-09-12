@@ -55,15 +55,15 @@ export class UpdateCommissionRuleDto {
   achievementBonus?: string;
 
   @ApiPropertyOptional({
-    description: 'Tỷ lệ phần trăm thưởng thêm trên phần vượt (từ 0 đến 100, tối đa 2 chữ số thập phân)',
+    description:
+      'Tỷ lệ phần trăm thưởng thêm trên phần vượt (từ 0 đến 100, tối đa 2 chữ số thập phân)',
     example: '3.00',
   })
   @IsOptional()
   @Matches(
     /^(?:0(?:\.0{1,2})?|0\.(?:0[1-9]|[1-9]\d?)|[1-9]\d{0,1}(?:\.\d{1,2})?|100(?:\.0{1,2})?)$/,
     {
-      message:
-        'Tỷ lệ thưởng phải từ 0% đến 100% và tối đa 2 chữ số thập phân',
+      message: 'Tỷ lệ thưởng phải từ 0% đến 100% và tối đa 2 chữ số thập phân',
     },
   )
   bonusPercentage?: string;
@@ -81,7 +81,10 @@ export class UpdateCommissionRuleDto {
     example: '2026-09-01T00:00:00.000Z',
   })
   @IsOptional()
-  @IsDateString({}, { message: 'effectiveFrom phải là chuỗi ngày tháng ISO 8601 hợp lệ' })
+  @IsDateString(
+    {},
+    { message: 'effectiveFrom phải là chuỗi ngày tháng ISO 8601 hợp lệ' },
+  )
   effectiveFrom?: string;
 
   @ApiPropertyOptional({
@@ -89,6 +92,9 @@ export class UpdateCommissionRuleDto {
     example: '2026-12-31T23:59:59.000Z',
   })
   @IsOptional()
-  @IsDateString({}, { message: 'effectiveTo phải là chuỗi ngày tháng ISO 8601 hợp lệ' })
+  @IsDateString(
+    {},
+    { message: 'effectiveTo phải là chuỗi ngày tháng ISO 8601 hợp lệ' },
+  )
   effectiveTo?: string;
 }

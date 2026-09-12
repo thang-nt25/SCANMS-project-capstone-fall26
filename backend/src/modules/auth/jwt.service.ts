@@ -11,8 +11,8 @@ export class JwtService {
     if (!secret) {
       throw new Error('Cấu hình JWT_SECRET bị thiếu trong hệ thống!');
     }
-    const expiresIn =
-      (this.configService.get<string>('JWT_EXPIRATION') || '7d') as any;
+    const expiresIn = (this.configService.get<string>('JWT_EXPIRATION') ||
+      '7d') as any;
 
     return jwt.sign(payload, secret, {
       expiresIn,

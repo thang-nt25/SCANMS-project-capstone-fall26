@@ -29,7 +29,29 @@ async function bootstrap() {
   app.setGlobalPrefix('api', {
     exclude: ['r/:shortCode', 'api/r/:shortCode'],
   });
-  app.enableCors();
+  const allowedOrigins = (
+    process.env.CORS_ORIGINS ||
+    process.env.FRONTEND_URL ||
+    'http://localhost:5173'
+  )
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Cho phép request không có Origin (server-to-server/curl) và các frontend
+      // đã khai báo; tuyệt đối không dùng wildcard khi credentials=true.
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS không cho phép origin: ${origin}`), false);
+    },
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Idempotency-Key'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -11,8 +11,17 @@ import { StoreCollaboratorsService } from './store-collaborators.service';
 
 @Module({
   imports: [PrismaModule, AuthModule],
-  controllers: [CommissionRulesController, CollaboratorCommissionRulesController, StoreCollaboratorsController],
-  providers: [CommissionRulesService, StoreCollaboratorsService, StoreOwnerGuard, JwtAuthGuard],
+  controllers: [
+    CommissionRulesController,
+    CollaboratorCommissionRulesController,
+    StoreCollaboratorsController,
+  ],
+  providers: [
+    CommissionRulesService,
+    StoreCollaboratorsService,
+    StoreOwnerGuard,
+    JwtAuthGuard,
+  ],
   exports: [CommissionRulesService],
 })
 export class CommissionRulesModule {}

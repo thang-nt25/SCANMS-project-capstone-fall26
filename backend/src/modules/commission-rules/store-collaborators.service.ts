@@ -32,11 +32,17 @@ export class StoreCollaboratorsService {
             fullName: true,
             email: true,
             phoneNumber: true,
-            collaboratorProfile: { select: { totalFollowers: true, kycStatus: true } },
+            collaboratorProfile: {
+              select: { totalFollowers: true, kycStatus: true },
+            },
             socialChannels: {
               where: { isPrimary: true },
               take: 1,
-              select: { platformName: true, channelName: true, followerCount: true },
+              select: {
+                platformName: true,
+                channelName: true,
+                followerCount: true,
+              },
             },
           },
         },
@@ -59,11 +65,18 @@ export class StoreCollaboratorsService {
       select: { id: true, fullName: true, email: true },
     });
     if (!collaborator) {
-      throw new NotFoundException('Không tìm thấy tài khoản KOL/CTV đang hoạt động với email này');
+      throw new NotFoundException(
+        'Không tìm thấy tài khoản KOL/CTV đang hoạt động với email này',
+      );
     }
 
     const existing = await this.prisma.storeCollaborator.findUnique({
-      where: { storeId_collaboratorId: { storeId: store.id, collaboratorId: collaborator.id } },
+      where: {
+        storeId_collaboratorId: {
+          storeId: store.id,
+          collaboratorId: collaborator.id,
+        },
+      },
     });
     if (existing?.status === StoreCollaboratorStatus.APPROVED) {
       throw new BadRequestException('KOL/CTV này đã thuộc đội ngũ của Shop');
@@ -73,7 +86,12 @@ export class StoreCollaboratorsService {
     }
 
     const invitation = await this.prisma.storeCollaborator.upsert({
-      where: { storeId_collaboratorId: { storeId: store.id, collaboratorId: collaborator.id } },
+      where: {
+        storeId_collaboratorId: {
+          storeId: store.id,
+          collaboratorId: collaborator.id,
+        },
+      },
       create: {
         storeId: store.id,
         collaboratorId: collaborator.id,
@@ -86,7 +104,12 @@ export class StoreCollaboratorsService {
         note: dto.note?.trim() || null,
       },
     });
-    return { message: 'Đã gửi lời mời đến KOL/CTV', invitation, collaborator, store };
+    return {
+      message: 'Đã gửi lời mời đến KOL/CTV',
+      invitation,
+      collaborator,
+      store,
+    };
   }
 
   async getMyInvitations(collaboratorId: string) {

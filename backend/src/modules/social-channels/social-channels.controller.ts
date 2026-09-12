@@ -28,7 +28,9 @@ export class SocialChannelsController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Thêm kênh mạng xã hội mới (TikTok, FB, YouTube...)' })
+  @ApiOperation({
+    summary: 'Thêm kênh mạng xã hội mới (TikTok, FB, YouTube...)',
+  })
   async addChannel(
     @CurrentUser('id') userId: string,
     @Body() dto: CreateChannelDto,

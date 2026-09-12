@@ -37,10 +37,41 @@ function RequestModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const [products, setProducts] = useState<any[]>([]);
+  const [fetchingProducts, setFetchingProducts] = useState(false);
   const [productId, setProductId] = useState('');
-  const [shippingAddress, setShippingAddress] = useState('');
+  const [shippingAddress, setShippingAddress] = useState(
+    'Phòng 402, Chung cư Sunrise City, Quận 7, TP.HCM'
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setFetchingProducts(true);
+    api
+      .get('/products')
+      .then((res: any) => {
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.items)
+          ? res.data.items
+          : Array.isArray(res?.items)
+          ? res.items
+          : [];
+        setProducts(list);
+        if (list.length > 0 && !productId) {
+          setProductId(list[0].id);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setFetchingProducts(false));
+  }, []);
+
+  const selectedProduct = Array.isArray(products)
+    ? products.find((p) => p.id === productId)
+    : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,8 +103,10 @@ function RequestModal({
         role="dialog"
         aria-modal="true"
       >
-        <div className="px-6 py-4 border-b border-[#EAE4D7] flex items-center justify-between">
-          <h2 className="text-base font-extrabold text-[#1A1612]">📦 Xin Sản Phẩm Mẫu</h2>
+        <div className="px-6 py-4 border-b border-[#EAE4D7] flex items-center justify-between bg-stone-50/50">
+          <h2 className="text-base font-extrabold text-[#1A1612] flex items-center gap-2">
+            <span>📦</span> Xin Sản Phẩm Mẫu Dùng Thử
+          </h2>
           <button
             type="button"
             className="w-8 h-8 rounded-full flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] transition cursor-pointer"
@@ -87,30 +120,68 @@ function RequestModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label htmlFor="sr-product-id" className="text-xs font-bold text-[#1A1612] block mb-1.5">
-              ID Sản phẩm muốn xin mẫu
+              Chọn Sản phẩm muốn xin mẫu
             </label>
-            <input
-              id="sr-product-id"
-              type="text"
-              className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-              placeholder="Dán UUID sản phẩm vào đây..."
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              required
-            />
-            <small className="text-[11px] text-[#7D715E] mt-1 block">
-              Lấy ID từ danh sách sản phẩm của cửa hàng bạn đang hợp tác
-            </small>
+            {fetchingProducts ? (
+              <div className="text-xs text-stone-500 py-2 flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                Đang tải danh sách sản phẩm...
+              </div>
+            ) : products.length > 0 ? (
+              <select
+                id="sr-product-id"
+                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                required
+              >
+                {products.map((p: any) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} - {p.store?.name || 'Shop'} ({Number(p.price).toLocaleString('vi-VN')} đ)
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="sr-product-id"
+                type="text"
+                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                placeholder="Nhập ID sản phẩm..."
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                required
+              />
+            )}
           </div>
+
+          {selectedProduct && (
+            <div className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-xl flex items-center gap-3">
+              {selectedProduct.imageUrl && (
+                <img
+                  src={selectedProduct.imageUrl}
+                  alt={selectedProduct.title}
+                  className="w-12 h-12 rounded-lg object-cover bg-white border border-amber-200/60 flex-shrink-0"
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-stone-900 truncate">
+                  {selectedProduct.title}
+                </div>
+                <div className="text-[11px] text-amber-800 font-semibold">
+                  {Number(selectedProduct.price).toLocaleString('vi-VN')} đ • SKU: {selectedProduct.sku}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label htmlFor="sr-address" className="text-xs font-bold text-[#1A1612] block mb-1.5">
-              Địa chỉ nhận hàng mẫu
+              Địa chỉ nhận hàng mẫu (Kèm SĐT liên hệ)
             </label>
             <textarea
               id="sr-address"
               className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F] resize-none"
-              placeholder="Ví dụ: 123 Nguyễn Văn A, P.Bến Nghé, Q.1, TP.HCM"
+              placeholder="Ví dụ: Phòng 402, Chung cư Sunrise City, Quận 7, TP.HCM - SĐT: 0987654321"
               value={shippingAddress}
               onChange={(e) => setShippingAddress(e.target.value)}
               rows={3}
@@ -119,7 +190,11 @@ function RequestModal({
             />
           </div>
 
-          {error && <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">{error}</div>}
+          {error && (
+            <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+              {error}
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
@@ -135,7 +210,7 @@ function RequestModal({
               className="px-5 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-extrabold transition shadow-xs cursor-pointer disabled:opacity-50"
               disabled={loading || !productId.trim() || !shippingAddress.trim()}
             >
-              {loading ? '⏳ Đang gửi...' : '📤 Gửi yêu cầu'}
+              {loading ? '⏳ Đang gửi...' : '📤 Gửi yêu cầu xin mẫu'}
             </button>
           </div>
         </form>
@@ -155,9 +230,11 @@ export default function SampleRequestsPage() {
     setLoading(true);
     try {
       const res: any = await api.get('/sample-requests/my');
-      setRequests(res.data || []);
+      const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+      setRequests(list);
     } catch (err) {
       console.error(err);
+      setRequests([]);
     } finally {
       setLoading(false);
     }

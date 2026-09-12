@@ -36,7 +36,9 @@ export class MediaController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Chủ Shop tải lên tài nguyên media hoặc kịch bản mẫu SEO' })
+  @ApiOperation({
+    summary: 'Chủ Shop tải lên tài nguyên media hoặc kịch bản mẫu SEO',
+  })
   async create(
     @CurrentUser('id') ownerId: string,
     @Body() dto: CreateMediaDto,
@@ -49,10 +51,7 @@ export class MediaController {
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Chủ Shop xóa tài nguyên media' })
-  async delete(
-    @CurrentUser('id') ownerId: string,
-    @Param('id') id: string,
-  ) {
+  async delete(@CurrentUser('id') ownerId: string, @Param('id') id: string) {
     return this.mediaService.softDelete(ownerId, id);
   }
 }

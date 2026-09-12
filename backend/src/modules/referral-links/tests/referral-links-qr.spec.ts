@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserRole, ReferralLinkStatus } from '@prisma/client';
 import { ReferralLinksService } from '../referral-links.service';
 import { PrismaService } from '../../../core/database/prisma.service';
@@ -54,11 +58,18 @@ describe('FR-11 — Dynamic QR Code Generation (Tạo Mã QR Code Động)', () 
         findFirst: jest.fn().mockImplementation(({ where }) => {
           if (where.deletedAt !== null) return Promise.resolve(null);
           if (where.OR) {
-            const matchesId = where.OR.some((cond: any) => cond.id === mockLink.id);
-            const matchesCode = where.OR.some((cond: any) => cond.shortCode === mockLink.shortCode);
+            const matchesId = where.OR.some(
+              (cond: any) => cond.id === mockLink.id,
+            );
+            const matchesCode = where.OR.some(
+              (cond: any) => cond.shortCode === mockLink.shortCode,
+            );
             if (matchesId || matchesCode) return Promise.resolve(mockLink);
           }
-          if (where.id === mockLink.id || where.shortCode === mockLink.shortCode) {
+          if (
+            where.id === mockLink.id ||
+            where.shortCode === mockLink.shortCode
+          ) {
             return Promise.resolve(mockLink);
           }
           return Promise.resolve(null);
@@ -77,7 +88,11 @@ describe('FR-11 — Dynamic QR Code Generation (Tạo Mã QR Code Động)', () 
         incr: jest.fn().mockResolvedValue(1),
         expire: jest.fn().mockResolvedValue(1),
       }),
-      checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 59, resetTime: Date.now() + 60000 }),
+      checkRateLimit: jest.fn().mockResolvedValue({
+        allowed: true,
+        remaining: 59,
+        resetTime: Date.now() + 60000,
+      }),
     };
 
     clickQueue = {

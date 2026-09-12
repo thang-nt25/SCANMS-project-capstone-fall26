@@ -5,16 +5,26 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 let socket: Socket | null = null;
 
 export const getChatSocket = (): Socket => {
-  if (socket && socket.connected) return socket;
-
   const token = localStorage.getItem('token');
+
+  if (socket) {
+    // If token changed, reconnect with new token
+    if ((socket as any)._currentToken !== token) {
+      socket.disconnect();
+      socket = null;
+    } else if (socket.connected) {
+      return socket;
+    }
+  }
 
   socket = io(`${SOCKET_URL}/chat`, {
     auth: { token },
     transports: ['websocket', 'polling'],
-    reconnectionAttempts: 5,
-    reconnectionDelay: 2000,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
   });
+
+  (socket as any)._currentToken = token;
 
   socket.on('connect', () => {
     console.log('✅ Chat socket connected:', socket?.id);

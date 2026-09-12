@@ -15,9 +15,13 @@ export class MailService {
         service: 'gmail',
         auth: { user, pass },
       });
-      this.logger.log(`Nodemailer Gmail Transporter initialized with account: ${user}`);
+      this.logger.log(
+        `Nodemailer Gmail Transporter initialized with account: ${user}`,
+      );
     } else {
-      this.logger.log('Nodemailer using console mode (GMAIL_USER/GMAIL_PASS not provided). Emails will be logged to console.');
+      this.logger.log(
+        'Nodemailer using console mode (GMAIL_USER/GMAIL_PASS not provided). Emails will be logged to console.',
+      );
     }
   }
 
@@ -51,7 +55,12 @@ export class MailService {
       </div>
     `;
 
-    await this.sendMail(email, subject, html, `Mã OTP xác thực của bạn là: ${otp}`);
+    await this.sendMail(
+      email,
+      subject,
+      html,
+      `Mã OTP xác thực của bạn là: ${otp}`,
+    );
   }
 
   /**
@@ -100,7 +109,12 @@ export class MailService {
   /**
    * Phương thức chung gửi email hoặc fallback ra console đẹp mắt
    */
-  private async sendMail(to: string, subject: string, html: string, textFallback: string) {
+  private async sendMail(
+    to: string,
+    subject: string,
+    html: string,
+    textFallback: string,
+  ) {
     if (this.transporter) {
       try {
         await this.transporter.sendMail({
@@ -110,10 +124,14 @@ export class MailService {
           text: textFallback,
           html,
         });
-        this.logger.log(`Real Gmail successfully sent to: ${to} | Subject: ${subject}`);
+        this.logger.log(
+          `Real Gmail successfully sent to: ${to} | Subject: ${subject}`,
+        );
         return;
       } catch (err: any) {
-        this.logger.error(`Failed to send real Gmail to ${to}: ${err.message}. Falling back to console output.`);
+        this.logger.error(
+          `Failed to send real Gmail to ${to}: ${err.message}. Falling back to console output.`,
+        );
       }
     }
 

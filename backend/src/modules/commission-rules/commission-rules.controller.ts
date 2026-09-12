@@ -48,7 +48,10 @@ export class CommissionRulesController {
     description:
       'Trả về danh sách mốc thưởng còn hiệu lực của Shop, sắp xếp theo doanh số tối thiểu tăng dần.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Danh sách mốc thưởng thành công',
@@ -64,7 +67,10 @@ export class CommissionRulesController {
     description:
       'Xem danh sách kết quả chốt thưởng của các KOL kèm snapshot mốc thưởng đã áp dụng.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
   @ApiQuery({
     name: 'yearMonth',
     required: false,
@@ -84,8 +90,14 @@ export class CommissionRulesController {
     description:
       'Hiển thị doanh số hiện tại, mốc đã đạt, tiền thưởng dự kiến và số tiền còn thiếu để đạt mốc tiếp theo.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
-  @ApiParam({ name: 'collaboratorId', description: 'ID định danh của KOL (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiParam({
+    name: 'collaboratorId',
+    description: 'ID định danh của KOL (UUID)',
+  })
   @ApiQuery({
     name: 'yearMonth',
     required: false,
@@ -110,7 +122,10 @@ export class CommissionRulesController {
     description:
       'Quét các đơn hàng hoàn thành (COMPLETED) của KOL trong tháng chỉ định và tính tổng doanh số hợp lệ (đã trừ hoàn tiền).',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
   @ApiParam({
     name: 'collaboratorId',
     description: 'ID định danh của KOL (UUID)',
@@ -137,8 +152,14 @@ export class CommissionRulesController {
   @ApiOperation({
     summary: 'Xem chi tiết một mốc thưởng doanh số tháng',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
-  @ApiParam({ name: 'ruleId', description: 'ID định danh của mốc thưởng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiParam({
+    name: 'ruleId',
+    description: 'ID định danh của mốc thưởng (UUID)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Chi tiết mốc thưởng',
@@ -157,7 +178,10 @@ export class CommissionRulesController {
     description:
       'Thêm mốc thưởng cho Shop. Kiểm tra trùng ngưỡng, kiểm tra thứ tự hợp lý và ghi audit log trong cùng transaction.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
   @ApiResponse({
     status: 201,
     description: 'Tạo mốc thưởng thành công',
@@ -184,8 +208,14 @@ export class CommissionRulesController {
     description:
       'Chỉnh sửa thông tin mốc thưởng. Kiểm tra tính hợp lệ và ghi audit log.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
-  @ApiParam({ name: 'ruleId', description: 'ID định danh của mốc thưởng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiParam({
+    name: 'ruleId',
+    description: 'ID định danh của mốc thưởng (UUID)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Cập nhật mốc thưởng thành công',
@@ -214,8 +244,14 @@ export class CommissionRulesController {
     description:
       'Chuyển đổi trạng thái isActive giữa true (đang áp dụng) và false (tạm ngừng).',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
-  @ApiParam({ name: 'ruleId', description: 'ID định danh của mốc thưởng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiParam({
+    name: 'ruleId',
+    description: 'ID định danh của mốc thưởng (UUID)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Cập nhật trạng thái thành công',
@@ -240,10 +276,17 @@ export class CommissionRulesController {
   @Post(':ruleId/restore')
   @ApiOperation({
     summary: 'Khôi phục mốc thưởng đã bị xóa mềm',
-    description: 'Khôi phục lại mốc thưởng nếu không bị xung đột với mốc hiện tại.',
+    description:
+      'Khôi phục lại mốc thưởng nếu không bị xung đột với mốc hiện tại.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
-  @ApiParam({ name: 'ruleId', description: 'ID định danh của mốc thưởng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiParam({
+    name: 'ruleId',
+    description: 'ID định danh của mốc thưởng (UUID)',
+  })
   async restore(
     @Param('storeId', ParseUUIDPipe) storeId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
@@ -265,8 +308,14 @@ export class CommissionRulesController {
     description:
       'Đánh dấu mốc thưởng đã xóa (isDeleted = true, deletedAt = now()), không xóa vật lý để bảo toàn lịch sử.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
-  @ApiParam({ name: 'ruleId', description: 'ID định danh của mốc thưởng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiParam({
+    name: 'ruleId',
+    description: 'ID định danh của mốc thưởng (UUID)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Xóa mềm thành công',
@@ -288,11 +337,15 @@ export class CommissionRulesController {
 
   @Post('preview')
   @ApiOperation({
-    summary: 'Mô phỏng tính thưởng doanh số tháng theo công thức lũy tiến từng khoảng',
+    summary:
+      'Mô phỏng tính thưởng doanh số tháng theo công thức lũy tiến từng khoảng',
     description:
       'Tính toán chi tiết thưởng KPI cố định và thưởng phần vượt lũy tiến từng khoảng doanh số. Không phát sinh ghi nợ ví.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Kết quả mô phỏng tính thưởng lũy tiến',
@@ -303,19 +356,20 @@ export class CommissionRulesController {
     @Body() dto: PreviewCommissionRuleDto,
   ) {
     const revenueToSimulate = dto.monthlyRevenue || dto.revenue || '0';
-    return this.commissionRulesService.previewBonus(
-      storeId,
-      revenueToSimulate,
-    );
+    return this.commissionRulesService.previewBonus(storeId, revenueToSimulate);
   }
 
   @Post('settle')
   @ApiOperation({
-    summary: 'Chốt tính thưởng doanh số tháng cho một KOL (Trạng thái: PENDING, Chống tính trùng lặp - Idempotent)',
+    summary:
+      'Chốt tính thưởng doanh số tháng cho một KOL (Trạng thái: PENDING, Chống tính trùng lặp - Idempotent)',
     description:
       'Tổng hợp doanh số đơn hàng COMPLETED (đã trừ hoàn tiền), tính thưởng lũy tiến, lưu snapshot kết quả. Nếu kỳ đã chốt thì giữ nguyên kết quả.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Kết quả chốt thưởng tháng',
@@ -339,11 +393,19 @@ export class CommissionRulesController {
 
   @Patch('settlements/:settlementId/approve')
   @ApiOperation({
-    summary: 'Duyệt kỳ thưởng tháng (Chuyển trạng thái từ PENDING sang APPROVED)',
-    description: 'Chủ Shop duyệt kỳ thưởng đã tính toán để chuẩn bị chi trả vào ví.',
+    summary:
+      'Duyệt kỳ thưởng tháng (Chuyển trạng thái từ PENDING sang APPROVED)',
+    description:
+      'Chủ Shop duyệt kỳ thưởng đã tính toán để chuẩn bị chi trả vào ví.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
-  @ApiParam({ name: 'settlementId', description: 'ID kết quả chốt thưởng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiParam({
+    name: 'settlementId',
+    description: 'ID kết quả chốt thưởng (UUID)',
+  })
   async approveSettlement(
     @Param('storeId', ParseUUIDPipe) storeId: string,
     @Param('settlementId', ParseUUIDPipe) settlementId: string,
@@ -361,11 +423,19 @@ export class CommissionRulesController {
 
   @Post('settlements/:settlementId/payout')
   @ApiOperation({
-    summary: 'Chi trả tiền thưởng vào Ví KOL (Chuyển APPROVED sang PAID + cộng Wallet + Sổ cái Ledger)',
-    description: 'Cộng tiền thưởng đã duyệt vào ví khả dụng của KOL, ghi Sổ cái tài chính FinancialLedger.',
+    summary:
+      'Chi trả tiền thưởng vào Ví KOL (Chuyển APPROVED sang PAID + cộng Wallet + Sổ cái Ledger)',
+    description:
+      'Cộng tiền thưởng đã duyệt vào ví khả dụng của KOL, ghi Sổ cái tài chính FinancialLedger.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
-  @ApiParam({ name: 'settlementId', description: 'ID kết quả chốt thưởng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiParam({
+    name: 'settlementId',
+    description: 'ID kết quả chốt thưởng (UUID)',
+  })
   async payoutSettlement(
     @Param('storeId', ParseUUIDPipe) storeId: string,
     @Param('settlementId', ParseUUIDPipe) settlementId: string,
@@ -383,11 +453,15 @@ export class CommissionRulesController {
 
   @Post('adjustments/refund')
   @ApiOperation({
-    summary: 'Xử lý hoàn tiền đơn hàng và tạo khoản điều chỉnh âm (BonusAdjustment) nếu đã chốt thưởng',
+    summary:
+      'Xử lý hoàn tiền đơn hàng và tạo khoản điều chỉnh âm (BonusAdjustment) nếu đã chốt thưởng',
     description:
       'Ghi nhận hoàn tiền. Nếu đơn thuộc kỳ đã chốt thưởng, tính lại tiền thưởng đúng và tự động tạo khoản khấu trừ âm cho kỳ tiếp theo.',
   })
-  @ApiParam({ name: 'storeId', description: 'ID định danh của cửa hàng (UUID)' })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
   async handleRefundAdjustment(
     @Param('storeId', ParseUUIDPipe) storeId: string,
     @Body() dto: RefundOrderDto,

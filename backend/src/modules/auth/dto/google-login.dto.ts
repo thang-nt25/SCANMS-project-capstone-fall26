@@ -11,7 +11,8 @@ export class GoogleLoginDto {
   idToken: string;
 
   @ApiPropertyOptional({
-    description: 'Vai trò mong muốn khi đăng ký lần đầu qua Google: COLLABORATOR | SHOP_MANAGER',
+    description:
+      'Vai trò mong muốn khi đăng ký lần đầu qua Google: COLLABORATOR | SHOP_MANAGER',
     example: 'COLLABORATOR',
   })
   @IsOptional()

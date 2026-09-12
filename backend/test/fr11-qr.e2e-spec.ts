@@ -34,7 +34,9 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
   let tokenOtherShop: string;
 
   async function cleanup() {
-    await prisma.clickTrafficLog.deleteMany({ where: { referralLinkId: linkId } });
+    await prisma.clickTrafficLog.deleteMany({
+      where: { referralLinkId: linkId },
+    });
     await prisma.referralLink.deleteMany({ where: { id: linkId } });
     await prisma.product.deleteMany({ where: { id: productId } });
     await prisma.storeCollaborator.deleteMany({ where: { storeId } });
@@ -143,38 +145,63 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     const loginKolA = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'kola-fr11-e2e@scanms.test', password: 'Password@123' });
-    tokenKolA = loginKolA.body.accessToken || loginKolA.body.token || loginKolA.body.data?.token || loginKolA.body.data?.accessToken;
+    tokenKolA =
+      loginKolA.body.accessToken ||
+      loginKolA.body.token ||
+      loginKolA.body.data?.token ||
+      loginKolA.body.data?.accessToken;
 
     const loginKolB = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'kolb-fr11-e2e@scanms.test', password: 'Password@123' });
-    tokenKolB = loginKolB.body.accessToken || loginKolB.body.token || loginKolB.body.data?.token || loginKolB.body.data?.accessToken;
+    tokenKolB =
+      loginKolB.body.accessToken ||
+      loginKolB.body.token ||
+      loginKolB.body.data?.token ||
+      loginKolB.body.data?.accessToken;
 
     const loginShop = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'shop-fr11-e2e@scanms.test', password: 'Password@123' });
-    tokenShop = loginShop.body.accessToken || loginShop.body.token || loginShop.body.data?.token || loginShop.body.data?.accessToken;
+    tokenShop =
+      loginShop.body.accessToken ||
+      loginShop.body.token ||
+      loginShop.body.data?.token ||
+      loginShop.body.data?.accessToken;
 
     const loginOtherShop = await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'other-shop-fr11-e2e@scanms.test', password: 'Password@123' });
-    tokenOtherShop = loginOtherShop.body.accessToken || loginOtherShop.body.token || loginOtherShop.body.data?.token || loginOtherShop.body.data?.accessToken;
+      .send({
+        email: 'other-shop-fr11-e2e@scanms.test',
+        password: 'Password@123',
+      });
+    tokenOtherShop =
+      loginOtherShop.body.accessToken ||
+      loginOtherShop.body.token ||
+      loginOtherShop.body.data?.token ||
+      loginOtherShop.body.data?.accessToken;
   });
 
   // 1. Kiểm tra tải ảnh PNG 1024x1024, headers và decode QR
   it('1. Tải PNG 1024x1024 thành công, headers chuẩn, decode đúng URL có via=qr', async () => {
     const res = await request(app.getHttpServer())
-      .get(`/api/referral-links/${linkId}/qr?format=png&size=1024&download=true`)
+      .get(
+        `/api/referral-links/${linkId}/qr?format=png&size=1024&download=true`,
+      )
       .set('Authorization', `Bearer ${tokenKolA}`)
       .responseType('blob');
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toBe('image/png');
-    expect(res.headers['content-disposition']).toContain(`attachment; filename="SCANMS-QR-${shortCode}.png"`);
+    expect(res.headers['content-disposition']).toContain(
+      `attachment; filename="SCANMS-QR-${shortCode}.png"`,
+    );
     expect(res.headers['cache-control']).toBe('private, max-age=86400');
     expect(res.headers['x-content-type-options']).toBe('nosniff');
 
-    const buffer: Buffer = Buffer.isBuffer(res.body) ? res.body : Buffer.from(res.body);
+    const buffer: Buffer = Buffer.isBuffer(res.body)
+      ? res.body
+      : Buffer.from(res.body);
     expect(buffer.length).toBeGreaterThan(1000);
 
     // Giải mã ảnh PNG bằng pngjs + jsqr
@@ -184,7 +211,9 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     expect(code?.data).toContain(`/r/${shortCode}?via=qr`);
 
     // Kiểm tra PostgreSQL ghi nhận số lượt tải qrDownloadCount
-    const updatedLink = await prisma.referralLink.findUnique({ where: { id: linkId } });
+    const updatedLink = await prisma.referralLink.findUnique({
+      where: { id: linkId },
+    });
     expect(updatedLink?.qrDownloadCount).toBeGreaterThanOrEqual(1);
   });
 
@@ -216,7 +245,9 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     let lastStatus = 200;
     for (let i = 0; i < 21; i++) {
       const res = await request(app.getHttpServer())
-        .get(`/api/referral-links/${linkId}/qr?format=png&size=512&download=true`)
+        .get(
+          `/api/referral-links/${linkId}/qr?format=png&size=512&download=true`,
+        )
         .set('Authorization', `Bearer ${tokenKolA}`);
       lastStatus = res.status;
       if (lastStatus === 429) break;
@@ -228,7 +259,10 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
   it('5. Quét QR /api/r/{shortCode}?via=qr ghi nhận accessMethod = QR vào database', async () => {
     const res = await request(app.getHttpServer())
       .get(`/api/r/${shortCode}?via=qr`)
-      .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)')
+      .set(
+        'User-Agent',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)',
+      )
       .set('Referer', 'https://instagram.com');
 
     expect([200, 302, 307]).toContain(res.status);
@@ -254,18 +288,25 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     });
     await cacheService.del(`ref_link:${shortCode}`);
 
-    const res = await request(app.getHttpServer()).get(`/api/r/${shortCode}?via=qr`);
+    const res = await request(app.getHttpServer()).get(
+      `/api/r/${shortCode}?via=qr`,
+    );
     expect([200, 302, 307]).toContain(res.status);
   });
 
   it('7. Link BLOCKED trả về 410 Gone', async () => {
     await prisma.referralLink.update({
       where: { id: linkId },
-      data: { status: ReferralLinkStatus.BLOCKED, disabledReason: 'Vi phạm chính sách gian lận' },
+      data: {
+        status: ReferralLinkStatus.BLOCKED,
+        disabledReason: 'Vi phạm chính sách gian lận',
+      },
     });
     await cacheService.del(`ref_link:${shortCode}`);
 
-    const res = await request(app.getHttpServer()).get(`/api/r/${shortCode}?via=qr`);
+    const res = await request(app.getHttpServer()).get(
+      `/api/r/${shortCode}?via=qr`,
+    );
     expect(res.status).toBe(410);
   });
 
@@ -276,7 +317,9 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     });
     await cacheService.del(`ref_link:${shortCode}`);
 
-    const res = await request(app.getHttpServer()).get(`/api/r/${shortCode}?via=qr`);
+    const res = await request(app.getHttpServer()).get(
+      `/api/r/${shortCode}?via=qr`,
+    );
     expect(res.status).toBe(404);
   });
 
@@ -298,7 +341,9 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     });
     await cacheService.del(`ref_link:${shortCode}`);
 
-    const res = await request(app.getHttpServer()).get(`/api/r/${shortCode}?via=qr`);
+    const res = await request(app.getHttpServer()).get(
+      `/api/r/${shortCode}?via=qr`,
+    );
     expect([200, 302, 307]).toContain(res.status);
   });
 
@@ -327,4 +372,3 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     }
   });
 });
-

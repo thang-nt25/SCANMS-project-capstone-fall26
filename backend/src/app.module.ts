@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './app.controller';
@@ -21,6 +22,7 @@ import { StoresModule } from './modules/stores/stores.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
@@ -33,12 +35,24 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     CacheModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
+    JwtModule.registerAsync({
       global: true,
-      secret: process.env.JWT_SECRET || 'scanms-secret-key',
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any },
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const secret =
+          configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
+        if (!secret || !secret.trim()) {
+          throw new Error('FATAL: JWT_SECRET must be configured');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '7d' },
+        };
+      },
     }),
     PrismaModule,
     CloudinaryModule,
@@ -54,6 +68,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     ProductsModule,
     MediaModule,
     OrdersModule,
+    CouponsModule,
     // Quy's modules
     ChatModule,
     SamplesModule,

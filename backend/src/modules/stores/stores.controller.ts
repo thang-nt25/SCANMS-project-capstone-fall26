@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Put,
-  Body,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Put, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StoresService } from './stores.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -24,7 +17,9 @@ export class StoresController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Chủ Shop lấy thông tin cấu hình gian hàng của mình' })
+  @ApiOperation({
+    summary: 'Chủ Shop lấy thông tin cấu hình gian hàng của mình',
+  })
   async getMyStore(@CurrentUser('id') ownerId: string) {
     return this.storesService.getMyStore(ownerId);
   }

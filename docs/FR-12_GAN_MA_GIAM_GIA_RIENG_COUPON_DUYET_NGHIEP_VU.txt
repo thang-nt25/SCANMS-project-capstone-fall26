@@ -1,0 +1,892 @@
+ĐẶC TẢ NGHIỆP VỤ ĐỀ XUẤT ĐỂ DUYỆT
+FR-12 — GÁN MÃ GIẢM GIÁ RIÊNG (COUPON ATTRIBUTION)
+
+Yêu cầu gốc:
+Cho phép KOL tạo coupon riêng (ví dụ THANGVIP10) để nhận đơn khi khách nhập mã.
+
+Hướng dẫn duyệt:
+- Có: Giữ và áp dụng nội dung đề xuất.
+- Không: Bỏ nội dung khỏi FR-12.
+- Sửa: Bạn ghi nội dung thay thế sau chữ “Sửa”.
+- Chưa đánh dấu thì chưa được xem là đã duyệt.
+
+Mẫu trả lời:
+[ ] Có    [ ] Không    [ ] Sửa: ................................................
+
+======================================================================
+1. MỤC TIÊU
+======================================================================
+
+Cho phép KOL/CTV đề xuất một mã coupon dễ nhớ. Sau khi Shop phê duyệt và coupon có
+hiệu lực, khách nhập mã tại giỏ hàng/checkout sẽ được giảm giá theo chính sách Shop
+và đơn hợp lệ được attribution cho đúng KOL.
+
+Ví dụ:
+THANGVIP10 → KOL Thắng + Shop A + chính sách giảm giá do Shop A cấu hình.
+
+Coupon không thay thế referral link. Khách có thể đến trực tiếp và nhập coupon hoặc
+đến từ link/QR rồi nhập coupon.
+
+Duyệt: [ ] Có   
+======================================================================
+2. PHÂN BIỆT BA KHÁI NIỆM
+======================================================================
+
+1. Coupon code: chuỗi khách nhập, ví dụ THANGVIP10.
+2. Discount policy: Shop quyết định giảm bao nhiêu, giới hạn và sản phẩm áp dụng.
+3. Attribution: coupon hợp lệ xác định KOL nhận đơn/hoa hồng.
+
+KOL được đề xuất tên mã nhưng không tự đặt phần trăm giảm, mức giảm tối đa, ngân
+sách hoặc tỷ lệ hoa hồng.
+
+Duyệt: [ ] Có   
+
+======================================================================
+3. PHẠM VI FR-12
+======================================================================
+
+FR-12 chịu trách nhiệm:
+1. KOL đề xuất/tạo coupon riêng.
+2. Chuẩn hóa và kiểm tra cú pháp mã.
+3. Kiểm tra mã trùng không phân biệt hoa thường.
+4. Gắn coupon với KOL và Shop.
+5. Shop phê duyệt/từ chối và cấu hình ưu đãi.
+6. Quản lý trạng thái và thời hạn.
+7. Kiểm tra điều kiện áp dụng.
+8. Tính số tiền giảm giá phía Backend.
+9. Gắn attribution coupon vào đơn hàng.
+10. Lưu snapshot coupon/discount/KOL trên đơn.
+11. Quản lý danh sách, tìm kiếm, khóa và xóa mềm.
+12. Audit log cho thao tác quan trọng.
+
+Không thuộc trách nhiệm chính:
+- Tạo short link: FR-10.
+- Tạo QR: FR-11.
+- Giao diện đặt hàng đầy đủ/trừ kho: FR-16/Orders.
+- Chốt và chi hoa hồng: Commission/Payout.
+- Phát hiện gian lận nâng cao: Fraud.
+
+Duyệt: [ ] Có   
+
+======================================================================
+4. VAI TRÒ VÀ QUYỀN
+======================================================================
+
+4.1 KOL/CTV
+- Xem Shop mình đã được duyệt hợp tác.
+- Đề xuất mã coupon cho một Shop.
+- Xem trạng thái, điều kiện, số lần dùng và doanh số coupon của mình.
+- Tạm ngừng coupon của mình nếu không có đơn đang xử lý bị ảnh hưởng.
+- Không tự chọn mức giảm, ngân sách, tỷ lệ hoa hồng hoặc KOL khác.
+- Không xem dữ liệu khách hàng chi tiết từ coupon.
+
+Duyệt: [ ] Có    
+
+4.2 Chủ Shop
+- Xem coupon áp dụng cho Shop.
+- Phê duyệt/từ chối yêu cầu coupon và bắt buộc nhập lý do khi từ chối.
+- Cấu hình loại giảm, giá trị, mức giảm tối đa, đơn tối thiểu, sản phẩm/phạm vi,
+  thời hạn, ngân sách và giới hạn sử dụng.
+- Tạm ngừng/khóa coupon và nhập lý do.
+- Không đổi coupon sang KOL khác sau khi coupon đã phát sinh đơn.
+
+Duyệt: [ ] Có   
+
+4.3 SYSTEM_ADMIN
+- Tra cứu, khóa/mở khóa coupon gian lận và xem audit log.
+- Không tự đổi KOL, Shop hoặc chính sách ưu đãi thương mại, trừ quy trình hỗ trợ
+  đặc biệt có audit đầy đủ.
+
+Duyệt: [ ] Có   
+
+4.4 Khách hàng
+- Không cần đăng nhập để nhập coupon trong Guest Checkout.
+- Chỉ được nhận thông tin công khai: hợp lệ/không hợp lệ, số tiền giảm, điều kiện.
+- Không được biết email, ID nội bộ hoặc dữ liệu riêng của KOL.
+
+Duyệt: [ ] Có   
+
+======================================================================
+5. ĐIỀU KIỆN KOL ĐƯỢC TẠO COUPON
+======================================================================
+
+1. JWT hợp lệ và role COLLABORATOR.
+2. Tài khoản/hồ sơ KOL đang hoạt động và được phép tiếp thị.
+3. Shop tồn tại, đang hoạt động và đã được duyệt trên sàn.
+4. Quan hệ KOL–Shop ở trạng thái APPROVED/ACTIVE.
+5. Shop cho phép coupon KOL.
+6. Có chính sách hoa hồng đang hiệu lực.
+7. KOL chưa vượt hạn mức coupon.
+8. Mã không trùng, không thuộc danh sách cấm và đúng định dạng.
+
+Duyệt: [ ] Có   
+======================================================================
+6. LUỒNG CHÍNH TẠO COUPON
+======================================================================
+
+Bước 1: KOL vào “Link và QR/Coupon của tôi”.
+Bước 2: Chọn Shop đã được duyệt hợp tác.
+Bước 3: Nhập mã mong muốn, ví dụ THANGVIP10.
+Bước 4: Frontend gửi tối thiểu storeId và code; không gửi collaboratorId, discount,
+commissionRate hoặc trạng thái phê duyệt.
+Bước 5: Backend lấy collaboratorId từ JWT, chuẩn hóa code và kiểm tra quyền/trùng.
+Bước 6: Hệ thống tạo coupon trạng thái PENDING_APPROVAL.
+Bước 7: Shop nhận yêu cầu, chọn chính sách ưu đãi rồi phê duyệt hoặc từ chối.
+Bước 8: Khi phê duyệt, coupon chuyển ACTIVE và KOL được thông báo.
+Bước 9: KOL sao chép/chia sẻ mã hoặc gắn mã vào nội dung tiếp thị.
+
+Duyệt: [ ] Có    [ ] Không    [ ] Sửa: .......................................
+
+======================================================================
+7. KOL CÓ ĐƯỢC TỰ KÍCH HOẠT COUPON KHÔNG?
+======================================================================
+
+Đề xuất: Không. Shop là bên chịu chi phí giảm giá nên phải phê duyệt và cấu hình
+ưu đãi trước khi coupon ACTIVE. KOL chỉ đề xuất mã.
+
+Duyệt: [ ] Có — bắt buộc Shop duyệt
+KOL đề xuất mã THANGVIP10
+→ Backend kiểm tra mã hợp lệ và không trùng
+→ Coupon chuyển PENDING_APPROVAL
+→ Shop nhận thông báo
+→ Shop cấu hình mức giảm và điều kiện
+→ Shop phê duyệt
+→ Coupon chuyển ACTIVE
+→ KOL được phép chia sẻ mã
+→ Khách nhập mã khi thanh toán
+→ Backend kiểm tra lại và tính giảm giá
+→ Đơn hàng được gắn với KOL
+[x] Có — KOL chỉ được đề xuất mã coupon. Coupon ban đầu có
+trạng thái PENDING_APPROVAL. Chủ Shop cấu hình mức giảm, phạm vi,
+thời hạn, quota và ngân sách trước khi phê duyệt. Chỉ coupon ở
+trạng thái ACTIVE mới được áp dụng giảm giá và attribution đơn hàng.
+======================================================================
+8. CẤU TRÚC VÀ CHUẨN HÓA MÃ
+======================================================================
+
+Đề xuất:
+- 4–20 ký tự.
+- Chỉ chữ cái Latin A–Z và số 0–9.
+- Backend trim và chuyển thành chữ hoa.
+- Không phân biệt hoa/thường khi kiểm tra và sử dụng.
+- Không khoảng trắng, dấu tiếng Việt, dấu gạch, ký tự đặc biệt hoặc emoji.
+- Không cho mã chỉ toàn số.
+
+Ví dụ hợp lệ: THANGVIP10, NHATXINH, KOL2026.
+Không hợp lệ: THẮNG10, VIP 10, <SCRIPT>, 123456.
+
+Duyệt: [ ] Có    
+
+======================================================================
+9. TÍNH DUY NHẤT CỦA MÃ
+======================================================================
+
+Đề xuất: Coupon code duy nhất toàn hệ thống, không phân biệt hoa thường.
+THANGVIP10, thangvip10 và ThangVip10 là cùng một mã.
+
+Database phải có unique constraint/index trên mã đã chuẩn hóa. Không chỉ kiểm tra
+bằng code vì hai request đồng thời có thể cùng vượt qua bước kiểm tra.
+
+Duyệt: [ ] Có   
+
+======================================================================
+10. DANH SÁCH TỪ/MÃ BỊ CẤM
+======================================================================
+
+Không cho dùng mã gây hiểu nhầm hoặc giả mạo như ADMIN, SCANMS, OFFICIAL, SYSTEM,
+SUPPORT, tên thương hiệu/Shop/KOL khác khi chưa được phép, từ xúc phạm hoặc lừa đảo.
+Danh sách cấm được quản trị cấu hình và kiểm tra không phân biệt hoa thường.
+
+Duyệt: [ ] Có    
+
+======================================================================
+11. QUAN HỆ COUPON – KOL – SHOP
+======================================================================
+
+Mỗi coupon thuộc chính xác một KOL và một Shop. Một KOL có thể có coupon khác nhau
+ở nhiều Shop. Không đổi ownerCollaboratorId/storeId sau khi có đơn sử dụng coupon.
+
+Duyệt: [ ] Có   
+======================================================================
+12. COUPON CÓ BẮT BUỘC GẮN REFERRAL LINK KHÔNG?
+======================================================================
+
+Đề xuất: Không bắt buộc. Coupon là thực thể độc lập thuộc KOL + Shop. Một coupon có
+thể được dùng với nhiều referral link/sản phẩm đủ điều kiện của cùng Shop.
+
+Không nên dùng referral_links.custom_coupon_code làm nguồn dữ liệu chính duy nhất.
+Nên có bảng coupons riêng; referral link chỉ tham chiếu couponId nếu cần tự áp mã.
+
+Duyệt: [ ] Có    
+======================================================================
+13. PHẠM VI ÁP DỤNG
+======================================================================
+
+Shop chọn một trong các phạm vi:
+- STORE_WIDE: toàn bộ sản phẩm đủ điều kiện của Shop.
+- PRODUCTS: danh sách sản phẩm cụ thể.
+- CATEGORIES: danh mục cụ thể.
+- CAMPAIGN: chiến dịch cụ thể.
+
+Coupon không giảm giá sản phẩm của Shop khác và không áp dụng cho sản phẩm bị xóa,
+ngừng bán hoặc bị loại khỏi affiliate.
+
+Duyệt: [ ] Có   
+
+======================================================================
+14. LOẠI GIẢM GIÁ
+======================================================================
+
+Shop chọn:
+1. PERCENTAGE: giảm theo %, ví dụ 10%.
+2. FIXED_AMOUNT: giảm số tiền cố định, ví dụ 50.000 đồng.
+
+Không cho KOL tự chọn. Backend tính bằng Decimal/đơn vị tiền nguyên, không dùng số
+thực thiếu chính xác.
+
+Duyệt: [ ] Có    
+======================================================================
+15. GIỚI HẠN GIẢM GIÁ
+======================================================================
+
+Chính sách có thể gồm:
+- minimumOrderAmount: giá trị đơn/sản phẩm đủ điều kiện tối thiểu.
+- maximumDiscountAmount: số tiền giảm tối đa cho coupon phần trăm.
+- budgetTotal: tổng ngân sách Shop dành cho coupon.
+- usageLimitTotal: tổng lượt sử dụng thành công.
+- usageLimitPerCustomer: lượt dùng tối đa của mỗi khách.
+
+Giá trị giảm không bao giờ lớn hơn tổng tiền sản phẩm đủ điều kiện và không tạo
+tổng thanh toán âm.
+
+Duyệt: [ ] Có    
+
+======================================================================
+16. NGUỒN CHỊU CHI PHÍ GIẢM GIÁ
+======================================================================
+
+Đề xuất: Shop chịu chi phí coupon KOL, trừ khi có chương trình đồng tài trợ được
+Admin cấu hình rõ. Snapshot nguồn tài trợ phải lưu trên đơn để đối soát.
+
+Duyệt: [ ] Có    
+Shop cấu hình coupon
+→ Shop chọn SHOP_FUNDED
+→ Shop phê duyệt
+→ Khách sử dụng coupon
+→ Backend tính tiền giảm
+→ Lưu Shop chịu 100% chi phí
+→ Đối soát theo số tiền khách thực trả
+[x] Có — Mặc định Shop chịu 100% chi phí giảm giá của coupon KOL.
+Admin có thể tạo chương trình đồng tài trợ giữa Shop và SCANMS.
+
+Backend tự xác định nguồn và tỷ lệ tài trợ từ chính sách đã duyệt;
+không nhận tỷ lệ từ KOL hoặc Frontend. Khi tạo đơn, hệ thống lưu
+snapshot tổng tiền giảm, số tiền Shop tài trợ và số tiền SCANMS
+tài trợ để phục vụ đối soát.
+
+Hoa hồng KOL là khoản riêng và được tính trên doanh thu sau giảm
+giá, trừ khi chính sách hoa hồng quy định cách tính khác.
+======================================================================
+17. THỜI HẠN COUPON
+======================================================================
+
+Shop cấu hình startsAt và expiresAt. Backend dùng múi giờ/lưu UTC nhất quán.
+- Trước startsAt: chưa có hiệu lực.
+- Trong thời hạn và ACTIVE: có thể áp dụng.
+- Qua expiresAt: EXPIRED, không áp dụng cho đơn mới.
+- Đơn đã đặt hợp lệ trước khi hết hạn giữ snapshot ưu đãi.
+
+Duyệt: [ ] Có   
+
+======================================================================
+18. TRẠNG THÁI COUPON
+======================================================================
+
+Đề xuất:
+- PENDING_APPROVAL: chờ Shop duyệt.
+- ACTIVE: đang sử dụng.
+- PAUSED: KOL/Shop tạm ngừng; không áp dụng đơn mới.
+- REJECTED: Shop từ chối, có lý do.
+- EXPIRED: hết hạn.
+- BLOCKED: Shop/Admin khóa, có lý do.
+- DELETED: xóa mềm; giữ lịch sử đơn cũ.
+
+Chỉ Backend được quyết định trạng thái hiệu lực thực tế.
+
+Duyệt: [ ] Có    
+
+======================================================================
+19. LUỒNG KHÁCH ÁP DỤNG COUPON
+======================================================================
+
+Bước 1: Khách thêm sản phẩm vào giỏ hoặc mở Guest Checkout.
+Bước 2: Nhập coupon và bấm “Áp dụng”.
+Bước 3: Frontend gửi code cùng thông tin giỏ hàng tối thiểu.
+Bước 4: Backend chuẩn hóa code và lấy coupon từ database.
+Bước 5: Kiểm tra trạng thái, thời hạn, Shop, sản phẩm, đơn tối thiểu, lượt dùng,
+ngân sách và điều kiện khách hàng.
+Bước 6: Backend tính discount và trả breakdown; Frontend không tự tính.
+Bước 7: Khi tạo đơn, Backend kiểm tra lại toàn bộ điều kiện trong transaction.
+Bước 8: Đơn lưu couponId/code, KOL, Shop, attributionMethod=COUPON và snapshot ưu đãi.
+
+Duyệt: [ ] Có   
+
+======================================================================
+20. API KIỂM TRA COUPON
+======================================================================
+
+Đề xuất:
+POST /api/coupons/validate
+
+Request ví dụ:
+{
+  "code": "THANGVIP10",
+  "items": [{ "productId": "uuid", "quantity": 2 }]
+}
+
+Backend tự lấy giá, Shop và trạng thái sản phẩm từ database; không tin price,
+discount, KOL hoặc tổng tiền do Frontend gửi.
+
+Response chỉ trả dữ liệu công khai cần thiết: valid, discountAmount, eligibleItems,
+message và điều kiện; không trả collaboratorId nội bộ nếu không cần.
+
+Duyệt: [ ] Có   
+
+======================================================================
+21. KIỂM TRA LẠI KHI TẠO ĐƠN
+======================================================================
+
+Kết quả /validate chỉ để hiển thị. Khi khách bấm đặt hàng, Backend bắt buộc kiểm tra
+lại coupon trong transaction vì giá, tồn kho, thời hạn, ngân sách hoặc lượt dùng có
+thể thay đổi giữa lúc validate và đặt đơn.
+
+Duyệt: [ ] Có   
+
+======================================================================
+22. ATTRIBUTION KHI CHỈ CÓ COUPON
+======================================================================
+
+Nếu không có cookie/referral link nhưng khách nhập coupon hợp lệ, đơn được gắn đúng
+KOL sở hữu coupon và attributionMethod=COUPON.
+
+Duyệt: [ ] Có    
+======================================================================
+23. XUNG ĐỘT COUPON VÀ COOKIE/LINK CỦA KOL KHÁC
+======================================================================
+
+Đề xuất: Coupon hợp lệ do khách chủ động nhập có ưu tiên cao hơn attribution cookie
+hoặc link trước đó đối với Shop và sản phẩm coupon đủ điều kiện.
+
+Ví dụ: khách bấm link KOL A nhưng nhập coupon KOL B → đơn attribution cho KOL B.
+Phải lưu cả nguồn click trước đó và lý do override để audit/đối soát.
+
+Duyệt: [ ] Có — Coupon ưu tiên
+Coupon hợp lệ do khách chủ động nhập tại checkout được ưu tiên hơn
+cookie/referral link của KOL khác, nhưng chỉ đối với Shop và các
+dòng sản phẩm đủ điều kiện của coupon.
+
+Nếu coupon không hợp lệ thì không override; hệ thống tiếp tục áp
+dụng Last Click còn hiệu lực. Hệ thống phải lưu attribution trước
+đó, attribution cuối cùng và lý do override để audit/đối soát.
+
+======================================================================
+24. XUNG ĐỘT COUPON VÀ LINK CÙNG KOL
+======================================================================
+
+Nếu link/cookie và coupon cùng một KOL, attributionMethod cuối cùng là COUPON nhưng
+vẫn lưu referralLinkId để báo cáo chiến dịch/kênh nếu link hợp lệ.
+
+Duyệt: [ ] Có    
+
+======================================================================
+25. GIỎ HÀNG NHIỀU SHOP
+======================================================================
+
+Coupon chỉ giảm và attribution các dòng sản phẩm thuộc Shop/phạm vi của coupon.
+Các dòng Shop khác giữ nguyên. Hệ thống phải tính subtotal/discount theo từng Shop,
+không giảm 10% trên toàn bộ giỏ hàng nhiều Shop.
+
+Duyệt: [ ] Có   
+
+======================================================================
+26. CỘNG DỒN NHIỀU COUPON/KHUYẾN MÃI
+======================================================================
+
+Đề xuất bản cốt lõi: Mỗi Shop chỉ áp dụng một coupon KOL cho một đơn; không cộng dồn
+với coupon KOL khác. Việc cộng với giảm giá sản phẩm/voucher Shop phải theo thuộc tính
+stackable do Shop cấu hình, mặc định không cộng dồn.
+
+Duyệt: [ ] Có:
+Mỗi Shop chỉ được áp dụng tối đa một coupon KOL trong một đơn.
+Không cộng dồn hai coupon KOL. Khi khách chọn coupon KOL khác,
+hệ thống phải yêu cầu thay thế mã hiện tại.
+
+Coupon KOL chỉ được cộng với giảm giá sản phẩm, voucher Shop hoặc
+voucher nền tảng khi chính sách Shop cho phép rõ theo từng loại:
+stackableWithProductDiscount, stackableWithShopVoucher và
+stackableWithPlatformVoucher. Mặc định không cộng dồn.
+
+Với giỏ hàng nhiều Shop, mỗi Shop có thể áp dụng một coupon KOL
+riêng và coupon chỉ giảm các dòng hàng đủ điều kiện của Shop đó.
+Backend phải kiểm tra và tính lại toàn bộ ưu đãi khi tạo đơn.
+======================================================================
+27. CUSTOMER IDENTITY VÀ GIỚI HẠN MỖI KHÁCH
+======================================================================
+
+Khách đăng nhập: dùng userId. Guest Checkout: dùng số điện thoại đã chuẩn hóa kèm
+định danh đơn; không chỉ dựa IP/cookie. Dữ liệu phải hash/mask khi dùng cho chống
+lạm dụng và không hiển thị cho KOL.
+
+Duyệt: [ ] Có    
+
+======================================================================
+28. GIỮ CHỖ NGÂN SÁCH/LƯỢT DÙNG VÀ RACE CONDITION
+======================================================================
+
+Khi tạo đơn, việc kiểm tra và tăng usageCount/reservedBudget phải nằm trong cùng
+transaction/atomic update. Hai đơn đồng thời không được vượt ngân sách hoặc quota.
+Unique/idempotency key ngăn bấm đặt hàng hai lần sử dụng coupon hai lần.
+
+Duyệt: [ ] Có    
+
+======================================================================
+29. KHI ĐƠN HỦY/HOÀN
+======================================================================
+
+- Đơn hủy trước thanh toán: hoàn quota/ngân sách giữ chỗ theo chính sách.
+- Đơn hoàn toàn bộ: không tính hoa hồng; hoàn usage/budget nếu Shop cho phép.
+- Hoàn một phần: tính lại discount/hoa hồng theo snapshot và dòng còn hợp lệ.
+- Không xóa lịch sử coupon khỏi đơn.
+
+Duyệt: [ ] Có    
+- Đơn chờ thanh toán chỉ giữ chỗ quota và ngân sách coupon.
+- Đơn hủy trước thanh toán bắt buộc giải phóng toàn bộ quota và
+  ngân sách giữ chỗ; không phát sinh hoa hồng.
+
+- Đơn hủy hoặc hoàn toàn bộ không được tính doanh thu/hoa hồng.
+  Ngân sách coupon phải được hoàn về đúng nguồn tài trợ. Lượt sử
+  dụng của khách được hoàn nếu nguyên nhân không phải gian lận.
+
+- Hoàn một phần phải đảo discount đã phân bổ cho các OrderItem
+  được hoàn và tính lại hoa hồng trên các dòng hàng còn hợp lệ
+  theo snapshot lúc tạo đơn.
+
+- Nếu hoa hồng đã được chi trả, hệ thống tạo giao dịch clawback,
+  không sửa hoặc xóa giao dịch lịch sử.
+
+- Không xóa coupon hoặc attribution khỏi đơn. Coupon redemption
+  chuyển giữa RESERVED, USED, CANCELLED, PARTIALLY_REFUNDED và
+  REFUNDED, đồng thời lưu lý do và audit log.
+======================================================================
+30. SNAPSHOT TRÊN ĐƠN HÀNG
+======================================================================
+
+Lưu tối thiểu:
+- couponId và couponCodeSnapshot.
+- collaboratorIdSnapshot, storeId.
+- attributionMethod=COUPON.
+- discountType/value và discountAmount thực tế.
+- eligibleSubtotal.
+- fundingSource.
+- commissionRateSnapshot theo chính sách Commission.
+- referralLinkId nếu có.
+
+Thay đổi/xóa coupon sau này không làm thay đổi đơn quá khứ.
+
+Duyệt: [ ] Có    
+======================================================================
+31. HOA HỒNG
+======================================================================
+
+Coupon xác định attribution, không cho KOL tự khai báo hoa hồng. Hoa hồng lấy từ
+chính sách hợp lệ tại thời điểm tạo đơn và tính trên cơ sở doanh thu đã duyệt (sau
+giảm giá hoặc theo chính sách Shop). Chỉ chốt/trả khi đơn COMPLETED; hủy/hoàn phải
+thu hồi hoặc điều chỉnh.
+
+Duyệt: [ ] Có    
+Coupon hợp lệ xác định KOL được attribution cho đơn hàng nhưng
+không trực tiếp quyết định tỷ lệ hoa hồng. KOL và Frontend không
+được gửi hoặc tự thay đổi commissionRate.
+
+Backend lấy chính sách hoa hồng có hiệu lực từ database theo thứ
+tự ưu tiên đã duyệt và lưu commissionRateSnapshot,
+commissionPolicyId cùng attributionMethod=COUPON khi tạo đơn.
+
+Hoa hồng dự kiến được tính trên doanh thu sản phẩm affiliate hợp
+lệ sau giảm giá, không bao gồm phí vận chuyển, trừ khi chính sách
+Shop quy định khác.
+
+Hoa hồng chỉ được APPROVED sau khi đơn COMPLETED và hết thời gian
+đổi trả. Đơn hủy hoặc hoàn phải hủy, tính lại hoặc tạo giao dịch
+clawback; không sửa/xóa lịch sử giao dịch đã phát sinh.
+======================================================================
+32. COUPON BỊ TẠM NGỪ/KHÓA/HẾT HẠN
+======================================================================
+
+Không áp dụng giảm giá và không tạo attribution COUPON cho đơn mới. Frontend hiển
+thị thông báo chung, không tiết lộ lý do nội bộ/gian lận. Đơn cũ giữ nguyên snapshot.
+
+Duyệt: [ ] Có    
+
+======================================================================
+33. XÓA COUPON
+======================================================================
+
+Chỉ xóa mềm. Không xóa vật lý coupon đã từng được dùng. Code đã xóa/khóa không được
+tái cấp cho KOL khác để tránh đơn, bài đăng và tài liệu cũ attribution sai người.
+
+Duyệt: [ ] Có    
+KOL/Shop yêu cầu xóa
+→ Backend kiểm tra quyền
+→ Yêu cầu nhập lý do
+→ Kiểm tra coupon
+→ Chuyển status = DELETED
+→ Ghi deletedAt/deletedBy/deleteReason
+→ Ghi audit log
+→ Ngăn áp dụng cho đơn mới
+→ Giữ toàn bộ đơn và redemption cũ
+→ Không cho tạo coupon mới cùng code
+Coupon chỉ được xóa mềm bằng status=DELETED, deletedAt,
+deletedBy và deleteReason. Việc xóa phải kiểm tra quyền và ghi
+audit log.
+
+Coupon đã xóa không áp dụng giảm giá hoặc attribution cho đơn mới.
+Đơn hàng và coupon redemption cũ giữ nguyên snapshot, không bị
+thay đổi hoặc xóa.
+
+Mã coupon đã từng được tạo, kích hoạt hoặc chia sẻ không được tái
+cấp cho KOL/Shop khác. Database phải duy trì unique constraint trên
+codeNormalized kể cả khi coupon đã xóa.
+
+Nếu hỗ trợ khôi phục, coupon chỉ được khôi phục cho cùng KOL và
+cùng Shop sau khi được Shop phê duyệt lại.
+======================================================================
+34. GIỚI HẠN TẠO COUPON
+======================================================================
+
+Đề xuất ban đầu:
+- Tối đa 5 yêu cầu tạo/phút/KOL.
+- Tối đa 20 yêu cầu/ngày/KOL
+- Tối đa 10 coupon ACTIVE/KOL/Shop.
+- Tối đa 100 coupon ACTIVE/KOL toàn hệ thống.
+- Rate limit validate coupon theo IP/session và chống brute force dò mã.
+
+Duyệt: [ ] Có    
+5 lần sai → tăng thời gian chờ
+10 lần sai → khóa kiểm tra tạm thời 15 phút
+- Tối đa 5 yêu cầu tạo coupon/phút/KOL.
+- Tối đa 20 yêu cầu tạo coupon/ngày/KOL.
+- Tối đa 5 coupon PENDING_APPROVAL/KOL/Shop.
+- Tối đa 20 coupon PENDING_APPROVAL/KOL toàn hệ thống.
+- Tối đa 10 coupon ACTIVE/KOL/Shop.
+- Tối đa 100 coupon ACTIVE/KOL toàn hệ thống.
+- Kiểm tra mã khả dụng tối đa 30 lần/phút/KOL.
+
+- Validate coupon tại checkout tối đa 10 lần/phút/IP,
+  20 lần/phút/session và 100 lần/giờ/IP.
+- Sau 10 lần nhập sai liên tiếp, tạm khóa validate 15 phút
+  cho session; không khóa toàn bộ tài khoản khách.
+
+- Các giới hạn phải được đặt trong cấu hình hệ thống.
+  Admin được thay đổi giới hạn nhưng phải ghi audit log.
+- Backend trả HTTP 429 và thời gian Retry-After khi vượt hạn mức.
+======================================================================
+35. BẢO MẬT
+======================================================================
+
+1. JWT cho API quản lý; validate coupon/checkout có rate limit riêng.
+2. collaboratorId lấy từ JWT, không nhận từ client.
+3. Backend tự lấy sản phẩm, giá, Shop và chính sách.
+4. Unique constraint mã không phân biệt hoa thường.
+5. Chống mass assignment trạng thái/discount/commission.
+6. Không trả dữ liệu riêng của KOL cho khách.
+7. Không log dữ liệu thanh toán, cookie hoặc PII đầy đủ.
+8. Sanitize code, mô tả và lý do.
+9. Transaction chống dùng vượt quota/ngân sách.
+10. Idempotency chống tạo đơn/lượt dùng trùng.
+11. Kiểm tra coupon lại khi checkout.
+12. Audit mọi thay đổi chính sách/trạng thái.
+13. Không có mã coupon mẫu/hard-code fallback trong production.
+14. Không tin số tiền giảm do Frontend gửi.
+15. Phản hồi mã sai không tiết lộ mã thuộc KOL nào.
+
+Duyệt toàn bộ: [ ] Có    
+
+======================================================================
+36. AUDIT LOG
+======================================================================
+
+Ghi audit khi:
+- KOL đề xuất/tạm ngừng/xóa mềm coupon.
+- Shop phê duyệt/từ chối/sửa chính sách/khóa/mở khóa.
+- Admin khóa/mở khóa.
+- Thay đổi phạm vi, thời hạn, ngân sách, quota.
+
+Audit gồm actor, role, coupon, KOL, Shop, hành động, before/after, lý do, IP và thời
+gian. Không ghi audit cho mỗi lần khách gõ sai; các lần validate thuộc security log.
+
+Duyệt: [ ] Có    
+
+======================================================================
+37. THÔNG BÁO
+======================================================================
+
+- Shop nhận thông báo khi KOL gửi yêu cầu coupon.
+- KOL nhận thông báo khi được duyệt, từ chối, sắp hết hạn, hết ngân sách hoặc bị khóa.
+- Shop nhận cảnh báo khi gần hết ngân sách/quota hoặc có dấu hiệu lạm dụng.
+
+Duyệt: [ ] Có   
+
+======================================================================
+38. UI KOL
+======================================================================
+
+Hiển thị:
+- Danh sách coupon của tôi.
+- Code, Shop, phạm vi, ưu đãi, thời hạn, trạng thái.
+- Số lượt dùng, đơn hợp lệ, doanh số và hoa hồng dự kiến.
+- Nút tạo/đề xuất, sao chép, xem điều kiện, tạm ngừng và xóa mềm.
+- Loading, empty, error và success.
+- Không ghi “giảm 10%” nếu Backend chưa trả chính sách tương ứng.
+
+Duyệt: [ ] Có   
+
+======================================================================
+39. UI SHOP
+======================================================================
+
+Hiển thị:
+- Danh sách yêu cầu chờ duyệt và coupon đang áp dụng.
+- KOL sở hữu, code, phạm vi và số liệu sử dụng.
+- Form cấu hình discount, đơn tối thiểu, tối đa giảm, thời hạn, quota, ngân sách.
+- Nút duyệt/từ chối/khóa/mở khóa/sửa chính sách.
+- Cảnh báo tác động tài chính trước khi phê duyệt.
+
+Duyệt: [ ] Có   
+
+======================================================================
+40. UI KHÁCH HÀNG
+======================================================================
+
+- Ô nhập coupon, nút Áp dụng và nút Gỡ mã.
+- Loading khi kiểm tra.
+- Hiển thị mã đã áp dụng và số tiền giảm thực tế.
+- Báo điều kiện chưa đạt mà không lộ dữ liệu nội bộ.
+- Tự áp coupon từ referral link chỉ khi coupon ACTIVE và đủ điều kiện; khách được
+  phép gỡ/đổi mã trước khi đặt hàng.
+- Checkout hiển thị breakdown theo từng Shop.
+
+Duyệt: [ ] Có   
+======================================================================
+41. MÃ LỖI NGHIỆP VỤ
+======================================================================
+
+- COUPON_NOT_FOUND.
+- COUPON_PENDING_APPROVAL.
+- COUPON_NOT_STARTED.
+- COUPON_EXPIRED.
+- COUPON_PAUSED.
+- COUPON_BLOCKED.
+- COUPON_NOT_APPLICABLE.
+- MINIMUM_ORDER_NOT_MET.
+- USAGE_LIMIT_REACHED.
+- CUSTOMER_LIMIT_REACHED.
+- BUDGET_EXHAUSTED.
+- COUPON_ALREADY_EXISTS.
+- COUPON_CODE_RESERVED.
+
+Thông báo cho khách bằng tiếng Việt dễ hiểu; log nội bộ giữ mã lỗi chi tiết.
+
+Duyệt: [ ] Có   
+Mã lỗi kỹ thuật sử dụng tiếng Anh để Backend và Frontend xử lý.
+Không hiển thị trực tiếp mã lỗi kỹ thuật cho người dùng.
+
+Frontend hiển thị thông báo tiếng Việt rõ ràng tương ứng với từng
+errorCode. Nếu hệ thống hỗ trợ nhiều ngôn ngữ, message được dịch
+theo ngôn ngữ người dùng lựa chọn.
+
+Các lỗi nhạy cảm như COUPON_NOT_FOUND, COUPON_BLOCKED và
+COUPON_DELETED hiển thị cùng thông báo chung:
+“Mã giảm giá không tồn tại hoặc không còn hiệu lực.”
+======================================================================
+42. DATABASE ĐỀ XUẤT
+======================================================================
+
+Tạo bảng coupons riêng, tối thiểu:
+- id, codeNormalized (unique), displayCode.
+- collaboratorId, storeId, campaignId nullable.
+- status, discountType, discountValue.
+- minimumOrderAmount, maximumDiscountAmount.
+- usageLimitTotal, usageLimitPerCustomer, usageCount.
+- budgetTotal, budgetUsed.
+- startsAt, expiresAt.
+- scopeType, fundingSource.
+- approvedBy/approvedAt, rejectedReason, blockedReason.
+- createdAt, updatedAt, deletedAt.
+
+Bảng coupon_products/coupon_categories cho phạm vi.
+Bảng coupon_redemptions cho từng lần dùng, có orderId unique và snapshot cần thiết.
+
+Không dùng referral_links.custom_coupon_code làm nguồn sự thật duy nhất.
+
+Duyệt: [ ] Có   
+
+======================================================================
+43. API ĐỀ XUẤT
+======================================================================
+
+KOL:
+- POST /api/collaborator/coupons
+- GET /api/collaborator/coupons
+- GET /api/collaborator/coupons/:id
+- PATCH /api/collaborator/coupons/:id/pause
+- DELETE /api/collaborator/coupons/:id
+
+Shop:
+- GET /api/stores/:storeId/coupons
+- PATCH /api/stores/:storeId/coupons/:id/approve
+- PATCH /api/stores/:storeId/coupons/:id/reject
+- PATCH /api/stores/:storeId/coupons/:id/policy
+- PATCH /api/stores/:storeId/coupons/:id/block
+
+Khách/Checkout:
+- POST /api/coupons/validate
+- POST /api/orders (Backend validate lại coupon)
+
+Admin:
+- GET /api/admin/coupons
+- PATCH /api/admin/coupons/:id/block
+- PATCH /api/admin/coupons/:id/unblock
+
+Duyệt: [ ] Có   
+======================================================================
+44. UNIT TEST BẮT BUỘC
+======================================================================
+
+1. Chuẩn hóa chữ hoa/trim.
+2. Từ chối ký tự/độ dài sai.
+3. Chống trùng không phân biệt hoa thường.
+4. Race condition hai KOL tạo cùng code.
+5. KOL chưa được Shop duyệt bị từ chối.
+6. KOL không tự đặt discount/commission/status.
+7. Shop chỉ duyệt coupon thuộc Shop mình.
+8. Phê duyệt/từ chối/khóa cần đúng quyền và lý do.
+9. Validate trạng thái/thời hạn/phạm vi.
+10. Tính percentage và maximum discount.
+11. Tính fixed amount không làm tổng âm.
+12. Minimum order.
+13. Total/per-customer usage limit.
+14. Budget limit và concurrent redemption.
+15. Coupon override cookie theo chính sách duyệt.
+16. Giỏ nhiều Shop chỉ giảm đúng dòng.
+17. Snapshot đơn không đổi khi coupon sửa.
+18. Hủy/hoàn xử lý quota/ngân sách.
+19. Xóa mềm giữ lịch sử.
+20. Audit và transaction rollback.
+
+Duyệt: [ ] Có    
+
+======================================================================
+45. INTEGRATION/E2E TEST
+======================================================================
+
+1. KOL tạo yêu cầu → Shop duyệt → coupon ACTIVE.
+2. Khách nhập coupon tại Guest Checkout.
+3. Backend trả đúng discount từ dữ liệu thật.
+4. Tạo đơn lưu đúng KOL và attributionMethod=COUPON.
+5. Coupon KOL B override cookie KOL A nếu chính sách duyệt.
+6. Hai checkout đồng thời không vượt quota/budget.
+7. Coupon hết hạn/khóa không áp dụng.
+8. Coupon không giảm sản phẩm Shop khác.
+9. Đơn hủy/hoàn điều chỉnh đúng.
+10. Ownership KOL/Shop/Admin.
+11. Rate limit chống dò mã.
+12. PostgreSQL unique constraint thực tế.
+13. Redis lỗi không làm sai nguồn dữ liệu chính.
+14. Refresh trang không mất coupon đã áp dụng trong phiên checkout hợp lệ.
+15. Frontend và Backend build/test thành công.
+
+Duyệt: [ ] Có   
+
+======================================================================
+46. TIÊU CHÍ HOÀN THÀNH FR-12
+======================================================================
+
+1. KOL hợp lệ đề xuất được coupon riêng.
+2. Coupon không trùng và đúng định dạng.
+3. Shop phê duyệt/cấu hình ưu đãi.
+4. Coupon ACTIVE hiển thị cho KOL.
+5. Khách validate và áp dụng được tại checkout.
+6. Backend tính giảm giá, không tin Frontend.
+7. Đơn gắn đúng KOL bằng attributionMethod=COUPON.
+8. Xung đột cookie/link xử lý đúng chính sách.
+9. Giỏ nhiều Shop tính đúng phạm vi.
+10. Trạng thái, thời hạn, quota và ngân sách hoạt động.
+11. Race condition/idempotency được bảo vệ.
+12. Có snapshot đơn, audit log và xóa mềm.
+13. Có rate limit và không hard-code coupon production.
+14. Có loading/empty/error/success UI cho KOL, Shop và khách.
+15. Có unit, integration và E2E test.
+16. Migration, Backend và Frontend build/test thành công.
+17. Swagger mô tả endpoint, request, response và mã lỗi.
+18. Không thể giả mạo KOL, giá, discount hoặc hoa hồng.
+
+Duyệt: [ ] Có    
+
+======================================================================
+47. CÁC QUYẾT ĐỊNH QUAN TRỌNG CẦN CHỐT NHANH
+======================================================================
+
+1. KOL chỉ đề xuất mã, Shop phải duyệt và quyết định ưu đãi?
+[ ] Có    
+2. Mã duy nhất toàn hệ thống, không phân biệt hoa thường?
+[ ] Có    
+3. Mã chỉ A–Z/0–9, dài 4–20 và không chỉ toàn số?
+[ ] Có    
+4. Mỗi coupon thuộc đúng một KOL và một Shop?
+[ ] Có    
+5. Coupon là thực thể riêng, không bắt buộc gắn một referral link?
+[ ] Có    
+6. Hỗ trợ giảm theo % và số tiền cố định?
+[ ] Có    
+7. Shop chịu chi phí giảm giá?
+[ ] Có   
+8. Coupon hợp lệ ưu tiên hơn cookie/link KOL khác?
+[ ] Có   
+9. Mỗi Shop chỉ áp dụng một coupon KOL/đơn và mặc định không cộng dồn?
+[ ] Có   
+
+10. Coupon chỉ giảm sản phẩm đủ điều kiện thuộc đúng Shop?
+[ ] Có    
+11. Backend kiểm tra và tính lại coupon trong transaction khi đặt đơn?
+[ ] Có    
+12. Có đơn tối thiểu, giảm tối đa, quota khách/tổng và ngân sách?
+[ ] Có    
+13. Coupon bị khóa/hết hạn không giảm giá và không attribution đơn mới?
+[ ] Có   
+14. Coupon chỉ xóa mềm và code đã dùng không tái cấp cho KOL khác?
+[ ] Có    
+15. Tạo bảng coupons và coupon_redemptions riêng?
+[ ] Có    
+16. Bỏ mọi fallback THANGVIP10/giảm 10% hard-code trong production?
+[ ] Có   
+17. KOL xem được số lượt dùng/doanh số/hoa hồng nhưng không xem PII khách?
+[ ] Có   
+18. Shop/Admin khóa coupon bắt buộc nhập lý do và ghi audit?
+[ ] Có   
+======================================================================
+48. PHƯƠNG ÁN CỐT LÕI KHUYẾN NGHỊ
+======================================================================
+
+- KOL đề xuất code A–Z/0–9, Shop phê duyệt và cấu hình mức giảm.
+- Code unique toàn hệ thống, không phân biệt hoa thường.
+- Coupon là bảng riêng thuộc KOL + Shop, không phụ thuộc một referral link.
+- Coupon hợp lệ do khách nhập ưu tiên attribution so với cookie/link.
+- Backend validate/tính discount lại trong transaction khi tạo đơn.
+- Chỉ giảm dòng hàng đúng Shop/phạm vi; mặc định không cộng dồn.
+- Lưu coupon redemption và snapshot trên đơn.
+- Có quota, ngân sách, idempotency, audit, rate limit và xóa mềm.
+- Không hard-code coupon hoặc giảm 10% trong production.
+
+Duyệt toàn bộ phương án cốt lõi:
+[ ] Có    
