@@ -65,7 +65,7 @@ Tests never fall back to DATABASE_URL and reject remote hosts. They test row-loc
 Some pre-existing team integration suites connect to the configured shared database and clean up with ledger DELETE. Do not run those against a migrated/shared database. Non-external regression tests can be selected explicitly:
 
 ```powershell
-node node_modules/jest/bin/jest.js --runInBand --testPathIgnorePatterns='real-db|redis.integration|referral-links.e2e|payouts.postgres.integration'
+node node_modules/jest/bin/jest.js --runInBand --testPathIgnorePatterns='real-db|redis.integration|click-rate-limit.spec|referral-links.e2e|payouts.postgres.integration'
 ```
 
 From frontend/, opt-in browser tests use existing puppeteer-core, local Chrome/Edge and fully mocked APIs. Set WITHDRAWAL_UI_TEST_URL and WITHDRAWAL_UI_BROWSER_PATH, then run `node --test tests/wallet.browser.test.mjs tests/payout.browser.test.mjs`. Without them they skip. No CSS file or dependency was added.
