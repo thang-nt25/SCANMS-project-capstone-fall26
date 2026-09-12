@@ -13,7 +13,9 @@ export class TiersController {
   constructor(private readonly tiersService: TiersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lấy bảng danh mục 4 cấp bậc KOL (Đồng, Bạc, Vàng, Kim Cương)' })
+  @ApiOperation({
+    summary: 'Lấy bảng danh mục 4 cấp bậc KOL (Đồng, Bạc, Vàng, Kim Cương)',
+  })
   async getAllTiers() {
     return this.tiersService.getAllTiers();
   }

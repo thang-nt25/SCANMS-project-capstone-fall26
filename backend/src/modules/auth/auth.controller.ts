@@ -50,7 +50,10 @@ export class AuthController {
       'Đăng nhập tài khoản bằng Email & Mật khẩu (Tự động gửi email thông báo bảo mật)',
   })
   @ApiResponse({ status: 200, description: 'Đăng nhập thành công' })
-  @ApiResponse({ status: 401, description: 'Email hoặc mật khẩu không chính xác' })
+  @ApiResponse({
+    status: 401,
+    description: 'Email hoặc mật khẩu không chính xác',
+  })
   async login(
     @Body() dto: LoginDto,
     @Ip() ip?: string,
@@ -76,12 +79,18 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Lấy thông tin tài khoản người dùng đang đăng nhập' })
+  @ApiOperation({
+    summary: 'Lấy thông tin tài khoản người dùng đang đăng nhập',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Token hợp lệ, trả về vai trò và thông tin user thật từ server',
+    description:
+      'Token hợp lệ, trả về vai trò và thông tin user thật từ server',
   })
-  @ApiResponse({ status: 401, description: 'Chưa đăng nhập hoặc token không hợp lệ' })
+  @ApiResponse({
+    status: 401,
+    description: 'Chưa đăng nhập hoặc token không hợp lệ',
+  })
   async getMe(@CurrentUser('id') currentUserId?: string, @Req() req?: any) {
     const userId = currentUserId || req?.user?.sub || req?.user?.id;
     return this.authService.getMe(userId);

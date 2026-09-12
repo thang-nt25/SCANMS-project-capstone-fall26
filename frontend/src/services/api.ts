@@ -66,8 +66,22 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
 }
 
 // Helper for DEV auto-login when token is missing, expired, or wrong role
+const isDemoAutoLoginEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_AUTO_LOGIN === 'true';
+
+function isStillOnTargetRole(targetRole: 'COLLABORATOR' | 'SHOP_MANAGER' | 'SYSTEM_ADMIN') {
+  const activeUiRole = localStorage.getItem('scanms-current-role');
+  if (!activeUiRole) return true;
+
+  const uiRoleByApiRole: Record<typeof targetRole, string> = {
+    COLLABORATOR: 'kol',
+    SHOP_MANAGER: 'shop',
+    SYSTEM_ADMIN: 'admin',
+  };
+  return activeUiRole === uiRoleByApiRole[targetRole];
+}
+
 async function getDevFallbackToken(url?: string): Promise<string | null> {
-  if (!import.meta.env.DEV) return null;
+  if (!isDemoAutoLoginEnabled) return null;
   const targetRole = determineTargetRole(url);
   let email = 'demo@scanms.vn';
   if (targetRole === 'SHOP_MANAGER') {
@@ -84,7 +98,9 @@ async function getDevFallbackToken(url?: string): Promise<string | null> {
     );
     const newToken = res.data?.data?.accessToken || res.data?.accessToken;
     const user = res.data?.data?.user || res.data?.user;
-    if (newToken) {
+    // Một request của iframe role cũ có thể hoàn tất sau khi người dùng đã đổi role.
+    // Không cho response cũ ghi đè JWT của role đang hoạt động.
+    if (newToken && isStillOnTargetRole(targetRole)) {
       localStorage.setItem('token', newToken);
       if (user) localStorage.setItem('user', JSON.stringify(user));
       return newToken;
@@ -111,16 +127,13 @@ api.interceptors.request.use(
     } catch {}
 
     const targetRole = determineTargetRole(config.url);
-    const reqUrl = (config.url || '').toLowerCase();
-    const currentPath = (window.location?.pathname || '').toLowerCase();
-    const requiresDemoKol =
-      targetRole === 'COLLABORATOR' &&
-      (reqUrl.includes('/store-collaborators') || currentPath.includes('/collaborator/bonus-progress')) &&
-      currentUserEmail.toLowerCase() !== 'demo@scanms.vn';
+    const isTargetKol = targetRole === 'COLLABORATOR';
+    const isKolMismatch = isTargetKol && (currentUserRole !== 'COLLABORATOR' || currentUserEmail.toLowerCase() !== 'demo@scanms.vn');
+    const isShopMismatch = targetRole === 'SHOP_MANAGER' && currentUserRole !== 'SHOP_MANAGER';
 
-    if (import.meta.env.DEV && !config.url?.includes('/auth/')) {
-      // Auto-switch token if missing or if current token belongs to a different role
-      if (!token || (currentUserRole && currentUserRole !== targetRole) || requiresDemoKol) {
+    if (isDemoAutoLoginEnabled && !config.url?.includes('/auth/')) {
+      // Auto-switch token if missing or if current token belongs to a different role / user
+      if (!token || isKolMismatch || isShopMismatch || (currentUserRole && currentUserRole !== targetRole)) {
         token = await getDevFallbackToken(config.url);
       }
     }
@@ -135,17 +148,17 @@ api.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Format errors & auto-retry 401/403 in DEV
+// Response Interceptor: Format errors & auto-retry 401/403 only when demo auto-login is enabled
 api.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
     if (
+      isDemoAutoLoginEnabled &&
       (status === 401 || status === 403) &&
       originalRequest &&
       !originalRequest._retry &&
-      import.meta.env.DEV &&
       !originalRequest.url?.includes('/auth/login')
     ) {
       originalRequest._retry = true;
@@ -158,8 +171,15 @@ api.interceptors.response.use(
         return retryRes;
       }
     }
-    const message = error.response?.data?.message || error.message || 'Something went wrong';
-    return Promise.reject(new Error(message));
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      'Something went wrong';
+    const customErr: any = new Error(message);
+    customErr.response = error.response;
+    customErr.status = status;
+    customErr.statusCode = status;
+    return Promise.reject(customErr);
   }
 );
 

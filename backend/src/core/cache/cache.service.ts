@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -35,9 +40,19 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async initRedis() {
-    const host = this.configService.get<string>('REDIS_HOST') || process.env.REDIS_HOST || 'localhost';
-    const port = Number(this.configService.get<number>('REDIS_PORT') || process.env.REDIS_PORT || 6379);
-    const password = this.configService.get<string>('REDIS_PASSWORD') || process.env.REDIS_PASSWORD || undefined;
+    const host =
+      this.configService.get<string>('REDIS_HOST') ||
+      process.env.REDIS_HOST ||
+      'localhost';
+    const port = Number(
+      this.configService.get<number>('REDIS_PORT') ||
+        process.env.REDIS_PORT ||
+        6379,
+    );
+    const password =
+      this.configService.get<string>('REDIS_PASSWORD') ||
+      process.env.REDIS_PASSWORD ||
+      undefined;
 
     try {
       this.redisClient = new Redis({
@@ -57,7 +72,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
       this.redisClient.on('connect', () => {
         this.isConnectedToRedis = true;
-        this.logger.log(`✔ Kết nối thành công Redis server tại ${host}:${port}`);
+        this.logger.log(
+          `✔ Kết nối thành công Redis server tại ${host}:${port}`,
+        );
       });
 
       this.redisClient.on('error', (err) => {
@@ -73,7 +90,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       });
     } catch (error: any) {
       this.isConnectedToRedis = false;
-      this.logger.warn(`Khởi tạo Redis client thất bại: ${error.message}. Chạy chế độ fallback in-memory.`);
+      this.logger.warn(
+        `Khởi tạo Redis client thất bại: ${error.message}. Chạy chế độ fallback in-memory.`,
+      );
     }
   }
 
@@ -83,17 +102,19 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     }
     if (this.redisClient) {
       try {
-        await this.redisClient.quit();
-      } catch {
         this.redisClient.disconnect(false);
-      }
+      } catch {}
       this.redisClient = null;
       this.isConnectedToRedis = false;
     }
   }
 
   isRedisActive(): boolean {
-    return this.isConnectedToRedis && this.redisClient !== null && this.redisClient.status === 'ready';
+    return (
+      this.isConnectedToRedis &&
+      this.redisClient !== null &&
+      this.redisClient.status === 'ready'
+    );
   }
 
   getRedis(): Redis | null {
@@ -120,7 +141,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         const data = await this.redisClient.get(key);
         return data ? (JSON.parse(data) as T) : null;
       } catch (err) {
-        this.logger.warn(`Lỗi Redis get(${key}), fallback sang in-memory: ${err}`);
+        this.logger.warn(
+          `Lỗi Redis get(${key}), fallback sang in-memory: ${err}`,
+        );
       }
     }
 
@@ -136,10 +159,17 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   async set(key: string, value: any, ttlSeconds: number = 300): Promise<void> {
     if (this.isRedisActive() && this.redisClient) {
       try {
-        await this.redisClient.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+        await this.redisClient.set(
+          key,
+          JSON.stringify(value),
+          'EX',
+          ttlSeconds,
+        );
         return;
       } catch (err) {
-        this.logger.warn(`Lỗi Redis set(${key}), fallback sang in-memory: ${err}`);
+        this.logger.warn(
+          `Lỗi Redis set(${key}), fallback sang in-memory: ${err}`,
+        );
       }
     }
 
@@ -209,7 +239,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
         return { allowed, remaining, resetTime };
       } catch (err) {
-        this.logger.warn(`Lỗi Redis checkRateLimit, fallback sang in-memory: ${err}`);
+        this.logger.warn(
+          `Lỗi Redis checkRateLimit, fallback sang in-memory: ${err}`,
+        );
       }
     }
 

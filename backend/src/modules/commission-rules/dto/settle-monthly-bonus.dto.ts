@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsUUID, Matches, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsUUID,
+  Matches,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 
 export class SettleMonthlyBonusDto {
   @ApiProperty({
@@ -11,7 +17,8 @@ export class SettleMonthlyBonusDto {
   collaboratorId: string;
 
   @ApiProperty({
-    description: 'Kỳ tháng chốt thưởng định dạng YYYY-MM (múi giờ Asia/Ho_Chi_Minh)',
+    description:
+      'Kỳ tháng chốt thưởng định dạng YYYY-MM (múi giờ Asia/Ho_Chi_Minh)',
     example: '2026-09',
   })
   @IsNotEmpty({ message: 'yearMonth không được để trống' })
@@ -21,7 +28,8 @@ export class SettleMonthlyBonusDto {
   yearMonth: string;
 
   @ApiProperty({
-    description: 'Cho phép chốt kỳ tháng hiện tại khi chưa kết thúc (phục vụ kiểm thử hoặc trường hợp đặc biệt)',
+    description:
+      'Cho phép chốt kỳ tháng hiện tại khi chưa kết thúc (phục vụ kiểm thử hoặc trường hợp đặc biệt)',
     example: false,
     required: false,
     default: false,
@@ -30,4 +38,3 @@ export class SettleMonthlyBonusDto {
   @IsBoolean()
   allowUnfinishedMonth?: boolean;
 }
-

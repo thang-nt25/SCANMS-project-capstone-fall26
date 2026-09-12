@@ -86,8 +86,8 @@ export function ProtectedRoute({ allowedRoles = ['SHOP_MANAGER', 'SYSTEM_ADMIN']
       setErrorMsg(null);
       const isKolTarget = allowedRoles.includes('COLLABORATOR') && !allowedRoles.includes('SHOP_MANAGER');
       const credentials = isKolTarget
-        ? { email: 'kol1@scanms.vn', password: 'Password@123' }
-        : { email: 'shop@techstore.vn', password: 'Password@123' };
+        ? { email: 'demo@scanms.vn', password: 'Password@123' }
+        : { email: 'shop@scanms.vn', password: 'Password@123' };
 
       const res: any = await api.post('/auth/login', credentials);
       const newToken = res?.accessToken || res?.data?.accessToken;

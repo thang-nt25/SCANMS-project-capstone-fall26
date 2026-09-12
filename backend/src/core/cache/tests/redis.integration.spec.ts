@@ -57,13 +57,21 @@ describe('CacheService Redis & Rate Limit Integration Test', () => {
 
     // 5 lần đầu cho phép
     for (let i = 1; i <= maxRequests; i++) {
-      const res = await cacheService.checkRateLimit(clientKey, maxRequests, windowSeconds);
+      const res = await cacheService.checkRateLimit(
+        clientKey,
+        maxRequests,
+        windowSeconds,
+      );
       expect(res.allowed).toBe(true);
       expect(res.remaining).toBe(maxRequests - i);
     }
 
     // Lần thứ 6 phải bị chặn
-    const blockedRes = await cacheService.checkRateLimit(clientKey, maxRequests, windowSeconds);
+    const blockedRes = await cacheService.checkRateLimit(
+      clientKey,
+      maxRequests,
+      windowSeconds,
+    );
     expect(blockedRes.allowed).toBe(false);
     expect(blockedRes.remaining).toBe(0);
   });

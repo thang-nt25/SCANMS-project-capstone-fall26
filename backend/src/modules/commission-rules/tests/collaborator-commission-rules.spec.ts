@@ -133,7 +133,10 @@ describe('CollaboratorCommissionRulesController', () => {
       const result = await controller.getCollaboratorStores(mockReq);
 
       expect(result).toEqual(mockStores);
-      expect(mockService.getCollaboratorStores).toHaveBeenCalledWith(mockKolId, false);
+      expect(mockService.getCollaboratorStores).toHaveBeenCalledWith(
+        mockKolId,
+        false,
+      );
     });
 
     it('should pass isDiscovery true when query discovery is set to true', async () => {
@@ -145,7 +148,10 @@ describe('CollaboratorCommissionRulesController', () => {
       const result = await controller.getCollaboratorStores(mockReq, 'true');
 
       expect(result).toEqual(mockStores);
-      expect(mockService.getCollaboratorStores).toHaveBeenCalledWith(mockKolId, true);
+      expect(mockService.getCollaboratorStores).toHaveBeenCalledWith(
+        mockKolId,
+        true,
+      );
     });
 
     it('should reject if user role is not COLLABORATOR', async () => {
@@ -153,7 +159,9 @@ describe('CollaboratorCommissionRulesController', () => {
         user: { id: mockKolId, role: 'SHOP_MANAGER' },
       } as any;
 
-      await expect(controller.getCollaboratorStores(invalidReq)).rejects.toThrow();
+      await expect(
+        controller.getCollaboratorStores(invalidReq),
+      ).rejects.toThrow();
     });
   });
 });

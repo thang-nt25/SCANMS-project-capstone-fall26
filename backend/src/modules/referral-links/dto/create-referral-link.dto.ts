@@ -27,11 +27,14 @@ export class CreateReferralLinkDto {
   campaignId?: string;
 
   @ApiProperty({
-    description: 'Nhãn gợi nhớ cho link (bắt buộc, VD: Video review TikTok tháng 9)',
+    description:
+      'Nhãn gợi nhớ cho link (bắt buộc, VD: Video review TikTok tháng 9)',
     example: 'Video review TikTok tháng 9',
     maxLength: 150,
   })
-  @IsNotEmpty({ message: 'Nhãn gợi nhớ (label) là bắt buộc khi chọn mô hình nhiều link' })
+  @IsNotEmpty({
+    message: 'Nhãn gợi nhớ (label) là bắt buộc khi chọn mô hình nhiều link',
+  })
   @IsString({ message: 'label phải là chuỗi ký tự' })
   @MaxLength(150, { message: 'label không được vượt quá 150 ký tự' })
   label: string;
@@ -42,7 +45,9 @@ export class CreateReferralLinkDto {
     example: SocialPlatform.TIKTOK,
   })
   @IsNotEmpty({ message: 'Kênh quảng bá (channel) là bắt buộc' })
-  @IsEnum(SocialPlatform, { message: 'channel không thuộc danh sách nền tảng hợp lệ' })
+  @IsEnum(SocialPlatform, {
+    message: 'channel không thuộc danh sách nền tảng hợp lệ',
+  })
   channel: SocialPlatform;
 
   @ApiPropertyOptional({

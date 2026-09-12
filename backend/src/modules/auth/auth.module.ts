@@ -22,7 +22,7 @@ import { UsersModule } from '../users/users.module';
           configService.get<string>('JWT_SECRET') ||
           'scanms_super_secret_jwt_token_key_2026_fa26se032',
         signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRATION') || '7d') as any,
+          expiresIn: configService.get<string>('JWT_EXPIRATION') || '7d',
         },
       }),
       inject: [ConfigService],

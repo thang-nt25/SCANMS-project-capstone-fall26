@@ -270,3 +270,25 @@ img {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* === FORM CONTROLS: TÔN MÀU SÁNG VÀNG BE CHUẨN SCANMS === */
+select,
+select option,
+select optgroup {
+  color-scheme: light !important;
+  background-color: #FAF8F5 !important;
+  color: #1A1612 !important;
+  border-color: #EAE4D7 !important;
+}
+
+select:focus {
+  border-color: #C59B58 !important;
+  outline: none !important;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #F3EFE6 !important;
+  color: #B88E4F !important;
+}

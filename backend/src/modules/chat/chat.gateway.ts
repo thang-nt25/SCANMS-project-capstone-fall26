@@ -9,7 +9,7 @@ import {
   OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 
@@ -24,7 +24,7 @@ const userSocketMap = new Map<string, Set<string>>();
   namespace: '/chat',
 })
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
 {
   @WebSocketServer()
   server: Server;
@@ -36,6 +36,14 @@ export class ChatGateway
 
   afterInit(server: Server) {
     console.log('✅ ChatGateway Socket.io initialized');
+  }
+
+  async onModuleDestroy() {
+    if (this.server) {
+      try {
+        this.server.close();
+      } catch {}
+    }
   }
 
   async handleConnection(client: Socket) {
@@ -61,7 +69,9 @@ export class ChatGateway
       }
       userSocketMap.get(payload.sub)!.add(client.id);
 
-      console.log(`🔗 User ${payload.fullName} (${payload.sub}) connected: ${client.id}`);
+      console.log(
+        `🔗 User ${payload.fullName} (${payload.sub}) connected: ${client.id}`,
+      );
       client.emit('connected', { userId: payload.sub, socketId: client.id });
     } catch (err) {
       client.emit('error', { message: 'Token không hợp lệ hoặc đã hết hạn' });
@@ -91,7 +101,9 @@ export class ChatGateway
     try {
       await this.chatService.getConversationById(data.conversationId, userId);
       client.join(`conv:${data.conversationId}`);
-      client.emit('joined_conversation', { conversationId: data.conversationId });
+      client.emit('joined_conversation', {
+        conversationId: data.conversationId,
+      });
     } catch (err: any) {
       client.emit('error', { message: err.message });
     }
@@ -109,11 +121,14 @@ export class ChatGateway
   @SubscribeMessage('send_message')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { conversationId: string; messageText: string; mediaUrl?: string },
+    @MessageBody()
+    data: { conversationId: string; messageText: string; mediaUrl?: string },
   ) {
     const userId = client.data.userId;
     if (!data.conversationId || !data.messageText?.trim()) {
-      client.emit('error', { message: 'Thiếu conversationId hoặc nội dung tin nhắn' });
+      client.emit('error', {
+        message: 'Thiếu conversationId hoặc nội dung tin nhắn',
+      });
       return;
     }
 
@@ -130,7 +145,9 @@ export class ChatGateway
       );
 
       // Phát tới tất cả trong phòng conv:xxx
-      this.server.to(`conv:${data.conversationId}`).emit('new_message', message);
+      this.server
+        .to(`conv:${data.conversationId}`)
+        .emit('new_message', message);
     } catch (err: any) {
       client.emit('error', { message: err.message });
     }

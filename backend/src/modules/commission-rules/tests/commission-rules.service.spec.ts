@@ -162,9 +162,13 @@ describe('CommissionRulesService', () => {
       isActive: true,
       isDeleted: false,
     });
-    mockPrismaService.order.findFirst.mockResolvedValue({ id: 'ord-affiliate' });
+    mockPrismaService.order.findFirst.mockResolvedValue({
+      id: 'ord-affiliate',
+    });
     mockPrismaService.bonusAdjustment.findMany.mockResolvedValue([]);
-    mockPrismaService.bonusAdjustment.updateMany.mockResolvedValue({ count: 0 });
+    mockPrismaService.bonusAdjustment.updateMany.mockResolvedValue({
+      count: 0,
+    });
   });
 
   describe('1. Store Existence Check', () => {
@@ -190,7 +194,9 @@ describe('CommissionRulesService', () => {
 
   describe('2. Find All & Find One', () => {
     it('should return non-deleted rules sorted by minMonthlyRevenue ASC', async () => {
-      mockPrismaService.commissionRule.findMany.mockResolvedValueOnce(mockRules);
+      mockPrismaService.commissionRule.findMany.mockResolvedValueOnce(
+        mockRules,
+      );
 
       const result = await service.findAll(mockStoreId);
 
@@ -331,7 +337,9 @@ describe('CommissionRulesService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      mockPrismaService.commissionRule.create.mockResolvedValueOnce(createdMock);
+      mockPrismaService.commissionRule.create.mockResolvedValueOnce(
+        createdMock,
+      );
 
       const result = await service.create(
         mockStoreId,
@@ -398,7 +406,9 @@ describe('CommissionRulesService', () => {
         bonusPercentage: new Prisma.Decimal(2.5),
         version: 2,
       };
-      mockPrismaService.commissionRule.update.mockResolvedValueOnce(updatedMock);
+      mockPrismaService.commissionRule.update.mockResolvedValueOnce(
+        updatedMock,
+      );
 
       const result = await service.update(
         mockStoreId,
@@ -601,7 +611,9 @@ describe('CommissionRulesService', () => {
     });
 
     it('should settle monthly bonus and save rule snapshot on first run', async () => {
-      mockPrismaService.monthlyBonusResult.findUnique.mockResolvedValueOnce(null);
+      mockPrismaService.monthlyBonusResult.findUnique.mockResolvedValueOnce(
+        null,
+      );
 
       // Orders trả về 60 triệu
       mockPrismaService.order.findMany.mockResolvedValueOnce([
@@ -614,7 +626,9 @@ describe('CommissionRulesService', () => {
         },
       ]);
 
-      mockPrismaService.commissionRule.findMany.mockResolvedValueOnce(mockRules);
+      mockPrismaService.commissionRule.findMany.mockResolvedValueOnce(
+        mockRules,
+      );
 
       const createdSettlement = {
         id: 'settlement-1',
@@ -695,7 +709,9 @@ describe('CommissionRulesService', () => {
 
       expect(result.isAlreadySettled).toBe(true);
       expect(result.message).toContain('đã được chốt thưởng trước đó');
-      expect(mockPrismaService.monthlyBonusResult.create).not.toHaveBeenCalled();
+      expect(
+        mockPrismaService.monthlyBonusResult.create,
+      ).not.toHaveBeenCalled();
     });
   });
 });

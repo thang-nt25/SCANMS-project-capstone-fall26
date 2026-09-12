@@ -49,7 +49,8 @@ export class RedirectController {
 
   @Get(['r/:shortCode', 'api/r/:shortCode'])
   @ApiOperation({
-    summary: 'Chuyển hướng liên kết rút gọn, đặt cookie HttpOnly an toàn & redirect 302',
+    summary:
+      'Chuyển hướng liên kết rút gọn, đặt cookie HttpOnly an toàn & redirect 302',
   })
   @ApiParam({ name: 'shortCode', description: 'Mã rút gọn 8 ký tự' })
   async handleRedirect(
@@ -80,7 +81,8 @@ export class RedirectController {
       }
 
       // Nhận diện nguồn truy cập từ quét QR (tham số via=qr theo FR-11)
-      const via = typeof req.query?.via === 'string' ? req.query.via.toLowerCase() : null;
+      const via =
+        typeof req.query?.via === 'string' ? req.query.via.toLowerCase() : null;
       const isQr = via === 'qr';
 
       const clientInfo = {
@@ -125,7 +127,9 @@ export class RedirectController {
       return res.redirect(HttpStatus.FOUND, destinationUrl);
     } catch (err: any) {
       const status =
-        err instanceof HttpException ? err.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+        err instanceof HttpException
+          ? err.getStatus()
+          : HttpStatus.INTERNAL_SERVER_ERROR;
       const rawMessage = err.message || 'Lỗi khi xử lý chuyển hướng liên kết';
 
       // HTML Escape toàn bộ nội dung hiển thị ra HTML để chống tấn công XSS

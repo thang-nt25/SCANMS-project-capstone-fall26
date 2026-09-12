@@ -1,4 +1,9 @@
-import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CreateCampaignDto, InviteCollaboratorDto } from './dto/campaign.dto';
 import { CampaignParticipantStatus } from '@prisma/client';
@@ -9,7 +14,9 @@ export class CampaignsService {
 
   // ─── Shop: Tạo chiến dịch mới ────────────────────────────────────────
   async createCampaign(userId: string, dto: CreateCampaignDto) {
-    const store = await this.prisma.store.findFirst({ where: { ownerId: userId, isDeleted: false } });
+    const store = await this.prisma.store.findFirst({
+      where: { ownerId: userId, isDeleted: false },
+    });
     if (!store) throw new ForbiddenException('Bạn không có cửa hàng nào.');
 
     if (new Date(dto.endDate) <= new Date(dto.startDate)) {
@@ -30,7 +37,9 @@ export class CampaignsService {
 
   // ─── Shop: Lấy danh sách chiến dịch của cửa hàng ─────────────────────
   async getShopCampaigns(userId: string) {
-    const store = await this.prisma.store.findFirst({ where: { ownerId: userId, isDeleted: false } });
+    const store = await this.prisma.store.findFirst({
+      where: { ownerId: userId, isDeleted: false },
+    });
     if (!store) throw new ForbiddenException('Bạn không có cửa hàng nào.');
 
     return this.prisma.campaign.findMany({
@@ -49,34 +58,65 @@ export class CampaignsService {
   }
 
   // ─── Shop: Mời KOL vào chiến dịch (gửi thẻ mời VIP qua chat) ─────────
-  async inviteCollaborator(userId: string, campaignId: string, dto: InviteCollaboratorDto) {
+  async inviteCollaborator(
+    userId: string,
+    campaignId: string,
+    dto: InviteCollaboratorDto,
+  ) {
     // Kiểm tra campaign thuộc về shop này
     const campaign = await this.prisma.campaign.findFirst({
       where: { id: campaignId, store: { ownerId: userId } },
       include: { store: true },
     });
-    if (!campaign) throw new NotFoundException('Chiến dịch không tồn tại hoặc bạn không có quyền.');
-    if (!campaign.isActive) throw new BadRequestException('Chiến dịch đã kết thúc hoặc không còn hoạt động.');
+    if (!campaign)
+      throw new NotFoundException(
+        'Chiến dịch không tồn tại hoặc bạn không có quyền.',
+      );
+    if (!campaign.isActive)
+      throw new BadRequestException(
+        'Chiến dịch đã kết thúc hoặc không còn hoạt động.',
+      );
 
     // Kiểm tra collaborator tồn tại
     const collaborator = await this.prisma.user.findUnique({
-      where: { id: dto.collaboratorId, role: 'COLLABORATOR', isActive: true, isDeleted: false },
+      where: {
+        id: dto.collaboratorId,
+        role: 'COLLABORATOR',
+        isActive: true,
+        isDeleted: false,
+      },
     });
     if (!collaborator) throw new NotFoundException('KOL/CTV không tồn tại.');
 
     // Kiểm tra đã mời chưa
     const existing = await this.prisma.campaignParticipant.findUnique({
-      where: { campaignId_collaboratorId: { campaignId, collaboratorId: dto.collaboratorId } },
+      where: {
+        campaignId_collaboratorId: {
+          campaignId,
+          collaboratorId: dto.collaboratorId,
+        },
+      },
     });
     if (existing) {
-      if (existing.status === 'INVITED') throw new BadRequestException('KOL này đã được mời rồi.');
-      if (existing.status === 'ACCEPTED') throw new BadRequestException('KOL này đã tham gia chiến dịch.');
+      if (existing.status === 'INVITED')
+        throw new BadRequestException('KOL này đã được mời rồi.');
+      if (existing.status === 'ACCEPTED')
+        throw new BadRequestException('KOL này đã tham gia chiến dịch.');
     }
 
     // Tạo bản ghi tham gia với status INVITED
     const participant = await this.prisma.campaignParticipant.upsert({
-      where: { campaignId_collaboratorId: { campaignId, collaboratorId: dto.collaboratorId } },
-      create: { campaignId, collaboratorId: dto.collaboratorId, status: 'INVITED' },
+      where: {
+        campaignId_collaboratorId: {
+          campaignId,
+          collaboratorId: dto.collaboratorId,
+        },
+      },
+      create: {
+        campaignId,
+        collaboratorId: dto.collaboratorId,
+        status: 'INVITED',
+      },
       update: { status: 'INVITED', joinedAt: null },
     });
 
@@ -141,7 +181,9 @@ export class CampaignsService {
       where: { collaboratorId: userId },
       include: {
         campaign: {
-          include: { store: { select: { id: true, name: true, logoUrl: true } } },
+          include: {
+            store: { select: { id: true, name: true, logoUrl: true } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -155,8 +197,10 @@ export class CampaignsService {
       include: { campaign: { include: { store: true } } },
     });
     if (!participant) throw new NotFoundException('Lời mời không tồn tại.');
-    if (participant.collaboratorId !== userId) throw new ForbiddenException('Đây không phải lời mời của bạn.');
-    if (participant.status !== 'INVITED') throw new BadRequestException('Lời mời này đã được xử lý rồi.');
+    if (participant.collaboratorId !== userId)
+      throw new ForbiddenException('Đây không phải lời mời của bạn.');
+    if (participant.status !== 'INVITED')
+      throw new BadRequestException('Lời mời này đã được xử lý rồi.');
 
     const updated = await this.prisma.campaignParticipant.update({
       where: { id: participantId },
@@ -176,8 +220,10 @@ export class CampaignsService {
       include: { campaign: { include: { store: true } } },
     });
     if (!participant) throw new NotFoundException('Lời mời không tồn tại.');
-    if (participant.collaboratorId !== userId) throw new ForbiddenException('Đây không phải lời mời của bạn.');
-    if (participant.status !== 'INVITED') throw new BadRequestException('Lời mời này đã được xử lý rồi.');
+    if (participant.collaboratorId !== userId)
+      throw new ForbiddenException('Đây không phải lời mời của bạn.');
+    if (participant.status !== 'INVITED')
+      throw new BadRequestException('Lời mời này đã được xử lý rồi.');
 
     const updated = await this.prisma.campaignParticipant.update({
       where: { id: participantId },
@@ -193,7 +239,10 @@ export class CampaignsService {
   // ─── Gửi thông báo KOL đã accept vào chat ────────────────────────────
   private async _sendAcceptNotice(participant: any, kolUserId: string) {
     const conversation = await this.prisma.conversation.findFirst({
-      where: { storeId: participant.campaign.storeId, collaboratorId: kolUserId },
+      where: {
+        storeId: participant.campaign.storeId,
+        collaboratorId: kolUserId,
+      },
     });
     if (!conversation) return;
 
@@ -211,13 +260,19 @@ export class CampaignsService {
         isRead: false,
       },
     });
-    await this.prisma.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: new Date() } });
+    await this.prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: new Date() },
+    });
   }
 
   // ─── Gửi thông báo KOL đã reject vào chat ─────────────────────────────
   private async _sendRejectNotice(participant: any, kolUserId: string) {
     const conversation = await this.prisma.conversation.findFirst({
-      where: { storeId: participant.campaign.storeId, collaboratorId: kolUserId },
+      where: {
+        storeId: participant.campaign.storeId,
+        collaboratorId: kolUserId,
+      },
     });
     if (!conversation) return;
 
@@ -235,7 +290,10 @@ export class CampaignsService {
         isRead: false,
       },
     });
-    await this.prisma.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: new Date() } });
+    await this.prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: new Date() },
+    });
   }
 
   // ─── Public: Lấy chi tiết 1 chiến dịch ──────────────────────────────
@@ -245,7 +303,9 @@ export class CampaignsService {
       include: {
         store: { select: { id: true, name: true, logoUrl: true } },
         participants: {
-          include: { collaborator: { select: { id: true, fullName: true, email: true } } },
+          include: {
+            collaborator: { select: { id: true, fullName: true, email: true } },
+          },
         },
       },
     });

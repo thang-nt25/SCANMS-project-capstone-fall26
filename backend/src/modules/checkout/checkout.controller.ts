@@ -19,7 +19,8 @@ export class CheckoutController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Tạo đơn hàng thanh toán (Checkout) và tự động ghi nhận Cookie Attribution',
+    summary:
+      'Tạo đơn hàng thanh toán (Checkout) và tự động ghi nhận Cookie Attribution',
   })
   @ApiResponse({ status: 201, description: 'Tạo đơn hàng thành công' })
   async checkout(@Body() dto: CreateOrderDto, @Req() req: Request) {

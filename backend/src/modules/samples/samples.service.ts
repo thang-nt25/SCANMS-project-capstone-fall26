@@ -32,7 +32,13 @@ export class SamplesService {
       where: {
         collaboratorId,
         productId: dto.productId,
-        status: { in: [SampleRequestStatus.PENDING, SampleRequestStatus.APPROVED, SampleRequestStatus.SHIPPED] },
+        status: {
+          in: [
+            SampleRequestStatus.PENDING,
+            SampleRequestStatus.APPROVED,
+            SampleRequestStatus.SHIPPED,
+          ],
+        },
       },
     });
     if (existing) {
@@ -104,7 +110,9 @@ export class SamplesService {
         select: { id: true },
       });
       if (!store || req.product.storeId !== store.id) {
-        throw new ForbiddenException('Yêu cầu này không thuộc cửa hàng của bạn');
+        throw new ForbiddenException(
+          'Yêu cầu này không thuộc cửa hàng của bạn',
+        );
       }
     }
 
@@ -118,7 +126,9 @@ export class SamplesService {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
 
     if (req.status !== SampleRequestStatus.PENDING) {
-      throw new BadRequestException(`Yêu cầu đang ở trạng thái "${req.status}", không thể duyệt`);
+      throw new BadRequestException(
+        `Yêu cầu đang ở trạng thái "${req.status}", không thể duyệt`,
+      );
     }
 
     return this.prisma.sampleProductRequest.update({
@@ -135,7 +145,9 @@ export class SamplesService {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
 
     if (req.status !== SampleRequestStatus.PENDING) {
-      throw new BadRequestException(`Yêu cầu đang ở trạng thái "${req.status}", không thể từ chối`);
+      throw new BadRequestException(
+        `Yêu cầu đang ở trạng thái "${req.status}", không thể từ chối`,
+      );
     }
 
     return this.prisma.sampleProductRequest.update({
@@ -148,7 +160,11 @@ export class SamplesService {
   // ------------------------------------------------------------------
   // Shop: Nhập mã vận đơn & chuyển trạng thái SHIPPED
   // ------------------------------------------------------------------
-  async shipRequest(requestId: string, shopOwnerId: string, dto: ShipSampleRequestDto) {
+  async shipRequest(
+    requestId: string,
+    shopOwnerId: string,
+    dto: ShipSampleRequestDto,
+  ) {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
 
     if (req.status !== SampleRequestStatus.APPROVED) {
@@ -178,13 +194,39 @@ export class SamplesService {
     if (!store) throw new NotFoundException('Không tìm thấy cửa hàng của bạn');
 
     const [pending, approved, shipped, rejected] = await Promise.all([
-      this.prisma.sampleProductRequest.count({ where: { product: { storeId: store.id }, status: SampleRequestStatus.PENDING } }),
-      this.prisma.sampleProductRequest.count({ where: { product: { storeId: store.id }, status: SampleRequestStatus.APPROVED } }),
-      this.prisma.sampleProductRequest.count({ where: { product: { storeId: store.id }, status: SampleRequestStatus.SHIPPED } }),
-      this.prisma.sampleProductRequest.count({ where: { product: { storeId: store.id }, status: SampleRequestStatus.REJECTED } }),
+      this.prisma.sampleProductRequest.count({
+        where: {
+          product: { storeId: store.id },
+          status: SampleRequestStatus.PENDING,
+        },
+      }),
+      this.prisma.sampleProductRequest.count({
+        where: {
+          product: { storeId: store.id },
+          status: SampleRequestStatus.APPROVED,
+        },
+      }),
+      this.prisma.sampleProductRequest.count({
+        where: {
+          product: { storeId: store.id },
+          status: SampleRequestStatus.SHIPPED,
+        },
+      }),
+      this.prisma.sampleProductRequest.count({
+        where: {
+          product: { storeId: store.id },
+          status: SampleRequestStatus.REJECTED,
+        },
+      }),
     ]);
 
-    return { pending, approved, shipped, rejected, total: pending + approved + shipped + rejected };
+    return {
+      pending,
+      approved,
+      shipped,
+      rejected,
+      total: pending + approved + shipped + rejected,
+    };
   }
 
   // ------------------------------------------------------------------
@@ -219,7 +261,9 @@ export class SamplesService {
     const req = await this.prisma.sampleProductRequest.findUnique({
       where: { id: requestId },
       include: {
-        product: { select: { storeId: true, store: { select: { ownerId: true } } } },
+        product: {
+          select: { storeId: true, store: { select: { ownerId: true } } },
+        },
       },
     });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu xin mẫu');

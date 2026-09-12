@@ -43,7 +43,9 @@ export class MediaService {
         take: limit,
         include: {
           store: { select: { id: true, name: true, slug: true } },
-          product: { select: { id: true, title: true, sku: true, price: true } },
+          product: {
+            select: { id: true, title: true, sku: true, price: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
