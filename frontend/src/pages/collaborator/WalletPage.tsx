@@ -13,6 +13,8 @@ import type {
   PayoutStatus,
   WalletSummary,
   WithdrawalHistory,
+  LedgerHistory,
+  LedgerEntry,
 } from "../../services/wallet.service";
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
@@ -26,6 +28,14 @@ const formatMoney = (amount: string) =>
     maximumFractionDigits: 2,
   }).format(Number(amount))} ₫`;
 
+const TRANSACTION_LABELS: Record<LedgerEntry["transactionType"], string> = {
+  COMMISSION_PENDING: "Ghi nhận hoa hồng chờ",
+  COMMISSION_APPROVED: "Duyệt hoa hồng / cộng thưởng",
+  PAYOUT_WITHDRAW: "Yêu cầu rút tiền",
+  REVERSAL: "Thu hồi hoa hồng",
+  PAYOUT_REJECT_REFUND: "Hoàn tiền yêu cầu rút",
+};
+
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Có lỗi xảy ra, vui lòng thử lại.";
 
@@ -38,6 +48,7 @@ function toMinorUnits(amount: string): bigint {
 export default function WalletPage() {
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [history, setHistory] = useState<WithdrawalHistory | null>(null);
+  const [ledger, setLedger] = useState<LedgerHistory | null>(null);
   const [page, setPage] = useState(1);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,13 +62,15 @@ export default function WalletPage() {
     const sequence = ++loadSequence.current;
     setLoading(true);
     try {
-      const [summary, withdrawals] = await Promise.all([
+      const [summary, withdrawals, ledgerHistory] = await Promise.all([
         walletService.getMyWallet(),
         walletService.getMyWithdrawals(page),
+        walletService.getMyLedger(),
       ]);
       if (sequence !== loadSequence.current) return;
       setWallet(summary);
       setHistory(withdrawals);
+      setLedger(ledgerHistory);
       setError("");
     } catch (err: unknown) {
       if (sequence === loadSequence.current) setError(getErrorMessage(err));
@@ -73,6 +86,18 @@ export default function WalletPage() {
       sequenceRef.current++;
     };
   }, [loadWallet]);
+
+  const validPreviewAmount = /^\d{1,13}(\.\d{1,2})?$/.test(amount.trim());
+  const grossMinor = validPreviewAmount ? toMinorUnits(amount.trim()) : 0n;
+  const taxMinor =
+    wallet && grossMinor >= toMinorUnits(wallet.withdrawalTaxPolicy.threshold)
+      ? (grossMinor * toMinorUnits(wallet.withdrawalTaxPolicy.rate) + 50n) /
+        100n
+      : 0n;
+  const previewMoney = (minorUnits: bigint) =>
+    formatMoney(
+      `${minorUnits / 100n}.${(minorUnits % 100n).toString().padStart(2, "0")}`,
+    );
 
   async function handleWithdrawal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -262,6 +287,38 @@ export default function WalletPage() {
             Tiền được trừ khỏi số dư khả dụng khi gửi yêu cầu. Đây chưa phải
             giao dịch ngân hàng đã hoàn tất.
           </p>
+          {wallet && (
+            <div className="rounded-xl border border-brand-border bg-brand-soft p-4 text-sm">
+              <p className="text-xs text-muted">
+                Theo quy tắc đồ án: rút từ{" "}
+                {formatMoney(wallet.withdrawalTaxPolicy.threshold)} khấu trừ 10%
+                thuế TNCN.
+              </p>
+              {validPreviewAmount && (
+                <dl className="mt-3 space-y-2">
+                  <div className="flex justify-between gap-3">
+                    <dt>Tiền yêu cầu rút</dt>
+                    <dd>{previewMoney(grossMinor)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt>Thuế khấu trừ</dt>
+                    <dd data-testid="withdrawal-tax-preview">
+                      {previewMoney(taxMinor)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3 font-bold">
+                    <dt>Thực nhận dự kiến</dt>
+                    <dd data-testid="withdrawal-net-preview">
+                      {previewMoney(grossMinor - taxMinor)}
+                    </dd>
+                  </div>
+                </dl>
+              )}
+              <p className="mt-2 text-xs text-muted">
+                Số tiền chính thức được backend tính và lưu trong yêu cầu rút.
+              </p>
+            </div>
+          )}
           <button
             type="submit"
             disabled={submitting || loading || !wallet?.canWithdraw}
@@ -297,6 +354,12 @@ export default function WalletPage() {
                 <th scope="col" className="px-6 py-3">
                   Trạng thái
                 </th>
+                <th scope="col" className="px-6 py-3">
+                  Thuế
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Thực nhận
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -313,6 +376,16 @@ export default function WalletPage() {
                     <span className="whitespace-nowrap rounded-full border border-brand-border bg-brand-soft px-3 py-1 text-xs">
                       {STATUS_LABELS[request.status]}
                     </span>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    {request.taxCalculated
+                      ? formatMoney(request.taxAmount)
+                      : "Chưa tính thuế"}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 font-semibold">
+                    {request.taxCalculated
+                      ? formatMoney(request.netAmount)
+                      : "Chưa xác định"}
                   </td>
                 </tr>
               ))}
@@ -352,6 +425,77 @@ export default function WalletPage() {
             </button>
           </div>
         </div>
+      </section>
+      <section className="overflow-hidden rounded-2xl border border-line bg-white">
+        <h2 className="p-6 text-lg font-bold">Biến động tài chính gần nhất</h2>
+        <div className="overflow-x-auto">
+          <table
+            className="w-full text-left text-sm"
+            aria-label="Sổ cái tài chính"
+          >
+            <thead className="bg-surface-sand text-muted">
+              <tr>
+                <th scope="col" className="px-4 py-3">
+                  Thời gian
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Giao dịch
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Ngăn ví
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Biến động
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Số dư trước
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Số dư sau
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Tham chiếu
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {ledger?.entries.map((entry) => (
+                <tr key={entry.id} className="border-t border-line">
+                  <td className="whitespace-nowrap px-4 py-4">
+                    {new Date(entry.createdAt).toLocaleString("vi-VN")}
+                  </td>
+                  <td className="px-4 py-4">
+                    {TRANSACTION_LABELS[entry.transactionType]}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4">
+                    {entry.balanceBucket === "PENDING"
+                      ? "Ví Chờ"
+                      : "Ví Khả Dụng"}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 font-semibold">
+                    {Number(entry.amount) > 0 ? "+" : ""}
+                    {formatMoney(entry.amount)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4">
+                    {formatMoney(entry.balanceBefore)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4">
+                    {formatMoney(entry.balanceAfter)}
+                  </td>
+                  <td className="px-4 py-4 font-mono text-xs">
+                    {entry.referenceType ?? "Dữ liệu cũ"}
+                    <br />
+                    {entry.referenceId ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="p-4 text-xs text-muted">
+          Hiển thị {ledger?.entries.length ?? 0} / {ledger?.total ?? 0} bản ghi.
+          Sổ cái chỉ ghi thêm, không sửa hoặc xóa lịch sử.
+        </p>
       </section>
     </div>
   );

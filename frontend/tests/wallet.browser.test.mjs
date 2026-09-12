@@ -39,6 +39,7 @@ test(
         availableBalance: "500000.31",
         pendingBalance: "900000.00",
         minimumWithdrawalAmount: "200000.00",
+        withdrawalTaxPolicy: { threshold: "2000000.00", rate: "0.10" },
         kycStatus: "VERIFIED",
         canWithdraw: true,
         bankAccount: {
@@ -85,6 +86,9 @@ test(
               const withdrawal = {
                 id: "ui-test-request",
                 amount: body.amount,
+                taxAmount: "0.00",
+                netAmount: body.amount,
+                taxCalculated: true,
                 status: "PENDING",
                 createdAt: new Date().toISOString(),
                 processedAt: null,
@@ -94,6 +98,23 @@ test(
                 message: "Tạo yêu cầu rút tiền thành công, đang chờ xử lý",
                 request: withdrawal,
                 availableBalance: summary.availableBalance,
+              };
+            } else if (requestUrl.pathname === "/api/wallets/me/ledger") {
+              data = {
+                entries: withdrawals.map((withdrawal) => ({
+                  id: "ledger-" + withdrawal.id,
+                  transactionType: "PAYOUT_WITHDRAW",
+                  balanceBucket: "AVAILABLE",
+                  amount: "-200000.10",
+                  balanceBefore: "500000.31",
+                  balanceAfter: "300000.21",
+                  referenceId: withdrawal.id,
+                  referenceType: "PAYOUT_REQUEST",
+                  createdAt: withdrawal.createdAt,
+                })),
+                total: withdrawals.length,
+                page: 1,
+                limit: 10,
               };
             } else if (requestUrl.pathname === "/api/wallets/withdrawals") {
               data = {
@@ -137,6 +158,28 @@ test(
       await page.keyboard.down("Control");
       await page.keyboard.press("KeyA");
       await page.keyboard.up("Control");
+      await page.type("#withdrawal-amount", "2000000");
+      assert.ok(
+        (
+          await page.$eval(
+            '[data-testid="withdrawal-tax-preview"]',
+            (element) => element.textContent,
+          )
+        ).includes("200.000"),
+      );
+      assert.ok(
+        (
+          await page.$eval(
+            '[data-testid="withdrawal-net-preview"]',
+            (element) => element.textContent,
+          )
+        ).includes("1.800.000"),
+      );
+
+      await page.focus("#withdrawal-amount");
+      await page.keyboard.down("Control");
+      await page.keyboard.press("KeyA");
+      await page.keyboard.up("Control");
       await page.type("#withdrawal-amount", "200000.10");
       assert.equal(
         await page.$eval("#withdrawal-amount", (input) => input.value),
@@ -164,6 +207,13 @@ test(
         );
       }
       assert.equal(postCount, 1);
+      const ledgerText = await page.$eval(
+        'table[aria-label="Sổ cái tài chính"] tbody',
+        (element) => element.textContent,
+      );
+      assert.ok(ledgerText.includes("-200.000,1"));
+      assert.ok(ledgerText.includes("300.000,21"));
+      assert.ok(ledgerText.includes("PAYOUT_REQUEST"));
       assert.ok(
         (
           await page.$eval('[role="status"]', (element) => element.textContent)
@@ -173,6 +223,14 @@ test(
         (await page.$eval("tbody", (element) => element.textContent)).includes(
           "Chờ xử lý",
         ),
+      );
+      // Layout changes may place the pointer over the button. Check its resting
+      // brand color only after leaving hover and completing the transition.
+      await page.mouse.move(0, 0);
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(document.querySelector('form button[type="submit"]'))
+            .backgroundColor === "rgb(197, 155, 88)",
       );
       assert.equal(
         await page.$eval(
