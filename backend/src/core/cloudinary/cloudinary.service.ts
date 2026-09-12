@@ -1,5 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
+import {
+  v2 as cloudinary,
+  UploadApiResponse,
+  UploadApiErrorResponse,
+} from 'cloudinary';
 import { Readable } from 'stream';
 
 export interface CloudinaryUploadResult {
@@ -29,7 +33,9 @@ export class CloudinaryService {
 
     // Kiểm tra định dạng file
     if (!file.mimetype.startsWith('image/')) {
-      throw new BadRequestException('Định dạng file không hợp lệ, chỉ chấp nhận file ảnh');
+      throw new BadRequestException(
+        'Định dạng file không hợp lệ, chỉ chấp nhận file ảnh',
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -38,9 +44,15 @@ export class CloudinaryService {
           folder,
           resource_type: 'image',
         },
-        (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
+        (
+          error: UploadApiErrorResponse | undefined,
+          result: UploadApiResponse | undefined,
+        ) => {
           if (error) return reject(new BadRequestException(error.message));
-          if (!result) return reject(new BadRequestException('Lỗi tải ảnh lên Cloudinary'));
+          if (!result)
+            return reject(
+              new BadRequestException('Lỗi tải ảnh lên Cloudinary'),
+            );
 
           resolve({
             publicId: result.public_id,
@@ -71,7 +83,9 @@ export class CloudinaryService {
     }
 
     if (!file.mimetype.startsWith('video/')) {
-      throw new BadRequestException('Định dạng file không hợp lệ, chỉ chấp nhận file video');
+      throw new BadRequestException(
+        'Định dạng file không hợp lệ, chỉ chấp nhận file video',
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -81,9 +95,15 @@ export class CloudinaryService {
           resource_type: 'video',
           chunk_size: 6000000, // 6MB chunk cho video lớn
         },
-        (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
+        (
+          error: UploadApiErrorResponse | undefined,
+          result: UploadApiResponse | undefined,
+        ) => {
           if (error) return reject(new BadRequestException(error.message));
-          if (!result) return reject(new BadRequestException('Lỗi tải video lên Cloudinary'));
+          if (!result)
+            return reject(
+              new BadRequestException('Lỗi tải video lên Cloudinary'),
+            );
 
           resolve({
             publicId: result.public_id,
@@ -110,6 +130,8 @@ export class CloudinaryService {
     publicId: string,
     resourceType: 'image' | 'video' = 'image',
   ): Promise<{ result: string }> {
-    return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    return cloudinary.uploader.destroy(publicId, {
+      resource_type: resourceType,
+    });
   }
 }

@@ -6,6 +6,9 @@ import {
 } from './dto/order-webhook.dto';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
 import { OrdersService } from './orders.service';
+import { ConfigService } from '@nestjs/config';
+import { CouponsService } from '../coupons/coupons.service';
+import { CacheService } from '../../core/cache/cache.service';
 
 describe('OrdersService FR-19 webhook', () => {
   const store = {
@@ -46,6 +49,9 @@ describe('OrdersService FR-19 webhook', () => {
     const service = new OrdersService(
       prisma as unknown as PrismaService,
       new OrderWebhookNormalizerService(),
+      {} as CouponsService,
+      {} as CacheService,
+      new ConfigService(),
     );
     return { prisma, service };
   }

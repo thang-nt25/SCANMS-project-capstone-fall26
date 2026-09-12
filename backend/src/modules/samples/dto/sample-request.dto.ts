@@ -9,7 +9,10 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSampleRequestDto {
-  @ApiProperty({ description: 'ID sản phẩm muốn xin mẫu', example: 'uuid-here' })
+  @ApiProperty({
+    description: 'ID sản phẩm muốn xin mẫu',
+    example: 'uuid-here',
+  })
   @IsUUID()
   productId: string;
 
@@ -25,7 +28,10 @@ export class CreateSampleRequestDto {
 }
 
 export class ApproveRejectSampleDto {
-  @ApiPropertyOptional({ description: 'Lý do từ chối (chỉ khi reject)', example: 'Sản phẩm đã hết hàng mẫu' })
+  @ApiPropertyOptional({
+    description: 'Lý do từ chối (chỉ khi reject)',
+    example: 'Sản phẩm đã hết hàng mẫu',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -42,7 +48,10 @@ export class ShipSampleRequestDto {
   @MaxLength(100)
   trackingNumber: string;
 
-  @ApiPropertyOptional({ description: 'Đơn vị vận chuyển (GHTK / GHN / ...)', example: 'GHTK' })
+  @ApiPropertyOptional({
+    description: 'Đơn vị vận chuyển (GHTK / GHN / ...)',
+    example: 'GHTK',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50)

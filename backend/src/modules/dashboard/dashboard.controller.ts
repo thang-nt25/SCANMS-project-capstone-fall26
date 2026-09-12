@@ -10,19 +10,19 @@ export class DashboardController {
 
   // Shop dashboard — doanh thu, đơn, clicks, CR% theo ngày
   @Get('shop')
-  getShopDashboard(
-    @CurrentUser() user: any,
-    @Query('days') days?: string,
-  ) {
-    return this.dashboardService.getShopDashboard(user.id, days ? parseInt(days) : 30);
+  getShopDashboard(@CurrentUser() user: any, @Query('days') days?: string) {
+    return this.dashboardService.getShopDashboard(
+      user.id,
+      days ? parseInt(days) : 30,
+    );
   }
 
   // KOL dashboard — hoa hồng, clicks, đơn theo ngày
   @Get('kol')
-  getKolDashboard(
-    @CurrentUser() user: any,
-    @Query('days') days?: string,
-  ) {
-    return this.dashboardService.getKolDashboard(user.id, days ? parseInt(days) : 30);
+  getKolDashboard(@CurrentUser() user: any, @Query('days') days?: string) {
+    return this.dashboardService.getKolDashboard(
+      user.id,
+      days ? parseInt(days) : 30,
+    );
   }
 }

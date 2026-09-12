@@ -38,7 +38,8 @@ export class CreateOrderReviewDto {
   comment: string;
 
   @ApiPropertyOptional({
-    description: 'Họ tên người đánh giá (mặc định lấy theo tên khách trong đơn hàng)',
+    description:
+      'Họ tên người đánh giá (mặc định lấy theo tên khách trong đơn hàng)',
     example: 'Hoàng Minh Tuấn',
   })
   @IsOptional()

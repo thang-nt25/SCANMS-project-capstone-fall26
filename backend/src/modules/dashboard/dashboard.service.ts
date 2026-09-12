@@ -21,38 +21,51 @@ export class DashboardService {
     const since = new Date();
     since.setDate(since.getDate() - days);
 
-    const [totalOrders, totalRevenue, totalCommissions, clicks, ordersByDay, revByDay, clicksByDay] =
-      await Promise.all([
-        // Tổng đơn
-        this.prisma.order.count({ where: { storeId, createdAt: { gte: since } } }),
-        // Tổng doanh thu
-        this.prisma.order.aggregate({
-          _sum: { finalAmount: true },
-          where: { storeId, status: { in: ['DELIVERED', 'COMPLETED'] }, createdAt: { gte: since } },
-        }),
-        // Tổng hoa hồng đã trả
-        this.prisma.commission.aggregate({
-          _sum: { commissionAmount: true },
-          where: {
-            order: { storeId },
-            status: 'APPROVED',
-            createdAt: { gte: since },
-          },
-        }),
-        // Tổng click (từ referral links của shop)
-        this.prisma.clickTrafficLog.count({
-          where: {
-            referralLink: { product: { storeId } },
-            createdAt: { gte: since },
-          },
-        }),
-        // Đơn hàng theo ngày (7 ngày gần nhất)
-        this._ordersByDay(storeId, 7),
-        // Doanh thu theo ngày
-        this._revenueByDay(storeId, 7),
-        // Clicks theo ngày
-        this._clicksByDay(storeId, 7),
-      ]);
+    const [
+      totalOrders,
+      totalRevenue,
+      totalCommissions,
+      clicks,
+      ordersByDay,
+      revByDay,
+      clicksByDay,
+    ] = await Promise.all([
+      // Tổng đơn
+      this.prisma.order.count({
+        where: { storeId, createdAt: { gte: since } },
+      }),
+      // Tổng doanh thu
+      this.prisma.order.aggregate({
+        _sum: { finalAmount: true },
+        where: {
+          storeId,
+          status: { in: ['DELIVERED', 'COMPLETED'] },
+          createdAt: { gte: since },
+        },
+      }),
+      // Tổng hoa hồng đã trả
+      this.prisma.commission.aggregate({
+        _sum: { commissionAmount: true },
+        where: {
+          order: { storeId },
+          status: 'APPROVED',
+          createdAt: { gte: since },
+        },
+      }),
+      // Tổng click (từ referral links của shop)
+      this.prisma.clickTrafficLog.count({
+        where: {
+          referralLink: { product: { storeId } },
+          createdAt: { gte: since },
+        },
+      }),
+      // Đơn hàng theo ngày (7 ngày gần nhất)
+      this._ordersByDay(storeId, 7),
+      // Doanh thu theo ngày
+      this._revenueByDay(storeId, 7),
+      // Clicks theo ngày
+      this._clicksByDay(storeId, 7),
+    ]);
 
     const cr = clicks > 0 ? ((totalOrders / clicks) * 100).toFixed(2) : '0.00';
 
@@ -77,31 +90,48 @@ export class DashboardService {
     const since = new Date();
     since.setDate(since.getDate() - days);
 
-    const [totalOrders, clicks, totalCommission, pendingCommission, commissionsByDay, clicksByDay] =
-      await Promise.all([
-        // Tổng đơn KOL được attributed
-        this.prisma.order.count({
-          where: { attributedCollaboratorId: userId, createdAt: { gte: since } },
-        }),
-        // Clicks qua link của KOL
-        this.prisma.clickTrafficLog.count({
-          where: { referralLink: { collaboratorId: userId }, createdAt: { gte: since } },
-        }),
-        // Tổng hoa hồng khả dụng
-        this.prisma.commission.aggregate({
-          _sum: { commissionAmount: true },
-          where: { collaboratorId: userId, status: 'APPROVED', createdAt: { gte: since } },
-        }),
-        // Hoa hồng đang chờ
-        this.prisma.commission.aggregate({
-          _sum: { commissionAmount: true },
-          where: { collaboratorId: userId, status: 'PENDING', createdAt: { gte: since } },
-        }),
-        // Hoa hồng theo ngày (7 ngày)
-        this._kolCommissionsByDay(userId, 7),
-        // Clicks theo ngày (KOL)
-        this._kolClicksByDay(userId, 7),
-      ]);
+    const [
+      totalOrders,
+      clicks,
+      totalCommission,
+      pendingCommission,
+      commissionsByDay,
+      clicksByDay,
+    ] = await Promise.all([
+      // Tổng đơn KOL được attributed
+      this.prisma.order.count({
+        where: { attributedCollaboratorId: userId, createdAt: { gte: since } },
+      }),
+      // Clicks qua link của KOL
+      this.prisma.clickTrafficLog.count({
+        where: {
+          referralLink: { collaboratorId: userId },
+          createdAt: { gte: since },
+        },
+      }),
+      // Tổng hoa hồng khả dụng
+      this.prisma.commission.aggregate({
+        _sum: { commissionAmount: true },
+        where: {
+          collaboratorId: userId,
+          status: 'APPROVED',
+          createdAt: { gte: since },
+        },
+      }),
+      // Hoa hồng đang chờ
+      this.prisma.commission.aggregate({
+        _sum: { commissionAmount: true },
+        where: {
+          collaboratorId: userId,
+          status: 'PENDING',
+          createdAt: { gte: since },
+        },
+      }),
+      // Hoa hồng theo ngày (7 ngày)
+      this._kolCommissionsByDay(userId, 7),
+      // Clicks theo ngày (KOL)
+      this._kolClicksByDay(userId, 7),
+    ]);
 
     const cr = clicks > 0 ? ((totalOrders / clicks) * 100).toFixed(2) : '0.00';
 
@@ -122,7 +152,8 @@ export class DashboardService {
 
   // ─── Helpers: Dữ liệu theo ngày ──────────────────────────────────────
   private async _ordersByDay(storeId: string, days: number) {
-    const rows: Array<{ day: Date; count: bigint }> = await this.prisma.$queryRaw`
+    const rows: Array<{ day: Date; count: bigint }> = await this.prisma
+      .$queryRaw`
       SELECT DATE_TRUNC('day', created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') AS day,
              COUNT(*)::bigint AS count
       FROM orders
@@ -131,7 +162,11 @@ export class DashboardService {
       GROUP BY day
       ORDER BY day ASC
     `;
-    return this._fillDays(rows.map(r => ({ date: this._fmtDay(r.day), value: Number(r.count) })), days, 'count');
+    return this._fillDays(
+      rows.map((r) => ({ date: this._fmtDay(r.day), value: Number(r.count) })),
+      days,
+      'count',
+    );
   }
 
   private async _revenueByDay(storeId: string, days: number) {
@@ -145,11 +180,19 @@ export class DashboardService {
       GROUP BY day
       ORDER BY day ASC
     `;
-    return this._fillDays(rows.map(r => ({ date: this._fmtDay(r.day), value: Number(r.total ?? 0) })), days, 'revenue');
+    return this._fillDays(
+      rows.map((r) => ({
+        date: this._fmtDay(r.day),
+        value: Number(r.total ?? 0),
+      })),
+      days,
+      'revenue',
+    );
   }
 
   private async _clicksByDay(storeId: string, days: number) {
-    const rows: Array<{ day: Date; count: bigint }> = await this.prisma.$queryRaw`
+    const rows: Array<{ day: Date; count: bigint }> = await this.prisma
+      .$queryRaw`
       SELECT DATE_TRUNC('day', ctl.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') AS day,
              COUNT(*)::bigint AS count
       FROM click_traffic_logs ctl
@@ -160,7 +203,11 @@ export class DashboardService {
       GROUP BY day
       ORDER BY day ASC
     `;
-    return this._fillDays(rows.map(r => ({ date: this._fmtDay(r.day), value: Number(r.count) })), days, 'clicks');
+    return this._fillDays(
+      rows.map((r) => ({ date: this._fmtDay(r.day), value: Number(r.count) })),
+      days,
+      'clicks',
+    );
   }
 
   private async _kolCommissionsByDay(userId: string, days: number) {
@@ -173,11 +220,19 @@ export class DashboardService {
       GROUP BY day
       ORDER BY day ASC
     `;
-    return this._fillDays(rows.map(r => ({ date: this._fmtDay(r.day), value: Number(r.total ?? 0) })), days, 'commission');
+    return this._fillDays(
+      rows.map((r) => ({
+        date: this._fmtDay(r.day),
+        value: Number(r.total ?? 0),
+      })),
+      days,
+      'commission',
+    );
   }
 
   private async _kolClicksByDay(userId: string, days: number) {
-    const rows: Array<{ day: Date; count: bigint }> = await this.prisma.$queryRaw`
+    const rows: Array<{ day: Date; count: bigint }> = await this.prisma
+      .$queryRaw`
       SELECT DATE_TRUNC('day', ctl.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') AS day,
              COUNT(*)::bigint AS count
       FROM click_traffic_logs ctl
@@ -187,7 +242,11 @@ export class DashboardService {
       GROUP BY day
       ORDER BY day ASC
     `;
-    return this._fillDays(rows.map(r => ({ date: this._fmtDay(r.day), value: Number(r.count) })), days, 'clicks');
+    return this._fillDays(
+      rows.map((r) => ({ date: this._fmtDay(r.day), value: Number(r.count) })),
+      days,
+      'clicks',
+    );
   }
 
   // ─── Utility: điền các ngày còn thiếu = 0 ────────────────────────────
@@ -196,7 +255,7 @@ export class DashboardService {
     days: number,
     key: string,
   ) {
-    const map = new Map(data.map(d => [d.date, d.value]));
+    const map = new Map(data.map((d) => [d.date, d.value]));
     const result: Array<Record<string, string | number>> = [];
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date();

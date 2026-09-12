@@ -5,9 +5,10 @@ import { PrismaModule } from '../../core/database/prisma.module';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
 import { ManualOrdersService } from './manual-orders.service';
 import { ExcelOrderImportService } from './excel-order-import.service';
+import { CouponsModule } from '../coupons/coupons.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, CouponsModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,

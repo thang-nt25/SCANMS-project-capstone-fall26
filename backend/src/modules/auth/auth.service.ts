@@ -2,8 +2,10 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  ForbiddenException,
   NotFoundException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -30,7 +32,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService,
+    @Optional() private readonly mailService?: MailService,
   ) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     this.googleOAuthClient = new OAuth2Client(clientId);
@@ -59,7 +61,9 @@ export class AuthService {
     this.otpCache.set(normalizedEmail, { code: otpCode, expiresAt });
 
     // Gửi email thực qua MailService (kèm fallback log terminal)
-    await this.mailService.sendRegistrationOtp(normalizedEmail, otpCode);
+    if (this.mailService) {
+      await this.mailService.sendRegistrationOtp(normalizedEmail, otpCode);
+    }
 
     return {
       success: true,
@@ -193,7 +197,34 @@ export class AuthService {
   }
 
   /**
-   * 3. Đăng nhập (Email + Password trực tiếp, TỰ ĐỘNG BẮN EMAIL BẢO MẬT)
+   * Helper validate user bằng email/password
+   */
+  async validateUser(email: string, pass: string): Promise<any> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    if (user.isDeleted || !user.isActive) {
+      throw new ForbiddenException(
+        'Tài khoản của bạn đã bị khóa hoặc đã bị xóa khỏi hệ thống',
+      );
+    }
+
+    const isMatch = await bcrypt.compare(pass, user.passwordHash);
+    if (!isMatch) {
+      return null;
+    }
+
+    const { passwordHash, ...result } = user;
+    return result;
+  }
+
+  /**
+   * 3. Đăng nhập (Email + Password trực tiếp, TỰ ĐỘNG GỬI EMAIL BẢO MẬT)
    */
   async login(
     dto: LoginDto,
@@ -217,7 +248,9 @@ export class AuthService {
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('Tài khoản của bạn đã bị vô hiệu hóa');
+      throw new ForbiddenException(
+        'Tài khoản của bạn đã bị vô hiệu hóa hoặc khóa',
+      );
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
@@ -225,18 +258,29 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
-    // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng
-    const loginTime = new Date().toLocaleString('vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh',
-    });
-    const device = meta?.userAgent || 'Trình duyệt Web (Chrome / Safari / Edge)';
-    const ip = meta?.ipAddress || '127.0.0.1';
+    // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng nếu có MailService
+    if (this.mailService) {
+      try {
+        const loginTime = new Date().toLocaleString('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+        });
+        const device =
+          meta?.userAgent || 'Trình duyệt Web (Chrome / Safari / Edge)';
+        const ip = meta?.ipAddress || '127.0.0.1';
 
-    await this.mailService.sendLoginSecurityAlert(user.email, user.fullName, {
-      ipAddress: ip,
-      userAgent: device,
-      time: loginTime,
-    });
+        await this.mailService.sendLoginSecurityAlert(
+          user.email,
+          user.fullName,
+          {
+            ipAddress: ip,
+            userAgent: device,
+            time: loginTime,
+          },
+        );
+      } catch (e) {
+        // Email alert failure is non-blocking
+      }
+    }
 
     const payload = { sub: user.id, email: user.email, role: user.role };
     const accessToken = this.jwtService.sign(payload);
@@ -332,7 +376,8 @@ export class AuthService {
         });
       } else if (desiredRole === UserRole.SHOP_MANAGER) {
         // Nếu là Shop: Tạo store mặc định
-        const storeName = dto.storeName?.trim() || `${createdUser.fullName} Store`;
+        const storeName =
+          dto.storeName?.trim() || `${createdUser.fullName} Store`;
         const slug =
           storeName
             .toLowerCase()
@@ -375,17 +420,28 @@ export class AuthService {
     }
 
     // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng
-    const loginTime = new Date().toLocaleString('vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh',
-    });
-    const device = meta?.userAgent || 'Google OAuth (Chrome / Safari / Edge)';
-    const ip = meta?.ipAddress || '127.0.0.1';
+    if (this.mailService) {
+      try {
+        const loginTime = new Date().toLocaleString('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+        });
+        const device =
+          meta?.userAgent || 'Google OAuth (Chrome / Safari / Edge)';
+        const ip = meta?.ipAddress || '127.0.0.1';
 
-    await this.mailService.sendLoginSecurityAlert(user.email, user.fullName, {
-      ipAddress: ip,
-      userAgent: device,
-      time: loginTime,
-    });
+        await this.mailService.sendLoginSecurityAlert(
+          user.email,
+          user.fullName,
+          {
+            ipAddress: ip,
+            userAgent: device,
+            time: loginTime,
+          },
+        );
+      } catch (e) {
+        // Non-blocking
+      }
+    }
 
     const jwtPayload = { sub: user.id, email: user.email, role: user.role };
     const accessToken = this.jwtService.sign(jwtPayload);
@@ -401,9 +457,26 @@ export class AuthService {
   }
 
   /**
-   * 4. Lấy thông tin tài khoản người dùng hiện tại (Me)
+   * Helper kiểm tra tính hợp lệ của token
+   */
+  async verifyToken(token: string) {
+    try {
+      return this.jwtService.verify(token);
+    } catch {
+      throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
+    }
+  }
+
+  /**
+   * 5. Lấy thông tin tài khoản người dùng hiện tại (Me)
    */
   async getMe(userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException(
+        'Không tìm thấy định danh người dùng trong token',
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -416,11 +489,16 @@ export class AuthService {
       },
     });
 
-    if (!user || user.isDeleted) {
-      throw new NotFoundException('Không tìm thấy thông tin tài khoản');
+    if (!user || user.isDeleted || !user.isActive) {
+      throw new UnauthorizedException(
+        'Tài khoản không tồn tại, đã bị khóa hoặc bị xóa',
+      );
     }
 
     const { passwordHash: _, ...safeUser } = user;
-    return safeUser;
+    return {
+      ...safeUser,
+      storeId: user.stores?.[0]?.id || null,
+    };
   }
 }

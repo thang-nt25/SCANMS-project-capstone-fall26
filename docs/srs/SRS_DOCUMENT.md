@@ -30,49 +30,56 @@ Tài liệu Software Requirement Specification (SRS) v1.0.0 này quy định chi
 
 ---
 
-## 3. FUNCTIONAL REQUIREMENTS (28 MASTER FUNCTIONAL REQUIREMENTS)
+## 3. FUNCTIONAL REQUIREMENTS (32 MASTER FUNCTIONAL REQUIREMENTS)
 
 ### 3.1 Module 1: Identity & Access Management (IAM), KYC, Tiers & Unlimited Social Channels
-- **FR-01 (User Registration & Authentication):** Đăng ký/Đăng nhập an toàn qua JWT (Access & Refresh Token). Bảo mật OTP 2FA khi rút tiền.
+- **FR-01 (User Registration & Authentication):** Đăng ký/Đăng nhập an toàn qua JWT (Access Token 15 phút & Refresh Token 7 ngày). Bảo mật OTP 2FA khi rút tiền.
 - **FR-02 (Role-Based Access Control - RBAC):** Kiểm soát phân quyền nghiêm ngặt giữa 4 vai trò (`SYSTEM_ADMIN`, `SYSTEM_MANAGER`, `SHOP_MANAGER`, `COLLABORATOR`).
-- **FR-03 (Partner KYC & Multi-Channel Verification):** Cập nhật CMND/CCCD, Mã số thuế, STK Ngân hàng và Thêm không giới hạn các kênh MXH (TikTok, Facebook, Youtube, Threads, Zalo, Telegram, Shopee Video, Lemon8...).
-- **FR-04 (Collaborator Tier Ranking Engine):** Tự động phân cấp bậc CTV (Đồng, Bạc, Vàng, Kim Cương) theo tổng doanh số tích lũy để thưởng thêm % hoa hồng.
+- **FR-03 (Partner KYC Verification):** Cập nhật CMND/CCCD, Mã số thuế, STK Ngân hàng và xác minh danh tính tài chính.
+- **FR-04 (Multi-Channel Social Media Management):** Liên kết không giới hạn các kênh MXH (TikTok, Facebook, Youtube, Threads, Zalo, Telegram, Shopee Video, Lemon8...) kèm follower count.
+- **FR-05 (Collaborator Tier Ranking Engine):** Tự động phân cấp bậc CTV (Đồng, Bạc, Vàng, Kim Cương) theo tổng doanh số tích lũy để thưởng thêm % hoa hồng.
 
-### 3.2 Module 2: Attribution, Tracking Engine & Marketing Media Hub
-- **FR-05 (Encrypted Referral Link Generator):** Tạo link tiếp thị rút gọn mã hóa định dạng `/r/{short_code}`.
-- **FR-06 (Dynamic QR Code Generator):** Tự động tạo ảnh mã QR Code để KOL tải về quảng bá.
-- **FR-07 (Custom Promo Coupon Attribution):** Cho phép KOL/Shop tạo mã giảm giá riêng (VD: `KOLTHANG10`) để gán hoa hồng tự động khi khách nhập mã.
-- **FR-08 (Last-Click Attribution Engine):** Ghi nhận lượt nhấp (Click), set Cookie mã hóa (`influx_ref`) và lưu Device Fingerprint (IP + UserAgent) với thời hạn Cookie cài đặt riêng theo Shop (`attribution_window_days`).
-- **FR-09 (Centralized Marketing Media Asset Library):** Kho chứa ảnh HD, Banner, Video review và Bài viết mẫu SEO với nút **"1-Click Copy Text"**.
-- **FR-10 (Sample Product Request Workflow):** Cho phép KOL bấm *"Yêu cầu nhận hàng mẫu để làm video"* -> Shop duyệt & gửi hàng mẫu kèm Mã vận đơn.
+### 3.2 Module 2: Catalog Management, Store Settings & Bonus Milestone Engine
+- **FR-06 (Store Settings Configuration):** Cấu hình thời hạn Cookie (`attribution_window_days`), hạn mức rút tối thiểu (`min_payout_amount`), % hoa hồng mặc định của Store.
+- **FR-07 (Product Catalog & Soft Delete):** Đăng sản phẩm, sửa giá, cài % hoa hồng riêng, đồng bộ tồn kho và áp dụng cờ xóa mềm (`is_deleted = true`).
+- **FR-08 (Centralized Marketing Media Asset Library - Media Hub):** Kho chứa ảnh HD, Banner, Video review và Bài viết mẫu SEO với nút **"1-Click Copy Text"**.
+- **FR-09 (Tiered Monthly Revenue Bonus Milestone Engine - Mốc Thưởng Doanh Số Tháng):** Shop thiết lập các mốc đạt doanh số cao trong tháng để thưởng thêm tiền cố định hoặc % hoa hồng vượt mốc (VD: Đạt 50tr thưởng 500.000đ + 2% phần vượt). Hệ thống tự động tính lũy tiến, kết chuyển tháng, duyệt và chi trả thưởng vào ví KOL.
 
-### 3.3 Module 3: In-App Real-time Direct Messaging (Chat Realtime)
-- **FR-11 (Socket.io Direct Messaging):** Khung chat nhắn tin 1-1 trực tiếp giữa Shop Manager và KOL ngay trên ứng dụng.
-- **FR-12 (Campaign Invitation via Chat):** Shop gửi lời mời trực tiếp đến các Top KOLs tham gia chiến dịch độc quyền kèm tỷ lệ hoa hồng ưu đãi.
-- **FR-13 (Automated Sample Product Shipping Notifications):** Tự động gửi thông báo chat khi Shop duyệt hoặc cập nhật mã vận đơn gửi hàng mẫu.
+### 3.3 Module 3: Attribution, Tracking Engine & Dynamic Link/QR
+- **FR-10 (Encrypted Referral Link Generator):** Tạo link tiếp thị rút gọn mã hóa định dạng `/r/{short_code}`.
+- **FR-11 (Dynamic QR Code Generator):** Tự động tạo ảnh mã QR Code để KOL tải về quảng bá.
+- **FR-12 (Custom Promo Coupon Attribution):** Cho phép KOL/Shop tạo mã giảm giá riêng (VD: `KOLTHANG10`) để gán hoa hồng tự động khi khách nhập mã.
+- **FR-13 (Last-Click Attribution Engine):** Ghi nhận lượt nhấp (Click), set Cookie mã hóa (`influx_ref`) và lưu Device Fingerprint (IP + UserAgent) với thời hạn Cookie cài đặt riêng theo Shop.
+- **FR-14 (Anti-Click Spam via Redis Rate Limit):** Thuật toán Sliding Window trên Redis giới hạn tối đa 10 clicks/giây/IP để chặn click tặc.
 
 ### 3.4 Module 4: Order Synchronization & Per-Item Commission Billing
-- **FR-14 (Order Ingestion & Line Items Sync):** Nhận đơn hàng từ hệ thống E-commerce qua API Webhook `POST /api/v1/orders/webhook` gồm Header đơn hàng (`orders`) và Danh sách từng món (`order_items`).
-- **FR-15 (Per-Item Multi-Rule Commission Billing):** Tính toán tiền hoa hồng chính xác cho từng sản phẩm dựa trên tỷ lệ % riêng của từng món.
-- **FR-16 (Commission Pending Crediting):** Khởi tạo bản ghi Hoa hồng ở trạng thái `PENDING` và cộng vào Số dư chờ duyệt của KOL.
-- **FR-17 (Automated Reconciliation & Refund Clawback):** Tự động chuyển hoa hồng sang `APPROVED` sau 14 ngày. Nếu đơn hàng bị Hủy/Hoàn trả -> Chuyển hoa hồng sang `REVERSED`, trừ ví chờ của KOL về 0 và ghi Sổ cái tài chính (`type = REVERSAL`).
+- **FR-15 (Buyer Landing Page & Video Review):** Trang chi tiết sản phẩm công khai kèm video review của KOL và đánh giá khách hàng.
+- **FR-16 (Guest Direct Checkout):** Đặt hàng siêu tốc không cần tài khoản, áp coupon giảm giá, tự động trừ tồn kho và tạo đơn hàng.
+- **FR-17 (Public Order Tracking):** Khách tra cứu hành trình đơn hàng bằng Số điện thoại hoặc Mã đơn hàng.
+- **FR-18 (Product Review & Rating):** Khách nhận hàng thành công gửi đánh giá 1-5 sao kèm nhận xét chất lượng.
+- **FR-19 (Order Ingestion Webhook):** Nhận đơn hàng từ hệ thống E-commerce (Shopee, TikTok Shop, Shopify) qua Webhook `POST /orders/webhook`.
+- **FR-20 (Manual Order & Batch Excel Import):** Tạo đơn hàng thủ công hoặc tải file Excel danh sách đơn để đối soát hoa hồng hàng loạt.
+- **FR-21 (Per-Item Multi-Rule Commission Billing):** Tính toán tiền hoa hồng chính xác cho từng sản phẩm dựa trên tỷ lệ % món, cấp bậc và chiến dịch, cộng vào Số dư chờ duyệt (`PENDING`).
+- **FR-22 (Automated 14-Day Reconciliation):** Tự động chuyển hoa hồng sang `APPROVED` sau 14 ngày kể từ khi giao hàng thành công.
+- **FR-23 (Automated Refund Clawback & Reversal):** Khi đơn bị Hủy/Hoàn trả, chuyển hoa hồng sang `REVERSED`, trừ ví chờ về 0 và ghi Sổ cái tài chính (`type = REVERSAL`).
 
 ### 3.5 Module 5: Settlement, Financial Ledger & Payout Engine
-- **FR-18 (Wallet Balance Management):** Quản lý ví tiền gồm `available_balance` (Khả dụng) và `pending_balance` (Chờ duyệt).
-- **FR-19 (Immutable Financial Ledger):** Ghi lịch sử biến động số dư dạng Append-Only (`financial_ledgers`), không thể sửa/xóa.
-- **FR-20 (Pessimistic Wallet Locking):** Áp dụng khóa `SELECT ... FOR UPDATE` trong PostgreSQL khi rút tiền để chống lặp tiền/race condition.
-- **FR-21 (Payout Audit & Bank Proof Upload):** Shop Manager duyệt rút tiền, bắt buộc tải lên ảnh bill chuyển khoản ngân hàng (`proof_image_url`) và mã đối soát.
-- **FR-22 (Bank Batch Transfer Export):** Xuất danh sách chuyển khoản được phê duyệt ra file Excel/CSV định dạng chuẩn VietQR / Napas247.
+- **FR-24 (Pessimistic Wallet Locking & Payout Request):** KOL bấm rút tiền; áp dụng khóa `SELECT ... FOR UPDATE` trong PostgreSQL để chống race condition / lặp tiền.
+- **FR-25 (Immutable Financial Ledger):** Ghi lịch sử biến động số dư dạng Append-Only (`financial_ledgers`), không thể sửa/xóa.
+- **FR-26 (Automated 10% Personal Income Tax):** Tự động khấu trừ 10% thuế TNCN cho các khoản chi trả từ 2.000.000 VNĐ theo quy định pháp luật.
+- **FR-27 (Payout Audit & Bank Proof Upload):** Shop duyệt rút tiền, bắt buộc tải lên ảnh bill chuyển khoản ngân hàng và mã đối soát.
+- **FR-28 (Bank Batch Transfer Export):** Xuất danh sách chuyển khoản được phê duyệt ra file Excel chuẩn VietQR / Napas247.
 
-### 3.6 Module 6: Catalog Management & Store Configuration
-- **FR-23 (Product Catalog & Soft Delete):** Đăng sản phẩm, sửa giá, cài % hoa hồng riêng, đồng bộ tồn kho và áp dụng cờ xóa mềm (`is_deleted = true`).
-- **FR-24 (Store Settings Configuration):** Cấu hình thời hạn Cookie, hạn mức rút tối thiểu (`min_payout_amount`), % hoa hồng mặc định của Store.
+### 3.6 Module 6: Direct Messaging & Sample Product Flow
+- **FR-29 (Socket.io Direct Messaging):** Khung chat nhắn tin 1-1 trực tiếp giữa Shop Manager và KOL ngay trên ứng dụng.
+- **FR-30 (Sample Product Request Workflow):** Cho phép KOL bấm *"Yêu cầu nhận hàng mẫu để làm video"* -> Shop duyệt & gửi hàng mẫu kèm Mã vận đơn.
+- **FR-31 (Campaign Invitation via Chat):** Shop gửi lời mời trực tiếp đến các Top KOLs tham gia chiến dịch độc quyền kèm tỷ lệ hoa hồng ưu đãi.
 
-### 3.7 Module 7: Enterprise Analytics, AI Engine & Audit Trails
-- **FR-25 (Real-Time Performance Dashboard & Charts):** Biểu đồ Clicks, Đơn thành công, CR%, Hoa hồng và Biểu đồ doanh thu Recharts.
-- **FR-26 (Gamified KOL Leaderboard):** Bảng vinh danh Top 10 KOLs có doanh số cao nhất tháng.
-- **FR-27 (AI-Powered Smart KOL Matching):** AI phân tích dữ liệu bán hàng quá khứ để gợi ý KOL phù hợp với từng ngành hàng.
-- **FR-28 (AI Anti-Fraud Click Detection & Security Audit Logs):** AI phát hiện lượt nhấp tăng đột biến bất thường từ IP lạ và lưu vết lịch sử thao tác (`audit_logs`).
+### 3.7 Module 7 & 8: Enterprise Analytics, AI Engine & Audit Trails
+- **FR-32 (Real-Time Performance Dashboard & Charts):** Biểu đồ Clicks, Đơn thành công, CR%, Hoa hồng và Biểu đồ doanh thu Recharts.
+- **FR-33 (Gamified KOL Leaderboard):** Bảng vinh danh Top 10 KOLs có doanh số cao nhất tháng.
+- **FR-34 (AI-Powered Smart KOL Matching):** AI phân tích dữ liệu bán hàng quá khứ để gợi ý KOL phù hợp với từng ngành hàng.
+- **FR-35 (AI Anti-Fraud Click Detection & Security Audit Logs):** AI phát hiện lượt nhấp tăng đột biến bất thường từ IP lạ và lưu vết lịch sử thao tác (`audit_logs`).
 
 ---
 

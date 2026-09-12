@@ -7,8 +7,15 @@ import {
   Req,
   Ip,
   Headers,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -37,15 +44,20 @@ export class AuthController {
   }
 
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
       'Đăng nhập tài khoản bằng Email & Mật khẩu (Tự động gửi email thông báo bảo mật)',
   })
   @ApiResponse({ status: 200, description: 'Đăng nhập thành công' })
+  @ApiResponse({
+    status: 401,
+    description: 'Email hoặc mật khẩu không chính xác',
+  })
   async login(
     @Body() dto: LoginDto,
-    @Ip() ip: string,
-    @Headers('user-agent') userAgent: string,
+    @Ip() ip?: string,
+    @Headers('user-agent') userAgent?: string,
   ) {
     return this.authService.login(dto, { ipAddress: ip, userAgent });
   }
@@ -58,8 +70,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Đăng nhập Google thành công' })
   async googleLogin(
     @Body() dto: GoogleLoginDto,
-    @Ip() ip: string,
-    @Headers('user-agent') userAgent: string,
+    @Ip() ip?: string,
+    @Headers('user-agent') userAgent?: string,
   ) {
     return this.authService.googleLogin(dto, { ipAddress: ip, userAgent });
   }
@@ -67,8 +79,20 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Lấy thông tin tài khoản người dùng đang đăng nhập' })
-  async getMe(@CurrentUser('id') userId: string) {
+  @ApiOperation({
+    summary: 'Lấy thông tin tài khoản người dùng đang đăng nhập',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Token hợp lệ, trả về vai trò và thông tin user thật từ server',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Chưa đăng nhập hoặc token không hợp lệ',
+  })
+  async getMe(@CurrentUser('id') currentUserId?: string, @Req() req?: any) {
+    const userId = currentUserId || req?.user?.sub || req?.user?.id;
     return this.authService.getMe(userId);
   }
 }

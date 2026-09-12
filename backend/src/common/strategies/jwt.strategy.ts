@@ -16,12 +16,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService,
     private prisma: PrismaService,
   ) {
+    const secret =
+      configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
+    if (!secret || !secret.trim()) {
+      throw new Error('FATAL: JWT_SECRET must be configured');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey:
-        configService.get<string>('JWT_SECRET') ||
-        'scanms_super_secret_jwt_token_key_2026_fa26se032',
+      secretOrKey: secret,
     });
   }
 
@@ -40,7 +43,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!user || !user.isActive || user.isDeleted) {
-      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
+      throw new UnauthorizedException(
+        'Tài khoản không tồn tại hoặc đã bị khóa',
+      );
     }
 
     return user;
