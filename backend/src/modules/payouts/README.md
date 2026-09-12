@@ -36,6 +36,8 @@ The UI disables repeated submission while a request is running. The endpoint is 
 node node_modules/jest/bin/jest.js --runInBand --testPathPatterns='modules/(wallets|payouts)/'
 ```
 
+An opt-in browser test lives in `frontend/tests/wallet.browser.test.mjs`. It uses the already installed `puppeteer-core`, a local frontend and fully mocked APIs (no project backend or database calls). From `frontend/`, set `WITHDRAWAL_UI_TEST_URL` to the local frontend URL and `WITHDRAWAL_UI_BROWSER_PATH` to your Chrome/Edge executable, then run `node --test tests/wallet.browser.test.mjs`. Without these variables the browser test is skipped.
+
 PostgreSQL tests are skipped by default. To run concurrency, rollback and HTTP/JWT tests, provision a disposable local database whose name ends in `_test`, apply the schema to that database, and set `WITHDRAWAL_TEST_DATABASE_URL` explicitly. The tests refuse remote hosts and never fall back to `DATABASE_URL`. They create random-ID fixtures and clean up only those fixtures.
 
 ```powershell

@@ -138,6 +138,7 @@ export default function WalletPage() {
         </div>
         <button
           type="button"
+          aria-label="Tải lại ví"
           onClick={() => void loadWallet()}
           disabled={loading || submitting}
           className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
