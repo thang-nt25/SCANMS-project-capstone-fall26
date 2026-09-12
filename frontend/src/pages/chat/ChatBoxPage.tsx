@@ -427,6 +427,7 @@ export default function ChatBoxPage() {
   // ---- Socket.io setup ----
   useEffect(() => {
     const socket = getChatSocket();
+    setIsConnected(socket.connected);
 
     socket.on('connect', () => setIsConnected(true));
     socket.on('disconnect', () => setIsConnected(false));

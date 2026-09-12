@@ -117,23 +117,19 @@ api.interceptors.request.use(
     let token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     let currentUserRole = '';
-    let currentUserEmail = '';
     try {
       if (userStr) {
         const parsedUser = JSON.parse(userStr);
         currentUserRole = parsedUser?.role || '';
-        currentUserEmail = parsedUser?.email || '';
       }
     } catch {}
 
     const targetRole = determineTargetRole(config.url);
-    const isTargetKol = targetRole === 'COLLABORATOR';
-    const isKolMismatch = isTargetKol && (currentUserRole !== 'COLLABORATOR' || currentUserEmail.toLowerCase() !== 'demo@scanms.vn');
-    const isShopMismatch = targetRole === 'SHOP_MANAGER' && currentUserRole !== 'SHOP_MANAGER';
+    const isRoleMismatch = currentUserRole && currentUserRole !== targetRole;
 
     if (isDemoAutoLoginEnabled && !config.url?.includes('/auth/')) {
-      // Auto-switch token if missing or if current token belongs to a different role / user
-      if (!token || isKolMismatch || isShopMismatch || (currentUserRole && currentUserRole !== targetRole)) {
+      // Auto-switch token ONLY if missing token or if current role differs from target
+      if (!token || isRoleMismatch) {
         token = await getDevFallbackToken(config.url);
       }
     }
