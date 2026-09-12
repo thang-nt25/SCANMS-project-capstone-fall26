@@ -39,7 +39,7 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET || 'scanms-secret-key',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
+      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any },
     }),
     PrismaModule,
     CloudinaryModule,
