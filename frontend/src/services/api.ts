@@ -43,6 +43,27 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
     return 'COLLABORATOR';
   }
 
+  // Real-time Chat (FR-25): Phân định chính xác API của Shop vs KOL
+  if (reqUrl.includes('/chat/search-collaborators')) {
+    return 'SHOP_MANAGER';
+  }
+  if (reqUrl.includes('/chat/search-stores')) {
+    return 'COLLABORATOR';
+  }
+  if (reqUrl.includes('/chat/')) {
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    try {
+      if (userStr) {
+        const parsed = JSON.parse(userStr);
+        if (parsed?.role === 'SHOP_MANAGER') return 'SHOP_MANAGER';
+        if (parsed?.role === 'COLLABORATOR') return 'COLLABORATOR';
+      }
+    } catch {}
+    const savedRole = typeof window !== 'undefined' ? localStorage.getItem('scanms-current-role') : null;
+    if (savedRole === 'shop' || currentPath.includes('/merchant')) return 'SHOP_MANAGER';
+    return 'COLLABORATOR';
+  }
+
   // 1. COLLABORATOR / KOL routes:
   // MUST CHECK FIRST: routes like /collaborator/stores/... contain both /collaborator and /stores/!
   if (

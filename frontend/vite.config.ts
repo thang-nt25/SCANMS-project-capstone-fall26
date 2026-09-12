@@ -14,6 +14,12 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // Chỉ proxy endpoint referral /r/{shortCode}; không bắt nhầm
+      // static assets dưới /reference/*.
+      '^/r/': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 })

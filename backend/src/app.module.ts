@@ -22,6 +22,8 @@ import { StoresModule } from './modules/stores/stores.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { CommissionsModule } from './modules/commissions/commissions.module';
+import { PayoutsModule } from './modules/payouts/payouts.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
@@ -30,10 +32,13 @@ import { SamplesModule } from './modules/samples/samples.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 
+import { validateEnv } from './core/config/env.validation';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnv,
     }),
     ScheduleModule.forRoot(),
     CacheModule,
@@ -50,7 +55,9 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
         }
         return {
           secret,
-          signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '7d' },
+          signOptions: {
+            expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '7d',
+          },
         };
       },
     }),
@@ -68,6 +75,8 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     ProductsModule,
     MediaModule,
     OrdersModule,
+    CommissionsModule,
+    PayoutsModule,
     CouponsModule,
     // Quy's modules
     ChatModule,
