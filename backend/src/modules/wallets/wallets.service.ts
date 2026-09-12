@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 export class WalletBalanceInvariantError extends Error {
@@ -10,6 +10,39 @@ export class WalletBalanceInvariantError extends Error {
 
 @Injectable()
 export class WalletsService {
+  /** The caller must create the payout request in this same transaction. */
+  async debitAvailableBalanceForWithdrawal(
+    tx: Prisma.TransactionClient,
+    collaboratorId: string,
+    amount: Prisma.Decimal,
+  ) {
+    if (
+      !amount.isFinite() ||
+      amount.lessThanOrEqualTo(0) ||
+      amount.decimalPlaces() > 2 ||
+      amount.greaterThan('9999999999999.99')
+    ) {
+      throw new BadRequestException('Số tiền rút không hợp lệ');
+    }
+
+    // lockWallet reads the balance only AFTER SELECT ... FOR UPDATE.
+    // Competing withdrawals must wait and then see the committed balance.
+    const wallet = await this.lockWallet(tx, collaboratorId);
+    if (wallet.availableBalance.lessThan(amount)) {
+      throw new BadRequestException(
+        'Số dư khả dụng không đủ để thực hiện rút tiền',
+      );
+    }
+
+    return tx.wallet.update({
+      where: { id: wallet.id },
+      data: {
+        availableBalance: wallet.availableBalance.minus(amount),
+        version: { increment: 1 },
+      },
+    });
+  }
+
   async creditPendingBalance(
     tx: Prisma.TransactionClient,
     collaboratorId: string,

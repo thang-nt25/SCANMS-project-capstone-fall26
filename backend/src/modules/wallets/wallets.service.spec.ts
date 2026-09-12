@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { WalletBalanceInvariantError, WalletsService } from './wallets.service';
+import { BadRequestException } from '@nestjs/common';
 
 describe('WalletsService', () => {
   const collaboratorId = '28b2b124-12d2-47f8-881f-c3107ee71084';
@@ -24,7 +25,10 @@ describe('WalletsService', () => {
             return Promise.resolve(wallet);
           }),
         },
-        $queryRaw: jest.fn().mockResolvedValue([{ id: wallet.id }]),
+        $queryRaw: jest.fn((query: Prisma.Sql) => {
+          void query;
+          return Promise.resolve([{ id: wallet.id }]);
+        }),
       },
       getWalletUpdateInput: () => walletUpdateInput,
     };
@@ -82,4 +86,74 @@ describe('WalletsService', () => {
     };
     expect(update.data.availableBalance.toString()).toBe('-25000');
   });
+
+  it('locks before reading the balance and debits exact decimal money', async () => {
+    const { tx, getWalletUpdateInput } = createTransaction(
+      '500000',
+      '300000.31',
+    );
+    await new WalletsService().debitAvailableBalanceForWithdrawal(
+      tx as unknown as Prisma.TransactionClient,
+      collaboratorId,
+      new Prisma.Decimal('200000.10'),
+    );
+    const sql = tx.$queryRaw.mock.calls[0][0];
+    expect(sql.sql).toContain('FOR UPDATE');
+    expect(sql.values).toEqual([collaboratorId]);
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.wallet.findUniqueOrThrow.mock.invocationCallOrder[0],
+    );
+    const update = getWalletUpdateInput() as {
+      data: {
+        availableBalance: Prisma.Decimal;
+        pendingBalance?: Prisma.Decimal;
+      };
+    };
+    expect(update.data.availableBalance.toFixed(2)).toBe('100000.21');
+    expect(update.data.pendingBalance).toBeUndefined();
+  });
+
+  it('allows withdrawing the exact available balance without going negative', async () => {
+    const { tx, getWalletUpdateInput } = createTransaction('0', '200000');
+    await new WalletsService().debitAvailableBalanceForWithdrawal(
+      tx as unknown as Prisma.TransactionClient,
+      collaboratorId,
+      new Prisma.Decimal('200000'),
+    );
+    const update = getWalletUpdateInput() as {
+      data: { availableBalance: Prisma.Decimal };
+    };
+    expect(update.data.availableBalance.toFixed(2)).toBe('0.00');
+  });
+
+  it.each(['100000', '0', '-25000'])(
+    'blocks insufficient or clawback-debt balance %s without an update',
+    async (available) => {
+      const { tx } = createTransaction('1000000', available);
+      await expect(
+        new WalletsService().debitAvailableBalanceForWithdrawal(
+          tx as unknown as Prisma.TransactionClient,
+          collaboratorId,
+          new Prisma.Decimal('200000'),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(tx.wallet.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['0', '-1', 'NaN', 'Infinity', '0.001', '10000000000000'])(
+    'rejects invalid monetary amount %s before touching the wallet',
+    async (amount) => {
+      const { tx } = createTransaction('0', '500000');
+      await expect(
+        new WalletsService().debitAvailableBalanceForWithdrawal(
+          tx as unknown as Prisma.TransactionClient,
+          collaboratorId,
+          new Prisma.Decimal(amount),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(tx.$queryRaw).not.toHaveBeenCalled();
+      expect(tx.wallet.update).not.toHaveBeenCalled();
+    },
+  );
 });
