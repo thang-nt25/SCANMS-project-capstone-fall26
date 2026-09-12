@@ -19,6 +19,7 @@ import type {
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",
+  PROCESSING: "Đang thanh toán theo lô",
   APPROVED: "Đã duyệt",
   REJECTED: "Đã từ chối",
 };
@@ -41,12 +42,19 @@ const getErrorMessage = (error: unknown) =>
 
 // Compare minor units without floating-point rounding in client validation.
 function toMinorUnits(amount: string): bigint {
-  const [whole, fraction = ""] = amount.split(".");
-  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+  const negative = amount.startsWith("-");
+  const [whole, fraction = ""] = (negative ? amount.slice(1) : amount).split(
+    ".",
+  );
+  return (
+    (negative ? -1n : 1n) *
+    (BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0")))
+  );
 }
 
 export default function WalletPage() {
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
+  const [storeId, setStoreId] = useState("");
   const [history, setHistory] = useState<WithdrawalHistory | null>(null);
   const [ledger, setLedger] = useState<LedgerHistory | null>(null);
   const [page, setPage] = useState(1);
@@ -69,6 +77,20 @@ export default function WalletPage() {
       ]);
       if (sequence !== loadSequence.current) return;
       setWallet(summary);
+      setStoreId((current) =>
+        summary.stores.some(
+          (store) => store.storeId === current && store.isActive,
+        )
+          ? current
+          : (summary.stores.find(
+              (store) =>
+                store.isActive &&
+                toMinorUnits(store.availableBalance) >=
+                  toMinorUnits(summary.minimumWithdrawalAmount),
+            )?.storeId ??
+            summary.stores.find((store) => store.isActive)?.storeId ??
+            ""),
+      );
       setHistory(withdrawals);
       setLedger(ledgerHistory);
       setError("");
@@ -88,6 +110,9 @@ export default function WalletPage() {
   }, [loadWallet]);
 
   const validPreviewAmount = /^\d{1,13}(\.\d{1,2})?$/.test(amount.trim());
+  const selectedStore = wallet?.stores.find(
+    (store) => store.storeId === storeId,
+  );
   const grossMinor = validPreviewAmount ? toMinorUnits(amount.trim()) : 0n;
   const taxMinor =
     wallet && grossMinor >= toMinorUnits(wallet.withdrawalTaxPolicy.threshold)
@@ -104,6 +129,10 @@ export default function WalletPage() {
     if (!wallet || submissionInFlight.current || loading) return;
     setError("");
     setSuccess("");
+    if (!selectedStore?.isActive) {
+      setError("Chọn shop có số dư khả dụng để rút tiền.");
+      return;
+    }
     const normalizedAmount = amount.trim();
     if (!/^\d{1,13}(\.\d{1,2})?$/.test(normalizedAmount)) {
       setError(
@@ -125,11 +154,18 @@ export default function WalletPage() {
       setError("Số dư khả dụng không đủ để thực hiện rút tiền.");
       return;
     }
+    if (minorUnits > toMinorUnits(selectedStore.availableBalance)) {
+      setError("Số dư khả dụng tại shop đã chọn không đủ.");
+      return;
+    }
 
     submissionInFlight.current = true;
     setSubmitting(true);
     try {
-      const result = await walletService.createWithdrawal(normalizedAmount);
+      const result = await walletService.createWithdrawal(
+        normalizedAmount,
+        selectedStore.storeId,
+      );
       setSuccess(`${result.message}. Mã yêu cầu: ${result.request.id}`);
       setAmount("");
       setWallet((current) =>
@@ -261,6 +297,49 @@ export default function WalletPage() {
           <h2 className="text-lg font-bold">Yêu cầu rút tiền</h2>
           <div>
             <label
+              htmlFor="withdrawal-store"
+              className="mb-2 block text-sm font-medium"
+            >
+              Shop phụ trách chi trả
+            </label>
+            <select
+              id="withdrawal-store"
+              value={storeId}
+              onChange={(event) => setStoreId(event.target.value)}
+              required
+              disabled={loading || submitting}
+              className="w-full rounded-xl border border-line bg-white px-4 py-3 focus:border-brand"
+            >
+              <option value="">Chọn shop</option>
+              {wallet?.stores.map((store) => (
+                <option
+                  key={store.storeId}
+                  value={store.storeId}
+                  disabled={!store.isActive}
+                >
+                  {store.storeName} — khả dụng{" "}
+                  {formatMoney(store.availableBalance)}
+                </option>
+              ))}
+            </select>
+            {selectedStore && (
+              <p className="mt-2 text-xs text-muted">
+                Ví Chờ tại shop: {formatMoney(selectedStore.pendingBalance)}
+              </p>
+            )}
+          </div>
+          {wallet &&
+            (toMinorUnits(wallet.unallocatedAvailableBalance) !== 0n ||
+              toMinorUnits(wallet.unallocatedPendingBalance) !== 0n) && (
+              <p className="rounded-xl border border-brand-border bg-brand-soft p-3 text-sm">
+                Số dư lịch sử chưa phân bổ shop: khả dụng{" "}
+                {formatMoney(wallet.unallocatedAvailableBalance)}, chờ{" "}
+                {formatMoney(wallet.unallocatedPendingBalance)}. Cần đối soát
+                trước khi rút phần này.
+              </p>
+            )}
+          <div>
+            <label
               htmlFor="withdrawal-amount"
               className="mb-2 block text-sm font-medium"
             >
@@ -346,6 +425,9 @@ export default function WalletPage() {
                   Mã yêu cầu
                 </th>
                 <th scope="col" className="px-6 py-3">
+                  Shop
+                </th>
+                <th scope="col" className="px-6 py-3">
                   Thời gian
                 </th>
                 <th scope="col" className="px-6 py-3">
@@ -366,6 +448,9 @@ export default function WalletPage() {
               {history?.requests.map((request) => (
                 <tr key={request.id} className="border-t border-line">
                   <td className="px-6 py-4 font-mono text-xs">{request.id}</td>
+                  <td className="px-6 py-4">
+                    {request.store?.name ?? "Chờ đối soát shop"}
+                  </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     {new Date(request.createdAt).toLocaleString("vi-VN")}
                   </td>

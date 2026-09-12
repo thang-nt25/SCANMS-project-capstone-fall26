@@ -33,6 +33,7 @@ import ShopDashboardPage from '../pages/merchant/ShopDashboardPage';
 import ShopSettingsPage from '../pages/merchant/ShopSettingsPage';
 import KycApprovalPage from '../pages/merchant/KycApprovalPage';
 import OrdersManagementPage from '../pages/merchant/OrdersManagementPage';
+import PayoutApprovalPage from '../pages/merchant/PayoutApprovalPage';
 
 // Collaborator Pages (Thắng - FR-01~08)
 import KolTierStatusPage from '../pages/collaborator/KolTierStatusPage';
@@ -107,6 +108,8 @@ function AppRoutes() {
             <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
             <Route path="merchant/products" element={<ProductManagementPage />} />
             <Route path="merchant/orders" element={<OrdersManagementPage />} />
+            <Route path="merchant/payouts" element={<PayoutApprovalPage />} />
+            <Route path="stores/:storeId/payouts" element={<PayoutApprovalPage />} />
             <Route path="merchant/settings" element={<ShopSettingsPage />} />
             <Route path="merchant/kyc-approval" element={<KycApprovalPage />} />
             <Route path="merchant/commission-rules" element={<CommissionRulesPage />} />

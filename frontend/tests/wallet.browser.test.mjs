@@ -36,6 +36,17 @@ test(
         localStorage.setItem("scanms-current-role", "kol");
       });
       const summary = {
+        stores: [
+          {
+            storeId: "38b2b124-12d2-47f8-881f-c3107ee71084",
+            storeName: "Test Shop",
+            availableBalance: "500000.31",
+            pendingBalance: "900000.00",
+            isActive: true,
+          },
+        ],
+        unallocatedAvailableBalance: "0.00",
+        unallocatedPendingBalance: "0.00",
         availableBalance: "500000.31",
         pendingBalance: "900000.00",
         minimumWithdrawalAmount: "200000.00",
@@ -80,11 +91,16 @@ test(
             ) {
               const body = JSON.parse(request.postData());
               assert.equal(body.amount, "200000.10");
-              assert.deepEqual(Object.keys(body), ["amount"]);
+              assert.deepEqual(Object.keys(body), ["amount", "storeId"]);
+              assert.equal(body.storeId, summary.stores[0].storeId);
               postCount++;
               summary.availableBalance = "300000.21";
+              summary.stores[0].availableBalance = "300000.21";
               const withdrawal = {
                 id: "ui-test-request",
+                storeId: body.storeId,
+                store: { name: "Test Shop" },
+                batchId: null,
                 amount: body.amount,
                 taxAmount: "0.00",
                 netAmount: body.amount,

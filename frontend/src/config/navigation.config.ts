@@ -73,6 +73,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/merchant/kyc-approval', label: 'Duyệt KYC CTV', icon: ShieldCheck, numBadge: '10' },
       { path: '/merchant/messages', label: 'Tin nhắn hỗ trợ', icon: MessageSquare, numBadge: '11' },
       { path: '/merchant/orders', label: 'Quản lý đơn hàng', icon: ShoppingBag, numBadge: '12' },
+      { path: '/merchant/payouts', label: 'Duyệt chi trả KOL', icon: Wallet, numBadge: '13' },
     ],
   },
   SYSTEM_ADMIN: {

@@ -1,8 +1,17 @@
 import api from "./api";
 
-export type PayoutStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type PayoutStatus = "PENDING" | "PROCESSING" | "APPROVED" | "REJECTED";
 
 export interface WalletSummary {
+  stores: {
+    storeId: string;
+    storeName: string;
+    pendingBalance: string;
+    availableBalance: string;
+    isActive: boolean;
+  }[];
+  unallocatedAvailableBalance: string;
+  unallocatedPendingBalance: string;
   pendingBalance: string;
   availableBalance: string;
   minimumWithdrawalAmount: string;
@@ -17,6 +26,9 @@ export interface WalletSummary {
 }
 
 export interface WithdrawalRequest {
+  storeId: string | null;
+  store: { name: string } | null;
+  batchId: string | null;
   id: string;
   amount: string;
   taxAmount: string;
@@ -88,7 +100,7 @@ export const walletService = {
     ).data;
   },
 
-  async createWithdrawal(amount: string) {
+  async createWithdrawal(amount: string, storeId: string) {
     return (
       await api.post<
         never,
@@ -97,7 +109,7 @@ export const walletService = {
           request: WithdrawalRequest;
           availableBalance: string;
         }>
-      >("/wallets/withdrawals", { amount })
+      >("/wallets/withdrawals", { amount, storeId })
     ).data;
   },
 };
