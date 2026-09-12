@@ -38,6 +38,7 @@ import OrdersManagementPage from '../pages/merchant/OrdersManagementPage';
 import KolTierStatusPage from '../pages/collaborator/KolTierStatusPage';
 import SocialChannelsPage from '../pages/collaborator/SocialChannelsPage';
 import KycSubmissionPage from '../pages/collaborator/KycSubmissionPage';
+import WalletPage from '../pages/collaborator/WalletPage';
 import MediaHubBrowserPage from '../pages/collaborator/MediaHubBrowserPage';
 import SamplesPage from '../pages/collaborator/SamplesPage';
 
@@ -135,6 +136,7 @@ function AppRoutes() {
             <Route path="collaborator/samples" element={<SamplesPage />} />
             <Route path="collaborator/tiers" element={<KolTierStatusPage />} />
             <Route path="collaborator/kyc" element={<KycSubmissionPage />} />
+            <Route path="collaborator/wallet" element={<WalletPage />} />
             <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
             <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
             <Route path="collaborator/stats" element={<KolDashboardPage />} />
