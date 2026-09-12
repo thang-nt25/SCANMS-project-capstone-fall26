@@ -38,6 +38,9 @@ export class OrdersController {
       'Nhận diện mã Coupon hoặc Link rút gọn của KOL, tự động lưu thông tin đơn hàng, tính chiết khấu và phân bổ hoa hồng vào ví chờ.',
   })
   async createOrder(@Body() dto: CreateOrderDto, @Req() req: any) {
+    const cookieAttr =
+      req?.cookies?.['scanms_attr'] ||
+      req?.cookies?.['scanms_attribution'];
     const cookieRef =
       req?.cookies?.['scanms_referral_link'] ||
       req?.cookies?.['referral_code'] ||
@@ -45,7 +48,19 @@ export class OrdersController {
     if (cookieRef && !dto.cookieRefCode) {
       dto.cookieRefCode = cookieRef;
     }
-    return this.ordersService.createOrder(dto);
+
+    const rawIp =
+      (req?.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req?.ip ||
+      req?.socket?.remoteAddress ||
+      '127.0.0.1';
+    const userAgent = req?.headers?.['user-agent'] || '';
+
+    return this.ordersService.createOrder(dto, {
+      cookieAttr,
+      ip: rawIp,
+      userAgent,
+    });
   }
 
   @Get('track')

@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   HttpException,
   HttpStatus,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
@@ -14,6 +15,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
 import { CreateOrderReviewDto } from './dto/create-review.dto';
 import { CancelOrderDto, GuestCancelOrderDto } from './dto/cancel-order.dto';
+import * as crypto from 'crypto';
 import {
   OrderStatus,
   AttributionMethod,
@@ -22,9 +24,17 @@ import {
   TransactionType,
   CouponRedemptionStatus,
   UserRole,
+  ReferralLinkStatus,
+  StoreCollaboratorStatus,
   Prisma,
 } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { CouponsService } from '../coupons/coupons.service';
+import {
+  verifyMultiShopAttributionToken,
+  verifyOpaqueVisitorToken,
+  generateDeviceFingerprint,
+} from '../referral-links/utils/short-code.generator';
 
 @Injectable()
 export class OrdersService {
@@ -32,12 +42,21 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly couponsService: CouponsService,
     private readonly cacheService: CacheService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
    * Tạo đơn hàng mới (Dành cho Guest Storefront hoặc giỏ hàng)
+   * Phân xử Attribution theo chuẩn FR-13: Coupon > Cookie (scanms_attr) > Fingerprint (24h) > Organic
    */
-  async createOrder(dto: CreateOrderDto) {
+  async createOrder(
+    dto: CreateOrderDto,
+    clientContext?: {
+      cookieAttr?: string;
+      ip?: string;
+      userAgent?: string;
+    },
+  ) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Đơn hàng phải có ít nhất 1 sản phẩm');
     }
@@ -49,43 +68,43 @@ export class OrdersService {
 
     const existingOrder = await this.prisma.order.findUnique({
       where: { idempotencyKey: dto.idempotencyKey.trim() },
-        include: {
-          orderItems: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  title: true,
-                  sku: true,
-                  imageUrl: true,
-                  categoryName: true,
-                },
+      include: {
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                title: true,
+                sku: true,
+                imageUrl: true,
+                categoryName: true,
               },
             },
           },
-          store: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              logoUrl: true,
-            },
-          },
-          attributedCollaborator: {
-            select: {
-              id: true,
-              fullName: true,
-            },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
           },
         },
-      });
+        attributedCollaborator: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+      },
+    });
 
-      if (existingOrder) {
-        return {
-          message: 'Đơn hàng đã được ghi nhận thành công (Idempotent replay)',
-          order: existingOrder,
-        };
-      }
+    if (existingOrder) {
+      return {
+        message: 'Đơn hàng đã được ghi nhận thành công (Idempotent replay)',
+        order: existingOrder,
+      };
+    }
 
     // 1. Xác định Store
     let store: any = null;
@@ -107,37 +126,13 @@ export class OrdersService {
       throw new NotFoundException('Không tìm thấy gian hàng tương ứng');
     }
 
-    // 2. Nhận diện KOL Attribution ban đầu từ Referral Link (Cookie / Last-Click)
-    let attributedCollaboratorId: string | null = null;
-    let attributionMethod: AttributionMethod | null = null;
-    let matchedLink: any = null;
-
-    if (dto.cookieRefCode?.trim()) {
-      const cleanRef = dto.cookieRefCode.trim();
-      const isUuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-          cleanRef,
-        );
-      matchedLink = await this.prisma.referralLink.findFirst({
-        where: {
-          OR: [
-            { shortCode: cleanRef },
-            ...(isUuid ? [{ id: cleanRef }] : []),
-          ],
-          deletedAt: null,
-        },
-        include: { collaborator: true },
-      });
-
-      if (matchedLink) {
-        attributedCollaboratorId = matchedLink.collaboratorId;
-        attributionMethod = AttributionMethod.COOKIE;
-      }
+    const jwtSecret =
+      this.configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
+    if (!jwtSecret || !jwtSecret.trim()) {
+      throw new InternalServerErrorException('Cấu hình JWT_SECRET bị thiếu trong hệ thống!');
     }
 
-    const referralLinkId = matchedLink?.id || null;
-
-    // 3. Lấy danh sách sản phẩm từ DB và xác thực tính hợp lệ (Issue 5: Tuyệt đối không chấp nhận giá giả mạo từ client)
+    // 2. Lấy danh sách sản phẩm từ DB và xác thực tính hợp lệ
     const productIds = dto.items.map((i) => i.productId);
     const dbProducts = await this.prisma.product.findMany({
       where: {
@@ -166,18 +161,13 @@ export class OrdersService {
       const unitPrice = Number(prod.price);
       rawSubtotalAmount += unitPrice * item.quantity;
 
-      // Kiểm tra nếu sản phẩm có giá ưu đãi trực tiếp hoặc client truyền cờ
       if (prod.originalPrice && Number(prod.originalPrice) > unitPrice) {
         anyProductHasDirectDiscount = true;
       }
     }
 
-    // 4. Xử lý Coupon Attribution, Chiết khấu & Kiểm tra chính sách cộng dồn (Issue 6 & FR-12)
+    // 3. Pre-validate Coupon nếu client có gửi mã (để phản hồi lỗi sớm trước khi mở transaction)
     let couponValidationResult: any = null;
-    let overrideReason: string | null = null;
-    let originalAttributionMethod: AttributionMethod | null = null;
-    let originalCollaboratorId: string | null = null;
-
     if (dto.couponCode?.trim()) {
       couponValidationResult = await this.couponsService.validateCoupon(
         {
@@ -193,74 +183,6 @@ export class OrdersService {
         undefined,
         undefined,
       );
-
-      // Section 23: Coupon hợp lệ ưu tiên hơn attribution cookie/link của KOL khác
-      if (
-        attributedCollaboratorId &&
-        attributedCollaboratorId !== couponValidationResult.collaboratorId
-      ) {
-        originalCollaboratorId = attributedCollaboratorId;
-        originalAttributionMethod = attributionMethod;
-        overrideReason = 'COUPON_OVERRIDE_COOKIE';
-      }
-
-      // Gán attribution đơn hàng cho KOL sở hữu coupon (Section 22 & 24)
-      attributedCollaboratorId = couponValidationResult.collaboratorId;
-      attributionMethod = AttributionMethod.COUPON;
-    }
-
-    // 5. Lấy thông tin cấp bậc Tier của KOL để tính thêm % thưởng (nếu có)
-    let extraTierRate = 0;
-    if (attributedCollaboratorId) {
-      const collabProfile = await this.prisma.collaboratorProfile.findUnique({
-        where: { userId: attributedCollaboratorId },
-        include: { tier: true },
-      });
-      if (collabProfile?.tier?.extraBonusPercentage) {
-        extraTierRate = Number(collabProfile.tier.extraBonusPercentage);
-      }
-    }
-
-    // Số tiền giảm giá thực tế tính từ Coupon (Section 14, 15, 20)
-    const discountAmount = couponValidationResult?.discountAmount || 0;
-    const subtotalAmount = rawSubtotalAmount;
-    const finalAmount = Math.max(0, subtotalAmount - discountAmount);
-
-    // Tỷ lệ sau giảm giá để tính hoa hồng chính xác (Section 31: hoa hồng tính trên doanh thu sau giảm giá)
-    const discountRatio =
-      subtotalAmount > 0 ? (subtotalAmount - discountAmount) / subtotalAmount : 1;
-
-    let totalCommissionAmount = 0;
-    const orderItemsToCreate: Array<{
-      productId: string;
-      quantity: number;
-      unitPrice: number;
-      appliedCommissionRate: number;
-      calculatedCommissionAmount: number;
-    }> = [];
-
-    for (const item of dto.items) {
-      const prod = productMap.get(item.productId)!;
-      const unitPrice = Number(prod.price); // 100% lấy giá thật từ DB
-      const quantity = item.quantity;
-      const baseCommissionRate = prod.customCommissionRate
-        ? Number(prod.customCommissionRate)
-        : Number(store.defaultCommissionRate || 10);
-
-      const finalCommissionRate = baseCommissionRate + extraTierRate;
-      const itemSubtotal = unitPrice * quantity;
-      const netItemSubtotal = itemSubtotal * discountRatio;
-      const itemCommission = netItemSubtotal * (finalCommissionRate / 100);
-
-      totalCommissionAmount += itemCommission;
-
-      orderItemsToCreate.push({
-        productId: prod.id,
-        quantity,
-        unitPrice,
-        appliedCommissionRate: finalCommissionRate,
-        calculatedCommissionAmount: itemCommission,
-      });
     }
 
     // Sinh mã đơn hàng chuẩn định danh
@@ -268,13 +190,19 @@ export class OrdersService {
       10000 + Math.random() * 90000,
     )}`;
 
-    // 6. Thực thi Lưu đơn hàng, Khóa hàng chống Race Condition Coupon và Phân bổ Hoa hồng trong Transaction (Issue 2 & 3)
+    // 4. Thực thi Toàn bộ Phân xử Attribution, Khóa Coupon và Phân bổ Hoa hồng TRONG TRANSACTION (Issue 6 & 7)
     const createdOrder = await this.prisma.$transaction(async (tx) => {
       let shopFundedAmount = 0;
       let platformFundedAmount = 0;
-      let appliedDiscountAmount = discountAmount;
-      let finalCommissionAmountToUse = totalCommissionAmount;
-      let finalOrderItemsToSave = orderItemsToCreate;
+      let appliedDiscountAmount = 0;
+
+      // 4.1 Khóa và kiểm tra trạng thái gian hàng trong Transaction (Issue 7)
+      const lockedStore = await tx.store.findUnique({
+        where: { id: store.id },
+      });
+      if (!lockedStore || lockedStore.deletedAt || lockedStore.isDeleted) {
+        throw new BadRequestException('Gian hàng không tồn tại hoặc đã ngừng kinh doanh.');
+      }
 
       // 6.1 Khóa hàng và kiểm tra toàn diện quy tắc Coupon trong Transaction (Issue 2 & 3)
       if (couponValidationResult) {
@@ -464,30 +392,339 @@ export class OrdersService {
         platformFundedAmount = txDiscount - shopFundedAmount;
 
         appliedDiscountAmount = txDiscount;
+      }
 
-        // Cập nhật lại hoa hồng theo discount thực tế trong transaction
-        const txDiscountRatio =
-          subtotalAmount > 0
-            ? (subtotalAmount - appliedDiscountAmount) / subtotalAmount
-            : 1;
+      // 4.2 Nhận diện ứng viên Attribution TRONG TRANSACTION (Issue 6 & 7)
+      let candidateCookieCollaboratorId: string | null = null;
+      let candidateCookieReferralLinkId: string | null = null;
+      let candidateCookieSessionId: string | null = null;
+      let candidateCookieClickId: string | null = null;
+      let candidateCookieClickedAt: Date | null = null;
+      let candidateVia: string = 'LINK';
 
-        finalCommissionAmountToUse = 0;
-        finalOrderItemsToSave = orderItemsToCreate.map((item) => {
-          const itemSubtotal = item.unitPrice * item.quantity;
-          const netItemSubtotal = itemSubtotal * txDiscountRatio;
-          const recalculatedCommission =
-            netItemSubtotal * (item.appliedCommissionRate / 100);
-          finalCommissionAmountToUse += recalculatedCommission;
+      // (A) Đọc Cookie scanms_attr / scanms_attribution (Opaque Visitor Token & Database AttributionSession)
+      let hasStoreCookieTracking = false;
+      if (clientContext?.cookieAttr?.trim()) {
+        const cookieStr = clientContext.cookieAttr.trim();
+        const visitorId = verifyOpaqueVisitorToken(cookieStr, jwtSecret);
 
-          return {
-            ...item,
-            calculatedCommissionAmount: recalculatedCommission,
-          };
+        if (visitorId) {
+          const visitorIdHash = crypto
+            .createHmac('sha256', jwtSecret)
+            .update(visitorId)
+            .digest('hex');
+
+          const session = await tx.attributionSession.findUnique({
+            where: {
+              storeId_visitorIdHash: {
+                storeId: lockedStore.id,
+                visitorIdHash,
+              },
+            },
+          });
+
+          if (session) {
+            hasStoreCookieTracking = true;
+          }
+
+          if (
+            session &&
+            session.status === 'ACTIVE' &&
+            new Date(session.expiresAt) > new Date()
+          ) {
+            const link = await tx.referralLink.findUnique({
+              where: { id: session.referralLinkId },
+              include: { collaborator: true },
+            });
+
+            // Kiểm tra toàn diện trạng thái link tại checkout (Issue 7):
+            // - Link không bị xóa mềm
+            // - Status phải là ACTIVE (loại bỏ BLOCKED, PAUSED)
+            // - Chưa hết hạn (expiresAt > now)
+            // - Link thuộc đúng Store trong database
+            // - KOL còn hoạt động
+            // - Quan hệ StoreCollaborator được APPROVED
+            if (
+              link &&
+              !link.deletedAt &&
+              link.status === ReferralLinkStatus.ACTIVE &&
+              (!link.expiresAt || new Date(link.expiresAt) > new Date()) &&
+              link.storeId === lockedStore.id &&
+              link.collaborator?.isActive
+            ) {
+              const storeCollab = await tx.storeCollaborator.findFirst({
+                where: {
+                  storeId: lockedStore.id,
+                  collaboratorId: link.collaboratorId,
+                  status: StoreCollaboratorStatus.APPROVED,
+                },
+              });
+
+              if (storeCollab) {
+                // Lấy collaboratorId trực tiếp từ link trong DB (không tin cookie/client)
+                candidateCookieCollaboratorId = link.collaboratorId;
+                candidateCookieReferralLinkId = link.id;
+                candidateCookieSessionId = session.id;
+                candidateCookieClickId = session.latestClickId;
+                candidateCookieClickedAt = session.lastClickedAt;
+                candidateVia = 'LINK';
+              }
+            }
+          }
+        } else {
+          // Tương thích ngược: Thử giải mã token Multi-Shop định dạng cũ
+          const legacyDecoded = verifyMultiShopAttributionToken(cookieStr, jwtSecret);
+          if (legacyDecoded?.shops?.[lockedStore.id]) {
+            hasStoreCookieTracking = true;
+            const shopEntry = legacyDecoded.shops[lockedStore.id];
+            if (new Date(shopEntry.expiresAt) > new Date()) {
+              const link = await tx.referralLink.findUnique({
+                where: { id: shopEntry.referralLinkId },
+                include: { collaborator: true },
+              });
+
+              if (
+                link &&
+                !link.deletedAt &&
+                link.status === ReferralLinkStatus.ACTIVE &&
+                (!link.expiresAt || new Date(link.expiresAt) > new Date()) &&
+                link.storeId === lockedStore.id &&
+                link.collaborator?.isActive
+              ) {
+                const storeCollab = await tx.storeCollaborator.findFirst({
+                  where: {
+                    storeId: lockedStore.id,
+                    collaboratorId: link.collaboratorId,
+                    status: StoreCollaboratorStatus.APPROVED,
+                  },
+                });
+
+                if (storeCollab) {
+                  candidateCookieCollaboratorId = link.collaboratorId;
+                  candidateCookieReferralLinkId = link.id;
+                  candidateCookieSessionId = shopEntry.sessionId;
+                  candidateCookieClickId = null;
+                  candidateCookieClickedAt = shopEntry.clickedAt ? new Date(shopEntry.clickedAt) : null;
+                  candidateVia = shopEntry.via || 'LINK';
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // (B) Ứng viên Fingerprint Fallback 24 giờ với kiểm tra mơ hồ (Issue 8)
+      // Chỉ áp dụng khi KHÔNG có Cookie attribution cho gian hàng này
+      let candidateFpCollaboratorId: string | null = null;
+      let candidateFpReferralLinkId: string | null = null;
+      let candidateFpClickId: string | null = null;
+      let candidateFpClickedAt: Date | null = null;
+      let isAmbiguousFingerprint = false;
+
+      if (!hasStoreCookieTracking && !candidateCookieCollaboratorId && clientContext?.ip) {
+        const fingerprintHash = generateDeviceFingerprint(
+          clientContext.ip,
+          clientContext.userAgent || '',
+          jwtSecret,
+        );
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const recentClicks = await tx.clickTrafficLog.findMany({
+          where: {
+            storeId: lockedStore.id,
+            fingerprintHash,
+            isValid: true,
+            createdAt: { gte: twentyFourHoursAgo },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: {
+            referralLink: {
+              include: { collaborator: true },
+            },
+          },
+        });
+
+        const validRecentClicks: typeof recentClicks = [];
+        for (const click of recentClicks) {
+          if (
+            click.referralLink &&
+            !click.referralLink.deletedAt &&
+            click.referralLink.status === ReferralLinkStatus.ACTIVE &&
+            (!click.referralLink.expiresAt || new Date(click.referralLink.expiresAt) > new Date()) &&
+            click.referralLink.storeId === lockedStore.id &&
+            click.referralLink.collaborator?.isActive
+          ) {
+            const storeCollab = await tx.storeCollaborator.findFirst({
+              where: {
+                storeId: lockedStore.id,
+                collaboratorId: click.referralLink.collaboratorId,
+                status: StoreCollaboratorStatus.APPROVED,
+              },
+            });
+            if (storeCollab) {
+              validRecentClicks.push(click);
+            }
+          }
+        }
+
+        const distinctCollabIds = Array.from(
+          new Set(validRecentClicks.map((c) => c.referralLink.collaboratorId)),
+        );
+
+        if (distinctCollabIds.length > 1) {
+          // Nhiều KOL cùng chung fingerprint trong 24h -> Mơ hồ, không tự ý gán bản ghi gần nhất (Issue 8)
+          isAmbiguousFingerprint = true;
+        } else if (distinctCollabIds.length === 1) {
+          const matchedClick = validRecentClicks[0];
+          candidateFpCollaboratorId = distinctCollabIds[0];
+          candidateFpReferralLinkId = matchedClick.referralLinkId;
+          candidateFpClickId = matchedClick.id;
+          candidateFpClickedAt = matchedClick.createdAt;
+        }
+      }
+
+      // (C) Phân xử thứ tự ưu tiên Attribution: P1 (Coupon) > P2 (Cookie) > P3 (Fingerprint) > P4 (Organic)
+      let attributedCollaboratorId: string | null = null;
+      let attributionMethod: AttributionMethod = AttributionMethod.ORGANIC;
+      let referralLinkId: string | null = null;
+      let attributionSessionId: string | null = null;
+      let clickId: string | null = null;
+      let clickedAt: Date | null = null;
+      let attributionConfidence: string = 'ORGANIC';
+      let overrideReason: string | null = null;
+      let originalAttributionMethod: AttributionMethod | null = null;
+      let originalCollaboratorId: string | null = null;
+
+      // P1: Coupon KOL hợp lệ
+      if (couponValidationResult && couponValidationResult.collaboratorId) {
+        attributedCollaboratorId = couponValidationResult.collaboratorId;
+        attributionMethod = AttributionMethod.COUPON;
+        attributionConfidence = 'HIGH';
+        referralLinkId = candidateCookieReferralLinkId || candidateFpReferralLinkId || null;
+        attributionSessionId = candidateCookieSessionId || null;
+        clickId = candidateCookieClickId || candidateFpClickId || null;
+        clickedAt = candidateCookieClickedAt || candidateFpClickedAt || null;
+
+        if (
+          candidateCookieCollaboratorId &&
+          candidateCookieCollaboratorId !== couponValidationResult.collaboratorId
+        ) {
+          originalCollaboratorId = candidateCookieCollaboratorId;
+          originalAttributionMethod = AttributionMethod.COOKIE;
+          overrideReason = 'COUPON_OVERRIDE_COOKIE';
+        } else if (
+          candidateFpCollaboratorId &&
+          candidateFpCollaboratorId !== couponValidationResult.collaboratorId
+        ) {
+          originalCollaboratorId = candidateFpCollaboratorId;
+          originalAttributionMethod = AttributionMethod.FINGERPRINT;
+          overrideReason = 'COUPON_OVERRIDE_FINGERPRINT';
+        }
+      }
+      // P2: Cookie Last-Click hợp lệ
+      else if (candidateCookieCollaboratorId && candidateCookieReferralLinkId) {
+        attributedCollaboratorId = candidateCookieCollaboratorId;
+        attributionMethod = AttributionMethod.COOKIE;
+        referralLinkId = candidateCookieReferralLinkId;
+        attributionSessionId = candidateCookieSessionId;
+        clickId = candidateCookieClickId;
+        clickedAt = candidateCookieClickedAt;
+        attributionConfidence = 'HIGH';
+      }
+      // P3: Fingerprint Fallback 24h
+      else if (candidateFpCollaboratorId && candidateFpReferralLinkId) {
+        attributedCollaboratorId = candidateFpCollaboratorId;
+        attributionMethod = AttributionMethod.FINGERPRINT;
+        referralLinkId = candidateFpReferralLinkId;
+        clickId = candidateFpClickId;
+        clickedAt = candidateFpClickedAt;
+        attributionConfidence = 'MEDIUM';
+        overrideReason = 'FINGERPRINT_FALLBACK_24H';
+      }
+      // P4: Organic / Unattributed / Ambiguous
+      else {
+        attributedCollaboratorId = null;
+        attributionMethod = AttributionMethod.ORGANIC;
+        referralLinkId = null;
+        attributionConfidence = isAmbiguousFingerprint ? 'AMBIGUOUS' : 'ORGANIC';
+        if (isAmbiguousFingerprint) {
+          overrideReason = 'ATTRIBUTION_AMBIGUOUS_MULTIPLE_KOLS';
+        }
+      }
+
+      // 4.3 Lấy thông tin cấp bậc Tier của KOL trong Transaction
+      let extraTierRate = 0;
+      if (attributedCollaboratorId) {
+        const collabProfile = await tx.collaboratorProfile.findUnique({
+          where: { userId: attributedCollaboratorId },
+          include: { tier: true },
+        });
+        if (collabProfile?.tier?.extraBonusPercentage) {
+          extraTierRate = Number(collabProfile.tier.extraBonusPercentage);
+        }
+      }
+
+      // 4.4 Tính toán phân bổ Hoa hồng & Chi tiết Order Items trong Transaction
+      const subtotalAmount = rawSubtotalAmount;
+      const txDiscountRatio =
+        subtotalAmount > 0
+          ? (subtotalAmount - appliedDiscountAmount) / subtotalAmount
+          : 1;
+
+      let finalCommissionAmountToUse = 0;
+      const finalOrderItemsToSave: Array<{
+        productId: string;
+        quantity: number;
+        unitPrice: number;
+        appliedCommissionRate: number;
+        calculatedCommissionAmount: number;
+      }> = [];
+
+      for (const item of dto.items) {
+        const prod = productMap.get(item.productId)!;
+        const unitPrice = Number(prod.price);
+        const quantity = item.quantity;
+        const baseCommissionRate = prod.customCommissionRate
+          ? Number(prod.customCommissionRate)
+          : Number(lockedStore.defaultCommissionRate || 10);
+
+        const finalCommissionRate = baseCommissionRate + extraTierRate;
+        const itemSubtotal = unitPrice * quantity;
+        const netItemSubtotal = itemSubtotal * txDiscountRatio;
+        const calculatedCommission =
+          netItemSubtotal * (finalCommissionRate / 100);
+
+        finalCommissionAmountToUse += calculatedCommission;
+        finalOrderItemsToSave.push({
+          productId: prod.id,
+          quantity,
+          unitPrice,
+          appliedCommissionRate: finalCommissionRate,
+          calculatedCommissionAmount: calculatedCommission,
         });
       }
 
       const orderFinalAmount = Math.max(0, subtotalAmount - appliedDiscountAmount);
       const cancellationToken = randomUUID();
+
+      const snapshotPayload = {
+        attributionType: attributionMethod,
+        storeId: lockedStore.id,
+        collaboratorId: attributedCollaboratorId,
+        referralLinkId: referralLinkId || null,
+        sessionId: attributionSessionId || null,
+        clickId: clickId || null,
+        attributedAt: attributedCollaboratorId ? new Date().toISOString() : null,
+        clickedAt: clickedAt ? clickedAt.toISOString() : null,
+        attributionWindowDays: lockedStore.attributionWindowDays || 30,
+        via: candidateVia || 'LINK',
+        confidence: attributionConfidence,
+        overrideReason: overrideReason || null,
+        originalAttributionMethod: originalAttributionMethod || null,
+        originalCollaboratorId: originalCollaboratorId || null,
+        couponCode: couponValidationResult?.code || null,
+      };
 
       // 6.2 Lưu đơn hàng kèm đầy đủ snapshot coupon & attribution & idempotencyKey (Issue 3 & 4)
       const order = await tx.order.create({
@@ -499,6 +736,12 @@ export class OrdersService {
           attributedCollaboratorId,
           attributionMethod,
           referralLinkId,
+          attributionSessionId: attributionSessionId || null,
+          clickId: clickId || null,
+          attributionConfidence,
+          attributionSnapshot: snapshotPayload,
+          attributedAt: attributedCollaboratorId ? new Date() : null,
+          clickedAt: clickedAt || null,
           couponId: couponValidationResult?.couponId || null,
           couponCodeSnapshot: couponValidationResult?.code || null,
           couponDiscountAmount: appliedDiscountAmount,
@@ -802,9 +1045,9 @@ export class OrdersService {
               data: { status: CommissionStatus.REVERSED },
             });
 
-            // Trừ lại số dư ví chờ của KOL
+            // Trừ lại số dư ví chờ của KOL sở hữu hoa hồng này
             await tx.wallet.update({
-              where: { collaboratorId: order.attributedCollaboratorId },
+              where: { collaboratorId: comm.collaboratorId },
               data: {
                 pendingBalance: { decrement: comm.commissionAmount },
               },

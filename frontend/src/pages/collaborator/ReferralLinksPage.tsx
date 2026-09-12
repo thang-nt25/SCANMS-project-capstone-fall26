@@ -38,6 +38,8 @@ import {
   FileText,
   SlidersHorizontal,
   HelpCircle,
+  BarChart3,
+  ShieldCheck,
 } from 'lucide-react';
 import { referralLinksService } from '../../services/referralLinksService';
 import type {
@@ -119,6 +121,11 @@ export default function ReferralLinksPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [selectedLinkForAnalytics, setSelectedLinkForAnalytics] = useState<ReferralLinkItem | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [selectedLinkForQr, setSelectedLinkForQr] = useState<ReferralLinkItem | null>(null);
   const [selectedLinkForDelete, setSelectedLinkForDelete] = useState<ReferralLinkItem | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -298,8 +305,29 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Chỉ mở toàn màn hình (ẩn shell) cho Modal Tạo Link và Modal QR lớn; Modal Xác Nhận Xóa giữ nguyên màn hình
-  const hasOpenModal = isCreateModalOpen || isQrModalOpen;
+  // Chỉ mở toàn màn hình (ẩn shell) cho Modal Tạo Link, Modal QR và Modal Thống Kê
+  const hasOpenModal = isCreateModalOpen || isQrModalOpen || isAnalyticsModalOpen;
+
+  // Mở modal thống kê tracking chi tiết (FR-13)
+  const handleOpenAnalytics = async (link: ReferralLinkItem) => {
+    setSelectedLinkForAnalytics(link);
+    setIsAnalyticsModalOpen(true);
+    setLoadingAnalytics(true);
+    setAnalyticsError(null);
+    setAnalyticsData(null);
+    try {
+      const res = await api.get(`/collaborator/referral-links/${link.id}/analytics`);
+      if (res.data?.analytics) {
+        setAnalyticsData(res.data.analytics);
+      } else {
+        setAnalyticsData(res.data);
+      }
+    } catch (err: any) {
+      setAnalyticsError(err?.response?.data?.message || 'Không thể tải thống kê cho liên kết tiếp thị này.');
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
 
   // Danh sách các Cửa hàng khả dụng từ danh mục sản phẩm
   const availableShops = useMemo(() => {
@@ -1057,6 +1085,15 @@ export default function ReferralLinksPage() {
                             title="Mã QR Code"
                           >
                             <QrCode className="w-4.5 h-4.5" />
+                          </button>
+
+                          {/* Xem Thống kê & Phân tích (FR-13 Tracking Analytics) */}
+                          <button
+                            onClick={() => handleOpenAnalytics(link)}
+                            className="p-2 text-[#7D6D55] hover:text-[#C59B58] hover:bg-[#FAF8F5] rounded-xl transition-colors cursor-pointer"
+                            title="Thống kê chi tiết & Phân tích chuyển đổi (FR-13)"
+                          >
+                            <TrendingUp className="w-4.5 h-4.5" />
                           </button>
 
                           {/* Tạm ngừng / Kích hoạt lại */}
@@ -2179,6 +2216,192 @@ export default function ReferralLinksPage() {
               <span className="text-[11px] leading-relaxed text-[#5E5141]">
                 <strong className="text-[#1A1612] font-bold">Mẹo nhỏ:</strong> Quét thử bằng camera điện thoại để kiểm tra chuyển hướng trước khi in ấn số lượng lớn.
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 6.5 MODAL THỐNG KÊ CHI TIẾT & ATTRIBUTION (FR-13)        */}
+      {/* ======================================================== */}
+      {isAnalyticsModalOpen && selectedLinkForAnalytics && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsAnalyticsModalOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl border border-[#E8DAC4] w-full max-w-xl p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150 relative max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-[#E8DAC4]/70 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#FAF8F5] to-[#F3EFE6] border border-[#E8DAC4] flex items-center justify-center text-[#B88E4F] shadow-2xs">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-[#1A1612] tracking-tight">
+                      Thống Kê Tiếp Thị &amp; Chuyển Đổi
+                    </h3>
+                    <span className="px-2 py-0.5 text-[10px] font-bold bg-[#FAF5EB] text-[#B88E4F] border border-[#EEDFC6] rounded-md">
+                      FR-13
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#7D715E] mt-0.5">
+                    Động cơ Last-Click Wins &amp; Cookie 30 ngày bảo mật
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAnalyticsModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] rounded-xl border border-transparent hover:border-[#E8DAC4] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto pr-1 space-y-4 flex-1">
+              {/* Link overview snippet */}
+              <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-[#E8DAC4] flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-[#1A1612] truncate">
+                    {selectedLinkForAnalytics.product?.title || 'Sản phẩm tiếp thị'}
+                  </div>
+                  <div className="text-[11px] text-[#7D715E] flex items-center gap-2 mt-0.5">
+                    <span>{selectedLinkForAnalytics.store?.name}</span>
+                    <span>•</span>
+                    <span className="font-mono font-bold text-[#B88E4F]">#{selectedLinkForAnalytics.shortCode}</span>
+                    <span>•</span>
+                    <span className="font-semibold text-[#1A1612]">{getChannelLabel(selectedLinkForAnalytics.channel)}</span>
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                    Cookie: 30 ngày
+                  </span>
+                </div>
+              </div>
+
+              {loadingAnalytics ? (
+                <div className="py-12 text-center text-[#7D715E]">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-[#C59B58]" />
+                  <p className="text-xs font-medium">Đang trích xuất dữ liệu đối soát...</p>
+                </div>
+              ) : analyticsError ? (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{analyticsError}</span>
+                </div>
+              ) : analyticsData ? (
+                <>
+                  {/* Grid 6 cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <div className="p-3 bg-white border border-[#E8DAC4] rounded-2xl shadow-2xs">
+                      <div className="text-[11px] font-semibold text-[#7D715E]">Tổng Clicks (Raw)</div>
+                      <div className="text-xl font-black text-[#1A1612] mt-1">
+                        {(analyticsData.rawClicks ?? selectedLinkForAnalytics.totalClicks ?? 0).toLocaleString('vi-VN')}
+                      </div>
+                      <div className="text-[10px] text-[#7D715E] mt-0.5">Mọi lượt mở link</div>
+                    </div>
+
+                    <div className="p-3 bg-white border border-[#E8DAC4] rounded-2xl shadow-2xs">
+                      <div className="text-[11px] font-semibold text-[#7D715E]">Clicks Hợp Lệ</div>
+                      <div className="text-xl font-black text-emerald-700 mt-1">
+                        {(analyticsData.validClicks ?? selectedLinkForAnalytics.totalClicks ?? 0).toLocaleString('vi-VN')}
+                      </div>
+                      <div className="text-[10px] text-emerald-600 mt-0.5">Đã qua kiểm tra &amp; rate limit</div>
+                    </div>
+
+                    <div className="p-3 bg-white border border-[#E8DAC4] rounded-2xl shadow-2xs">
+                      <div className="text-[11px] font-semibold text-[#7D715E]">Khách Duy Nhất (Unique)</div>
+                      <div className="text-xl font-black text-[#B88E4F] mt-1">
+                        {(analyticsData.uniqueClicks ?? selectedLinkForAnalytics.uniqueClicks ?? 0).toLocaleString('vi-VN')}
+                      </div>
+                      <div className="text-[10px] text-[#B88E4F] mt-0.5">Dedup 30 phút/visitor</div>
+                    </div>
+
+                    <div className="p-3 bg-white border border-[#E8DAC4] rounded-2xl shadow-2xs">
+                      <div className="text-[11px] font-semibold text-[#7D715E]">Click Nghi Ngờ / Bị Chặn</div>
+                      <div className="text-xl font-black text-amber-700 mt-1">
+                        {(analyticsData.suspiciousClicks ?? 0).toLocaleString('vi-VN')}
+                      </div>
+                      <div className="text-[10px] text-amber-600 mt-0.5">Vượt 10 req/s hoặc Bot</div>
+                    </div>
+
+                    <div className="p-3 bg-white border border-[#E8DAC4] rounded-2xl shadow-2xs">
+                      <div className="text-[11px] font-semibold text-[#7D715E]">Đơn Hàng Ghi Nhận</div>
+                      <div className="text-xl font-black text-[#1A1612] mt-1">
+                        {(analyticsData.conversions ?? selectedLinkForAnalytics.totalOrders ?? 0).toLocaleString('vi-VN')}
+                      </div>
+                      <div className="text-[10px] text-[#7D715E] mt-0.5">Gán theo Last-Click</div>
+                    </div>
+
+                    <div className="p-3 bg-[#FAF5EB] border border-[#EEDFC6] rounded-2xl shadow-2xs">
+                      <div className="text-[11px] font-semibold text-[#B88E4F]">Tỷ Lệ Chuyển Đổi (CR)</div>
+                      <div className="text-xl font-black text-[#B88E4F] mt-1">
+                        {analyticsData.conversionRate ?? 0}%
+                      </div>
+                      <div className="text-[10px] text-[#7D715E] mt-0.5">Đơn hàng / Unique clicks</div>
+                    </div>
+                  </div>
+
+                  {/* Nguồn truy cập Link vs QR */}
+                  <div className="p-3.5 bg-[#FAF8F5] border border-[#E8DAC4] rounded-2xl space-y-2">
+                    <div className="text-xs font-bold text-[#1A1612] flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Share2 className="w-3.5 h-3.5 text-[#B88E4F]" />
+                        Phân bổ phương thức truy cập
+                      </span>
+                      <span className="text-[10px] text-[#7D715E]">Tham số via</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2.5 bg-white rounded-xl border border-[#E8DAC4]/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-3.5 h-3.5 text-[#B88E4F]" />
+                          <span className="font-medium text-[#1A1612]">Link Trực Tiếp</span>
+                        </div>
+                        <span className="font-bold text-[#1A1612]">
+                          {(analyticsData.breakdownByVia?.link ?? 0).toLocaleString('vi-VN')} clicks
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 bg-white rounded-xl border border-[#E8DAC4]/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <QrCode className="w-3.5 h-3.5 text-[#B88E4F]" />
+                          <span className="font-medium text-[#1A1612]">Quét Mã QR</span>
+                        </div>
+                        <span className="font-bold text-[#1A1612]">
+                          {(analyticsData.breakdownByVia?.qr ?? 0).toLocaleString('vi-VN')} clicks
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Thông báo quyền riêng tư & bảo mật tuân thủ FR-13 Section 33, 34, 37 */}
+                  <div className="p-3 bg-[#FAF5EB] border border-[#EEDFC6] rounded-2xl text-xs text-[#7D715E] flex items-start gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-[#B88E4F] flex-shrink-0 mt-0.5" />
+                    <div className="text-[11px] leading-relaxed">
+                      <strong className="text-[#1A1612] font-bold">Bảo vệ quyền riêng tư người mua (FR-13):</strong> Hệ thống SCANMS băm bảo mật IP và User-Agent ở phía máy chủ. KOL chỉ xem số liệu thống kê tổng hợp để tối ưu nội dung; không có quyền truy cập địa chỉ IP, dấu vân tay thiết bị hay dữ liệu cá nhân của người mua hàng.
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Footer */}
+            <div className="pt-3.5 mt-2 border-t border-[#E8DAC4]/70 flex items-center justify-end flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAnalyticsModalOpen(false)}
+                className="px-4 py-2 bg-gradient-to-r from-[#C59B58] via-[#B88E4F] to-[#9E7933] hover:from-[#B88E4F] hover:to-[#8C682A] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>

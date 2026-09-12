@@ -189,6 +189,9 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
 
   async function cleanup() {
     try {
+      await prisma.attributionAdjustment.deleteMany({
+        where: { order: { storeId: { in: [storeAId, storeBId] } } },
+      });
       await prisma.orderItem.deleteMany({
         where: { order: { storeId: { in: [storeAId, storeBId] } } },
       });
@@ -197,6 +200,9 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
       });
       await prisma.clickTrafficLog.deleteMany({
         where: { referralLink: { storeId: { in: [storeAId, storeBId] } } },
+      });
+      await prisma.attributionSession.deleteMany({
+        where: { storeId: { in: [storeAId, storeBId] } },
       });
       await prisma.referralLink.deleteMany({
         where: { storeId: { in: [storeAId, storeBId] } },
