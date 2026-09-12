@@ -16,8 +16,6 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
   const currentPath = (typeof window !== 'undefined' ? window.location?.pathname || '' : '').toLowerCase();
 
   // StoreCollaborator có cả API của Shop và KOL. Phải phân loại trước
-  // kiểm tra chuỗi `/collaborator`, nếu không `/store-collaborators/shop`
-  // sẽ bị hiểu nhầm là API KOL và tự gắn sai JWT.
   if (
     reqUrl.includes('/store-collaborators/shop') ||
     reqUrl.includes('/store-collaborators/invite')
@@ -31,13 +29,26 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
     return 'COLLABORATOR';
   }
 
+  // Sample Requests (FR-26) có cả API của Shop và KOL.
+  if (
+    reqUrl.includes('/sample-requests/shop') ||
+    /\/sample-requests\/[^/]+\/(approve|reject|ship)(?:\?|$)/.test(reqUrl)
+  ) {
+    return 'SHOP_MANAGER';
+  }
+  if (
+    reqUrl.includes('/sample-requests/my') ||
+    (reqUrl.includes('/sample-requests') && !currentPath.includes('/merchant'))
+  ) {
+    return 'COLLABORATOR';
+  }
+
   // 1. COLLABORATOR / KOL routes:
   // MUST CHECK FIRST: routes like /collaborator/stores/... contain both /collaborator and /stores/!
   if (
     reqUrl.includes('/collaborator') ||
     reqUrl.includes('/kol') ||
     reqUrl.includes('/referral-links') ||
-    reqUrl.includes('/sample-requests') ||
     reqUrl.includes('/campaigns/my-invitations') ||
     currentPath.includes('/collaborator') ||
     currentPath.includes('/kol')
@@ -119,23 +130,19 @@ api.interceptors.request.use(
     let token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     let currentUserRole = '';
-    let currentUserEmail = '';
     try {
       if (userStr) {
         const parsedUser = JSON.parse(userStr);
         currentUserRole = parsedUser?.role || '';
-        currentUserEmail = parsedUser?.email || '';
       }
     } catch {}
 
     const targetRole = determineTargetRole(config.url);
-    const isTargetKol = targetRole === 'COLLABORATOR';
-    const isKolMismatch = isTargetKol && (currentUserRole !== 'COLLABORATOR' || currentUserEmail.toLowerCase() !== 'demo@scanms.vn');
-    const isShopMismatch = targetRole === 'SHOP_MANAGER' && currentUserRole !== 'SHOP_MANAGER';
+    const isRoleMismatch = currentUserRole && currentUserRole !== targetRole;
 
     if (isDemoAutoLoginEnabled && !config.url?.includes('/auth/')) {
-      // Auto-switch token if missing or if current token belongs to a different role / user
-      if (!token || isKolMismatch || isShopMismatch || (currentUserRole && currentUserRole !== targetRole)) {
+      // Auto-switch token ONLY if missing token or if current role differs from target
+      if (!token || isRoleMismatch) {
         token = await getDevFallbackToken(config.url);
       }
     }

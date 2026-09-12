@@ -40,14 +40,16 @@ export class SamplesController {
   @Roles('COLLABORATOR')
   @ApiOperation({ summary: '[KOL] Tạo yêu cầu xin sản phẩm mẫu dùng thử' })
   createRequest(@Body() dto: CreateSampleRequestDto, @Request() req: any) {
-    return this.samplesService.createRequest(req.user.sub, dto);
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.createRequest(userId, dto);
   }
 
   @Get('my')
   @Roles('COLLABORATOR')
   @ApiOperation({ summary: '[KOL] Lấy danh sách yêu cầu xin mẫu của tôi' })
   getMyRequests(@Request() req: any) {
-    return this.samplesService.getMyRequests(req.user.sub);
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.getMyRequests(userId);
   }
 
   // ---- Shop endpoints ----
@@ -65,14 +67,16 @@ export class SamplesController {
     @Request() req: any,
     @Query('status') status?: SampleRequestStatus,
   ) {
-    return this.samplesService.getRequestsForShop(req.user.sub, status);
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.getRequestsForShop(userId, status);
   }
 
   @Get('shop/stats')
   @Roles('SHOP_MANAGER')
   @ApiOperation({ summary: '[Shop] Thống kê số lượng yêu cầu theo trạng thái' })
   getShopStats(@Request() req: any) {
-    return this.samplesService.getShopStats(req.user.sub);
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.getShopStats(userId);
   }
 
   @Patch(':id/approve')
@@ -80,7 +84,8 @@ export class SamplesController {
   @ApiOperation({ summary: '[Shop] Duyệt yêu cầu xin mẫu' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   approveRequest(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
-    return this.samplesService.approveRequest(id, req.user.sub);
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.approveRequest(id, userId);
   }
 
   @Patch(':id/reject')
@@ -88,7 +93,8 @@ export class SamplesController {
   @ApiOperation({ summary: '[Shop] Từ chối yêu cầu xin mẫu' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   rejectRequest(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
-    return this.samplesService.rejectRequest(id, req.user.sub);
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.rejectRequest(id, userId);
   }
 
   @Patch(':id/ship')
@@ -102,7 +108,8 @@ export class SamplesController {
     @Body() dto: ShipSampleRequestDto,
     @Request() req: any,
   ) {
-    return this.samplesService.shipRequest(id, req.user.sub, dto);
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.shipRequest(id, userId, dto);
   }
 
   // ---- Shared ----
@@ -111,6 +118,7 @@ export class SamplesController {
   @ApiOperation({ summary: '[KOL/Shop] Xem chi tiết một yêu cầu' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   getById(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
-    return this.samplesService.getRequestById(id, req.user.sub, req.user.role);
+    const userId = req.user?.id || req.user?.sub;
+    return this.samplesService.getRequestById(id, userId, req.user?.role);
   }
 }
