@@ -34,6 +34,10 @@ import { CreateReferralLinkDto } from './dto/create-referral-link.dto';
 import { UpdateReferralLinkDto } from './dto/update-referral-link.dto';
 import { BlockReferralLinkDto } from './dto/block-referral-link.dto';
 import { QueryReferralLinksDto } from './dto/query-referral-links.dto';
+import {
+  QueryTrackingEventsDto,
+  AttributionAdjustmentDto,
+} from './dto/tracking-analytics.dto';
 
 // ==========================================
 // 1. COLLABORATOR CONTROLLER
@@ -86,6 +90,39 @@ export class CollaboratorReferralLinksController {
     @Param('id') id: string,
   ) {
     return this.service.getLinkById(id, collaboratorId);
+  }
+
+  @Get(':id/analytics')
+  @ApiOperation({
+    summary: 'Thống kê tracking & attribution của link tiếp thị (FR-13)',
+    description:
+      'Trả về số liệu tách bạch: Raw clicks, Valid clicks, Unique clicks, Suspicious clicks, Đơn hàng, Tỷ lệ chuyển đổi và doanh thu hoa hồng.',
+  })
+  @ApiParam({ name: 'id', description: 'ID của link tiếp thị' })
+  async getLinkAnalytics(
+    @Param('id') id: string,
+    @CurrentUser('id') collaboratorId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    const data = await this.service.getLinkAnalytics(id, collaboratorId, role);
+    return {
+      success: true,
+      analytics: {
+        ...data,
+        rawClicks: data.clicks.rawClicks,
+        validClicks: data.clicks.validClicks,
+        uniqueClicks: data.clicks.uniqueClicks,
+        suspiciousClicks: data.clicks.suspiciousClicks,
+        conversions: data.conversions.totalOrders,
+        conversionRate: data.conversions.conversionRate,
+        totalRevenue: data.conversions.totalRevenue,
+        totalCommission: data.conversions.totalCommission,
+        breakdownByVia: {
+          link: data.clicks.linkClicks,
+          qr: data.clicks.qrClicks,
+        },
+      },
+    };
   }
 
   @Get([':id/qr', 'by-code/:id/qr'])
@@ -251,6 +288,39 @@ export class StoreReferralLinksController {
     return this.service.getStoreReferralLinks(storeId, userId, userRole, query);
   }
 
+  @Get(':id/analytics')
+  @ApiOperation({
+    summary: 'Chủ Shop xem thống kê tracking & attribution của link (FR-13)',
+  })
+  @ApiParam({ name: 'id', description: 'ID của link tiếp thị' })
+  @ApiParam({ name: 'storeId', description: 'ID của cửa hàng' })
+  async getStoreLinkAnalytics(
+    @Param('storeId') storeId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    const data = await this.service.getStoreLinkAnalytics(storeId, id, userId, role);
+    return {
+      success: true,
+      analytics: {
+        ...data,
+        rawClicks: data.clicks.rawClicks,
+        validClicks: data.clicks.validClicks,
+        uniqueClicks: data.clicks.uniqueClicks,
+        suspiciousClicks: data.clicks.suspiciousClicks,
+        conversions: data.conversions.totalOrders,
+        conversionRate: data.conversions.conversionRate,
+        totalRevenue: data.conversions.totalRevenue,
+        totalCommission: data.conversions.totalCommission,
+        breakdownByVia: {
+          link: data.clicks.linkClicks,
+          qr: data.clicks.qrClicks,
+        },
+      },
+    };
+  }
+
   @Patch(':id/block')
   @ApiOperation({
     summary: 'Chủ Shop khóa link tiếp thị vi phạm (bắt buộc lý do)',
@@ -368,6 +438,26 @@ export class StoreReferralLinksController {
     res.setHeader('Cache-Control', 'private, max-age=86400');
 
     return res.send(qrResult.buffer);
+  }
+
+  @Get('orders/:orderId/effective-attribution')
+  @ApiOperation({
+    summary: 'Chủ Shop tra cứu KOL hiệu lực và lịch sử điều chỉnh của đơn hàng (FR-13 - Issue 3 & Issue 1)',
+    description:
+      'Chỉ cho phép tra cứu đơn hàng thuộc đúng StoreId trên URL và người gọi phải là chủ sở hữu gian hàng.',
+  })
+  async getEffectiveOrderAttribution(
+    @Param('storeId') storeId: string,
+    @Param('orderId') orderId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.resolveEffectiveOrderAttribution(
+      orderId,
+      storeId,
+      userId,
+      role,
+    );
   }
 }
 
@@ -497,5 +587,48 @@ export class AdminReferralLinksController {
     @Ip() ip: string,
   ) {
     return this.service.unblockLinkByAdmin(id, adminId, ip);
+  }
+
+  @Get('tracking/events')
+  @ApiOperation({
+    summary: 'Quản trị viên tra cứu nhật ký sự kiện click/attribution (FR-13)',
+    description: 'Tra cứu sự kiện phục vụ điều tra gian lận, IP được che mờ bảo vệ riêng tư.',
+  })
+  async getAdminTrackingEvents(@Query() query: QueryTrackingEventsDto) {
+    return this.service.getAdminTrackingEvents(query);
+  }
+
+  @Post('orders/:orderId/attribution-adjustment')
+  @ApiOperation({
+    summary: 'Quản trị viên điều chỉnh nguồn attribution của đơn hàng (FR-13)',
+    description: 'Tạo bản ghi điều chỉnh bất biến và lưu audit log giải quyết khiếu nại.',
+  })
+  async adjustOrderAttribution(
+    @Param('orderId') orderId: string,
+    @Body() dto: AttributionAdjustmentDto,
+    @CurrentUser('id') adminId: string,
+    @Ip() ip: string,
+  ) {
+    return this.service.adjustOrderAttribution(orderId, dto, adminId, ip);
+  }
+
+  @Get('orders/:orderId/effective-attribution')
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiOperation({
+    summary: 'Quản trị viên tra cứu KOL hiệu lực và thông tin điều chỉnh của đơn hàng (FR-13 - Issue 3)',
+    description:
+      'Chỉ dành riêng cho Quản trị viên hệ thống (SYSTEM_ADMIN) phục vụ đối soát và báo cáo.',
+  })
+  async getEffectiveOrderAttribution(
+    @Param('orderId') orderId: string,
+    @CurrentUser('id') adminId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.resolveEffectiveOrderAttribution(
+      orderId,
+      undefined,
+      adminId,
+      role,
+    );
   }
 }

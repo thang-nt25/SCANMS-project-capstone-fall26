@@ -5,9 +5,11 @@ import {
   ForbiddenException,
   HttpException,
   HttpStatus,
+  InternalServerErrorException,
   Logger,
   Optional,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -15,18 +17,28 @@ import {
   UserRole,
   CampaignParticipantStatus,
   StoreCollaboratorStatus,
+  OrderStatus,
+  CommissionStatus,
   Prisma,
 } from '@prisma/client';
 import { CreateReferralLinkDto } from './dto/create-referral-link.dto';
 import { UpdateReferralLinkDto } from './dto/update-referral-link.dto';
 import { QueryReferralLinksDto } from './dto/query-referral-links.dto';
 import {
+  QueryTrackingEventsDto,
+  AttributionAdjustmentDto,
+} from './dto/tracking-analytics.dto';
+import {
   generateShortCode,
   sanitizeUtmString,
   isSearchEngineBot,
+  hashIpAddress,
+  normalizeUserAgent,
+  generateDeviceFingerprint,
 } from './utils/short-code.generator';
 import { CacheService } from '../../core/cache/cache.service';
 import * as QRCode from 'qrcode';
+import * as crypto from 'crypto';
 
 export interface ClientTrackingInfo {
   ip: string;
@@ -36,8 +48,8 @@ export interface ClientTrackingInfo {
   deviceType?: string;
   sessionId?: string;
   accessMethod?: 'QR' | 'LINK';
+  isOptedOut?: boolean;
 }
-
 /**
  * Xác định trạng thái thực tế theo đúng thứ tự ưu tiên:
  * DELETED → BLOCKED → EXPIRED → PAUSED → ACTIVE
@@ -464,7 +476,6 @@ export class ReferralLinksService {
 
     while (retries > 0) {
       const shortCode = generateShortCode(8);
-      const shortUrl = `${publicAppUrl}/r/${shortCode}`;
       const linkId = crypto.randomUUID();
       // FR-11: Dùng endpoint nội bộ /api/referral-links/:id/qr, không dùng dịch vụ công cộng bên thứ ba
       const qrCodeUrl = `/api/referral-links/${linkId}/qr`;
@@ -1308,19 +1319,35 @@ export class ReferralLinksService {
    * - Phân định DELETED (404), BLOCKED (410), PAUSED/EXPIRED (302 không attribution), ACTIVE (302 có attribution)
    * - Ghi nhận Click traffic log & Cookie attribution 30 ngày
    */
+  /**
+   * 15. Xử lý Redirect công khai & Động cơ Attribution (FR-13):
+   * - Rate limit kép theo IP/Session qua Redis (tối đa 10 req/giây và 60 req/phút)
+   * - Nhận diện bot / crawler tự động
+   * - Nếu vượt rate limit hoặc bot: VẪN redirect an toàn nhưng KHÔNG ghi cookie/attribution
+   * - Chuẩn hóa subnet IP và tạo server-side HMAC device fingerprint (không lưu fingerprint thô)
+   * - Quản lý phiên AttributionSession độc lập cho từng Shop (Multi-Merchant Last-Click Wins)
+   * - Hỗ trợ thời hạn cookie theo cấu hình của Shop (attributionWindowDays, mặc định 30 ngày từ 1-365 ngày)
+   * - Ghi nhận Click traffic log idempotent và dedup 30 phút qua ClickQueueService
+   */
   async handleRedirect(shortCode: string, clientInfo: ClientTrackingInfo) {
-    // a. Rate limit theo Session / IP + Device Fingerprint qua CacheService
-    const clientKey = clientInfo.sessionId
-      ? `rl:sess:${clientInfo.sessionId}`
-      : `rl:${clientInfo.ip || '127.0.0.1'}:${clientInfo.fingerprint || 'default'}`;
-    const rateLimit = await this.cacheService.checkRateLimit(clientKey, 60, 60);
-
-    if (!rateLimit.allowed) {
-      throw new HttpException(
-        'Vượt quá giới hạn số lượt truy cập (tối đa 60 lượt/phút). Vui lòng thử lại sau.',
-        HttpStatus.TOO_MANY_REQUESTS,
+    const rawIp = clientInfo.ip || '127.0.0.1';
+    const jwtSecret =
+      this.configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
+    if (!jwtSecret || !jwtSecret.trim()) {
+      throw new InternalServerErrorException(
+        'Cấu hình JWT_SECRET bị thiếu trong hệ thống!',
       );
     }
+
+    // 1. Rate limit kép qua Redis: 10 req/giây và 60 req/phút theo IP/Session (FR-13 Mục 25)
+    const secKey = `rl:sec:${rawIp}`;
+    const minKey = `rl:min:${rawIp}`;
+    const [secLimit, minLimit] = await Promise.all([
+      this.cacheService.checkRateLimit(secKey, 10, 1),
+      this.cacheService.checkRateLimit(minKey, 60, 60),
+    ]);
+
+    const isRateLimited = !secLimit.allowed || !minLimit.allowed;
 
     const normalizedCode = shortCode.trim().toLowerCase();
     const cacheKey = `ref_link:${normalizedCode}`;
@@ -1346,6 +1373,7 @@ export class ReferralLinksService {
               id: true,
               name: true,
               slug: true,
+              attributionWindowDays: true,
               deletedAt: true,
             },
           },
@@ -1360,7 +1388,6 @@ export class ReferralLinksService {
       });
 
       if (link) {
-        // Cache link thông tin hợp lệ trong 300 giây (5 phút)
         await this.cacheService.set(cacheKey, link, 300);
       }
     }
@@ -1390,99 +1417,158 @@ export class ReferralLinksService {
     const destinationPath =
       link.destinationPath || `/products/${link.productId}`;
 
-    // PAUSED và EXPIRED: vẫn đến sản phẩm nhưng không ghi attribution mới
+    // Xác định cờ tính hợp lệ & lý do từ chối attribution (nếu có)
     let allowAttribution = true;
-    if (effectiveStatus === 'PAUSED' || effectiveStatus === 'EXPIRED') {
+    let riskReason: string | null = null;
+
+    // Vượt rate limit: vẫn redirect nhưng không attribution (Mục 25)
+    if (isRateLimited) {
       allowAttribution = false;
+      riskReason = 'CLICK_RATE_LIMITED';
     }
 
-    // Bot detection: bot không nhận attribution
+    // Bot detection (Mục 25)
     const isBot = isSearchEngineBot(clientInfo.userAgent);
     if (isBot) {
       allowAttribution = false;
+      riskReason = 'BOT_CRAWLER';
     }
 
-    // Kiểm tra sản phẩm / shop còn hoạt động và cho phép affiliate
+    // Link PAUSED hoặc EXPIRED: vẫn đến sản phẩm nhưng không ghi attribution mới (Mục 20)
+    if (effectiveStatus === 'PAUSED' || effectiveStatus === 'EXPIRED') {
+      allowAttribution = false;
+      riskReason =
+        effectiveStatus === 'PAUSED' ? 'LINK_PAUSED' : 'LINK_EXPIRED';
+    }
+
+    // Kiểm tra tính hợp lệ của sản phẩm / gian hàng (Mục 4)
     if (
       !link.product ||
       link.product.deletedAt ||
       !link.product.isActive ||
       !link.product.isAffiliateEnabled ||
       !link.store ||
-      link.store.deletedAt
+      link.store.deletedAt ||
+      !link.collaborator?.isActive
     ) {
       allowAttribution = false;
+      riskReason = 'PRODUCT_OR_STORE_INACTIVE';
     }
 
-    // Ghi nhận Click Traffic Log & Cập nhật số liệu click bất đồng bộ qua Queue
-    if (!isBot) {
-      if (this.clickQueue) {
-        this.clickQueue.enqueue({
-          linkId: link.id,
-          ip: clientInfo.ip || '0.0.0.0',
-          userAgent: clientInfo.userAgent || null,
-          referer: clientInfo.referer || null,
-          fingerprint: clientInfo.fingerprint || null,
-          deviceType: clientInfo.deviceType || null,
-          sessionId: clientInfo.sessionId || null,
-          isValid: allowAttribution,
-          utmSource: link.utmSource || null,
-          utmMedium: link.utmMedium || null,
-          utmCampaign: link.utmCampaign || null,
-          accessMethod: clientInfo.accessMethod || null,
+    // Kiểm tra khách hàng từ chối theo dõi (Privacy Consent: DNT / GPC / Opt-out - Lỗi 6)
+    if (clientInfo.isOptedOut) {
+      allowAttribution = false;
+      riskReason = 'CLIENT_OPTED_OUT_PRIVACY';
+    }
+
+    // 2. Chuẩn hóa Subnet IP & Server-Side HMAC Device Fingerprint (Mục 7, 8, 9)
+    const { prefix: ipPrefix, hash: ipHash } = hashIpAddress(rawIp, jwtSecret);
+    const normalizedUa = normalizeUserAgent(clientInfo.userAgent);
+    const fingerprintHash = generateDeviceFingerprint(
+      rawIp,
+      normalizedUa,
+      jwtSecret,
+    );
+    const clickLogId = crypto.randomUUID();
+    const eventId = `evt-${clickLogId}`;
+
+    // Thời hạn attribution theo Shop (mặc định 30 ngày, cho phép 1-365 ngày - Mục 11)
+    const storeWindowDays =
+      link.store?.attributionWindowDays &&
+      link.store.attributionWindowDays >= 1 &&
+      link.store.attributionWindowDays <= 365
+        ? link.store.attributionWindowDays
+        : 30;
+    const expiresAt = new Date(
+      Date.now() + storeWindowDays * 24 * 60 * 60 * 1000,
+    );
+
+    const visitorId = clientInfo.sessionId || crypto.randomUUID();
+    const visitorIdHash = crypto
+      .createHmac('sha256', jwtSecret)
+      .update(visitorId)
+      .digest('hex');
+
+    // 3. Quản lý AttributionSession trong Database nếu click hợp lệ (Mục 10, 12, 13)
+    let attributionSessionId: string | null = crypto.randomUUID();
+    if (allowAttribution && this.prisma.attributionSession) {
+      try {
+        // Upsert theo (storeId, visitorIdHash) đảm bảo Last-Click Wins cho Shop này
+        // Không ảnh hưởng đến attribution của Shop khác (Multi-Merchant Isolation)
+        // latestClickId là UUID hợp lệ liên kết tới ClickTrafficLog
+        const sessionRecord = await this.prisma.attributionSession.upsert({
+          where: {
+            storeId_visitorIdHash: {
+              storeId: link.storeId,
+              visitorIdHash,
+            },
+          },
+          create: {
+            id: attributionSessionId,
+            storeId: link.storeId,
+            collaboratorId: link.collaboratorId,
+            referralLinkId: link.id,
+            visitorIdHash,
+            fingerprintHash,
+            latestClickId: clickLogId,
+            firstClickedAt: new Date(),
+            lastClickedAt: new Date(),
+            expiresAt,
+            status: 'ACTIVE',
+          },
+          update: {
+            collaboratorId: link.collaboratorId,
+            referralLinkId: link.id,
+            fingerprintHash,
+            latestClickId: clickLogId,
+            lastClickedAt: new Date(),
+            expiresAt,
+            status: 'ACTIVE',
+          },
         });
-      } else {
-        try {
-          // Chống spam: kiểm tra lượt click trùng từ cùng IP + link trong vòng 30 giây
-          const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
-          const duplicateRecentClick =
-            await this.prisma.clickTrafficLog.findFirst({
-              where: {
-                referralLinkId: link.id,
-                ipAddress: clientInfo.ip || '0.0.0.0',
-                createdAt: { gte: thirtySecondsAgo },
-              },
-            });
-
-          const isUnique = !duplicateRecentClick;
-
-          await Promise.all([
-            this.prisma.referralLink.update({
-              where: { id: link.id },
-              data: {
-                totalClicks: { increment: 1 },
-                ...(isUnique ? { uniqueClicks: { increment: 1 } } : {}),
-                lastAccessedAt: new Date(),
-              },
-            }),
-            this.prisma.clickTrafficLog.create({
-              data: {
-                referralLinkId: link.id,
-                ipAddress: clientInfo.ip || '0.0.0.0',
-                userAgent: clientInfo.userAgent || null,
-                referrer:
-                  clientInfo.referer ||
-                  (clientInfo.accessMethod === 'QR' ? 'QR_SCAN' : null),
-                accessMethod: clientInfo.accessMethod === 'QR' ? 'QR' : 'LINK',
-                deviceFingerprint: clientInfo.fingerprint || null,
-                deviceType: clientInfo.deviceType || null,
-                sessionId: clientInfo.sessionId || null,
-                isValid: allowAttribution,
-                utmSource: link.utmSource || null,
-                utmMedium: link.utmMedium || null,
-                utmCampaign: link.utmCampaign || null,
-              },
-            }),
-          ]);
-        } catch (logErr) {
-          this.logger.error('Lỗi khi ghi nhận click log:', logErr);
-        }
+        attributionSessionId = sessionRecord.id;
+      } catch (sessionErr: any) {
+        this.logger.error(`Lỗi tạo AttributionSession: ${sessionErr.message}`);
+        // Không cấp cookie nếu session thất bại để chống việc client nhận cookie nhưng DB không có session (Lỗi 1)
+        allowAttribution = false;
+        attributionSessionId = null;
       }
     }
 
-    // Chuẩn bị payload attribution 30 ngày (Last Click)
+    // 4. Ghi nhận Click Traffic Log bất đồng bộ qua Queue với Idempotency & Dedup 30 phút
+    if (this.clickQueue) {
+      this.clickQueue.enqueue({
+        clickLogId,
+        eventId,
+        linkId: link.id,
+        storeId: link.storeId,
+        collaboratorId: link.collaboratorId,
+        productId: link.productId,
+        campaignId: link.campaignId,
+        ipSubnet: ipPrefix,
+        ipHash,
+        userAgent: normalizedUa,
+        referer:
+          clientInfo.referer ||
+          (clientInfo.accessMethod === 'QR' ? 'QR_SCAN' : null),
+        fingerprintHash,
+        deviceType: clientInfo.deviceType || null,
+        visitorIdHash,
+        isValid: allowAttribution,
+        riskReason,
+        requestId: crypto.randomUUID(),
+        utmSource: link.utmSource || null,
+        utmMedium: link.utmMedium || null,
+        utmCampaign: link.utmCampaign || null,
+        accessMethod: clientInfo.accessMethod || 'LINK',
+        receivedAt: new Date(),
+      });
+    }
+
+    // 5. Chuẩn bị payload attribution cho Cookie scanms_attr
     const attributionData = allowAttribution
       ? {
+          sessionId: attributionSessionId,
           referralLinkId: link.id,
           collaboratorId: link.collaboratorId,
           collaboratorName: link.collaborator.fullName,
@@ -1492,6 +1578,7 @@ export class ReferralLinksService {
           channel: link.channel,
           utmSource: link.utmSource,
           clickedAt: new Date().toISOString(),
+          expiresAt: expiresAt.toISOString(),
         }
       : null;
 
@@ -1499,6 +1586,8 @@ export class ReferralLinksService {
       destinationPath,
       allowAttribution,
       attributionData,
+      visitorId,
+      attributionWindowDays: storeWindowDays,
       status: effectiveStatus,
       link: {
         id: link.id,
@@ -1507,6 +1596,556 @@ export class ReferralLinksService {
         store: link.store,
       },
     };
+  }
+
+  /**
+   * 15.1 Báo cáo thống kê tracking chi tiết cho KOL (FR-13 Mục 40, 43):
+   * - Tách bạch: Raw clicks, Valid clicks, Unique clicks, Suspicious clicks, Conversions, CR%
+   * - Phân loại theo kênh và phương thức (Link thường vs Quét QR)
+   * - BẢO VỆ RIÊNG TƯ (Mục 37): Tuyệt đối không trả IP, User-Agent hoặc Fingerprint thô
+   */
+  async getLinkAnalytics(
+    linkId: string,
+    collaboratorId: string,
+    userRole?: string,
+    storeId?: string,
+  ) {
+    const link = await this.prisma.referralLink.findUnique({
+      where: { id: linkId },
+      include: {
+        product: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            imageUrl: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (!link || link.deletedAt) {
+      throw new NotFoundException('Liên kết tiếp thị không tồn tại.');
+    }
+
+    // Nếu là KOL, chỉ được xem link của chính mình
+    if (
+      userRole === UserRole.COLLABORATOR &&
+      link.collaboratorId !== collaboratorId
+    ) {
+      throw new ForbiddenException(
+        'Bạn không có quyền xem thống kê của liên kết này.',
+      );
+    }
+
+    // Nếu là Chủ Shop, chỉ được xem link thuộc Shop mình (Issue 9)
+    if (storeId && link.storeId !== storeId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền xem thống kê của liên kết này.',
+      );
+    }
+    if (userRole === UserRole.SHOP_MANAGER && link.storeId !== storeId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền xem thống kê của liên kết này.',
+      );
+    }
+
+    // Đếm các loại click trong database
+    const [
+      rawClicks,
+      validClicks,
+      uniqueClicks,
+      suspiciousClicks,
+      qrClicks,
+      linkClicks,
+      attributedOrders,
+    ] = await Promise.all([
+      this.prisma.clickTrafficLog.count({ where: { referralLinkId: linkId } }),
+      this.prisma.clickTrafficLog.count({
+        where: { referralLinkId: linkId, isValid: true },
+      }),
+      this.prisma.clickTrafficLog.count({
+        where: { referralLinkId: linkId, isUnique: true },
+      }),
+      this.prisma.clickTrafficLog.count({
+        where: { referralLinkId: linkId, isValid: false },
+      }),
+      this.prisma.clickTrafficLog.count({
+        where: { referralLinkId: linkId, accessMethod: 'QR' },
+      }),
+      this.prisma.clickTrafficLog.count({
+        where: { referralLinkId: linkId, accessMethod: 'LINK' },
+      }),
+      this.prisma.order.findMany({
+        where: {
+          referralLinkId: linkId,
+          status: { not: OrderStatus.CANCELLED },
+        },
+        select: {
+          id: true,
+          finalAmount: true,
+          status: true,
+          createdAt: true,
+          commissions: {
+            select: {
+              commissionAmount: true,
+              status: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const conversions = attributedOrders.length;
+    const conversionRate =
+      rawClicks > 0 ? Number(((conversions / rawClicks) * 100).toFixed(2)) : 0;
+    let totalRevenue = 0;
+    let totalCommission = 0;
+
+    for (const ord of attributedOrders) {
+      totalRevenue += Number(ord.finalAmount);
+      for (const comm of ord.commissions) {
+        totalCommission += Number(comm.commissionAmount);
+      }
+    }
+
+    return {
+      linkId: link.id,
+      shortCode: link.shortCode,
+      label: link.label,
+      channel: link.channel,
+      status: link.status,
+      product: link.product,
+      store: link.store,
+      clicks: {
+        rawClicks,
+        validClicks,
+        uniqueClicks,
+        suspiciousClicks,
+        qrClicks,
+        linkClicks,
+      },
+      conversions: {
+        totalOrders: conversions,
+        conversionRate,
+        totalRevenue,
+        totalCommission,
+      },
+    };
+  }
+
+  /**
+   * 15.2 Thống kê tracking cho Chủ Shop (FR-13 Mục 37, 43):
+   * - Xem hiệu quả link của Shop mình
+   * - Không truy cập IP / Fingerprint thô của khách
+   */
+  async getStoreLinkAnalytics(
+    storeId: string,
+    linkId: string,
+    userId: string,
+    userRole?: string,
+  ) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
+    if (!store || store.deletedAt) {
+      throw new NotFoundException('Gian hàng không tồn tại.');
+    }
+
+    if (userRole === UserRole.SHOP_MANAGER && store.ownerId !== userId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền xem dữ liệu của gian hàng này.',
+      );
+    }
+
+    // Xác thực liên kết thực sự thuộc về gian hàng storeId (Issue 9)
+    const link = await this.prisma.referralLink.findUnique({
+      where: { id: linkId },
+      select: { id: true, storeId: true, deletedAt: true },
+    });
+    if (!link || link.deletedAt) {
+      throw new NotFoundException('Liên kết tiếp thị không tồn tại.');
+    }
+    if (link.storeId !== storeId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền xem dữ liệu của liên kết thuộc gian hàng khác.',
+      );
+    }
+
+    return this.getLinkAnalytics(linkId, userId, userRole, storeId);
+  }
+
+  /**
+   * 15.3 Tra cứu sự kiện Tracking cho Admin phục vụ kiểm toán & chống gian lận (FR-13 Mục 37, 43):
+   * - Admin xem danh sách sự kiện click, phát hiện dấu hiệu bất thường
+   * - IP được che mờ (masking) để bảo vệ quyền riêng tư
+   */
+  async getAdminTrackingEvents(query: QueryTrackingEventsDto) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ClickTrafficLogWhereInput = {};
+
+    if (query.storeId) where.storeId = query.storeId;
+    if (query.referralLinkId) where.referralLinkId = query.referralLinkId;
+    if (query.collaboratorId) where.collaboratorId = query.collaboratorId;
+    if (query.isValid !== undefined) where.isValid = query.isValid;
+    if (query.accessMethod) where.accessMethod = query.accessMethod;
+
+    if (query.from || query.to) {
+      where.createdAt = {};
+      if (query.from) where.createdAt.gte = new Date(query.from);
+      if (query.to) where.createdAt.lte = new Date(query.to);
+    }
+
+    const [total, items] = await Promise.all([
+      this.prisma.clickTrafficLog.count({ where }),
+      this.prisma.clickTrafficLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          referralLink: {
+            select: {
+              shortCode: true,
+              label: true,
+              channel: true,
+              collaborator: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    // Mask IP address (VD: 192.168.1.***)
+    const maskedItems = items.map((item) => {
+      const parts = (item.ipAddress || '').split('.');
+      const maskedIp =
+        parts.length === 4
+          ? `${parts[0]}.${parts[1]}.${parts[2]}.***`
+          : '***.***.***.***';
+
+      return {
+        ...item,
+        ipAddress: maskedIp,
+        deviceFingerprint: item.fingerprintHash
+          ? `${item.fingerprintHash.slice(0, 8)}...`
+          : null,
+      };
+    });
+
+    return {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      items: maskedItems,
+    };
+  }
+
+  /**
+   * 15.3.1 Xác định KOL attribution hiệu lực cuối cùng (Effective Attribution) của đơn hàng (FR-13 - Issue 3):
+   * - Nếu đơn hàng đã từng được điều chỉnh qua AttributionAdjustment, lấy newCollaboratorId của bản ghi mới nhất.
+   * - Nếu chưa từng điều chỉnh, lấy attributedCollaboratorId gốc từ Order.
+   */
+  async resolveEffectiveOrderAttribution(
+    orderId: string,
+    storeId?: string,
+    userId?: string,
+    userRole?: UserRole | string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx || this.prisma;
+    const order = await client.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        storeId: true,
+        attributedCollaboratorId: true,
+        referralLinkId: true,
+        attributionMethod: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Đơn hàng không tồn tại.');
+    }
+
+    // Kiểm tra ràng buộc storeId từ URL nếu có (chống Shop A xem đơn Shop B)
+    if (storeId && order.storeId !== storeId) {
+      throw new ForbiddenException(
+        'Đơn hàng không thuộc gian hàng được chỉ định.',
+      );
+    }
+
+    // Kiểm tra quyền sở hữu gian hàng nếu người gọi là Chủ Shop (Shop Manager)
+    if (userRole === UserRole.SHOP_MANAGER && userId) {
+      const store = await client.store.findFirst({
+        where: { id: order.storeId, ownerId: userId, deletedAt: null },
+      });
+      if (!store) {
+        throw new ForbiddenException(
+          'Bạn không có quyền xem thông tin phân bổ của gian hàng này.',
+        );
+      }
+    }
+
+    const latestAdjustment = await client.attributionAdjustment.findFirst({
+      where: { orderId },
+      orderBy: { adjustedAt: 'desc' },
+      include: {
+        admin: {
+          select: { id: true, fullName: true, role: true }, // TUYỆT ĐỐI KHÔNG LEAK EMAIL ADMIN (Issue 1)
+        },
+      },
+    });
+
+    const effectiveCollaboratorId =
+      latestAdjustment?.newCollaboratorId ?? order.attributedCollaboratorId;
+
+    let effectiveCollaborator: any = null;
+    if (effectiveCollaboratorId) {
+      const rawCollab = await client.user.findUnique({
+        where: { id: effectiveCollaboratorId },
+        select: { id: true, fullName: true, email: true, role: true },
+      });
+
+      if (rawCollab) {
+        // Chỉ Quản trị viên hệ thống mới xem được email gốc đầy đủ; Chủ Shop chỉ xem email đã ẩn danh (Issue 1)
+        const isSysAdmin = userRole === UserRole.SYSTEM_ADMIN;
+        effectiveCollaborator = {
+          id: rawCollab.id,
+          fullName: rawCollab.fullName,
+          email: isSysAdmin ? rawCollab.email : this.maskEmail(rawCollab.email),
+          role: rawCollab.role,
+        };
+      }
+    }
+
+    return {
+      orderId: order.id,
+      storeId: order.storeId,
+      originalCollaboratorId: order.attributedCollaboratorId,
+      effectiveCollaboratorId,
+      effectiveCollaborator,
+      isAdjusted: !!latestAdjustment,
+      latestAdjustment: latestAdjustment
+        ? {
+            id: latestAdjustment.id,
+            previousCollaboratorId: latestAdjustment.previousCollaboratorId,
+            newCollaboratorId: latestAdjustment.newCollaboratorId,
+            reason: latestAdjustment.reason,
+            adjustedAt: latestAdjustment.adjustedAt,
+            admin: latestAdjustment.admin,
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Che địa chỉ email để bảo vệ quyền riêng tư (Data Privacy - Issue 1)
+   */
+  private maskEmail(email?: string | null): string | null {
+    if (!email || !email.includes('@')) return null;
+    const [local, domain] = email.split('@');
+    if (local.length <= 2) {
+      return `${local[0]}***@${domain}`;
+    }
+    return `${local.substring(0, 2)}***@${domain}`;
+  }
+
+  /**
+   * 15.4 Điều chỉnh Attribution thủ công bởi Admin khi giải quyết khiếu nại (FR-13 Mục 23, 39):
+   * - Đọc KOL hiệu lực từ Adjustment mới nhất (hoặc Order gốc) để cho phép điều chỉnh chuỗi nhiều lần (Issue 3)
+   * - Tạo bản ghi AttributionAdjustment bất biến và liên kết trực tiếp hoa hồng cũ/mới
+   * - Không sửa đè lịch sử gốc, bảo toàn sổ cái
+   */
+  async adjustOrderAttribution(
+    orderId: string,
+    dto: AttributionAdjustmentDto,
+    adminId: string,
+    ipAddress?: string,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { attributedCollaborator: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Đơn hàng không tồn tại.');
+    }
+
+    // 1. Kiểm tra KOL mới tồn tại, role là COLLABORATOR và đang hoạt động (Lỗi 9)
+    const newCollab = await this.prisma.user.findUnique({
+      where: { id: dto.newCollaboratorId },
+    });
+    if (
+      !newCollab ||
+      !newCollab.isActive ||
+      newCollab.role !== UserRole.COLLABORATOR
+    ) {
+      throw new BadRequestException(
+        'KOL mới không hợp lệ, không phải vai trò COLLABORATOR hoặc đã bị vô hiệu hóa.',
+      );
+    }
+
+    // 2. Kiểm tra quan hệ với Shop của đơn hàng phải ở trạng thái APPROVED (Lỗi 9)
+    const storeCollab = await this.prisma.storeCollaborator.findFirst({
+      where: {
+        storeId: order.storeId,
+        collaboratorId: dto.newCollaboratorId,
+        status: StoreCollaboratorStatus.APPROVED,
+      },
+    });
+    if (!storeCollab) {
+      throw new BadRequestException(
+        'KOL mới chưa được Shop của đơn hàng này phê duyệt liên kết (APPROVED).',
+      );
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      // 3. Xác định KOL hiệu lực hiện tại từ adjustment mới nhất (hoặc order gốc) (Issue 3)
+      const effectiveInfo = await this.resolveEffectiveOrderAttribution(
+        orderId,
+        undefined,
+        undefined,
+        undefined,
+        tx,
+      );
+      const previousCollabId = effectiveInfo.effectiveCollaboratorId;
+
+      if (previousCollabId === dto.newCollaboratorId) {
+        throw new BadRequestException(
+          'Đơn hàng hiện tại đã được phân bổ cho KOL này, không thể điều chỉnh trùng lặp.',
+        );
+      }
+
+      // 4. Đồng bộ tác động hoa hồng / đối soát (Issue 4 - Không xóa bản ghi cũ, chuyển sang REVERSED)
+      let previousCommissionId: string | null = null;
+      let newCommissionId: string | null = null;
+      let commissionImpact: any = null;
+
+      if (previousCollabId) {
+        const existingCommission = await tx.commission.findFirst({
+          where: {
+            orderId,
+            collaboratorId: previousCollabId,
+          },
+        });
+
+        if (existingCommission) {
+          previousCommissionId = existingCommission.id;
+          if (existingCommission.status === CommissionStatus.PENDING) {
+            // KHÔNG XÓA VẬT LÝ! Đổi hoa hồng cũ sang REVERSED để bảo toàn sổ cái và lịch sử tài chính
+            await tx.commission.update({
+              where: { id: existingCommission.id },
+              data: {
+                status: CommissionStatus.REVERSED,
+              },
+            });
+
+            // Tạo hoa hồng mới cho KOL mới
+            const newCommission = await tx.commission.upsert({
+              where: {
+                orderId_collaboratorId: {
+                  orderId,
+                  collaboratorId: dto.newCollaboratorId,
+                },
+              },
+              create: {
+                orderId,
+                collaboratorId: dto.newCollaboratorId,
+                commissionAmount: existingCommission.commissionAmount,
+                status: CommissionStatus.PENDING,
+              },
+              update: {
+                commissionAmount: existingCommission.commissionAmount,
+                status: CommissionStatus.PENDING,
+              },
+            });
+            newCommissionId = newCommission.id;
+
+            commissionImpact = {
+              reassigned: true,
+              previousCommissionId: existingCommission.id,
+              previousCommissionStatus: CommissionStatus.REVERSED,
+              newCommissionId: newCommission.id,
+              newCommissionStatus: CommissionStatus.PENDING,
+              amount: Number(existingCommission.commissionAmount),
+              reason: dto.reason,
+              performedBy: adminId,
+            };
+          } else {
+            commissionImpact = {
+              reassigned: false,
+              previousCommissionId: existingCommission.id,
+              previousCommissionStatus: existingCommission.status,
+              note: `Hoa hồng đã ở trạng thái ${existingCommission.status}, cần đối soát qua kỳ quyết toán tiếp theo.`,
+              amount: Number(existingCommission.commissionAmount),
+              reason: dto.reason,
+              performedBy: adminId,
+            };
+          }
+        }
+      }
+
+      // 5. Tạo bản ghi AttributionAdjustment bất biến và liên kết cả 2 bản ghi hoa hồng
+      const adjustment = await tx.attributionAdjustment.create({
+        data: {
+          orderId,
+          adminId,
+          previousCollaboratorId: previousCollabId,
+          newCollaboratorId: dto.newCollaboratorId,
+          previousCommissionId,
+          newCommissionId,
+          reason: dto.reason,
+          evidenceUrl: dto.evidenceUrl || null,
+        },
+      });
+
+      // 6. Ghi AuditLog
+      await tx.auditLog.create({
+        data: {
+          userId: adminId,
+          action: 'ATTRIBUTION_ADJUSTED_BY_ADMIN',
+          ipAddress: ipAddress || null,
+          details: {
+            orderId,
+            performedBy: adminId,
+            previousCollaboratorId: previousCollabId,
+            newCollaboratorId: dto.newCollaboratorId,
+            reason: dto.reason,
+            evidenceUrl: dto.evidenceUrl || null,
+            previousCommissionId,
+            newCommissionId,
+            commissionImpact,
+          },
+        },
+      });
+
+      return {
+        ...adjustment,
+        effectiveCollaboratorId: dto.newCollaboratorId,
+        commissionImpact,
+      };
+    });
   }
 
   /**
@@ -1984,5 +2623,80 @@ export class ReferralLinksService {
       shortCode: link.shortCode,
       shortUrl,
     };
+  }
+
+  /**
+   * Định kỳ ẩn danh hóa và dọn dẹp dữ liệu theo chính sách lưu trữ (Data Retention Policy - Lỗi 6)
+   * - Ẩn danh hóa User-Agent và IP của các click logs cũ hơn retentionDays (mặc định 90 ngày)
+   * - Dọn dẹp AttributionSession đã hết hạn và cũ hơn retentionDays
+   */
+  async purgeOldTrackingData(retentionDays = 90) {
+    const cutoffDate = new Date(
+      Date.now() - retentionDays * 24 * 60 * 60 * 1000,
+    );
+
+    // 1. Ẩn danh hóa User-Agent và Subnet IP trong ClickTrafficLog
+    const anonymizedLogs = await this.prisma.clickTrafficLog.updateMany({
+      where: {
+        createdAt: { lt: cutoffDate },
+        OR: [{ userAgent: { not: null } }, { ipAddress: { not: '0.0.0.0/0' } }],
+      },
+      data: {
+        userAgent: null,
+        ipAddress: '0.0.0.0/0',
+        deviceType: null,
+      },
+    });
+
+    // 2. Dọn dẹp AttributionSession đã hết hạn cũ hơn 90 ngày
+    const deletedSessions = await this.prisma.attributionSession.deleteMany({
+      where: {
+        expiresAt: { lt: cutoffDate },
+        status: { in: ['EXPIRED', 'INACTIVE'] },
+      },
+    });
+
+    this.logger.log(
+      `[DATA RETENTION PURGE] Đã ẩn danh hóa ${anonymizedLogs.count} click logs và dọn dẹp ${deletedSessions.count} sessions cũ hơn ${retentionDays} ngày.`,
+    );
+
+    return {
+      anonymizedLogsCount: anonymizedLogs.count,
+      deletedSessionsCount: deletedSessions.count,
+      cutoffDate,
+    };
+  }
+
+  /**
+   * Cron Job tự động dọn dẹp và ẩn danh hóa dữ liệu định kỳ mỗi ngày (Issue 1)
+   * Chạy vào lúc nửa đêm hàng ngày (hoặc cấu hình qua biến môi trường TRACKING_DATA_RETENTION_CRON)
+   * Số ngày lưu trữ cấu hình qua TRACKING_DATA_RETENTION_DAYS (mặc định 90 ngày)
+   */
+  @Cron(
+    process.env.TRACKING_DATA_RETENTION_CRON ||
+      CronExpression.EVERY_DAY_AT_MIDNIGHT,
+  )
+  async handleScheduledDataRetentionCleanup() {
+    const rawDays =
+      process.env.TRACKING_DATA_RETENTION_DAYS ||
+      (this.configService
+        ? this.configService.get<string>('TRACKING_DATA_RETENTION_DAYS')
+        : '90');
+    const retentionDays = parseInt(rawDays || '90', 10) || 90;
+    this.logger.log(
+      `[DATA_RETENTION_CRON] Bắt đầu quét và dọn dẹp dữ liệu tracking cũ hơn ${retentionDays} ngày...`,
+    );
+    try {
+      const result = await this.purgeOldTrackingData(retentionDays);
+      this.logger.log(
+        `[DATA_RETENTION_CRON] Hoàn tất: Đã ẩn danh ${result.anonymizedLogsCount} click logs và dọn ${result.deletedSessionsCount} sessions.`,
+      );
+      return result;
+    } catch (err: any) {
+      this.logger.error(
+        `[DATA_RETENTION_CRON] Lỗi khi chạy dọn dẹp dữ liệu lưu trữ: ${err.message}`,
+        err.stack,
+      );
+    }
   }
 }

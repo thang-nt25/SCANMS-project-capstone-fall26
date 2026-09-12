@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './app.controller';
@@ -34,12 +35,24 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     CacheModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
+    JwtModule.registerAsync({
       global: true,
-      secret: process.env.JWT_SECRET || 'scanms-secret-key',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const secret =
+          configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
+        if (!secret || !secret.trim()) {
+          throw new Error('FATAL: JWT_SECRET must be configured');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '7d' },
+        };
+      },
     }),
     PrismaModule,
     CloudinaryModule,
