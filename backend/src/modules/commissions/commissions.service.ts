@@ -177,8 +177,8 @@ export class CommissionsService {
           order.updatedAt.getTime() <= now.getTime() ? order.updatedAt : now;
         const availableAt = this.addDays(eligibleAt, COMMISSION_HOLD_DAYS);
         const hasPayableCommission =
-          calculation.totalCommissionAmount.isPositive();
-        await tx.commission.create({
+          calculation.totalCommissionAmount.greaterThan(0);
+        const commission = await tx.commission.create({
           data: {
             orderId: order.id,
             collaboratorId: collaborator.id,
@@ -196,6 +196,7 @@ export class CommissionsService {
             tx,
             collaborator.id,
             calculation.totalCommissionAmount,
+            { id: commission.id, type: 'COMMISSION' },
           );
         }
 
@@ -234,11 +235,14 @@ export class CommissionsService {
         return false;
       }
 
-      await this.walletsService.releasePendingBalance(
-        tx,
-        commission.collaboratorId,
-        commission.commissionAmount,
-      );
+      if (commission.commissionAmount.greaterThan(0)) {
+        await this.walletsService.releasePendingBalance(
+          tx,
+          commission.collaboratorId,
+          commission.commissionAmount,
+          { id: commission.id, type: 'COMMISSION' },
+        );
+      }
       await tx.commission.update({
         where: { id: commission.id },
         data: {
@@ -275,18 +279,22 @@ export class CommissionsService {
         return false;
       }
 
-      if (commission.status === CommissionStatus.PENDING) {
-        await this.walletsService.reversePendingBalance(
-          tx,
-          commission.collaboratorId,
-          commission.commissionAmount,
-        );
-      } else {
-        await this.walletsService.reverseAvailableBalance(
-          tx,
-          commission.collaboratorId,
-          commission.commissionAmount,
-        );
+      if (commission.commissionAmount.greaterThan(0)) {
+        if (commission.status === CommissionStatus.PENDING) {
+          await this.walletsService.reversePendingBalance(
+            tx,
+            commission.collaboratorId,
+            commission.commissionAmount,
+            { id: commission.id, type: 'COMMISSION' },
+          );
+        } else {
+          await this.walletsService.reverseAvailableBalance(
+            tx,
+            commission.collaboratorId,
+            commission.commissionAmount,
+            { id: commission.id, type: 'COMMISSION' },
+          );
+        }
       }
 
       await tx.commission.update({

@@ -38,6 +38,7 @@ import { OrderWebhookNormalizerService } from './normalizers/order-webhook-norma
 import { NormalizedExternalOrder } from './normalizers/external-order-normalizer.interface';
 
 import { ConfigService } from '@nestjs/config';
+import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
 import {
   verifyMultiShopAttributionToken,
@@ -62,6 +63,7 @@ export class OrdersService {
     private readonly couponsService: CouponsService,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
+    private readonly walletsService: WalletsService,
   ) {}
 
   /**
@@ -1366,12 +1368,14 @@ export class OrdersService {
             });
 
             // Trừ lại số dư ví chờ của KOL sở hữu hoa hồng này
-            await tx.wallet.update({
-              where: { collaboratorId: comm.collaboratorId },
-              data: {
-                pendingBalance: { decrement: comm.commissionAmount },
-              },
-            });
+            if (comm.commissionAmount.greaterThan(0)) {
+              await this.walletsService.reversePendingBalance(
+                tx,
+                comm.collaboratorId,
+                comm.commissionAmount,
+                { id: comm.id, type: 'COMMISSION' },
+              );
+            }
           }
         }
 

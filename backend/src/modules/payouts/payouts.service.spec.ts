@@ -9,6 +9,8 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { WithdrawalPolicyService } from '../wallets/withdrawal-policy.service';
 import { PayoutsService } from './payouts.service';
+import { PayoutTaxService } from './payout-tax.service';
+import { FinancialLedgerService } from '../wallets/financial-ledger.service';
 
 describe('PayoutsService FR-22', () => {
   const collaboratorId = '28b2b124-12d2-47f8-881f-c3107ee71084';
@@ -43,17 +45,31 @@ describe('PayoutsService FR-22', () => {
         ),
       },
       $queryRaw: jest.fn().mockResolvedValue([]),
+      financialLedger: {
+        create: jest.fn().mockResolvedValue({ id: 'ledger-id' }),
+      },
       payoutRequest: {
-        create: jest.fn((input: { data: { amount: Prisma.Decimal } }) => {
-          persistedRequests++;
-          return Promise.resolve({
-            id: 'request-id',
-            amount: input.data.amount,
-            status: PayoutStatus.PENDING,
-            createdAt: new Date(),
-            processedAt: null,
-          });
-        }),
+        create: jest.fn(
+          (input: {
+            data: {
+              amount: Prisma.Decimal;
+              id: string;
+              taxAmount: Prisma.Decimal;
+              netAmount: Prisma.Decimal;
+            };
+          }) => {
+            persistedRequests++;
+            return Promise.resolve({
+              id: input.data.id,
+              amount: input.data.amount,
+              taxAmount: input.data.taxAmount,
+              netAmount: input.data.netAmount,
+              status: PayoutStatus.PENDING,
+              createdAt: new Date(),
+              processedAt: null,
+            });
+          },
+        ),
       },
     };
     // Unit-test transaction double: restore persisted state when callback fails.
@@ -77,8 +93,9 @@ describe('PayoutsService FR-22', () => {
     );
     const service = new PayoutsService(
       prisma as unknown as PrismaService,
-      new WalletsService(),
+      new WalletsService(new FinancialLedgerService()),
       policy,
+      new PayoutTaxService(),
     );
     return {
       service,
@@ -112,7 +129,9 @@ describe('PayoutsService FR-22', () => {
     const createInput = tx.payoutRequest.create.mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
-    expect(createInput.data.taxAmount).toBeUndefined();
+    expect(response.request.taxAmount).toBe('0.00');
+    expect(response.request.netAmount).toBe('200000.10');
+    expect(tx.financialLedger.create).toHaveBeenCalledTimes(1);
     expect(createInput.data.storeId).toBeUndefined();
   });
 

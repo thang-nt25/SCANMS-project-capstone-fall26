@@ -6,9 +6,10 @@ import { OrderWebhookNormalizerService } from './normalizers/order-webhook-norma
 import { ManualOrdersService } from './manual-orders.service';
 import { ExcelOrderImportService } from './excel-order-import.service';
 import { CouponsModule } from '../coupons/coupons.module';
+import { WalletsModule } from '../wallets/wallets.module';
 
 @Module({
-  imports: [PrismaModule, CouponsModule],
+  imports: [PrismaModule, CouponsModule, WalletsModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,

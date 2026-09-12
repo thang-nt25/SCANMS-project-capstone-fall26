@@ -9,6 +9,8 @@ import { OrdersService } from './orders.service';
 import { ConfigService } from '@nestjs/config';
 import { CouponsService } from '../coupons/coupons.service';
 import { CacheService } from '../../core/cache/cache.service';
+import { WalletsService } from '../wallets/wallets.service';
+import { FinancialLedgerService } from '../wallets/financial-ledger.service';
 
 describe('OrdersService FR-19 webhook', () => {
   const store = {
@@ -52,6 +54,7 @@ describe('OrdersService FR-19 webhook', () => {
       {} as CouponsService,
       {} as CacheService,
       new ConfigService(),
+      new WalletsService(new FinancialLedgerService()),
     );
     return { prisma, service };
   }

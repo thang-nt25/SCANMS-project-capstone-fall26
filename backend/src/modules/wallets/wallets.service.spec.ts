@@ -1,9 +1,15 @@
 import { Prisma } from '@prisma/client';
 import { WalletBalanceInvariantError, WalletsService } from './wallets.service';
 import { BadRequestException } from '@nestjs/common';
+import { FinancialLedgerService } from './financial-ledger.service';
+import type { LedgerReference } from './financial-ledger.service';
 
 describe('WalletsService', () => {
   const collaboratorId = '28b2b124-12d2-47f8-881f-c3107ee71084';
+  const reference: LedgerReference = {
+    id: 'b5d7ff87-8a59-49c8-a2c9-3d540d51d449',
+    type: 'COMMISSION',
+  };
 
   function createTransaction(pending: string, available: string) {
     let walletUpdateInput: unknown;
@@ -17,6 +23,9 @@ describe('WalletsService', () => {
     return {
       wallet,
       tx: {
+        financialLedger: {
+          create: jest.fn().mockResolvedValue({ id: 'ledger-id' }),
+        },
         wallet: {
           upsert: jest.fn().mockResolvedValue(wallet),
           findUniqueOrThrow: jest.fn().mockResolvedValue(wallet),
@@ -35,13 +44,14 @@ describe('WalletsService', () => {
   }
 
   it('moves a mature commission from pending to available under a row lock', async () => {
-    const service = new WalletsService();
+    const service = new WalletsService(new FinancialLedgerService());
     const { tx, getWalletUpdateInput } = createTransaction('500000', '100000');
 
     await service.releasePendingBalance(
       tx as unknown as Prisma.TransactionClient,
       collaboratorId,
       new Prisma.Decimal('150000'),
+      reference,
     );
 
     expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
@@ -58,7 +68,7 @@ describe('WalletsService', () => {
   });
 
   it('rejects a pending balance mismatch without updating the wallet', async () => {
-    const service = new WalletsService();
+    const service = new WalletsService(new FinancialLedgerService());
     const { tx } = createTransaction('10000', '100000');
 
     await expect(
@@ -66,19 +76,21 @@ describe('WalletsService', () => {
         tx as unknown as Prisma.TransactionClient,
         collaboratorId,
         new Prisma.Decimal('15000'),
+        reference,
       ),
     ).rejects.toBeInstanceOf(WalletBalanceInvariantError);
     expect(tx.wallet.update).not.toHaveBeenCalled();
   });
 
   it('records approved clawback debt when available funds were already used', async () => {
-    const service = new WalletsService();
+    const service = new WalletsService(new FinancialLedgerService());
     const { tx, getWalletUpdateInput } = createTransaction('0', '50000');
 
     await service.reverseAvailableBalance(
       tx as unknown as Prisma.TransactionClient,
       collaboratorId,
       new Prisma.Decimal('75000'),
+      reference,
     );
 
     const update = getWalletUpdateInput() as {
@@ -92,10 +104,13 @@ describe('WalletsService', () => {
       '500000',
       '300000.31',
     );
-    await new WalletsService().debitAvailableBalanceForWithdrawal(
+    await new WalletsService(
+      new FinancialLedgerService(),
+    ).debitAvailableBalanceForWithdrawal(
       tx as unknown as Prisma.TransactionClient,
       collaboratorId,
       new Prisma.Decimal('200000.10'),
+      reference,
     );
     const sql = tx.$queryRaw.mock.calls[0][0];
     expect(sql.sql).toContain('FOR UPDATE');
@@ -115,10 +130,13 @@ describe('WalletsService', () => {
 
   it('allows withdrawing the exact available balance without going negative', async () => {
     const { tx, getWalletUpdateInput } = createTransaction('0', '200000');
-    await new WalletsService().debitAvailableBalanceForWithdrawal(
+    await new WalletsService(
+      new FinancialLedgerService(),
+    ).debitAvailableBalanceForWithdrawal(
       tx as unknown as Prisma.TransactionClient,
       collaboratorId,
       new Prisma.Decimal('200000'),
+      reference,
     );
     const update = getWalletUpdateInput() as {
       data: { availableBalance: Prisma.Decimal };
@@ -131,10 +149,13 @@ describe('WalletsService', () => {
     async (available) => {
       const { tx } = createTransaction('1000000', available);
       await expect(
-        new WalletsService().debitAvailableBalanceForWithdrawal(
+        new WalletsService(
+          new FinancialLedgerService(),
+        ).debitAvailableBalanceForWithdrawal(
           tx as unknown as Prisma.TransactionClient,
           collaboratorId,
           new Prisma.Decimal('200000'),
+          reference,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(tx.wallet.update).not.toHaveBeenCalled();
@@ -146,10 +167,13 @@ describe('WalletsService', () => {
     async (amount) => {
       const { tx } = createTransaction('0', '500000');
       await expect(
-        new WalletsService().debitAvailableBalanceForWithdrawal(
+        new WalletsService(
+          new FinancialLedgerService(),
+        ).debitAvailableBalanceForWithdrawal(
           tx as unknown as Prisma.TransactionClient,
           collaboratorId,
           new Prisma.Decimal(amount),
+          reference,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(tx.$queryRaw).not.toHaveBeenCalled();

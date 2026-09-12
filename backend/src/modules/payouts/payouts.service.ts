@@ -12,11 +12,15 @@ import { WalletsService } from '../wallets/wallets.service';
 import { WithdrawalPolicyService } from '../wallets/withdrawal-policy.service';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { QueryWithdrawalsDto } from './dto/query-withdrawals.dto';
+import { randomUUID } from 'crypto';
+import { PayoutTaxService } from './payout-tax.service';
 
-// FR-23 owns tax/net calculations; FR-24 owns processing and approval.
+// FR-24 owns processing and approval.
 const PAYOUT_SUMMARY_SELECT = {
   id: true,
   amount: true,
+  taxAmount: true,
+  netAmount: true,
   status: true,
   createdAt: true,
   processedAt: true,
@@ -30,6 +34,7 @@ export class PayoutsService {
     private readonly prisma: PrismaService,
     private readonly walletsService: WalletsService,
     private readonly policy: WithdrawalPolicyService,
+    private readonly taxService: PayoutTaxService,
   ) {}
 
   async createWithdrawal(collaboratorId: string, dto: CreateWithdrawalDto) {
@@ -41,6 +46,7 @@ export class PayoutsService {
       throw new BadRequestException('Số tiền rút không hợp lệ');
     }
     const amount = new Prisma.Decimal(dto.amount);
+    const taxCalculation = this.taxService.calculateTax(amount);
     if (amount.lessThan(this.policy.minimumAmount)) {
       throw new BadRequestException(
         `Số tiền rút tối thiểu là ${this.policy.minimumAmount.toFixed(2)} VNĐ`,
@@ -89,29 +95,35 @@ export class PayoutsService {
           );
         }
 
+        const requestId = randomUUID();
         const wallet =
           await this.walletsService.debitAvailableBalanceForWithdrawal(
             tx,
             collaboratorId,
             amount,
+            { id: requestId, type: 'PAYOUT_REQUEST' },
           );
         const request = await tx.payoutRequest.create({
           data: {
+            id: requestId,
             collaboratorId,
             amount,
+            taxAmount: taxCalculation.taxAmount,
+            netAmount: taxCalculation.netAmount,
             status: PayoutStatus.PENDING,
             bankName: profile.bankName.trim(),
             bankAccountNumber: profile.bankAccountNumber.trim(),
             bankAccountName: profile.bankAccountName.trim(),
             // Global wallet: no unvalidated merchant/store ID from the client.
-            // Tax, ledgers and payout approval are intentionally outside FR-22.
+            // Gross is debited once. Tax is withheld from it, not debited again.
+            // Bank transfers and approval remain outside FR-23.
           },
           select: PAYOUT_SUMMARY_SELECT,
         });
 
         return {
           message: 'Tạo yêu cầu rút tiền thành công, đang chờ xử lý',
-          request: { ...request, amount: request.amount.toFixed(2) },
+          request: this.serializeRequest(request),
           availableBalance: wallet.availableBalance.toFixed(2),
         };
       });
@@ -146,13 +158,28 @@ export class PayoutsService {
       this.prisma.payoutRequest.count({ where }),
     ]);
     return {
-      requests: requests.map((request) => ({
-        ...request,
-        amount: request.amount.toFixed(2),
-      })),
+      requests: requests.map((request) => this.serializeRequest(request)),
       total,
       page: query.page,
       limit: query.limit,
+    };
+  }
+
+  private serializeRequest(
+    request: Prisma.PayoutRequestGetPayload<{
+      select: typeof PAYOUT_SUMMARY_SELECT;
+    }>,
+  ) {
+    return {
+      ...request,
+      amount: request.amount.toFixed(2),
+      taxAmount: request.taxAmount.toFixed(2),
+      netAmount: request.netAmount.toFixed(2),
+      // FR-22 requests may still have default zero tax/net snapshots. Never
+      // silently recalculate historical requests using today's policy.
+      taxCalculated:
+        request.netAmount.greaterThan(0) &&
+        request.netAmount.plus(request.taxAmount).equals(request.amount),
     };
   }
 }

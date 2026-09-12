@@ -1,5 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  Prisma,
+  TransactionType,
+  WalletBalanceBucket,
+  Wallet,
+  FinancialLedger,
+} from '@prisma/client';
+import { FinancialLedgerService } from './financial-ledger.service';
+import type {
+  LedgerReference,
+  LedgerBalanceChange,
+} from './financial-ledger.service';
 
 export class WalletBalanceInvariantError extends Error {
   constructor(message: string) {
@@ -10,11 +21,14 @@ export class WalletBalanceInvariantError extends Error {
 
 @Injectable()
 export class WalletsService {
+  constructor(private readonly ledgerService: FinancialLedgerService) {}
+
   /** The caller must create the payout request in this same transaction. */
   async debitAvailableBalanceForWithdrawal(
     tx: Prisma.TransactionClient,
     collaboratorId: string,
     amount: Prisma.Decimal,
+    reference: LedgerReference,
   ) {
     if (
       !amount.isFinite() ||
@@ -34,36 +48,44 @@ export class WalletsService {
       );
     }
 
-    return tx.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        availableBalance: wallet.availableBalance.minus(amount),
-        version: { increment: 1 },
-      },
-    });
+    return (
+      await this.applyBalanceChanges(tx, wallet, reference, [
+        this.buildChange(
+          WalletBalanceBucket.AVAILABLE,
+          TransactionType.PAYOUT_WITHDRAW,
+          wallet.availableBalance,
+          amount.negated(),
+        ),
+      ])
+    ).wallet;
   }
 
   async creditPendingBalance(
     tx: Prisma.TransactionClient,
     collaboratorId: string,
     amount: Prisma.Decimal,
+    reference: LedgerReference,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
 
-    return tx.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        pendingBalance: wallet.pendingBalance.plus(amount),
-        version: { increment: 1 },
-      },
-    });
+    return (
+      await this.applyBalanceChanges(tx, wallet, reference, [
+        this.buildChange(
+          WalletBalanceBucket.PENDING,
+          TransactionType.COMMISSION_PENDING,
+          wallet.pendingBalance,
+          amount,
+        ),
+      ])
+    ).wallet;
   }
 
   async releasePendingBalance(
     tx: Prisma.TransactionClient,
     collaboratorId: string,
     amount: Prisma.Decimal,
+    reference: LedgerReference,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
@@ -73,20 +95,29 @@ export class WalletsService {
       );
     }
 
-    return tx.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        pendingBalance: wallet.pendingBalance.minus(amount),
-        availableBalance: wallet.availableBalance.plus(amount),
-        version: { increment: 1 },
-      },
-    });
+    return (
+      await this.applyBalanceChanges(tx, wallet, reference, [
+        this.buildChange(
+          WalletBalanceBucket.PENDING,
+          TransactionType.COMMISSION_APPROVED,
+          wallet.pendingBalance,
+          amount.negated(),
+        ),
+        this.buildChange(
+          WalletBalanceBucket.AVAILABLE,
+          TransactionType.COMMISSION_APPROVED,
+          wallet.availableBalance,
+          amount,
+        ),
+      ])
+    ).wallet;
   }
 
   async reversePendingBalance(
     tx: Prisma.TransactionClient,
     collaboratorId: string,
     amount: Prisma.Decimal,
+    reference: LedgerReference,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
@@ -96,33 +127,97 @@ export class WalletsService {
       );
     }
 
-    return tx.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        pendingBalance: wallet.pendingBalance.minus(amount),
-        version: { increment: 1 },
-      },
-    });
+    return (
+      await this.applyBalanceChanges(tx, wallet, reference, [
+        this.buildChange(
+          WalletBalanceBucket.PENDING,
+          TransactionType.REVERSAL,
+          wallet.pendingBalance,
+          amount.negated(),
+        ),
+      ])
+    ).wallet;
   }
 
   async reverseAvailableBalance(
     tx: Prisma.TransactionClient,
     collaboratorId: string,
     amount: Prisma.Decimal,
+    reference: LedgerReference,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
 
-    return tx.wallet.update({
+    // Keep FR-21's recoverable clawback debt behavior; withdrawals remain blocked.
+    return (
+      await this.applyBalanceChanges(tx, wallet, reference, [
+        this.buildChange(
+          WalletBalanceBucket.AVAILABLE,
+          TransactionType.REVERSAL,
+          wallet.availableBalance,
+          amount.negated(),
+        ),
+      ])
+    ).wallet;
+  }
+
+  async creditAvailableBalance(
+    tx: Prisma.TransactionClient,
+    collaboratorId: string,
+    amount: Prisma.Decimal,
+    reference: LedgerReference,
+  ) {
+    this.assertPositiveAmount(amount);
+    const wallet = await this.lockWallet(tx, collaboratorId);
+    const result = await this.applyBalanceChanges(tx, wallet, reference, [
+      this.buildChange(
+        WalletBalanceBucket.AVAILABLE,
+        TransactionType.COMMISSION_APPROVED,
+        wallet.availableBalance,
+        amount,
+      ),
+    ]);
+    return { wallet: result.wallet, ledger: result.entries[0] };
+  }
+
+  private buildChange(
+    bucket: WalletBalanceBucket,
+    transactionType: TransactionType,
+    balanceBefore: Prisma.Decimal,
+    amount: Prisma.Decimal,
+  ): LedgerBalanceChange {
+    return {
+      bucket,
+      transactionType,
+      balanceBefore,
+      amount,
+      balanceAfter: balanceBefore.plus(amount),
+    };
+  }
+
+  private async applyBalanceChanges(
+    tx: Prisma.TransactionClient,
+    wallet: Wallet,
+    reference: LedgerReference,
+    changes: LedgerBalanceChange[],
+  ) {
+    const data: Prisma.WalletUpdateInput = { version: { increment: 1 } };
+    for (const change of changes) {
+      if (change.bucket === WalletBalanceBucket.PENDING)
+        data.pendingBalance = change.balanceAfter;
+      else data.availableBalance = change.balanceAfter;
+    }
+    const updatedWallet = await tx.wallet.update({
       where: { id: wallet.id },
-      data: {
-        // An approved commission can be clawed back after other payouts.
-        // A negative available balance represents recoverable debt and blocks
-        // future withdrawals until subsequent earnings offset it in FR-22.
-        availableBalance: wallet.availableBalance.minus(amount),
-        version: { increment: 1 },
-      },
+      data,
     });
+    const entries: FinancialLedger[] = [];
+    for (const change of changes) {
+      entries.push(
+        await this.ledgerService.appendEntry(tx, wallet.id, reference, change),
+      );
+    }
+    return { wallet: updatedWallet, entries };
   }
 
   private async lockWallet(
@@ -147,7 +242,11 @@ export class WalletsService {
   }
 
   private assertPositiveAmount(amount: Prisma.Decimal): void {
-    if (!amount.isPositive()) {
+    if (
+      !amount.isFinite() ||
+      amount.lessThanOrEqualTo(0) ||
+      amount.decimalPlaces() > 2
+    ) {
       throw new WalletBalanceInvariantError(
         'Số tiền thay đổi số dư ví phải lớn hơn 0',
       );
