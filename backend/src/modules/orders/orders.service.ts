@@ -7,6 +7,7 @@ import {
   HttpException,
   HttpStatus,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
@@ -21,29 +22,481 @@ import {
   AttributionMethod,
   CommissionStatus,
   CouponStatus,
-  TransactionType,
   CouponRedemptionStatus,
   UserRole,
   ReferralLinkStatus,
   StoreCollaboratorStatus,
+  OrderSourcePlatform,
   Prisma,
 } from '@prisma/client';
+import {
+  ExternalOrderPlatform,
+  OrderWebhookDto,
+} from './dto/order-webhook.dto';
+import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
+import { NormalizedExternalOrder } from './normalizers/external-order-normalizer.interface';
+
 import { ConfigService } from '@nestjs/config';
+import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
+import {
+  normalizeCustomerPhone,
+  validateOrderMoney,
+  MAX_ORDER_ITEMS,
+} from './order-input.utils';
+import {
+  createReviewToken,
+  verifyReviewToken,
+  verifyWebhookSecret,
+} from './order-security.utils';
 import {
   verifyMultiShopAttributionToken,
   verifyOpaqueVisitorToken,
   generateDeviceFingerprint,
 } from '../referral-links/utils/short-code.generator';
 
+const WEBHOOK_PLATFORM_MAP: Record<ExternalOrderPlatform, OrderSourcePlatform> =
+  {
+    [ExternalOrderPlatform.SHOPEE]: OrderSourcePlatform.SHOPEE,
+    [ExternalOrderPlatform.TIKTOK]: OrderSourcePlatform.TIKTOK,
+    [ExternalOrderPlatform.SHOPIFY]: OrderSourcePlatform.SHOPIFY,
+  };
+
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
+    private readonly webhookNormalizer: OrderWebhookNormalizerService,
     private readonly couponsService: CouponsService,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
+    private readonly walletsService: WalletsService,
   ) {}
+
+  /**
+   * FR-19: Tiếp nhận đơn từ sàn ngoài theo cơ chế idempotent.
+   * Việc tính hoa hồng và cập nhật ví thuộc FR-21, không được thực hiện tại đây.
+   */
+  async receiveWebhook(dto: OrderWebhookDto, secret?: string) {
+    const store = await this.findWebhookStore(dto);
+    verifyWebhookSecret(this.configService, store.id, dto.source, secret);
+    let normalizedOrder: NormalizedExternalOrder;
+
+    try {
+      normalizedOrder = this.webhookNormalizer.normalize(
+        dto.source,
+        dto.payload,
+      );
+      this.validateNormalizedOrder(normalizedOrder);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Rejected invalid order webhook: source=${dto.source}, reason=${this.getErrorMessage(error)}`,
+      );
+      throw error;
+    }
+
+    const sourcePlatform = WEBHOOK_PLATFORM_MAP[normalizedOrder.platform];
+    const logContext = `source=${dto.source}, externalOrderId=${normalizedOrder.externalOrderId}, storeId=${store.id}`;
+
+    this.logger.log(`Received order webhook: ${logContext}`);
+
+    const existingOrder = await this.findWebhookOrder(
+      store.id,
+      sourcePlatform,
+      normalizedOrder.externalOrderId,
+    );
+    if (existingOrder) {
+      // Creation is idempotent. Status synchronization requires a versioned event contract.
+      this.logger.log(`Ignored duplicate order webhook: ${logContext}`);
+      return this.buildWebhookResponse(
+        await this.syncWebhookStatus(
+          existingOrder,
+          normalizedOrder,
+          dto.payload,
+        ),
+        false,
+      );
+    }
+
+    const resolvedItems = await this.resolveWebhookProducts(
+      store.id,
+      normalizedOrder,
+    );
+    const calculatedSubtotal = resolvedItems.reduce(
+      (total, item) =>
+        total.plus(new Prisma.Decimal(item.unitPrice).times(item.quantity)),
+      new Prisma.Decimal(0),
+    );
+    const subtotalAmount = new Prisma.Decimal(
+      normalizedOrder.subtotalAmount ?? calculatedSubtotal,
+    );
+    const finalAmount =
+      normalizedOrder.totalAmount ??
+      Prisma.Decimal.max(
+        0,
+        subtotalAmount.minus(normalizedOrder.discountAmount ?? 0),
+      )
+        .plus(normalizedOrder.shippingAmount ?? 0)
+        .plus(normalizedOrder.taxAmount ?? 0)
+        .toNumber();
+    const discountAmount =
+      normalizedOrder.discountAmount ??
+      Prisma.Decimal.max(
+        0,
+        subtotalAmount
+          .plus(normalizedOrder.shippingAmount ?? 0)
+          .plus(normalizedOrder.taxAmount ?? 0)
+          .minus(finalAmount),
+      ).toNumber();
+    validateOrderMoney(subtotalAmount.toNumber(), 'Tổng tiền hàng');
+    validateOrderMoney(finalAmount, 'Tổng thanh toán');
+    if (
+      subtotalAmount.lessThan(discountAmount) ||
+      !subtotalAmount
+        .minus(discountAmount)
+        .plus(normalizedOrder.shippingAmount ?? 0)
+        .plus(normalizedOrder.taxAmount ?? 0)
+        .toDecimalPlaces(2)
+        .equals(finalAmount)
+    )
+      throw new BadRequestException(
+        'Tổng thanh toán không khớp tiền hàng, giảm giá, phí giao hàng và thuế',
+      );
+
+    try {
+      const createdOrder = await this.prisma.$transaction((tx) =>
+        tx.order.create({
+          data: {
+            storeId: store.id,
+            sourcePlatform,
+            externalOrderSn: normalizedOrder.externalOrderId,
+            rawPayload: dto.payload as Prisma.InputJsonValue,
+            sourceUpdatedAt: normalizedOrder.eventAt,
+            customerName: normalizedOrder.customerName,
+            customerPhone: normalizedOrder.customerPhone
+              ? normalizeCustomerPhone(normalizedOrder.customerPhone)
+              : undefined,
+            shippingAddress: normalizedOrder.shippingAddress,
+            subtotalAmount,
+            discountAmount,
+            finalAmount,
+            status: normalizedOrder.status,
+            completedAt: normalizedOrder.receivedAt,
+            orderItems: {
+              create: resolvedItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                // FR-21 will calculate and persist commission values later.
+                appliedCommissionRate: 0,
+                calculatedCommissionAmount: 0,
+              })),
+            },
+          },
+          select: this.webhookOrderSelect,
+        }),
+      );
+
+      this.logger.log(`Created order from webhook: ${logContext}`);
+      return this.buildWebhookResponse(createdOrder, true);
+    } catch (error: unknown) {
+      if (this.isUniqueConstraintError(error)) {
+        const concurrentOrder = await this.findWebhookOrder(
+          store.id,
+          sourcePlatform,
+          normalizedOrder.externalOrderId,
+        );
+        if (concurrentOrder) {
+          this.logger.log(
+            `Ignored concurrent duplicate order webhook: ${logContext}`,
+          );
+          return this.buildWebhookResponse(
+            await this.syncWebhookStatus(
+              concurrentOrder,
+              normalizedOrder,
+              dto.payload,
+            ),
+            false,
+          );
+        }
+      }
+
+      this.logger.error(
+        `Failed to persist order webhook: ${logContext}, reason=${this.getErrorMessage(error)}`,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Không thể tiếp nhận đơn hàng từ webhook',
+      );
+    }
+  }
+
+  private readonly webhookOrderSelect = {
+    id: true,
+    storeId: true,
+    sourcePlatform: true,
+    sourceUpdatedAt: true,
+    completedAt: true,
+    externalOrderSn: true,
+    customerName: true,
+    customerPhone: true,
+    shippingAddress: true,
+    subtotalAmount: true,
+    discountAmount: true,
+    finalAmount: true,
+    status: true,
+    createdAt: true,
+    updatedAt: true,
+    orderItems: {
+      select: {
+        id: true,
+        quantity: true,
+        unitPrice: true,
+        product: {
+          select: {
+            id: true,
+            sku: true,
+            title: true,
+          },
+        },
+      },
+    },
+  } satisfies Prisma.OrderSelect;
+
+  private async findWebhookStore(dto: OrderWebhookDto) {
+    if (!dto.storeId && !dto.storeSlug?.trim()) {
+      throw new BadRequestException(
+        'Webhook phải cung cấp storeId hoặc storeSlug',
+      );
+    }
+
+    const store = dto.storeId
+      ? await this.prisma.store.findUnique({ where: { id: dto.storeId } })
+      : await this.prisma.store.findUnique({
+          where: { slug: dto.storeSlug?.trim() },
+        });
+
+    if (!store || store.isDeleted) {
+      throw new BadRequestException('Không tìm thấy cửa hàng nhận webhook');
+    }
+    return store;
+  }
+
+  private findWebhookOrder(
+    storeId: string,
+    sourcePlatform: OrderSourcePlatform,
+    externalOrderSn: string,
+  ) {
+    return this.prisma.order.findFirst({
+      where: { storeId, sourcePlatform, externalOrderSn },
+      select: this.webhookOrderSelect,
+    });
+  }
+
+  private async syncWebhookStatus(
+    existing: NonNullable<
+      Awaited<ReturnType<OrdersService['findWebhookOrder']>>
+    >,
+    normalized: NormalizedExternalOrder,
+    payload: Record<string, unknown>,
+  ) {
+    if (!normalized.eventAt) return existing;
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM orders WHERE id = ${existing.id}::uuid FOR UPDATE`,
+      );
+      const current = await tx.order.findUniqueOrThrow({
+        where: { id: existing.id },
+        select: this.webhookOrderSelect,
+      });
+      if (
+        current.sourceUpdatedAt &&
+        current.sourceUpdatedAt >= normalized.eventAt!
+      )
+        return current;
+      const transitions: Record<OrderStatus, OrderStatus[]> = {
+        PENDING: [
+          OrderStatus.PENDING,
+          OrderStatus.SHIPPING,
+          OrderStatus.DELIVERED,
+          OrderStatus.COMPLETED,
+          OrderStatus.CANCELLED,
+          OrderStatus.RETURNED,
+        ],
+        SHIPPING: [
+          OrderStatus.SHIPPING,
+          OrderStatus.DELIVERED,
+          OrderStatus.COMPLETED,
+          OrderStatus.CANCELLED,
+          OrderStatus.RETURNED,
+        ],
+        DELIVERED: [
+          OrderStatus.DELIVERED,
+          OrderStatus.COMPLETED,
+          OrderStatus.RETURNED,
+        ],
+        COMPLETED: [OrderStatus.COMPLETED, OrderStatus.RETURNED],
+        CANCELLED: [OrderStatus.CANCELLED],
+        RETURNED: [OrderStatus.RETURNED],
+      };
+      if (!transitions[current.status].includes(normalized.status))
+        throw new ConflictException(
+          'Sự kiện không được phép lùi trạng thái đơn hàng',
+        );
+      // Refund amount changes are reconciled through the refund transaction, never silently overwritten.
+      return tx.order.update({
+        where: { id: current.id },
+        data: {
+          status: normalized.status,
+          rawPayload: payload as Prisma.InputJsonValue,
+          sourceUpdatedAt: normalized.eventAt,
+          ...(normalized.receivedAt && !current.completedAt
+            ? { completedAt: normalized.receivedAt }
+            : {}),
+        },
+        select: this.webhookOrderSelect,
+      });
+    });
+  }
+
+  private async resolveWebhookProducts(
+    storeId: string,
+    order: NormalizedExternalOrder,
+  ) {
+    const productIds = order.items
+      .map((item) => item.productId)
+      .filter((id): id is string => Boolean(id));
+    const skus = order.items
+      .map((item) => item.sku)
+      .filter((sku): sku is string => Boolean(sku));
+
+    if (order.items.some((item) => !item.productId && !item.sku)) {
+      throw new BadRequestException(
+        'Mỗi sản phẩm webhook phải có SKU hoặc internal_product_id',
+      );
+    }
+
+    const skuFilters = skus.map((sku) => ({
+      sku: { equals: sku, mode: 'insensitive' as const },
+    }));
+    const products = await this.prisma.product.findMany({
+      where: {
+        storeId,
+        isDeleted: false,
+        OR: [
+          ...(productIds.length > 0 ? [{ id: { in: productIds } }] : []),
+          ...skuFilters,
+        ],
+      },
+      select: { id: true, sku: true, title: true },
+    });
+    const productsById = new Map(
+      products.map((product) => [product.id, product]),
+    );
+    const productsBySku = new Map(
+      products.map((product) => [product.sku.toUpperCase(), product]),
+    );
+
+    const unresolvedItems: string[] = [];
+    const resolvedItems = order.items.map((item) => {
+      const product =
+        (item.productId ? productsById.get(item.productId) : undefined) ??
+        (item.sku ? productsBySku.get(item.sku.toUpperCase()) : undefined);
+
+      if (!product) {
+        unresolvedItems.push(item.sku ?? item.productId ?? item.name);
+      }
+
+      return {
+        productId: product?.id ?? '',
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      };
+    });
+
+    if (unresolvedItems.length > 0) {
+      throw new BadRequestException(
+        `Không tìm thấy sản phẩm trong cửa hàng theo SKU/ID: ${unresolvedItems.join(', ')}`,
+      );
+    }
+
+    return resolvedItems;
+  }
+
+  private validateNormalizedOrder(order: NormalizedExternalOrder): void {
+    if (order.currency && order.currency.toUpperCase() !== 'VND')
+      throw new BadRequestException('Hệ thống hiện chỉ tiếp nhận đơn bằng VND');
+    if (order.items.length > MAX_ORDER_ITEMS)
+      throw new BadRequestException('Đơn hàng có quá nhiều dòng sản phẩm');
+    order.items.forEach((item) =>
+      validateOrderMoney(item.unitPrice, 'Đơn giá'),
+    );
+    if (order.externalOrderId.length > 100) {
+      throw new BadRequestException(
+        'Mã đơn hàng từ sàn không được vượt quá 100 ký tự',
+      );
+    }
+    if (order.customerName && order.customerName.length > 150) {
+      throw new BadRequestException(
+        'Tên khách hàng không được vượt quá 150 ký tự',
+      );
+    }
+    if (order.customerPhone && order.customerPhone.length > 20) {
+      throw new BadRequestException(
+        'Số điện thoại khách hàng không được vượt quá 20 ký tự',
+      );
+    }
+
+    const amounts = [
+      order.subtotalAmount,
+      order.discountAmount,
+      order.totalAmount,
+      order.shippingAmount,
+      order.taxAmount,
+    ];
+    if (
+      amounts.some(
+        (amount) =>
+          amount !== undefined && (!Number.isFinite(amount) || amount < 0),
+      )
+    ) {
+      throw new BadRequestException(
+        'Các giá trị tiền trong payload không hợp lệ',
+      );
+    }
+    amounts.forEach((amount) => {
+      if (amount !== undefined) validateOrderMoney(amount, 'Số tiền');
+    });
+  }
+
+  private buildWebhookResponse(
+    order: Awaited<ReturnType<OrdersService['findWebhookOrder']>>,
+    created: boolean,
+  ) {
+    return {
+      message: created
+        ? 'Tiếp nhận đơn hàng từ webhook thành công'
+        : 'Đơn hàng đã tồn tại, không tạo bản ghi trùng',
+      created,
+      idempotent: !created,
+      order,
+    };
+  }
+
+  private isUniqueConstraintError(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    );
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+  }
 
   /**
    * Tạo đơn hàng mới (Dành cho Guest Storefront hoặc giỏ hàng)
@@ -108,20 +561,17 @@ export class OrdersService {
     }
 
     // 1. Xác định Store
-    let store: any = null;
-    if (dto.storeId) {
-      store = await this.prisma.store.findUnique({
-        where: { id: dto.storeId },
-      });
-    } else if (dto.storeSlug) {
-      store = await this.prisma.store.findUnique({
-        where: { slug: dto.storeSlug },
-      });
-    } else {
-      store = await this.prisma.store.findFirst({
-        where: { isDeleted: false },
-      });
-    }
+    const store = dto.storeId
+      ? await this.prisma.store.findUnique({
+          where: { id: dto.storeId },
+        })
+      : dto.storeSlug
+        ? await this.prisma.store.findUnique({
+            where: { slug: dto.storeSlug },
+          })
+        : await this.prisma.store.findFirst({
+            where: { isDeleted: false },
+          });
 
     if (!store) {
       throw new NotFoundException('Không tìm thấy gian hàng tương ứng');
@@ -172,13 +622,17 @@ export class OrdersService {
     }
 
     // 3. Pre-validate Coupon nếu client có gửi mã (để phản hồi lỗi sớm trước khi mở transaction)
-    let couponValidationResult: any = null;
+    let couponValidationResult: Awaited<
+      ReturnType<CouponsService['validateCoupon']>
+    > | null = null;
     if (dto.couponCode?.trim()) {
       couponValidationResult = await this.couponsService.validateCoupon(
         {
           code: dto.couponCode.trim(),
           storeId: store.id,
-          customerPhone: dto.customerPhone,
+          customerPhone: dto.customerPhone
+            ? normalizeCustomerPhone(dto.customerPhone)
+            : undefined,
           items: dto.items,
           hasProductDiscount:
             dto.hasProductDiscount || anyProductHasDirectDiscount,
@@ -196,7 +650,7 @@ export class OrdersService {
       10000 + Math.random() * 90000,
     )}`;
 
-    // 4. Thực thi Toàn bộ Phân xử Attribution, Khóa Coupon và Phân bổ Hoa hồng TRONG TRANSACTION (Issue 6 & 7)
+    // Save attribution and coupon snapshots atomically; FR-21 creates commissions after delivery.
     const createdOrder = await this.prisma.$transaction(async (tx) => {
       let shopFundedAmount = 0;
       let platformFundedAmount = 0;
@@ -402,8 +856,6 @@ export class OrdersService {
 
         // Tính phân bổ tỷ lệ đồng tài trợ
         const shopRate = Number(lockedCoupon.shopFundingRate || 100) / 100;
-        const platformRate =
-          Number(lockedCoupon.platformFundingRate || 0) / 100;
         shopFundedAmount = Math.round(txDiscount * shopRate);
         platformFundedAmount = txDiscount - shopFundedAmount;
 
@@ -751,7 +1203,6 @@ export class OrdersService {
           ? (subtotalAmount - appliedDiscountAmount) / subtotalAmount
           : 1;
 
-      let finalCommissionAmountToUse = 0;
       const finalOrderItemsToSave: Array<{
         productId: string;
         quantity: number;
@@ -774,7 +1225,6 @@ export class OrdersService {
         const calculatedCommission =
           netItemSubtotal * (finalCommissionRate / 100);
 
-        finalCommissionAmountToUse += calculatedCommission;
         finalOrderItemsToSave.push({
           productId: prod.id,
           quantity,
@@ -833,7 +1283,9 @@ export class OrdersService {
           originalAttributionMethod,
           originalCollaboratorId,
           customerName: dto.customerName,
-          customerPhone: dto.customerPhone,
+          customerPhone: dto.customerPhone
+            ? normalizeCustomerPhone(dto.customerPhone)
+            : undefined,
           shippingAddress: dto.shippingAddress,
           subtotalAmount,
           discountAmount: appliedDiscountAmount,
@@ -846,6 +1298,7 @@ export class OrdersService {
               unitPrice: item.unitPrice,
               appliedCommissionRate: item.appliedCommissionRate,
               calculatedCommissionAmount: item.calculatedCommissionAmount,
+              commissionSnapshotAt: new Date(),
             })),
           },
         },
@@ -905,39 +1358,12 @@ export class OrdersService {
         });
       }
 
-      // 6.4 Nếu có KOL được hưởng hoa hồng -> Tạo bản ghi hoa hồng và cộng vào ví chờ
-      if (attributedCollaboratorId && finalCommissionAmountToUse > 0) {
-        await tx.commission.create({
-          data: {
-            collaboratorId: attributedCollaboratorId,
-            orderId: order.id,
-            commissionAmount: new Prisma.Decimal(finalCommissionAmountToUse),
-            status: CommissionStatus.PENDING,
-          },
+      // FR-21 owns commission creation and wallet credits after delivery.
+      if (referralLinkId) {
+        await tx.referralLink.update({
+          where: { id: referralLinkId },
+          data: { totalOrders: { increment: 1 } },
         });
-
-        // Tăng pendingBalance của ví KOL
-        await tx.wallet.upsert({
-          where: { collaboratorId: attributedCollaboratorId },
-          create: {
-            collaboratorId: attributedCollaboratorId,
-            pendingBalance: new Prisma.Decimal(finalCommissionAmountToUse),
-            availableBalance: new Prisma.Decimal(0),
-          },
-          update: {
-            pendingBalance: { increment: finalCommissionAmountToUse },
-          },
-        });
-
-        // Tăng bộ đếm đơn hàng cho link tiếp thị (nếu có)
-        if (referralLinkId) {
-          await tx.referralLink.update({
-            where: { id: referralLinkId },
-            data: {
-              totalOrders: { increment: 1 },
-            },
-          });
-        }
       }
 
       return order;
@@ -946,7 +1372,7 @@ export class OrdersService {
     return {
       message: 'Đặt hàng thành công!',
       order: createdOrder,
-      cancellationToken: (createdOrder as any).cancellationToken || undefined,
+      cancellationToken: createdOrder.cancellationToken || undefined,
     };
   }
 
@@ -1130,12 +1556,15 @@ export class OrdersService {
             });
 
             // Trừ lại số dư ví chờ của KOL sở hữu hoa hồng này
-            await tx.wallet.update({
-              where: { collaboratorId: comm.collaboratorId },
-              data: {
-                pendingBalance: { decrement: comm.commissionAmount },
-              },
-            });
+            if (comm.commissionAmount.greaterThan(0)) {
+              await this.walletsService.reversePendingBalance(
+                tx,
+                comm.collaboratorId,
+                comm.commissionAmount,
+                { id: comm.id, type: 'COMMISSION' },
+                comm.storeWalletTracked ? order.storeId : undefined,
+              );
+            }
           }
         }
 
@@ -1181,15 +1610,16 @@ export class OrdersService {
       );
     }
 
-    const whereConditions: any = {};
+    const whereConditions: Prisma.OrderWhereInput = {};
     if (phone?.trim()) {
+      const canonical = normalizeCustomerPhone(phone);
       whereConditions.customerPhone = {
-        contains: phone.trim(),
+        in: [canonical, `+84${canonical.slice(1)}`],
       };
     }
     if (orderSn?.trim()) {
       whereConditions.externalOrderSn = {
-        contains: orderSn.trim(),
+        equals: orderSn.trim(),
         mode: 'insensitive',
       };
     }
@@ -1197,6 +1627,7 @@ export class OrdersService {
     const orders = await this.prisma.order.findMany({
       where: whereConditions,
       orderBy: { createdAt: 'desc' },
+      take: 50,
       include: {
         orderItems: {
           include: {
@@ -1271,9 +1702,19 @@ export class OrdersService {
       return {
         id: order.id,
         externalOrderSn: order.externalOrderSn,
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        shippingAddress: order.shippingAddress,
+        customerName: phone && orderSn ? order.customerName : 'Khách hàng',
+        customerPhone:
+          phone && orderSn
+            ? order.customerPhone
+            : order.customerPhone?.replace(/.(?=.{3})/g, '*'),
+        shippingAddress:
+          phone && orderSn
+            ? order.shippingAddress
+            : 'Xác minh mã đơn và SĐT để xem địa chỉ',
+        reviewToken:
+          phone && orderSn
+            ? createReviewToken(this.configService, order.id)
+            : undefined,
         subtotalAmount: Number(order.subtotalAmount),
         discountAmount: Number(order.discountAmount),
         finalAmount: Number(order.finalAmount),
@@ -1295,7 +1736,16 @@ export class OrdersService {
           unitPrice: Number(item.unitPrice),
           totalPrice: Number(item.unitPrice) * item.quantity,
         })),
-        reviews: order.productReviews,
+        reviews: order.productReviews.map((review) => ({
+          id: review.id,
+          productId: review.productId,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+          customerName: 'Khách mua hàng',
+          images: review.images,
+          video: review.video,
+        })),
       };
     });
 
@@ -1309,6 +1759,18 @@ export class OrdersService {
    * FR-18: Gửi đánh giá 1-5 sao và nhận xét sau khi nhận hàng thành công
    */
   async addOrderReview(orderId: string, dto: CreateOrderReviewDto) {
+    const comment = dto.comment.trim();
+    if (
+      comment.length < 10 ||
+      comment.length > 1000 ||
+      /([^\s])\1{14,}/u.test(comment) ||
+      /(?:^|\s)(?:fuck|shit|địt|đụ mẹ)(?:\s|[.!?,]|$)/iu.test(comment) ||
+      (comment.match(/https?:\/\//gi)?.length ?? 0) >= 3
+    )
+      throw new BadRequestException(
+        'Nhận xét cần 10–1000 ký tự, lịch sự và không spam',
+      );
+    verifyReviewToken(this.configService, orderId, dto.reviewToken ?? '');
     // 1. Kiểm tra đơn hàng tồn tại
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -1356,22 +1818,59 @@ export class OrdersService {
     }
 
     // 5. Lưu đánh giá vào bảng product_reviews
-    const review = await this.prisma.productReview.create({
-      data: {
-        orderId: order.id,
-        productId: dto.productId,
-        customerName:
-          dto.customerName || order.customerName || 'Khách mua hàng',
-        rating: dto.rating,
-        comment: dto.comment,
-        reviewImageUrl: dto.reviewImageUrl || null,
-        isApproved: true,
-      },
+    const review = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`,
+      );
+      const freshOrder = await tx.order.findUnique({ where: { id: orderId } });
+      if (
+        !freshOrder ||
+        ![OrderStatus.DELIVERED, OrderStatus.COMPLETED].includes(
+          freshOrder.status as 'DELIVERED' | 'COMPLETED',
+        )
+      )
+        throw new BadRequestException(
+          'Đơn hàng không còn đủ điều kiện đánh giá',
+        );
+      if (
+        await tx.productReview.findFirst({
+          where: { orderId, productId: dto.productId },
+        })
+      )
+        throw new ConflictException('Sản phẩm đã được đánh giá trong đơn này');
+      return tx.productReview.create({
+        data: {
+          orderId: order.id,
+          productId: dto.productId,
+          customerName:
+            dto.customerName || order.customerName || 'Khách mua hàng',
+          rating: dto.rating,
+          comment: dto.comment.trim(),
+          reviewImageUrl: dto.images?.[0] ?? dto.reviewImageUrl ?? null,
+          images:
+            dto.images ?? (dto.reviewImageUrl ? [dto.reviewImageUrl] : []),
+          video: dto.video ?? null,
+          isApproved: true,
+        },
+      });
     });
 
     return {
       message: 'Cảm ơn bạn đã gửi đánh giá sản phẩm thành công!',
       review,
     };
+  }
+
+  async checkPublicOrderRateLimit(ip: string): Promise<void> {
+    const result = await this.cacheService.checkRateLimit(
+      `orders:public:${ip}`,
+      30,
+      60,
+    );
+    if (!result.allowed)
+      throw new HttpException(
+        'Bạn tra cứu quá nhanh, vui lòng thử lại sau',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
   }
 }

@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class TrackOrderQueryDto {
@@ -8,6 +8,8 @@ export class TrackOrderQueryDto {
   })
   @IsOptional()
   @IsString()
+  @MinLength(10)
+  @MaxLength(20)
   phone?: string;
 
   @ApiPropertyOptional({
@@ -16,5 +18,7 @@ export class TrackOrderQueryDto {
   })
   @IsOptional()
   @IsString()
+  @MinLength(6)
+  @MaxLength(100)
   orderSn?: string;
 }

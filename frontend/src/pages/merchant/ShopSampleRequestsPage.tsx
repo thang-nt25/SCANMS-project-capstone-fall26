@@ -412,7 +412,7 @@ export default function ShopSampleRequestsPage() {
                           <button
                             id={`btn-approve-${req.id}`}
                             type="button"
-                            className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-extrabold text-xs transition cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-[#FBF5EB] text-[#B88E4F] hover:bg-[#F3EFE6] border border-[#EEDFC6] font-extrabold text-xs transition cursor-pointer"
                             onClick={() => handleApprove(req.id)}
                             disabled={!!actionLoading}
                             title="Duyệt"

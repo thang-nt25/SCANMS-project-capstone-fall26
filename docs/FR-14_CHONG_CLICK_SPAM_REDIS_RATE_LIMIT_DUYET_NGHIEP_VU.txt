@@ -1,0 +1,417 @@
+ĐẶC TẢ NGHIỆP VỤ ĐỂ DUYỆT
+FR-14 — CHỐNG CLICK SPAM QUA REDIS RATE LIMIT
+
+Yêu cầu gốc:
+Giới hạn tối đa 10 clicks/giây/IP bằng Redis In-Memory.
+
+HƯỚNG DẪN DUYỆT CHO TỪNG MỤC
+[ ] Có — giữ nguyên nội dung đề xuất.
+[ ] Sửa mới — thay nội dung cũ bằng nội dung bạn ghi.
+[ ] Không — bỏ mục khỏi FR-14.
+
+Chỉ chọn một phương án. Nếu chọn Sửa mới, bắt buộc ghi nội dung thay thế.
+
+======================================================================
+1. MỤC TIÊU
+======================================================================
+Ngăn tool cày click ảo, spam referral link, chiếm tài nguyên hoặc ghi đè attribution;
+không làm gián đoạn khách thật truy cập trang sản phẩm.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+2. PHẠM VI
+======================================================================
+Áp dụng cho endpoint redirect công khai /r/{shortCode}, bao gồm link FR-10 và QR
+FR-11. FR-14 quyết định click có được ghi nhận hay bị bỏ qua; không thay thế hệ thống
+AI Fraud, chống gian lận đơn hàng hoặc tính hoa hồng.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+3. REDIS IN-MEMORY LÀ GÌ?
+======================================================================
+Redis là kho dữ liệu tốc độ cao chạy trong bộ nhớ và dùng chung giữa mọi backend.
+Không hiểu “In-Memory” là Map/RAM riêng trong từng tiến trình Node.js. Map cục bộ mất
+dữ liệu khi restart và không đồng bộ khi chạy nhiều instance.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+4. CHỦ THỂ BỊ GIỚI HẠN
+======================================================================
+Mỗi địa chỉ IP đã chuẩn hóa là một chủ thể rate limit. Các shortCode, KOL, Shop và
+phương thức LINK/QR từ cùng IP dùng chung hạn mức nền tảng để không thể đổi link né hạn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+5. NGƯỠNG CỐT LÕI
+======================================================================
+Cho phép tối đa 10 request redirect/giây/IP. Request thứ 11 trong cửa sổ một giây bị
+đánh dấu CLICK_RATE_LIMITED và không được công nhận là click hợp lệ.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+6. NGƯỠNG BỔ SUNG THEO PHÚT
+======================================================================
+Đề xuất thêm tối đa 60 request/phút/IP để chặn công cụ gửi đều dưới 10 click/giây.
+Request phải vượt qua cả giới hạn giây và phút mới được xét attribution.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+7. THUẬT TOÁN RATE LIMIT
+======================================================================
+Dùng Redis Sliding Window hoặc thuật toán tương đương. Kiểm tra và tăng bộ đếm phải
+nguyên tử bằng Lua script/transaction để request đồng thời không cùng lọt qua ngưỡng.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+8. XÁC ĐỊNH IP THẬT
+======================================================================
+Chỉ tin X-Forwarded-For hoặc CF-Connecting-IP khi request qua reverse proxy/CDN đã
+cấu hình tin cậy. Request trực tiếp dùng địa chỉ socket. Chuẩn hóa IPv4, IPv6 và
+IPv4-mapped IPv6 trước khi rate limit.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+9. CHỐNG GIẢ MẠO IP
+======================================================================
+Client không được truyền IP quyết định qua query/body/header tùy ý. Trust proxy phải
+giới hạn đúng proxy/hop, tránh kẻ xấu tự đổi X-Forwarded-For để né giới hạn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+10. BẢO VỆ DỮ LIỆU IP
+======================================================================
+Dùng HMAC của IP chuẩn hóa với secret phía server làm thành phần khóa Redis/log dài
+hạn. Không trả IP, ipHash hoặc secret về giao diện KOL/Shop.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+11. KHÓA REDIS VÀ TTL
+======================================================================
+Khóa có namespace/version, ví dụ rl:v1:click:sec:{ipHash} và
+rl:v1:click:min:{ipHash}. Mọi khóa bắt buộc có TTL, không tồn tại vĩnh viễn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+12. LUỒNG CLICK ĐƯỢC PHÉP
+======================================================================
+Khách mở /r/{shortCode}
+→ Backend xác định IP tin cậy
+→ Redis kiểm tra hạn mức nguyên tử
+→ kiểm tra link/KOL/Shop/sản phẩm
+→ ghi click hợp lệ
+→ cập nhật Last-Click và Set-Cookie
+→ redirect đến đúng trang đích.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+13. LUỒNG CLICK VƯỢT GIỚI HẠN
+======================================================================
+Click vượt hạn vẫn redirect an toàn đến trang đích hợp lệ, nhưng không Set-Cookie,
+không cập nhật Last-Click, không tăng valid/unique click, không tạo attribution và
+không phát sinh quyền hoa hồng.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+14. KHÔNG GHI ĐÈ ATTRIBUTION CŨ
+======================================================================
+Click RATE_LIMITED, bot hoặc suspicious tuyệt đối không được ghi đè cookie/session
+Last-Click hợp lệ đã có trước đó.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+15. PHẢN HỒI HTTP
+======================================================================
+Endpoint redirect trả 302/303 thay vì trang lỗi 429 nhằm giữ trải nghiệm mua hàng.
+API không phải redirect có thể trả 429 và Retry-After nếu chính sách API yêu cầu.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+16. LINK KHÔNG HỢP LỆ
+======================================================================
+Rate limit không che lỗi trạng thái: link không tồn tại/xóa mềm xử lý 404, BLOCKED xử
+lý 410, PAUSED/EXPIRED theo chính sách FR-10/FR-13 và không attribution mới.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+17. QR VÀ LINK THƯỜNG
+======================================================================
+QR và link thường dùng chung engine và hạn mức. via=qr chỉ phân loại analytics, không
+tạo hạn mức riêng để tránh bị lợi dụng né rate limit.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+18. BOT DETECTION
+======================================================================
+Bot/crawler đã nhận diện không được attribution dù chưa vượt rate limit. Rate limit và
+bot detection là hai lớp độc lập, phải cùng đạt mới tiếp tục xét click hợp lệ.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+19. DEDUP VÀ IDEMPOTENCY
+======================================================================
+Rate limit không thay thế dedup. Mỗi event có eventId duy nhất; queue/worker phải
+idempotent để retry không tăng click hoặc attribution nhiều lần.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+20. REDIS PRODUCTION
+======================================================================
+Mọi backend instance phải dùng chung Redis production. Không dùng Map RAM làm nguồn
+chính. Redis phải có authentication, TLS/mạng riêng và không công khai ra Internet.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+21. KHI REDIS MẤT KẾT NỐI
+======================================================================
+Redirect không được sập. Backend chuyển tạm sang bộ đếm RAM có TTL với ngưỡng thận
+trọng, ghi REDIS_DEGRADED và metric. Chế độ này chỉ phục vụ suy giảm tạm thời, không
+được coi là đạt FR-14 production khi chạy nhiều instance.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+22. KHÔI PHỤC REDIS
+======================================================================
+Tự reconnect có backoff. Khi Redis hoạt động lại, tự chuyển về Redis, dọn fallback hết
+hạn và phát cảnh báo RECOVERED một lần, không spam log.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+23. HEALTH VÀ READINESS
+======================================================================
+Development thiếu Redis vẫn cho backend chạy kèm cảnh báo. Production health/readiness
+phải báo degraded để vận hành biết rate limit phân tán đang không được bảo đảm.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+24. NAT VÀ MẠNG CÔNG CỘNG
+======================================================================
+Nhiều khách có thể chung một IP nên request vượt hạn vẫn redirect, chỉ bỏ attribution.
+Không khóa KOL/tài khoản chỉ từ một lần IP vượt ngưỡng; cần bằng chứng gian lận khác.
+
+Duyệt: [ ] Có — giữ  
+Chỉ nên khóa khi có thêm bằng chứng, chẳng hạn:
+- Một link bị gọi liên tục theo chu kỳ giống bot.
+- Nhiều click nhưng không có hành vi xem hoặc mua hàng.
+- User-Agent, fingerprint và thời gian click lặp bất thường.
+- Nhiều IP cùng tấn công một link.
+- KOL từng vi phạm hoặc có kết quả điều tra gian lận
+======================================================================
+25. IPV6
+======================================================================
+Chuẩn hóa IPv6 và xem xét giới hạn theo prefix /64 để tránh đổi địa chỉ con liên tục.
+Phải kiểm thử mạng thực tế để không gom nhầm phạm vi quá lớn của nhà mạng.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+26. DỮ LIỆU CLICK BỊ GIỚI HẠN
+======================================================================
+Chỉ lưu tối thiểu: thời gian, ipHash/prefix đã bảo vệ, linkId hợp lệ, accessMethod và
+lý do RATE_LIMITED. Không lưu token, cookie đăng nhập, request body hoặc toàn bộ header.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+27. BÁO CÁO
+======================================================================
+Tách raw requests, allowed, valid, unique, rate-limited, bot và suspicious clicks.
+Click bị giới hạn không tính conversion rate, doanh số hoặc hoa hồng KOL.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+28. PHÂN QUYỀN
+======================================================================
+KOL/Shop chỉ xem tổng hợp trong phạm vi của mình, không xem IP/hash/PII. Admin xem dữ
+liệu kỹ thuật đã che để điều tra; truy cập và điều chỉnh phải có audit log.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+29. MONITORING VÀ CẢNH BÁO
+======================================================================
+Theo dõi Redis latency/error, allowed/blocked rate, fallback mode, số IP vượt ngưỡng và
+spike theo link/KOL/Shop. Cảnh báo Redis down hoặc tỷ lệ blocked tăng bất thường.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+30. CHỐNG LÀM ĐẦY REDIS
+======================================================================
+Mọi key có TTL; giới hạn độ dài đầu vào; không đưa header/shortCode chưa chuẩn hóa vào
+key. Theo dõi memory và cấu hình eviction phù hợp để tránh tạo khóa vô hạn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+31. CẤU HÌNH
+======================================================================
+10 click/giây/IP là mặc định cốt lõi. Redis URL, secret, prefix, timeout, TTL và giới
+hạn phút nằm trong env có validation; KOL/Shop/client không được tự đổi ngưỡng bảo mật.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+32. RETENTION VÀ RIÊNG TƯ
+======================================================================
+Bộ đếm hết hạn theo cửa sổ ngắn. Log suspicious có thời hạn lưu rõ ràng và được xóa/ẩn
+danh theo chính sách; không giữ IP thô vô thời hạn.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+33. MÃ LỖI NGHIỆP VỤ
+======================================================================
+Mã nội bộ: CLICK_RATE_LIMITED, REDIS_DEGRADED, RATE_LIMIT_CHECK_FAILED,
+INVALID_CLIENT_IP. Response công khai không tiết lộ key Redis, IP hoặc secret.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+34. HIỆU NĂNG
+======================================================================
+Redis check có timeout ngắn, không treo redirect. Mục tiêu dưới 20 ms trong điều kiện
+bình thường; timeout chuyển nhanh sang degraded policy.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+35. KIỂM THỬ BẮT BUỘC
+======================================================================
+- 10 request đầu/giây được phép, request 11 bị giới hạn.
+- Qua cửa sổ mới được phép lại; ngưỡng 60/phút hoạt động.
+- Request đồng thời không vượt ngưỡng do race condition.
+- IP khác độc lập; QR/link chung hạn mức.
+- Click bị giới hạn không cookie, không Last-Click nhưng vẫn redirect.
+- Redis down/recovery hoạt động; nhiều instance dùng chung hạn mức.
+- IPv4, IPv6, trusted proxy và header IP giả mạo được kiểm tra.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+36. SWAGGER VÀ VẬN HÀNH
+======================================================================
+Swagger mô tả redirect/429 liên quan. Có health check, dashboard metric, runbook Redis
+down và E2E. Nếu thay đổi schema click log thì phải có migration database.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+37. TIÊU CHÍ HOÀN THÀNH
+======================================================================
+- Redis dùng chung là nguồn rate limit production.
+- 10 click/giây/IP hoạt động nguyên tử khi concurrent/multi-instance.
+- Click vượt hạn không attribution/cookie/ghi đè Last-Click nhưng vẫn redirect.
+- Không lộ IP/PII/secret.
+- Fallback, monitoring, test và tài liệu vận hành đều đạt.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+38. CÁC QUYẾT ĐỊNH QUAN TRỌNG CẦN CHỐT NHANH
+======================================================================
+
+1. Giữ tối đa 10 click/giây/IP?
+[ ] Có — giữ  
+Đúng yêu cầu gốc FR-14. Click thứ 11 trong cùng giây không được tính hợp lệ nhưng khách vẫn được chuyển tới sản phẩm.
+2. Thêm tối đa 60 click/phút/IP?
+[ ] Có — giữ 
+Chặn công cụ cố tình gửi dưới 10 click/giây nhưng hoạt động liên tục. Nên giữ làm lớp bảo vệ dài hơn.
+3. Redis dùng chung là nguồn chính production?
+[ ] Có — giữ  
+Tất cả backend phải nhìn thấy cùng một bộ đếm. Nếu mỗi backend giữ bộ đếm riêng, kẻ tấn công có thể vượt giới hạn khi request được chia sang nhiều server.
+4. Sliding Window/check-and-increment phải nguyên tử?
+[ ] Có — giữ  
+Redis phải thực hiện việc kiểm tra hạn mức và tăng số click trong một thao tác. Nếu tách thành hai thao tác, nhiều request đồng thời có thể cùng vượt qua
+5. QR và link thường dùng chung hạn mức?
+[ ] Có — giữ  
+QR thực chất vẫn mở referral link. Nếu tách hạn mức, kẻ gian có thể đổi qua lại giữa QR và link để né giới hạn.
+6. Vượt hạn vẫn redirect nhưng không attribution/Set-Cookie?
+[ ] Có — giữ  
+Khách vẫn xem được sản phẩm, nhưng click vượt hạn:
+- Không tạo cookie mới.
+- Không được tính cho KOL.
+- Không thay đổi nguồn đơn hàng.
+- Không phát sinh hoa hồng.
+7. Vượt hạn không ghi đè Last-Click cũ?
+[ ] Có — giữ  
+Ví dụ khách đã có click hợp lệ của KOL A, sau đó xuất hiện click spam của KOL B. Click spam không được thay attribution từ A sang B.
+8. Map RAM chỉ fallback tạm thời, không đạt production?
+[ ] Có — giữ  
+Map RAM chỉ bảo vệ tạm thời khi Redis lỗi. Nó mất dữ liệu khi restart và mỗi backend có bộ đếm riêng, nên không đạt yêu cầu production.
+9. Redis down báo degraded và tự recovery?
+[ ] Có — giữ  
+Khi Redis lỗi, hệ thống báo degraded và dùng fallback. Khi Redis hoạt động lại, backend phải tự kết nối và chuyển về Redis, không yêu cầu khởi động thủ công.
+10. Chỉ tin IP từ proxy/CDN được cấu hình?
+[ ] Có — giữ  
+Nếu tin mọi header X-Forwarded-For, kẻ tấn công có thể tự nhập IP giả cho mỗi request và né rate limit.
+11. HMAC IP và không lưu IP thô dài hạn?
+[ ] Có — giữ  
+Backend biến IP thành mã HMAC để phục vụ giới hạn và phân tích mà giảm nguy cơ lộ dữ liệu cá nhân. Secret HMAC chỉ nằm ở server.
+12. Key bắt buộc có TTL và namespace/version?
+[ ] Có — giữ  
+TTL giúp bộ đếm tự xóa sau cửa sổ giới hạn. Namespace/version tránh trùng key với chức năng khác và giúp nâng cấp thuật toán.
+13. Rate limit, bot detection và dedup là các lớp độc lập?
+[ ] Có — giữ  
+Ba lớp có nhiệm vụ khác nhau:
+   - Rate limit: giới hạn tốc độ.
+   - Bot detection: nhận diện chương trình tự động.
+   - Dedup: tránh tính lặp cùng một lượt truy cập.
+Request phải vượt qua tất cả lớp liên quan mới được coi là click hợp lệ.
+14. Queue click phải idempotent với eventId unique?
+[ ] Có — giữ  
+Nếu worker xử lý lại một event do retry, hệ thống vẫn chỉ ghi nhận một lần, tránh tăng click và attribution trùng.
+15. Báo cáo tách raw/valid/unique/rate-limited/bot?
+[ ] Có — giữ  
+Cần phân biệt:
+    - raw: toàn bộ request.
+    - valid: click hợp lệ.
+    - unique: khách truy cập không trùng.
+    - rate-limited: click vượt hạn.
+    - bot: lượt truy cập tự động.
+Không được dùng raw click để tính hiệu quả hoặc hoa hồng.
+16. KOL/Shop không xem IP/hash/PII khách?
+[ ] Có — giữ  
+KOL và Shop chỉ cần số liệu tổng hợp. Dữ liệu kỹ thuật nhạy cảm chỉ Admin có thẩm quyền mới được sử dụng để điều tra.
+17. Có monitoring, health/readiness và runbook?
+[ ] Có — giữ  
+Hệ thống cần phát hiện Redis đang lỗi, chậm hoặc dùng quá nhiều bộ nhớ. Runbook hướng dẫn đội vận hành xử lý khi Redis ngừng hoạt động.
+18. Có test concurrent và multi-instance trước khi hoàn thành?
+[ ] Có — giữ  
+est tuần tự là chưa đủ. Phải kiểm tra nhiều request đến cùng lúc và nhiều backend cùng sử dụng Redis để chứng minh giới hạn thực sự không bị vượt.
+======================================================================
+39. LUỒNG NGHIỆP VỤ TÓM TẮT
+======================================================================
+Khách mở link/QR
+→ lấy IP từ kết nối/proxy tin cậy
+→ chuẩn hóa và HMAC IP
+→ Redis kiểm tra nguyên tử 10/giây và 60/phút
+→ được phép: FR-13 ghi click, Last-Click và cookie
+→ vượt hạn: RATE_LIMITED, không attribution/cookie/ghi đè
+→ vẫn redirect đến trang đích hợp lệ
+→ ghi metric/log tối thiểu để cảnh báo và audit.
+
+Duyệt: [ ] Có — giữ  

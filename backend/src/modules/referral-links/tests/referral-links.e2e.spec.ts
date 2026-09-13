@@ -9,12 +9,16 @@ import * as bcrypt from 'bcryptjs';
 
 import { TransformInterceptor } from '../../../common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from '../../../common/filters/http-exception.filter';
+import { ClickQueueService } from '../click-queue.service';
+import { CacheService } from '../../../core/cache/cache.service';
 
 jest.setTimeout(120000);
 
 describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let clickQueueService: ClickQueueService;
+  let cacheService: CacheService;
 
   let adminToken: string;
   let shopAToken: string;
@@ -56,6 +60,8 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
+    clickQueueService = app.get<ClickQueueService>(ClickQueueService);
+    cacheService = app.get<CacheService>(CacheService);
 
     // Dọn dẹp dữ liệu cũ nếu có
     await cleanup();
@@ -174,6 +180,22 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
   });
 
   afterAll(async () => {
+    if (clickQueueService) {
+      await clickQueueService.waitUntilIdle().catch(() => {});
+      await clickQueueService.onModuleDestroy().catch(() => {});
+    }
+    if (cacheService) {
+      const redis = cacheService.getRedisClient();
+      if (redis) {
+        await redis
+          .del(
+            'scanms:click_queue:pending',
+            'scanms:click_queue:processing_zset',
+            'scanms:click_queue:dlq',
+          )
+          .catch(() => {});
+      }
+    }
     await cleanup();
     await app.close();
   });
@@ -371,5 +393,10 @@ describe('ReferralLinks Full E2E HTTP Test Suite (FR-10)', () => {
     responses.forEach((response) => {
       expect(response.status).toBe(302);
     });
+
+    // Chờ toàn bộ tiến trình redirect và queue hoàn tất trước khi teardown
+    if (clickQueueService) {
+      await clickQueueService.waitUntilIdle().catch(() => {});
+    }
   });
 });

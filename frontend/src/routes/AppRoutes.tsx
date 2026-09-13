@@ -32,11 +32,14 @@ import ProductManagementPage from '../pages/merchant/ProductManagementPage';
 import ShopDashboardPage from '../pages/merchant/ShopDashboardPage';
 import ShopSettingsPage from '../pages/merchant/ShopSettingsPage';
 import KycApprovalPage from '../pages/merchant/KycApprovalPage';
+import OrdersManagementPage from '../pages/merchant/OrdersManagementPage';
+import PayoutApprovalPage from '../pages/merchant/PayoutApprovalPage';
 
 // Collaborator Pages (Thắng - FR-01~08)
 import KolTierStatusPage from '../pages/collaborator/KolTierStatusPage';
 import SocialChannelsPage from '../pages/collaborator/SocialChannelsPage';
 import KycSubmissionPage from '../pages/collaborator/KycSubmissionPage';
+import WalletPage from '../pages/collaborator/WalletPage';
 import MediaHubBrowserPage from '../pages/collaborator/MediaHubBrowserPage';
 import SamplesPage from '../pages/collaborator/SamplesPage';
 
@@ -104,6 +107,9 @@ function AppRoutes() {
           <Route element={<ProtectedRoute allowedRoles={['SHOP_MANAGER', 'SYSTEM_ADMIN']} />}>
             <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
             <Route path="merchant/products" element={<ProductManagementPage />} />
+            <Route path="merchant/orders" element={<OrdersManagementPage />} />
+            <Route path="merchant/payouts" element={<PayoutApprovalPage />} />
+            <Route path="stores/:storeId/payouts" element={<PayoutApprovalPage />} />
             <Route path="merchant/settings" element={<ShopSettingsPage />} />
             <Route path="merchant/kyc-approval" element={<KycApprovalPage />} />
             <Route path="merchant/commission-rules" element={<CommissionRulesPage />} />
@@ -133,6 +139,7 @@ function AppRoutes() {
             <Route path="collaborator/samples" element={<SamplesPage />} />
             <Route path="collaborator/tiers" element={<KolTierStatusPage />} />
             <Route path="collaborator/kyc" element={<KycSubmissionPage />} />
+            <Route path="collaborator/wallet" element={<WalletPage />} />
             <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
             <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
             <Route path="collaborator/stats" element={<KolDashboardPage />} />

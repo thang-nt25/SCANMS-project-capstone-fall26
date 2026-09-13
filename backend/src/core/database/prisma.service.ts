@@ -38,6 +38,39 @@ export class PrismaService
       connectionTimeoutMillis: 10000,
       ssl: isRemote ? { rejectUnauthorized: false } : undefined,
     });
+
+    // Tuần tự hóa các truy vấn đồng thời trên cùng một connection client (loại bỏ DeprecationWarning và tương thích pg@9.0)
+    pool.on('connect', (client: any) => {
+      if (client.__querySerialized) return;
+      client.__querySerialized = true;
+      const originalQuery = client.query;
+      let queryQueue: Promise<any> = Promise.resolve();
+
+      client.query = function (this: any, ...args: any[]) {
+        const lastArg = args[args.length - 1];
+        if (typeof lastArg === 'function') {
+          const cb = args.pop();
+          const task = () =>
+            new Promise<void>((resolve) => {
+              originalQuery.call(this, ...args, (err: any, res: any) => {
+                try {
+                  cb(err, res);
+                } finally {
+                  resolve();
+                }
+              });
+            });
+          queryQueue = queryQueue.then(task, task);
+          return;
+        }
+
+        const task = () => originalQuery.apply(this, args);
+        const resultPromise = queryQueue.then(task, task);
+        queryQueue = resultPromise.catch(() => {});
+        return resultPromise;
+      };
+    });
+
     const adapter = new PrismaPg(pool);
 
     super({ adapter });

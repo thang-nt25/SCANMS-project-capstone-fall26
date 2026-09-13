@@ -601,8 +601,12 @@ export class AdminReferralLinksController {
     description:
       'Tra cứu sự kiện phục vụ điều tra gian lận, IP được che mờ bảo vệ riêng tư.',
   })
-  async getAdminTrackingEvents(@Query() query: QueryTrackingEventsDto) {
-    return this.service.getAdminTrackingEvents(query);
+  async getAdminTrackingEvents(
+    @Query() query: QueryTrackingEventsDto,
+    @CurrentUser('id') adminId: string,
+    @Ip() ip: string,
+  ) {
+    return this.service.getAdminTrackingEvents(query, adminId, ip);
   }
 
   @Post('orders/:orderId/attribution-adjustment')
@@ -639,5 +643,16 @@ export class AdminReferralLinksController {
       adminId,
       role,
     );
+  }
+
+  @Get('rate-limit/dashboard')
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiOperation({
+    summary: 'Quản trị viên xem Dashboard giám sát Rate Limit & Redis Realtime (FR-14)',
+    description:
+      'Cung cấp toàn diện latency, error count, timeout count, số IP vượt hạn, thống kê spike theo link/KOL/Shop, và cảnh báo bất thường.',
+  })
+  async getRateLimitDashboard() {
+    return this.service.getRateLimitDashboard();
   }
 }

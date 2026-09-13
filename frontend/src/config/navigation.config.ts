@@ -50,7 +50,8 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/collaborator/social-channels', label: 'Kênh xã hội', icon: Share2, numBadge: '07' },
       { path: '/collaborator/media-hub', label: 'Kho nội dung', icon: Images, numBadge: '08' },
       { path: '/collaborator/tiers', label: 'Bảng vinh danh', icon: Trophy, numBadge: '09' },
-      { path: '/collaborator/kyc', label: 'Ví & KYC', icon: Wallet, numBadge: '10' },
+      { path: '/collaborator/wallet', label: 'Ví & rút tiền', icon: Wallet, numBadge: '10' },
+      { path: '/collaborator/kyc', label: 'Hồ sơ KYC', icon: ShieldCheck },
       { path: '/collaborator/messages', label: 'Tin nhắn', icon: MessageSquare, numBadge: '11' },
       { path: '/storefront', label: 'Trang mua hàng', icon: ShoppingBag, numBadge: '12' },
       { path: '/tracking', label: 'Tra cứu đơn', icon: Search, numBadge: '13' },
@@ -71,6 +72,8 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/merchant/settings', label: 'Cài đặt gian hàng', icon: Settings, numBadge: '09' },
       { path: '/merchant/kyc-approval', label: 'Duyệt KYC CTV', icon: ShieldCheck, numBadge: '10' },
       { path: '/merchant/messages', label: 'Tin nhắn hỗ trợ', icon: MessageSquare, numBadge: '11' },
+      { path: '/merchant/orders', label: 'Quản lý đơn hàng', icon: ShoppingBag, numBadge: '12' },
+      { path: '/merchant/payouts', label: 'Duyệt chi trả KOL', icon: Wallet, numBadge: '13' },
     ],
   },
   SYSTEM_ADMIN: {

@@ -8,17 +8,20 @@ import {
   Prisma,
   CommissionStatus,
   CouponRedemptionStatus,
-  TransactionType,
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { WalletsService } from '../wallets/wallets.service';
 import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { UpdateCommissionRuleDto } from './dto/update-commission-rule.dto';
 import { BonusPreviewResultDto } from './dto/commission-rule-response.dto';
 
 @Injectable()
 export class CommissionRulesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly walletsService: WalletsService,
+  ) {}
 
   private async verifyStoreExists(storeId: string) {
     const store = await this.prisma.store.findUnique({
@@ -1521,53 +1524,17 @@ export class CommissionRulesService {
         );
       }
 
-      // 1. Tìm hoặc tạo ví
-      let wallet = await tx.wallet.findUnique({
-        where: { collaboratorId: settlement.collaboratorId },
-      });
-
-      if (!wallet) {
-        wallet = await tx.wallet.create({
-          data: {
-            collaboratorId: settlement.collaboratorId,
-            availableBalance: new Prisma.Decimal(0),
-            pendingBalance: new Prisma.Decimal(0),
-          },
-        });
-      }
-
-      const balanceBefore = wallet.availableBalance;
-      const balanceAfter = balanceBefore.add(settlement.bonusAmount);
-
-      // 2. Cập nhật số dư ví khả dụng với Optimistic Lock (kiểm tra wallet.version)
-      const walletUpdate = await tx.wallet.updateMany({
-        where: {
-          id: wallet.id,
-          version: wallet.version,
-        },
-        data: {
-          availableBalance: balanceAfter,
-          version: { increment: 1 },
-        },
-      });
-
-      if (walletUpdate.count === 0) {
-        throw new ConflictException(
-          'Xung đột đồng thời khi cập nhật số dư ví. Vui lòng thử lại.',
+      // Locked wallet credit and append-only ledger share the settlement transaction.
+      const { wallet, ledger } =
+        await this.walletsService.creditAvailableBalance(
+          tx,
+          settlement.collaboratorId,
+          settlement.bonusAmount,
+          { id: settlement.id, type: 'MONTHLY_BONUS' },
+          settlement.storeId,
         );
-      }
-
-      // 3. Tạo bản ghi Sổ cái tài chính (Unique index trên reference_id ngăn chặn giao dịch trùng lặp)
-      const ledger = await tx.financialLedger.create({
-        data: {
-          walletId: wallet.id,
-          transactionType: TransactionType.COMMISSION_APPROVED,
-          amount: settlement.bonusAmount,
-          balanceBefore,
-          balanceAfter,
-          referenceId: settlement.id,
-        },
-      });
+      const balanceBefore = ledger.balanceBefore;
+      const balanceAfter = ledger.balanceAfter;
 
       // 4. Cập nhật mã giao dịch ví vào bản ghi chốt thưởng
       const paidSettlement = await tx.monthlyBonusResult.update({
@@ -1621,8 +1588,14 @@ export class CommissionRulesService {
   ) {
     await this.verifyStoreExists(storeId);
 
+    if (!/^\d{1,13}(?:\.\d{1,2})?$/.test(refundAmount))
+      throw new BadRequestException('Số tiền hoàn không hợp lệ');
     const refundDecimal = new Prisma.Decimal(refundAmount);
-    if (refundDecimal.lessThanOrEqualTo(0)) {
+    if (
+      !refundDecimal.isFinite() ||
+      refundDecimal.decimalPlaces() > 2 ||
+      refundDecimal.lessThanOrEqualTo(0)
+    ) {
       throw new BadRequestException('Số tiền hoàn phải lớn hơn 0');
     }
 
@@ -1698,7 +1671,9 @@ export class CommissionRulesService {
       );
       const refundRatio = currentOrder.finalAmount.isZero()
         ? new Prisma.Decimal(1)
-        : refundDecimal.dividedBy(currentOrder.finalAmount);
+        : refundDecimal.dividedBy(
+            currentOrder.finalAmount.minus(currentOrder.refundedAmount),
+          );
 
       let reversedDiscountAmount = new Prisma.Decimal(0);
       let shopFundedRemaining = new Prisma.Decimal(0);
@@ -1804,28 +1779,54 @@ export class CommissionRulesService {
         });
       }
 
-      // Điều chỉnh Commission của đơn hàng và ví chờ của KOL (nếu còn ở trạng thái PENDING)
+      // Thu hồi commission từ ví chờ hoặc ví khả dụng theo trạng thái hiện tại.
       const commissions = await tx.commission.findMany({
         where: { orderId },
       });
 
       for (const comm of commissions) {
-        if (comm.status === CommissionStatus.PENDING) {
+        if (
+          comm.status === CommissionStatus.PENDING ||
+          comm.status === CommissionStatus.APPROVED
+        ) {
+          // Refund and approval both lock the order first; revoke the correct wallet bucket.
+          const reverseBalance = (amount: Prisma.Decimal) => {
+            const reference = {
+              id: refundRecord.id,
+              type: 'ORDER_REFUND' as const,
+            };
+            const trackedStoreId = comm.storeWalletTracked
+              ? storeId
+              : undefined;
+            return comm.status === CommissionStatus.PENDING
+              ? this.walletsService.reversePendingBalance(
+                  tx,
+                  comm.collaboratorId,
+                  amount,
+                  reference,
+                  trackedStoreId,
+                )
+              : this.walletsService.reverseAvailableBalance(
+                  tx,
+                  comm.collaboratorId,
+                  amount,
+                  reference,
+                  trackedStoreId,
+                );
+          };
           if (isFullRefund) {
             await tx.commission.update({
               where: { id: comm.id },
               data: {
                 commissionAmount: new Prisma.Decimal(0),
                 status: CommissionStatus.REVERSED,
+                reversedAt: new Date(),
               },
             });
 
-            await tx.wallet.update({
-              where: { collaboratorId: comm.collaboratorId },
-              data: {
-                pendingBalance: { decrement: comm.commissionAmount },
-              },
-            });
+            if (comm.commissionAmount.greaterThan(0)) {
+              await reverseBalance(comm.commissionAmount);
+            }
           } else {
             const commReversal = comm.commissionAmount
               .mul(refundRatio)
@@ -1842,12 +1843,9 @@ export class CommissionRulesService {
               },
             });
 
-            await tx.wallet.update({
-              where: { collaboratorId: comm.collaboratorId },
-              data: {
-                pendingBalance: { decrement: commReversal },
-              },
-            });
+            if (commReversal.greaterThan(0)) {
+              await reverseBalance(commReversal);
+            }
           }
         }
       }

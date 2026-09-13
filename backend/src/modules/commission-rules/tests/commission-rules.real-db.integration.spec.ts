@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
 import { CommissionRulesService } from '../commission-rules.service';
 import { PrismaService } from '../../../core/database/prisma.service';
+import { WalletsService } from '../../wallets/wallets.service';
+import { FinancialLedgerService } from '../../wallets/financial-ledger.service';
 import { Prisma, UserRole, CommissionStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -18,7 +20,12 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ isGlobal: true })],
-      providers: [CommissionRulesService, PrismaService],
+      providers: [
+        CommissionRulesService,
+        PrismaService,
+        WalletsService,
+        FinancialLedgerService,
+      ],
     }).compile();
 
     service = module.get<CommissionRulesService>(CommissionRulesService);

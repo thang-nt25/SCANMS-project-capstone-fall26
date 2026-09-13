@@ -7,6 +7,8 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Prisma, UserRole, CommissionStatus } from '@prisma/client';
+import { WalletsService } from '../../wallets/wallets.service';
+import { FinancialLedgerService } from '../../wallets/financial-ledger.service';
 
 describe('CommissionRulesService', () => {
   let service: CommissionRulesService;
@@ -143,6 +145,8 @@ describe('CommissionRulesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CommissionRulesService,
+        WalletsService,
+        FinancialLedgerService,
         {
           provide: PrismaService,
           useValue: mockPrismaService,
