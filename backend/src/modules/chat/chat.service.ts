@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CreateConversationDto } from './dto/send-message.dto';
 
@@ -20,7 +25,10 @@ export class ChatService {
       const store = await this.prisma.store.findFirst({
         where: { ownerId: userId, isDeleted: false },
       });
-      if (!store) throw new BadRequestException('Tài khoản Shop này chưa có cửa hàng nào');
+      if (!store)
+        throw new BadRequestException(
+          'Tài khoản Shop này chưa có cửa hàng nào',
+        );
       storeId = store.id;
     }
 
@@ -30,7 +38,9 @@ export class ChatService {
     }
 
     if (!storeId || !collaboratorId) {
-      throw new BadRequestException('Thông tin cửa hàng hoặc người nhận không hợp lệ');
+      throw new BadRequestException(
+        'Thông tin cửa hàng hoặc người nhận không hợp lệ',
+      );
     }
 
     const existing = await this.prisma.conversation.findFirst({
@@ -38,8 +48,16 @@ export class ChatService {
       include: {
         store: { select: { id: true, name: true, logoUrl: true } },
         collaborator: { select: { id: true, fullName: true, role: true } },
-        chatMessages: { orderBy: { createdAt: 'desc' }, take: 1,
-          select: { messageText: true, createdAt: true, senderId: true, isRead: true } },
+        chatMessages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            messageText: true,
+            createdAt: true,
+            senderId: true,
+            isRead: true,
+          },
+        },
       },
     });
     if (existing) return existing;
@@ -49,8 +67,16 @@ export class ChatService {
       include: {
         store: { select: { id: true, name: true, logoUrl: true } },
         collaborator: { select: { id: true, fullName: true, role: true } },
-        chatMessages: { orderBy: { createdAt: 'desc' }, take: 1,
-          select: { messageText: true, createdAt: true, senderId: true, isRead: true } },
+        chatMessages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            messageText: true,
+            createdAt: true,
+            senderId: true,
+            isRead: true,
+          },
+        },
       },
     });
   }
@@ -59,10 +85,7 @@ export class ChatService {
     // Lấy danh sách hội thoại mà user tham gia (là shop owner hoặc collaborator)
     const conversations = await this.prisma.conversation.findMany({
       where: {
-        OR: [
-          { collaboratorId: userId },
-          { store: { ownerId: userId } },
-        ],
+        OR: [{ collaboratorId: userId }, { store: { ownerId: userId } }],
       },
       include: {
         store: { select: { id: true, name: true, logoUrl: true } },
@@ -70,7 +93,12 @@ export class ChatService {
         chatMessages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
-          select: { messageText: true, createdAt: true, senderId: true, isRead: true },
+          select: {
+            messageText: true,
+            createdAt: true,
+            senderId: true,
+            isRead: true,
+          },
         },
       },
       orderBy: { lastMessageAt: 'desc' },
@@ -82,13 +110,16 @@ export class ChatService {
     const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        store: { select: { id: true, name: true, logoUrl: true, ownerId: true } },
+        store: {
+          select: { id: true, name: true, logoUrl: true, ownerId: true },
+        },
         collaborator: { select: { id: true, fullName: true, role: true } },
       },
     });
     if (!conv) throw new NotFoundException('Không tìm thấy hội thoại');
 
-    const isParticipant = conv.collaboratorId === userId || conv.store.ownerId === userId;
+    const isParticipant =
+      conv.collaboratorId === userId || conv.store.ownerId === userId;
     if (!isParticipant)
       throw new ForbiddenException('Bạn không có quyền truy cập hội thoại này');
 
@@ -97,7 +128,12 @@ export class ChatService {
 
   // ---- Messages ----
 
-  async getMessages(conversationId: string, userId: string, take = 50, cursor?: string) {
+  async getMessages(
+    conversationId: string,
+    userId: string,
+    take = 50,
+    cursor?: string,
+  ) {
     // Xác nhận user là thành viên
     await this.getConversationById(conversationId, userId);
 
@@ -127,7 +163,12 @@ export class ChatService {
     return messages.reverse(); // Trả về theo thứ tự thời gian cũ -> mới
   }
 
-  async saveMessage(conversationId: string, senderId: string, messageText: string, mediaUrl?: string) {
+  async saveMessage(
+    conversationId: string,
+    senderId: string,
+    messageText: string,
+    mediaUrl?: string,
+  ) {
     const [message] = await this.prisma.$transaction([
       this.prisma.chatMessage.create({
         data: { conversationId, senderId, messageText, mediaUrl },
@@ -197,8 +238,14 @@ export class ChatService {
                 { name: { contains: trimmed, mode: 'insensitive' } },
                 { description: { contains: trimmed, mode: 'insensitive' } },
                 { slug: { contains: trimmed, mode: 'insensitive' } },
-                { owner: { fullName: { contains: trimmed, mode: 'insensitive' } } },
-                { owner: { email: { contains: trimmed, mode: 'insensitive' } } },
+                {
+                  owner: {
+                    fullName: { contains: trimmed, mode: 'insensitive' },
+                  },
+                },
+                {
+                  owner: { email: { contains: trimmed, mode: 'insensitive' } },
+                },
               ],
             }
           : {}),
@@ -213,5 +260,3 @@ export class ChatService {
     });
   }
 }
-
-

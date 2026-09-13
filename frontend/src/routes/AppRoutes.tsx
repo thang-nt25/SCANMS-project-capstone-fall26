@@ -1,71 +1,74 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 
 // Layout & Dispatcher
 import MainLayout from '../components/layout/MainLayout';
-import DashboardDispatcher from '../pages/DashboardDispatcher';
-import HomePage from '../pages/HomePage';
+const DashboardDispatcher = lazy(() => import('../pages/DashboardDispatcher'));
+const HomePage = lazy(() => import('../pages/HomePage'));
 
 // Auth Pages (Dev)
-import LoginPage from '../pages/auth/LoginPage';
-import RegisterPage from '../pages/auth/RegisterPage';
+const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
+const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
 
 // Store / Guest Pages
-import GuestStorefrontPage from '../pages/store/GuestStorefrontPage';
-import ProductDetailPage from '../pages/ProductDetailPage';
-import RedirectHandlerPage from '../pages/RedirectHandlerPage';
+const ProductDetailPage = lazy(() => import('../pages/ProductDetailPage'));
+const RedirectHandlerPage = lazy(() => import('../pages/RedirectHandlerPage'));
 
 // UI Reference / Prototype Master (Tuấn)
-import UiReferencePage from '../pages/UiReferencePage';
+const UiReferencePage = lazy(() => import('../pages/UiReferencePage'));
+const MarketplacePage = lazy(() => import('../pages/public/MarketplacePage'));
 
 // Commission Rules & Referral Links (Tuấn - FR-10 & Milestone Bonus)
-import CommissionRulesPage from '../pages/merchant/CommissionRulesPage';
-import StoreReferralLinksPage from '../pages/merchant/StoreReferralLinksPage';
-import StoreCollaboratorsPage from '../pages/merchant/StoreCollaboratorsPage';
-import AdminReferralLinksPage from '../pages/admin/AdminReferralLinksPage';
-import KolBonusProgressPage from '../pages/collaborator/KolBonusProgressPage';
-import ReferralLinksPage from '../pages/collaborator/ReferralLinksPage';
-import KolCouponsPage from '../pages/collaborator/KolCouponsPage';
-import ShopCouponsPage from '../pages/merchant/ShopCouponsPage';
+const CommissionRulesPage = lazy(() => import('../pages/merchant/CommissionRulesPage'));
+const StoreReferralLinksPage = lazy(() => import('../pages/merchant/StoreReferralLinksPage'));
+const StoreCollaboratorsPage = lazy(() => import('../pages/merchant/StoreCollaboratorsPage'));
+const AdminReferralLinksPage = lazy(() => import('../pages/admin/AdminReferralLinksPage'));
+const KolBonusProgressPage = lazy(() => import('../pages/collaborator/KolBonusProgressPage'));
+const ReferralLinksPage = lazy(() => import('../pages/collaborator/ReferralLinksPage'));
+const KolCouponsPage = lazy(() => import('../pages/collaborator/KolCouponsPage'));
+const ShopCouponsPage = lazy(() => import('../pages/merchant/ShopCouponsPage'));
 
 // Merchant Pages (Thắng - FR-01~08)
-import ProductManagementPage from '../pages/merchant/ProductManagementPage';
-import ShopDashboardPage from '../pages/merchant/ShopDashboardPage';
-import ShopSettingsPage from '../pages/merchant/ShopSettingsPage';
-import KycApprovalPage from '../pages/merchant/KycApprovalPage';
-import OrdersManagementPage from '../pages/merchant/OrdersManagementPage';
-import PayoutApprovalPage from '../pages/merchant/PayoutApprovalPage';
+const ProductManagementPage = lazy(() => import('../pages/merchant/ProductManagementPage'));
+const ShopDashboardPage = lazy(() => import('../pages/merchant/ShopDashboardPage'));
+const ShopSettingsPage = lazy(() => import('../pages/merchant/ShopSettingsPage'));
+const KycApprovalPage = lazy(() => import('../pages/merchant/KycApprovalPage'));
+const OrdersManagementPage = lazy(() => import('../pages/merchant/OrdersManagementPage'));
+const PayoutApprovalPage = lazy(() => import('../pages/merchant/PayoutApprovalPage'));
 
 // Collaborator Pages (Thắng - FR-01~08)
-import KolTierStatusPage from '../pages/collaborator/KolTierStatusPage';
-import SocialChannelsPage from '../pages/collaborator/SocialChannelsPage';
-import KycSubmissionPage from '../pages/collaborator/KycSubmissionPage';
-import WalletPage from '../pages/collaborator/WalletPage';
-import MediaHubBrowserPage from '../pages/collaborator/MediaHubBrowserPage';
-import SamplesPage from '../pages/collaborator/SamplesPage';
+const KolTierStatusPage = lazy(() => import('../pages/collaborator/KolTierStatusPage'));
+const SocialChannelsPage = lazy(() => import('../pages/collaborator/SocialChannelsPage'));
+const KycSubmissionPage = lazy(() => import('../pages/collaborator/KycSubmissionPage'));
+const WalletPage = lazy(() => import('../pages/collaborator/WalletPage'));
+const MediaHubBrowserPage = lazy(() => import('../pages/collaborator/MediaHubBrowserPage'));
+const SamplesPage = lazy(() => import('../pages/collaborator/SamplesPage'));
 
 // Realtime Chat (Quý - FR-25)
-import OrderTrackingPage from '../pages/public/OrderTrackingPage';
+const OrderTrackingPage = lazy(() => import('../pages/public/OrderTrackingPage'));
 // Quy - FR-25: Chat Realtime
-import ChatBoxPage from '../pages/chat/ChatBoxPage';
+const ChatBoxPage = lazy(() => import('../pages/chat/ChatBoxPage'));
 
 // Sample Product Workflow (Quý - FR-26)
-import SampleRequestsPage from '../pages/collaborator/SampleRequestsPage';
-import ShopSampleRequestsPage from '../pages/merchant/ShopSampleRequestsPage';
+const SampleRequestsPage = lazy(() => import('../pages/collaborator/SampleRequestsPage'));
+const ShopSampleRequestsPage = lazy(() => import('../pages/merchant/ShopSampleRequestsPage'));
 
 // Campaign Invitations (Quý - FR-27)
-import ShopCampaignsPage from '../pages/merchant/ShopCampaignsPage';
-import KolCampaignsPage from '../pages/collaborator/KolCampaignsPage';
+const ShopCampaignsPage = lazy(() => import('../pages/merchant/ShopCampaignsPage'));
+const KolCampaignsPage = lazy(() => import('../pages/collaborator/KolCampaignsPage'));
 
 // Dashboard Realtime (Quý - FR-28)
-import { ShopDashboardStatsPage, KolDashboardPage } from '../pages/dashboard/DashboardPage';
+const ShopDashboardStatsPage = lazy(() => import('../pages/dashboard/DashboardPage').then(m => ({ default: m.ShopDashboardStatsPage })));
+const KolDashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then(m => ({ default: m.KolDashboardPage })));
 
 // Admin Pages (FR-12)
-import AdminCouponsPage from '../pages/admin/AdminCouponsPage';
+const AdminCouponsPage = lazy(() => import('../pages/admin/AdminCouponsPage'));
 import { RouteContent } from './RouteContent';
 
 function AppRoutes() {
   return (
     <Router>
+      <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>
       <Routes>
         {/* ================================================================= */}
         {/* 1. Điểm vào chính: Prototype UI/UX & Storefront                    */}
@@ -73,14 +76,14 @@ function AppRoutes() {
         <Route path="/" element={<UiReferencePage />} />
         <Route path="/prototype" element={<UiReferencePage />} />
         <Route path="/ui-reference" element={<UiReferencePage />} />
-        <Route path="/marketplace" element={<UiReferencePage />} />
         <Route path="/app" element={<UiReferencePage />} />
         <Route path="/app/:screenId" element={<UiReferencePage />} />
 
-        {/* SCANMS Multi-Merchant Storefront cho khách mua hàng */}
-        <Route path="/store" element={<GuestStorefrontPage />} />
-        <Route path="/storefront" element={<GuestStorefrontPage />} />
-        <Route path="/shop" element={<GuestStorefrontPage />} />
+        {/* SCANMS Multi-Merchant Marketplace & Storefront cho khách mua hàng */}
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/store" element={<MarketplacePage />} />
+        <Route path="/storefront" element={<MarketplacePage />} />
+        <Route path="/shop" element={<MarketplacePage />} />
 
         {/* Cổng tra cứu tiến trình đơn hàng công khai (FR-17) */}
         <Route path="/tracking" element={<OrderTrackingPage />} />
@@ -158,6 +161,7 @@ function AppRoutes() {
           <Route path="merchant/messages" element={<ChatBoxPage />} />
         </Route>
       </Routes>
+      </Suspense>
     </Router>
   );
 }

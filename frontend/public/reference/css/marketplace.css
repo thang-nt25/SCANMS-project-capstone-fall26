@@ -4,16 +4,18 @@
    ========================================================================== */
 
 .prototype.is-marketplace {
-  grid-template-columns: 1fr !important;
+  display: block !important;
   background: var(--canvas, #FAF6F0);
-  overflow-x: hidden;
+  overflow: visible !important;
+  overflow-x: clip !important;
   max-width: 100%;
 }
 
 .prototype.is-marketplace .main {
   min-width: 0;
   width: 100%;
-  overflow-x: hidden;
+  overflow: visible !important;
+  overflow-x: clip !important;
   max-width: 100%;
 }
 
@@ -21,12 +23,14 @@
   padding: 0 !important;
   max-width: 100% !important;
   margin: 0 !important;
-  overflow-x: hidden;
+  overflow: visible !important;
+  overflow-x: clip !important;
 }
 
 .storefront-wrapper,
 .mp-page-wrapper {
-  overflow-x: hidden;
+  overflow: visible !important;
+  overflow-x: clip !important;
   max-width: 100%;
 }
 
@@ -41,16 +45,16 @@
    1. MARKETPLACE HEADER BAR (Khách vãng lai & Đăng nhập)
    -------------------------------------------------------------------------- */
 .mp-header {
-  position: sticky;
+  position: sticky !important;
   /* Sticky header bao gồm cả mp-header-top, mp-header-main và mp-cat-strip */
-  top: 0;
-  z-index: 100;
-  background: #FAF6F0;
+  top: 0 !important;
+  z-index: 1000 !important;
+  background: #FAF6F0 !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line, #E8DAC4);
-  box-shadow: 0 4px 20px rgba(110, 84, 39, 0.05);
-  overflow: visible;
+  box-shadow: 0 4px 20px rgba(110, 84, 39, 0.08);
+  overflow: visible !important;
 }
 
 .mp-header-top {

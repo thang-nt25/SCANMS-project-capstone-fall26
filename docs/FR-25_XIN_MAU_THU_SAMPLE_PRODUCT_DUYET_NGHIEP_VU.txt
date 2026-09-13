@@ -1,0 +1,53 @@
+Đặc tả nghiệp vụ đầy đủ FR-25 — Yêu Cầu và Quản Lý Mẫu Thử Sản Phẩm (Sample Product Requests)
+FR-25 — Mẫu Thử Sản Phẩm: KOL xin mẫu thử → Shop duyệt/từ chối → Gắn mã vận đơn bưu cục và giao nhận.
+
+Đây là bản đặc tả đã tổng hợp các quyết định nghiệp vụ được duyệt cho FR-25.
+
+1. Mục tiêu chức năng
+Cho phép KOL/cộng tác viên chọn một sản phẩm của Shop trong danh mục tiếp thị và gửi yêu cầu cấp hàng mẫu thử miễn phí để trải nghiệm, đánh giá chất lượng và sản xuất nội dung review (video TikTok/Reels, livestream).
+Ví dụ:
+Sản phẩm: Kem Chống Nắng Tế Bào Gốc SPF50+ PA++++
+Shop: Gian Hàng Mỹ Phẩm Cao Cấp
+KOL: Nguyễn Văn A (Tier Vàng - 150k Followers)
+Địa chỉ nhận: Phòng 402, Chung cư Sunrise City, Quận 7, TP.HCM
+Kế hoạch: Lên video unboxing và test khả năng kiềm dầu trong 3 ngày sau khi nhận hàng.
+
+Khi Shop duyệt yêu cầu:
+1. Hệ thống cập nhật trạng thái yêu cầu sang APPROVED.
+2. Gắn thông tin nhà vận chuyển (VNPost, GHN, GHTK) và mã vận đơn (trackingNumber).
+3. Gửi thông báo đến Notification Center của KOL.
+4. Ghi nhận AuditLog với action SAMPLE_REQUEST_APPROVED.
+
+2. Phạm vi FR-25
+FR-25 chịu trách nhiệm chính:
+1. KOL duyệt danh sách sản phẩm mẫu và kiểm tra điều kiện.
+2. Form điền thông tin địa chỉ giao nhận (họ tên, SĐT 10 số chuẩn VN, địa chỉ chi tiết).
+3. Kiểm tra trùng lặp: Không cho phép gửi yêu cầu mới cho cùng 1 sản phẩm nếu yêu cầu trước đó đang ở trạng thái PENDING.
+4. Shop quản lý danh sách yêu cầu cần duyệt, lọc theo trạng thái (PENDING, APPROVED, REJECTED, SHIPPED, DELIVERED).
+5. Shop phê duyệt kèm mã vận đơn hoặc từ chối kèm lý do cụ thể.
+6. Đồng bộ trạng thái và gửi thông báo Notification tự động.
+
+3. Đối tượng sử dụng
+3.1. KOL / Cộng tác viên (COLLABORATOR)
+- Xem danh sách sản phẩm có chính sách phát mẫu thử.
+- Gửi yêu cầu xin mẫu thử.
+- Theo dõi mã vận đơn và hành trình đơn hàng mẫu.
+3.2. Chủ Gian Hàng (SHOP_MANAGER)
+- Xem danh sách yêu cầu mẫu thử gửi tới gian hàng của mình.
+- Kiểm tra hồ sơ KOL (Tier, lượt bán, đánh giá).
+- Phê duyệt / từ chối yêu cầu.
+- Cập nhật mã bưu tá và trạng thái giao hàng.
+3.3. Quản trị viên hệ thống (SYSTEM_ADMIN)
+- Giám sát toàn bộ lưu lượng yêu cầu mẫu thử và nhật ký kiểm toán AuditLog.
+
+4. Danh sách Endpoint API
+- POST /api/samples: Tạo yêu cầu xin mẫu thử mới.
+- GET /api/samples/my-requests: KOL lấy danh sách yêu cầu đã gửi.
+- GET /api/samples/shop-requests: Shop lấy danh sách yêu cầu của shop.
+- PATCH /api/samples/:id/approve: Shop duyệt và cấp mã vận đơn.
+- PATCH /api/samples/:id/reject: Shop từ chối yêu cầu.
+- GET /api/samples/:id: Xem chi tiết yêu cầu mẫu thử.
+
+5. Quy tắc kiểm thử và Audit Log
+- Action Log: SAMPLE_REQUEST_CREATED, SAMPLE_REQUEST_APPROVED, SAMPLE_REQUEST_REJECTED.
+- 100% kịch bản E2E kiểm tra với dữ liệu thật trong PostgreSQL.

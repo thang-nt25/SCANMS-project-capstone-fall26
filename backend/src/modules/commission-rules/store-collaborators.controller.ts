@@ -23,7 +23,7 @@ export class StoreCollaboratorsController {
   constructor(private readonly service: StoreCollaboratorsService) {}
 
   @Get('shop')
-  @Roles(UserRole.SHOP_MANAGER)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   getShopTeam(
     @Req() req: AuthenticatedRequest,
     @Query('storeId') storeId?: string,
@@ -32,7 +32,7 @@ export class StoreCollaboratorsController {
   }
 
   @Post('invite')
-  @Roles(UserRole.SHOP_MANAGER)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   invite(
     @Req() req: AuthenticatedRequest,
     @Body() dto: InviteStoreCollaboratorDto,

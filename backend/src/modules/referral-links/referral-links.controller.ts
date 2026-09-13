@@ -300,7 +300,12 @@ export class StoreReferralLinksController {
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: string,
   ) {
-    const data = await this.service.getStoreLinkAnalytics(storeId, id, userId, role);
+    const data = await this.service.getStoreLinkAnalytics(
+      storeId,
+      id,
+      userId,
+      role,
+    );
     return {
       success: true,
       analytics: {
@@ -442,7 +447,8 @@ export class StoreReferralLinksController {
 
   @Get('orders/:orderId/effective-attribution')
   @ApiOperation({
-    summary: 'Chủ Shop tra cứu KOL hiệu lực và lịch sử điều chỉnh của đơn hàng (FR-13 - Issue 3 & Issue 1)',
+    summary:
+      'Chủ Shop tra cứu KOL hiệu lực và lịch sử điều chỉnh của đơn hàng (FR-13 - Issue 3 & Issue 1)',
     description:
       'Chỉ cho phép tra cứu đơn hàng thuộc đúng StoreId trên URL và người gọi phải là chủ sở hữu gian hàng.',
   })
@@ -592,7 +598,8 @@ export class AdminReferralLinksController {
   @Get('tracking/events')
   @ApiOperation({
     summary: 'Quản trị viên tra cứu nhật ký sự kiện click/attribution (FR-13)',
-    description: 'Tra cứu sự kiện phục vụ điều tra gian lận, IP được che mờ bảo vệ riêng tư.',
+    description:
+      'Tra cứu sự kiện phục vụ điều tra gian lận, IP được che mờ bảo vệ riêng tư.',
   })
   async getAdminTrackingEvents(
     @Query() query: QueryTrackingEventsDto,
@@ -605,7 +612,8 @@ export class AdminReferralLinksController {
   @Post('orders/:orderId/attribution-adjustment')
   @ApiOperation({
     summary: 'Quản trị viên điều chỉnh nguồn attribution của đơn hàng (FR-13)',
-    description: 'Tạo bản ghi điều chỉnh bất biến và lưu audit log giải quyết khiếu nại.',
+    description:
+      'Tạo bản ghi điều chỉnh bất biến và lưu audit log giải quyết khiếu nại.',
   })
   async adjustOrderAttribution(
     @Param('orderId') orderId: string,
@@ -619,7 +627,8 @@ export class AdminReferralLinksController {
   @Get('orders/:orderId/effective-attribution')
   @Roles(UserRole.SYSTEM_ADMIN)
   @ApiOperation({
-    summary: 'Quản trị viên tra cứu KOL hiệu lực và thông tin điều chỉnh của đơn hàng (FR-13 - Issue 3)',
+    summary:
+      'Quản trị viên tra cứu KOL hiệu lực và thông tin điều chỉnh của đơn hàng (FR-13 - Issue 3)',
     description:
       'Chỉ dành riêng cho Quản trị viên hệ thống (SYSTEM_ADMIN) phục vụ đối soát và báo cáo.',
   })
