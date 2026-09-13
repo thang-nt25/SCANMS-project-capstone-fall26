@@ -48,4 +48,61 @@ describe('CommissionCalculatorService', () => {
     expect(result.items[0].appliedCommissionRate.toString()).toBe('100');
     expect(result.totalCommissionAmount.toFixed(2)).toBe('250000.00');
   });
+
+  it('allocates order discount before calculating unsnapshotted commission', () => {
+    const result = service.calculateOrderCommission(
+      [
+        {
+          id: 'item',
+          quantity: 1,
+          unitPrice: new Prisma.Decimal(1000000),
+          customCommissionRate: null,
+        },
+      ],
+      new Prisma.Decimal(10),
+      new Prisma.Decimal(0),
+      new Prisma.Decimal(500000),
+    );
+    expect(result.totalCommissionAmount.toFixed(2)).toBe('50000.00');
+  });
+
+  it('keeps a finalized snapshot despite subsequent rate and tier changes', () => {
+    const result = service.calculateOrderCommission(
+      [
+        {
+          id: 'item',
+          quantity: 1,
+          unitPrice: new Prisma.Decimal(1000000),
+          customCommissionRate: new Prisma.Decimal(50),
+          appliedCommissionRate: new Prisma.Decimal(10),
+          calculatedCommissionAmount: new Prisma.Decimal(50000),
+          commissionSnapshotAt: new Date(),
+        },
+      ],
+      new Prisma.Decimal(80),
+      new Prisma.Decimal(5),
+      new Prisma.Decimal(500000),
+    );
+    expect(result.items[0].appliedCommissionRate.toString()).toBe('10');
+    expect(result.totalCommissionAmount.toFixed(2)).toBe('50000.00');
+  });
+
+  it('does not recalculate a finalized zero commission as a new non-zero rate', () => {
+    const result = service.calculateOrderCommission(
+      [
+        {
+          id: 'item',
+          quantity: 1,
+          unitPrice: new Prisma.Decimal(1000000),
+          customCommissionRate: new Prisma.Decimal(50),
+          appliedCommissionRate: new Prisma.Decimal(0),
+          calculatedCommissionAmount: new Prisma.Decimal(0),
+          commissionSnapshotAt: new Date(),
+        },
+      ],
+      new Prisma.Decimal(10),
+      new Prisma.Decimal(0),
+    );
+    expect(result.totalCommissionAmount.toString()).toBe('0');
+  });
 });

@@ -678,8 +678,8 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
     const wallet = await prisma.wallet.findUniqueOrThrow({
       where: { collaboratorId },
     });
-    // Preserve FR-09's existing partial-refund formula; FR-23 only records it.
-    expect(wallet.pendingBalance.toFixed(2)).toBe('872000.00');
+    // Refunds revoke the cumulative proportional entitlement, not repeated percentages.
+    expect(wallet.pendingBalance.toFixed(2)).toBe('870000.00');
     expect(wallet.availableBalance.toFixed(2)).toBe('500000.31');
     const entries = await prisma.financialLedger.findMany({
       where: { walletId: wallet.id },
@@ -687,7 +687,7 @@ describePostgres('FR-22/FR-23 real PostgreSQL financial transactions', () => {
     });
     expect(entries.map((entry) => entry.amount.toFixed(2))).toEqual([
       '-10000.00',
-      '-18000.00',
+      '-20000.00',
     ]);
     expect(entries.map((entry) => entry.referenceId)).toEqual([
       first.refund.id,

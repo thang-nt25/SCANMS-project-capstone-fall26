@@ -1588,8 +1588,14 @@ export class CommissionRulesService {
   ) {
     await this.verifyStoreExists(storeId);
 
+    if (!/^\d{1,13}(?:\.\d{1,2})?$/.test(refundAmount))
+      throw new BadRequestException('Số tiền hoàn không hợp lệ');
     const refundDecimal = new Prisma.Decimal(refundAmount);
-    if (refundDecimal.lessThanOrEqualTo(0)) {
+    if (
+      !refundDecimal.isFinite() ||
+      refundDecimal.decimalPlaces() > 2 ||
+      refundDecimal.lessThanOrEqualTo(0)
+    ) {
       throw new BadRequestException('Số tiền hoàn phải lớn hơn 0');
     }
 
@@ -1665,7 +1671,9 @@ export class CommissionRulesService {
       );
       const refundRatio = currentOrder.finalAmount.isZero()
         ? new Prisma.Decimal(1)
-        : refundDecimal.dividedBy(currentOrder.finalAmount);
+        : refundDecimal.dividedBy(
+            currentOrder.finalAmount.minus(currentOrder.refundedAmount),
+          );
 
       let reversedDiscountAmount = new Prisma.Decimal(0);
       let shopFundedRemaining = new Prisma.Decimal(0);
@@ -1771,30 +1779,53 @@ export class CommissionRulesService {
         });
       }
 
-      // Điều chỉnh Commission của đơn hàng và ví chờ của KOL (nếu còn ở trạng thái PENDING)
+      // Thu hồi commission từ ví chờ hoặc ví khả dụng theo trạng thái hiện tại.
       const commissions = await tx.commission.findMany({
         where: { orderId },
       });
 
       for (const comm of commissions) {
-        if (comm.status === CommissionStatus.PENDING) {
+        if (
+          comm.status === CommissionStatus.PENDING ||
+          comm.status === CommissionStatus.APPROVED
+        ) {
+          // Refund and approval both lock the order first; revoke the correct wallet bucket.
+          const reverseBalance = (amount: Prisma.Decimal) => {
+            const reference = {
+              id: refundRecord.id,
+              type: 'ORDER_REFUND' as const,
+            };
+            const trackedStoreId = comm.storeWalletTracked
+              ? storeId
+              : undefined;
+            return comm.status === CommissionStatus.PENDING
+              ? this.walletsService.reversePendingBalance(
+                  tx,
+                  comm.collaboratorId,
+                  amount,
+                  reference,
+                  trackedStoreId,
+                )
+              : this.walletsService.reverseAvailableBalance(
+                  tx,
+                  comm.collaboratorId,
+                  amount,
+                  reference,
+                  trackedStoreId,
+                );
+          };
           if (isFullRefund) {
             await tx.commission.update({
               where: { id: comm.id },
               data: {
                 commissionAmount: new Prisma.Decimal(0),
                 status: CommissionStatus.REVERSED,
+                reversedAt: new Date(),
               },
             });
 
             if (comm.commissionAmount.greaterThan(0)) {
-              await this.walletsService.reversePendingBalance(
-                tx,
-                comm.collaboratorId,
-                comm.commissionAmount,
-                { id: refundRecord.id, type: 'ORDER_REFUND' },
-                comm.storeWalletTracked ? storeId : undefined,
-              );
+              await reverseBalance(comm.commissionAmount);
             }
           } else {
             const commReversal = comm.commissionAmount
@@ -1813,13 +1844,7 @@ export class CommissionRulesService {
             });
 
             if (commReversal.greaterThan(0)) {
-              await this.walletsService.reversePendingBalance(
-                tx,
-                comm.collaboratorId,
-                commReversal,
-                { id: refundRecord.id, type: 'ORDER_REFUND' },
-                comm.storeWalletTracked ? storeId : undefined,
-              );
+              await reverseBalance(commReversal);
             }
           }
         }
