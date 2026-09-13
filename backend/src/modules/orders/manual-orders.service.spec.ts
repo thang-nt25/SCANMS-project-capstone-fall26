@@ -76,8 +76,8 @@ describe('ManualOrdersService', () => {
     expect(result.order).toBe(createdOrder);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(createInput.data.sourcePlatform).toBe(OrderSourcePlatform.INTERNAL);
-    expect(createInput.data.subtotalAmount).toBe(300000);
-    expect(createInput.data.finalAmount).toBe(290000);
+    expect(String(createInput.data.subtotalAmount)).toBe('300000');
+    expect(String(createInput.data.finalAmount)).toBe('290000');
     expect(createInput.data.orderItems.create[0]).toMatchObject({
       appliedCommissionRate: 0,
       calculatedCommissionAmount: 0,

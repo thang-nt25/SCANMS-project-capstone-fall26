@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
+  ArrayMaxSize,
   IsArray,
   IsEnum,
   IsInt,
@@ -12,10 +13,12 @@ import {
   MaxLength,
   Matches,
   Min,
+  Max,
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus } from '@prisma/client';
+import { MAX_ORDER_AMOUNT, MAX_ORDER_ITEMS } from '../order-input.utils';
 
 export class ManualOrderItemDto {
   @ApiPropertyOptional({ description: 'ID sản phẩm nội bộ' })
@@ -30,8 +33,8 @@ export class ManualOrderItemDto {
   sku?: string;
 
   @ApiProperty({ example: 2, minimum: 1 })
-  @Type(() => Number)
   @IsInt({ message: 'Số lượng phải là số nguyên' })
+  @Max(2147483647)
   @Min(1, { message: 'Số lượng phải lớn hơn 0' })
   quantity: number;
 
@@ -40,8 +43,8 @@ export class ManualOrderItemDto {
     description: 'Đơn giá; nếu bỏ trống sẽ lấy giá hiện tại của sản phẩm',
   })
   @IsOptional()
-  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Đơn giá phải là số hợp lệ' })
+  @Max(MAX_ORDER_AMOUNT)
   @Min(0, { message: 'Đơn giá không được âm' })
   unitPrice?: number;
 }
@@ -63,6 +66,13 @@ export class CreateManualOrderDto {
   @IsString()
   @MaxLength(100)
   externalOrderSn?: string;
+
+  @ApiPropertyOptional({
+    description: 'UUID của thao tác tạo đơn, giữ nguyên khi retry',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  requestId?: string;
 
   @ApiProperty({ example: 'Nguyễn Văn A' })
   @IsString()
@@ -92,7 +102,6 @@ export class CreateManualOrderDto {
 
   @ApiPropertyOptional({ example: 20000, default: 0 })
   @IsOptional()
-  @Type(() => Number)
   @IsNumber(
     { maxDecimalPlaces: 2 },
     { message: 'Tiền giảm giá phải là số hợp lệ' },
@@ -103,6 +112,7 @@ export class CreateManualOrderDto {
   @ApiProperty({ type: [ManualOrderItemDto] })
   @IsArray()
   @ArrayMinSize(1, { message: 'Đơn hàng phải có ít nhất một sản phẩm' })
+  @ArrayMaxSize(MAX_ORDER_ITEMS)
   @ValidateNested({ each: true })
   @Type(() => ManualOrderItemDto)
   items: ManualOrderItemDto[];

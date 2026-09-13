@@ -7,6 +7,10 @@ import {
 import { OrderStatus } from '@prisma/client';
 import { Workbook, type Cell, type Row } from 'exceljs';
 import { PassThrough } from 'stream';
+import {
+  normalizeCustomerPhone,
+  validateOrderMoney,
+} from './order-input.utils';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 import { ImportOrdersDto } from './dto/import-orders.dto';
 import {
@@ -85,6 +89,10 @@ export class ExcelOrderImportService {
     if (!worksheet) {
       throw new BadRequestException('File Excel không có worksheet');
     }
+    if (worksheet.rowCount > 10001)
+      throw new BadRequestException(
+        'File không được vượt quá 10.000 dòng dữ liệu',
+      );
 
     const headerMap = this.readHeaders(worksheet.getRow(1));
     const missingHeaders = REQUIRED_HEADERS.filter(
@@ -278,6 +286,16 @@ export class ExcelOrderImportService {
     requireText('order_code', 'Mã đơn hàng', 100);
     const customerName = requireText('customer_name', 'Tên khách hàng', 150);
     const customerPhone = requireText('customer_phone', 'Số điện thoại', 20);
+    try {
+      normalizeCustomerPhone(customerPhone);
+    } catch {
+      rowErrors.push({
+        row: rowNumber,
+        orderCode,
+        field: 'customer_phone',
+        message: 'Số điện thoại không hợp lệ',
+      });
+    }
     const shippingAddress = requireText(
       'shipping_address',
       'Địa chỉ giao hàng',
@@ -425,9 +443,11 @@ export class ExcelOrderImportService {
       return undefined;
     }
 
-    const numberValue = Number(text.replaceAll(',', '').replaceAll(' ', ''));
+    // Numeric cells or plain decimal text only; reject ambiguous locale separators.
+    const numberValue = /^\d+(?:\.\d{1,2})?$/.test(text) ? Number(text) : NaN;
     const invalidInteger =
-      field === 'quantity' && !Number.isInteger(numberValue);
+      field === 'quantity' &&
+      (!Number.isInteger(numberValue) || numberValue > 2147483647);
     if (!Number.isFinite(numberValue) || numberValue < 0 || invalidInteger) {
       errors.push({
         row: rowNumber,
@@ -437,6 +457,17 @@ export class ExcelOrderImportService {
           field === 'quantity'
             ? 'Số lượng phải là số nguyên lớn hơn 0'
             : `${label} phải là số không âm`,
+      });
+      return undefined;
+    }
+    try {
+      validateOrderMoney(numberValue, label);
+    } catch {
+      errors.push({
+        row: rowNumber,
+        orderCode,
+        field,
+        message: `${label} vượt giới hạn số tiền`,
       });
       return undefined;
     }

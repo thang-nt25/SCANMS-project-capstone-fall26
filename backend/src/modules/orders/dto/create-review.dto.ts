@@ -5,7 +5,12 @@ import {
   IsInt,
   Min,
   Max,
+  IsUUID,
+  MinLength,
+  MaxLength,
+  IsUrl,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOrderReviewDto {
@@ -15,7 +20,14 @@ export class CreateOrderReviewDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsUUID('4')
   productId: string;
+
+  @ApiProperty({ description: 'Token ngắn hạn sau khi xác minh mã đơn + SĐT' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1000)
+  reviewToken: string;
 
   @ApiProperty({
     description: 'Số sao đánh giá (từ 1 đến 5 sao)',
@@ -35,6 +47,11 @@ export class CreateOrderReviewDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @MinLength(5)
+  @MaxLength(500)
   comment: string;
 
   @ApiPropertyOptional({
@@ -44,6 +61,7 @@ export class CreateOrderReviewDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(150)
   customerName?: string;
 
   @ApiPropertyOptional({
@@ -51,5 +69,7 @@ export class CreateOrderReviewDto {
   })
   @IsOptional()
   @IsString()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(2048)
   reviewImageUrl?: string;
 }

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import {
   Search,
   Package,
@@ -17,10 +17,10 @@ import {
   Tag,
   Star,
   X,
-} from 'lucide-react';
-import api from '../../services/api';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+} from "lucide-react";
+import api from "../../services/api";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
 
 interface OrderItem {
   id: string;
@@ -43,6 +43,7 @@ interface OrderReview {
 }
 
 interface OrderData {
+  reviewToken?: string;
   id: string;
   externalOrderSn: string;
   customerName: string;
@@ -73,10 +74,12 @@ interface OrderData {
 
 export default function OrderTrackingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialPhone = searchParams.get('phone') || '';
-  const initialSn = searchParams.get('sn') || '';
+  const initialPhone = searchParams.get("phone") || "";
+  const initialSn = searchParams.get("sn") || "";
 
-  const [searchInput, setSearchInput] = useState(initialPhone || initialSn || '');
+  const [searchInput, setSearchInput] = useState(
+    initialPhone || initialSn || "",
+  );
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [orders, setOrders] = useState<OrderData[]>([]);
@@ -89,9 +92,12 @@ export default function OrderTrackingPage() {
   const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null);
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [reviewerName, setReviewerName] = useState('');
+  const [comment, setComment] = useState("");
+  const [reviewerName, setReviewerName] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [verificationPhone, setVerificationPhone] = useState("");
+  const reviewInFlight = useRef(false);
+  const searchSequence = useRef(0);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -108,12 +114,15 @@ export default function OrderTrackingPage() {
   const handleSearch = async (queryStr?: string) => {
     const query = (queryStr !== undefined ? queryStr : searchInput).trim();
     if (!query) {
-      setErrorMessage('Vui lòng nhập số điện thoại hoặc mã đơn hàng để tra cứu.');
+      setErrorMessage(
+        "Vui lòng nhập số điện thoại hoặc mã đơn hàng để tra cứu.",
+      );
       return;
     }
 
     setErrorMessage(null);
     setLoading(true);
+    const sequence = ++searchSequence.current;
     setHasSearched(true);
 
     try {
@@ -127,7 +136,8 @@ export default function OrderTrackingPage() {
         setSearchParams({ sn: query });
       }
 
-      const res: any = await api.get('/orders/track', { params });
+      const res: any = await api.get("/orders/track", { params });
+      if (sequence !== searchSequence.current) return;
       if (res?.orders) {
         setOrders(res.orders);
       } else if (res?.data?.orders) {
@@ -136,12 +146,14 @@ export default function OrderTrackingPage() {
         setOrders([]);
       }
     } catch (err: any) {
+      if (sequence !== searchSequence.current) return;
       setOrders([]);
       setErrorMessage(
-        err.message || 'Không tìm thấy thông tin đơn hàng nào phù hợp với từ khóa này.',
+        err.message ||
+          "Không tìm thấy thông tin đơn hàng nào phù hợp với từ khóa này.",
       );
     } finally {
-      setLoading(false);
+      if (sequence === searchSequence.current) setLoading(false);
     }
   };
 
@@ -150,24 +162,40 @@ export default function OrderTrackingPage() {
     setSelectedOrder(order);
     setSelectedItem(item);
     setRating(5);
-    setComment('');
-    setReviewerName(order.customerName || '');
+    setComment("");
+    setReviewerName(order.customerName || "");
+    setVerificationPhone(
+      /^[0-9+() -]{10,20}$/.test(searchInput) ? searchInput : "",
+    );
     setReviewModalOpen(true);
   };
 
   // Gửi đánh giá 1-5 sao lên API (FR-18)
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (reviewInFlight.current) return;
     if (!selectedOrder || !selectedItem) return;
 
-    if (comment.trim().length < 5) {
-      showToast('Nội dung nhận xét tối thiểu 5 ký tự!');
+    if (comment.trim().length < 5 || comment.trim().length > 500) {
+      showToast("Nội dung nhận xét tối thiểu 5 ký tự!");
       return;
     }
 
+    reviewInFlight.current = true;
     setSubmittingReview(true);
     try {
+      const verification = (await api.get("/orders/track", {
+        params: {
+          phone: verificationPhone,
+          orderSn: selectedOrder.externalOrderSn,
+        },
+      })) as unknown as { data: { orders: OrderData[] } };
+      const token = verification.data.orders.find(
+        (order) => order.id === selectedOrder.id,
+      )?.reviewToken;
+      if (!token) throw new Error("Số điện thoại không khớp đơn hàng");
       const res: any = await api.post(`/orders/${selectedOrder.id}/review`, {
+        reviewToken: token,
         productId: selectedItem.productId,
         rating,
         comment: comment.trim(),
@@ -197,55 +225,83 @@ export default function OrderTrackingPage() {
       );
 
       setReviewModalOpen(false);
-      showToast('Cảm ơn bạn đã gửi đánh giá 5 sao cho sản phẩm! ⭐⭐⭐⭐⭐');
+      showToast("Cảm ơn bạn đã gửi đánh giá 5 sao cho sản phẩm! ⭐⭐⭐⭐⭐");
     } catch (err: any) {
-      showToast(err.message || 'Gửi đánh giá thất bại, vui lòng thử lại!');
+      showToast(err.message || "Gửi đánh giá thất bại, vui lòng thử lại!");
     } finally {
+      reviewInFlight.current = false;
       setSubmittingReview(false);
     }
   };
 
   const getTimelineSteps = (currentStep: number, status: string) => {
-    if (status === 'CANCELLED') {
+    if (status === "CANCELLED") {
       return [
-        { title: 'Đã đặt hàng', desc: 'Đơn hàng được ghi nhận', done: true, current: false },
-        { title: 'Đơn hàng đã hủy', desc: 'Giao dịch không tiếp tục', done: true, current: true, isError: true },
+        {
+          title: "Đã đặt hàng",
+          desc: "Đơn hàng được ghi nhận",
+          done: true,
+          current: false,
+        },
+        {
+          title: "Đơn hàng đã hủy",
+          desc: "Giao dịch không tiếp tục",
+          done: true,
+          current: true,
+          isError: true,
+        },
       ];
     }
-    if (status === 'RETURNED') {
+    if (status === "RETURNED") {
       return [
-        { title: 'Đã đặt hàng', desc: 'Đơn hàng được ghi nhận', done: true, current: false },
-        { title: 'Giao thành công', desc: 'Khách đã nhận hàng', done: true, current: false },
-        { title: 'Đã hoàn trả (Return)', desc: 'Thu hồi & hoàn tiền', done: true, current: true, isError: true },
+        {
+          title: "Đã đặt hàng",
+          desc: "Đơn hàng được ghi nhận",
+          done: true,
+          current: false,
+        },
+        {
+          title: "Giao thành công",
+          desc: "Khách đã nhận hàng",
+          done: true,
+          current: false,
+        },
+        {
+          title: "Đã hoàn trả (Return)",
+          desc: "Thu hồi & hoàn tiền",
+          done: true,
+          current: true,
+          isError: true,
+        },
       ];
     }
 
     return [
       {
         step: 1,
-        title: 'Tiếp nhận đơn',
-        desc: 'Shop đã xác nhận',
+        title: "Tiếp nhận đơn",
+        desc: "Shop đã xác nhận",
         done: currentStep >= 1,
         current: currentStep === 1,
       },
       {
         step: 2,
-        title: 'Đang đóng gói',
-        desc: 'Chuẩn bị kiện hàng',
+        title: "Đang đóng gói",
+        desc: "Chuẩn bị kiện hàng",
         done: currentStep >= 2,
         current: currentStep === 2,
       },
       {
         step: 3,
-        title: 'Đang giao hàng',
-        desc: 'Bàn giao GHN / GHTK',
+        title: "Đang giao hàng",
+        desc: "Bàn giao GHN / GHTK",
         done: currentStep >= 3,
         current: currentStep === 3,
       },
       {
         step: 4,
-        title: 'Giao thành công',
-        desc: 'Khách đã nhận hàng',
+        title: "Giao thành công",
+        desc: "Khách đã nhận hàng",
         done: currentStep >= 4,
         current: currentStep === 4,
       },
@@ -255,15 +311,15 @@ export default function OrderTrackingPage() {
   const getRatingLabel = (stars: number) => {
     switch (stars) {
       case 1:
-        return '1★ Rất thất vọng';
+        return "1★ Rất thất vọng";
       case 2:
-        return '2★ Chưa hài lòng';
+        return "2★ Chưa hài lòng";
       case 3:
-        return '3★ Bình thường';
+        return "3★ Bình thường";
       case 4:
-        return '4★ Hài lòng';
+        return "4★ Hài lòng";
       case 5:
-        return '5★ Cực kỳ hài lòng / Tuyệt vời!';
+        return "5★ Cực kỳ hài lòng / Tuyệt vời!";
       default:
         return `${stars} sao`;
     }
@@ -294,7 +350,9 @@ export default function OrderTrackingPage() {
             <span className="w-7 h-7 rounded-lg bg-[#C59B58] text-white font-extrabold text-sm flex items-center justify-center">
               S
             </span>
-            <strong className="text-sm font-extrabold text-[#1A1612]">SCANMS Tracking</strong>
+            <strong className="text-sm font-extrabold text-[#1A1612]">
+              SCANMS Tracking
+            </strong>
           </div>
         </div>
 
@@ -328,9 +386,10 @@ export default function OrderTrackingPage() {
             Theo Dõi Hành Trình Đơn Hàng Của Bạn
           </h1>
           <p className="text-xs sm:text-sm text-[#7D715E] max-w-xl m-0 leading-relaxed">
-            Nhập <strong className="text-[#1A1612]">Số điện thoại đặt hàng</strong> hoặc{' '}
-            <strong className="text-[#1A1612]">Mã vận đơn</strong> để kiểm tra tiến trình đóng gói, giao
-            hàng và gửi đánh giá nhận quà ưu đãi.
+            Nhập{" "}
+            <strong className="text-[#1A1612]">Số điện thoại đặt hàng</strong>{" "}
+            hoặc <strong className="text-[#1A1612]">Mã vận đơn</strong> để kiểm
+            tra tiến trình đóng gói, giao hàng và gửi đánh giá nhận quà ưu đãi.
           </p>
 
           {/* Search Box Form */}
@@ -373,12 +432,14 @@ export default function OrderTrackingPage() {
 
           {/* Sample Tags for 1-Click Testing */}
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span className="text-[11px] text-[#7D715E] font-medium">Gợi ý kiểm thử:</span>
+            <span className="text-[11px] text-[#7D715E] font-medium">
+              Gợi ý kiểm thử:
+            </span>
             <button
               type="button"
               onClick={() => {
-                setSearchInput('0933888999');
-                handleSearch('0933888999');
+                setSearchInput("0933888999");
+                handleSearch("0933888999");
               }}
               className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] px-2.5 py-1 rounded-lg transition cursor-pointer"
             >
@@ -387,8 +448,8 @@ export default function OrderTrackingPage() {
             <button
               type="button"
               onClick={() => {
-                setSearchInput('ORD-20260909-001');
-                handleSearch('ORD-20260909-001');
+                setSearchInput("ORD-20260909-001");
+                handleSearch("ORD-20260909-001");
               }}
               className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] px-2.5 py-1 rounded-lg transition cursor-pointer"
             >
@@ -413,10 +474,12 @@ export default function OrderTrackingPage() {
             <div className="w-16 h-16 rounded-3xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F]">
               <Package className="w-8 h-8" />
             </div>
-            <strong className="text-base text-[#1A1612]">Sẵn sàng tra cứu đơn hàng</strong>
+            <strong className="text-base text-[#1A1612]">
+              Sẵn sàng tra cứu đơn hàng
+            </strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              Vui lòng nhập số điện thoại hoặc mã đơn hàng ở thanh tìm kiếm phía trên để hiển thị trạng
-              thái vận chuyển chi tiết.
+              Vui lòng nhập số điện thoại hoặc mã đơn hàng ở thanh tìm kiếm phía
+              trên để hiển thị trạng thái vận chuyển chi tiết.
             </p>
           </div>
         )}
@@ -427,10 +490,13 @@ export default function OrderTrackingPage() {
             <div className="w-16 h-16 rounded-3xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
               <AlertCircle className="w-8 h-8" />
             </div>
-            <strong className="text-base text-[#1A1612]">Không tìm thấy đơn hàng</strong>
+            <strong className="text-base text-[#1A1612]">
+              Không tìm thấy đơn hàng
+            </strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              Không tìm thấy đơn hàng nào liên kết với thông tin <strong>"{searchInput}"</strong>. Vui lòng
-              kiểm tra lại số điện thoại hoặc mã đơn.
+              Không tìm thấy đơn hàng nào liên kết với thông tin{" "}
+              <strong>"{searchInput}"</strong>. Vui lòng kiểm tra lại số điện
+              thoại hoặc mã đơn.
             </p>
           </div>
         )}
@@ -438,7 +504,8 @@ export default function OrderTrackingPage() {
         {/* Orders list */}
         {orders.map((order) => {
           const steps = getTimelineSteps(order.timelineStep, order.status);
-          const canReview = order.status === 'DELIVERED' || order.status === 'COMPLETED';
+          const canReview =
+            order.status === "DELIVERED" || order.status === "COMPLETED";
 
           return (
             <Card
@@ -453,7 +520,7 @@ export default function OrderTrackingPage() {
                   </div>
                   <div>
                     <span className="text-[11px] font-bold text-[#7D715E] block">
-                      {order.store?.name || 'Sora Skin Flagship'}
+                      {order.store?.name || "Sora Skin Flagship"}
                     </span>
                     <strong className="text-sm sm:text-base font-black text-[#1A1612]">
                       #{order.externalOrderSn}
@@ -473,7 +540,7 @@ export default function OrderTrackingPage() {
                     {order.statusLabel}
                   </span>
                   <span className="text-[11px] text-[#7D715E] font-medium hidden sm:inline">
-                    {new Date(order.createdAt).toLocaleDateString('vi-VN')}
+                    {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                   </span>
                 </div>
               </div>
@@ -482,20 +549,29 @@ export default function OrderTrackingPage() {
               <div className="px-4 sm:px-6 py-6 border-b border-[#EAE4D7] bg-white">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative">
                   {steps.map((st, idx) => (
-                    <div key={idx} className="flex flex-col items-center text-center gap-1.5 relative z-10">
+                    <div
+                      key={idx}
+                      className="flex flex-col items-center text-center gap-1.5 relative z-10"
+                    >
                       <div
                         className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition ${
                           st.done
-                            ? 'bg-[#B88E4F] text-white shadow-xs'
-                            : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]'
+                            ? "bg-[#B88E4F] text-white shadow-xs"
+                            : "bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]"
                         }`}
                       >
-                        {st.done ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
+                        {st.done ? (
+                          <CheckCircle2 className="w-5 h-5" />
+                        ) : (
+                          idx + 1
+                        )}
                       </div>
                       <strong className="text-xs font-bold text-[#1A1612] leading-tight">
                         {st.title}
                       </strong>
-                      <small className="text-[10.5px] text-[#7D715E] leading-none">{st.desc}</small>
+                      <small className="text-[10.5px] text-[#7D715E] leading-none">
+                        {st.desc}
+                      </small>
                     </div>
                   ))}
                 </div>
@@ -529,7 +605,10 @@ export default function OrderTrackingPage() {
                         >
                           <div className="flex items-center gap-3">
                             <img
-                              src={item.imageUrl || '/assets/serum-hero-optimized.jpg'}
+                              src={
+                                item.imageUrl ||
+                                "/assets/serum-hero-optimized.jpg"
+                              }
                               alt={item.productTitle}
                               className="w-14 h-14 rounded-xl object-contain bg-white border border-[#EAE4D7] shrink-0"
                             />
@@ -543,10 +622,10 @@ export default function OrderTrackingPage() {
                             </div>
                             <div className="text-right shrink-0">
                               <strong className="text-xs sm:text-sm font-black text-[#B88E4F]">
-                                {item.totalPrice.toLocaleString('vi-VN')} ₫
+                                {item.totalPrice.toLocaleString("vi-VN")} ₫
                               </strong>
                               <span className="text-[10px] text-[#7D715E] block">
-                                {item.unitPrice.toLocaleString('vi-VN')} ₫/món
+                                {item.unitPrice.toLocaleString("vi-VN")} ₫/món
                               </span>
                             </div>
                           </div>
@@ -554,21 +633,28 @@ export default function OrderTrackingPage() {
                           {/* REVIEW SECTION FOR THIS ITEM (FR-18) */}
                           <div className="border-t border-[#EAE4D7]/70 pt-2 flex items-center justify-between gap-2">
                             {itemReview ? (
-                              <div className="w-full bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-2.5 text-xs flex flex-col gap-1">
+                              <div className="w-full bg-brand-soft border border-brand-border rounded-xl p-2.5 text-xs flex flex-col gap-1">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-1 text-amber-500 font-bold">
-                                    {[...Array(itemReview.rating)].map((_, i) => (
-                                      <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                                    ))}
-                                    <span className="text-[11px] text-emerald-800 ml-1 font-extrabold">
+                                    {[...Array(itemReview.rating)].map(
+                                      (_, i) => (
+                                        <Star
+                                          key={i}
+                                          className="w-3.5 h-3.5 fill-current"
+                                        />
+                                      ),
+                                    )}
+                                    <span className="text-[11px] text-brand-strong ml-1 font-extrabold">
                                       {itemReview.rating}/5 sao • Đã đánh giá
                                     </span>
                                   </div>
                                   <span className="text-[10px] text-[#7D715E]">
-                                    {new Date(itemReview.createdAt).toLocaleDateString('vi-VN')}
+                                    {new Date(
+                                      itemReview.createdAt,
+                                    ).toLocaleDateString("vi-VN")}
                                   </span>
                                 </div>
-                                <p className="text-[11.5px] text-emerald-950 m-0 italic">
+                                <p className="text-[11.5px] text-ink m-0 italic">
                                   "{itemReview.comment}"
                                 </p>
                               </div>
@@ -576,13 +662,17 @@ export default function OrderTrackingPage() {
                               <div className="w-full flex items-center justify-between gap-2 bg-white p-2 rounded-xl border border-[#EEDFC6]">
                                 <div className="flex items-center gap-1.5 text-xs text-[#8A662C]">
                                   <Star className="w-4 h-4 text-amber-500" />
-                                  <span className="text-[11.5px]">Bạn đã nhận sản phẩm này?</span>
+                                  <span className="text-[11.5px]">
+                                    Bạn đã nhận sản phẩm này?
+                                  </span>
                                 </div>
                                 <Button
                                   type="button"
                                   size="sm"
                                   variant="gold"
-                                  onClick={() => handleOpenReviewModal(order, item)}
+                                  onClick={() =>
+                                    handleOpenReviewModal(order, item)
+                                  }
                                   className="text-[11px] py-1 px-3 rounded-lg font-bold shadow-2xs cursor-pointer flex items-center gap-1"
                                 >
                                   <Star className="w-3 h-3 fill-current" />
@@ -591,7 +681,8 @@ export default function OrderTrackingPage() {
                               </div>
                             ) : (
                               <span className="text-[10.5px] text-[#A49B8B] italic">
-                                Đánh giá sẽ mở sau khi đơn hàng được giao thành công.
+                                Đánh giá sẽ mở sau khi đơn hàng được giao thành
+                                công.
                               </span>
                             )}
                           </div>
@@ -605,7 +696,7 @@ export default function OrderTrackingPage() {
                     <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center gap-2.5 text-xs text-[#8A662C]">
                       <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0" />
                       <span>
-                        Đơn hàng nhận được ưu đãi độc quyền từ Đối tác Tiếp thị:{' '}
+                        Đơn hàng nhận được ưu đãi độc quyền từ Đối tác Tiếp thị:{" "}
                         <strong className="text-[#1A1612]">
                           {order.attributedCollaborator.fullName}
                         </strong>
@@ -632,7 +723,9 @@ export default function OrderTrackingPage() {
                       </div>
                       <div className="flex items-start gap-2 text-[#7D715E]">
                         <MapPin className="w-3.5 h-3.5 text-[#B88E4F] shrink-0 mt-0.5" />
-                        <span className="leading-snug">{order.shippingAddress}</span>
+                        <span className="leading-snug">
+                          {order.shippingAddress}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -645,26 +738,28 @@ export default function OrderTrackingPage() {
                     <div className="flex justify-between text-[#7D715E]">
                       <span>Tiền hàng:</span>
                       <span className="font-semibold text-[#1A1612]">
-                        {order.subtotalAmount.toLocaleString('vi-VN')} ₫
+                        {order.subtotalAmount.toLocaleString("vi-VN")} ₫
                       </span>
                     </div>
 
                     {order.discountAmount > 0 && (
-                      <div className="flex justify-between text-emerald-700">
+                      <div className="flex justify-between text-brand-strong">
                         <span className="flex items-center gap-1">
                           <Tag className="w-3 h-3" />
                           <span>Ưu đãi giảm giá:</span>
                         </span>
                         <span className="font-bold">
-                          -{order.discountAmount.toLocaleString('vi-VN')} ₫
+                          -{order.discountAmount.toLocaleString("vi-VN")} ₫
                         </span>
                       </div>
                     )}
 
                     <div className="flex justify-between items-baseline pt-2 border-t border-[#EAE4D7] text-sm">
-                      <span className="font-bold text-[#1A1612]">Tổng thanh toán:</span>
+                      <span className="font-bold text-[#1A1612]">
+                        Tổng thanh toán:
+                      </span>
                       <strong className="text-base font-black text-[#B88E4F]">
-                        {order.finalAmount.toLocaleString('vi-VN')} ₫
+                        {order.finalAmount.toLocaleString("vi-VN")} ₫
                       </strong>
                     </div>
                   </div>
@@ -701,7 +796,9 @@ export default function OrderTrackingPage() {
             {/* Product Summary Header */}
             <div className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7]">
               <img
-                src={selectedItem.imageUrl || '/assets/serum-hero-optimized.jpg'}
+                src={
+                  selectedItem.imageUrl || "/assets/serum-hero-optimized.jpg"
+                }
                 alt={selectedItem.productTitle}
                 className="w-12 h-12 rounded-xl object-contain bg-white border border-[#EAE4D7] shrink-0"
               />
@@ -717,9 +814,24 @@ export default function OrderTrackingPage() {
 
             {/* Review Form */}
             <form onSubmit={handleSubmitReview} className="flex flex-col gap-4">
+              <label className="text-xs text-ink">
+                Số điện thoại đặt hàng để xác minh
+                <input
+                  aria-label="Số điện thoại xác minh đánh giá"
+                  type="tel"
+                  required
+                  maxLength={20}
+                  value={verificationPhone}
+                  onChange={(event) => setVerificationPhone(event.target.value)}
+                  disabled={submittingReview}
+                  className="mt-2 w-full rounded-xl border border-line bg-white p-3"
+                />
+              </label>
               {/* Star Rating Selector */}
               <div className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6]">
-                <span className="text-xs font-bold text-[#8A662C]">Bạn cảm thấy thế nào về sản phẩm?</span>
+                <span className="text-xs font-bold text-[#8A662C]">
+                  Bạn cảm thấy thế nào về sản phẩm?
+                </span>
                 <div className="flex items-center gap-2 my-1">
                   {[1, 2, 3, 4, 5].map((starValue) => {
                     const isFilled = (hoverRating || rating) >= starValue;
@@ -734,7 +846,9 @@ export default function OrderTrackingPage() {
                       >
                         <Star
                           className={`w-7 h-7 ${
-                            isFilled ? 'fill-amber-500 text-amber-500' : 'text-[#D8D0C3]'
+                            isFilled
+                              ? "fill-amber-500 text-amber-500"
+                              : "text-[#D8D0C3]"
                           }`}
                         />
                       </button>
@@ -754,6 +868,7 @@ export default function OrderTrackingPage() {
                 <input
                   type="text"
                   value={reviewerName}
+                  maxLength={150}
                   onChange={(e) => setReviewerName(e.target.value)}
                   placeholder="VD: Hoàng Minh Tuấn"
                   required
@@ -769,6 +884,7 @@ export default function OrderTrackingPage() {
                 <textarea
                   rows={3}
                   value={comment}
+                  maxLength={500}
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="Chia sẻ cảm nhận thực tế của bạn về chất lượng sản phẩm, hiệu quả phục hồi da, mùi hương hoặc dịch vụ đóng gói giao hàng..."
                   required

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -7,11 +7,11 @@ import {
   Plus,
   Trash2,
   Upload,
-} from 'lucide-react';
-import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { Input } from '../../components/ui/Input';
+} from "lucide-react";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { Input } from "../../components/ui/Input";
 import {
   Table,
   TableBody,
@@ -19,14 +19,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../../components/ui/Table';
-import { productService, type Product } from '../../services/product.service';
+} from "../../components/ui/Table";
+import { productService, type Product } from "../../services/product.service";
 import {
   orderService,
   type ExcelImportResult,
   type ManagedOrderStatus,
-} from '../../services/order.service';
-import { storeService } from '../../services/store.service';
+} from "../../services/order.service";
+import { storeService } from "../../services/store.service";
 
 interface ManualItemForm {
   productId: string;
@@ -35,37 +35,39 @@ interface ManualItemForm {
 }
 
 const STATUS_OPTIONS: Array<{ value: ManagedOrderStatus; label: string }> = [
-  { value: 'PENDING', label: 'Đang chuẩn bị' },
-  { value: 'SHIPPING', label: 'Đang giao' },
-  { value: 'DELIVERED', label: 'Đã giao' },
-  { value: 'COMPLETED', label: 'Hoàn tất' },
-  { value: 'CANCELLED', label: 'Đã hủy' },
-  { value: 'RETURNED', label: 'Hoàn trả' },
+  { value: "PENDING", label: "Đang chuẩn bị" },
+  { value: "SHIPPING", label: "Đang giao" },
+  { value: "DELIVERED", label: "Đã giao" },
+  { value: "COMPLETED", label: "Hoàn tất" },
+  { value: "CANCELLED", label: "Đã hủy" },
+  { value: "RETURNED", label: "Hoàn trả" },
 ];
 
 const EMPTY_ITEM: ManualItemForm = {
-  productId: '',
+  productId: "",
   quantity: 1,
-  unitPrice: '',
+  unitPrice: "",
 };
 
 export default function OrdersManagementPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'manual' | 'excel'>('manual');
+  const inFlight = useRef(false);
+  const manualRequestId = useRef(crypto.randomUUID());
+  const [activeTab, setActiveTab] = useState<"manual" | "excel">("manual");
   const [storeId, setStoreId] = useState<string>();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<{
-    type: 'success' | 'error';
+    type: "success" | "error";
     message: string;
   }>();
-  const [orderCode, setOrderCode] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [shippingAddress, setShippingAddress] = useState('');
-  const [status, setStatus] = useState<ManagedOrderStatus>('PENDING');
-  const [discountAmount, setDiscountAmount] = useState('0');
+  const [orderCode, setOrderCode] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [status, setStatus] = useState<ManagedOrderStatus>("PENDING");
+  const [discountAmount, setDiscountAmount] = useState("0");
   const [items, setItems] = useState<ManualItemForm[]>([{ ...EMPTY_ITEM }]);
   const [excelFile, setExcelFile] = useState<File>();
   const [importResult, setImportResult] = useState<ExcelImportResult>();
@@ -82,11 +84,11 @@ export default function OrdersManagementPage() {
         setProducts(result.items ?? []);
       } catch (error) {
         setNotice({
-          type: 'error',
+          type: "error",
           message:
             error instanceof Error
               ? error.message
-              : 'Không thể tải danh sách sản phẩm',
+              : "Không thể tải danh sách sản phẩm",
         });
       } finally {
         setLoadingProducts(false);
@@ -128,31 +130,38 @@ export default function OrdersManagementPage() {
   };
 
   const resetManualForm = () => {
-    setOrderCode('');
-    setCustomerName('');
-    setCustomerPhone('');
-    setShippingAddress('');
-    setStatus('PENDING');
-    setDiscountAmount('0');
+    setOrderCode("");
+    setCustomerName("");
+    setCustomerPhone("");
+    setShippingAddress("");
+    setStatus("PENDING");
+    setDiscountAmount("0");
     setItems([{ ...EMPTY_ITEM }]);
   };
 
   const handleManualSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (inFlight.current) return;
+    if (!/^(0\d{9}|\+84\d{9})$/.test(customerPhone.replace(/[()\s-]/g, ""))) {
+      setNotice({ type: "error", message: "Số điện thoại không hợp lệ" });
+      return;
+    }
     setNotice(undefined);
     if (items.some((item) => !item.productId)) {
       setNotice({
-        type: 'error',
-        message: 'Vui lòng chọn sản phẩm cho tất cả các dòng',
+        type: "error",
+        message: "Vui lòng chọn sản phẩm cho tất cả các dòng",
       });
       return;
     }
 
+    inFlight.current = true;
     setSubmitting(true);
     try {
       const result = await orderService.createManualOrder({
         storeId,
         externalOrderSn: orderCode.trim() || undefined,
+        requestId: manualRequestId.current,
         customerName,
         customerPhone,
         shippingAddress,
@@ -165,43 +174,50 @@ export default function OrdersManagementPage() {
         })),
       });
       setNotice({
-        type: 'success',
+        type: "success",
         message: `${result.message}: ${result.order.externalOrderSn}`,
       });
       resetManualForm();
+      manualRequestId.current = crypto.randomUUID();
     } catch (error) {
       setNotice({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'Không thể tạo đơn',
+        type: "error",
+        message: error instanceof Error ? error.message : "Không thể tạo đơn",
       });
     } finally {
+      inFlight.current = false;
       setSubmitting(false);
     }
   };
 
   const handleExcelImport = async () => {
+    if (inFlight.current) return;
     setNotice(undefined);
     setImportResult(undefined);
     if (!excelFile) {
-      setNotice({ type: 'error', message: 'Vui lòng chọn file .xlsx' });
+      setNotice({ type: "error", message: "Vui lòng chọn file .xlsx" });
       return;
     }
 
+    inFlight.current = true;
     setSubmitting(true);
     try {
       const result = await orderService.importExcel(excelFile, storeId);
       setImportResult(result);
       setNotice({
-        type: result.summary.errorRows > 0 ? 'error' : 'success',
+        type: result.summary.errorRows > 0 ? "error" : "success",
         message: `Import xong: ${result.summary.importedOrders}/${result.summary.totalOrders} đơn thành công`,
       });
     } catch (error) {
       setNotice({
-        type: 'error',
+        type: "error",
         message:
-          error instanceof Error ? error.message : 'Không thể import file Excel',
+          error instanceof Error
+            ? error.message
+            : "Không thể import file Excel",
       });
     } finally {
+      inFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -223,22 +239,22 @@ export default function OrdersManagementPage() {
         <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1">
           <button
             type="button"
-            onClick={() => setActiveTab('manual')}
+            onClick={() => setActiveTab("manual")}
             className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              activeTab === 'manual'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-500 hover:bg-slate-50'
+              activeTab === "manual"
+                ? "bg-slate-900 text-white"
+                : "text-slate-500 hover:bg-slate-50"
             }`}
           >
             Tạo đơn thủ công
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('excel')}
+            onClick={() => setActiveTab("excel")}
             className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              activeTab === 'excel'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-500 hover:bg-slate-50'
+              activeTab === "excel"
+                ? "bg-slate-900 text-white"
+                : "text-slate-500 hover:bg-slate-50"
             }`}
           >
             Import Excel
@@ -249,12 +265,12 @@ export default function OrdersManagementPage() {
       {notice && (
         <div
           className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${
-            notice.type === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border-rose-200 bg-rose-50 text-rose-800'
+            notice.type === "success"
+              ? "border-brand-border bg-brand-soft text-ink"
+              : "border-rose-200 bg-rose-50 text-rose-800"
           }`}
         >
-          {notice.type === 'success' ? (
+          {notice.type === "success" ? (
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           ) : (
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -263,7 +279,7 @@ export default function OrdersManagementPage() {
         </div>
       )}
 
-      {activeTab === 'manual' ? (
+      {activeTab === "manual" ? (
         <form onSubmit={handleManualSubmit} className="space-y-6">
           <Card className="p-5 sm:p-6">
             <div className="mb-5 flex items-center gap-3">
@@ -271,7 +287,9 @@ export default function OrdersManagementPage() {
                 <PackagePlus className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="font-bold text-slate-900">Thông tin người nhận</h2>
+                <h2 className="font-bold text-slate-900">
+                  Thông tin người nhận
+                </h2>
                 <p className="text-xs text-slate-500">
                   Mã đơn có thể để trống để hệ thống tự sinh.
                 </p>
@@ -365,7 +383,7 @@ export default function OrdersManagementPage() {
                     disabled={loadingProducts}
                     value={item.productId}
                     onChange={(event) =>
-                      updateItem(index, 'productId', event.target.value)
+                      updateItem(index, "productId", event.target.value)
                     }
                     className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-amber-500"
                   >
@@ -382,7 +400,7 @@ export default function OrdersManagementPage() {
                     required
                     value={item.quantity}
                     onChange={(event) =>
-                      updateItem(index, 'quantity', Number(event.target.value))
+                      updateItem(index, "quantity", Number(event.target.value))
                     }
                     placeholder="Số lượng"
                   />
@@ -392,7 +410,7 @@ export default function OrdersManagementPage() {
                     step="0.01"
                     value={item.unitPrice}
                     onChange={(event) =>
-                      updateItem(index, 'unitPrice', event.target.value)
+                      updateItem(index, "unitPrice", event.target.value)
                     }
                     placeholder="Đơn giá mặc định"
                   />
@@ -425,7 +443,7 @@ export default function OrdersManagementPage() {
                   {Math.max(
                     0,
                     estimatedSubtotal - Number(discountAmount || 0),
-                  ).toLocaleString('vi-VN')}{' '}
+                  ).toLocaleString("vi-VN")}{" "}
                   ₫
                 </p>
               </div>
@@ -441,18 +459,19 @@ export default function OrdersManagementPage() {
         <div className="space-y-6">
           <Card className="p-5 sm:p-6">
             <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-700">
+              <div className="rounded-xl bg-brand-soft p-2.5 text-brand-strong">
                 <FileSpreadsheet className="h-5 w-5" />
               </div>
               <div>
                 <h2 className="font-bold text-slate-900">Import file Excel</h2>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Chỉ nhận file `.xlsx`, tối đa 5 MB. Các cột bắt buộc:{' '}
+                  Chỉ nhận file `.xlsx`, tối đa 5 MB. Các cột bắt buộc:{" "}
                   <code>
-                    order_code, customer_name, customer_phone,
-                    shipping_address, sku, quantity
+                    order_code, customer_name, customer_phone, shipping_address,
+                    sku, quantity
                   </code>
-                  . Cột tùy chọn: <code>status, unit_price, discount_amount</code>.
+                  . Cột tùy chọn:{" "}
+                  <code>status, unit_price, discount_amount</code>.
                 </p>
               </div>
             </div>
@@ -464,10 +483,11 @@ export default function OrdersManagementPage() {
             >
               <Upload className="mb-3 h-8 w-8 text-amber-600" />
               <span className="text-sm font-bold text-slate-800">
-                {excelFile ? excelFile.name : 'Chọn file Excel để import'}
+                {excelFile ? excelFile.name : "Chọn file Excel để import"}
               </span>
               <span className="mt-1 text-xs text-slate-500">
-                Một đơn nhiều sản phẩm được biểu diễn bằng nhiều dòng cùng mã đơn.
+                Một đơn nhiều sản phẩm được biểu diễn bằng nhiều dòng cùng mã
+                đơn.
               </span>
             </button>
             <input
@@ -494,13 +514,15 @@ export default function OrdersManagementPage() {
             <>
               <div className="grid gap-3 sm:grid-cols-4">
                 {[
-                  ['Tổng số dòng', importResult.summary.totalRows],
-                  ['Tổng số đơn', importResult.summary.totalOrders],
-                  ['Import thành công', importResult.summary.importedOrders],
-                  ['Đơn bị bỏ qua', importResult.summary.skippedOrders],
+                  ["Tổng số dòng", importResult.summary.totalRows],
+                  ["Tổng số đơn", importResult.summary.totalOrders],
+                  ["Import thành công", importResult.summary.importedOrders],
+                  ["Đơn bị bỏ qua", importResult.summary.skippedOrders],
                 ].map(([label, value]) => (
                   <Card key={label} className="p-4">
-                    <p className="text-xs font-semibold text-slate-500">{label}</p>
+                    <p className="text-xs font-semibold text-slate-500">
+                      {label}
+                    </p>
                     <p className="mt-1 text-2xl font-extrabold text-slate-900">
                       {value}
                     </p>
@@ -527,9 +549,11 @@ export default function OrdersManagementPage() {
                     <TableBody>
                       {importResult.errors.map((error, index) => (
                         <TableRow key={`${error.row}-${error.field}-${index}`}>
-                          <TableCell className="font-bold">{error.row}</TableCell>
-                          <TableCell>{error.orderCode ?? '—'}</TableCell>
-                          <TableCell>{error.field ?? '—'}</TableCell>
+                          <TableCell className="font-bold">
+                            {error.row}
+                          </TableCell>
+                          <TableCell>{error.orderCode ?? "—"}</TableCell>
+                          <TableCell>{error.field ?? "—"}</TableCell>
                           <TableCell className="text-rose-600">
                             {error.message}
                           </TableCell>

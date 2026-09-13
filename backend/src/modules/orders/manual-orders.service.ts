@@ -11,7 +11,12 @@ import {
   Prisma,
   UserRole,
 } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
+import {
+  normalizeCustomerPhone,
+  validateOrderMoney,
+  MAX_ORDER_ITEMS,
+} from './order-input.utils';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 
@@ -59,18 +64,63 @@ export class ManualOrdersService {
   }
 
   async createManualOrderForStore(storeId: string, dto: CreateManualOrderDto) {
+    const customerPhone = normalizeCustomerPhone(dto.customerPhone);
+    if (!dto.items.length || dto.items.length > MAX_ORDER_ITEMS) {
+      throw new BadRequestException('Số dòng sản phẩm không hợp lệ');
+    }
+    dto.items.forEach((item) => {
+      if (
+        !Number.isInteger(item.quantity) ||
+        item.quantity < 1 ||
+        item.quantity > 2147483647
+      )
+        throw new BadRequestException('Số lượng sản phẩm không hợp lệ');
+      if (item.unitPrice !== undefined)
+        validateOrderMoney(item.unitPrice, 'Đơn giá');
+    });
+    validateOrderMoney(dto.discountAmount ?? 0, 'Giảm giá');
     const externalOrderSn =
-      dto.externalOrderSn?.trim() || this.generateManualOrderCode();
+      dto.externalOrderSn?.trim() ||
+      (dto.requestId
+        ? `MANUAL-${dto.requestId}`
+        : this.generateManualOrderCode());
 
-    await this.ensureOrderDoesNotExist(storeId, externalOrderSn);
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify({ ...dto, customerPhone }))
+      .digest('hex');
+    if (dto.requestId && !dto.externalOrderSn?.trim()) {
+      const existing = await this.prisma.order.findFirst({
+        where: {
+          storeId,
+          sourcePlatform: OrderSourcePlatform.INTERNAL,
+          externalOrderSn,
+        },
+        select: { ...this.orderSelect, rawPayload: true },
+      });
+      if (existing) {
+        if (
+          (existing.rawPayload as { requestFingerprint?: string } | null)
+            ?.requestFingerprint !== fingerprint
+        )
+          throw new ConflictException(
+            'requestId đã được dùng với nội dung khác',
+          );
+        return { message: 'Đơn hàng đã được tiếp nhận', order: existing };
+      }
+    }
+
+    if (!dto.requestId || dto.externalOrderSn?.trim())
+      await this.ensureOrderDoesNotExist(storeId, externalOrderSn);
 
     const resolvedItems = await this.resolveProducts(storeId, dto);
     const subtotalAmount = resolvedItems.reduce(
-      (total, item) => total + item.unitPrice * item.quantity,
-      0,
+      (total, item) =>
+        total.plus(new Prisma.Decimal(item.unitPrice).times(item.quantity)),
+      new Prisma.Decimal(0),
     );
     const discountAmount = dto.discountAmount ?? 0;
-    if (discountAmount > subtotalAmount) {
+    validateOrderMoney(subtotalAmount.toNumber(), 'Tổng tiền hàng');
+    if (subtotalAmount.lessThan(discountAmount)) {
       throw new BadRequestException(
         'Tiền giảm giá không được lớn hơn tiền hàng',
       );
@@ -84,12 +134,20 @@ export class ManualOrdersService {
             sourcePlatform: OrderSourcePlatform.INTERNAL,
             externalOrderSn,
             customerName: dto.customerName.trim(),
-            customerPhone: dto.customerPhone.trim(),
+            customerPhone,
+            ...(dto.requestId
+              ? { rawPayload: { requestFingerprint: fingerprint } }
+              : {}),
             shippingAddress: dto.shippingAddress.trim(),
             subtotalAmount,
             discountAmount,
-            finalAmount: subtotalAmount - discountAmount,
+            finalAmount: subtotalAmount.minus(discountAmount),
             status: dto.status ?? OrderStatus.PENDING,
+            completedAt:
+              dto.status === OrderStatus.DELIVERED ||
+              dto.status === OrderStatus.COMPLETED
+                ? new Date()
+                : undefined,
             orderItems: {
               create: resolvedItems.map((item) => ({
                 productId: item.productId,
@@ -111,6 +169,21 @@ export class ManualOrdersService {
       };
     } catch (error: unknown) {
       if (this.isUniqueConstraintError(error)) {
+        if (dto.requestId && !dto.externalOrderSn?.trim()) {
+          const existing = await this.prisma.order.findFirst({
+            where: {
+              storeId,
+              sourcePlatform: OrderSourcePlatform.INTERNAL,
+              externalOrderSn,
+            },
+            select: { ...this.orderSelect, rawPayload: true },
+          });
+          if (
+            (existing?.rawPayload as { requestFingerprint?: string } | null)
+              ?.requestFingerprint === fingerprint
+          )
+            return { message: 'Đơn hàng đã được tiếp nhận', order: existing! };
+        }
         throw new ConflictException(
           `Mã đơn hàng ${externalOrderSn} đã tồn tại`,
         );

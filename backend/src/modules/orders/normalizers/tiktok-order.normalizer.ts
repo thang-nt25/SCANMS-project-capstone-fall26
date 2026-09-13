@@ -7,6 +7,7 @@ import {
 } from './external-order-normalizer.interface';
 import {
   asArray,
+  asPlatformDate,
   asMoney,
   asRecord,
   asString,
@@ -83,6 +84,15 @@ export class TikTokOrderNormalizer implements ExternalOrderNormalizer {
       externalOrderId: requireString(order.order_id ?? order.id, 'order_id'),
       internalOrderId: asString(order.internal_order_id),
       platform: this.platform,
+      currency: asString(payment?.currency ?? order.currency),
+      eventAt: asPlatformDate(order.update_time ?? order.updated_at),
+      shippingAmount: asMoney(payment?.shipping_fee ?? order.shipping_fee),
+      taxAmount: asMoney(payment?.tax_amount ?? order.tax_amount),
+      receivedAt: ['DELIVERED', 'COMPLETED'].includes(
+        asString(order.status ?? order.order_status)?.toUpperCase() ?? '',
+      )
+        ? new Date()
+        : undefined,
       status: this.mapStatus(asString(order.status ?? order.order_status)),
       customerName: asString(
         recipient?.name ?? recipient?.full_name ?? buyer?.name,

@@ -1,12 +1,7 @@
-import api from './api';
+import api from "./api";
 
 export type ManagedOrderStatus =
-  | 'PENDING'
-  | 'SHIPPING'
-  | 'DELIVERED'
-  | 'COMPLETED'
-  | 'CANCELLED'
-  | 'RETURNED';
+  "PENDING" | "SHIPPING" | "DELIVERED" | "COMPLETED" | "CANCELLED" | "RETURNED";
 
 export interface ManualOrderItemInput {
   productId?: string;
@@ -18,6 +13,7 @@ export interface ManualOrderItemInput {
 export interface ManualOrderInput {
   storeId?: string;
   externalOrderSn?: string;
+  requestId?: string;
   customerName: string;
   customerPhone: string;
   shippingAddress: string;
@@ -63,7 +59,10 @@ interface ApiEnvelope<T> {
 
 export const orderService = {
   async createManualOrder(data: ManualOrderInput) {
-    const response = (await api.post('/orders/manual', data)) as unknown as ApiEnvelope<{
+    const response = (await api.post(
+      "/orders/manual",
+      data,
+    )) as unknown as ApiEnvelope<{
       message: string;
       order: CreatedManualOrder;
     }>;
@@ -72,13 +71,13 @@ export const orderService = {
 
   async importExcel(file: File, storeId?: string) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     if (storeId) {
-      formData.append('storeId', storeId);
+      formData.append("storeId", storeId);
     }
 
-    const response = (await api.post('/orders/import-excel', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const response = (await api.post("/orders/import-excel", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
       timeout: 60000,
     })) as unknown as ApiEnvelope<ExcelImportResult>;
     return response.data;

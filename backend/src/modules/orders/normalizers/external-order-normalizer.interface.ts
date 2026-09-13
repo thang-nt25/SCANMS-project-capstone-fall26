@@ -21,6 +21,11 @@ export interface NormalizedExternalOrder {
   subtotalAmount?: number;
   discountAmount?: number;
   totalAmount?: number;
+  currency?: string;
+  shippingAmount?: number;
+  taxAmount?: number;
+  receivedAt?: Date;
+  eventAt?: Date;
 }
 
 export interface ExternalOrderNormalizer {

@@ -33,6 +33,7 @@ export function asNumber(value: unknown): number | undefined {
 }
 
 export function asMoney(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
   const directValue = asNumber(value);
   if (directValue !== undefined) {
     return directValue;
@@ -40,10 +41,12 @@ export function asMoney(value: unknown): number | undefined {
 
   const moneyObject = asRecord(value);
   const nestedMoney = moneyObject?.shop_money;
-  return (
+  const amount =
     asNumber(moneyObject?.amount ?? moneyObject?.value) ??
-    (nestedMoney === undefined ? undefined : asMoney(nestedMoney))
-  );
+    (nestedMoney === undefined ? undefined : asMoney(nestedMoney));
+  if (amount === undefined)
+    throw new BadRequestException('Giá trị tiền không đúng định dạng');
+  return amount;
 }
 
 export function requireString(value: unknown, fieldName: string): string {
@@ -61,7 +64,12 @@ export function requirePositiveInteger(
   fieldName: string,
 ): number {
   const parsedValue = asNumber(value);
-  if (!parsedValue || !Number.isInteger(parsedValue) || parsedValue < 1) {
+  if (
+    !parsedValue ||
+    !Number.isInteger(parsedValue) ||
+    parsedValue < 1 ||
+    parsedValue > 2147483647
+  ) {
     throw new BadRequestException(`${fieldName} phải là số nguyên lớn hơn 0`);
   }
   return parsedValue;
@@ -95,16 +103,14 @@ export function joinAddress(address: Record<string, unknown> | undefined) {
   }
 
   const explicitAddress =
-    asString(address.full_address) ??
-    asString(address.fullAddress) ??
-    asString(address.address1);
+    asString(address.full_address) ?? asString(address.fullAddress);
   if (explicitAddress) {
     return explicitAddress;
   }
 
   const addressParts = [
-    asString(address.address_line1),
-    asString(address.address_line2),
+    asString(address.address1 ?? address.address_line1),
+    asString(address.address2 ?? address.address_line2),
     asString(address.ward),
     asString(address.district),
     asString(address.city),
@@ -113,4 +119,17 @@ export function joinAddress(address: Record<string, unknown> | undefined) {
   ].filter(Boolean);
 
   return addressParts.length > 0 ? addressParts.join(', ') : undefined;
+}
+
+export function asPlatformDate(value: unknown): Date | undefined {
+  if (value === undefined || value === null) return undefined;
+  const date =
+    typeof value === 'number'
+      ? new Date(value < 1e12 ? value * 1000 : value)
+      : typeof value === 'string'
+        ? new Date(value)
+        : new Date(NaN);
+  if (!Number.isFinite(date.getTime()) || date.getTime() > Date.now() + 300000)
+    throw new BadRequestException('Thời gian sự kiện sàn không hợp lệ');
+  return date;
 }

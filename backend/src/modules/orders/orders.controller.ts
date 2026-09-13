@@ -12,6 +12,8 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Headers,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -23,6 +25,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
+import type { Request } from 'express';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
@@ -42,6 +45,16 @@ import {
 import { ImportOrdersDto } from './dto/import-orders.dto';
 import { CancelOrderDto, GuestCancelOrderDto } from './dto/cancel-order.dto';
 
+function readCookie(req: Request, names: string[]): string | undefined {
+  const cookies: unknown = req.cookies;
+  if (!cookies || typeof cookies !== 'object') return undefined;
+  for (const name of names) {
+    const value: unknown = (cookies as Record<string, unknown>)[name];
+    if (typeof value === 'string' && value) return value;
+  }
+  return undefined;
+}
+
 @ApiTags('Orders & Fulfillment')
 @Controller('orders')
 export class OrdersController {
@@ -58,23 +71,19 @@ export class OrdersController {
     description:
       'Nhận diện mã Coupon hoặc Link rút gọn của KOL và lưu đơn hàng. Hoa hồng được chuyển vào ví chờ sau khi giao hàng thành công.',
   })
-  async createOrder(@Body() dto: CreateOrderDto, @Req() req: any) {
-    const cookieAttr =
-      req?.cookies?.['scanms_attr'] || req?.cookies?.['scanms_attribution'];
-    const cookieRef =
-      req?.cookies?.['scanms_referral_link'] ||
-      req?.cookies?.['referral_code'] ||
-      req?.cookies?.['scanms_ref'];
+  async createOrder(@Body() dto: CreateOrderDto, @Req() req: Request) {
+    const cookieAttr = readCookie(req, ['scanms_attr', 'scanms_attribution']);
+    const cookieRef = readCookie(req, [
+      'scanms_referral_link',
+      'referral_code',
+      'scanms_ref',
+    ]);
     if (cookieRef && !dto.cookieRefCode) {
       dto.cookieRefCode = cookieRef;
     }
 
-    const rawIp =
-      (req?.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-      req?.ip ||
-      req?.socket?.remoteAddress ||
-      '127.0.0.1';
-    const userAgent = req?.headers?.['user-agent'] || '';
+    const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.get('user-agent') || '';
 
     return this.ordersService.createOrder(dto, {
       cookieAttr,
@@ -95,8 +104,11 @@ export class OrdersController {
     description: 'Đơn đã được tiếp nhận hoặc đã tồn tại',
   })
   @ApiResponse({ status: 400, description: 'Payload webhook không hợp lệ' })
-  async receiveWebhook(@Body() dto: OrderWebhookDto) {
-    return this.ordersService.receiveWebhook(dto);
+  async receiveWebhook(
+    @Body() dto: OrderWebhookDto,
+    @Headers('x-webhook-secret') secret?: string,
+  ) {
+    return this.ordersService.receiveWebhook(dto, secret);
   }
 
   @Post('manual')
@@ -157,7 +169,8 @@ export class OrdersController {
     description:
       'Khách mua hàng nhập số điện thoại hoặc mã đơn hàng để tra cứu lộ trình vận chuyển: Đã tiếp nhận -> Đang đóng gói -> Đang giao GHN/GHTK -> Giao thành công.',
   })
-  async trackOrder(@Query() query: TrackOrderQueryDto) {
+  async trackOrder(@Query() query: TrackOrderQueryDto, @Ip() ip: string) {
+    await this.ordersService.checkPublicOrderRateLimit(ip);
     return this.ordersService.trackOrderByPhoneOrSn(query);
   }
 
@@ -169,9 +182,11 @@ export class OrdersController {
       'Khách hàng gửi số sao (1-5★) và nhận xét cho sản phẩm trong đơn đã giao (DELIVERED hoặc COMPLETED).',
   })
   async addReview(
-    @Param('id') orderId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) orderId: string,
     @Body() dto: CreateOrderReviewDto,
+    @Ip() ip: string,
   ) {
+    await this.ordersService.checkPublicOrderRateLimit(ip);
     return this.ordersService.addOrderReview(orderId, dto);
   }
 
@@ -191,7 +206,7 @@ export class OrdersController {
   async cancelOrder(
     @Param('id') orderId: string,
     @Body() dto: CancelOrderDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: OrderManagerIdentity,
   ) {
     return this.ordersService.cancelOrder(orderId, dto, user);
   }
@@ -220,9 +235,9 @@ export class OrdersController {
     @Param('id') orderId: string,
     @Body() dto: GuestCancelOrderDto,
     @Ip() ip: string,
-    @Req() req: any,
+    @Req() req: Request,
   ) {
-    const clientIp = (req.headers['x-forwarded-for'] as string) || ip;
+    const clientIp = req.ip || ip;
     return this.ordersService.guestCancelOrder(orderId, dto, clientIp);
   }
 }

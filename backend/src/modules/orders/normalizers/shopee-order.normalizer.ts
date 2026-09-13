@@ -7,6 +7,7 @@ import {
 } from './external-order-normalizer.interface';
 import {
   asArray,
+  asPlatformDate,
   asMoney,
   asRecord,
   asString,
@@ -82,6 +83,14 @@ export class ShopeeOrderNormalizer implements ExternalOrderNormalizer {
       ),
       internalOrderId: asString(order.internal_order_id),
       platform: this.platform,
+      currency: asString(order.currency),
+      eventAt: asPlatformDate(order.update_time ?? order.updated_at),
+      shippingAmount: asMoney(order.actual_shipping_fee ?? order.shipping_fee),
+      taxAmount: asMoney(order.tax_amount),
+      receivedAt:
+        this.mapStatus(externalStatus) === OrderStatus.COMPLETED
+          ? new Date()
+          : undefined,
       status: this.mapStatus(externalStatus),
       customerName: asString(
         recipient?.name ?? order.buyer_username ?? order.customer_name,

@@ -22,7 +22,6 @@ import {
   AttributionMethod,
   CommissionStatus,
   CouponStatus,
-  TransactionType,
   CouponRedemptionStatus,
   UserRole,
   ReferralLinkStatus,
@@ -40,6 +39,16 @@ import { NormalizedExternalOrder } from './normalizers/external-order-normalizer
 import { ConfigService } from '@nestjs/config';
 import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
+import {
+  normalizeCustomerPhone,
+  validateOrderMoney,
+  MAX_ORDER_ITEMS,
+} from './order-input.utils';
+import {
+  createReviewToken,
+  verifyReviewToken,
+  verifyWebhookSecret,
+} from './order-security.utils';
 import {
   verifyMultiShopAttributionToken,
   verifyOpaqueVisitorToken,
@@ -70,7 +79,9 @@ export class OrdersService {
    * FR-19: Tiếp nhận đơn từ sàn ngoài theo cơ chế idempotent.
    * Việc tính hoa hồng và cập nhật ví thuộc FR-21, không được thực hiện tại đây.
    */
-  async receiveWebhook(dto: OrderWebhookDto) {
+  async receiveWebhook(dto: OrderWebhookDto, secret?: string) {
+    const store = await this.findWebhookStore(dto);
+    verifyWebhookSecret(this.configService, store.id, dto.source, secret);
     let normalizedOrder: NormalizedExternalOrder;
 
     try {
@@ -86,7 +97,6 @@ export class OrdersService {
       throw error;
     }
 
-    const store = await this.findWebhookStore(dto);
     const sourcePlatform = WEBHOOK_PLATFORM_MAP[normalizedOrder.platform];
     const logContext = `source=${dto.source}, externalOrderId=${normalizedOrder.externalOrderId}, storeId=${store.id}`;
 
@@ -98,8 +108,16 @@ export class OrdersService {
       normalizedOrder.externalOrderId,
     );
     if (existingOrder) {
+      // Creation is idempotent. Status synchronization requires a versioned event contract.
       this.logger.log(`Ignored duplicate order webhook: ${logContext}`);
-      return this.buildWebhookResponse(existingOrder, false);
+      return this.buildWebhookResponse(
+        await this.syncWebhookStatus(
+          existingOrder,
+          normalizedOrder,
+          dto.payload,
+        ),
+        false,
+      );
     }
 
     const resolvedItems = await this.resolveWebhookProducts(
@@ -107,16 +125,45 @@ export class OrdersService {
       normalizedOrder,
     );
     const calculatedSubtotal = resolvedItems.reduce(
-      (total, item) => total + item.unitPrice * item.quantity,
-      0,
+      (total, item) =>
+        total.plus(new Prisma.Decimal(item.unitPrice).times(item.quantity)),
+      new Prisma.Decimal(0),
     );
-    const subtotalAmount = normalizedOrder.subtotalAmount ?? calculatedSubtotal;
+    const subtotalAmount = new Prisma.Decimal(
+      normalizedOrder.subtotalAmount ?? calculatedSubtotal,
+    );
     const finalAmount =
       normalizedOrder.totalAmount ??
-      Math.max(0, subtotalAmount - (normalizedOrder.discountAmount ?? 0));
+      Prisma.Decimal.max(
+        0,
+        subtotalAmount.minus(normalizedOrder.discountAmount ?? 0),
+      )
+        .plus(normalizedOrder.shippingAmount ?? 0)
+        .plus(normalizedOrder.taxAmount ?? 0)
+        .toNumber();
     const discountAmount =
       normalizedOrder.discountAmount ??
-      Math.max(0, subtotalAmount - finalAmount);
+      Prisma.Decimal.max(
+        0,
+        subtotalAmount
+          .plus(normalizedOrder.shippingAmount ?? 0)
+          .plus(normalizedOrder.taxAmount ?? 0)
+          .minus(finalAmount),
+      ).toNumber();
+    validateOrderMoney(subtotalAmount.toNumber(), 'Tổng tiền hàng');
+    validateOrderMoney(finalAmount, 'Tổng thanh toán');
+    if (
+      subtotalAmount.lessThan(discountAmount) ||
+      !subtotalAmount
+        .minus(discountAmount)
+        .plus(normalizedOrder.shippingAmount ?? 0)
+        .plus(normalizedOrder.taxAmount ?? 0)
+        .toDecimalPlaces(2)
+        .equals(finalAmount)
+    )
+      throw new BadRequestException(
+        'Tổng thanh toán không khớp tiền hàng, giảm giá, phí giao hàng và thuế',
+      );
 
     try {
       const createdOrder = await this.prisma.$transaction((tx) =>
@@ -126,13 +173,17 @@ export class OrdersService {
             sourcePlatform,
             externalOrderSn: normalizedOrder.externalOrderId,
             rawPayload: dto.payload as Prisma.InputJsonValue,
+            sourceUpdatedAt: normalizedOrder.eventAt,
             customerName: normalizedOrder.customerName,
-            customerPhone: normalizedOrder.customerPhone,
+            customerPhone: normalizedOrder.customerPhone
+              ? normalizeCustomerPhone(normalizedOrder.customerPhone)
+              : undefined,
             shippingAddress: normalizedOrder.shippingAddress,
             subtotalAmount,
             discountAmount,
             finalAmount,
             status: normalizedOrder.status,
+            completedAt: normalizedOrder.receivedAt,
             orderItems: {
               create: resolvedItems.map((item) => ({
                 productId: item.productId,
@@ -161,7 +212,14 @@ export class OrdersService {
           this.logger.log(
             `Ignored concurrent duplicate order webhook: ${logContext}`,
           );
-          return this.buildWebhookResponse(concurrentOrder, false);
+          return this.buildWebhookResponse(
+            await this.syncWebhookStatus(
+              concurrentOrder,
+              normalizedOrder,
+              dto.payload,
+            ),
+            false,
+          );
         }
       }
 
@@ -181,6 +239,8 @@ export class OrdersService {
     id: true,
     storeId: true,
     sourcePlatform: true,
+    sourceUpdatedAt: true,
+    completedAt: true,
     externalOrderSn: true,
     customerName: true,
     customerPhone: true,
@@ -234,6 +294,72 @@ export class OrdersService {
     return this.prisma.order.findFirst({
       where: { storeId, sourcePlatform, externalOrderSn },
       select: this.webhookOrderSelect,
+    });
+  }
+
+  private async syncWebhookStatus(
+    existing: NonNullable<
+      Awaited<ReturnType<OrdersService['findWebhookOrder']>>
+    >,
+    normalized: NormalizedExternalOrder,
+    payload: Record<string, unknown>,
+  ) {
+    if (!normalized.eventAt) return existing;
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM orders WHERE id = ${existing.id}::uuid FOR UPDATE`,
+      );
+      const current = await tx.order.findUniqueOrThrow({
+        where: { id: existing.id },
+        select: this.webhookOrderSelect,
+      });
+      if (
+        current.sourceUpdatedAt &&
+        current.sourceUpdatedAt >= normalized.eventAt!
+      )
+        return current;
+      const transitions: Record<OrderStatus, OrderStatus[]> = {
+        PENDING: [
+          OrderStatus.PENDING,
+          OrderStatus.SHIPPING,
+          OrderStatus.DELIVERED,
+          OrderStatus.COMPLETED,
+          OrderStatus.CANCELLED,
+          OrderStatus.RETURNED,
+        ],
+        SHIPPING: [
+          OrderStatus.SHIPPING,
+          OrderStatus.DELIVERED,
+          OrderStatus.COMPLETED,
+          OrderStatus.CANCELLED,
+          OrderStatus.RETURNED,
+        ],
+        DELIVERED: [
+          OrderStatus.DELIVERED,
+          OrderStatus.COMPLETED,
+          OrderStatus.RETURNED,
+        ],
+        COMPLETED: [OrderStatus.COMPLETED, OrderStatus.RETURNED],
+        CANCELLED: [OrderStatus.CANCELLED],
+        RETURNED: [OrderStatus.RETURNED],
+      };
+      if (!transitions[current.status].includes(normalized.status))
+        throw new ConflictException(
+          'Sự kiện không được phép lùi trạng thái đơn hàng',
+        );
+      // Refund amount changes are reconciled through the refund transaction, never silently overwritten.
+      return tx.order.update({
+        where: { id: current.id },
+        data: {
+          status: normalized.status,
+          rawPayload: payload as Prisma.InputJsonValue,
+          sourceUpdatedAt: normalized.eventAt,
+          ...(normalized.receivedAt && !current.completedAt
+            ? { completedAt: normalized.receivedAt }
+            : {}),
+        },
+        select: this.webhookOrderSelect,
+      });
     });
   }
 
@@ -302,6 +428,13 @@ export class OrdersService {
   }
 
   private validateNormalizedOrder(order: NormalizedExternalOrder): void {
+    if (order.currency && order.currency.toUpperCase() !== 'VND')
+      throw new BadRequestException('Hệ thống hiện chỉ tiếp nhận đơn bằng VND');
+    if (order.items.length > MAX_ORDER_ITEMS)
+      throw new BadRequestException('Đơn hàng có quá nhiều dòng sản phẩm');
+    order.items.forEach((item) =>
+      validateOrderMoney(item.unitPrice, 'Đơn giá'),
+    );
     if (order.externalOrderId.length > 100) {
       throw new BadRequestException(
         'Mã đơn hàng từ sàn không được vượt quá 100 ký tự',
@@ -322,6 +455,8 @@ export class OrdersService {
       order.subtotalAmount,
       order.discountAmount,
       order.totalAmount,
+      order.shippingAmount,
+      order.taxAmount,
     ];
     if (
       amounts.some(
@@ -333,6 +468,9 @@ export class OrdersService {
         'Các giá trị tiền trong payload không hợp lệ',
       );
     }
+    amounts.forEach((amount) => {
+      if (amount !== undefined) validateOrderMoney(amount, 'Số tiền');
+    });
   }
 
   private buildWebhookResponse(
@@ -422,20 +560,17 @@ export class OrdersService {
     }
 
     // 1. Xác định Store
-    let store: any = null;
-    if (dto.storeId) {
-      store = await this.prisma.store.findUnique({
-        where: { id: dto.storeId },
-      });
-    } else if (dto.storeSlug) {
-      store = await this.prisma.store.findUnique({
-        where: { slug: dto.storeSlug },
-      });
-    } else {
-      store = await this.prisma.store.findFirst({
-        where: { isDeleted: false },
-      });
-    }
+    const store = dto.storeId
+      ? await this.prisma.store.findUnique({
+          where: { id: dto.storeId },
+        })
+      : dto.storeSlug
+        ? await this.prisma.store.findUnique({
+            where: { slug: dto.storeSlug },
+          })
+        : await this.prisma.store.findFirst({
+            where: { isDeleted: false },
+          });
 
     if (!store) {
       throw new NotFoundException('Không tìm thấy gian hàng tương ứng');
@@ -486,13 +621,17 @@ export class OrdersService {
     }
 
     // 3. Pre-validate Coupon nếu client có gửi mã (để phản hồi lỗi sớm trước khi mở transaction)
-    let couponValidationResult: any = null;
+    let couponValidationResult: Awaited<
+      ReturnType<CouponsService['validateCoupon']>
+    > | null = null;
     if (dto.couponCode?.trim()) {
       couponValidationResult = await this.couponsService.validateCoupon(
         {
           code: dto.couponCode.trim(),
           storeId: store.id,
-          customerPhone: dto.customerPhone,
+          customerPhone: dto.customerPhone
+            ? normalizeCustomerPhone(dto.customerPhone)
+            : undefined,
           items: dto.items,
           hasProductDiscount:
             dto.hasProductDiscount || anyProductHasDirectDiscount,
@@ -716,8 +855,6 @@ export class OrdersService {
 
         // Tính phân bổ tỷ lệ đồng tài trợ
         const shopRate = Number(lockedCoupon.shopFundingRate || 100) / 100;
-        const platformRate =
-          Number(lockedCoupon.platformFundingRate || 0) / 100;
         shopFundedAmount = Math.round(txDiscount * shopRate);
         platformFundedAmount = txDiscount - shopFundedAmount;
 
@@ -1016,7 +1153,6 @@ export class OrdersService {
           ? (subtotalAmount - appliedDiscountAmount) / subtotalAmount
           : 1;
 
-      let finalCommissionAmountToUse = 0;
       const finalOrderItemsToSave: Array<{
         productId: string;
         quantity: number;
@@ -1039,7 +1175,6 @@ export class OrdersService {
         const calculatedCommission =
           netItemSubtotal * (finalCommissionRate / 100);
 
-        finalCommissionAmountToUse += calculatedCommission;
         finalOrderItemsToSave.push({
           productId: prod.id,
           quantity,
@@ -1098,7 +1233,9 @@ export class OrdersService {
           originalAttributionMethod,
           originalCollaboratorId,
           customerName: dto.customerName,
-          customerPhone: dto.customerPhone,
+          customerPhone: dto.customerPhone
+            ? normalizeCustomerPhone(dto.customerPhone)
+            : undefined,
           shippingAddress: dto.shippingAddress,
           subtotalAmount,
           discountAmount: appliedDiscountAmount,
@@ -1111,6 +1248,7 @@ export class OrdersService {
               unitPrice: item.unitPrice,
               appliedCommissionRate: item.appliedCommissionRate,
               calculatedCommissionAmount: item.calculatedCommissionAmount,
+              commissionSnapshotAt: new Date(),
             })),
           },
         },
@@ -1184,7 +1322,7 @@ export class OrdersService {
     return {
       message: 'Đặt hàng thành công!',
       order: createdOrder,
-      cancellationToken: (createdOrder as any).cancellationToken || undefined,
+      cancellationToken: createdOrder.cancellationToken || undefined,
     };
   }
 
@@ -1422,15 +1560,16 @@ export class OrdersService {
       );
     }
 
-    const whereConditions: any = {};
+    const whereConditions: Prisma.OrderWhereInput = {};
     if (phone?.trim()) {
+      const canonical = normalizeCustomerPhone(phone);
       whereConditions.customerPhone = {
-        contains: phone.trim(),
+        in: [canonical, `+84${canonical.slice(1)}`],
       };
     }
     if (orderSn?.trim()) {
       whereConditions.externalOrderSn = {
-        contains: orderSn.trim(),
+        equals: orderSn.trim(),
         mode: 'insensitive',
       };
     }
@@ -1438,6 +1577,7 @@ export class OrdersService {
     const orders = await this.prisma.order.findMany({
       where: whereConditions,
       orderBy: { createdAt: 'desc' },
+      take: 50,
       include: {
         orderItems: {
           include: {
@@ -1512,9 +1652,19 @@ export class OrdersService {
       return {
         id: order.id,
         externalOrderSn: order.externalOrderSn,
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        shippingAddress: order.shippingAddress,
+        customerName: phone && orderSn ? order.customerName : 'Khách hàng',
+        customerPhone:
+          phone && orderSn
+            ? order.customerPhone
+            : order.customerPhone?.replace(/.(?=.{3})/g, '*'),
+        shippingAddress:
+          phone && orderSn
+            ? order.shippingAddress
+            : 'Xác minh mã đơn và SĐT để xem địa chỉ',
+        reviewToken:
+          phone && orderSn
+            ? createReviewToken(this.configService, order.id)
+            : undefined,
         subtotalAmount: Number(order.subtotalAmount),
         discountAmount: Number(order.discountAmount),
         finalAmount: Number(order.finalAmount),
@@ -1536,7 +1686,14 @@ export class OrdersService {
           unitPrice: Number(item.unitPrice),
           totalPrice: Number(item.unitPrice) * item.quantity,
         })),
-        reviews: order.productReviews,
+        reviews: order.productReviews.map((review) => ({
+          id: review.id,
+          productId: review.productId,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+          customerName: 'Khách mua hàng',
+        })),
       };
     });
 
@@ -1550,6 +1707,7 @@ export class OrdersService {
    * FR-18: Gửi đánh giá 1-5 sao và nhận xét sau khi nhận hàng thành công
    */
   async addOrderReview(orderId: string, dto: CreateOrderReviewDto) {
+    verifyReviewToken(this.configService, orderId, dto.reviewToken ?? '');
     // 1. Kiểm tra đơn hàng tồn tại
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -1597,22 +1755,56 @@ export class OrdersService {
     }
 
     // 5. Lưu đánh giá vào bảng product_reviews
-    const review = await this.prisma.productReview.create({
-      data: {
-        orderId: order.id,
-        productId: dto.productId,
-        customerName:
-          dto.customerName || order.customerName || 'Khách mua hàng',
-        rating: dto.rating,
-        comment: dto.comment,
-        reviewImageUrl: dto.reviewImageUrl || null,
-        isApproved: true,
-      },
+    const review = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`,
+      );
+      const freshOrder = await tx.order.findUnique({ where: { id: orderId } });
+      if (
+        !freshOrder ||
+        ![OrderStatus.DELIVERED, OrderStatus.COMPLETED].includes(
+          freshOrder.status as 'DELIVERED' | 'COMPLETED',
+        )
+      )
+        throw new BadRequestException(
+          'Đơn hàng không còn đủ điều kiện đánh giá',
+        );
+      if (
+        await tx.productReview.findFirst({
+          where: { orderId, productId: dto.productId },
+        })
+      )
+        throw new ConflictException('Sản phẩm đã được đánh giá trong đơn này');
+      return tx.productReview.create({
+        data: {
+          orderId: order.id,
+          productId: dto.productId,
+          customerName:
+            dto.customerName || order.customerName || 'Khách mua hàng',
+          rating: dto.rating,
+          comment: dto.comment.trim(),
+          reviewImageUrl: dto.reviewImageUrl || null,
+          isApproved: true,
+        },
+      });
     });
 
     return {
       message: 'Cảm ơn bạn đã gửi đánh giá sản phẩm thành công!',
       review,
     };
+  }
+
+  async checkPublicOrderRateLimit(ip: string): Promise<void> {
+    const result = await this.cacheService.checkRateLimit(
+      `orders:public:${ip}`,
+      30,
+      60,
+    );
+    if (!result.allowed)
+      throw new HttpException(
+        'Bạn tra cứu quá nhanh, vui lòng thử lại sau',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
   }
 }
