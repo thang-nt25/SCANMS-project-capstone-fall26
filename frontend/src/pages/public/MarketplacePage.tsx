@@ -421,7 +421,8 @@ export default function MarketplacePage() {
             price: activeCheckoutProduct.price,
             originalPrice: activeCheckoutProduct.originalPrice,
             imageUrl: activeCheckoutProduct.imageUrl,
-            stockQuantity: activeCheckoutProduct.stockQuantity || 10,
+            stockQuantity: activeCheckoutProduct.stockQuantity ?? 0,
+            variants: activeCheckoutProduct.variants,
           }}
           store={{
             id: activeCheckoutProduct.store?.id || '',

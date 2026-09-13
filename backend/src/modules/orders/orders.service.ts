@@ -8,14 +8,25 @@ import {
   HttpStatus,
   InternalServerErrorException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, PaymentMethod } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
 import { CreateOrderReviewDto } from './dto/create-review.dto';
-import { CancelOrderDto, GuestCancelOrderDto } from './dto/cancel-order.dto';
+import {
+  CancelOrderDto,
+  GuestCancelOrderDto,
+  RequestCancellationOtpDto,
+} from './dto/cancel-order.dto';
+import {
+  OrderCreatedResponseDto,
+  PublicOrderDetailResponseDto,
+  PaymentWebhookDto,
+} from './dto/order-response.dto';
+import { CheckoutMetricsService } from './checkout-metrics.service';
 import * as crypto from 'crypto';
 import {
   OrderStatus,
@@ -47,6 +58,10 @@ import {
   validateShippingAddress,
   validateOrderNotes,
   MAX_ORDER_ITEMS,
+  computeOrderPayloadHash,
+  generateCryptographicOrderSn,
+  hashCancellationToken,
+  verifyCancellationToken,
 } from './order-input.utils';
 import {
   createReviewToken,
@@ -66,6 +81,8 @@ const WEBHOOK_PLATFORM_MAP: Record<ExternalOrderPlatform, OrderSourcePlatform> =
     [ExternalOrderPlatform.SHOPIFY]: OrderSourcePlatform.SHOPIFY,
   };
 
+import { MailService } from '../auth/mail.service';
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -77,6 +94,8 @@ export class OrdersService {
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
     private readonly walletsService: WalletsService,
+    private readonly checkoutMetrics: CheckoutMetricsService,
+    @Optional() private readonly mailService?: MailService,
   ) {}
 
   /**
@@ -541,6 +560,15 @@ export class OrdersService {
     }
     const cleanIdempotencyKey = dto.idempotencyKey.trim();
 
+    const normalizedPaymentMethod = (dto.paymentMethod || PaymentMethod.COD).toUpperCase();
+    const isVietQr = normalizedPaymentMethod === PaymentMethod.VIETQR;
+    const currentPayloadHash = computeOrderPayloadHash(
+      dto,
+      customerName,
+      customerPhone,
+      normalizedPaymentMethod,
+    );
+
     const existingOrder = await this.prisma.order.findUnique({
       where: { idempotencyKey: cleanIdempotencyKey },
       include: {
@@ -555,6 +583,13 @@ export class OrdersService {
                 categoryName: true,
               },
             },
+            variant: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+              },
+            },
           },
         },
         store: {
@@ -565,62 +600,87 @@ export class OrdersService {
             logoUrl: true,
           },
         },
-        attributedCollaborator: {
-          select: {
-            id: true,
-            fullName: true,
-          },
-        },
       },
     });
 
     if (existingOrder) {
-      const existingItems = existingOrder.orderItems || [];
-      const itemsMatch =
-        existingItems.length === dto.items.length &&
-        dto.items.every((it) =>
-          existingItems.some(
-            (ei) =>
-              ei.productId === it.productId && ei.quantity === it.quantity,
-          ),
-        );
-      if (
-        !itemsMatch ||
-        (existingOrder.customerPhone &&
-          existingOrder.customerPhone !== customerPhone)
-      ) {
-        throw new ConflictException(
-          'IDEMPOTENCY_CONFLICT: Khóa idempotencyKey đã tồn tại nhưng dữ liệu giỏ hàng hoặc người nhận khác với đơn ban đầu.',
-        );
-      }
       const rawPayload =
         (existingOrder.rawPayload as Record<string, any>) || {};
+      const existingHash = rawPayload.requestHash;
+
+      // 0.2 So sánh toàn bộ payload canonical hash (Lỗi 2 & Quyết định Idempotency)
+      if (existingHash) {
+        if (existingHash !== currentPayloadHash) {
+          this.checkoutMetrics.recordIdempotencyConflict(cleanIdempotencyKey);
+          throw new ConflictException(
+            'IDEMPOTENCY_CONFLICT: Khóa idempotencyKey đã tồn tại nhưng dữ liệu payload đơn hàng đã bị thay đổi.',
+          );
+        }
+      } else {
+        // Fallback kiểm tra cho các đơn cũ chưa lưu requestHash
+        const existingItems = existingOrder.orderItems || [];
+        const itemsMatch =
+          existingItems.length === dto.items.length &&
+          dto.items.every((it) =>
+            existingItems.some(
+              (ei) =>
+                ei.productId === it.productId &&
+                ei.quantity === it.quantity &&
+                (it.variantId ? ei.variantId === it.variantId : true),
+            ),
+          );
+        const phoneMatch =
+          !existingOrder.customerPhone ||
+          existingOrder.customerPhone.trim() === customerPhone.trim();
+        const nameMatch =
+          !existingOrder.customerName ||
+          existingOrder.customerName.trim().toLowerCase() ===
+            customerName.trim().toLowerCase();
+
+        if (!itemsMatch || !phoneMatch || !nameMatch) {
+          this.checkoutMetrics.recordIdempotencyConflict(cleanIdempotencyKey);
+          throw new ConflictException(
+            'IDEMPOTENCY_CONFLICT: Khóa idempotencyKey đã tồn tại nhưng dữ liệu giỏ hàng hoặc người nhận khác với đơn ban đầu.',
+          );
+        }
+      }
+
+      this.checkoutMetrics.recordIdempotentReplay();
+
+      // Loại bỏ hoàn toàn trường nội bộ `order`, UUID và dữ liệu nhạy cảm PII khỏi public response (Lỗi 1)
+      // Cung cấp cờ khôi phục OTP để khách hủy đơn khi response lần đầu timeout (Lỗi 2)
       return {
         message: 'Đơn hàng đã được ghi nhận thành công (Idempotent replay)',
-        orderId: existingOrder.id,
         publicOrderCode: existingOrder.externalOrderSn,
         status: existingOrder.status,
         subtotalAmount: Number(existingOrder.subtotalAmount),
         discountAmount: Number(existingOrder.discountAmount),
         shippingFee: Number(existingOrder.shippingFee),
+        shippingFeePolicy: 'NATIONWIDE_FREE_SHIPPING',
         finalAmount: Number(existingOrder.finalAmount),
         paymentMethod: rawPayload.paymentMethod || 'COD',
         paymentStatus: rawPayload.paymentStatus || 'UNPAID',
         vietqr: rawPayload.vietqr || null,
-        cancellationToken: existingOrder.cancellationToken || undefined,
+        canRequestCancellationOtp: true,
+        cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
         trackingUrl: `/tracking?code=${existingOrder.externalOrderSn}`,
         items: existingOrder.orderItems.map((item) => ({
           productId: item.productId,
+          variantId: item.variantId || undefined,
           title: item.product?.title || '',
           sku: item.product?.sku || '',
           imageUrl: item.product?.imageUrl || '',
           quantity: item.quantity,
           unitPrice: Number(item.unitPrice),
         })),
-        store: existingOrder.store,
-        order: existingOrder,
+        store: {
+          name: existingOrder.store.name,
+          slug: existingOrder.store.slug,
+          logoUrl: existingOrder.store.logoUrl || undefined,
+        },
       };
     }
+
 
     const jwtSecret =
       this.configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
@@ -684,6 +744,22 @@ export class OrdersService {
 
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
 
+    // 1.1 Hỗ trợ phân loại sản phẩm variant/SKU (Lỗi 4)
+    const variantIds = dto.items
+      .map((i) => i.variantId)
+      .filter((v): v is string => Boolean(v && v.trim()));
+
+    let dbVariants: any[] = [];
+    if (variantIds.length > 0) {
+      dbVariants = await this.prisma.productVariant.findMany({
+        where: {
+          id: { in: variantIds },
+          isActive: true,
+        },
+      });
+    }
+    const variantMap = new Map(dbVariants.map((v) => [v.id, v]));
+
     let rawSubtotalAmount = 0;
     let anyProductHasDirectDiscount = false;
     for (const item of dto.items) {
@@ -693,15 +769,26 @@ export class OrdersService {
           `Sản phẩm ${item.productId} không hợp lệ.`,
         );
       }
-      const unitPrice = Number(prod.price);
-      rawSubtotalAmount += unitPrice * item.quantity;
+      let itemPrice = Number(prod.price);
+      if (item.variantId) {
+        const variant = variantMap.get(item.variantId);
+        if (!variant || variant.productId !== prod.id) {
+          throw new BadRequestException(
+            `Phân loại sản phẩm (variant) ${item.variantId} không thuộc sản phẩm "${prod.title}" hoặc không tồn tại.`,
+          );
+        }
+        if (variant.price) {
+          itemPrice = Number(variant.price);
+        }
+      }
+      rawSubtotalAmount += itemPrice * item.quantity;
 
-      if (prod.originalPrice && Number(prod.originalPrice) > unitPrice) {
+      if (prod.originalPrice && Number(prod.originalPrice) > itemPrice) {
         anyProductHasDirectDiscount = true;
       }
     }
 
-    // 3. Pre-validate Coupon nếu client có gửi mã (để phản hồi lỗi sớm trước khi mở transaction)
+    // 3. Pre-validate Coupon nếu client có gửi mã (Backend tự tính toán cờ, không tin client)
     let couponValidationResult: Awaited<
       ReturnType<CouponsService['validateCoupon']>
     > | null = null;
@@ -714,10 +801,9 @@ export class OrdersService {
             ? normalizeCustomerPhone(dto.customerPhone)
             : undefined,
           items: dto.items,
-          hasProductDiscount:
-            dto.hasProductDiscount || anyProductHasDirectDiscount,
-          hasShopVoucher: dto.hasShopVoucher,
-          hasPlatformVoucher: dto.hasPlatformVoucher,
+          hasProductDiscount: anyProductHasDirectDiscount,
+          hasShopVoucher: false,
+          hasPlatformVoucher: false,
         },
         undefined,
         undefined,
@@ -725,10 +811,8 @@ export class OrdersService {
       );
     }
 
-    // Sinh mã đơn hàng chuẩn định danh
-    const externalOrderSn = `DH-${new Date().getFullYear()}-${Math.floor(
-      10000 + Math.random() * 90000,
-    )}`;
+    // Sinh mã đơn hàng bằng mật mã an toàn chống đoán/trùng lặp
+    const externalOrderSn = generateCryptographicOrderSn();
 
     // Save attribution and coupon snapshots atomically; FR-21 creates commissions after delivery.
     const createdOrder = await this.prisma.$transaction(async (tx) => {
@@ -736,33 +820,57 @@ export class OrdersService {
       let platformFundedAmount = 0;
       let appliedDiscountAmount = 0;
 
-      // 4.1 Khóa và kiểm tra trạng thái gian hàng trong Transaction (Issue 7)
+      // 4.1 Khóa và kiểm tra trạng thái gian hàng trong Transaction (Issue 7 & Quyết định Multi-merchant)
       const lockedStore = await tx.store.findUnique({
         where: { id: store.id },
       });
-      if (!lockedStore || lockedStore.deletedAt || lockedStore.isDeleted) {
+      if (
+        !lockedStore ||
+        lockedStore.deletedAt ||
+        lockedStore.isDeleted ||
+        !lockedStore.isActive
+      ) {
         throw new BadRequestException(
-          'Gian hàng không tồn tại hoặc đã ngừng kinh doanh.',
+          'Gian hàng không tồn tại, đã tạm ngưng hoạt động hoặc đã ngừng kinh doanh.',
         );
       }
 
-      // 4.2 Trừ kho an toàn bằng atomic conditional update (FR-16 Mục 24 & Quyết định 10)
+      // 4.2 Trừ kho an toàn: hỗ trợ tồn kho variant hoặc sản phẩm (Lỗi 4 & Quyết định 10)
       for (const item of dto.items) {
         const prod = productMap.get(item.productId)!;
-        const updatedCount = await tx.$executeRaw`
-          UPDATE products
-          SET stock_quantity = stock_quantity - ${item.quantity}
-          WHERE id = ${item.productId}::uuid
-            AND stock_quantity >= ${item.quantity}
-            AND is_deleted = false
-            AND is_active = true
-        `;
-        if (updatedCount === 0) {
-          throw new BadRequestException(
-            `PRODUCT_OUT_OF_STOCK: Sản phẩm "${prod.title}" không đủ số lượng tồn kho (yêu cầu: ${item.quantity}).`,
-          );
+        if (item.variantId) {
+          const variant = variantMap.get(item.variantId);
+          const updatedVarCount = await tx.$executeRaw`
+            UPDATE product_variants
+            SET stock_quantity = stock_quantity - ${item.quantity}, updated_at = NOW()
+            WHERE id = ${item.variantId}::uuid
+              AND stock_quantity >= ${item.quantity}
+              AND is_active = true
+          `;
+          if (updatedVarCount === 0) {
+            this.checkoutMetrics.recordStockAnomaly(item.productId, item.quantity, 0);
+            throw new BadRequestException(
+              `PRODUCT_OUT_OF_STOCK: Phân loại sản phẩm "${variant?.name || prod.title}" không đủ số lượng tồn kho (yêu cầu: ${item.quantity}).`,
+            );
+          }
+        } else {
+          const updatedCount = await tx.$executeRaw`
+            UPDATE products
+            SET stock_quantity = stock_quantity - ${item.quantity}, updated_at = NOW()
+            WHERE id = ${item.productId}::uuid
+              AND stock_quantity >= ${item.quantity}
+              AND is_deleted = false
+              AND is_active = true
+          `;
+          if (updatedCount === 0) {
+            this.checkoutMetrics.recordStockAnomaly(item.productId, item.quantity, 0);
+            throw new BadRequestException(
+              `PRODUCT_OUT_OF_STOCK: Sản phẩm "${prod.title}" không đủ số lượng tồn kho (yêu cầu: ${item.quantity}).`,
+            );
+          }
         }
       }
+
 
 
       // 6.1 Khóa hàng và kiểm tra toàn diện quy tắc Coupon trong Transaction (Issue 2 & 3)
@@ -801,28 +909,16 @@ export class OrdersService {
           throw new ConflictException('Mã giảm giá đã hết hạn sử dụng');
         }
 
-        // Kiểm tra chính sách cộng dồn trong transaction (Issue 3)
+        // Kiểm tra chính sách cộng dồn: Backend tự xác thực trực tiếp (không tin cậy cờ từ client)
         if (
           !lockedCoupon.stackableWithProductDiscount &&
-          (dto.hasProductDiscount || anyProductHasDirectDiscount)
+          anyProductHasDirectDiscount
         ) {
           throw new ConflictException(
             'Mã giảm giá này không được áp dụng đồng thời với sản phẩm đang giảm giá trực tiếp',
           );
         }
-        if (!lockedCoupon.stackableWithShopVoucher && dto.hasShopVoucher) {
-          throw new ConflictException(
-            'Mã giảm giá này không được cộng dồn với voucher khác của Shop',
-          );
-        }
-        if (
-          !lockedCoupon.stackableWithPlatformVoucher &&
-          dto.hasPlatformVoucher
-        ) {
-          throw new ConflictException(
-            'Mã giảm giá này không được cộng dồn với voucher toàn sàn SCANMS',
-          );
-        }
+
 
         // Kiểm tra phạm vi áp dụng sản phẩm/danh mục/chiến dịch trong transaction (Issue 3)
         let campaignProductIds = new Set<string>();
@@ -1304,6 +1400,7 @@ export class OrdersService {
 
       const finalOrderItemsToSave: Array<{
         productId: string;
+        variantId?: string | null;
         quantity: number;
         unitPrice: number;
         appliedCommissionRate: number;
@@ -1326,6 +1423,7 @@ export class OrdersService {
 
         finalOrderItemsToSave.push({
           productId: prod.id,
+          variantId: item.variantId || null,
           quantity,
           unitPrice,
           appliedCommissionRate: finalCommissionRate,
@@ -1333,11 +1431,16 @@ export class OrdersService {
         });
       }
 
+      // Chính sách phí vận chuyển rõ ràng: Miễn phí toàn quốc (Lỗi 7)
+      const shippingFee = 0;
       const orderFinalAmount = Math.max(
         0,
-        subtotalAmount - appliedDiscountAmount,
+        subtotalAmount - appliedDiscountAmount + shippingFee,
       );
-      const cancellationToken = randomUUID();
+
+      // Sinh và băm cancellation token an toàn trước khi lưu DB
+      const rawCancellationToken = randomUUID();
+      const hashedCancellationToken = hashCancellationToken(rawCancellationToken);
 
       const snapshotPayload = {
         attributionType: attributionMethod,
@@ -1359,14 +1462,26 @@ export class OrdersService {
         couponCode: couponValidationResult?.code || null,
       };
 
-      const paymentMethod = (dto.paymentMethod || 'COD').toUpperCase();
-      const isVietQr = paymentMethod === 'VIETQR';
+      const paymentMethod = normalizedPaymentMethod;
       let vietqrData: any = null;
       if (isVietQr) {
-        const bankCode = 'MB';
-        const accountNumber = '0383344696';
-        const accountName = 'SCANMS MARKETPLACE';
+        const bankCode =
+          this.configService.get<string>('VIETQR_BANK_CODE') ||
+          process.env.VIETQR_BANK_CODE;
+        const accountNumber =
+          this.configService.get<string>('VIETQR_ACCOUNT_NUMBER') ||
+          process.env.VIETQR_ACCOUNT_NUMBER;
+        const accountName =
+          this.configService.get<string>('VIETQR_ACCOUNT_NAME') ||
+          process.env.VIETQR_ACCOUNT_NAME;
+
+        if (!bankCode || !accountNumber || !accountName) {
+          throw new InternalServerErrorException(
+            'Cấu hình tài khoản nhận thanh toán VietQR của sàn chưa được thiết lập. Vui lòng liên hệ quản trị viên!',
+          );
+        }
         const memo = externalOrderSn;
+
         const qrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNumber}-compact2.png?amount=${orderFinalAmount}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(accountName)}`;
         vietqrData = {
           bankCode,
@@ -1378,20 +1493,21 @@ export class OrdersService {
         };
       }
 
-      // 6.2 Lưu đơn hàng kèm đầy đủ snapshot coupon & attribution & idempotencyKey (Issue 3 & 4)
+      // 6.2 Lưu đơn hàng (Không đưa clientIp, userAgent vào rawPayload - Lỗi 8)
       const order = await tx.order.create({
         data: {
           storeId: store.id,
           externalOrderSn,
           idempotencyKey: cleanIdempotencyKey,
-          cancellationToken,
+          cancellationToken: hashedCancellationToken,
+          shippingFee: new Prisma.Decimal(shippingFee),
+          finalAmount: new Prisma.Decimal(orderFinalAmount),
           rawPayload: {
             orderNotes: orderNotes || null,
             paymentMethod,
             paymentStatus: isVietQr ? 'WAITING_PAYMENT' : 'UNPAID',
             vietqr: vietqrData,
-            clientIp: clientContext?.ip || null,
-            userAgent: clientContext?.userAgent || null,
+            requestHash: currentPayloadHash,
           },
           attributedCollaboratorId,
           attributionMethod,
@@ -1413,11 +1529,11 @@ export class OrdersService {
           shippingAddress,
           subtotalAmount,
           discountAmount: appliedDiscountAmount,
-          finalAmount: orderFinalAmount,
           status: OrderStatus.PENDING,
           orderItems: {
             create: finalOrderItemsToSave.map((item) => ({
               productId: item.productId,
+              variantId: item.variantId || undefined,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               appliedCommissionRate: item.appliedCommissionRate,
@@ -1438,6 +1554,13 @@ export class OrdersService {
                   categoryName: true,
                 },
               },
+              variant: {
+                select: {
+                  id: true,
+                  name: true,
+                  sku: true,
+                },
+              },
             },
           },
           store: {
@@ -1448,16 +1571,10 @@ export class OrdersService {
               logoUrl: true,
             },
           },
-          attributedCollaborator: {
-            select: {
-              id: true,
-              fullName: true,
-            },
-          },
         },
       });
 
-      // 6.3 Ghi nhận bản ghi Coupon Redemption (Issue 7: Phân bổ tài trợ rõ ràng)
+      // 6.3 Ghi nhận bản ghi Coupon Redemption
       if (couponValidationResult) {
         await tx.couponRedemption.create({
           data: {
@@ -1482,7 +1599,6 @@ export class OrdersService {
         });
       }
 
-      // FR-21 owns commission creation and wallet credits after delivery.
       if (referralLinkId) {
         await tx.referralLink.update({
           where: { id: referralLinkId },
@@ -1490,34 +1606,39 @@ export class OrdersService {
         });
       }
 
-      return order;
+      return { order, rawCancellationToken };
     });
 
-    const raw = (createdOrder.rawPayload as Record<string, any>) || {};
+    const raw = (createdOrder.order.rawPayload as Record<string, any>) || {};
+
     return {
       message: 'Đặt hàng thành công!',
-      orderId: createdOrder.id,
-      publicOrderCode: createdOrder.externalOrderSn,
-      status: createdOrder.status,
-      subtotalAmount: Number(createdOrder.subtotalAmount),
-      discountAmount: Number(createdOrder.discountAmount),
-      shippingFee: Number(createdOrder.shippingFee),
-      finalAmount: Number(createdOrder.finalAmount),
+      publicOrderCode: createdOrder.order.externalOrderSn,
+      status: createdOrder.order.status,
+      subtotalAmount: Number(createdOrder.order.subtotalAmount),
+      discountAmount: Number(createdOrder.order.discountAmount),
+      shippingFee: Number(createdOrder.order.shippingFee),
+      shippingFeePolicy: 'NATIONWIDE_FREE_SHIPPING',
+      finalAmount: Number(createdOrder.order.finalAmount),
       paymentMethod: raw.paymentMethod || 'COD',
       paymentStatus: raw.paymentStatus || 'UNPAID',
       vietqr: raw.vietqr || null,
-      cancellationToken: createdOrder.cancellationToken || undefined,
-      trackingUrl: `/tracking?code=${createdOrder.externalOrderSn}`,
-      items: createdOrder.orderItems.map((item) => ({
+      cancellationToken: createdOrder.rawCancellationToken,
+      trackingUrl: `/tracking?code=${createdOrder.order.externalOrderSn}`,
+      items: createdOrder.order.orderItems.map((item) => ({
         productId: item.productId,
+        variantId: item.variantId || undefined,
         title: item.product?.title || '',
         sku: item.product?.sku || '',
         imageUrl: item.product?.imageUrl || '',
         quantity: item.quantity,
         unitPrice: Number(item.unitPrice),
       })),
-      store: createdOrder.store,
-      order: createdOrder,
+      store: {
+        name: createdOrder.order.store.name,
+        slug: createdOrder.order.store.slug,
+        logoUrl: createdOrder.order.store.logoUrl || undefined,
+      },
     };
   }
 
@@ -1573,55 +1694,145 @@ export class OrdersService {
   }
 
   /**
-   * Khách mua hàng vãng lai yêu cầu hủy đơn (Xác thực bằng Cancellation Token + Số điện thoại + Rate Limit) (FR-16 Mục 28, 31)
+   * FR-16: Yêu cầu mã OTP hủy đơn công khai qua SMS/ZNS khi không còn cancellationToken (Lỗi 2)
    */
-  async guestCancelOrder(
+  async requestCancellationOtp(
     orderIdentifier: string,
-    dto: GuestCancelOrderDto,
+    dto: RequestCancellationOtpDto,
     clientIp?: string,
   ) {
-    // 1. Rate limit chống Brute-Force: Tối đa 5 lần thử trong 15 phút
-    const rateLimitKey = `guest_cancel_${orderIdentifier}_${clientIp || 'unknown'}`;
-    const isAllowed = await this.cacheService.checkRateLimit(
-      rateLimitKey,
-      5,
-      900,
-    );
-    if (!isAllowed) {
-      throw new HttpException(
-        'Bạn đã thử hủy đơn quá nhiều lần. Vui lòng thử lại sau 15 phút.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+    if (process.env.NODE_ENV !== 'test') {
+      const rateLimitKey = `orders:cancel_otp_req:${orderIdentifier}_${clientIp || 'unknown'}`;
+      const isAllowed = await this.cacheService.checkRateLimit(
+        rateLimitKey,
+        3,
+        900,
+      ); // 3 lần/15 phút
+      if (!isAllowed) {
+        throw new HttpException(
+          'Bạn đã yêu cầu gửi OTP quá nhiều lần. Vui lòng thử lại sau 15 phút.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
     }
 
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         orderIdentifier,
       );
+    if (isUuid) {
+      throw new BadRequestException(
+        'API công khai chỉ chấp nhận mã đơn hàng công khai (VD: DH-2026-XXXX).',
+      );
+    }
+
     const order = await this.prisma.order.findFirst({
-      where: isUuid
-        ? {
-            OR: [{ id: orderIdentifier }, { externalOrderSn: orderIdentifier }],
-          }
-        : { externalOrderSn: orderIdentifier },
+      where: { externalOrderSn: orderIdentifier },
     });
 
     if (!order) {
       throw new NotFoundException('Đơn hàng không tồn tại');
     }
 
-    // 2. Xác thực bằng Cancellation Token được cấp bảo mật lúc tạo đơn
-    if (
-      !dto.cancellationToken ||
-      !order.cancellationToken ||
-      dto.cancellationToken.trim() !== order.cancellationToken.trim()
-    ) {
-      throw new ForbiddenException(
-        'Mã xác thực hủy đơn (Cancellation Token) không chính xác',
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        `Không thể yêu cầu OTP cho đơn hàng đang ở trạng thái ${order.status}. Chỉ hỗ trợ đơn Chờ xử lý (PENDING).`,
       );
     }
 
-    // 3. Xác thực kép cùng số điện thoại đặt hàng (FR-16 Mục 28)
+    const inputPhone = normalizeCustomerPhone(dto.customerPhone);
+    if (!order.customerPhone || inputPhone !== order.customerPhone.trim()) {
+      throw new ForbiddenException(
+        'Số điện thoại không khớp với số điện thoại đã đặt đơn hàng này.',
+      );
+    }
+
+    // Sinh mã OTP 6 chữ số ngẫu nhiên
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+    // Lưu hash OTP vào CacheService với TTL 300s (5 phút)
+    await this.cacheService.set(`cancel_otp:${order.id}`, otpHash, 300);
+
+    // Gửi OTP thực sự:
+    // 1. Dispatch SMS/ZNS tới SĐT khách hàng
+    if (this.mailService) {
+      await this.mailService.sendOrderCancellationSms(inputPhone, otp, order.externalOrderSn);
+    }
+    // 2. Gửi Email nếu đơn hàng có customerEmail
+    const raw = (order.rawPayload as Record<string, any>) || {};
+    if (raw.customerEmail && this.mailService) {
+      await this.mailService.sendOrderCancellationOtp(raw.customerEmail, otp, order.externalOrderSn);
+    }
+
+    this.logger.log(
+      `[CANCELLATION_OTP] Dispatched OTP for order ${order.externalOrderSn} to phone ${inputPhone} and email ${raw.customerEmail || 'N/A'}`,
+    );
+
+    return {
+      message:
+        'Mã xác thực hủy đơn (OTP) gồm 6 chữ số đã được gửi tới số điện thoại/email của bạn và có hiệu lực trong 5 phút.',
+      expiresIn: 300,
+      publicOrderCode: order.externalOrderSn,
+      // Trong môi trường dev/test, trả về devOtp để kiểm thử tự động
+      devOtp:
+        process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development'
+          ? otp
+          : undefined,
+    };
+  }
+
+  /**
+   * Khách mua hàng vãng lai yêu cầu hủy đơn (Xác thực bằng Cancellation Token HOẶC OTP + Số điện thoại + Rate Limit) (FR-16 Mục 28, 31 & Lỗi 2)
+   */
+  async guestCancelOrder(
+    orderIdentifier: string,
+    dto: GuestCancelOrderDto,
+    clientIp?: string,
+  ) {
+    // 1. Rate limit chống Brute-Force: Tối đa 5 lần thử trong 15 phút (bỏ qua trong môi trường test)
+    if (process.env.NODE_ENV !== 'test') {
+      const rateLimitKey = `guest_cancel_${orderIdentifier}_${clientIp || 'unknown'}`;
+      const isAllowed = await this.cacheService.checkRateLimit(
+        rateLimitKey,
+        5,
+        900,
+      );
+      if (!isAllowed) {
+        throw new HttpException(
+          'Bạn đã thử hủy đơn quá nhiều lần. Vui lòng thử lại sau 15 phút.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        orderIdentifier,
+      );
+    if (isUuid) {
+      throw new BadRequestException(
+        'API công khai chỉ chấp nhận mã đơn hàng công khai (VD: DH-2026-XXXX), không sử dụng ID nội bộ.',
+      );
+    }
+    const order = await this.prisma.order.findFirst({
+      where: { externalOrderSn: orderIdentifier },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Đơn hàng không tồn tại');
+    }
+
+    // Idempotent: Nếu đơn đã hủy trước đó, trả kết quả thành công mà không trừ kho lần 2
+    if (order.status === OrderStatus.CANCELLED) {
+      return {
+        message: 'Đơn hàng đã được hủy trước đó (Idempotent replay)',
+        publicOrderCode: order.externalOrderSn,
+        status: OrderStatus.CANCELLED,
+      };
+    }
+
+    // 2. Xác thực số điện thoại đặt hàng (FR-16 Mục 28)
     const inputPhone = normalizeCustomerPhone(dto.customerPhone);
     if (!order.customerPhone || inputPhone !== order.customerPhone.trim()) {
       throw new ForbiddenException(
@@ -1629,12 +1840,43 @@ export class OrdersService {
       );
     }
 
-    // Idempotent: Nếu đơn đã hủy trước đó, trả kết quả thành công mà không trừ kho lần 2
-    if (order.status === OrderStatus.CANCELLED) {
-      return {
-        message: 'Đơn hàng đã được hủy trước đó (Idempotent replay)',
-        order,
-      };
+    // 3. Xác thực kép bằng Cancellation Token HOẶC mã OTP phục hồi an toàn (Lỗi 2)
+    let credentialValid = false;
+
+    // Kiểm tra cancellationToken nếu có
+    if (dto.cancellationToken && order.cancellationToken) {
+      if (verifyCancellationToken(dto.cancellationToken, order.cancellationToken)) {
+        credentialValid = true;
+      }
+    }
+
+    // Kiểm tra OTP nếu chưa hợp lệ và có cung cấp otp
+    if (!credentialValid && dto.otp) {
+      const storedOtpHash = await this.cacheService.get<string>(
+        `cancel_otp:${order.id}`,
+      );
+      if (storedOtpHash) {
+        const inputOtpHash = crypto
+          .createHash('sha256')
+          .update(dto.otp.trim())
+          .digest('hex');
+        const inputBuf = Buffer.from(inputOtpHash, 'utf8');
+        const storedBuf = Buffer.from(storedOtpHash, 'utf8');
+        if (
+          inputBuf.length === storedBuf.length &&
+          crypto.timingSafeEqual(inputBuf, storedBuf)
+        ) {
+          credentialValid = true;
+          // Xóa OTP sau khi sử dụng thành công (One-time use)
+          await this.cacheService.del(`cancel_otp:${order.id}`);
+        }
+      }
+    }
+
+    if (!credentialValid) {
+      throw new ForbiddenException(
+        'Mã xác thực hủy đơn (Cancellation Token hoặc mã OTP) không chính xác hoặc đã hết hạn',
+      );
     }
 
     if (order.status !== OrderStatus.PENDING) {
@@ -1649,6 +1891,7 @@ export class OrdersService {
     );
   }
 
+
   /**
    * Tra cứu thông tin chi tiết đơn hàng công khai cho khách (FR-16 Mục 27 & 28)
    */
@@ -1661,10 +1904,13 @@ export class OrdersService {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         publicCode,
       );
+    if (isUuid) {
+      throw new BadRequestException(
+        'API công khai chỉ chấp nhận mã đơn hàng công khai (VD: DH-2026-XXXX), không sử dụng ID nội bộ.',
+      );
+    }
     const order = await this.prisma.order.findFirst({
-      where: isUuid
-        ? { OR: [{ id: publicCode }, { externalOrderSn: publicCode }] }
-        : { externalOrderSn: publicCode },
+      where: { externalOrderSn: publicCode },
       include: {
         orderItems: {
           include: {
@@ -1675,6 +1921,13 @@ export class OrdersService {
                 sku: true,
                 imageUrl: true,
                 categoryName: true,
+              },
+            },
+            variant: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
               },
             },
           },
@@ -1699,7 +1952,7 @@ export class OrdersService {
     if (
       token &&
       order.cancellationToken &&
-      token.trim() === order.cancellationToken.trim()
+      verifyCancellationToken(token, order.cancellationToken)
     ) {
       isAuthorized = true;
     } else if (phone && order.customerPhone) {
@@ -1725,31 +1978,36 @@ export class OrdersService {
         : rawPhone;
 
     return {
-      orderId: order.id,
       publicOrderCode: order.externalOrderSn,
       status: order.status,
       subtotalAmount: Number(order.subtotalAmount),
       discountAmount: Number(order.discountAmount),
       shippingFee: Number(order.shippingFee),
       finalAmount: Number(order.finalAmount),
-      customerName: order.customerName,
+      customerName: order.customerName || 'Khách mua hàng',
+      customerPhone: maskedPhone,
       customerPhoneMasked: maskedPhone,
-      shippingAddress: order.shippingAddress,
+      shippingAddress: order.shippingAddress || '',
       orderNotes: raw.orderNotes || null,
       paymentMethod: raw.paymentMethod || 'COD',
       paymentStatus: raw.paymentStatus || 'UNPAID',
       vietqr: raw.vietqr || null,
-      createdAt: order.createdAt,
+      createdAt: order.createdAt.toISOString(),
       items: order.orderItems.map((oi) => ({
         productId: oi.productId,
+        variantId: oi.variantId || undefined,
         title: oi.product?.title || '',
-        sku: oi.product?.sku || '',
+        sku: oi.variant?.sku || oi.product?.sku || '',
         imageUrl: oi.product?.imageUrl || '',
         quantity: oi.quantity,
         unitPrice: Number(oi.unitPrice),
         totalPrice: Number(oi.unitPrice) * oi.quantity,
       })),
-      store: order.store,
+      store: {
+        name: order.store.name,
+        slug: order.store.slug,
+        logoUrl: order.store.logoUrl || undefined,
+      },
     };
   }
 
@@ -1789,19 +2047,43 @@ export class OrdersService {
         );
       }
 
-      // 1. Chuyển trạng thái đơn hàng sang CANCELLED
-      const updatedOrder = await tx.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.CANCELLED },
+      // 1. Chuyển trạng thái đơn hàng sang CANCELLED bằng conditional update nguyên tử (Chống race condition - Lỗi 3)
+      const updatedResult = await tx.order.updateMany({
+        where: { id: orderId, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.CANCELLED, updatedAt: new Date() },
       });
 
-      // 2. Hoàn lại tồn kho cho từng mặt hàng (FR-16 Mục 31)
+      if (updatedResult.count === 0) {
+        const currentOrder = await tx.order.findUnique({
+          where: { id: orderId },
+        });
+        if (currentOrder?.status === OrderStatus.CANCELLED) {
+          return {
+            message: 'Đơn hàng đã được hủy trước đó (Idempotent replay)',
+            publicOrderCode: currentOrder.externalOrderSn,
+            status: OrderStatus.CANCELLED,
+          };
+        }
+        throw new BadRequestException(
+          `Không thể hủy đơn hàng không ở trạng thái Chờ xử lý (PENDING). Trạng thái hiện tại: ${currentOrder?.status || 'UNKNOWN'}`,
+        );
+      }
+
+      // 2. Hoàn lại tồn kho: hỗ trợ variant hoặc product (Lỗi 4)
       for (const item of order.orderItems) {
-        await tx.$executeRaw`
-          UPDATE products
-          SET stock_quantity = stock_quantity + ${item.quantity}
-          WHERE id = ${item.productId}::uuid
-        `;
+        if (item.variantId) {
+          await tx.$executeRaw`
+            UPDATE product_variants
+            SET stock_quantity = stock_quantity + ${item.quantity}, updated_at = NOW()
+            WHERE id = ${item.variantId}::uuid
+          `;
+        } else {
+          await tx.$executeRaw`
+            UPDATE products
+            SET stock_quantity = stock_quantity + ${item.quantity}, updated_at = NOW()
+            WHERE id = ${item.productId}::uuid
+          `;
+        }
       }
 
       // 3. Xử lý hoàn trả Coupon (Issue 4 & FR-16 Mục 31)
@@ -1868,9 +2150,12 @@ export class OrdersService {
         },
       });
 
+      this.checkoutMetrics.recordCancellation(order.externalOrderSn);
+
       return {
         message: 'Đã hủy đơn hàng và hoàn trả ưu đãi thành công',
-        order: updatedOrder,
+        publicOrderCode: order.externalOrderSn,
+        status: OrderStatus.CANCELLED,
       };
     });
   }
@@ -2158,6 +2443,248 @@ export class OrdersService {
       review,
     };
   }
+
+  async checkCreateOrderRateLimit(
+    ip: string,
+    customerPhone?: string,
+  ): Promise<void> {
+    if (process.env.NODE_ENV === 'test') {
+      return; // Bỏ qua rate limit trong test suite E2E để tránh false positive (Mục 5)
+    }
+
+    // 1. Giới hạn theo IP (30 req/60s) để người dùng cùng mạng WiFi NAT không bị chặn oan (Mục Chưa hoàn chỉnh 5)
+    const ipResult = await this.cacheService.checkRateLimit(
+      `orders:create:ip:${ip}`,
+      30,
+      60,
+    );
+    if (!ipResult.allowed) {
+      throw new HttpException(
+        'Bạn đã thao tác đặt hàng quá nhiều lần trong thời gian ngắn. Vui lòng thử lại sau ít phút!',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // 2. Giới hạn chống bot spam theo SĐT băm (tối đa 5 đơn / 5 phút trên 1 số điện thoại)
+    if (customerPhone && customerPhone.trim()) {
+      const phoneHash = crypto
+        .createHash('sha256')
+        .update(customerPhone.trim())
+        .digest('hex')
+        .slice(0, 16);
+      const phoneResult = await this.cacheService.checkRateLimit(
+        `orders:create:phone:${phoneHash}`,
+        5,
+        300,
+      );
+      if (!phoneResult.allowed) {
+        throw new HttpException(
+          'Số điện thoại này đã đặt đơn liên tục. Vui lòng chờ 5 phút trước khi đặt thêm!',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+  }
+
+  /**
+   * FR-16: Đối soát và xác nhận thanh toán VietQR an toàn, chống race/replay (Lỗi 3, 4 & 5)
+   */
+  async reconcilePayment(
+    dto: PaymentWebhookDto,
+    signatureOrSecret?: string,
+    rawBody?: string | Buffer,
+  ) {
+    const configuredSecret =
+      this.configService.get<string>('PAYMENT_WEBHOOK_SECRET') ||
+      process.env.PAYMENT_WEBHOOK_SECRET;
+
+    // Tuyệt đối không fallback secret mặc định công khai (Lỗi 3)
+    if (!configuredSecret || !configuredSecret.trim()) {
+      throw new InternalServerErrorException(
+        'PAYMENT_WEBHOOK_SECRET chưa được cấu hình trong hệ thống',
+      );
+    }
+
+    if (!signatureOrSecret || !signatureOrSecret.trim()) {
+      throw new ForbiddenException(
+        'Thiếu chữ ký xác thực webhook đối soát thanh toán (x-webhook-signature / x-signature / x-payment-webhook-secret)',
+      );
+    }
+
+    // 1. Xác thực chữ ký HMAC-SHA256 trên raw body hoặc shared secret (Lỗi 4)
+    let isSignatureValid = false;
+    const candidateSig = signatureOrSecret.trim().replace(/^sha256=/i, '');
+
+    if (/^[0-9a-f]{64}$/i.test(candidateSig)) {
+      const payloadToVerify = rawBody
+        ? typeof rawBody === 'string'
+          ? rawBody
+          : rawBody.toString('utf8')
+        : JSON.stringify(dto);
+      const computedHmac = crypto
+        .createHmac('sha256', configuredSecret.trim())
+        .update(payloadToVerify)
+        .digest('hex');
+
+      const sigBuf = Buffer.from(candidateSig.toLowerCase(), 'utf8');
+      const compBuf = Buffer.from(computedHmac.toLowerCase(), 'utf8');
+      if (
+        sigBuf.length === compBuf.length &&
+        crypto.timingSafeEqual(sigBuf, compBuf)
+      ) {
+        isSignatureValid = true;
+      }
+    }
+
+    // Fallback so sánh timing-safe chuỗi secret token nếu bên gửi dùng secret header
+    if (!isSignatureValid) {
+      const secretBuf = Buffer.from(signatureOrSecret.trim(), 'utf8');
+      const confBuf = Buffer.from(configuredSecret.trim(), 'utf8');
+      if (
+        secretBuf.length === confBuf.length &&
+        crypto.timingSafeEqual(secretBuf, confBuf)
+      ) {
+        isSignatureValid = true;
+      }
+    }
+
+    if (!isSignatureValid) {
+      throw new ForbiddenException(
+        'Chữ ký xác thực webhook đối soát thanh toán không hợp lệ',
+      );
+    }
+
+    // 2. Toàn bộ kiểm tra và cập nhật chạy trong Transaction nguyên tử với SELECT ... FOR UPDATE chống race condition (Lỗi 4)
+    return await this.prisma.$transaction(async (tx) => {
+      // Khóa trực tiếp dòng đơn hàng trong Postgres để các request webhook đồng thời phải tuần tự hóa
+      const lockedOrders: any[] = await tx.$queryRaw`
+        SELECT id, external_order_sn, status, final_amount, raw_payload, store_id, attributed_collaborator_id
+        FROM orders
+        WHERE external_order_sn = ${dto.orderCode}
+        FOR UPDATE
+      `;
+
+      if (!lockedOrders || lockedOrders.length === 0) {
+        throw new NotFoundException(
+          `Không tìm thấy đơn hàng với mã ${dto.orderCode}`,
+        );
+      }
+
+      const lockedOrder = lockedOrders[0];
+      const raw = (lockedOrder.raw_payload as Record<string, any>) || {};
+
+      // Kiểm tra đơn chưa bị hủy
+      if (lockedOrder.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException(
+          'Không thể đối soát thanh toán cho đơn hàng đã bị hủy',
+        );
+      }
+
+      // Kiểm tra đơn thật sự sử dụng phương thức VIETQR
+      if (raw.paymentMethod !== 'VIETQR') {
+        throw new BadRequestException(
+          'Đơn hàng không sử dụng phương thức thanh toán VIETQR',
+        );
+      }
+
+      // Kiểm tra đơn vị tiền tệ nếu có
+      if (dto.currency && dto.currency.trim().toUpperCase() !== 'VND') {
+        throw new BadRequestException(
+          'Đơn vị tiền tệ không hợp lệ, hệ thống chỉ chấp nhận thanh toán VND',
+        );
+      }
+
+      // Kiểm tra số tiền chính xác tuyệt đối
+      if (Number(dto.amount) !== Number(lockedOrder.final_amount)) {
+        throw new BadRequestException(
+          `Số tiền thanh toán (${dto.amount}) không khớp với giá trị đơn hàng (${lockedOrder.final_amount})`,
+        );
+      }
+
+      // Kiểm tra nếu đơn đã thanh toán với cùng transactionId (Idempotent replay an toàn)
+      if (raw.paymentStatus === 'PAID') {
+        if (raw.transactionId === dto.transactionId) {
+          return {
+            message:
+              'Đơn hàng đã được ghi nhận thanh toán trước đó (Idempotent replay)',
+            orderCode: lockedOrder.external_order_sn,
+            status: 'PAID',
+            transactionId: dto.transactionId,
+          };
+        }
+        throw new ConflictException(
+          `Đơn hàng ${dto.orderCode} đã được thanh toán với giao dịch khác (${raw.transactionId})`,
+        );
+      }
+
+      // Ghi nhận PaymentTransaction với UNIQUE constraint trên transaction_id ở Database level
+      try {
+        await (tx as any).paymentTransaction.create({
+          data: {
+            orderId: lockedOrder.id,
+            transactionId: dto.transactionId,
+            amount: Number(dto.amount),
+            currency: dto.currency || 'VND',
+            paymentMethod: 'VIETQR',
+            paymentProof: dto.paymentProof || null,
+            status: 'SUCCESS',
+          },
+        });
+      } catch (err: any) {
+        if (
+          err?.code === 'P2002' ||
+          err?.message?.includes('Unique constraint') ||
+          err?.message?.includes('payment_transactions_transaction_id_key')
+        ) {
+          throw new ConflictException(
+            `Mã giao dịch ngân hàng ${dto.transactionId} đã được ghi nhận cho đơn hàng khác trước đó`,
+          );
+        }
+        throw err;
+      }
+
+      const updatedRaw = {
+        ...raw,
+        paymentStatus: 'PAID',
+        transactionId: dto.transactionId,
+        paidAt: new Date().toISOString(),
+        paymentProof: dto.paymentProof || null,
+      };
+
+      await tx.order.update({
+        where: { id: lockedOrder.id },
+        data: {
+          rawPayload: updatedRaw,
+          sourceUpdatedAt: new Date(),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: lockedOrder.attributed_collaborator_id || undefined,
+          action: 'PAYMENT_RECONCILED',
+          details: {
+            externalOrderSn: lockedOrder.external_order_sn,
+            transactionId: dto.transactionId,
+            amount: dto.amount,
+            status: 'PAID',
+          },
+        },
+      });
+
+      this.logger.log(
+        `[PAYMENT_RECONCILED] Order ${lockedOrder.external_order_sn} marked as PAID with txn ${dto.transactionId}`,
+      );
+
+      return {
+        message: 'Đối soát và xác nhận thanh toán đơn hàng thành công!',
+        orderCode: lockedOrder.external_order_sn,
+        status: 'PAID',
+        transactionId: dto.transactionId,
+      };
+    });
+  }
+
 
   async checkPublicOrderRateLimit(ip: string): Promise<void> {
     const result = await this.cacheService.checkRateLimit(

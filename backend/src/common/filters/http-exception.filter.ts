@@ -47,9 +47,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
           (typeof details === 'string' ? details : undefined) ||
           (exception instanceof Error ? exception.message : 'Request failed');
 
+    const requestId =
+      (request.headers['x-request-id'] as string) ||
+      (request.headers['request-id'] as string) ||
+      `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
     response.status(status).json({
       success: false,
       statusCode: status,
+      requestId,
       message,
       ...(status < 500 && validationErrors ? { errors: validationErrors } : {}),
       timestamp: new Date().toISOString(),

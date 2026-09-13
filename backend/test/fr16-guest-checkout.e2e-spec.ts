@@ -6,6 +6,9 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/core/database/prisma.service';
 import { ClickQueueService } from '../src/modules/referral-links/click-queue.service';
 import { randomUUID } from 'crypto';
+import * as crypto from 'crypto';
+
+require('dotenv').config();
 
 const cookieParser = require('cookie-parser');
 
@@ -23,16 +26,30 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
   const testProduct1Id = '36363636-1616-4000-8000-000000000001';
   const testProduct2Id = '36363636-1616-4000-8000-000000000002';
   const testProductStore2Id = '36363636-1616-4000-8000-000000000003';
+  const testVariantId = '46464646-1616-4000-8000-000000000001';
 
   async function cleanupData() {
     if (!prisma) return;
     const storeIds = [testStore1Id, testStore2Id];
     const userIds = [testOwner1Id, testOwner2Id];
+    const storeSlugs = ['store-1-fr16', 'store-2-fr16'];
+    const userEmails = ['store1-owner-fr16@test.com', 'store2-owner-fr16@test.com'];
+    const productIds = [testProduct1Id, testProduct2Id, testProductStore2Id];
 
     try {
+      if ((prisma as any).paymentTransaction) {
+        await (prisma as any).paymentTransaction.deleteMany({
+          where: { order: { storeId: { in: storeIds } } },
+        }).catch(() => {});
+      }
       if (prisma.orderItem) {
         await prisma.orderItem.deleteMany({
           where: { order: { storeId: { in: storeIds } } },
+        }).catch(() => {});
+      }
+      if (prisma.productVariant) {
+        await prisma.productVariant.deleteMany({
+          where: { OR: [{ id: testVariantId }, { sku: 'SP-FR16-01-V50' }] },
         }).catch(() => {});
       }
       if (prisma.couponRedemption) {
@@ -47,17 +64,17 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
       }
       if (prisma.product) {
         await prisma.product.deleteMany({
-          where: { storeId: { in: storeIds } },
+          where: { OR: [{ id: { in: productIds } }, { storeId: { in: storeIds } }] },
         }).catch(() => {});
       }
       if (prisma.store) {
         await prisma.store.deleteMany({
-          where: { id: { in: storeIds } },
+          where: { OR: [{ id: { in: storeIds } }, { slug: { in: storeSlugs } }] },
         }).catch(() => {});
       }
       if (prisma.user) {
         await prisma.user.deleteMany({
-          where: { id: { in: userIds } },
+          where: { OR: [{ id: { in: userIds } }, { email: { in: userEmails } }] },
         }).catch(() => {});
       }
     } catch {
@@ -70,7 +87,7 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ rawBody: true });
     app.use(cookieParser());
     app.useGlobalPipes(
       new ValidationPipe({
@@ -96,78 +113,111 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
 
     await cleanupData();
 
-    // Create test users & stores
-    await prisma.user.createMany({
-      data: [
-        {
-          id: testOwner1Id,
-          email: 'store1-owner-fr16@test.com',
-          passwordHash: 'hash123',
-          fullName: 'Chủ Shop 1',
-          role: 'SHOP_MANAGER',
-        },
-        {
-          id: testOwner2Id,
-          email: 'store2-owner-fr16@test.com',
-          passwordHash: 'hash123',
-          fullName: 'Chủ Shop 2',
-          role: 'SHOP_MANAGER',
-        },
-      ],
+    // Setup test users idempotently (upsert chống duplicate email/pkey)
+    await prisma.user.upsert({
+      where: { email: 'store1-owner-fr16@test.com' },
+      update: { fullName: 'Chủ Shop 1', role: 'SHOP_MANAGER', passwordHash: 'hash123' },
+      create: {
+        id: testOwner1Id,
+        email: 'store1-owner-fr16@test.com',
+        passwordHash: 'hash123',
+        fullName: 'Chủ Shop 1',
+        role: 'SHOP_MANAGER',
+      },
+    });
+    await prisma.user.upsert({
+      where: { email: 'store2-owner-fr16@test.com' },
+      update: { fullName: 'Chủ Shop 2', role: 'SHOP_MANAGER', passwordHash: 'hash123' },
+      create: {
+        id: testOwner2Id,
+        email: 'store2-owner-fr16@test.com',
+        passwordHash: 'hash123',
+        fullName: 'Chủ Shop 2',
+        role: 'SHOP_MANAGER',
+      },
     });
 
-    await prisma.store.createMany({
-      data: [
-        {
-          id: testStore1Id,
-          ownerId: testOwner1Id,
-          name: 'Store 1 FR16',
-          slug: 'store-1-fr16',
-          isActive: true,
-        },
-        {
-          id: testStore2Id,
-          ownerId: testOwner2Id,
-          name: 'Store 2 FR16',
-          slug: 'store-2-fr16',
-          isActive: true,
-        },
-      ],
+    // Setup test stores idempotently (upsert chống duplicate slug)
+    await prisma.store.upsert({
+      where: { slug: 'store-1-fr16' },
+      update: { name: 'Store 1 FR16', isActive: true, ownerId: testOwner1Id },
+      create: {
+        id: testStore1Id,
+        ownerId: testOwner1Id,
+        name: 'Store 1 FR16',
+        slug: 'store-1-fr16',
+        isActive: true,
+      },
+    });
+    await prisma.store.upsert({
+      where: { slug: 'store-2-fr16' },
+      update: { name: 'Store 2 FR16', isActive: true, ownerId: testOwner2Id },
+      create: {
+        id: testStore2Id,
+        ownerId: testOwner2Id,
+        name: 'Store 2 FR16',
+        slug: 'store-2-fr16',
+        isActive: true,
+      },
     });
 
-    // Create test products
-    await prisma.product.createMany({
-      data: [
-        {
-          id: testProduct1Id,
-          storeId: testStore1Id,
-          sku: 'SP-FR16-01',
-          title: 'Serum Vitamin C 30ml',
-          price: 250000,
-          stockQuantity: 10,
-          isActive: true,
-        },
-        {
-          id: testProduct2Id,
-          storeId: testStore1Id,
-          sku: 'SP-FR16-02',
-          title: 'Kem Chống Nắng 50ml',
-          price: 320000,
-          stockQuantity: 2, // Low stock for oversell testing
-          isActive: true,
-        },
-        {
-          id: testProductStore2Id,
-          storeId: testStore2Id,
-          sku: 'SP-FR16-SHOP2',
-          title: 'Sản phẩm của Shop 2',
-          price: 150000,
-          stockQuantity: 20,
-          isActive: true,
-        },
-      ],
+    // Setup test products idempotently
+    await prisma.product.upsert({
+      where: { id: testProduct1Id },
+      update: { title: 'Serum Vitamin C 30ml', price: 250000, stockQuantity: 10, isActive: true },
+      create: {
+        id: testProduct1Id,
+        storeId: testStore1Id,
+        sku: 'SP-FR16-01',
+        title: 'Serum Vitamin C 30ml',
+        price: 250000,
+        stockQuantity: 10,
+        isActive: true,
+      },
+    });
+    await prisma.product.upsert({
+      where: { id: testProduct2Id },
+      update: { title: 'Kem Chống Nắng 50ml', price: 320000, stockQuantity: 2, isActive: true },
+      create: {
+        id: testProduct2Id,
+        storeId: testStore1Id,
+        sku: 'SP-FR16-02',
+        title: 'Kem Chống Nắng 50ml',
+        price: 320000,
+        stockQuantity: 2,
+        isActive: true,
+      },
+    });
+    await prisma.product.upsert({
+      where: { id: testProductStore2Id },
+      update: { title: 'Sản phẩm của Shop 2', price: 150000, stockQuantity: 20, isActive: true },
+      create: {
+        id: testProductStore2Id,
+        storeId: testStore2Id,
+        sku: 'SP-FR16-SHOP2',
+        title: 'Sản phẩm của Shop 2',
+        price: 150000,
+        stockQuantity: 20,
+        isActive: true,
+      },
+    });
+
+    // Setup test product variant idempotently
+    await prisma.productVariant.upsert({
+      where: { sku: 'SP-FR16-01-VAR-L' },
+      update: { name: 'Phân loại Size L 50ml', price: 350000, stockQuantity: 5, isActive: true },
+      create: {
+        id: testVariantId,
+        productId: testProduct1Id,
+        sku: 'SP-FR16-01-VAR-L',
+        name: 'Phân loại Size L 50ml',
+        price: 350000,
+        stockQuantity: 5,
+        isActive: true,
+      },
     });
   });
+
 
   afterAll(async () => {
     await cleanupData();
@@ -196,7 +246,7 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
         })
         .expect(201);
 
-      expect(res.body.publicOrderCode).toMatch(/^DH-\d{4}-\d{5}$/);
+      expect(res.body.publicOrderCode).toMatch(/^DH-\d{4}-[0-9A-F]{8}$/);
       expect(res.body.cancellationToken).toBeDefined();
       expect(res.body.status).toBe('PENDING');
       expect(res.body.paymentMethod).toBe('COD');
@@ -590,4 +640,245 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
         .expect(403);
     });
   });
+
+  describe('9. Đặt hàng với Phân loại sản phẩm (Variant / SKU) & Trừ / Hoàn kho Variant', () => {
+    it('Đặt hàng kèm variantId thành công: chốt giá theo variant và trừ tồn kho variant chính xác', async () => {
+      const vBefore = await prisma.productVariant.findUnique({
+        where: { id: testVariantId },
+      });
+      expect(vBefore?.stockQuantity).toBe(5);
+
+      const res = await request(app.getHttpServer())
+        .post('/orders')
+        .send({
+          customerName: 'Khách Mua Variant',
+          customerPhone: '0977112233',
+          shippingAddress: 'Quận 1, TP. Hồ Chí Minh',
+          paymentMethod: 'COD',
+          idempotencyKey: randomUUID(),
+          items: [
+            {
+              productId: testProduct1Id,
+              variantId: testVariantId,
+              quantity: 2,
+            },
+          ],
+        })
+        .expect(201);
+
+      // Giá theo variant: 350.000 * 2 = 700.000 (khác giá gốc sản phẩm là 250.000)
+      expect(res.body.finalAmount).toBe(700000);
+      expect(res.body.items[0].variantId).toBe(testVariantId);
+
+      // Tồn kho variant bị trừ: 5 - 2 = 3
+      const vAfter = await prisma.productVariant.findUnique({
+        where: { id: testVariantId },
+      });
+      expect(vAfter?.stockQuantity).toBe(3);
+
+      // Hủy đơn: tồn kho variant được hoàn lại: 3 + 2 = 5
+      const code = res.body.publicOrderCode;
+      const cancellationToken = res.body.cancellationToken;
+      await request(app.getHttpServer())
+        .post(`/orders/public/${code}/cancel`)
+        .send({
+          cancellationToken,
+          customerPhone: '0977112233',
+          reason: 'Khách muốn đổi size',
+        })
+        .expect(200);
+
+      const vRestored = await prisma.productVariant.findUnique({
+        where: { id: testVariantId },
+      });
+      expect(vRestored?.stockQuantity).toBe(5);
+    });
+  });
+
+  describe('10. Khôi phục quyền hủy đơn qua mã xác thực OTP (Lỗi 2)', () => {
+    it('Khách làm mất cancellationToken có thể yêu cầu OTP qua SĐT và hủy đơn thành công', async () => {
+      const pBefore = await prisma.product.findUnique({
+        where: { id: testProduct1Id },
+      });
+      const stockBefore = pBefore!.stockQuantity;
+
+      // 1. Tạo đơn COD
+      const createRes = await request(app.getHttpServer())
+        .post('/orders')
+        .send({
+          customerName: 'Khách Mất Token',
+          customerPhone: '0966778899',
+          shippingAddress: 'Ba Đình, Hà Nội',
+          paymentMethod: 'COD',
+          idempotencyKey: randomUUID(),
+          items: [{ productId: testProduct1Id, quantity: 1 }],
+        })
+        .expect(201);
+
+      const code = createRes.body.publicOrderCode;
+
+      // 2. Yêu cầu mã OTP hủy đơn
+      const otpRes = await request(app.getHttpServer())
+        .post(`/orders/public/${code}/request-cancellation-otp`)
+        .send({ customerPhone: '0966778899' })
+        .expect(200);
+
+      expect(otpRes.body.expiresIn).toBe(300);
+      const devOtp = otpRes.body.devOtp;
+      expect(devOtp).toBeDefined();
+
+      // 3. Hủy đơn bằng OTP nhận được
+      await request(app.getHttpServer())
+        .post(`/orders/public/${code}/cancel`)
+        .send({
+          otp: devOtp,
+          customerPhone: '0966778899',
+          reason: 'Khách dùng OTP để hủy đơn',
+        })
+        .expect(200);
+
+      // Đơn hàng sang CANCELLED và tồn kho được hoàn lại
+      const orderInDb = await prisma.order.findFirst({
+        where: { externalOrderSn: code },
+      });
+      expect(orderInDb?.status).toBe('CANCELLED');
+
+      const pAfter = await prisma.product.findUnique({
+        where: { id: testProduct1Id },
+      });
+      expect(pAfter!.stockQuantity).toBe(stockBefore);
+    });
+  });
+
+  describe('11. Chống Race Condition — Concurrent Cancellation (Lỗi 4)', () => {
+    it('Hai yêu cầu hủy đơn gửi song song chỉ hoàn kho 1 lần duy nhất, không nhân đôi tồn kho', async () => {
+      const pBefore = await prisma.product.findUnique({
+        where: { id: testProduct1Id },
+      });
+      const stockBefore = pBefore!.stockQuantity;
+
+      const createRes = await request(app.getHttpServer())
+        .post('/orders')
+        .send({
+          customerName: 'Khách Race Condition Cancel',
+          customerPhone: '0911223344',
+          shippingAddress: 'Hoàng Mai, Hà Nội',
+          paymentMethod: 'COD',
+          idempotencyKey: randomUUID(),
+          items: [{ productId: testProduct1Id, quantity: 2 }],
+        })
+        .expect(201);
+
+      const code = createRes.body.publicOrderCode;
+      const cancellationToken = createRes.body.cancellationToken;
+
+      // Gửi 2 request hủy song song
+      const [req1, req2] = await Promise.all([
+        request(app.getHttpServer())
+          .post(`/orders/public/${code}/cancel`)
+          .send({ cancellationToken, customerPhone: '0911223344' }),
+        request(app.getHttpServer())
+          .post(`/orders/public/${code}/cancel`)
+          .send({ cancellationToken, customerPhone: '0911223344' }),
+      ]);
+
+      expect(req1.status).toBe(200);
+      expect(req2.status).toBe(200);
+
+      // Tồn kho chỉ được hoàn đúng 2 cái, trở về đúng bằng stockBefore
+      const pAfter = await prisma.product.findUnique({
+        where: { id: testProduct1Id },
+      });
+      expect(pAfter!.stockQuantity).toBe(stockBefore);
+    });
+  });
+
+  describe('12. Webhook Đối Soát Thanh Toán VietQR & Chữ Ký HMAC (Lỗi 3, 4)', () => {
+    it('Đối soát thành công với chữ ký HMAC-SHA256 hợp lệ, cập nhật trạng thái PAID', async () => {
+      const createRes = await request(app.getHttpServer())
+        .post('/orders')
+        .send({
+          customerName: 'Khách VietQR Webhook',
+          customerPhone: '0988001122',
+          shippingAddress: 'Long Biên, Hà Nội',
+          paymentMethod: 'VIETQR',
+          idempotencyKey: randomUUID(),
+          items: [{ productId: testProduct1Id, quantity: 1 }],
+        })
+        .expect(201);
+
+      const code = createRes.body.publicOrderCode;
+      const amount = createRes.body.finalAmount;
+      const transactionId = `TXN-${randomUUID().slice(0, 8)}`;
+
+      const webhookPayload = {
+        orderCode: code,
+        amount,
+        transactionId,
+        currency: 'VND',
+      };
+
+      const webhookSecret =
+        process.env.PAYMENT_WEBHOOK_SECRET ||
+        'scanms_payment_webhook_secret_prod_secure_fa26se032';
+      const hmacSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(JSON.stringify(webhookPayload))
+        .digest('hex');
+
+      // Gửi webhook thành công
+      const hookRes = await request(app.getHttpServer())
+        .post('/orders/payment-webhook')
+        .set('x-webhook-signature', `sha256=${hmacSignature}`)
+        .send(webhookPayload)
+        .expect(200);
+
+      expect(hookRes.body.status).toBe('PAID');
+
+      // Replay lại webhook đó là Idempotent
+      const replayRes = await request(app.getHttpServer())
+        .post('/orders/payment-webhook')
+        .set('x-webhook-signature', `sha256=${hmacSignature}`)
+        .send(webhookPayload)
+        .expect(200);
+
+      expect(replayRes.body.message).toContain('Idempotent');
+
+      // Gửi webhook với sai chữ ký bị từ chối 403
+      await request(app.getHttpServer())
+        .post('/orders/payment-webhook')
+        .set('x-webhook-signature', 'sha256=invalid_signature_hash_0000000000000000000000000000000000000000')
+        .send(webhookPayload)
+        .expect(403);
+    });
+  });
+
+  describe('13. Bảo Mật Dữ Liệu & Không Làm Lộ PII / Internal Entity (Lỗi 1)', () => {
+    it('Phản hồi tạo đơn không chứa object order nội bộ, không lộ UUID, không lộ attribution snapshot', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/orders')
+        .send({
+          customerName: 'Khách Kiểm Tra PII',
+          customerPhone: '0988776655',
+          shippingAddress: 'Cầu Giấy, Hà Nội',
+          paymentMethod: 'COD',
+          idempotencyKey: randomUUID(),
+          items: [{ productId: testProduct1Id, quantity: 1 }],
+        })
+        .expect(201);
+
+      // Tuyệt đối không được chứa trường `order` thực thể Prisma nội bộ
+      expect(res.body.order).toBeUndefined();
+      expect(res.body.commissions).toBeUndefined();
+      expect(res.body.attributedCollaboratorId).toBeUndefined();
+      expect(res.body.attributionSnapshot).toBeUndefined();
+      expect(res.body.rawPayload).toBeUndefined();
+
+      // Phải có DTO công khai an toàn
+      expect(res.body.publicOrderCode).toMatch(/^DH-\d{4}-[0-9A-F]{8}$/);
+      expect(res.body.status).toBe('PENDING');
+      expect(res.body.finalAmount).toBeDefined();
+    });
+  });
 });
+

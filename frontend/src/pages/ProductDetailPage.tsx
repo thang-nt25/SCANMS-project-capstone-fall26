@@ -31,6 +31,15 @@ import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
 const SCANMS_PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23F3EFE6'/%3E%3Cg fill='%23C59B58' text-anchor='middle' font-family='sans-serif'%3E%3Ccircle cx='300' cy='260' r='50' fill='%23EEDFC6'/%3E%3Cpath d='M285 245h30v30h-30z' fill='%23B88E4F'/%3E%3Ctext x='300' y='350' font-size='22' font-weight='bold' fill='%231A1612'%3ESCANMS MARKETPLACE%3C/text%3E%3Ctext x='300' y='380' font-size='14' fill='%237D715E'%3EH%C3%ACnh %E1%BA%A3nh s%E1%BA%A3n ph%E1%BA%A9m %C4%91ang %C4%91%C6%B0%E1%BB%A3c c%E1%BA%ADp nh%E1%BA%ADt%3C/text%3E%3C/g%3E%3C/svg%3E";
 
+interface ProductVariantItem {
+  id: string;
+  sku: string;
+  name: string;
+  price: number;
+  stockQuantity: number;
+  isActive?: boolean;
+}
+
 interface LandingProduct {
   id: string;
   sku: string;
@@ -43,6 +52,7 @@ interface LandingProduct {
   isActive: boolean;
   canPurchase: boolean;
   status?: string;
+  variants?: ProductVariantItem[];
 }
 
 interface LandingStore {
@@ -1479,7 +1489,8 @@ export default function ProductDetailPage() {
             price: product.price,
             originalPrice: product.originalPrice || undefined,
             imageUrl: product.imageUrl || undefined,
-            stockQuantity: availability.stockQuantity || 10,
+            stockQuantity: availability.stockQuantity ?? 0,
+            variants: product.variants,
           }}
           store={{
             id: store.id,

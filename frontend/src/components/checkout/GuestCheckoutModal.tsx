@@ -16,6 +16,16 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 
+export interface ProductVariantItem {
+  id: string;
+  productId?: string;
+  name: string;
+  sku: string;
+  price?: number | string | null;
+  stockQuantity: number;
+  isActive?: boolean;
+}
+
 export interface CheckoutProductItem {
   id: string;
   title: string;
@@ -24,6 +34,7 @@ export interface CheckoutProductItem {
   originalPrice?: number | string;
   imageUrl?: string;
   stockQuantity: number;
+  variants?: ProductVariantItem[];
 }
 
 export interface CheckoutStoreInfo {
@@ -59,6 +70,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [orderNotes, setOrderNotes] = useState('');
   const [quantity, setQuantity] = useState(initialQuantity);
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'VIETQR'>('COD');
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
+    undefined,
+  );
 
   // Coupon state
   const [couponCode, setCouponCode] = useState(initialCouponCode);
@@ -107,21 +121,47 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
           ? crypto.randomUUID()
           : `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       setIdempotencyKey(newKey);
-      setQuantity(Math.max(1, Math.min(initialQuantity, product.stockQuantity || 1)));
+
+      // Khởi tạo phân loại variant mặc định nếu có
+      if (product.variants && product.variants.length > 0) {
+        const available =
+          product.variants.find((v) => v.stockQuantity > 0) ||
+          product.variants[0];
+        setSelectedVariantId(available?.id);
+        setQuantity(1);
+      } else {
+        setSelectedVariantId(undefined);
+        setQuantity(
+          Math.max(1, Math.min(initialQuantity, product.stockQuantity || 1)),
+        );
+      }
+
       setOrderSuccess(null);
       setErrorMessage(null);
       if (initialCouponCode) {
         setCouponCode(initialCouponCode);
       }
     }
-  }, [isOpen, initialQuantity, product.stockQuantity, initialCouponCode]);
+  }, [isOpen, initialQuantity, product.stockQuantity, product.variants, initialCouponCode]);
 
   if (!isOpen) return null;
 
-  const unitPrice = Number(product.price) || 0;
+  const selectedVariant = product.variants?.find(
+    (v) => v.id === selectedVariantId,
+  );
+  const currentPrice =
+    selectedVariant?.price !== undefined && selectedVariant?.price !== null
+      ? Number(selectedVariant.price)
+      : Number(product.price) || 0;
+  const currentStock = selectedVariant
+    ? selectedVariant.stockQuantity
+    : product.stockQuantity || 0;
+
+  const unitPrice = currentPrice;
   const subtotal = unitPrice * quantity;
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const finalTotal = Math.max(0, subtotal - discountAmount);
+
 
   // Kiểm tra tính hợp lệ số điện thoại Việt Nam (FR-16 Mục 10)
   const isPhoneValid = (phone: string) => {
@@ -216,10 +256,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
-    // Validate tồn kho
-    if (quantity > product.stockQuantity) {
+    // Validate tồn kho (hỗ trợ variant hoặc sản phẩm)
+    if (quantity > currentStock) {
       setErrorMessage(
-        `Số lượng đặt (${quantity}) vượt quá tồn kho hiện có (${product.stockQuantity}).`,
+        `Số lượng đặt (${quantity}) vượt quá tồn kho hiện có (${currentStock}).`,
       );
       return;
     }
@@ -239,10 +279,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         items: [
           {
             productId: product.id,
+            variantId: selectedVariantId || undefined,
             quantity,
           },
         ],
       };
+
 
       const res = await api.post('/orders', payload);
       const resData = res.data;
@@ -465,7 +507,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   {store.name}
                 </span>
                 <span>•</span>
-                <span className="text-emerald-700 font-semibold">Không bắt buộc tạo tài khoản</span>
+                <span className="text-[#B88E4F] font-semibold">Không bắt buộc tạo tài khoản</span>
               </div>
             </div>
 
@@ -478,7 +520,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             )}
 
             {/* Thẻ tóm tắt sản phẩm đang mua */}
-            <div className="mb-5 p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl flex items-center gap-3">
+            <div className="mb-3.5 p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl flex items-center gap-3">
               <div className="w-14 h-14 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] overflow-hidden shrink-0">
                 <img
                   src={product.imageUrl || '/assets/product-placeholder.svg'}
@@ -491,6 +533,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-xs font-bold text-[#1A1612] line-clamp-1">{product.title}</h3>
+                {selectedVariant && (
+                  <div className="text-[11px] font-semibold text-[#B88E4F]">
+                    Phân loại: {selectedVariant.name}
+                  </div>
+                )}
                 <div className="flex items-baseline gap-2 mt-0.5">
                   <span className="text-sm font-black text-[#B88E4F]">
                     {unitPrice.toLocaleString('vi-VN')} ₫
@@ -502,7 +549,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   )}
                 </div>
                 <div className="text-[11px] text-[#7D715E] mt-0.5">
-                  Kho hàng: <span className="font-semibold text-[#1A1612]">{product.stockQuantity} sản phẩm</span>
+                  Kho hàng: <span className="font-semibold text-[#1A1612]">{currentStock} sản phẩm</span>
                 </div>
               </div>
 
@@ -519,8 +566,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <span className="w-8 text-center text-xs font-black text-[#1A1612]">{quantity}</span>
                 <button
                   type="button"
-                  onClick={() => setQuantity((prev) => Math.min(product.stockQuantity, prev + 1))}
-                  disabled={quantity >= product.stockQuantity}
+                  onClick={() => setQuantity((prev) => Math.min(currentStock, prev + 1))}
+                  disabled={quantity >= currentStock}
                   className="w-8 h-8 flex items-center justify-center text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] disabled:opacity-30 cursor-pointer font-bold"
                 >
                   +
@@ -528,8 +575,61 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             </div>
 
+            {/* Bộ chọn Phân loại sản phẩm (Variant Selector) nếu sản phẩm có variants */}
+            {product.variants && product.variants.length > 0 && (
+              <div className="mb-4 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-[#1A1612]">
+                    Chọn phân loại / Phiên bản <span className="text-[#DC2626]">*</span>
+                  </label>
+                  <span className="text-[10px] text-[#7D715E]">
+                    {product.variants.length} lựa chọn
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {product.variants.map((v) => {
+                    const isSelected = selectedVariantId === v.id;
+                    const isOutOfStock = v.stockQuantity <= 0;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => {
+                          if (!isOutOfStock) {
+                            setSelectedVariantId(v.id);
+                            setQuantity(1);
+                          }
+                        }}
+                        disabled={isOutOfStock}
+                        className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#FBF5EB] border-[#B88E4F] ring-2 ring-[#B88E4F]/20 text-[#1A1612] font-bold shadow-xs'
+                            : isOutOfStock
+                            ? 'bg-[#F3EFE6]/50 border-[#EAE4D7] text-[#7D715E]/50 opacity-50 cursor-not-allowed'
+                            : 'bg-white border-[#EAE4D7] text-[#1A1612] hover:border-[#B88E4F]/60'
+                        }`}
+                      >
+                        <div className="font-semibold line-clamp-1">{v.name}</div>
+                        <div className="text-[11px] text-[#B88E4F] font-black mt-0.5">
+                          {(v.price !== undefined && v.price !== null
+                            ? Number(v.price)
+                            : Number(product.price) || 0
+                          ).toLocaleString('vi-VN')}{' '}
+                          ₫
+                        </div>
+                        <div className="text-[10px] text-[#7D715E] mt-0.5">
+                          {isOutOfStock ? 'Hết hàng' : `Còn ${v.stockQuantity}`}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Form chính */}
             <form onSubmit={handleSubmitOrder} className="space-y-3.5">
+
               {/* Họ và tên */}
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1">
