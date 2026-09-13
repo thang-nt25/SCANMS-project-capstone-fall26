@@ -1,6 +1,6 @@
 # SCANMS — UI/UX DESIGN SPECIFICATIONS FOR FR-25, FR-26, FR-27
 ## Mẫu Thử Sản Phẩm (FR-25), Nhắn Tin Trực Tuyến (FR-26) & Thẻ Mời Chiến Dịch VIP (FR-27)
-> **Tác giả UI/UX & Triển khai:** Nguyễn Huy Quý  
+> **Tác giả UI/UX & Triển khai:** Nguyễn Phú Quý (NGUYENPHUQUY)  
 > **Mã đề tài:** FA26SE032 (SCANMS)  
 > **Ngôn ngữ thiết kế:** Vàng Be & Hổ Phách (Warm Sand, Cream & Brand Amber/Gold) — Pure Tailwind CSS
 

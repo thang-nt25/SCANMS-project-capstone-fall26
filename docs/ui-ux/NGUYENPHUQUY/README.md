@@ -2,7 +2,7 @@
 ## Mẫu Thử Sản Phẩm (FR-25), Nhắn Tin Trực Tuyến (FR-26) & Thẻ Mời Chiến Dịch VIP (FR-27)
 
 > **Dự án:** SCANMS (Mã đề tài: FA26SE032)  
-> **Tác giả UI/UX:** Nguyễn Huy Quý  
+> **Tác giả UI/UX:** Nguyễn Phú Quý (NGUYENPHUQUY)  
 > **Phiên bản:** 2.0.0 (Pure Tailwind CSS Architecture & Dual-Platform Support)
 
 ---
@@ -13,7 +13,7 @@ Prototype được xây dựng độc lập bằng HTML5, Tailwind CSS và Vanil
 
 ### Khởi chạy máy chủ cục bộ (Local Server):
 ```bash
-cd docs/ui-ux/NGUYENHUYQUY
+cd docs/ui-ux/NGUYENPHUQUY
 node serve.mjs
 ```
 Truy cập trên trình duyệt: **`http://127.0.0.1:4175/`**
@@ -23,7 +23,7 @@ Truy cập trên trình duyệt: **`http://127.0.0.1:4175/`**
 ## 2. Cấu trúc Thư mục
 
 ```
-docs/ui-ux/NGUYENHUYQUY/
+docs/ui-ux/NGUYENPHUQUY/
 ├── index.html                 # Showcase tương tác 3 màn hình FR-25, FR-26, FR-27
 ├── serve.mjs                  # Máy chủ Node.js độc lập (Zero-dependency)
 └── README.md                  # Hướng dẫn chi tiết (Tài liệu này)
