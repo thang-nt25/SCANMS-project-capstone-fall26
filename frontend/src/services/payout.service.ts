@@ -5,11 +5,6 @@ export interface MerchantPayout {
   id: string;
   collaboratorId: string;
   collaboratorName: string;
-  collaboratorEmail?: string | null;
-  collaboratorPhone?: string | null;
-  collaboratorAvatar?: string | null;
-  collaboratorTaxCode?: string | null;
-  kycStatus?: string;
   storeId: string;
   amount: string;
   taxAmount: string;
@@ -61,17 +56,17 @@ export const payoutService = {
     ).data;
   },
   async approve(
+    storeId: string,
     payoutId: string,
+    bankRefCode: string,
     bill: File,
-    options: { bankRefCode?: string; note?: string } = {},
   ) {
     const body = new FormData();
-    if (options.bankRefCode) body.append("bankRefCode", options.bankRefCode);
-    if (options.note) body.append("note", options.note);
+    body.append("bankRefCode", bankRefCode);
     body.append("bill", bill);
     return (
-      await api.post<never, Envelope<MerchantPayout>>(
-        `/payouts/${payoutId}/approve`,
+      await api.patch<never, Envelope<MerchantPayout>>(
+        `/stores/${storeId}/payouts/${payoutId}/approve`,
         body,
         { headers: { "Content-Type": "multipart/form-data" }, timeout: 45000 },
       )

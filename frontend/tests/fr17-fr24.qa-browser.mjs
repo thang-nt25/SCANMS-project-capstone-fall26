@@ -69,32 +69,11 @@ try {
                 title: "QA product",
                 price: 1000000,
                 isActive: true,
-                stockQuantity: 100,
               },
             ],
             total: 1,
-            pagination: { totalPages: 1 },
           };
-        if (url.hostname === "provinces.open-api.vn") {
-          await request.respond({
-            status: 200,
-            contentType: "application/json",
-            headers: { "Access-Control-Allow-Origin": "*" },
-            body: JSON.stringify([
-              {
-                code: 1,
-                name: "Hà Nội",
-                districts: [
-                  {
-                    code: 1,
-                    name: "Cầu Giấy",
-                    wards: [{ code: 1, name: "Dịch Vọng" }],
-                  },
-                ],
-              },
-            ]),
-          });
-        } else if (data && request.method() !== "OPTIONS")
+        if (data && request.method() !== "OPTIONS")
           await request.respond({
             status: 200,
             contentType: "application/json",
@@ -130,11 +109,6 @@ try {
   await merchant.goto(frontend + "/merchant/orders", {
     waitUntil: "networkidle0",
   });
-  await merchant.evaluate(() =>
-    [...document.querySelectorAll("button")]
-      .find((button) => button.textContent.includes("Tạo đơn thủ công"))
-      .click(),
-  );
   await merchant.waitForFunction(() =>
     [...document.querySelectorAll("select")].some((el) =>
       [...el.options].some((o) => o.textContent.includes("QA product")),
@@ -151,12 +125,10 @@ try {
     await handle.asElement().type(value);
     await handle.dispose();
   }
-  await fillLabel(merchant, "Họ tên khách hàng", "QA browser buyer");
+  await fillLabel(merchant, "Tên khách hàng", "QA browser buyer");
   await fillLabel(merchant, "Số điện thoại", "0902233445");
   await fillLabel(merchant, "Địa chỉ giao hàng", "QA browser address");
-  const selects = await merchant.$$("section:first-of-type select");
-  await selects[0].select("1");
-  await selects[1].select("1");
+  await merchant.select("form select", "COMPLETED");
   await merchant.select(
     `select:has(option[value="${fixture.productId}"])`,
     fixture.productId,
@@ -188,12 +160,9 @@ try {
   );
   const sn = created[0].body.data.order.externalOrderSn;
   const customer = await pageFor("COLLABORATOR");
-  await customer.goto(
-    frontend + "/tracking?sn=" + encodeURIComponent(fixture.reviewOrderSn),
-    {
-      waitUntil: "networkidle0",
-    },
-  );
+  await customer.goto(frontend + "/tracking?sn=" + encodeURIComponent(sn), {
+    waitUntil: "networkidle0",
+  });
   await customer.waitForFunction(() =>
     document.body.textContent.includes("Viết đánh giá"),
   );
@@ -330,7 +299,7 @@ try {
       el.textContent.includes(id),
     );
     [...row.querySelectorAll("button")]
-      .find((el) => el.textContent.trim() === "Duyệt và tải bill")
+      .find((el) => el.textContent.trim() === "Xác nhận đã trả")
       .click();
   }, payout.id);
   await merchant.type(
@@ -363,7 +332,7 @@ try {
   );
   await merchant.evaluate(() =>
     [...document.querySelectorAll('[role="dialog"] button')]
-      .find((el) => el.textContent.trim() === "Hủy")
+      .find((el) => el.textContent.trim() === "Đóng")
       .click(),
   );
   await merchant.evaluate(() =>

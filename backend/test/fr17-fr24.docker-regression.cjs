@@ -98,7 +98,6 @@ async function main() {
         sku: 'QA-' + randomUUID(),
         title: 'QA product',
         price: '1000000',
-        stockQuantity: 100,
       },
     });
     const token = jwt.sign(
@@ -296,199 +295,6 @@ async function main() {
     pass(
       'manual intent idempotency, conflict payload, phone/type/money bounds',
     );
-    const nested = {
-      storeId: store.id,
-      requestId: randomUUID(),
-      customer: {
-        name: 'QA nested buyer',
-        phone: '0902 233 445',
-        email: 'qa@example.test',
-        address: '123 QA Road',
-        province: 'Hà Nội',
-        district: 'Cầu Giấy',
-        ward: 'Dịch Vọng',
-      },
-      paymentMethod: 'BANK_TRANSFER',
-      shippingFee: 30000,
-      note: 'QA office hours',
-      items: [
-        {
-          productId: product.id,
-          sku: product.sku,
-          quantity: 2,
-          unitPrice: 150000,
-        },
-      ],
-      discountAmount: 15000,
-      totalAmount: 315000,
-    };
-    const nestedCreated = await request('/orders/manual', nested, token);
-    assert.equal(nestedCreated.status, 201, JSON.stringify(nestedCreated.body));
-    const persisted = await db.order.findUnique({
-      where: { id: nestedCreated.body.data.order.id },
-      include: { orderItems: true },
-    });
-    assert.equal(persisted.finalAmount.toFixed(2), '315000.00');
-    assert.equal(persisted.shippingFee.toFixed(2), '30000.00');
-    assert.equal(persisted.customerPhone, '0902233445');
-    assert.equal(persisted.rawPayload.customer.email, 'qa@example.test');
-    assert.equal(persisted.rawPayload.paymentMethod, 'BANK_TRANSFER');
-    assert.equal(persisted.orderItems.length, 1);
-    for (const change of [
-      { totalAmount: 1 },
-      { shippingFee: -1 },
-      { paymentMethod: 'INVALID' },
-      { customer: { ...nested.customer, district: '', email: 'bad' } },
-      { items: [{ productId: product.id, quantity: 1, unitPrice: 0 }] },
-      {
-        items: [
-          {
-            productId: product.id,
-            sku: 'WRONG-SKU',
-            quantity: 1,
-            unitPrice: 100,
-          },
-        ],
-      },
-      {
-        items: [
-          { productId: product.id, quantity: 60, unitPrice: 1 },
-          { productId: product.id, quantity: 60, unitPrice: 1 },
-        ],
-      },
-    ]) {
-      const attemptId = randomUUID();
-      assert.equal(
-        (
-          await request(
-            '/orders/manual',
-            { ...nested, ...change, requestId: attemptId },
-            token,
-          )
-        ).status,
-        400,
-      );
-      assert.equal(
-        await db.order.count({
-          where: { storeId: store.id, externalOrderSn: 'MANUAL-' + attemptId },
-        }),
-        0,
-      );
-    }
-    assert.equal((await request('/orders/manual', nested)).status, 401);
-    const templateResponse = await fetch(
-      base + '/orders/import-excel/template',
-      { headers: { Authorization: 'Bearer ' + token } },
-    );
-    assert.equal(templateResponse.status, 200);
-    assert.ok(
-      templateResponse.headers
-        .get('content-type')
-        .includes('spreadsheetml.sheet'),
-    );
-    const template = new Workbook();
-    await template.xlsx.load(Buffer.from(await templateResponse.arrayBuffer()));
-    assert.equal(template.worksheets[0].getCell('C1').value, 'customer_phone');
-    pass(
-      'nested manual contract, shipping/metadata, auth, SKU/stock/total validation and rollback, Excel template',
-    );
-
-    const couponCode =
-      'QA' + randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
-    const manualCoupon = await db.coupon.create({
-      data: {
-        storeId: store.id,
-        collaboratorId: kol.id,
-        codeNormalized: couponCode,
-        displayCode: couponCode,
-        status: 'ACTIVE',
-        discountType: 'PERCENTAGE',
-        discountValue: 10,
-        usageLimitTotal: 1,
-        usageLimitPerCustomer: 1,
-        budgetTotal: 100000,
-        shopFundingRate: 100,
-        platformFundingRate: 0,
-      },
-    });
-    const couponItems = [
-      { productId: product.id, quantity: 1, unitPrice: 1000000 },
-    ];
-    const quote = await request(
-      '/orders/manual/discount',
-      {
-        storeId: store.id,
-        discountCode: couponCode,
-        customerPhone: nested.customer.phone,
-        items: couponItems,
-      },
-      token,
-    );
-    assert.equal(quote.status, 200, JSON.stringify(quote.body));
-    assert.equal(quote.body.data.discountAmount, 100000);
-    assert.equal(
-      (
-        await request(
-          '/orders/manual/discount',
-          {
-            storeId: store.id,
-            discountCode: couponCode,
-            customerPhone: nested.customer.phone,
-            items: [{ ...couponItems[0], unitPrice: 1 }],
-          },
-          token,
-        )
-      ).status,
-      400,
-    );
-    const couponOrder = await request(
-      '/orders/manual',
-      {
-        ...nested,
-        requestId: randomUUID(),
-        discountCode: couponCode,
-        discountAmount: 100000,
-        items: couponItems,
-        totalAmount: 930000,
-      },
-      token,
-    );
-    assert.equal(couponOrder.status, 201, JSON.stringify(couponOrder.body));
-    const redemption = await db.couponRedemption.findUnique({
-      where: { orderId: couponOrder.body.data.order.id },
-    });
-    assert.equal(redemption.discountAmount.toFixed(2), '100000.00');
-    assert.equal(
-      (await db.coupon.findUnique({ where: { id: manualCoupon.id } }))
-        .usageCount,
-      1,
-    );
-    assert.equal(
-      (
-        await request(
-          '/orders/manual',
-          {
-            ...nested,
-            requestId: randomUUID(),
-            discountCode: couponCode,
-            discountAmount: 100000,
-            items: couponItems,
-            totalAmount: 930000,
-          },
-          token,
-        )
-      ).status,
-      400,
-    );
-    assert.equal(
-      await db.commission.count({
-        where: { orderId: couponOrder.body.data.order.id },
-      }),
-      0,
-    );
-    pass(
-      'manual coupon quote, overridden price rejection and atomic quota/redemption without commission',
-    );
     const book = new Workbook();
     const sheet = book.addWorksheet('Orders');
     sheet.addRow([
@@ -527,18 +333,6 @@ async function main() {
         where: { storeId: store.id, externalOrderSn: badCode },
       }),
       0,
-    );
-    const repeatedImport = await fetch(base + '/orders/import-excel', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token },
-      body: form,
-    });
-    const repeatedBody = await repeatedImport.json();
-    assert.equal(repeatedBody.data.summary.importedOrders, 0);
-    assert.ok(
-      repeatedBody.data.errors.some(
-        (error) => error.row === 3 && error.message.includes('trùng'),
-      ),
     );
     pass(
       'Excel locale ambiguity is a row error; valid order imports atomically',
@@ -771,10 +565,6 @@ async function main() {
       'http://127.0.0.1:5183',
     );
     pass('Docker CORS allows the actual QA frontend');
-    const browserReviewOrder = await makeOrder({
-      status: 'COMPLETED',
-      completedAt: new Date(),
-    });
     console.log(
       JSON.stringify({
         summary: 'Docker API/PG regression passed',
@@ -785,7 +575,6 @@ async function main() {
         ownerId: owner.id,
         kolId: kol.id,
         deliveredOrderId: order.id,
-        reviewOrderSn: browserReviewOrder.externalOrderSn,
         apiUrl: base,
       }),
     );

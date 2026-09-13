@@ -2146,7 +2146,7 @@ function ordersScreen() {
   return `${header(
     "Đối soát đơn hàng & Động cơ hoa hồng (FR-16, FR-21, FR-22)",
     "Kiểm tra nguồn ghi nhận, điều kiện áp mã KOL giảm giá, phân biệt đơn Guest Checkout và giám sát bộ đếm 14 ngày bảo hộ đổi trả.",
-    `<button class="btn secondary" data-toast="Đã chạy Cron Job: Tự động đối soát và giải ngân các đơn hàng vượt mốc 14 ngày!"><i class="ph ph-clock-clockwise"></i> Chạy Cron Job 14 ngày</button><button class="btn secondary" data-order-form="excel">${icon("ph-upload-simple")} Import Excel (FR-20)</button><button class="btn" data-order-form="manual">Tạo đơn thủ công</button>`
+    `<button class="btn secondary" data-toast="Đã chạy Cron Job: Tự động đối soát và giải ngân các đơn hàng vượt mốc 14 ngày!"><i class="ph ph-clock-clockwise"></i> Chạy Cron Job 14 ngày</button><button class="btn secondary">${icon("ph-upload-simple")} Import Excel (FR-20)</button><button class="btn">Tạo đơn thủ công</button>`
   )}
   <div class="grid kpis">
     ${kpi("Tổng đơn trong tháng", "425 đơn", "74% đơn qua tiếp thị KOL", "ph-receipt")}
@@ -2365,25 +2365,8 @@ function ordersScreen() {
   </div>`;
 }
 
-// The prototype delegates FR-20 to the same React form used by /merchant/orders.
-document.addEventListener('click', (event) => {
-  const button = event.target instanceof Element ? event.target.closest('[data-order-form]') : null;
-  if (!button) return;
-  const action = button.getAttribute('data-order-form');
-  if (action !== 'manual' && action !== 'excel') return;
-  if (window.parent !== window) {
-    window.parent.postMessage({ type: 'SCANMS_OPEN_ORDER_FORM', action }, window.location.origin);
-  } else {
-    window.location.href = '/merchant/orders';
-  }
-});
-window.addEventListener('message', (event) => {
-  if (event.origin !== window.location.origin || event.source !== window.parent) return;
-  if (event.data?.type === 'SCANMS_ORDER_FORM_COMPLETED' && typeof event.data.message === 'string') toast(event.data.message);
-});
-
 function payoutsScreen() {
-  // Real shop-scoped payouts replace actionable demo records.
+  // Use the API-backed React page for every entry into payout approval.
   return `<iframe id="payout-approval-iframe" src="/merchant/payouts" style="width:100%;height:calc(100vh - 100px);min-height:650px;border:0;background:transparent;display:block" title="Duyệt payout và xuất Excel VietQR"></iframe>`;
 }
 

@@ -20,13 +20,16 @@ export class PayoutBillService {
   constructor(private readonly settings: PayoutSettingsService) {}
 
   get maxBillBytes() {
-    return Math.min(this.settings.maxBillBytes, 5 * 1024 * 1024);
+    return this.settings.maxBillBytes;
   }
 
   validateBill(file: Express.Multer.File | undefined) {
     if (!file || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0)
       throw new BadRequestException('Bắt buộc upload ảnh bill ngân hàng');
-    if (file.size !== file.buffer.length || file.size > this.maxBillBytes)
+    if (
+      file.size !== file.buffer.length ||
+      file.size > this.settings.maxBillBytes
+    )
       throw new BadRequestException(
         'Ảnh bill vượt giới hạn dung lượng hoặc không hợp lệ',
       );
@@ -56,16 +59,10 @@ export class PayoutBillService {
       (isJpeg &&
         file.mimetype === 'image/jpeg' &&
         (extension === 'jpg' || extension === 'jpeg')) ||
-      (isWebp && file.mimetype === 'image/webp' && extension === 'webp') ||
-      (extension === 'pdf' &&
-        file.mimetype === 'application/pdf' &&
-        /^%PDF-(1\.[0-7]|2\.0)/.test(data.subarray(0, 8).toString('ascii')) &&
-        /%%EOF\s*$/.test(
-          data.subarray(Math.max(0, data.length - 1024)).toString('ascii'),
-        ));
+      (isWebp && file.mimetype === 'image/webp' && extension === 'webp');
     if (!valid)
       throw new BadRequestException(
-        'Bill phải là PNG, JPEG, PDF hoặc WEBP; nội dung, MIME và đuôi file phải khớp',
+        'Bill phải là ảnh PNG, JPEG hoặc WEBP; nội dung, MIME và đuôi file phải khớp',
       );
     return createHash('sha256').update(data).digest('hex');
   }
@@ -78,7 +75,7 @@ export class PayoutBillService {
           folder: this.settings.billFolder,
           resource_type: 'image',
           type: 'authenticated',
-          allowed_formats: ['png', 'jpg', 'webp', 'pdf'],
+          allowed_formats: ['png', 'jpg', 'webp'],
           timeout: 30000,
         },
         (error, result) => {

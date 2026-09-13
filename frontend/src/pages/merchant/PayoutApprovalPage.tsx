@@ -13,12 +13,6 @@ import type {
 } from "../../services/payout.service";
 import type { PayoutStatus } from "../../services/wallet.service";
 import { storeService } from "../../services/store.service";
-import PayoutBillUpload from "../../components/payouts/PayoutBillUpload";
-import {
-  maskBankAccount,
-  MAX_PAYOUT_BILL_BYTES,
-  validatePayoutBill,
-} from "../../components/payouts/payoutBillValidation";
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",
@@ -60,24 +54,11 @@ export default function PayoutApprovalPage() {
     action: "approve" | "reject";
   } | null>(null);
   const [bankRefCode, setBankRefCode] = useState("");
-  const [note, setNote] = useState("");
   const [reason, setReason] = useState("");
   const [bill, setBill] = useState<File | null>(null);
   const [billLink, setBillLink] = useState("");
   const inFlight = useRef(false);
   const loadSequence = useRef(0);
-  const modalRef = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (!dialog) return;
-    const previous = document.activeElement as HTMLElement | null;
-    modalRef.current?.showModal();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      previous?.focus();
-    };
-  }, [dialog]);
 
   useEffect(() => {
     let active = true;
@@ -152,7 +133,6 @@ export default function PayoutApprovalPage() {
   function openDialog(request: MerchantPayout, action: "approve" | "reject") {
     setDialog({ request, action });
     setBankRefCode("");
-    setNote("");
     setReason("");
     setBill(null);
     setError("");
@@ -163,14 +143,9 @@ export default function PayoutApprovalPage() {
     if (!dialog || busy) return;
     if (
       dialog.action === "approve" &&
-      (!bill ||
-        validatePayoutBill(bill, history?.maxBillBytes) ||
-        (bankRefCode.trim() &&
-          !/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/i.test(bankRefCode.trim())))
+      (!bill || !/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/i.test(bankRefCode.trim()))
     ) {
-      setError(
-        "Cần bill JPG, PNG hoặc PDF hợp lệ; mã giao dịch nếu nhập phải đúng định dạng.",
-      );
+      setError("Cần ảnh bill hợp lệ và mã giao dịch ngân hàng");
       return;
     }
     if (dialog.action === "reject" && !reason.trim()) {
@@ -179,10 +154,12 @@ export default function PayoutApprovalPage() {
     }
     await runAction(async () => {
       if (dialog.action === "approve" && bill)
-        await payoutService.approve(dialog.request.id, bill, {
-          bankRefCode: bankRefCode.trim(),
-          note: note.trim(),
-        });
+        await payoutService.approve(
+          storeId,
+          dialog.request.id,
+          bankRefCode.trim(),
+          bill,
+        );
       else
         await payoutService.reject(storeId, dialog.request.id, reason.trim());
       setDialog(null);
@@ -297,7 +274,7 @@ export default function PayoutApprovalPage() {
             className={`${buttonClass} flex items-center gap-2 border-brand bg-brand text-white hover:bg-brand-strong`}
           >
             <Download size={16} />
-            Xuất Excel VietQR / Napas247 ({selected.length})
+            Xuất Excel VietQR ({selected.length})
           </button>
         </div>
         {loading && <p className="p-5 text-sm text-muted">Đang tải payout…</p>}
@@ -368,14 +345,6 @@ export default function PayoutApprovalPage() {
                   </td>
                   <td className="p-4">
                     <p className="font-semibold">{request.collaboratorName}</p>
-                    {request.kycStatus && (
-                      <p className="mt-1 text-xs text-muted">
-                        KYC:{" "}
-                        {request.kycStatus === "VERIFIED"
-                          ? "Đã xác minh"
-                          : "Cần bổ sung"}
-                      </p>
-                    )}
                     <p className="mt-1 font-mono text-xs text-muted">
                       {request.id}
                     </p>
@@ -386,8 +355,7 @@ export default function PayoutApprovalPage() {
                   <td className="p-4">
                     <p>{request.bankAccountName ?? "Thiếu thông tin"}</p>
                     <p className="text-xs text-muted">
-                      {request.bankName} ·{" "}
-                      {maskBankAccount(request.bankAccountNumber)}
+                      {request.bankName} · {request.bankAccountNumber}
                     </p>
                   </td>
                   <td className="whitespace-nowrap p-4">
@@ -429,7 +397,7 @@ export default function PayoutApprovalPage() {
                           onClick={() => openDialog(request, "approve")}
                           className={`${buttonClass} border-brand bg-brand text-white hover:bg-brand-strong`}
                         >
-                          Duyệt và tải bill
+                          Xác nhận đã trả
                         </button>
                       )}
                       {request.status === "PENDING" && !request.batchId && (
@@ -538,193 +506,137 @@ export default function PayoutApprovalPage() {
         )}
       </section>
       {dialog && (
-        <dialog
-          ref={modalRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="payout-dialog-title"
-          onCancel={(event) => {
-            event.preventDefault();
-            if (!busy) setDialog(null);
-          }}
-          className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-line bg-white p-6 text-ink shadow-xl backdrop:bg-brand-dark/50"
-        >
-          <h2 id="payout-dialog-title" className="text-xl font-bold">
-            {dialog.action === "approve"
-              ? "Duyệt payout và tải bill ngân hàng"
-              : "Từ chối yêu cầu"}
-          </h2>
-          <p className="mt-2 break-all font-mono text-xs text-muted">
-            {dialog.request.id}
-          </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <section className="rounded-xl border border-line bg-canvas p-4">
-              <h3 className="mb-3 text-sm font-semibold">Thông tin KOL</h3>
-              <div className="flex items-center gap-3">
-                {dialog.request.collaboratorAvatar ? (
-                  <img
-                    src={dialog.request.collaboratorAvatar}
-                    alt=""
-                    referrerPolicy="no-referrer"
-                    className="h-12 w-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-soft font-bold text-brand-strong">
-                    {dialog.request.collaboratorName?.charAt(0) || "K"}
-                  </span>
-                )}
-                <strong>{dialog.request.collaboratorName}</strong>
-              </div>
-              <dl className="mt-3 space-y-2 break-words text-sm">
-                <div>
-                  <dt className="text-muted">Số điện thoại</dt>
-                  <dd>{dialog.request.collaboratorPhone || "Chưa cập nhật"}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Email</dt>
-                  <dd>{dialog.request.collaboratorEmail || "Chưa cập nhật"}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Mã số thuế</dt>
-                  <dd>
-                    {dialog.request.collaboratorTaxCode || "Chưa cập nhật"}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-            <section className="rounded-xl border border-line bg-canvas p-4">
-              <h3 className="mb-3 text-sm font-semibold">
-                Ngân hàng nhận tiền
-              </h3>
-              <dl className="space-y-3 text-sm">
-                <div>
-                  <dt className="text-muted">Ngân hàng</dt>
-                  <dd>{dialog.request.bankName || "Chưa cập nhật"}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Số tài khoản</dt>
-                  <dd className="font-mono">
-                    {maskBankAccount(dialog.request.bankAccountNumber)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Chủ tài khoản</dt>
-                  <dd>{dialog.request.bankAccountName || "Chưa cập nhật"}</dd>
-                </div>
-              </dl>
-            </section>
-          </div>
-          <dl className="mt-4 grid gap-3 rounded-xl border border-brand-border bg-brand-soft p-4 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-muted">Số tiền yêu cầu</dt>
-              <dd className="mt-1 font-semibold">
-                {money(dialog.request.amount)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted">Thuế TNCN đã khấu trừ</dt>
-              <dd className="mt-1 font-semibold">
-                {money(dialog.request.taxAmount)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted">Số tiền thực chuyển</dt>
-              <dd className="mt-1 font-bold text-brand-strong">
-                {money(dialog.request.netAmount)}
-              </dd>
-            </div>
-          </dl>
-          <form
-            onSubmit={(event) => void submitDialog(event)}
-            className="mt-5 space-y-4"
-            aria-busy={busy}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/50 p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payout-dialog-title"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6"
           >
-            {dialog.action === "approve" ? (
-              <>
-                <p className="text-sm text-muted">
-                  Chỉ xác nhận sau khi chuyển khoản thành công. Bill không được
-                  tái sử dụng cho payout khác. Duyệt payout không trừ ví lần
-                  nữa.
-                </p>
+            <h2 id="payout-dialog-title" className="text-lg font-bold">
+              {dialog.action === "approve"
+                ? "Xác nhận đã chuyển khoản"
+                : "Từ chối yêu cầu"}
+            </h2>
+            <p className="mt-2 break-all font-mono text-xs text-muted">
+              {dialog.request.id}
+            </p>
+            <p className="mt-3 text-sm">
+              Thực nhận: <strong>{money(dialog.request.netAmount)}</strong> ·{" "}
+              {dialog.request.bankAccountName} ·{" "}
+              {dialog.request.bankAccountNumber}
+            </p>
+            <form
+              onSubmit={(event) => void submitDialog(event)}
+              className="mt-5 space-y-4"
+            >
+              {dialog.action === "approve" ? (
+                <>
+                  <p className="text-sm text-muted">
+                    Chỉ xác nhận sau khi chuyển khoản thành công. Bill không
+                    được tái sử dụng cho payout khác.
+                  </p>
+                  <label className="block text-sm">
+                    Mã giao dịch ngân hàng
+                    <input
+                      aria-label="Mã giao dịch ngân hàng"
+                      value={bankRefCode}
+                      onChange={(event) => setBankRefCode(event.target.value)}
+                      required
+                      maxLength={100}
+                      disabled={busy}
+                      className="mt-2 w-full rounded-xl border border-line p-3 focus:border-brand"
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    Ảnh bill ngân hàng
+                    <input
+                      aria-label="Ảnh bill ngân hàng"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      required
+                      disabled={busy}
+                      onChange={(event) => {
+                        const next = event.target.files?.[0] ?? null;
+                        if (
+                          next &&
+                          !["image/png", "image/jpeg", "image/webp"].includes(
+                            next.type,
+                          )
+                        ) {
+                          setError("Chỉ nhận PNG, JPEG hoặc WEBP");
+                          setBill(null);
+                          event.target.value = "";
+                        } else if (
+                          next &&
+                          history &&
+                          next.size > history.maxBillBytes
+                        ) {
+                          setError(
+                            "Ảnh bill vượt giới hạn dung lượng của hệ thống",
+                          );
+                          setBill(null);
+                          event.target.value = "";
+                        } else setBill(next);
+                      }}
+                      className="mt-2 block w-full rounded-xl border border-line p-3"
+                    />
+                    {history && (
+                      <span className="mt-2 block text-xs text-muted">
+                        PNG, JPEG, WEBP · tối đa{" "}
+                        {(history.maxBillBytes / 1048576).toFixed(1)} MB.
+                        Backend kiểm tra cả nội dung file.
+                      </span>
+                    )}
+                  </label>
+                </>
+              ) : (
                 <label className="block text-sm">
-                  Mã giao dịch ngân hàng (nếu có)
-                  <input
-                    aria-label="Mã giao dịch ngân hàng"
-                    value={bankRefCode}
-                    onChange={(event) => setBankRefCode(event.target.value)}
-                    maxLength={100}
+                  Lý do từ chối
+                  <textarea
+                    aria-label="Lý do từ chối"
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    required
+                    maxLength={500}
                     disabled={busy}
                     className="mt-2 w-full rounded-xl border border-line p-3 focus:border-brand"
                   />
                 </label>
-                <PayoutBillUpload
-                  file={bill}
-                  maxBytes={Math.min(
-                    history?.maxBillBytes ?? MAX_PAYOUT_BILL_BYTES,
-                    MAX_PAYOUT_BILL_BYTES,
-                  )}
+              )}
+              {error && (
+                <p role="alert" className="text-sm text-danger">
+                  {error}
+                </p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
                   disabled={busy}
-                  onChange={setBill}
-                />
-                <label className="block text-sm">
-                  Ghi chú (không bắt buộc)
-                  <textarea
-                    aria-label="Ghi chú duyệt payout"
-                    value={note}
-                    onChange={(event) => setNote(event.target.value)}
-                    maxLength={500}
-                    disabled={busy}
-                    rows={3}
-                    placeholder="Ghi chú về giao dịch chuyển khoản..."
-                    className="mt-2 w-full resize-y rounded-xl border border-line p-3 focus:border-brand"
-                  />
-                  <span className="mt-1 block text-right text-xs text-muted">
-                    {note.length}/500
-                  </span>
-                </label>
-              </>
-            ) : (
-              <label className="block text-sm">
-                Lý do từ chối
-                <textarea
-                  aria-label="Lý do từ chối"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  required
-                  maxLength={500}
-                  disabled={busy}
-                  className="mt-2 w-full rounded-xl border border-line p-3 focus:border-brand"
-                />
-              </label>
-            )}
-            {error && (
-              <p role="alert" className="text-sm text-danger">
-                {error}
-              </p>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setDialog(null)}
-                className={buttonClass}
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={busy || (dialog.action === "approve" && !bill)}
-                className={`${buttonClass} border-brand bg-brand text-white hover:bg-brand-strong`}
-              >
-                {busy
-                  ? "Đang tải bill và xác nhận…"
-                  : dialog.action === "approve"
-                    ? "Xác nhận duyệt"
-                    : "Từ chối & hoàn tiền"}
-              </button>
-            </div>
-          </form>
-        </dialog>
+                  onClick={() => setDialog(null)}
+                  className={buttonClass}
+                >
+                  Đóng
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    busy ||
+                    (dialog.action === "approve" &&
+                      (!bill || !bankRefCode.trim()))
+                  }
+                  className={`${buttonClass} border-brand bg-brand text-white hover:bg-brand-strong`}
+                >
+                  {busy
+                    ? "Đang xử lý…"
+                    : dialog.action === "approve"
+                      ? "Lưu bill & xác nhận"
+                      : "Từ chối & hoàn tiền"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       )}
     </div>
   );

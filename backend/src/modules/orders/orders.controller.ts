@@ -14,7 +14,6 @@ import {
   UseInterceptors,
   Headers,
   ParseUUIDPipe,
-  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -26,7 +25,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
@@ -44,7 +43,6 @@ import {
   MAX_EXCEL_FILE_SIZE_BYTES,
 } from './excel-order-import.service';
 import { ImportOrdersDto } from './dto/import-orders.dto';
-import { ManualOrderDiscountDto } from './dto/manual-order-discount.dto';
 import { CancelOrderDto, GuestCancelOrderDto } from './dto/cancel-order.dto';
 import {
   ReviewMediaService,
@@ -168,37 +166,6 @@ export class OrdersController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.excelOrderImportService.importOrders(manager, dto, file);
-  }
-
-  @Post('manual/discount')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'FR-20: Kiểm tra mã giảm giá cho đơn thủ công' })
-  async quoteManualDiscount(
-    @CurrentUser() manager: OrderManagerIdentity,
-    @Body() dto: ManualOrderDiscountDto,
-  ) {
-    return this.manualOrdersService.quoteDiscount(manager, dto);
-  }
-
-  @Get('import-excel/template')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'FR-20: Tải file Excel mẫu' })
-  async downloadOrderTemplate(@Res() response: Response) {
-    const buffer = await this.excelOrderImportService.createTemplate();
-    response.set({
-      'Content-Type':
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition':
-        'attachment; filename="scanms-order-import-template.xlsx"',
-      'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff',
-    });
-    response.send(buffer);
   }
 
   @Get('track')
