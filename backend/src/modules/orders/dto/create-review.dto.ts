@@ -10,6 +10,21 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOrderReviewDto {
   @ApiProperty({
+    description: 'Token bí mật được cấp khi khách tạo đơn',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Thiếu reviewToken để xác minh quyền sở hữu đơn hàng' })
+  reviewToken: string;
+
+  @ApiProperty({
+    description: 'Số điện thoại đã dùng khi đặt hàng',
+    example: '0933888999',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Thiếu số điện thoại xác minh đơn hàng' })
+  customerPhone: string;
+
+  @ApiProperty({
     description: 'ID sản phẩm cần đánh giá',
     example: 'b54934c3-0762-40b4-868e-e7f66dac1684',
   })

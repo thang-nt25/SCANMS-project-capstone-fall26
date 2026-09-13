@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class TrackOrderQueryDto {
@@ -8,6 +8,7 @@ export class TrackOrderQueryDto {
   })
   @IsOptional()
   @IsString()
+  @Matches(/^0\d{9}$/, { message: 'Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng 0' })
   phone?: string;
 
   @ApiPropertyOptional({
@@ -16,5 +17,6 @@ export class TrackOrderQueryDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   orderSn?: string;
 }

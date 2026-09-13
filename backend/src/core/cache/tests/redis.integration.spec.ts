@@ -20,7 +20,7 @@ describe('CacheService Redis & Rate Limit Integration Test', () => {
   });
 
   afterAll(async () => {
-    cacheService.onModuleDestroy();
+    await cacheService.onModuleDestroy();
   });
 
   it('1. Đặt và lấy giá trị từ cache (SET / GET) có TTL', async () => {

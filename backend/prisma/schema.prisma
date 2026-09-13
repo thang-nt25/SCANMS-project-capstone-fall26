@@ -42,6 +42,13 @@ enum AssetType {
   COPYWRITE_TEXT
 }
 
+enum MediaAssetStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
 enum SampleRequestStatus {
   PENDING
   APPROVED
@@ -75,6 +82,13 @@ enum OrderSourcePlatform {
   SHOPEE
   TIKTOK
   SHOPIFY
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
 }
 
 enum CommissionStatus {
@@ -200,6 +214,8 @@ model User {
   attributionAdjustments    AttributionAdjustment[]
   approvedPayouts           PayoutRequest[]             @relation("PayoutApprover")
   createdPayoutBatches      PayoutBatch[]               @relation("PayoutBatchCreator")
+  submittedMediaAssets      MediaAsset[]                @relation("CollaboratorMediaAssets")
+  reviewedMediaAssets       MediaAsset[]                @relation("ReviewerMediaAssets")
 
   @@map("users")
 }
@@ -215,6 +231,11 @@ model Store {
   defaultCommissionRate Decimal   @default(10.00) @map("default_commission_rate") @db.Decimal(5, 2)
   attributionWindowDays Int       @default(30) @map("attribution_window_days")
   minPayoutAmount       Decimal   @default(200000.00) @map("min_payout_amount") @db.Decimal(15, 2)
+  isActive              Boolean   @default(true) @map("is_active")
+  isVerified            Boolean   @default(false) @map("is_verified")
+  policyReturn          String?   @map("policy_return") @db.VarChar(500)
+  policyWarranty        String?   @map("policy_warranty") @db.VarChar(500)
+  policyShipping        String?   @map("policy_shipping") @db.VarChar(500)
   isDeleted             Boolean   @default(false) @map("is_deleted")
   deletedAt             DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -358,42 +379,60 @@ model Product {
 }
 
 model ProductReview {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId      String   @map("product_id") @db.Uuid
-  orderId        String?  @map("order_id") @db.Uuid
-  customerName   String?  @map("customer_name") @db.VarChar(150)
-  rating         Int      @default(5)
-  comment        String?
-  reviewImageUrl String?  @map("review_image_url")
-  isApproved     Boolean  @default(true) @map("is_approved")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId       String       @map("product_id") @db.Uuid
+  orderId         String?      @map("order_id") @db.Uuid
+  customerName    String?      @map("customer_name") @db.VarChar(150)
+  rating          Int          @default(5)
+  comment         String?
+  reviewImageUrl  String?      @map("review_image_url")
+  status          ReviewStatus @default(PENDING)
+  isApproved      Boolean      @default(false) @map("is_approved")
+  reviewedBy      String?      @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?    @map("reviewed_at") @db.Timestamptz(6)
+  rejectionReason String?      @map("rejection_reason") @db.VarChar(500)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([productId], map: "idx_fk_product_reviews_product")
   @@index([orderId], map: "idx_fk_product_reviews_order")
+  @@index([status], map: "idx_fk_product_reviews_status")
   @@map("product_reviews")
 }
 
 model MediaAsset {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storeId      String    @map("store_id") @db.Uuid
-  productId    String?   @map("product_id") @db.Uuid
-  title        String    @db.VarChar(255)
-  assetType    AssetType @map("asset_type")
-  urlOrContent String    @map("url_or_content")
-  isDeleted    Boolean   @default(false) @map("is_deleted")
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId         String           @map("store_id") @db.Uuid
+  productId       String?          @map("product_id") @db.Uuid
+  collaboratorId  String?          @map("collaborator_id") @db.Uuid
+  title           String           @db.VarChar(255)
+  assetType       AssetType        @map("asset_type")
+  urlOrContent    String           @map("url_or_content")
+  posterUrl       String?          @map("poster_url")
+  caption         String?          @db.Text
+  isFeatured      Boolean          @default(false) @map("is_featured")
+  status          MediaAssetStatus @default(APPROVED) @map("status")
+  reviewedBy      String?          @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?        @map("reviewed_at") @db.Timestamptz(6)
+  rejectionReason String?          @map("rejection_reason") @db.VarChar(500)
+  isDeleted       Boolean          @default(false) @map("is_deleted")
+  deletedAt       DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  store   Store    @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  collaborator User?    @relation("CollaboratorMediaAssets", fields: [collaboratorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  reviewer     User?    @relation("ReviewerMediaAssets", fields: [reviewedBy], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([storeId], map: "idx_fk_media_assets_store")
   @@index([productId], map: "idx_fk_media_assets_product")
+  @@index([collaboratorId], map: "idx_fk_media_assets_collaborator")
+  @@index([status], map: "idx_media_assets_status")
   @@map("media_assets")
 }
 
@@ -1090,6 +1129,7 @@ model ChatMessage {
 
 model AuditLog {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId   String?  @unique @map("event_id") @db.Uuid
   userId    String?  @map("user_id") @db.Uuid
   action    String   @db.VarChar(100)
   details   Json?

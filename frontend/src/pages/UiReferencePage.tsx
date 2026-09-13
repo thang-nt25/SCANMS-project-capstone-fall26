@@ -38,7 +38,7 @@ export default function UiReferencePage() {
     <div style={{ width: '100%', maxWidth: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <iframe
         title="SCANMS UI/UX Prototype - Nguyễn Đình Tuấn"
-        src={`/reference/index.html#${safeScreen}`}
+        src={`/reference/index.html?v=fresh196#${safeScreen}`}
         style={{ width: '100%', height: '100%', border: 'none', flex: 1, display: 'block' }}
       />
     </div>

@@ -4,11 +4,14 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -22,10 +25,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const exceptionResponse =
       exception instanceof HttpException ? exception.getResponse() : null;
 
+    if (!(exception instanceof HttpException)) {
+      this.logger.error(
+        `${request.method} ${request.url}`,
+        exception?.stack || String(exception),
+      );
+    }
+
     const message =
-      exceptionResponse && typeof exceptionResponse === 'object'
-        ? (exceptionResponse as any).message || exception.message
-        : exceptionResponse || exception.message || 'Internal server error';
+      status === HttpStatus.INTERNAL_SERVER_ERROR
+        ? request.url.includes('/public/products/')
+          ? 'LANDING_DATA_UNAVAILABLE'
+          : 'INTERNAL_SERVER_ERROR'
+        : exceptionResponse && typeof exceptionResponse === 'object'
+          ? (exceptionResponse as any).message || 'Yêu cầu không hợp lệ'
+          : exceptionResponse || 'Yêu cầu không hợp lệ';
 
     response.status(status).json({
       success: false,

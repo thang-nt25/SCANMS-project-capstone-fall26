@@ -76,7 +76,8 @@ export default function OrderTrackingPage() {
   const initialPhone = searchParams.get('phone') || '';
   const initialSn = searchParams.get('sn') || '';
 
-  const [searchInput, setSearchInput] = useState(initialPhone || initialSn || '');
+  const [phoneInput, setPhoneInput] = useState(initialPhone);
+  const [orderSnInput, setOrderSnInput] = useState(initialSn);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [orders, setOrders] = useState<OrderData[]>([]);
@@ -100,15 +101,16 @@ export default function OrderTrackingPage() {
 
   // Tự động tìm kiếm nếu URL có sẵn param
   useEffect(() => {
-    if (initialPhone || initialSn) {
-      handleSearch(initialPhone || initialSn);
+    if (initialPhone && initialSn) {
+      handleSearch(initialPhone, initialSn);
     }
   }, []);
 
-  const handleSearch = async (queryStr?: string) => {
-    const query = (queryStr !== undefined ? queryStr : searchInput).trim();
-    if (!query) {
-      setErrorMessage('Vui lòng nhập số điện thoại hoặc mã đơn hàng để tra cứu.');
+  const handleSearch = async (phoneValue?: string, orderSnValue?: string) => {
+    const phone = (phoneValue ?? phoneInput).trim();
+    const orderSn = (orderSnValue ?? orderSnInput).trim();
+    if (!/^0\d{9}$/.test(phone) || !orderSn) {
+      setErrorMessage('Vui lòng nhập đúng số điện thoại 10 chữ số và đầy đủ mã đơn hàng.');
       return;
     }
 
@@ -117,15 +119,8 @@ export default function OrderTrackingPage() {
     setHasSearched(true);
 
     try {
-      const isPhoneNumber = /^[0-9+() -]{9,15}$/.test(query);
-      const params: Record<string, string> = {};
-      if (isPhoneNumber) {
-        params.phone = query;
-        setSearchParams({ phone: query });
-      } else {
-        params.orderSn = query;
-        setSearchParams({ sn: query });
-      }
+      const params = { phone, orderSn };
+      setSearchParams({ phone, sn: orderSn });
 
       const res: any = await api.get('/orders/track', { params });
       if (res?.orders) {
@@ -167,7 +162,19 @@ export default function OrderTrackingPage() {
 
     setSubmittingReview(true);
     try {
+      const reviewToken = localStorage.getItem(
+        `scanms_order_review_token:${selectedOrder.id}`,
+      );
+      if (!reviewToken) {
+        showToast(
+          'Không tìm thấy mã xác minh đánh giá trên thiết bị này. Hãy mở đơn bằng thiết bị đã đặt hàng.',
+        );
+        setSubmittingReview(false);
+        return;
+      }
       const res: any = await api.post(`/orders/${selectedOrder.id}/review`, {
+        reviewToken,
+        customerPhone: selectedOrder.customerPhone,
         productId: selectedItem.productId,
         rating,
         comment: comment.trim(),
@@ -197,7 +204,10 @@ export default function OrderTrackingPage() {
       );
 
       setReviewModalOpen(false);
-      showToast('Cảm ơn bạn đã gửi đánh giá 5 sao cho sản phẩm! ⭐⭐⭐⭐⭐');
+      showToast(
+        res?.message ||
+          'Cảm ơn bạn đã gửi đánh giá! Nội dung đang chờ Shop kiểm duyệt.',
+      );
     } catch (err: any) {
       showToast(err.message || 'Gửi đánh giá thất bại, vui lòng thử lại!');
     } finally {
@@ -339,15 +349,25 @@ export default function OrderTrackingPage() {
               e.preventDefault();
               handleSearch();
             }}
-            className="w-full max-w-xl mt-2 flex flex-col sm:flex-row gap-2"
+            className="w-full max-w-2xl mt-2 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2"
           >
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-[#7D715E] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="VD: 0933888999 hoặc ORD-20260909-001..."
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="Số điện thoại: 0933888999"
+                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-2 border-[#EAE4D7] text-xs sm:text-sm text-[#1A1612] outline-none focus:border-[#C59B58] shadow-xs transition"
+              />
+            </div>
+            <div className="relative flex-1">
+              <Package className="w-4 h-4 text-[#7D715E] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={orderSnInput}
+                onChange={(e) => setOrderSnInput(e.target.value.toUpperCase())}
+                placeholder="Mã đơn: ORD-20260909-001"
                 className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-2 border-[#EAE4D7] text-xs sm:text-sm text-[#1A1612] outline-none focus:border-[#C59B58] shadow-xs transition"
               />
             </div>
@@ -371,30 +391,6 @@ export default function OrderTrackingPage() {
             </Button>
           </form>
 
-          {/* Sample Tags for 1-Click Testing */}
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span className="text-[11px] text-[#7D715E] font-medium">Gợi ý kiểm thử:</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchInput('0933888999');
-                handleSearch('0933888999');
-              }}
-              className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] px-2.5 py-1 rounded-lg transition cursor-pointer"
-            >
-              📱 0933888999 (Đơn mẫu hoàn tất)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchInput('ORD-20260909-001');
-                handleSearch('ORD-20260909-001');
-              }}
-              className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] px-2.5 py-1 rounded-lg transition cursor-pointer"
-            >
-              📦 ORD-20260909-001
-            </button>
-          </div>
         </div>
       </section>
 
@@ -429,7 +425,7 @@ export default function OrderTrackingPage() {
             </div>
             <strong className="text-base text-[#1A1612]">Không tìm thấy đơn hàng</strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              Không tìm thấy đơn hàng nào liên kết với thông tin <strong>"{searchInput}"</strong>. Vui lòng
+              Không tìm thấy đơn hàng khớp với số điện thoại và mã đơn đã nhập. Vui lòng
               kiểm tra lại số điện thoại hoặc mã đơn.
             </p>
           </div>

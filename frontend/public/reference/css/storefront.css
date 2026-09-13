@@ -1805,6 +1805,221 @@
 }
 
 /* --------------------------------------------------------------------------
+   FR-15 — Video review KOL đã được Shop kiểm duyệt
+   -------------------------------------------------------------------------- */
+.sf-kol-video-section {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #EEDFC6;
+  border-radius: 22px;
+  background: #FFFFFF;
+  box-shadow: 0 10px 30px rgba(71, 51, 24, 0.06);
+}
+
+.sf-kol-video-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.sf-kol-video-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #B88E4F;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.sf-kol-video-heading h2 {
+  margin: 7px 0 3px;
+  color: #1A1612;
+  font-size: 23px;
+  line-height: 1.2;
+}
+
+.sf-kol-video-heading p {
+  margin: 0;
+  color: #7D715E;
+  font-size: 13px;
+}
+
+.sf-kol-video-count {
+  flex: none;
+  padding: 7px 11px;
+  border: 1px solid #EEDFC6;
+  border-radius: 999px;
+  background: #FBF5EB;
+  color: #B88E4F;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sf-kol-video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 400px));
+  gap: 16px;
+  justify-content: start;
+}
+
+.sf-kol-video-card {
+  overflow: hidden;
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid #EAE4D7;
+  border-radius: 18px;
+  background: #FAF8F5;
+}
+
+.sf-kol-video-card.is-featured {
+  border-color: #C59B58;
+  box-shadow: 0 0 0 2px #FBF5EB;
+}
+
+.sf-kol-video-player {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-height: 225px;
+  background: #231D15;
+}
+
+.sf-kol-video-player video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #231D15;
+}
+
+.sf-kol-video-status,
+.sf-kol-video-featured {
+  position: absolute;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.sf-kol-video-status {
+  left: 10px;
+  background: rgba(35, 29, 21, 0.84);
+}
+
+.sf-kol-video-featured {
+  right: 10px;
+  background: #C59B58;
+}
+
+.sf-kol-video-body {
+  padding: 15px;
+}
+
+.sf-kol-video-number {
+  color: #B88E4F;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.sf-kol-video-body h3 {
+  margin: 5px 0 7px;
+  color: #1A1612;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.sf-kol-video-body > p {
+  margin: 0 0 12px;
+  color: #7D715E;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sf-kol-video-author {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-top: 11px;
+  border-top: 1px solid #EAE4D7;
+}
+
+.sf-kol-video-avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: #C59B58;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sf-kol-video-author strong,
+.sf-kol-video-author small {
+  display: block;
+}
+
+.sf-kol-video-author strong {
+  color: #1A1612;
+  font-size: 12px;
+}
+
+.sf-kol-video-author small {
+  margin-top: 2px;
+  color: #7D715E;
+  font-size: 10px;
+}
+
+.sf-kol-video-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 105px;
+  border: 1px dashed #EEDFC6;
+  border-radius: 16px;
+  background: #FBF5EB;
+  color: #7D715E;
+}
+
+.sf-kol-video-empty > i {
+  color: #C59B58;
+  font-size: 28px;
+}
+
+.sf-kol-video-empty strong,
+.sf-kol-video-empty span {
+  display: block;
+}
+
+.sf-kol-video-empty strong {
+  color: #1A1612;
+  font-size: 13px;
+}
+
+.sf-kol-video-empty span {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+@media (max-width: 640px) {
+  .sf-kol-video-section { padding: 17px; }
+  .sf-kol-video-heading { align-items: flex-start; flex-direction: column; }
+  .sf-kol-video-grid { grid-template-columns: minmax(0, 1fr); }
+  .sf-kol-video-card { max-width: none; }
+}
+
+/* --------------------------------------------------------------------------
    11. Dark Mode Adaptations
    -------------------------------------------------------------------------- */
 [data-theme="dark"] .storefront-wrapper {

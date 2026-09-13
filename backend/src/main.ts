@@ -34,6 +34,8 @@ async function bootstrap() {
       'api/r/:shortCode',
       'r/rate-limit/health',
       'api/referral-links/rate-limit/health',
+      'products/:idOrSlug',
+      'p/:idOrSlug',
     ],
   });
   const allowedOrigins = (
