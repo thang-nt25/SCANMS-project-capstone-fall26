@@ -14,6 +14,7 @@ import {
   ApprovePayoutDto,
   QueryMerchantPayoutsDto,
   RejectPayoutDto,
+  ReceiptApprovalDto,
 } from './dto/manage-payout.dto';
 import { PayoutBillService, StoredPayoutBill } from './payout-bill.service';
 
@@ -63,7 +64,18 @@ export class MerchantPayoutsService {
     const [requests, total] = await this.prisma.$transaction([
       this.prisma.payoutRequest.findMany({
         where,
-        include: { collaborator: { select: { fullName: true } } },
+        include: {
+          collaborator: {
+            select: {
+              fullName: true,
+              email: true,
+              phoneNumber: true,
+              collaboratorProfile: {
+                select: { avatarUrl: true, taxCode: true, kycStatus: true },
+              },
+            },
+          },
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (query.page - 1) * query.limit,
         take: query.limit,
@@ -74,6 +86,14 @@ export class MerchantPayoutsService {
       requests: requests.map((request) => ({
         ...this.serializePayout(request),
         collaboratorName: request.collaborator.fullName,
+        collaboratorEmail: request.collaborator.email,
+        collaboratorPhone: request.collaborator.phoneNumber,
+        collaboratorAvatar:
+          request.collaborator.collaboratorProfile?.avatarUrl ?? null,
+        collaboratorTaxCode:
+          request.collaborator.collaboratorProfile?.taxCode ?? null,
+        kycStatus:
+          request.collaborator.collaboratorProfile?.kycStatus ?? 'UNVERIFIED',
       })),
       total,
       page: query.page,
@@ -86,7 +106,7 @@ export class MerchantPayoutsService {
     storeId: string,
     userId: string,
     payoutId: string,
-    dto: ApprovePayoutDto,
+    dto: ApprovePayoutDto | ReceiptApprovalDto,
     file: Express.Multer.File,
   ) {
     await this.assertStoreOwnership(storeId, userId);
@@ -94,8 +114,11 @@ export class MerchantPayoutsService {
     const bankRefCode =
       typeof dto.bankRefCode === 'string'
         ? dto.bankRefCode.trim().toUpperCase()
-        : '';
-    if (!/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/.test(bankRefCode))
+        : null;
+    if (
+      bankRefCode !== null &&
+      !/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/.test(bankRefCode)
+    )
       throw new BadRequestException('Mã giao dịch ngân hàng không hợp lệ');
     const initial = await this.findOwnedPayout(this.prisma, storeId, payoutId);
     this.assertApprovable(initial);
@@ -133,6 +156,8 @@ export class MerchantPayoutsService {
               grossAmount: request.amount.toFixed(2),
               taxAmount: request.taxAmount.toFixed(2),
               netAmount: request.netAmount.toFixed(2),
+              note: dto.note ?? null,
+              bankRefCode,
             },
           },
         });

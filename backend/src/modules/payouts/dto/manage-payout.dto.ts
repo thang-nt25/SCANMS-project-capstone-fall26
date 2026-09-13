@@ -23,7 +23,29 @@ export class QueryMerchantPayoutsDto extends QueryWithdrawalsDto {
   status?: PayoutStatus;
 }
 
-export class ApprovePayoutDto {
+export class PayoutApprovalNoteDto {
+  @ApiPropertyOptional({ maxLength: 500 })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class ReceiptApprovalDto extends PayoutApprovalNoteDto {
+  @ApiPropertyOptional({ maxLength: 100 })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @IsString()
+  @Matches(/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/)
+  bankRefCode?: string;
+}
+
+export class ApprovePayoutDto extends PayoutApprovalNoteDto {
   @ApiProperty({
     description: 'Mã giao dịch trên bill ngân hàng',
     maxLength: 100,

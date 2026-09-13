@@ -2146,7 +2146,7 @@ function ordersScreen() {
   return `${header(
     "Đối soát đơn hàng & Động cơ hoa hồng (FR-16, FR-21, FR-22)",
     "Kiểm tra nguồn ghi nhận, điều kiện áp mã KOL giảm giá, phân biệt đơn Guest Checkout và giám sát bộ đếm 14 ngày bảo hộ đổi trả.",
-    `<button class="btn secondary" data-toast="Đã chạy Cron Job: Tự động đối soát và giải ngân các đơn hàng vượt mốc 14 ngày!"><i class="ph ph-clock-clockwise"></i> Chạy Cron Job 14 ngày</button><button class="btn secondary">${icon("ph-upload-simple")} Import Excel (FR-20)</button><button class="btn">Tạo đơn thủ công</button>`
+    `<button class="btn secondary" data-toast="Đã chạy Cron Job: Tự động đối soát và giải ngân các đơn hàng vượt mốc 14 ngày!"><i class="ph ph-clock-clockwise"></i> Chạy Cron Job 14 ngày</button><button class="btn secondary" data-order-form="excel">${icon("ph-upload-simple")} Import Excel (FR-20)</button><button class="btn" data-order-form="manual">Tạo đơn thủ công</button>`
   )}
   <div class="grid kpis">
     ${kpi("Tổng đơn trong tháng", "425 đơn", "74% đơn qua tiếp thị KOL", "ph-receipt")}
@@ -2365,8 +2365,26 @@ function ordersScreen() {
   </div>`;
 }
 
+// The prototype delegates FR-20 to the same React form used by /merchant/orders.
+document.addEventListener('click', (event) => {
+  const button = event.target instanceof Element ? event.target.closest('[data-order-form]') : null;
+  if (!button) return;
+  const action = button.getAttribute('data-order-form');
+  if (action !== 'manual' && action !== 'excel') return;
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'SCANMS_OPEN_ORDER_FORM', action }, window.location.origin);
+  } else {
+    window.location.href = '/merchant/orders';
+  }
+});
+window.addEventListener('message', (event) => {
+  if (event.origin !== window.location.origin || event.source !== window.parent) return;
+  if (event.data?.type === 'SCANMS_ORDER_FORM_COMPLETED' && typeof event.data.message === 'string') toast(event.data.message);
+});
+
 function payoutsScreen() {
-  return `${header("Duyệt yêu cầu chi trả", "Đối chiếu KYC, thuế TNCN và bằng chứng chuyển khoản trước khi hoàn tất.", `<button class="btn secondary" data-toast="Đã tạo bản mẫu VietQR/Napas247">${icon("ph-file-xls")} Xuất VietQR / Napas247</button>`)}<div class="grid kpis">${kpi("Chờ phê duyệt", "24", money(48200000), "ph-hourglass")}${kpi("Đã duyệt hôm nay", "9", money(17650000), "ph-check-circle")}${kpi("Thuế đã giữ", "4,82 tr ₫", "10% lệnh từ 2 triệu", "ph-file-text")}${kpi("Cần bổ sung KYC", "3", "Không thể duyệt", "ph-warning-circle", true)}</div><div class="table-wrap" style="margin-top:18px"><table><thead><tr><th>KOL</th><th>Ngân hàng</th><th>KYC</th><th>Yêu cầu</th><th>Thuế</th><th>Thực chuyển</th><th></th></tr></thead><tbody><tr><td><div class="person"><span class="avatar">N</span><strong>Trần Văn Nhật</strong></div></td><td>Vietcombank<br><span class="mono">**** 8842</span></td><td>${status("Đã xác minh")}</td><td>4.000.000 ₫</td><td>400.000 ₫</td><td><strong>3.600.000 ₫</strong></td><td><button class="btn small" data-modal="approve">Duyệt và tải bill</button></td></tr><tr><td><div class="person"><span class="avatar">M</span><strong>Lê Mai Anh</strong></div></td><td>Techcombank<br><span class="mono">**** 1278</span></td><td>${status("Đã xác minh")}</td><td>1.500.000 ₫</td><td>0 ₫</td><td><strong>1.500.000 ₫</strong></td><td><button class="btn small" data-modal="approve">Duyệt và tải bill</button></td></tr><tr><td><div class="person"><span class="avatar">K</span><strong>Phạm Khánh Linh</strong></div></td><td>MB Bank<br><span class="mono">**** 7761</span></td><td>${status("Thiếu MST", "danger")}</td><td>2.800.000 ₫</td><td>280.000 ₫</td><td><strong>2.520.000 ₫</strong></td><td><button class="btn small secondary" disabled>Chờ KYC</button></td></tr></tbody></table></div>`;
+  // Real shop-scoped payouts replace actionable demo records.
+  return `<iframe id="payout-approval-iframe" src="/merchant/payouts" style="width:100%;height:calc(100vh - 100px);min-height:650px;border:0;background:transparent;display:block" title="Duyệt payout và xuất Excel VietQR"></iframe>`;
 }
 
 function chatScreen() {

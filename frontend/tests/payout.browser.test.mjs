@@ -14,6 +14,7 @@ test(
     const browser = await puppeteer.launch({
       executablePath: browserPath,
       headless: true,
+      pipe: true,
     });
     try {
       const page = await browser.newPage();
@@ -37,6 +38,7 @@ test(
             const file = body.get("bill");
             window.testUpload = {
               ref: body.get("bankRefCode"),
+              note: body.get("note"),
               filename: file?.name,
               type: file?.type,
               size: file?.size,
@@ -56,6 +58,10 @@ test(
         storeId,
         collaboratorId: name,
         collaboratorName: `Test KOL ${name}`,
+        collaboratorPhone: "0901234567",
+        collaboratorEmail: "kol@example.test",
+        collaboratorTaxCode: "0123456789",
+        kycStatus: "VERIFIED",
         amount: "2000000.00",
         taxAmount: "200000.00",
         netAmount: "1800000.00",
@@ -104,6 +110,8 @@ test(
           else if (path.pathname === "/api/stores/my-store")
             data = { id: storeId, name: "Test Shop" };
           else if (path.pathname.endsWith("/approve")) {
+            assert.equal(request.method(), "POST");
+            assert.match(path.pathname, /^\/api\/payouts\//);
             assert.ok(
               request
                 .headers()
@@ -189,11 +197,18 @@ test(
       await page.goto(`${url.origin}/merchant/payouts`, {
         waitUntil: "networkidle0",
       });
-      await page.waitForFunction(() =>
-        document
-          .querySelector('table[aria-label="Danh sách payout"] tbody')
-          ?.textContent.includes("Test KOL first"),
-      );
+      await page
+        .waitForFunction(() =>
+          document
+            .querySelector('table[aria-label="Danh sách payout"] tbody')
+            ?.textContent.includes("Test KOL first"),
+        )
+        .catch(async (error) => {
+          throw new Error(
+            `Initial payout page did not load: ${await page.$eval("body", (el) => el.textContent.slice(0, 1200))}`,
+            { cause: failure ?? error },
+          );
+        });
       const clickText = async (text) => {
         await page.evaluate((label) => {
           const button = [...document.querySelectorAll("button")].find(
@@ -220,7 +235,17 @@ test(
           { id, text },
         );
       };
-      await clickRow(requests[0].id, "Xác nhận đã trả");
+      await clickRow(requests[0].id, "Duyệt và tải bill");
+      assert.ok(await page.$eval("dialog", (el) => el.open));
+      const dialogText = await page.$eval("dialog", (el) => el.textContent);
+      for (const value of [
+        "0901234567",
+        "kol@example.test",
+        "0123456789",
+        "**** 6789",
+        "1.800.000",
+      ])
+        assert.ok(dialogText.includes(value));
       assert.equal(
         await page.$eval(
           '[role="dialog"] button[type="submit"]',
@@ -250,7 +275,7 @@ test(
           { type, name },
         );
       };
-      await setFile("application/pdf", "bill.pdf");
+      await setFile("image/gif", "bill.gif");
       assert.equal(
         await page.$eval(
           '[role="dialog"] button[type="submit"]',
@@ -258,7 +283,23 @@ test(
         ),
         true,
       );
+      await setFile("application/pdf", "bill.pdf");
+      assert.ok(
+        (await page.$eval("dialog", (el) => el.textContent)).includes(
+          "Tài liệu PDF",
+        ),
+      );
+      await page.click('button[aria-label="Xóa file bill"]');
+      assert.equal(
+        await page.$eval('dialog button[type="submit"]', (el) => el.disabled),
+        true,
+      );
       await setFile("image/png", "bill.png");
+      await page.waitForSelector('img[alt="Preview bill ngân hàng"]');
+      await page.type(
+        'textarea[aria-label="Ghi chú duyệt payout"]',
+        "Confirmed bank transfer",
+      );
       await page.$eval('[role="dialog"] form', (form) => {
         form.requestSubmit();
         form.requestSubmit();
@@ -281,6 +322,7 @@ test(
       assert.equal(approvalCount, 1);
       assert.deepEqual(await page.evaluate(() => window.testUpload), {
         ref: "REF-001",
+        note: "Confirmed bank transfer",
         filename: "bill.png",
         type: "image/png",
         size: 4,
@@ -295,7 +337,7 @@ test(
         'a[href="https://example.test/private-bill?expires=120"]',
       );
       await page.click(`input[aria-label="Chọn payout ${requests[1].id}"]`);
-      await clickText("Xuất Excel VietQR (1)");
+      await clickText("Xuất Excel VietQR / Napas247 (1)");
       await page.waitForFunction(() =>
         document.body.textContent.includes("1 payout"),
       );
@@ -349,6 +391,23 @@ test(
           requests[1].id,
         ),
       );
+      // The prototype route now embeds the same live page, not demo payout IDs.
+      await page.goto(`${url.origin}/app/payouts`, {
+        waitUntil: "networkidle0",
+      });
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll("iframe")].some((el) =>
+          el.contentDocument?.querySelector("#payout-approval-iframe"),
+        ),
+      );
+      const frame = page
+        .frames()
+        .find((item) => item.url().includes("/merchant/payouts"));
+      assert.ok(
+        frame,
+        "Prototype payout route must load the real merchant page",
+      );
+      await frame.waitForSelector('table[aria-label="Danh sách payout"]');
     } finally {
       await browser.close();
     }

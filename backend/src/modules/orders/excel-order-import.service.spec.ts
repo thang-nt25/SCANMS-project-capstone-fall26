@@ -10,6 +10,25 @@ import {
 } from './manual-orders.service';
 
 describe('ExcelOrderImportService', () => {
+  it('creates an import-ready xlsx template with text-formatted phone/SKU columns', async () => {
+    const { service } = createService();
+    const workbook = new Workbook();
+    await workbook.xlsx.load(await service.createTemplate());
+    const sheet = workbook.worksheets[0];
+    expect(sheet.getRow(1).values).toEqual([
+      undefined,
+      'order_code',
+      'customer_name',
+      'customer_phone',
+      'shipping_address',
+      'sku',
+      'quantity',
+      'status',
+      'unit_price',
+      'discount_amount',
+    ]);
+    expect(sheet.getColumn(3).numFmt).toBe('@');
+  });
   const manager: OrderManagerIdentity = {
     id: '94db0dc5-cfca-462b-bd84-e23a8d73c1d1',
     role: UserRole.SHOP_MANAGER,
