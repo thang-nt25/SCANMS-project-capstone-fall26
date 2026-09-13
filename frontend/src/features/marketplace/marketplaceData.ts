@@ -1,18 +1,23 @@
 import type { Product, Creator, ReviewVideo } from './marketplace.types';
+// Demo fixtures migrated from the original UI. No backend writes or real orders.
+// ==========================================================================
+// SCANMS MARKETPLACE - Sàn Mua Sắm & Tiếp Thị Liên Kết Công Khai (FR-15, FR-16, FR-17, FR-29)
+// Truy cập không cần đăng nhập • Toàn bộ danh mục sản phẩm • Tra cứu đơn • Xem review KOL
+// ==========================================================================
 
 export const marketplaceProducts: Product[] = [
   {
     id: "P01",
-    name: "Serum Dưỡng Trắng Mờ Thâm Vitamin C 15% Tươi Chống Oxy Hóa",
+    name: "Serum Vitamin C 15% Dưỡng Sáng Mờ Thâm Sora Skin",
     brand: "Sora Skin Official",
     category: "skincare",
     categoryLabel: "Chăm sóc da & Serum",
     rating: 4.9,
-    reviews: 128,
-    sold: "1.2k",
+    reviews: 142,
+    sold: "1.4k",
     origPrice: 520000,
     price: 459000,
-    kolDiscountPrice: 413100,
+    kolDiscountPrice: 413100, // -10%
     image: "/reference/assets/serum-hero-optimized.jpg",
     kol: {
       name: "Trần Văn Nhật",
@@ -20,21 +25,20 @@ export const marketplaceProducts: Product[] = [
       coupon: "NHATXINH10",
       tier: "KOL Vàng"
     },
-    badge: "Bán chạy nhất",
-    commissionRate: 20
+    badge: "Bán chạy nhất"
   },
   {
     id: "P02",
-    name: "Kem Chống Nắng Phổ Rộng Nâng Tông Aqua Tone-Up Sunscreen SPF50+ PA++++",
+    name: "Kem Chống Nắng Phục Hồi Quang Phổ Rộng Aqua Sunscreen SPF50+ PA++++",
     brand: "Sora Skin Official",
-    category: "sunscreen",
-    categoryLabel: "Chống nắng & Bảo vệ da",
+    category: "skincare",
+    categoryLabel: "Chăm sóc da & Chống nắng",
     rating: 4.8,
-    reviews: 95,
-    sold: "950",
-    origPrice: 420000,
+    reviews: 98,
+    sold: "2.1k",
+    origPrice: 430000,
     price: 389000,
-    kolDiscountPrice: 342320,
+    kolDiscountPrice: 350100,
     image: "/reference/assets/sunscreen-product.jpg",
     kol: {
       name: "Lê Mai Anh",
@@ -42,15 +46,14 @@ export const marketplaceProducts: Product[] = [
       coupon: "MAIANH12",
       tier: "KOL Vàng"
     },
-    badge: "Khuyên dùng",
-    commissionRate: 18
+    badge: "Top 1 Chống nắng"
   },
   {
     id: "P03",
-    name: "Nước Cân Bằng Dưỡng Ẩm Làm Sạch Sâu BHA 2% Clarifying Toner",
+    name: "Toner BHA 2% Làm Sạch Sâu & Kiềm Dầu Thu Nhỏ Lỗ Chân Lông",
     brand: "Sora Skin Official",
     category: "skincare",
-    categoryLabel: "Chăm sóc da & Nước hoa hồng",
+    categoryLabel: "Chăm sóc da & Toner",
     rating: 4.7,
     reviews: 86,
     sold: "820",
@@ -335,3 +338,5 @@ export const marketplaceVideos: ReviewVideo[] = [
     thumbnail: "/reference/assets/shop-ctv-collab-hero.jpg"
   }
 ];
+
+
