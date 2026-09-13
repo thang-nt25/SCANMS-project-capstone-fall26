@@ -3,10 +3,15 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  HttpException,
 } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { Workbook, type Cell, type Row } from 'exceljs';
 import { PassThrough } from 'stream';
+import {
+  normalizeCustomerPhone,
+  validateOrderMoney,
+} from './order-input.utils';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 import { ImportOrdersDto } from './dto/import-orders.dto';
 import {
@@ -85,6 +90,10 @@ export class ExcelOrderImportService {
     if (!worksheet) {
       throw new BadRequestException('File Excel không có worksheet');
     }
+    if (worksheet.rowCount > 10001)
+      throw new BadRequestException(
+        'File không được vượt quá 10.000 dòng dữ liệu',
+      );
 
     const headerMap = this.readHeaders(worksheet.getRow(1));
     const missingHeaders = REQUIRED_HEADERS.filter(
@@ -171,6 +180,10 @@ export class ExcelOrderImportService {
         });
       } catch (error: unknown) {
         skippedOrders += 1;
+        if (!(error instanceof HttpException))
+          this.logger.error(
+            `Excel order save failed: storeId=${store.id}, errorType=${error instanceof Error ? error.name : 'Unknown'}`,
+          );
         const reason = this.getErrorMessage(error);
         for (const row of rows) {
           errors.push({
@@ -202,6 +215,32 @@ export class ExcelOrderImportService {
       importedOrders,
       errors: errors.sort((left, right) => left.row - right.row),
     };
+  }
+
+  async createTemplate(): Promise<Buffer> {
+    const workbook = new Workbook();
+    const sheet = workbook.addWorksheet('Orders');
+    sheet.columns = [
+      ...REQUIRED_HEADERS,
+      'status',
+      'unit_price',
+      'discount_amount',
+    ].map((header) => ({
+      header,
+      key: header,
+      width: header === 'shipping_address' ? 50 : 24,
+    }));
+    sheet.getColumn('customer_phone').numFmt = '@';
+    sheet.getColumn('order_code').numFmt = '@';
+    sheet.getColumn('sku').numFmt = '@';
+    sheet.getRow(1).font = { bold: true, color: { argb: 'FF231D15' } };
+    sheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF3EFE6' },
+    };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+    return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 
   private validateFile(
@@ -278,6 +317,16 @@ export class ExcelOrderImportService {
     requireText('order_code', 'Mã đơn hàng', 100);
     const customerName = requireText('customer_name', 'Tên khách hàng', 150);
     const customerPhone = requireText('customer_phone', 'Số điện thoại', 20);
+    try {
+      normalizeCustomerPhone(customerPhone);
+    } catch {
+      rowErrors.push({
+        row: rowNumber,
+        orderCode,
+        field: 'customer_phone',
+        message: 'Số điện thoại không hợp lệ',
+      });
+    }
     const shippingAddress = requireText(
       'shipping_address',
       'Địa chỉ giao hàng',
@@ -425,9 +474,11 @@ export class ExcelOrderImportService {
       return undefined;
     }
 
-    const numberValue = Number(text.replaceAll(',', '').replaceAll(' ', ''));
+    // Numeric cells or plain decimal text only; reject ambiguous locale separators.
+    const numberValue = /^\d+(?:\.\d{1,2})?$/.test(text) ? Number(text) : NaN;
     const invalidInteger =
-      field === 'quantity' && !Number.isInteger(numberValue);
+      field === 'quantity' &&
+      (!Number.isInteger(numberValue) || numberValue > 2147483647);
     if (!Number.isFinite(numberValue) || numberValue < 0 || invalidInteger) {
       errors.push({
         row: rowNumber,
@@ -437,6 +488,17 @@ export class ExcelOrderImportService {
           field === 'quantity'
             ? 'Số lượng phải là số nguyên lớn hơn 0'
             : `${label} phải là số không âm`,
+      });
+      return undefined;
+    }
+    try {
+      validateOrderMoney(numberValue, label);
+    } catch {
+      errors.push({
+        row: rowNumber,
+        orderCode,
+        field,
+        message: `${label} vượt giới hạn số tiền`,
       });
       return undefined;
     }
@@ -514,6 +576,7 @@ export class ExcelOrderImportService {
         return Array.isArray(message) ? message.join('; ') : message;
       }
     }
-    return error instanceof Error ? error.message : 'Không thể import đơn hàng';
+    if (error instanceof HttpException) return error.message;
+    return 'Không thể lưu đơn hàng. Vui lòng thử lại hoặc liên hệ quản trị viên';
   }
 }

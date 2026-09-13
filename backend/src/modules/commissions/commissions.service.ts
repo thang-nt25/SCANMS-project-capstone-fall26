@@ -158,23 +158,38 @@ export class CommissionsService {
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             customCommissionRate: item.product.customCommissionRate,
+            appliedCommissionRate: item.appliedCommissionRate,
+            calculatedCommissionAmount: item.calculatedCommissionAmount,
+            commissionSnapshotAt: item.commissionSnapshotAt,
           })),
           order.store.defaultCommissionRate,
           tierBonusRate,
+          (order.discountAmount ?? new Prisma.Decimal(0)).plus(
+            order.refundedAmount ?? 0,
+          ),
         );
 
         for (const item of calculation.items) {
+          if (
+            order.orderItems.find(
+              (original) => original.id === item.orderItemId,
+            )?.commissionSnapshotAt
+          )
+            continue;
           await tx.orderItem.update({
             where: { id: item.orderItemId },
             data: {
               appliedCommissionRate: item.appliedCommissionRate,
               calculatedCommissionAmount: item.calculatedCommissionAmount,
+              commissionSnapshotAt: now,
             },
           });
         }
 
+        // Receipt/completion is stable; metadata edits must not restart escrow.
+        const receiptAt = order.completedAt ?? order.updatedAt;
         const eligibleAt =
-          order.updatedAt.getTime() <= now.getTime() ? order.updatedAt : now;
+          receiptAt.getTime() <= now.getTime() ? receiptAt : now;
         const availableAt = this.addDays(eligibleAt, COMMISSION_HOLD_DAYS);
         const hasPayableCommission =
           calculation.totalCommissionAmount.greaterThan(0);

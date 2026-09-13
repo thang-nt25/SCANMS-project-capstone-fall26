@@ -6,6 +6,14 @@ import { compressAvatarImage, safeSaveProfile } from './image-utils.js';
 
 const icon = (name) => `<i class="ph ${name}" aria-hidden="true"></i>`;
 const money = (v) => `${new Intl.NumberFormat("vi-VN").format(v)} ₫`;
+const escapeReviewHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+let pendingReviewOrderId = null;
+let handleReviewCompleted = null;
+window.addEventListener('message', event => {
+  if (event.origin !== window.location.origin || event.source !== window.parent || event.data?.type !== 'SCANMS_PRODUCT_REVIEW_SUBMITTED' || event.data.prototypeOrderId !== pendingReviewOrderId) return;
+  handleReviewCompleted?.(event.data);
+  pendingReviewOrderId = null;
+});
 
 export const customerState = {
   profile: {
@@ -858,7 +866,7 @@ export function customerReviewsScreen() {
           ${icon("ph-star")} Bạn có ${pendingOrders.length} sản phẩm đã nhận hàng đang chờ đánh giá!
         </h3>
         <p style="font-size:12.5px;color:var(--muted);margin:4px 0 14px">
-          Chia sẻ trải nghiệm sử dụng thực tế để nhận ngay mã ưu đãi 5% cho lần mua tiếp theo.
+          Chia sẻ trải nghiệm sử dụng thực tế để giúp khách hàng khác lựa chọn phù hợp.
         </p>
         <div style="display:flex;flex-direction:column;gap:10px">
           ${pendingOrders.map(po => `
@@ -884,7 +892,7 @@ export function customerReviewsScreen() {
         <div class="card" style="padding:20px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
             <div>
-              <strong style="font-size:15px">${rev.productName}</strong>
+              <strong style="font-size:15px">${escapeReviewHtml(rev.productName)}</strong>
               <div style="color:#f59e0b;font-size:15px;margin:4px 0">
                 ${'<i class="ph ph-star-fill"></i>'.repeat(rev.rating)}
                 <small style="color:var(--muted);margin-left:6px">${rev.date}</small>
@@ -893,13 +901,15 @@ export function customerReviewsScreen() {
             <span class="badge success" style="font-size:11px"><i class="ph ph-check"></i> Đã duyệt hiển thị</span>
           </div>
 
-          <p style="font-size:13.5px;line-height:1.5;margin:0 0 12px">${rev.comment}</p>
+          <p style="font-size:13.5px;line-height:1.5;margin:0 0 12px">${escapeReviewHtml(rev.comment)}</p>
 
           ${rev.images ? `
             <div style="display:flex;gap:10px;margin-bottom:12px">
-              ${rev.images.map(img => `<img src="${img}" style="width:68px;height:68px;border-radius:8px;object-fit:cover;border:1px solid var(--line)" />`).join("")}
+              ${rev.images.map(img => `<img src="${escapeReviewHtml(img)}" alt="Ảnh khách hàng đánh giá" style="width:68px;height:68px;border-radius:8px;object-fit:cover;border:1px solid var(--line)" />`).join("")}
             </div>
           ` : ''}
+
+          ${rev.video ? `<video src="${escapeReviewHtml(rev.video)}" controls playsinline preload="metadata" style="max-height:240px;max-width:100%;border-radius:8px" aria-label="Video đánh giá"></video>` : ''}
 
           ${rev.shopReply ? `
             <div style="background:var(--surface-2);padding:12px 14px;border-radius:8px;font-size:12.5px;line-height:1.5;border-left:3px solid var(--brand)">
@@ -1086,27 +1096,24 @@ export function bindCustomer(root, { toast, go, renderCurrentPage, modal }) {
     });
   });
 
-  // Review Order
+  // FR-18 uses the React modal and real API; never award a fabricated voucher/reply.
+  handleReviewCompleted = data => {
+    const order = customerState.orders.find(item => item.id === data.prototypeOrderId);
+    const review = data.review;
+    if (!order || !review || !Number.isInteger(review.rating) || review.rating < 1 || review.rating > 5) return;
+    order.reviewed = true;
+    customerState.reviews.unshift({ orderId: data.orderSn, productName: data.productName, rating: review.rating, date: 'Hôm nay', comment: review.comment, images: review.images ?? [], video: review.video });
+    toast('Đánh giá đã được lưu thành công. Cảm ơn bạn!');
+    renderCurrentPage();
+  };
   root.querySelectorAll("[data-cust-review-order], [data-cust-open-review-form]").forEach(btn => {
     btn.addEventListener("click", () => {
       const orderId = btn.dataset.custReviewOrder || btn.dataset.custOpenReviewForm;
       const order = customerState.orders.find(o => o.id === orderId);
       if (!order) return;
-      const comment = prompt(`Viết đánh giá cho "${order.items[0].name}" (Nhận ngay voucher 5%):`, "Sản phẩm dùng rất ưng ý, đóng gói kỹ và giao nhanh!");
-      if (comment) {
-        order.reviewed = true;
-        customerState.reviews.unshift({
-          orderId: order.id,
-          productName: order.items[0].name,
-          rating: 5,
-          date: "Hôm nay",
-          comment: comment,
-          images: [order.items[0].img],
-          shopReply: "Cảm ơn bạn đã ủng hộ shop và CTV!"
-        });
-        toast("Cảm ơn bạn! Đánh giá đã được gửi và tặng bạn voucher 5%.");
-        renderCurrentPage();
-      }
+      if (window.parent === window) { toast('Vui lòng mở trang đánh giá trong ứng dụng SCANMS để gửi đánh giá.'); return; }
+      pendingReviewOrderId = order.id;
+      window.parent.postMessage({ type: 'SCANMS_OPEN_PRODUCT_REVIEW', orderId: order.id, productId: order.items[0].id, productName: order.items[0].name, imageUrl: order.items[0].img }, window.location.origin);
     });
   });
 
