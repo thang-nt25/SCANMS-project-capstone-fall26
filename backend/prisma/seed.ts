@@ -566,6 +566,120 @@ async function main() {
   }
 
   // ==========================================
+  // 8.1 ĐỒNG BỘ ĐƠN PROTOTYPE UI: IN23931 & IN23712
+  // ==========================================
+  let productBinh = await prisma.product.findFirst({
+    where: { storeId: store.id, sku: 'P05' },
+  });
+  if (!productBinh) {
+    productBinh = await prisma.product.create({
+      data: {
+        storeId: store.id,
+        sku: 'P05',
+        title: 'Bình giữ nhiệt phong cách Bắc Âu 500ml',
+        categoryName: 'Gia dụng thông minh',
+        description: 'Bình giữ nhiệt inox 316 cao cấp giữ nhiệt 24h tiện lợi.',
+        imageUrl: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=600',
+        originalPrice: 350000,
+        price: 280000,
+        customCommissionRate: 15.0,
+        stockQuantity: 200,
+        isActive: true,
+      },
+    });
+  }
+
+  // Đơn IN23931 (Khách: Nguyễn Hải Yến - 0903 218 456)
+  const protoOrder1 = await prisma.order.upsert({
+    where: {
+      storeId_sourcePlatform_externalOrderSn: {
+        storeId: store.id,
+        sourcePlatform: 'INTERNAL',
+        externalOrderSn: 'IN23931',
+      },
+    },
+    update: {
+      status: OrderStatus.COMPLETED,
+    },
+    create: {
+      storeId: store.id,
+      externalOrderSn: 'IN23931',
+      attributedCollaboratorId: kol1.id,
+      attributionMethod: AttributionMethod.COUPON,
+      customerName: 'Nguyễn Hải Yến',
+      customerPhone: '0903218456',
+      shippingAddress: 'Số 48 Đường số 7, KDC Cityland, Phường 7, Quận Gò Vấp, TP. Hồ Chí Minh',
+      subtotalAmount: 560000,
+      discountAmount: 0,
+      shippingFee: 0,
+      finalAmount: 560000,
+      status: OrderStatus.COMPLETED,
+      completedAt: new Date('2026-09-05T15:45:00Z'),
+    },
+  });
+
+  const existingProtoItem1 = await prisma.orderItem.findFirst({
+    where: { orderId: protoOrder1.id, productId: productBinh.id },
+  });
+  if (!existingProtoItem1) {
+    await prisma.orderItem.create({
+      data: {
+        orderId: protoOrder1.id,
+        productId: productBinh.id,
+        quantity: 2,
+        unitPrice: 280000,
+        appliedCommissionRate: 15.0,
+        calculatedCommissionAmount: 84000,
+      },
+    });
+  }
+
+  // Đơn IN23712 (Khách: Nguyễn Hải Yến - Bình giữ nhiệt 500ml)
+  const protoOrder2 = await prisma.order.upsert({
+    where: {
+      storeId_sourcePlatform_externalOrderSn: {
+        storeId: store.id,
+        sourcePlatform: 'INTERNAL',
+        externalOrderSn: 'IN23712',
+      },
+    },
+    update: {
+      status: OrderStatus.COMPLETED,
+    },
+    create: {
+      storeId: store.id,
+      externalOrderSn: 'IN23712',
+      attributedCollaboratorId: kol1.id,
+      attributionMethod: AttributionMethod.COUPON,
+      customerName: 'Nguyễn Hải Yến',
+      customerPhone: '0903218456',
+      shippingAddress: 'Số 48 Đường số 7, KDC Cityland, Phường 7, Quận Gò Vấp, TP. Hồ Chí Minh',
+      subtotalAmount: 560000,
+      discountAmount: 30000,
+      shippingFee: 25000,
+      finalAmount: 555000,
+      status: OrderStatus.COMPLETED,
+      completedAt: new Date('2026-08-17T11:15:00Z'),
+    },
+  });
+
+  const existingProtoItem2 = await prisma.orderItem.findFirst({
+    where: { orderId: protoOrder2.id, productId: productBinh.id },
+  });
+  if (!existingProtoItem2) {
+    await prisma.orderItem.create({
+      data: {
+        orderId: protoOrder2.id,
+        productId: productBinh.id,
+        quantity: 2,
+        unitPrice: 280000,
+        appliedCommissionRate: 15.0,
+        calculatedCommissionAmount: 84000,
+      },
+    });
+  }
+
+  // ==========================================
   // 9. CHAT REALTIME & HÀNG MẪU - Idempotent
   // ==========================================
   console.log('💬 Đang tạo Hội thoại Chat & Yêu cầu Hàng mẫu...');
