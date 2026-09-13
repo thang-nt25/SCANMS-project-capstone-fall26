@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCANMS UI/UX Prototype — FR-25, FR-26, FR-27 (Nguyễn Phú Quý)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              300: '#fcd34d',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+              900: '#78350f',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes goldGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
+      50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.65); }
+    }
+    .gold-glow {
+      animation: goldGlow 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-full flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-yellow-400 flex items-center justify-center font-bold text-slate-950 text-lg shadow-lg shadow-brand-500/20">
+        PQ
+      </div>
+      <div>
+        <h1 class="text-lg font-bold bg-gradient-to-r from-brand-400 via-yellow-200 to-amber-500 bg-clip-text text-transparent">
+          SCANMS UI/UX Prototype Hub
+        </h1>
+        <p class="text-xs text-slate-400 font-medium">
+          Phân Hệ Nghiệp Vụ: FR-25 • FR-26 • FR-27 (Tác giả: Nguyễn Phú Quý — NGUYENPHUQUY)
+        </p>
+      </div>
+    </div>
+
+    <!-- Screen Navigator Tabs -->
+    <nav class="flex items-center space-x-2 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800">
+      <button onclick="switchScreen('fr25')" id="tab-fr25" class="nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-brand-600 text-white shadow-md shadow-brand-600/30">
+        📦 FR-25: Mẫu Thử
+      </button>
+      <button onclick="switchScreen('fr26')" id="tab-fr26" class="nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800">
+        💬 FR-26 & FR-27: Chat & Thẻ VIP
+      </button>
+      <button onclick="switchScreen('fr27')" id="tab-fr27" class="nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800">
+        👑 FR-27: Chiến Dịch KOL
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Showcase Container -->
+  <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- SCREEN 1: FR-25 SAMPLE REQUESTS -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <section id="screen-fr25" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-2">
+            Module FR-25
+          </span>
+          <h2 class="text-2xl font-bold text-white tracking-tight">KOL Quản Lý & Đăng Ký Mẫu Thử Sản Phẩm</h2>
+          <p class="text-sm text-slate-400">Chọn sản phẩm từ danh mục gian hàng để nhận mẫu thử miễn phí phục vụ sáng tạo video review.</p>
+        </div>
+        <button onclick="openSampleModal()" class="px-4 py-2.5 bg-gradient-to-r from-brand-500 to-amber-600 hover:from-brand-600 hover:to-amber-700 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-brand-500/20 flex items-center space-x-2 transition-transform active:scale-95">
+          <span>➕</span>
+          <span>Xin Mẫu Thử Mới</span>
+        </button>
+      </div>
+
+      <!-- Sample Products Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Card 1 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 hover:border-brand-500/50 transition-all group">
+          <div class="h-44 bg-slate-800 rounded-xl overflow-hidden relative flex items-center justify-center">
+            <span class="text-4xl">🧴</span>
+            <span class="absolute top-3 right-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2.5 py-1 rounded-full font-semibold">
+              Còn 25 Mẫu
+            </span>
+          </div>
+          <div>
+            <h3 class="font-bold text-white group-hover:text-brand-400 transition-colors">Serum Phục Hồi Da B5 HA Đậm Đặc</h3>
+            <p class="text-xs text-slate-400 mt-1">Gian Hàng: Mỹ Phẩm Cao Cấp GlowSkin</p>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+            <div>
+              <span class="text-slate-500">Giá bán lẻ:</span>
+              <p class="font-bold text-slate-200">389.000 ₫</p>
+            </div>
+            <div class="text-right">
+              <span class="text-slate-500">Hoa hồng:</span>
+              <p class="font-bold text-brand-400">15.0% (58.350 ₫)</p>
+            </div>
+          </div>
+          <button onclick="openSampleModal('Serum Phục Hồi Da B5 HA Đậm Đặc')" class="w-full py-2.5 bg-slate-800 hover:bg-brand-600 text-slate-200 hover:text-white rounded-xl text-xs font-semibold transition-all">
+            Đăng Ký Nhận Mẫu
+          </button>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 hover:border-brand-500/50 transition-all group">
+          <div class="h-44 bg-slate-800 rounded-xl overflow-hidden relative flex items-center justify-center">
+            <span class="text-4xl">☀️</span>
+            <span class="absolute top-3 right-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2.5 py-1 rounded-full font-semibold">
+              Còn 10 Mẫu
+            </span>
+          </div>
+          <div>
+            <h3 class="font-bold text-white group-hover:text-brand-400 transition-colors">Kem Chống Nắng Tế Bào Gốc SPF50+ PA++++</h3>
+            <p class="text-xs text-slate-400 mt-1">Gian Hàng: Mỹ Phẩm Cao Cấp GlowSkin</p>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+            <div>
+              <span class="text-slate-500">Giá bán lẻ:</span>
+              <p class="font-bold text-slate-200">450.000 ₫</p>
+            </div>
+            <div class="text-right">
+              <span class="text-slate-500">Hoa hồng:</span>
+              <p class="font-bold text-brand-400">18.0% (81.000 ₫)</p>
+            </div>
+          </div>
+          <button onclick="openSampleModal('Kem Chống Nắng Tế Bào Gốc SPF50+ PA++++')" class="w-full py-2.5 bg-slate-800 hover:bg-brand-600 text-slate-200 hover:text-white rounded-xl text-xs font-semibold transition-all">
+            Đăng Ký Nhận Mẫu
+          </button>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 hover:border-brand-500/50 transition-all group">
+          <div class="h-44 bg-slate-800 rounded-xl overflow-hidden relative flex items-center justify-center">
+            <span class="text-4xl">💄</span>
+            <span class="absolute top-3 right-3 bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs px-2.5 py-1 rounded-full font-semibold">
+              Sắp Hết (5 Mẫu)
+            </span>
+          </div>
+          <div>
+            <h3 class="font-bold text-white group-hover:text-brand-400 transition-colors">Son Kem Lì Siêu Mịn Môi Velvet Tint</h3>
+            <p class="text-xs text-slate-400 mt-1">Gian Hàng: Glow Beauty Studio</p>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+            <div>
+              <span class="text-slate-500">Giá bán lẻ:</span>
+              <p class="font-bold text-slate-200">220.000 ₫</p>
+            </div>
+            <div class="text-right">
+              <span class="text-slate-500">Hoa hồng:</span>
+              <p class="font-bold text-brand-400">20.0% (44.000 ₫)</p>
+            </div>
+          </div>
+          <button onclick="openSampleModal('Son Kem Lì Siêu Mịn Môi Velvet Tint')" class="w-full py-2.5 bg-slate-800 hover:bg-brand-600 text-slate-200 hover:text-white rounded-xl text-xs font-semibold transition-all">
+            Đăng Ký Nhận Mẫu
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- SCREEN 2: FR-26 & FR-27 REALTIME CHAT & VIP CAMPAIGN CARD -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <section id="screen-fr26" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 mb-2">
+            Module FR-26 & FR-27
+          </span>
+          <h2 class="text-2xl font-bold text-white tracking-tight">Khung Chat Real-Time & Thẻ Mời Chiến Dịch VIP</h2>
+          <p class="text-sm text-slate-400">Trao đổi kịch bản trực tuyến và tương tác trực tiếp trên Thẻ Mời Mạ Vàng kèm hoa hồng thưởng.</p>
+        </div>
+        <button onclick="openVipInviteModal()" class="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-amber-500/20 flex items-center space-x-2 transition-transform active:scale-95">
+          <span>👑</span>
+          <span>Gửi Thẻ Mời VIP Vào Chat</span>
+        </button>
+      </div>
+
+      <!-- Chat UI Interface (2 Columns) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden h-[620px]">
+        
+        <!-- Left: Conversations List -->
+        <div class="border-r border-slate-800 flex flex-col">
+          <div class="p-4 border-b border-slate-800">
+            <input type="text" placeholder="Tìm kiếm đoạn chat..." class="w-full bg-slate-950 border border-slate-800 text-xs px-3.5 py-2.5 rounded-xl text-slate-200 focus:outline-none focus:border-brand-500" />
+          </div>
+          <div class="flex-1 overflow-y-auto divide-y divide-slate-800/50">
+            <!-- Active Conversation -->
+            <div class="p-4 bg-slate-800/60 border-l-4 border-brand-500 flex items-start space-x-3 cursor-pointer">
+              <div class="w-10 h-10 rounded-full bg-brand-600/30 border border-brand-500 flex items-center justify-center font-bold text-brand-400 text-sm">
+                GS
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-bold text-white truncate">GlowSkin Official</h4>
+                  <span class="text-[10px] text-brand-400 font-medium">Vừa xong</span>
+                </div>
+                <p class="text-xs text-slate-300 truncate mt-0.5">👑 Đã gửi lời mời Chiến Dịch VIP</p>
+              </div>
+            </div>
+            <!-- Other Conversation -->
+            <div class="p-4 hover:bg-slate-800/30 flex items-start space-x-3 cursor-pointer">
+              <div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-400 text-sm">
+                BB
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-semibold text-slate-300 truncate">Beauty Studio</h4>
+                  <span class="text-[10px] text-slate-500">Hôm qua</span>
+                </div>
+                <p class="text-xs text-slate-500 truncate mt-0.5">Mẫu thử đã được bưu tá giao thành công</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Active Chat Room -->
+        <div class="md:col-span-2 flex flex-col bg-slate-950/60">
+          
+          <!-- Chat Header -->
+          <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+            <div class="flex items-center space-x-3">
+              <div class="relative">
+                <div class="w-10 h-10 rounded-full bg-brand-600/20 border border-brand-500/50 flex items-center justify-center font-bold text-brand-400">
+                  GS
+                </div>
+                <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">GlowSkin Official (Chủ Shop)</h3>
+                <p class="text-xs text-emerald-400">Đang hoạt động • Phản hồi trong 1 phút</p>
+              </div>
+            </div>
+            <button onclick="openVipInviteModal()" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold rounded-lg flex items-center space-x-1.5 transition-colors">
+              <span>👑 Mời VIP</span>
+            </button>
+          </div>
+
+          <!-- Messages Stream -->
+          <div class="flex-1 p-4 overflow-y-auto space-y-4">
+            <!-- Text Message (Shop) -->
+            <div class="flex items-end space-x-2">
+              <div class="w-7 h-7 rounded-full bg-brand-600/30 text-brand-400 text-xs font-bold flex items-center justify-center">GS</div>
+              <div class="bg-slate-800 text-slate-200 text-xs p-3 rounded-2xl rounded-bl-sm max-w-md">
+                Chào bạn! Shop thấy kênh của bạn review rất chất lượng. Shop muốn mời bạn tham gia Chiến Dịch VIP độc quyền tháng này nhé!
+              </div>
+            </div>
+
+            <!-- FR-27 Gold VIP Campaign Card Bubble -->
+            <div class="flex items-end space-x-2">
+              <div class="w-7 h-7 rounded-full bg-brand-600/30 text-brand-400 text-xs font-bold flex items-center justify-center">GS</div>
+              
+              <div class="gold-glow border-2 border-amber-400/80 bg-gradient-to-br from-amber-500/15 via-yellow-500/10 to-amber-600/20 rounded-2xl p-4 max-w-md w-full space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-lg">👑</span>
+                    <span class="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-amber-400 to-yellow-200 bg-clip-text text-transparent">
+                      THẺ MỜI CHIẾN DỊCH VIP
+                    </span>
+                  </div>
+                  <span id="vip-status-badge" class="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold rounded-full">
+                    Chờ phản hồi
+                  </span>
+                </div>
+
+                <div class="bg-slate-900/80 rounded-xl p-3 border border-amber-500/30 space-y-2">
+                  <h4 class="text-sm font-bold text-white">Siêu Sale Mùa Thu — Gala VIP 2026</h4>
+                  <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-800">
+                    <span class="text-slate-400">Hoa hồng thưởng thêm:</span>
+                    <span class="font-extrabold text-amber-400 text-sm">+7.5% Bonus</span>
+                  </div>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Thời hạn:</span>
+                    <span class="text-slate-200">15/09/2026 — 15/10/2026</span>
+                  </div>
+                </div>
+
+                <p class="text-xs text-amber-200/90 italic">"Rất vinh hạnh được đồng hành cùng bạn trong chiến dịch bùng nổ doanh số lần này!"</p>
+
+                <!-- Interactive Action Buttons -->
+                <div id="vip-card-actions" class="grid grid-cols-2 gap-2 pt-1">
+                  <button onclick="acceptVipInvite()" class="py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center space-x-1">
+                    <span>✓</span>
+                    <span>Chấp Nhận VIP</span>
+                  </button>
+                  <button onclick="rejectVipInvite()" class="py-2 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-300 border border-slate-700 rounded-xl text-xs font-semibold transition-colors">
+                    Từ Chối
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reaction Feedback Message (Dynamically Added) -->
+            <div id="reaction-msg-box" class="hidden flex justify-end space-x-2">
+              <div class="bg-amber-600 text-white text-xs p-3 rounded-2xl rounded-br-sm max-w-md shadow-md">
+                🎉 Cảm ơn shop! Mình đã chấp nhận tham gia chiến dịch VIP. Hãy cùng bùng nổ doanh số nhé!
+              </div>
+            </div>
+          </div>
+
+          <!-- Message Composer Input -->
+          <div class="p-3 border-t border-slate-800 bg-slate-900/80 flex items-center space-x-2">
+            <input type="text" placeholder="Nhập tin nhắn..." class="flex-1 bg-slate-950 border border-slate-800 text-xs px-4 py-3 rounded-xl text-slate-200 focus:outline-none focus:border-brand-500" />
+            <button class="p-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl transition-transform active:scale-95">
+              <span>🚀</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- SCREEN 3: FR-27 KOL EXCLUSIVE CAMPAIGNS DASHBOARD -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <section id="screen-fr27" class="hidden space-y-6">
+      <div>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-2">
+          Module FR-27
+        </span>
+        <h2 class="text-2xl font-bold text-white tracking-tight">Chiến Dịch Tiếp Thị Độc Quyền Của Bạn</h2>
+        <p class="text-sm text-slate-400">Danh sách các chiến dịch bạn được Shop gửi lời mời riêng kèm mức hoa hồng thưởng thêm vượt khung.</p>
+      </div>
+
+      <!-- Stats Summary Row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-1">
+          <span class="text-xs text-slate-400">Chiến dịch VIP Đang Tham Gia</span>
+          <p class="text-2xl font-bold text-amber-400">3 Chiến Dịch</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-1">
+          <span class="text-xs text-slate-400">Lời Mời Đang Chờ Phản Hồi</span>
+          <p class="text-2xl font-bold text-yellow-300">1 Lời Mời</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-1">
+          <span class="text-xs text-slate-400">Hoa Hồng Thưởng Tích Lũy</span>
+          <p class="text-2xl font-bold text-emerald-400">+12.450.000 ₫</p>
+        </div>
+      </div>
+
+      <!-- Campaign List Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-800">
+        <!-- Item 1 -->
+        <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-full">
+                Đang Tham Gia
+              </span>
+              <h3 class="font-bold text-white">Siêu Sale Mùa Thu — Gala VIP 2026</h3>
+            </div>
+            <p class="text-xs text-slate-400">Gian Hàng: Mỹ Phẩm Cao Cấp GlowSkin • Áp dụng đến: 15/10/2026</p>
+          </div>
+          <div class="flex items-center space-x-4">
+            <div class="text-right">
+              <span class="text-xs text-slate-500">Mức thưởng thêm:</span>
+              <p class="font-extrabold text-amber-400 text-sm">+7.5% Hoa hồng</p>
+            </div>
+            <button onclick="switchScreen('fr26')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition-colors">
+              Mở Khung Chat
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 2 -->
+        <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-full">
+                Đang Tham Gia
+              </span>
+              <h3 class="font-bold text-white">Mega Brand Day 9.9 — Glow Beauty</h3>
+            </div>
+            <p class="text-xs text-slate-400">Gian Hàng: Glow Beauty Studio • Áp dụng đến: 30/09/2026</p>
+          </div>
+          <div class="flex items-center space-x-4">
+            <div class="text-right">
+              <span class="text-xs text-slate-500">Mức thưởng thêm:</span>
+              <p class="font-extrabold text-amber-400 text-sm">+10.0% Hoa hồng</p>
+            </div>
+            <button onclick="switchScreen('fr26')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition-colors">
+              Mở Khung Chat
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: GỬI THẺ MỜI VIP (Send VIP Campaign Modal) -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="vip-invite-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl shadow-amber-500/10">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="text-2xl">👑</span>
+          <h3 class="text-lg font-bold text-white">Gửi Thẻ Mời Chiến Dịch VIP</h3>
+        </div>
+        <button onclick="closeVipInviteModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Chọn Chiến Dịch Đang Chạy</label>
+          <select class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:border-amber-500">
+            <option>Siêu Sale Mùa Thu — Gala VIP 2026 (+7.5% Thưởng)</option>
+            <option>Mega Brand Day 9.9 (+10.0% Thưởng)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Lời Nhắn Kèm Theo</label>
+          <textarea rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:border-amber-500" placeholder="Shop rất vinh hạnh được đồng hành cùng bạn..."></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-3 pt-2">
+        <button onclick="closeVipInviteModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl">
+          Hủy bỏ
+        </button>
+        <button onclick="submitVipInvite()" class="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs font-bold rounded-xl shadow-md">
+          Gửi Thẻ Vào Chat
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    function switchScreen(screenId) {
+      document.getElementById('screen-fr25').classList.add('hidden');
+      document.getElementById('screen-fr26').classList.add('hidden');
+      document.getElementById('screen-fr27').classList.add('hidden');
+
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.className = 'nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800';
+      });
+
+      document.getElementById('screen-' + screenId).classList.remove('hidden');
+      document.getElementById('tab-' + screenId).className = 'nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-brand-600 text-white shadow-md shadow-brand-600/30';
+    }
+
+    function openVipInviteModal() {
+      document.getElementById('vip-invite-modal').classList.remove('hidden');
+      document.getElementById('vip-invite-modal').classList.add('flex');
+    }
+
+    function closeVipInviteModal() {
+      document.getElementById('vip-invite-modal').classList.add('hidden');
+      document.getElementById('vip-invite-modal').classList.remove('flex');
+    }
+
+    function submitVipInvite() {
+      closeVipInviteModal();
+      switchScreen('fr26');
+      alert('Đã gửi Thẻ Mời Chiến Dịch VIP vào phòng chat thành công!');
+    }
+
+    function acceptVipInvite() {
+      document.getElementById('vip-status-badge').innerText = '✓ Đã tham gia VIP';
+      document.getElementById('vip-status-badge').className = 'px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold rounded-full';
+      document.getElementById('vip-card-actions').innerHTML = '<div class="col-span-2 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-center font-bold text-xs rounded-xl">✓ Đã Chấp Nhận Tham Gia Chiến Dịch VIP</div>';
+      document.getElementById('reaction-msg-box').classList.remove('hidden');
+    }
+
+    function rejectVipInvite() {
+      document.getElementById('vip-status-badge').innerText = '✕ Đã từ chối';
+      document.getElementById('vip-status-badge').className = 'px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold rounded-full';
+      document.getElementById('vip-card-actions').innerHTML = '<div class="col-span-2 py-2 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-center font-semibold text-xs rounded-xl">Đã từ chối lời mời</div>';
+    }
+
+    function openSampleModal(prodName = 'Sản phẩm mẫu') {
+      alert('Mở form xin mẫu thử cho: ' + prodName + '\n(KOL nhập địa chỉ giao hàng và kế hoạch review)');
+    }
+  </script>
+</body>
+</html>

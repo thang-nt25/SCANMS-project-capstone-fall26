@@ -5,6 +5,14 @@ import { AssetType } from '@prisma/client';
 export class CreateMediaDto {
   @ApiPropertyOptional({
     example: null,
+    description: 'ID gian hàng (dành cho SYSTEM_ADMIN hoặc SYSTEM_MANAGER)',
+  })
+  @IsOptional()
+  @IsString()
+  storeId?: string;
+
+  @ApiPropertyOptional({
+    example: null,
     description: 'ID sản phẩm liên kết (nếu có)',
   })
   @IsOptional()

@@ -45,7 +45,10 @@ export interface EnqueuedClickJob {
 export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ClickQueueService.name);
   private queue: EnqueuedClickJob[] = [];
-  private inFlightMemQueue: Map<string, { job: EnqueuedClickJob; leaseExpiresAt: number }> = new Map();
+  private inFlightMemQueue: Map<
+    string,
+    { job: EnqueuedClickJob; leaseExpiresAt: number }
+  > = new Map();
   private isProcessing = false;
   private isDestroyed = false;
   private readonly flushInterval: NodeJS.Timeout;
@@ -118,7 +121,10 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
       // Di chuyển các job cũ từ legacy list (nếu còn) sang pending queue
       try {
         while (true) {
-          const legacy = await redis.rpoplpush(this.redisLegacyProcessingKey, this.redisQueueKey);
+          const legacy = await redis.rpoplpush(
+            this.redisLegacyProcessingKey,
+            this.redisQueueKey,
+          );
           if (!legacy) break;
         }
       } catch {}
@@ -182,7 +188,9 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
     const redis = this.cacheService?.getRedisClient();
     if (redis) {
       redis.lpush(this.redisQueueKey, JSON.stringify(job)).catch((err) => {
-        this.logger.warn(`Lỗi đẩy click vào Redis queue, chuyển sang memory buffer: ${err.message}`);
+        this.logger.warn(
+          `Lỗi đẩy click vào Redis queue, chuyển sang memory buffer: ${err.message}`,
+        );
         this.queue.push(job);
       });
     } else {
@@ -222,7 +230,9 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
           );
         }
       } catch (err: any) {
-        this.logger.warn(`[CLICK_QUEUE_RECLAIM] Lỗi khi khôi phục stuck jobs: ${err.message}`);
+        this.logger.warn(
+          `[CLICK_QUEUE_RECLAIM] Lỗi khi khôi phục stuck jobs: ${err.message}`,
+        );
       }
     }
 
@@ -278,14 +288,16 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
               error: 'CORRUPTED_JSON',
               failedAt: new Date().toISOString(),
             });
-            await redis.eval(
-              this.zremAndPushScript,
-              2,
-              this.redisProcessingKey,
-              this.redisDlqKey,
-              rawItem,
-              dlqPayload,
-            ).catch(() => {});
+            await redis
+              .eval(
+                this.zremAndPushScript,
+                2,
+                this.redisProcessingKey,
+                this.redisDlqKey,
+                rawItem,
+                dlqPayload,
+              )
+              .catch(() => {});
             continue;
           }
 
@@ -306,14 +318,16 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
               );
               // Di chuyển nguyên tử sang pending queue bằng Lua script (Issue 2)
               const retryPayload = JSON.stringify(job);
-              const moved = await redis.eval(
-                this.zremAndPushScript,
-                2,
-                this.redisProcessingKey,
-                this.redisQueueKey,
-                rawItem,
-                retryPayload,
-              ).catch(() => 0);
+              const moved = await redis
+                .eval(
+                  this.zremAndPushScript,
+                  2,
+                  this.redisProcessingKey,
+                  this.redisQueueKey,
+                  rawItem,
+                  retryPayload,
+                )
+                .catch(() => 0);
 
               if (moved === 0) {
                 this.queue.push(job);
@@ -329,19 +343,23 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
                 failedAt: new Date().toISOString(),
                 retryCount: currentRetry,
               });
-              await redis.eval(
-                this.zremAndPushScript,
-                2,
-                this.redisProcessingKey,
-                this.redisDlqKey,
-                rawItem,
-                dlqPayload,
-              ).catch(() => {});
+              await redis
+                .eval(
+                  this.zremAndPushScript,
+                  2,
+                  this.redisProcessingKey,
+                  this.redisDlqKey,
+                  rawItem,
+                  dlqPayload,
+                )
+                .catch(() => {});
             }
           }
         }
       } catch (redisErr: any) {
-        this.logger.warn(`Lỗi khi xử lý Redis reliable queue: ${redisErr.message}`);
+        this.logger.warn(
+          `Lỗi khi xử lý Redis reliable queue: ${redisErr.message}`,
+        );
       }
     }
 
@@ -400,12 +418,17 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
     }
 
     // 2. Bảo mật quyền riêng tư: Chuẩn hóa Subnet IP (/24 hoặc /48), không lưu IP thô
-    const cleanIp = (job.ipSubnet || job.ip || '0.0.0.0').trim().replace(/^::ffff:/, '');
+    const cleanIp = (job.ipSubnet || job.ip || '0.0.0.0')
+      .trim()
+      .replace(/^::ffff:/, '');
     let ipToStore = cleanIp;
     if (!ipToStore.includes('/')) {
       if (ipToStore.includes('.')) {
         const parts = ipToStore.split('.');
-        ipToStore = parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.0/24` : `${ipToStore}/24`;
+        ipToStore =
+          parts.length === 4
+            ? `${parts[0]}.${parts[1]}.${parts[2]}.0/24`
+            : `${ipToStore}/24`;
       } else if (ipToStore.includes(':')) {
         const parts = ipToStore.split(':');
         ipToStore = `${parts.slice(0, 3).join(':')}::/48`;
@@ -446,8 +469,12 @@ export class ClickQueueService implements OnModuleInit, OnModuleDestroy {
               referralLinkId: job.linkId,
               createdAt: { gte: thirtyMinutesAgo },
               OR: [
-                ...(sessionHashToStore ? [{ sessionId: sessionHashToStore }] : []),
-                ...(job.fingerprintHash ? [{ fingerprintHash: job.fingerprintHash }] : []),
+                ...(sessionHashToStore
+                  ? [{ sessionId: sessionHashToStore }]
+                  : []),
+                ...(job.fingerprintHash
+                  ? [{ fingerprintHash: job.fingerprintHash }]
+                  : []),
                 { ipAddress: ipToStore },
               ],
             },

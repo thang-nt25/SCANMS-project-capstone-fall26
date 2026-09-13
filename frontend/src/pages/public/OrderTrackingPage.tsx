@@ -82,9 +82,8 @@ export default function OrderTrackingPage() {
   const initialPhone = searchParams.get("phone") || "";
   const initialSn = searchParams.get("sn") || "";
 
-  const [searchInput, setSearchInput] = useState(
-    initialPhone || initialSn || "",
-  );
+  const [phoneInput, setPhoneInput] = useState(initialPhone);
+  const [orderSnInput, setOrderSnInput] = useState(initialSn);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [orders, setOrders] = useState<OrderData[]>([]);
@@ -104,13 +103,14 @@ export default function OrderTrackingPage() {
   // Tự động tìm kiếm nếu URL có sẵn param
   useEffect(() => {
     if (initialPhone || initialSn) {
-      handleSearch(initialPhone || initialSn);
+      handleSearch(initialPhone, initialSn);
     }
   }, []);
 
-  const handleSearch = async (queryStr?: string) => {
-    const query = (queryStr !== undefined ? queryStr : searchInput).trim();
-    if (!query) {
+  const handleSearch = async (phoneValue?: string, orderSnValue?: string) => {
+    const phone = (phoneValue !== undefined ? phoneValue : phoneInput).trim();
+    const orderSn = (orderSnValue !== undefined ? orderSnValue : orderSnInput).trim();
+    if (!phone && !orderSn) {
       setErrorMessage(
         "Vui lòng nhập số điện thoại hoặc mã đơn hàng để tra cứu.",
       );
@@ -123,15 +123,10 @@ export default function OrderTrackingPage() {
     setHasSearched(true);
 
     try {
-      const isPhoneNumber = /^[0-9+() -]{9,15}$/.test(query);
       const params: Record<string, string> = {};
-      if (isPhoneNumber) {
-        params.phone = query;
-        setSearchParams({ phone: query });
-      } else {
-        params.orderSn = query;
-        setSearchParams({ sn: query });
-      }
+      if (phone) params.phone = phone;
+      if (orderSn) params.orderSn = orderSn;
+      setSearchParams(params);
 
       const res: any = await api.get("/orders/track", { params });
       if (sequence !== searchSequence.current) return;
@@ -139,6 +134,8 @@ export default function OrderTrackingPage() {
         setOrders(res.orders);
       } else if (res?.data?.orders) {
         setOrders(res.data.orders);
+      } else if (Array.isArray(res)) {
+        setOrders(res);
       } else {
         setOrders([]);
       }
@@ -146,7 +143,8 @@ export default function OrderTrackingPage() {
       if (sequence !== searchSequence.current) return;
       setOrders([]);
       setErrorMessage(
-        err.message ||
+        err?.response?.data?.message ||
+          err?.message ||
           "Không tìm thấy thông tin đơn hàng nào phù hợp với từ khóa này.",
       );
     } finally {
@@ -160,7 +158,7 @@ export default function OrderTrackingPage() {
       productTitle: item.productTitle,
       imageUrl: item.imageUrl,
       externalOrderSn: order.externalOrderSn,
-      customerPhone: /^[0-9+() -]{10,20}$/.test(searchInput) ? searchInput : "",
+      customerPhone: phoneInput || order.customerPhone || "",
     });
   };
 
@@ -311,15 +309,25 @@ export default function OrderTrackingPage() {
               e.preventDefault();
               handleSearch();
             }}
-            className="w-full max-w-xl mt-2 flex flex-col sm:flex-row gap-2"
+            className="w-full max-w-2xl mt-2 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2"
           >
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-[#7D715E] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="VD: 0933888999 hoặc ORD-20260909-001..."
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="Số điện thoại: 0933888999"
+                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-2 border-[#EAE4D7] text-xs sm:text-sm text-[#1A1612] outline-none focus:border-[#C59B58] shadow-xs transition"
+              />
+            </div>
+            <div className="relative flex-1">
+              <Package className="w-4 h-4 text-[#7D715E] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={orderSnInput}
+                onChange={(e) => setOrderSnInput(e.target.value.toUpperCase())}
+                placeholder="Mã đơn: ORD-20260909-001"
                 className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-2 border-[#EAE4D7] text-xs sm:text-sm text-[#1A1612] outline-none focus:border-[#C59B58] shadow-xs transition"
               />
             </div>
@@ -351,8 +359,9 @@ export default function OrderTrackingPage() {
             <button
               type="button"
               onClick={() => {
-                setSearchInput("0933888999");
-                handleSearch("0933888999");
+                setPhoneInput("0933888999");
+                setOrderSnInput("ORD-20260909-001");
+                handleSearch("0933888999", "ORD-20260909-001");
               }}
               className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] px-2.5 py-1 rounded-lg transition cursor-pointer"
             >
@@ -361,8 +370,8 @@ export default function OrderTrackingPage() {
             <button
               type="button"
               onClick={() => {
-                setSearchInput("ORD-20260909-001");
-                handleSearch("ORD-20260909-001");
+                setOrderSnInput("ORD-20260909-001");
+                handleSearch(phoneInput, "ORD-20260909-001");
               }}
               className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] px-2.5 py-1 rounded-lg transition cursor-pointer"
             >
@@ -407,9 +416,8 @@ export default function OrderTrackingPage() {
               Không tìm thấy đơn hàng
             </strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              Không tìm thấy đơn hàng nào liên kết với thông tin{" "}
-              <strong>"{searchInput}"</strong>. Vui lòng kiểm tra lại số điện
-              thoại hoặc mã đơn.
+              Không tìm thấy đơn hàng khớp với số điện thoại hoặc mã đơn đã nhập. Vui lòng
+              kiểm tra lại số điện thoại hoặc mã đơn.
             </p>
           </div>
         )}

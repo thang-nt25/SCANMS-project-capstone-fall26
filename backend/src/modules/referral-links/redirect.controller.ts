@@ -63,7 +63,10 @@ export class RedirectController {
   /**
    * Kiểm tra tên miền đích có nằm trong danh sách cho phép (Allowlist) hay không (Chống Open Redirect - Lỗi 7)
    */
-  private isAllowedDestination(destination: string, publicAppUrl: string): boolean {
+  private isAllowedDestination(
+    destination: string,
+    publicAppUrl: string,
+  ): boolean {
     if (!destination || typeof destination !== 'string') return false;
 
     // Đường dẫn tương đối nội bộ an toàn (chặn bypass //evil.com hoặc /\evil.com)
@@ -163,7 +166,10 @@ export class RedirectController {
     description:
       'Ghi nhận lượt click, kiểm tra rate-limit, nhận diện bot, thiết lập hoặc cập nhật cookie Last-Click cho từng Shop và chuyển hướng an toàn.',
   })
-  @ApiParam({ name: 'shortCode', description: 'Mã rút gọn 8 ký tự của liên kết tiếp thị' })
+  @ApiParam({
+    name: 'shortCode',
+    description: 'Mã rút gọn 8 ký tự của liên kết tiếp thị',
+  })
   @ApiResponse({
     status: 302,
     description:
@@ -171,7 +177,10 @@ export class RedirectController {
     headers: {
       Location: {
         description: 'URL trang đích hợp lệ thuộc allowlist',
-        schema: { type: 'string', example: 'http://localhost:5173/products/prod-123' },
+        schema: {
+          type: 'string',
+          example: 'http://localhost:5173/products/prod-123',
+        },
       },
       'Set-Cookie': {
         description:
@@ -196,7 +205,8 @@ export class RedirectController {
   })
   @ApiResponse({
     status: 500,
-    description: 'Lỗi máy chủ nội bộ trong quá trình xử lý chuyển hướng hoặc phân bổ',
+    description:
+      'Lỗi máy chủ nội bộ trong quá trình xử lý chuyển hướng hoặc phân bổ',
   })
   async handleRedirect(
     @Param('shortCode') shortCode: string,
@@ -223,7 +233,10 @@ export class RedirectController {
       if (existingCookie) {
         visitorId = verifyOpaqueVisitorToken(existingCookie, jwtSecret);
         if (!visitorId) {
-          const legacyDecoded = verifyMultiShopAttributionToken(existingCookie, jwtSecret);
+          const legacyDecoded = verifyMultiShopAttributionToken(
+            existingCookie,
+            jwtSecret,
+          );
           if (legacyDecoded?.vid) {
             visitorId = legacyDecoded.vid;
           }
@@ -239,7 +252,9 @@ export class RedirectController {
       const isQr = via === 'qr';
 
       // Kiểm tra tín hiệu từ chối theo dõi (Privacy Consent: DNT, Sec-GPC, scanms_opt_out - Lỗi 6)
-      const dntHeader = (req.headers['dnt'] || req.headers['sec-gpc'] || '') as string;
+      const dntHeader = (req.headers['dnt'] ||
+        req.headers['sec-gpc'] ||
+        '') as string;
       const isOptedOut =
         dntHeader === '1' || req.cookies?.['scanms_opt_out'] === 'true';
 
@@ -259,7 +274,11 @@ export class RedirectController {
       // 3. Cập nhật Attribution Cookie nếu click hợp lệ, session đã tạo thành công trong DB và người dùng không opt-out (Lỗi 1, 6 & 8)
       // Cookie chỉ chứa visitorId ngẫu nhiên được ký HMAC-SHA256, không chứa PII hay dữ liệu shop/KOL
       // Dữ liệu attribution được quản lý độc lập từng gian hàng trong bảng AttributionSession
-      if (result.allowAttribution && !isOptedOut && result.attributionData?.sessionId) {
+      if (
+        result.allowAttribution &&
+        !isOptedOut &&
+        result.attributionData?.sessionId
+      ) {
         const opaqueToken = signOpaqueVisitorToken(finalVisitorId, jwtSecret);
 
         // Max-Age cho cookie trình duyệt: Theo attribution window của Shop (mặc định 30 ngày)
@@ -325,7 +344,48 @@ export class RedirectController {
         destinationUrl = `${publicAppUrl}${cleanPath}`;
       }
 
-      // 7. Chuyển hướng trực tiếp HTTP 302 Found đến sản phẩm đích
+      // 7. Nhận diện Social Crawlers (Facebook, Zalo, Twitter...) để phục vụ Server-Side Open Graph (Issue 7)
+      if (this.isSocialBot(userAgent)) {
+        const product = result.link?.product;
+        const store = result.link?.store;
+        const title = product?.title || 'Sản phẩm đối tác - SCANMS';
+        const description = `Khám phá ${product?.title || 'sản phẩm'} chính hãng phân phối bởi ${store?.name || 'gian hàng đối tác'} trên sàn SCANMS.`;
+        const imageUrl = product?.imageUrl || `${publicAppUrl}/assets/product-placeholder.svg`;
+        const price = product?.price ? Number(product.price) : 0;
+
+        return res.status(HttpStatus.OK).send(`<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title)} - SCANMS</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:site_name" content="SCANMS - Sàn Thương Mại Tiếp Thị Liên Kết">
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:image" content="${escapeHtml(imageUrl)}">
+  <meta property="og:url" content="${escapeHtml(destinationUrl)}">
+  ${price > 0 ? `<meta property="product:price:amount" content="${price}">
+  <meta property="product:price:currency" content="VND">
+  <meta property="og:price:amount" content="${price}">
+  <meta property="og:price:currency" content="VND">` : ''}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(imageUrl)}">
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(destinationUrl)}">
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p>${escapeHtml(description)}</p>
+  ${price > 0 ? `<p>Giá: ${price.toLocaleString('vi-VN')} ₫</p>` : ''}
+  <a href="${escapeHtml(destinationUrl)}">Bấm vào đây để tiếp tục</a>
+  <script>window.location.replace(${JSON.stringify(destinationUrl)});</script>
+</body>
+</html>`);
+      }
+
+      // 8. Chuyển hướng trực tiếp HTTP 302 Found đến sản phẩm đích cho người dùng thông thường
       return res.redirect(HttpStatus.FOUND, destinationUrl);
     } catch (err: any) {
       const status =
@@ -384,5 +444,38 @@ export class RedirectController {
       return 'Tablet';
     }
     return 'Desktop';
+  }
+
+  private isSocialBot(ua?: string): boolean {
+    if (!ua) return false;
+    return /facebookexternalhit|Facebot|ZaloPC|ZaloBot|zalo-crawler|Twitterbot|TelegramBot|WhatsApp|LinkedInBot|Pinterest|Googlebot|bingbot|Baiduspider/i.test(
+      ua,
+    );
+  }
+
+  @Get(['products/:idOrSlug', 'p/:idOrSlug'])
+  @ApiOperation({
+    summary: 'Chuyển hướng URL sản phẩm: Bot mạng xã hội vào SEO HTML, người dùng vào React SPA (FR-15)',
+  })
+  async handleDirectProductUrl(
+    @Param('idOrSlug') idOrSlug: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const userAgent = req.headers['user-agent'] || '';
+    const isBot = this.isSocialBot(userAgent);
+    const frontendUrl = this.getPublicAppUrl();
+
+    if (isBot) {
+      return res.redirect(
+        HttpStatus.FOUND,
+        `/api/public/products/${encodeURIComponent(idOrSlug)}/seo`,
+      );
+    } else {
+      return res.redirect(
+        HttpStatus.FOUND,
+        `${frontendUrl}/products/${encodeURIComponent(idOrSlug)}`,
+      );
+    }
   }
 }

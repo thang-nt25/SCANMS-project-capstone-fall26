@@ -368,6 +368,21 @@ export function storefrontScreen() {
   // Số lượng món trong giỏ
   const totalCartCount = storefrontState.cart.reduce((acc, item) => acc + item.qty, 0);
 
+  // FR-15: chỉ hiển thị video KOL đã được Chủ Shop duyệt.
+  let approvedKolVideos = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem("scanms_kol_video_submissions") || "[]");
+    const productAliases = new Set([prod.id, "P01", "SKIN-C15", "SR-VTC-15"]);
+    approvedKolVideos = (Array.isArray(saved) ? saved : [])
+      .filter(video =>
+        productAliases.has(video.productId) &&
+        (video.status === "APPROVED" || video.isApproved === true)
+      )
+      .sort((a, b) => Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)));
+  } catch (error) {
+    approvedKolVideos = [];
+  }
+
   return `
     <div class="storefront-wrapper">
       <!-- 1. HEADER DÀNH CHO KHÁCH MUA HÀNG -->
@@ -566,7 +581,55 @@ export function storefrontScreen() {
         </section>
 
 
-        <!-- 4. KHỐI COUPON ĐỘC QUYỀN CỦA KOL -->
+        <!-- 4. VIDEO REVIEW KOL ĐÃ ĐƯỢC SHOP DUYỆT (FR-15) -->
+        <section class="sf-kol-video-section" id="sf-kol-video-section">
+          <div class="sf-kol-video-heading">
+            <div>
+              <span class="sf-kol-video-eyebrow"><i class="ph ph-video-camera"></i> FR-15 · NỘI DUNG ĐÃ KIỂM DUYỆT</span>
+              <h2>Video review từ Nhà sáng tạo</h2>
+              <p>Trải nghiệm thực tế do KOL gửi và được ${prod.brand} phê duyệt.</p>
+            </div>
+            <span class="sf-kol-video-count">${approvedKolVideos.length} video công khai</span>
+          </div>
+
+          ${approvedKolVideos.length ? `
+            <div class="sf-kol-video-grid">
+              ${approvedKolVideos.map((video, index) => {
+                const videoSrc = video.videoUrl || sampleVideoPath;
+                const posterSrc = video.image || defaultProductImage;
+                return `
+                  <article class="sf-kol-video-card ${video.isFeatured ? 'is-featured' : ''}">
+                    <div class="sf-kol-video-player">
+                      <video controls playsinline preload="metadata" poster="${escapeHtml(posterSrc)}" aria-label="${escapeHtml(video.title || 'Video review KOL')}">
+                        <source src="${escapeHtml(videoSrc)}" type="video/mp4" />
+                        Trình duyệt không hỗ trợ phát video.
+                      </video>
+                      <span class="sf-kol-video-status"><i class="ph ph-seal-check"></i> Shop đã duyệt</span>
+                      ${video.isFeatured ? '<span class="sf-kol-video-featured"><i class="ph-fill ph-star"></i> Video nổi bật</span>' : ''}
+                    </div>
+                    <div class="sf-kol-video-body">
+                      <span class="sf-kol-video-number">VIDEO ${String(index + 1).padStart(2, '0')}</span>
+                      <h3>${escapeHtml(video.title || 'Video review sản phẩm')}</h3>
+                      ${video.caption ? `<p>${escapeHtml(video.caption)}</p>` : ''}
+                      <div class="sf-kol-video-author">
+                        <span class="sf-kol-video-avatar">N</span>
+                        <span><strong>${escapeHtml(video.collaborator?.fullName || kol.name)}</strong><small>Nội dung có liên kết tiếp thị</small></span>
+                      </div>
+                    </div>
+                  </article>
+                `;
+              }).join("")}
+            </div>
+          ` : `
+            <div class="sf-kol-video-empty">
+              <i class="ph ph-video-camera-slash"></i>
+              <div><strong>Chưa có video review công khai</strong><span>Video chỉ xuất hiện sau khi được Chủ Shop duyệt.</span></div>
+            </div>
+          `}
+        </section>
+
+
+        <!-- 5. KHỐI COUPON ĐỘC QUYỀN CỦA KOL -->
         <section class="sf-coupon-section">
           <div class="sf-coupon-left">
             <div class="sf-coupon-icon">

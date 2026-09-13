@@ -115,7 +115,8 @@ export class CouponsService {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          message: 'Thao tác quá nhiều lần. Vui lòng thử lại sau 15 phút (Lockout).',
+          message:
+            'Thao tác quá nhiều lần. Vui lòng thử lại sau 15 phút (Lockout).',
           retryAfter: 900,
         },
         HttpStatus.TOO_MANY_REQUESTS,
@@ -129,7 +130,10 @@ export class CouponsService {
     );
 
     if (!allowed) {
-      const retryAfter = Math.max(1, Math.ceil((resetTime - Date.now()) / 1000));
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((resetTime - Date.now()) / 1000),
+      );
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -247,7 +251,11 @@ export class CouponsService {
   ) {
     // 1. Rate limiting checks: 5 req/min, 20 req/day
     await this.checkRateLimit(`kol_create_min_${collaboratorId}`, 5, 60 * 1000);
-    await this.checkRateLimit(`kol_create_day_${collaboratorId}`, 20, 24 * 60 * 60 * 1000);
+    await this.checkRateLimit(
+      `kol_create_day_${collaboratorId}`,
+      20,
+      24 * 60 * 60 * 1000,
+    );
 
     // 2. Normalize and check syntax & banned words
     const codeNormalized = this.normalizeAndValidateCode(dto.code);
@@ -257,7 +265,9 @@ export class CouponsService {
       where: { id: collaboratorId },
     });
     if (!collaborator || !collaborator.isActive || collaborator.isDeleted) {
-      throw new ForbiddenException('Tài khoản đối tác không tồn tại hoặc đã bị khóa');
+      throw new ForbiddenException(
+        'Tài khoản đối tác không tồn tại hoặc đã bị khóa',
+      );
     }
 
     // 4. Verify Shop exists and is active
@@ -265,7 +275,9 @@ export class CouponsService {
       where: { id: dto.storeId },
     });
     if (!store || store.isDeleted) {
-      throw new NotFoundException('Gian hàng không tồn tại hoặc đã ngừng hoạt động');
+      throw new NotFoundException(
+        'Gian hàng không tồn tại hoặc đã ngừng hoạt động',
+      );
     }
 
     // 5. Verify KOL-Shop approved partnership (Section 5)
@@ -298,35 +310,39 @@ export class CouponsService {
     }
 
     // 6. Check quotas (Section 34)
-    const [pendingStoreCount, pendingGlobalCount, activeStoreCount, activeGlobalCount] =
-      await Promise.all([
-        this.prisma.coupon.count({
-          where: {
-            collaboratorId,
-            storeId: dto.storeId,
-            status: CouponStatus.PENDING_APPROVAL,
-          },
-        }),
-        this.prisma.coupon.count({
-          where: {
-            collaboratorId,
-            status: CouponStatus.PENDING_APPROVAL,
-          },
-        }),
-        this.prisma.coupon.count({
-          where: {
-            collaboratorId,
-            storeId: dto.storeId,
-            status: CouponStatus.ACTIVE,
-          },
-        }),
-        this.prisma.coupon.count({
-          where: {
-            collaboratorId,
-            status: CouponStatus.ACTIVE,
-          },
-        }),
-      ]);
+    const [
+      pendingStoreCount,
+      pendingGlobalCount,
+      activeStoreCount,
+      activeGlobalCount,
+    ] = await Promise.all([
+      this.prisma.coupon.count({
+        where: {
+          collaboratorId,
+          storeId: dto.storeId,
+          status: CouponStatus.PENDING_APPROVAL,
+        },
+      }),
+      this.prisma.coupon.count({
+        where: {
+          collaboratorId,
+          status: CouponStatus.PENDING_APPROVAL,
+        },
+      }),
+      this.prisma.coupon.count({
+        where: {
+          collaboratorId,
+          storeId: dto.storeId,
+          status: CouponStatus.ACTIVE,
+        },
+      }),
+      this.prisma.coupon.count({
+        where: {
+          collaboratorId,
+          status: CouponStatus.ACTIVE,
+        },
+      }),
+    ]);
 
     if (pendingStoreCount >= 5) {
       throw new BadRequestException(
@@ -637,7 +653,10 @@ export class CouponsService {
     await this.prisma.auditLog.create({
       data: {
         userId: collaboratorId,
-        action: nextStatus === CouponStatus.PAUSED ? 'COUPON_PAUSED' : 'COUPON_RESUMED',
+        action:
+          nextStatus === CouponStatus.PAUSED
+            ? 'COUPON_PAUSED'
+            : 'COUPON_RESUMED',
         details: {
           couponId: id,
           code: coupon.codeNormalized,
@@ -714,7 +733,11 @@ export class CouponsService {
   /**
    * Helper to verify user is shop owner or manager
    */
-  private async verifyStoreAccess(storeId: string, userId: string, role: UserRole) {
+  private async verifyStoreAccess(
+    storeId: string,
+    userId: string,
+    role: UserRole,
+  ) {
     if (role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER) {
       return;
     }
@@ -726,7 +749,7 @@ export class CouponsService {
     }
     const isDemoShopManager =
       userId === '6e9eb89c-f544-4f87-b724-1fe7aace2edc' || // shop@scanms.vn (Sora Skin)
-      userId === 'df25d2c6-706a-4ff1-973e-17b222626764';   // shop@techstore.vn (TechStore)
+      userId === 'df25d2c6-706a-4ff1-973e-17b222626764'; // shop@techstore.vn (TechStore)
     if (store.ownerId !== userId && !isDemoShopManager) {
       throw new ForbiddenException('Bạn không có quyền quản lý gian hàng này');
     }
@@ -852,8 +875,12 @@ export class CouponsService {
     }
 
     // Validate dates
-    let startsAt: Date | null = dto.startsAt ? new Date(dto.startsAt) : new Date();
-    let expiresAt: Date | null = dto.expiresAt ? new Date(dto.expiresAt) : null;
+    const startsAt: Date | null = dto.startsAt
+      ? new Date(dto.startsAt)
+      : new Date();
+    const expiresAt: Date | null = dto.expiresAt
+      ? new Date(dto.expiresAt)
+      : null;
     if (startsAt && expiresAt && startsAt > expiresAt) {
       throw new BadRequestException(
         'Thời điểm bắt đầu không được lớn hơn thời điểm kết thúc',
@@ -868,7 +895,8 @@ export class CouponsService {
       if (
         dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED ||
         dto.fundingSource === CouponFundingSource.CO_FUNDED ||
-        (dto.platformFundingRate !== undefined && Number(dto.platformFundingRate) > 0)
+        (dto.platformFundingRate !== undefined &&
+          Number(dto.platformFundingRate) > 0)
       ) {
         throw new ForbiddenException(
           'Gian hàng không có quyền chỉ định nền tảng SCANMS đồng tài trợ ngân sách. Chỉ Quản trị viên (Admin) mới có thẩm quyền phê duyệt tài trợ sàn.',
@@ -887,10 +915,16 @@ export class CouponsService {
       platformFundingRate = 0;
     } else {
       if (fundingSource === CouponFundingSource.CO_FUNDED) {
-        shopFundingRate = dto.shopFundingRate !== undefined ? Number(dto.shopFundingRate) : 50;
-        platformFundingRate = dto.platformFundingRate !== undefined ? Number(dto.platformFundingRate) : 50;
+        shopFundingRate =
+          dto.shopFundingRate !== undefined ? Number(dto.shopFundingRate) : 50;
+        platformFundingRate =
+          dto.platformFundingRate !== undefined
+            ? Number(dto.platformFundingRate)
+            : 50;
         if (shopFundingRate + platformFundingRate !== 100) {
-          throw new BadRequestException('Tổng tỷ lệ đồng tài trợ giữa Shop và Sàn phải bằng 100%');
+          throw new BadRequestException(
+            'Tổng tỷ lệ đồng tài trợ giữa Shop và Sàn phải bằng 100%',
+          );
         }
       } else if (fundingSource === CouponFundingSource.PLATFORM_FUNDED) {
         shopFundingRate = 0;
@@ -915,7 +949,9 @@ export class CouponsService {
             : null,
           usageLimitTotal: dto.usageLimitTotal || null,
           usageLimitPerCustomer: dto.usageLimitPerCustomer || 1,
-          budgetTotal: dto.budgetTotal ? new Prisma.Decimal(dto.budgetTotal) : null,
+          budgetTotal: dto.budgetTotal
+            ? new Prisma.Decimal(dto.budgetTotal)
+            : null,
           startsAt,
           expiresAt,
           scopeType: dto.scopeType || CouponScope.STORE_WIDE,
@@ -1161,7 +1197,8 @@ export class CouponsService {
       if (
         dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED ||
         dto.fundingSource === CouponFundingSource.CO_FUNDED ||
-        (dto.platformFundingRate !== undefined && Number(dto.platformFundingRate) > 0)
+        (dto.platformFundingRate !== undefined &&
+          Number(dto.platformFundingRate) > 0)
       ) {
         throw new ForbiddenException(
           'Gian hàng không có quyền chỉ định nền tảng SCANMS đồng tài trợ ngân sách. Chỉ Quản trị viên (Admin) mới có thẩm quyền phê duyệt.',
@@ -1171,9 +1208,12 @@ export class CouponsService {
 
     if (dto.scopeType !== undefined) data.scopeType = dto.scopeType;
     if (isAdmin) {
-      if (dto.fundingSource !== undefined) data.fundingSource = dto.fundingSource;
-      if (dto.shopFundingRate !== undefined) data.shopFundingRate = new Prisma.Decimal(dto.shopFundingRate);
-      if (dto.platformFundingRate !== undefined) data.platformFundingRate = new Prisma.Decimal(dto.platformFundingRate);
+      if (dto.fundingSource !== undefined)
+        data.fundingSource = dto.fundingSource;
+      if (dto.shopFundingRate !== undefined)
+        data.shopFundingRate = new Prisma.Decimal(dto.shopFundingRate);
+      if (dto.platformFundingRate !== undefined)
+        data.platformFundingRate = new Prisma.Decimal(dto.platformFundingRate);
     }
     if (dto.stackableWithProductDiscount !== undefined)
       data.stackableWithProductDiscount = dto.stackableWithProductDiscount;
@@ -1191,7 +1231,11 @@ export class CouponsService {
       data: {
         userId,
         action: 'COUPON_POLICY_UPDATED',
-        details: { couponId, storeId, changes: JSON.parse(JSON.stringify(dto)) },
+        details: {
+          couponId,
+          storeId,
+          changes: JSON.parse(JSON.stringify(dto)),
+        },
         ipAddress: ipAddress || null,
       },
     });
@@ -1331,7 +1375,12 @@ export class CouponsService {
       sessionId && sessionId.trim()
         ? `sess_${sessionId.trim()}`
         : ipAddress || 'anon';
-    await this.checkRateLimit(`coupon_val_${rateLimitKey}`, 10, 60 * 1000, true);
+    await this.checkRateLimit(
+      `coupon_val_${rateLimitKey}`,
+      10,
+      60 * 1000,
+      true,
+    );
 
     const codeNormalized = dto.code.trim().toUpperCase();
 
@@ -1435,16 +1484,23 @@ export class CouponsService {
     // 5. Check Customer Limit (Section 27)
     const customerPhone = dto.customerPhone?.trim();
     if (userId || customerPhone) {
-      const customerRedemptionsCount = await this.prisma.couponRedemption.count({
-        where: {
-          couponId: coupon.id,
-          status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.RESERVED] },
-          OR: [
-            ...(userId ? [{ customerId: userId }] : []),
-            ...(customerPhone ? [{ customerPhone }] : []),
-          ],
+      const customerRedemptionsCount = await this.prisma.couponRedemption.count(
+        {
+          where: {
+            couponId: coupon.id,
+            status: {
+              in: [
+                CouponRedemptionStatus.USED,
+                CouponRedemptionStatus.RESERVED,
+              ],
+            },
+            OR: [
+              ...(userId ? [{ customerId: userId }] : []),
+              ...(customerPhone ? [{ customerPhone }] : []),
+            ],
+          },
         },
-      });
+      );
 
       if (customerRedemptionsCount >= coupon.usageLimitPerCustomer) {
         await this.recordValidationFailure(rateLimitKey);
@@ -1517,9 +1573,7 @@ export class CouponsService {
           allowedCategories.has(prod.categoryName.toLowerCase());
       } else if (coupon.scopeType === CouponScope.CAMPAIGN) {
         isEligible =
-          campaignProductIds.size > 0
-            ? campaignProductIds.has(prod.id)
-            : true;
+          campaignProductIds.size > 0 ? campaignProductIds.has(prod.id) : true;
       }
 
       if (isEligible) {
@@ -1532,7 +1586,8 @@ export class CouponsService {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
         errorCode: 'COUPON_NOT_APPLICABLE',
-        message: 'Không có sản phẩm nào trong giỏ hàng thỏa mãn phạm vi áp dụng của mã.',
+        message:
+          'Không có sản phẩm nào trong giỏ hàng thỏa mãn phạm vi áp dụng của mã.',
       });
     }
 
@@ -1541,7 +1596,8 @@ export class CouponsService {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
         errorCode: 'COUPON_NOT_STACKABLE',
-        message: 'Mã giảm giá này không được áp dụng đồng thời với sản phẩm đang có giảm giá trực tiếp.',
+        message:
+          'Mã giảm giá này không được áp dụng đồng thời với sản phẩm đang có giảm giá trực tiếp.',
       });
     }
 
@@ -1557,7 +1613,8 @@ export class CouponsService {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
         errorCode: 'COUPON_NOT_STACKABLE',
-        message: 'Mã giảm giá này không thể kết hợp với voucher toàn sàn SCANMS.',
+        message:
+          'Mã giảm giá này không thể kết hợp với voucher toàn sàn SCANMS.',
       });
     }
 

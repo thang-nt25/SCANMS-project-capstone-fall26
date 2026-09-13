@@ -12,11 +12,7 @@ import {
   IsBoolean,
   ValidateIf,
 } from 'class-validator';
-import {
-  DiscountType,
-  CouponScope,
-  CouponFundingSource,
-} from '@prisma/client';
+import { DiscountType, CouponScope, CouponFundingSource } from '@prisma/client';
 
 export class ApproveCouponDto {
   @ApiProperty({
@@ -24,11 +20,14 @@ export class ApproveCouponDto {
     description: 'Loại giảm giá (PERCENTAGE hoặc FIXED_AMOUNT)',
     example: DiscountType.PERCENTAGE,
   })
-  @IsEnum(DiscountType, { message: 'Loại giảm giá phải là PERCENTAGE hoặc FIXED_AMOUNT' })
+  @IsEnum(DiscountType, {
+    message: 'Loại giảm giá phải là PERCENTAGE hoặc FIXED_AMOUNT',
+  })
   discountType: DiscountType;
 
   @ApiProperty({
-    description: 'Giá trị giảm (% nếu là PERCENTAGE, số tiền nếu là FIXED_AMOUNT)',
+    description:
+      'Giá trị giảm (% nếu là PERCENTAGE, số tiền nếu là FIXED_AMOUNT)',
     example: 10,
   })
   @IsNumber({}, { message: 'Giá trị giảm giá phải là số' })
@@ -86,7 +85,10 @@ export class ApproveCouponDto {
     example: '2026-09-01T00:00:00.000Z',
   })
   @IsOptional()
-  @IsDateString({}, { message: 'Thời điểm bắt đầu phải đúng định dạng ISO 8601' })
+  @IsDateString(
+    {},
+    { message: 'Thời điểm bắt đầu phải đúng định dạng ISO 8601' },
+  )
   startsAt?: string;
 
   @ApiPropertyOptional({
@@ -94,7 +96,10 @@ export class ApproveCouponDto {
     example: '2026-10-01T23:59:59.000Z',
   })
   @IsOptional()
-  @IsDateString({}, { message: 'Thời điểm hết hạn phải đúng định dạng ISO 8601' })
+  @IsDateString(
+    {},
+    { message: 'Thời điểm hết hạn phải đúng định dạng ISO 8601' },
+  )
   expiresAt?: string;
 
   @ApiPropertyOptional({

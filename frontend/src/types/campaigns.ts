@@ -9,7 +9,7 @@ export interface Campaign {
   endDate: string;
   isActive: boolean;
   createdAt: string;
-  store?: { id: string; name: string; logoUrl?: string };
+  store?: { id: string; name: string; logoUrl?: string; defaultCommissionRate?: number };
   participants?: CampaignParticipant[];
 }
 
@@ -27,23 +27,34 @@ export interface CampaignParticipant {
 // Loại thẻ mời VIP được parse từ chat message
 export interface CampaignInviteCard {
   type: 'CAMPAIGN_INVITE';
+  participantId?: string;
   campaignId: string;
   campaignName: string;
   bonusCommissionRate: number;
   startDate: string;
   endDate: string;
+  storeId?: string;
+  storeName?: string;
+  storeLogoUrl?: string | null;
+  personalMessage?: string | null;
+  invitedAt?: string;
 }
 
 export interface CampaignAcceptedCard {
   type: 'CAMPAIGN_ACCEPTED';
+  participantId?: string;
   campaignId: string;
   campaignName: string;
+  acceptedAt?: string;
 }
 
 export interface CampaignRejectedCard {
   type: 'CAMPAIGN_REJECTED';
+  participantId?: string;
   campaignId: string;
   campaignName: string;
+  rejectedAt?: string;
 }
 
 export type ChatCard = CampaignInviteCard | CampaignAcceptedCard | CampaignRejectedCard;
+

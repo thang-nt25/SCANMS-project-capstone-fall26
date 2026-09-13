@@ -146,7 +146,151 @@
   3. Xuất trọn bộ 22 file ảnh tĩnh độ phân giải cao 1440x1024 vào thư mục dự án `docs/ui-ux/NGUYENDINHTUAN/figma-exports/` với tên file quy chuẩn tiện kéo thả trực tiếp vào Figma.
   4. Tính năng Dual-Mode trên Canvas: Cho phép chuyển đổi linh hoạt giữa "Chế độ Ảnh Figma 1440x1024" (siêu nhẹ, nét căng) và "Chế độ Web Live Iframe" (tương tác trực tiếp).
   5. Bộ công cụ điều khiển Canvas: Phóng to thu nhỏ tự do (Ctrl + Wheel), 3 mức zoom định sẵn (14% Toàn cảnh, 32% Trung bình, 100% Nét thật), nút kéo chuột toàn canvas (Pan) và nút tải ảnh PNG riêng lẻ cho từng khung vẽ.
-- **File thực thi**: `docs/ui-ux/NGUYENDINHTUAN/figma-board.html`, `docs/ui-ux/NGUYENDINHTUAN/figma-exports/*`, `scratch/export-all-figma.js`.
+---
+
+### [2026-09-13] Thành viên: Nguyễn Đình Tuấn (Frontend & Backend Developer)
+- **Trạng thái**: COMPLETED (100% Chức Năng FR-15 — Landing Page Sản Phẩm & Video Review)
+- **Hạng mục đã thực hiện**:
+  1. Phê duyệt chính thức và đồng bộ toàn văn 45 mục và 20 quyết định nghiệp vụ FR-15 vào `docs/FR-15_LANDING_PAGE_SAN_PHAM_VIDEO_REVIEW_DUYET_NGHIEP_VU.txt`.
+  2. Backend NestJS:
+     - Bổ sung 2 endpoint công khai `GET /products/:idOrSlug/landing` và alias `GET /products/landing/:idOrSlug`.
+     - Hiện thực hàm `getLandingPageData` cách ly an toàn dữ liệu công khai (ẩn hoa hồng nội bộ, ẩn deletedAt).
+     - Thuật toán che tên khách hàng tự động `maskCustomerName` (VD: `Nguyễn Đ*** T***`) bảo vệ quyền riêng tư.
+     - Tự động sắp xếp ưu tiên Video Review của đúng KOL referral lên đầu khi có cookie/query referral.
+     - Viết bộ unit test `products.landing.spec.ts` đạt 6/6 test pass 100%.
+  3. Frontend React (SCANMS Buyer Landing Page):
+     - Thiết kế chuẩn nhận diện Vàng Be (Warm Sand & Brand Gold): Canvas `#FAF8F5`, Sand `#F3EFE6`, Brand Gold `#C59B58`.
+     - Thư viện ảnh sản phẩm kèm placeholder SVG trung tính SCANMS (không dùng ảnh ngẫu nhiên).
+     - Trình phát Video Review KOL hiện đại: play/pause, tua, âm lượng, toàn màn hình, không autoplay có tiếng, thẻ KOL và nhãn minh bạch tiếp thị.
+     - Đánh giá khách hàng xác minh: điểm trung bình sao, phân bố sao, huy hiệu `✓ Đã mua hàng`.
+     - Tích hợp Coupon thật FR-12 gọi `POST /coupons/validate`.
+     - Tích hợp Guest Checkout thật FR-16: Form 1 chạm, gọi `POST /checkout` kèm cookie `scanms_attr`, trả về mã đơn hàng thật và điều hướng theo dõi hành trình đơn hàng.
+     - Mobile Sticky Action Bar giúp thao tác mua hàng tiện lợi khi cuộn.
+- **File thực thi**: `backend/src/modules/products/products.controller.ts`, `backend/src/modules/products/products.service.ts`, `backend/src/modules/products/tests/products.landing.spec.ts`, `frontend/src/pages/ProductDetailPage.tsx`, `docs/FR-15_LANDING_PAGE_SAN_PHAM_VIDEO_REVIEW_DUYET_NGHIEP_VU.txt`.
+
+---
+
+### [2026-09-13] Thành viên: Nguyễn Đình Tuấn (Fullstack & Security Engineering)
+- **Trạng thái**: COMPLETED (Khắc Phục Toàn Diện 15 Điểm Nghiêm Trọng & Nghiệp Vụ Chưa Hoàn Thành Cho FR-15)
+- **Hạng mục đã thực hiện**:
+  1. **Luồng đặt hàng Guest Checkout chuẩn xác**:
+     - Frontend chuyển từ gọi `POST /checkout` sang gọi đúng endpoint hệ sinh thái backend: `POST /api/orders`.
+     - Chuẩn hóa đầy đủ DTO `CreateOrderDto`: sinh `idempotencyKey` UUID bắt buộc chống gửi trùng lặp, gửi `orderNotes` (thay vì note), `couponCode`, `paymentMethod`, và danh sách `items: [{ productId, quantity }]`.
+     - Không gửi đơn giá đã trừ chiết khấu; backend tự động truy xuất giá gốc từ cơ sở dữ liệu và tính toán giảm giá theo ngân sách coupon.
+  2. **Xóa bỏ hoàn toàn mã đơn giả lập**:
+     - Loại bỏ cơ chế tự sinh mã `ORDER-*` và `SCANMS-*` ngẫu nhiên trên frontend khi backend phản hồi bất thường.
+     - Frontend chỉ hiển thị trạng thái đặt hàng thành công khi backend trả về bản ghi đơn hàng thật với `id` (UUID) và `externalOrderSn` (hoặc `orderCode`) hợp lệ; nếu không sẽ báo lỗi chi tiết để khách thử lại.
+  3. **Xóa bỏ fallback coupon giảm 10% hard-code**:
+     - Loại bỏ hoàn toàn dòng lệnh tự gán giảm giá 10% khi API backend trả về mức giảm 0đ.
+     - Nếu mã coupon không có chiết khấu hoặc không đủ điều kiện đơn hàng, hệ thống hiển thị thông báo từ chối minh bạch và hủy trạng thái áp dụng mã.
+  4. **Triệt tiêu lỗ hổng giả mạo KOL qua query `?kolId=...`**:
+     - Loại bỏ hoàn toàn tham số `kolId` khỏi các API công khai `ProductsController` và `PublicProductsController`.
+     - Backend bắt buộc giải mã phiên tiếp thị từ Cookie định danh khách ghé thăm đã ký HMAC SHA-256 (`scanms_attr` / `scanms_attribution`) và kiểm tra đối chiếu trực tiếp với bảng `AttributionSession` trong database.
+  5. **Bảo mật phiên Attribution theo đúng chuẩn FR-13**:
+     - Chấm dứt việc tự coi cookie là JSON Base64 không an toàn.
+     - Tích hợp hàm bảo mật `verifyOpaqueVisitorToken`, hash SHA-256 `visitorId` để tìm kiếm session, xác minh trạng thái `ACTIVE`, kiểm tra thời hạn `expiresAt` và trạng thái link `referralLink.deletedAt`.
+  6. **Sửa thuật toán ưu tiên Video Review KOL**:
+     - Loại bỏ việc gán video đầu tiên cho KOL referral.
+     - Bổ sung trường `collaboratorId` vào `MediaAsset`. Thuật toán sắp xếp ưu tiên 3 cấp rõ ràng: (1) Video của đúng KOL referral được khách hàng theo dõi $\rightarrow$ (2) Video nổi bật của Shop (`isFeatured: true`) $\rightarrow$ (3) Video đã duyệt mới nhất theo thời gian.
+  7. **Hệ thống kiểm duyệt đa cấp cho Media (Media Moderation Workflow)**:
+     - Mở rộng Prisma schema: thêm enum `MediaAssetStatus` (`PENDING`, `APPROVED`, `REJECTED`, `HIDDEN`), các trường `collaboratorId`, `reviewedBy`, `reviewedAt`, `rejectionReason`, `isFeatured`, `posterUrl`, `caption`.
+     - Viết migration `20260913020000_fr15_media_review_moderation` và deploy thành công lên cơ sở dữ liệu Supabase PostgreSQL.
+     - Landing page công khai chỉ truy vấn các video có trạng thái `APPROVED` và `isDeleted: false`.
+  8. **API nộp và phê duyệt video cho KOL & Shop**:
+     - Bổ sung API `POST /api/media/kol-submission` cho vai trò `COLLABORATOR` (tạo video ở trạng thái `PENDING`).
+     - Bổ sung API `PATCH /api/media/:id/review` cho `SHOP_MANAGER` (chỉ được duyệt media của shop mình) và `SYSTEM_ADMIN` (duyệt toàn sàn).
+  9. **Dữ liệu KOL thật từ Database**:
+     - Chấm dứt việc tạo dữ liệu giả lập (tên mặc định, avatar DiceBear, tích xanh ảo).
+     - Truy vấn quan hệ `collaborator` và hồ sơ `collaboratorProfile`: lấy tên thật, ảnh đại diện thật và trạng thái `isVerified` dựa trên `kycStatus === 'VERIFIED'`.
+  10. **Kiểm duyệt Đánh giá khách hàng & Xác thực người mua**:
+      - Sửa mặc định `ProductReview.isApproved` thành `false` (mọi đánh giá mới đều phải qua quy trình kiểm duyệt).
+      - Đổi quan hệ `ProductReview` $\rightarrow$ `Product` sang `onDelete: Restrict` nhằm lưu giữ lịch sử kiểm toán.
+      - Gắn nhãn "Đã mua hàng" chỉ khi đơn hàng của khách đã chuyển sang trạng thái `DELIVERED` hoặc `COMPLETED`.
+  11. **Hiển thị điểm đánh giá chuẩn xác khi chưa có review**:
+      - Backend trả về `averageRating: null` khi tổng số review bằng 0 (không còn tự động trả về 5.0 sao).
+      - Frontend hiển thị nhãn "Chưa có đánh giá" kèm ngôi sao chưa kích hoạt.
+  12. **Loại bỏ hoàn toàn ảnh Unsplash ngẫu nhiên**:
+      - Làm sạch toàn bộ URL Unsplash khỏi backend và frontend; chỉ sử dụng ảnh chính thức từ sản phẩm hoặc placeholder SVG nội bộ SCANMS.
+  13. **Xóa bỏ fallback dựng dữ liệu ảo trên Frontend**:
+      - Loại bỏ đoạn code fallback sang `/products/:id` tự dựng fake store, tồn kho 10 và review 5 sao.
+      - Khi API lỗi hoặc sản phẩm ngừng kinh doanh, giao diện hiển thị thông báo lỗi rõ ràng kèm nút "Thử lại".
+  14. **Chính sách gian hàng thật từ cơ sở dữ liệu**:
+      - Mở rộng model `Store`: thêm `policyReturn`, `policyWarranty`, `policyShipping`.
+      - Backend trả về đúng cam kết do Shop cấu hình trong database.
+  15. **Trạng thái xác minh và khóa tài khoản Shop**:
+      - Mở rộng model `Store`: thêm `isActive`, `isVerified`.
+      - Backend kiểm tra đồng thời `store.isActive` và tài khoản chủ shop `store.owner.isActive` (ném lỗi 403 Forbidden nếu chủ shop đang bị khóa).
+  16. **Các tính năng bổ sung hoàn thiện**:
+      - Endpoint RESTful công khai: `GET /api/public/products/:idOrSlug/landing` có đầy đủ tài liệu OpenAPI/Swagger (mô tả lỗi 400, 404, 410, 429, 500).
+      - Bộ nhớ đệm (In-memory Cache 30s) và cơ chế tự động giải phóng (Invalidation) khi cập nhật/xóa sản phẩm.
+      - Chống mã độc XSS: Kiểm tra Allowlist URL cho video và hình ảnh (`isSafeUrl`, `validateAllowedUrl`).
+      - SEO động, Open Graph và Product Schema.org JSON-LD tự động cập nhật theo sản phẩm.
+      - Trình phát video nâng cao: Chọn tốc độ phát (0.75x, 1x, 1.25x, 1.5x, 2x) và hiển thị phụ đề caption.
+      - Theo dõi sự kiện Analytics: `page_view`, `video_start`, `video_complete`, `cta_click`, `checkout_start`, `order_complete`.
+      - Bộ Unit Tests: `products.landing.spec.ts` (8/8 passed) và `media.moderation.spec.ts` (4/4 passed).
+- **File thực thi**:
+  - `backend/prisma/schema.prisma`
+  - `backend/prisma/migrations/20260913020000_fr15_media_review_moderation/migration.sql`
+  - `backend/src/modules/products/products.service.ts`
+  - `backend/src/modules/products/products.controller.ts`
+  - `backend/src/modules/products/public-products.controller.ts`
+  - `backend/src/modules/products/dto/landing-page-response.dto.ts`
+  - `backend/src/modules/products/dto/track-event.dto.ts`
+  - `backend/src/modules/products/products.module.ts`
+  - `backend/src/modules/media/media.controller.ts`
+  - `backend/src/modules/media/media.service.ts`
+  - `backend/src/modules/media/dto/submit-kol-video.dto.ts`
+  - `backend/src/modules/media/dto/review-media.dto.ts`
+  - `backend/src/modules/media/tests/media.moderation.spec.ts`
+  - `backend/src/modules/products/tests/products.landing.spec.ts`
+  - `backend/test/fr15-landing.e2e-spec.ts`
+  - `frontend/src/pages/ProductDetailPage.tsx`
+  - `frontend/src/pages/collaborator/MediaHubBrowserPage.tsx`
+  - `frontend/src/pages/merchant/ProductManagementPage.tsx`
+  - `docs/PROGRESS_LOG.md`
+
+---
+
+### 11. Sửa toàn diện 11 lỗi quan trọng còn lại của FR-15 (Landing Page & Video Review & Order Placement)
+- **Ngày hoàn thành**: 13/09/2026
+- **Người thực hiện**: Nguyễn Đình Tuấn (Pair programming cùng Leader Nguyễn Thành Thắng)
+- **Hạng mục đã xử lý**:
+  1. **E2E FR-15 xanh 100% & Khắc phục rò rỉ Scheduler/Prisma (`fr15-landing.e2e-spec.ts`)**:
+     - Sửa lỗi cascade xóa dữ liệu quan hệ đơn hàng: `commission`, `attributionAdjustment`, `couponRedemption`, `orderItem`, `order`, `mediaAsset`, `attributionSession`, `referralLink`, `product`, `storeCollaborator`, `store`, `user`.
+     - Tắt toàn bộ Cron Jobs và Timers của `SchedulerRegistry` trước khi teardown, dừng `ClickQueueService`, `CacheService`, đóng kết nối server và disconnect Prisma.
+     - Cấu hình `--forceExit` cho kịch bản `test:e2e`; chạy `npm run test:e2e -- --runInBand fr15-landing.e2e-spec.ts` hoàn thành 2/2 test và thoát ngay lập tức không bị treo.
+     - Xác nhận hoàn chỉnh luồng E2E: Cookie attribution $\rightarrow$ landing $\rightarrow$ ưu tiên video KOL $\rightarrow$ POST /orders $\rightarrow$ idempotency $\rightarrow$ tạo đơn hàng thật trong CSDL.
+  2. **Bắt buộc Secret Attribution từ môi trường**:
+     - Xóa bỏ fallback mặc định nguy hiểm `'scanms-jwt-secret-key-production'` trong `products.service.ts`.
+     - Inject `ConfigService`; ném `InternalServerErrorException` và chặn máy chủ khởi động khi thiếu `JWT_SECRET`.
+  3. **Kiểm tra quyền hợp tác trước khi KOL nộp video (`submitKolVideo`)**:
+     - Kiểm tra quan hệ `StoreCollaborator` trạng thái `APPROVED` giữa KOL và Store.
+     - Ném `ForbiddenException` nếu KOL chưa được duyệt làm CTV của Shop.
+  4. **Allowlist URL an toàn & Chống SSRF**:
+     - Kiểm tra domain chỉ cho phép các máy chủ kiểm định: `scanms.vn`, `cdn.scanms.vn`, `cloudinary.com`, `res.cloudinary.com`, `youtube.com`, `youtu.be`, `tiktok.com`, `vimeo.com`, `supabase.co`, `storage.googleapis.com`, `amazonaws.com`.
+     - Chặn giao thức nguy hiểm (`javascript:`, `data:`, `file:`) và chặn IP nội bộ/localhost (`127.0.0.1`, `localhost`, `10.x`, `172.16-31.x`, `192.168.x`, `169.254.x`) chống tấn công SSRF.
+  5. **Bắt buộc lý do kiểm duyệt khi REJECTED / HIDDEN**:
+     - `ReviewMediaDto` và `MediaService.reviewMedia()` chặn trạng thái `PENDING`.
+     - Bắt buộc cung cấp `rejectionReason` không được rỗng khi chọn `REJECTED` hoặc `HIDDEN`.
+  6. **Ghi vết kiểm toán AuditLog cho mọi hành động kiểm duyệt**:
+     - Tự động tạo bản ghi `AuditLog` ghi nhận `userId`, `action: MEDIA_REVIEWED`, `mediaId`, `productId`, `previousState`, `newState` và `reviewerRole`.
+  7. **Ràng buộc duy nhất 1 video featured cho cùng sản phẩm**:
+     - Thực thi Prisma Transaction: khi đặt video mới `isFeatured: true`, tự động cập nhật `isFeatured: false` cho toàn bộ video khác của cùng sản phẩm.
+  8. **Hạ tầng Cache Landing Page chuẩn Production**:
+     - Thay thế cache thô sơ bằng Bounded LRU Cache (giới hạn tối đa 500 mục, TTL 30s) chống tràn RAM.
+     - Sử dụng HMAC hash của visitorId trong key (không lưu raw cookie token).
+     - Triển khai cơ chế Invalidation chính xác theo SKU/Product ID (`invalidateGlobalLandingCache`) gọi ngay khi Shop duyệt/ẩn media, cập nhật sản phẩm.
+  9. **Giao diện người dùng Web cho nộp và duyệt video**:
+     - **KOL** (`MediaHubBrowserPage.tsx`): Bổ sung nút & modal "Nộp Video Review", cho phép chọn sản phẩm, nhập tiêu đề, link video, thumbnail và caption. Gọi API `POST /api/media/kol-submission`.
+     - **Shop Manager** (`ProductManagementPage.tsx`): Bổ sung nút action "Kiểm duyệt Video KOL Review" trên từng sản phẩm; mở modal danh sách video, xem link preview, duyệt video thường hoặc "Duyệt & Ghim nổi bật" (`isFeatured`), từ chối hoặc ẩn video có modal nhập lý do bắt buộc. Gọi API `PATCH /api/media/:id/review`.
+     - Đảm bảo 100% tuân thủ hệ màu **Vàng Be (Warm Sand & Brand Gold)**, không dùng nút xanh lá.
+  10. **SEO động chuẩn & Dispatch Analytics thật lên Backend**:
+      - Bổ sung dynamic `<link rel="canonical">` và đầy đủ thẻ Twitter Card (`twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`), thẻ `og:url`.
+      - `trackAnalytics()` tự động gửi sự kiện tới API `POST /api/public/products/analytics/events` để máy chủ ghi nhận và thống kê.
+  11. **Tài liệu Swagger / OpenAPI Schema chi tiết**:
+      - Tạo `ProductLandingResponseDto` mô tả đầy đủ cấu trúc JSON trả về của endpoint `GET /api/public/products/:idOrSlug/landing`.
+
+---
 
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:
 
@@ -155,3 +299,4 @@ Mỗi khi bạn hoặc thành viên trong nhóm hoàn thành một đoạn code 
 > `/log-work` hoặc *"Ghi nhận tiến độ cho [Tên] vừa làm [Chức năng]"*
 
 Skill **`scanms-progress-tracker`** sẽ tự động soi code thực tế và ghi vết nhật ký đóng góp chi tiết vào file này!
+

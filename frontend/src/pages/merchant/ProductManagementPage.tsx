@@ -20,6 +20,14 @@ import {
   Camera,
   UploadCloud,
   AlertCircle,
+  Video,
+  Star,
+  ExternalLink,
+  MessageSquareText,
+  Clock3,
+  ShieldCheck,
+  EyeOff,
+  Ban,
 } from 'lucide-react';
 import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
@@ -52,6 +60,187 @@ export default function ProductManagementPage() {
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<any | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  // Video Moderation State (FR-15 / FR-08)
+  const [selectedVideoProduct, setSelectedVideoProduct] = useState<Product | null>(null);
+  const [productVideos, setProductVideos] = useState<any[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [reviewingMediaId, setReviewingMediaId] = useState<string | null>(null);
+  const [rejectionModalMedia, setRejectionModalMedia] = useState<any | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+  const [rejectionActionType, setRejectionActionType] = useState<'REJECTED' | 'HIDDEN'>('REJECTED');
+
+  const localKolVideoStorageKey = 'scanms_kol_video_submissions';
+  const readLocalKolVideos = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(localKolVideoStorageKey) || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+  const saveLocalKolVideoStatus = (
+    mediaId: string,
+    status: 'APPROVED' | 'REJECTED' | 'HIDDEN',
+    options?: { isFeatured?: boolean; rejectionReason?: string | null },
+  ) => {
+    const localVideos = readLocalKolVideos();
+    const targetProductId = localVideos.find((video: any) => video.id === mediaId)?.productId;
+    const updated = localVideos.map((video: any) =>
+      video.id === mediaId
+        ? {
+            ...video,
+            status,
+            isApproved: status === 'APPROVED',
+            isFeatured: Boolean(options?.isFeatured),
+            rejectionReason: options?.rejectionReason || null,
+          }
+        : options?.isFeatured && video.productId === targetProductId
+          ? { ...video, isFeatured: false }
+          : video,
+    );
+    localStorage.setItem(localKolVideoStorageKey, JSON.stringify(updated));
+  };
+
+  const normalizeLocalKolVideo = (video: any, matchedProduct?: Product) => ({
+    ...video,
+    _localPrototype: true,
+    assetType: 'VIDEO',
+    urlOrContent: video.videoUrl?.startsWith('./assets/')
+      ? `/reference/${video.videoUrl.slice(2)}`
+      : video.videoUrl,
+    posterUrl: video.image?.startsWith('./assets/')
+      ? `/reference/${video.image.slice(2)}`
+      : video.image,
+    caption: video.caption || null,
+    collaborator: video.collaborator || { fullName: 'Trần Văn Nhật' },
+    product: matchedProduct
+      ? {
+          id: matchedProduct.id,
+          sku: matchedProduct.sku,
+          title: matchedProduct.title || (matchedProduct as any).name,
+        }
+      : video.product || {
+          id: video.productId,
+          sku: video.productId,
+          title: video.productName || 'Sản phẩm KOL đã chọn',
+        },
+  });
+
+  const pendingKolVideoCount = new Set(
+    [...readLocalKolVideos(), ...productVideos]
+      .filter((video: any) => video.status === 'PENDING')
+      .map((video: any) => video.id),
+  ).size;
+
+  // Customer Review Moderation State (FR-15: Đầy đủ 4 trạng thái nghiệp vụ)
+  const [showReviewModeration, setShowReviewModeration] = useState(false);
+  const [customerReviews, setCustomerReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [reviewActionId, setReviewActionId] = useState<string | null>(null);
+  const [reviewFilterStatus, setReviewFilterStatus] = useState<
+    'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN'
+  >('ALL');
+  const [rejectionModalReview, setRejectionModalReview] = useState<any | null>(null);
+  const [reviewRejectionActionType, setReviewRejectionActionType] = useState<
+    'REJECTED' | 'HIDDEN'
+  >('REJECTED');
+  const [reviewRejectionReasonInput, setReviewRejectionReasonInput] = useState('');
+
+  const getReviewStatus = (review: any): 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN' => {
+    if (review?.status) return review.status;
+    return review?.isApproved ? 'APPROVED' : 'PENDING';
+  };
+
+  const openReviewModeration = async () => {
+    setShowReviewModeration(true);
+    setLoadingReviews(true);
+    try {
+      const res = await api.get('/products/reviews/moderation');
+      setCustomerReviews(res.data?.items || res.data || []);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Không thể tải đánh giá khách hàng');
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
+  const handleApproveCustomerReview = async (review: any) => {
+    setReviewActionId(review.id);
+    try {
+      const res = await api.patch(`/products/reviews/${review.id}/moderation`, {
+        status: 'APPROVED',
+      });
+      const updated = res.data?.review;
+      setCustomerReviews((items) =>
+        items.map((item) =>
+          item.id === review.id
+            ? {
+                ...item,
+                status: 'APPROVED',
+                isApproved: true,
+                rejectionReason: null,
+                reviewedAt: updated?.reviewedAt || new Date().toISOString(),
+              }
+            : item,
+        ),
+      );
+      showToast('Đã phê duyệt và công khai đánh giá khách hàng');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Không thể cập nhật đánh giá');
+    } finally {
+      setReviewActionId(null);
+    }
+  };
+
+  const openReviewRejectionModal = (review: any, actionType: 'REJECTED' | 'HIDDEN') => {
+    setRejectionModalReview(review);
+    setReviewRejectionActionType(actionType);
+    setReviewRejectionReasonInput('');
+  };
+
+  const handleConfirmReviewRejection = async () => {
+    if (!rejectionModalReview) return;
+    const reason = reviewRejectionReasonInput.trim();
+    if (!reason || reason.length < 3) {
+      alert('Vui lòng nhập lý do kiểm duyệt (tối thiểu 3 ký tự)!');
+      return;
+    }
+
+    const reviewId = rejectionModalReview.id;
+    setReviewActionId(reviewId);
+    try {
+      const res = await api.patch(`/products/reviews/${reviewId}/moderation`, {
+        status: reviewRejectionActionType,
+        reason,
+      });
+      const updated = res.data?.review;
+      setCustomerReviews((items) =>
+        items.map((item) =>
+          item.id === reviewId
+            ? {
+                ...item,
+                status: reviewRejectionActionType,
+                isApproved: false,
+                rejectionReason: reason,
+                reviewedAt: updated?.reviewedAt || new Date().toISOString(),
+              }
+            : item,
+        ),
+      );
+      showToast(
+        reviewRejectionActionType === 'REJECTED'
+          ? 'Đã từ chối đánh giá khách hàng'
+          : 'Đã ẩn đánh giá khỏi trang sản phẩm',
+      );
+      setRejectionModalReview(null);
+      setReviewRejectionReasonInput('');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Không thể kiểm duyệt đánh giá');
+    } finally {
+      setReviewActionId(null);
+    }
+  };
+
   // Form State
   const [formSku, setFormSku] = useState('');
   const [formTitle, setFormTitle] = useState('');
@@ -65,6 +254,153 @@ export default function ProductManagementPage() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  const openProductLanding = (product: Product) => {
+    const productSlug = product.sku || product.id;
+    window.open(
+      `/products/${encodeURIComponent(productSlug)}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
+  };
+
+  const openAllVideoModeration = async () => {
+    setSelectedVideoProduct({
+      id: '__ALL__',
+      sku: 'TẤT CẢ',
+      title: 'Tất cả sản phẩm trong gian hàng',
+    } as Product);
+    setLoadingVideos(true);
+
+    const localVideos = readLocalKolVideos().map((video: any) => {
+      const matchedProduct = products.find((product) => {
+        const aliases = new Set([
+          product.id,
+          product.sku,
+          ...(product.sku === 'SR-VTC-15' ? ['SKIN-C15'] : []),
+        ]);
+        return aliases.has(video.productId);
+      });
+      return normalizeLocalKolVideo(video, matchedProduct);
+    });
+
+    try {
+      const res = await api.get('/media', {
+        params: { assetType: 'VIDEO', limit: 100 },
+      });
+      const merged = [...(res.data?.items || [])];
+      localVideos.forEach((video: any) => {
+        if (!merged.some((item: any) => item.id === video.id)) merged.push(video);
+      });
+      merged.sort((a: any, b: any) => {
+        if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
+        if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
+        return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+      });
+      setProductVideos(merged);
+    } catch (err) {
+      console.error('Lỗi khi tải toàn bộ video KOL:', err);
+      setProductVideos(localVideos);
+    } finally {
+      setLoadingVideos(false);
+    }
+  };
+
+  const handleApproveVideo = async (mediaId: string, isFeatured: boolean) => {
+    setReviewingMediaId(mediaId);
+    try {
+      const isLocalVideo = Boolean(
+        productVideos.find((video) => video.id === mediaId)?._localPrototype,
+      );
+      if (isLocalVideo) {
+        saveLocalKolVideoStatus(mediaId, 'APPROVED', { isFeatured });
+      } else {
+        await api.patch(`/media/${mediaId}/review`, {
+          status: 'APPROVED',
+          isFeatured,
+        });
+      }
+      showToast(
+        isFeatured
+          ? 'Đã duyệt và ghim video làm nổi bật Landing!'
+          : 'Đã phê duyệt video review thành công!',
+      );
+      setProductVideos((prev) =>
+        prev.map((v) => {
+          const target = prev.find((item) => item.id === mediaId);
+          const targetProductId = target?.product?.id || target?.productId;
+          if (v.id === mediaId) {
+            return {
+              ...v,
+              status: 'APPROVED',
+              isFeatured,
+              rejectionReason: null,
+            };
+          }
+          if (isFeatured && (v.product?.id || v.productId) === targetProductId) {
+            return { ...v, isFeatured: false };
+          }
+          return v;
+        }),
+      );
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Không thể phê duyệt video');
+    } finally {
+      setReviewingMediaId(null);
+    }
+  };
+
+  const openRejectionModal = (media: any, actionType: 'REJECTED' | 'HIDDEN') => {
+    setRejectionModalMedia(media);
+    setRejectionActionType(actionType);
+    setRejectionReasonInput('');
+  };
+
+  const handleConfirmRejection = async () => {
+    if (!rejectionModalMedia) return;
+    if (!rejectionReasonInput.trim()) {
+      alert('Bắt buộc phải nhập lý do khi từ chối hoặc ẩn video review!');
+      return;
+    }
+
+    const mediaId = rejectionModalMedia.id;
+    setReviewingMediaId(mediaId);
+    try {
+      if (rejectionModalMedia._localPrototype) {
+        saveLocalKolVideoStatus(mediaId, rejectionActionType, {
+          rejectionReason: rejectionReasonInput.trim(),
+        });
+      } else {
+        await api.patch(`/media/${mediaId}/review`, {
+          status: rejectionActionType,
+          rejectionReason: rejectionReasonInput.trim(),
+        });
+      }
+      showToast(
+        rejectionActionType === 'REJECTED'
+          ? 'Đã từ chối video review và lưu lý do kiểm duyệt.'
+          : 'Đã ẩn video khỏi Landing Page thành công.',
+      );
+      setProductVideos((prev) =>
+        prev.map((v) =>
+          v.id === mediaId
+            ? {
+                ...v,
+                status: rejectionActionType,
+                rejectionReason: rejectionReasonInput.trim(),
+                isFeatured: false,
+              }
+            : v,
+        ),
+      );
+      setRejectionModalMedia(null);
+      setRejectionReasonInput('');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Thao tác kiểm duyệt thất bại');
+    } finally {
+      setReviewingMediaId(null);
+    }
+  };
 
   // Thông báo trạng thái modal ra iframe cha để ẩn topbar & sidebar, mở toàn màn hình
   useEffect(() => {
@@ -307,14 +643,37 @@ export default function ProductManagementPage() {
         </div>
 
         {!isKol ? (
-          <Button
-            variant="amber"
-            size="md"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={openCreateModal}
-          >
-            Thêm sản phẩm
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="amber"
+              size="md"
+              icon={<Video className="w-4 h-4" />}
+              onClick={openAllVideoModeration}
+            >
+              <span className="inline-flex items-center gap-2">
+                Duyệt video KOL
+                <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#231D15] text-white text-[10px] font-extrabold inline-flex items-center justify-center">
+                  {pendingKolVideoCount}
+                </span>
+              </span>
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              icon={<MessageSquareText className="w-4 h-4" />}
+              onClick={openReviewModeration}
+            >
+              Duyệt đánh giá
+            </Button>
+            <Button
+              variant="amber"
+              size="md"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={openCreateModal}
+            >
+              Thêm sản phẩm
+            </Button>
+          </div>
         ) : (
           <Button
             variant="amber"
@@ -465,6 +824,15 @@ export default function ProductManagementPage() {
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openProductLanding(p)}
+                          className="w-8 h-8 rounded-lg border border-[#EAE4D7] text-[#B88E4F] hover:bg-[#FBF5EB] flex items-center justify-center transition cursor-pointer"
+                          title="Xem Landing Page công khai của sản phẩm"
+                          aria-label={`Xem trang mua hàng của ${p.title}`}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           type="button"
                           onClick={() => openEditModal(p)}
@@ -742,6 +1110,572 @@ export default function ProductManagementPage() {
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
               >
                 Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. MODAL KIỂM DUYỆT VIDEO REVIEW KOL (FR-15 / FR-08) */}
+      {selectedVideoProduct && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px] animate-fadeIn"
+          onClick={() => setSelectedVideoProduct(null)}
+        >
+          <div
+            className="bg-[#FAF8F5] rounded-2xl shadow-2xl border border-[#EEDFC6] w-full max-w-4xl text-left animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 bg-white border-b border-[#EAE4D7]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl flex items-center justify-center text-[#B88E4F] shrink-0">
+                  <Video className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#1A1612] m-0 flex items-center gap-2">
+                    {selectedVideoProduct.id === '__ALL__'
+                      ? 'Duyệt video KOL gửi đến Shop'
+                      : 'Kiểm duyệt Video KOL Review'}
+                    <Badge variant="amber" className="text-[10px] font-mono">
+                      {selectedVideoProduct.sku}
+                    </Badge>
+                  </h3>
+                  <p className="text-xs text-[#7D715E] m-0 mt-0.5 truncate max-w-md">
+                    {selectedVideoProduct.id === '__ALL__'
+                      ? 'Xem và xử lý toàn bộ video theo từng sản phẩm trong gian hàng.'
+                      : `Sản phẩm: ${selectedVideoProduct.title || (selectedVideoProduct as any).name}`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedVideoProduct(null)}
+                className="w-8 h-8 rounded-lg text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] flex items-center justify-center cursor-pointer transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+              {loadingVideos ? (
+                <div className="text-center py-10 text-xs text-[#7D715E]">
+                  Đang tải danh sách video review từ máy chủ...
+                </div>
+              ) : productVideos.length === 0 ? (
+                <div className="text-center py-10 bg-[#FAF8F5] rounded-xl border border-dashed border-[#EAE4D7] p-6">
+                  <Video className="w-8 h-8 text-[#7D715E]/40 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-[#1A1612] m-0">Chưa có video review nào</p>
+                  <p className="text-[11px] text-[#7D715E] mt-1 m-0">
+                    {selectedVideoProduct.id === '__ALL__'
+                      ? 'Hiện chưa có video KOL nào được gửi đến gian hàng.'
+                      : 'Khi KOL/CTV nộp video review cho sản phẩm này qua Media Hub, video sẽ xuất hiện tại đây để bạn kiểm duyệt.'}
+                  </p>
+                </div>
+              ) : (
+                productVideos.map((v: any) => {
+                  const isPending = v.status === 'PENDING';
+                  const isApproved = v.status === 'APPROVED';
+                  const isRejected = v.status === 'REJECTED';
+                  const isHidden = v.status === 'HIDDEN';
+
+                  return (
+                    <article
+                      key={v.id}
+                      className="overflow-hidden bg-white rounded-2xl border border-[#EAE4D7] shadow-[0_5px_18px_rgba(95,74,43,0.06)] text-xs"
+                    >
+                      <div className="grid lg:grid-cols-[minmax(300px,1.05fr)_minmax(0,1fr)]">
+                        <div className="bg-[#231D15] min-h-[210px] flex items-center justify-center relative">
+                          <video
+                            src={v.urlOrContent}
+                            poster={v.posterUrl || undefined}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="w-full aspect-video max-h-[330px] bg-black object-contain"
+                            aria-label={`Video review ${v.title || 'của KOL'}`}
+                          >
+                            Trình duyệt của bạn không hỗ trợ phát video này.
+                          </video>
+                          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/70 text-white text-[10px] font-bold backdrop-blur-sm pointer-events-none">
+                            <Video className="w-3 h-3" /> Video KOL gửi
+                          </span>
+                        </div>
+
+                        <div className="p-4 sm:p-5 flex flex-col min-w-0">
+                      <div className="space-y-2 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <strong className="text-sm font-bold text-[#1A1612] truncate">
+                            {v.title}
+                          </strong>
+                          {isPending && <Badge variant="amber">Chờ duyệt</Badge>}
+                          {isApproved && <Badge variant="success">Đã duyệt</Badge>}
+                          {isRejected && <Badge variant="danger">Bị từ chối</Badge>}
+                          {isHidden && <Badge variant="neutral">Đã ẩn</Badge>}
+                          {v.isFeatured && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C59B58] text-white">
+                              <Star className="w-2.5 h-2.5 fill-current" /> Nổi bật Landing
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-[11px] text-[#7D715E] flex items-center gap-2 flex-wrap">
+                          <span>KOL: <strong>{v.collaborator?.fullName || 'Nhà sáng tạo'}</strong></span>
+                          <span>•</span>
+                          <span>
+                            Sản phẩm:{' '}
+                            <strong className="text-[#1A1612]">
+                              {v.product?.title || v.productName || selectedVideoProduct.title}
+                            </strong>
+                            {v.product?.sku ? ` (${v.product.sku})` : ''}
+                          </span>
+                          <span>•</span>
+                          <a
+                            href={v.urlOrContent}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#B88E4F] hover:underline flex items-center gap-1 font-semibold"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Mở video trong tab mới
+                          </a>
+                        </div>
+
+                        {v.caption && (
+                          <p className="text-[11px] text-[#7D715E] bg-white p-2 rounded-lg border border-[#EAE4D7] italic m-0">
+                            "{v.caption}"
+                          </p>
+                        )}
+
+                        {v.rejectionReason && (
+                          <p className="text-[11px] text-rose-600 font-semibold m-0">
+                            Lý do từ chối/ẩn: {v.rejectionReason}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0 mt-4 pt-4 border-t border-[#EAE4D7]">
+                        {isPending && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={reviewingMediaId === v.id}
+                              onClick={() => handleApproveVideo(v.id, false)}
+                              className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition cursor-pointer disabled:opacity-50"
+                            >
+                              Duyệt
+                            </button>
+                            <button
+                              type="button"
+                              disabled={reviewingMediaId === v.id}
+                              onClick={() => handleApproveVideo(v.id, true)}
+                              className="px-2.5 py-1.5 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold text-xs hover:bg-[#F3EFE6] transition cursor-pointer disabled:opacity-50"
+                              title="Duyệt và đặt làm video nổi bật nhất trên Landing"
+                            >
+                              ⭐ Duyệt & Ghim
+                            </button>
+                            <button
+                              type="button"
+                              disabled={reviewingMediaId === v.id}
+                              onClick={() => openRejectionModal(v, 'REJECTED')}
+                              className="px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 transition cursor-pointer"
+                            >
+                              Từ chối
+                            </button>
+                          </>
+                        )}
+
+                        {isApproved && (
+                          <>
+                            {!v.isFeatured && (
+                              <button
+                                type="button"
+                                disabled={reviewingMediaId === v.id}
+                                onClick={() => handleApproveVideo(v.id, true)}
+                                className="px-2.5 py-1.5 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold text-xs hover:bg-[#F3EFE6] transition cursor-pointer"
+                              >
+                                Ghim nổi bật
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={reviewingMediaId === v.id}
+                              onClick={() => openRejectionModal(v, 'HIDDEN')}
+                              className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[#7D715E] font-bold text-xs hover:bg-slate-100 transition cursor-pointer"
+                            >
+                              Ẩn video
+                            </button>
+                          </>
+                        )}
+
+                        {(isRejected || isHidden) && (
+                          <button
+                            type="button"
+                            disabled={reviewingMediaId === v.id}
+                            onClick={() => handleApproveVideo(v.id, false)}
+                            className="px-2.5 py-1.5 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[#1A1612] font-bold text-xs hover:bg-white transition cursor-pointer"
+                          >
+                            Phục hồi duyệt
+                          </button>
+                        )}
+                      </div>
+                      </div>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="px-5 sm:px-6 py-3.5 bg-white border-t border-[#EAE4D7] flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedVideoProduct(null)}
+              >
+                Đóng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. MODAL NHẬP LÝ DO TỪ CHỐI / ẨN VIDEO REVIEW (BẮT BUỘC THEO FR-15) */}
+      {rejectionModalMedia && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px] animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6 text-left animate-in zoom-in-95 duration-150 flex flex-col gap-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#1A1612] m-0">
+                  {rejectionActionType === 'REJECTED' ? 'Từ chối video review' : 'Ẩn video review khỏi sàn'}
+                </h3>
+                <p className="text-xs text-[#7D715E] m-0 mt-0.5">
+                  Bắt buộc cung cấp lý do kiểm duyệt để lưu AuditLog
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-[#1A1612] block mb-1">
+                Lý do kiểm duyệt <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={rejectionReasonInput}
+                onChange={(e) => setRejectionReasonInput(e.target.value)}
+                placeholder="Ví dụ: Nội dung video chưa rõ nguồn gốc sản phẩm, âm thanh bị rè, hoặc vi phạm bản quyền..."
+                rows={3}
+                className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#B88E4F] resize-none"
+                required
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRejectionModalMedia(null)}
+              >
+                Hủy bỏ
+              </Button>
+              <button
+                type="button"
+                onClick={handleConfirmRejection}
+                disabled={!rejectionReasonInput.trim()}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. MODAL KIỂM DUYỆT ĐÁNH GIÁ KHÁCH HÀNG (FR-15: ĐẦY ĐỦ 4 TRẠNG THÁI & AUDIT LOG) */}
+      {showReviewModeration && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#231D15]/45 backdrop-blur-[3px] animate-fadeIn">
+          <section className="bg-[#FAF8F5] rounded-2xl shadow-[0_24px_80px_rgba(77,57,31,0.24)] border border-[#EEDFC6] w-full max-w-4xl max-h-[88vh] overflow-hidden flex flex-col">
+            <header className="flex items-start justify-between gap-4 bg-white border-b border-[#EAE4D7] px-5 sm:px-6 py-5">
+              <div className="flex items-start gap-3.5 min-w-0">
+                <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+                  <MessageSquareText className="w-5 h-5" />
+                </div>
+                <div>
+                <h2 className="text-xl font-extrabold text-[#1A1612] m-0 tracking-tight">Kiểm duyệt đánh giá khách hàng</h2>
+                <p className="text-xs text-[#7D715E] mt-1.5 mb-0 leading-relaxed">
+                  Chỉ đánh giá được duyệt (APPROVED) mới hiển thị công khai trên landing page sản phẩm.
+                </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReviewModeration(false)}
+                className="w-9 h-9 rounded-xl border border-transparent hover:border-[#EAE4D7] hover:bg-[#F3EFE6] text-[#7D715E] hover:text-[#1A1612] flex items-center justify-center transition cursor-pointer shrink-0"
+                aria-label="Đóng"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </header>
+
+            {/* Khay tab lọc theo 4 trạng thái nghiệp vụ */}
+            <div className="flex gap-2 px-5 sm:px-6 py-3.5 overflow-x-auto bg-white border-b border-[#EAE4D7]">
+              {[
+                { key: 'ALL', label: 'Tất cả', count: customerReviews.length, icon: MessageSquareText },
+                {
+                  key: 'PENDING',
+                  label: 'Chờ duyệt',
+                  count: customerReviews.filter((r) => getReviewStatus(r) === 'PENDING').length,
+                  icon: Clock3,
+                },
+                {
+                  key: 'APPROVED',
+                  label: 'Đã duyệt',
+                  count: customerReviews.filter((r) => getReviewStatus(r) === 'APPROVED').length,
+                  icon: ShieldCheck,
+                },
+                {
+                  key: 'REJECTED',
+                  label: 'Bị từ chối',
+                  count: customerReviews.filter((r) => getReviewStatus(r) === 'REJECTED').length,
+                  icon: Ban,
+                },
+                {
+                  key: 'HIDDEN',
+                  label: 'Đã ẩn',
+                  count: customerReviews.filter((r) => getReviewStatus(r) === 'HIDDEN').length,
+                  icon: EyeOff,
+                },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setReviewFilterStatus(tab.key as any)}
+                  className={`h-9 px-3 rounded-xl text-xs font-bold transition cursor-pointer inline-flex items-center gap-2 whitespace-nowrap border ${
+                    reviewFilterStatus === tab.key
+                      ? 'bg-[#231D15] text-white border-[#231D15] shadow-sm'
+                      : 'bg-[#FAF8F5] text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] border-[#EAE4D7]'
+                  }`}
+                >
+                  <tab.icon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
+                  <span className={`min-w-5 h-5 px-1.5 rounded-md flex items-center justify-center text-[10px] ${reviewFilterStatus === tab.key ? 'bg-white/15 text-white' : 'bg-white text-[#7D715E] border border-[#EAE4D7]'}`}>{tab.count}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="overflow-y-auto px-5 sm:px-6 py-5 space-y-3 flex-1">
+              {loadingReviews ? (
+                <p className="text-sm text-[#7D715E] text-center py-6">Đang tải danh sách đánh giá...</p>
+              ) : customerReviews.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#EAE4D7] bg-[#FAF8F5] p-8 text-center text-sm text-[#7D715E]">
+                  Chưa có đánh giá nào từ khách hàng.
+                </div>
+              ) : (
+                (() => {
+                  const filtered = customerReviews.filter((review) => {
+                    if (reviewFilterStatus === 'ALL') return true;
+                    return getReviewStatus(review) === reviewFilterStatus;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="rounded-xl border border-dashed border-[#EAE4D7] bg-[#FAF8F5] p-8 text-center text-sm text-[#7D715E]">
+                        Không có đánh giá nào ở trạng thái này.
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((review) => {
+                    const currentStatus = getReviewStatus(review);
+                    return (
+                      <article
+                        key={review.id}
+                        className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 flex flex-col sm:flex-row gap-4 justify-between shadow-[0_4px_16px_rgba(95,74,43,0.05)] hover:border-[#E0CDAE] transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                            <strong className="text-sm text-[#1A1612]">
+                              {review.product?.title || 'Sản phẩm'}
+                            </strong>
+                            {review.product?.sku && (
+                              <span className="text-xs text-[#7D715E] font-mono">
+                                ({review.product.sku})
+                              </span>
+                            )}
+                            <span className="text-sm font-bold text-[#B88E4F] tracking-[1px]" aria-label={`${review.rating || 5} trên 5 sao`}>
+                              {'★'.repeat(Math.max(1, Math.min(5, review.rating || 5)))}
+                            </span>
+                            {currentStatus === 'APPROVED' && <Badge variant="success">Đã duyệt</Badge>}
+                            {currentStatus === 'REJECTED' && <Badge variant="danger">Bị từ chối</Badge>}
+                            {currentStatus === 'HIDDEN' && <Badge variant="neutral">Đã ẩn</Badge>}
+                            {currentStatus === 'PENDING' && <Badge variant="amber">Chờ duyệt</Badge>}
+                          </div>
+
+                          <p className="text-sm text-[#3B3127] my-3 leading-6 max-w-[65ch]">
+                            {review.comment || 'Khách không để lại nội dung bình luận.'}
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-[#7D715E]">
+                            <span className="font-medium text-[#1A1612]">
+                              {review.customerName || 'Khách hàng ẩn danh'}
+                            </span>
+                            {review.createdAt && (
+                              <span>• {new Date(review.createdAt).toLocaleDateString('vi-VN')}</span>
+                            )}
+                            {review.reviewedAt && (
+                              <span>
+                                • Xử lý lúc {new Date(review.reviewedAt).toLocaleDateString('vi-VN')}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Hiển thị lý do từ chối hoặc ẩn nếu có */}
+                          {(currentStatus === 'REJECTED' || currentStatus === 'HIDDEN') &&
+                            review.rejectionReason && (
+                              <div className="mt-2.5 p-2.5 rounded-lg bg-rose-50 border border-rose-200/80 flex items-start gap-2 text-xs text-rose-800">
+                                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-bold">Lý do kiểm duyệt: </span>
+                                  <span>{review.rejectionReason}</span>
+                                </div>
+                              </div>
+                            )}
+                        </div>
+
+                        <div className="flex sm:flex-col gap-2 shrink-0 self-stretch sm:self-center sm:min-w-[112px] justify-center">
+                          {currentStatus === 'PENDING' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="amber"
+                                icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                                disabled={reviewActionId === review.id}
+                                onClick={() => handleApproveCustomerReview(review)}
+                              >
+                                Duyệt
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                icon={<Ban className="w-3.5 h-3.5" />}
+                                className="text-rose-600 hover:bg-rose-50 hover:border-rose-300"
+                                disabled={reviewActionId === review.id}
+                                onClick={() => openReviewRejectionModal(review, 'REJECTED')}
+                              >
+                                Từ chối
+                              </Button>
+                            </>
+                          )}
+
+                          {currentStatus === 'APPROVED' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                icon={<EyeOff className="w-3.5 h-3.5" />}
+                                disabled={reviewActionId === review.id}
+                                onClick={() => openReviewRejectionModal(review, 'HIDDEN')}
+                              >
+                                Ẩn
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                icon={<Ban className="w-3.5 h-3.5" />}
+                                className="text-rose-600 hover:bg-rose-50 hover:border-rose-300"
+                                disabled={reviewActionId === review.id}
+                                onClick={() => openReviewRejectionModal(review, 'REJECTED')}
+                              >
+                                Từ chối
+                              </Button>
+                            </>
+                          )}
+
+                          {currentStatus === 'REJECTED' && (
+                            <Button
+                              size="sm"
+                              variant="amber"
+                              icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                              disabled={reviewActionId === review.id}
+                              onClick={() => handleApproveCustomerReview(review)}
+                            >
+                              Duyệt lại
+                            </Button>
+                          )}
+
+                          {currentStatus === 'HIDDEN' && (
+                            <Button
+                              size="sm"
+                              variant="amber"
+                              icon={<ShieldCheck className="w-3.5 h-3.5" />}
+                              disabled={reviewActionId === review.id}
+                              onClick={() => handleApproveCustomerReview(review)}
+                            >
+                              Công khai lại
+                            </Button>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  });
+                })()
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* 8. MODAL NHẬP LÝ DO TỪ CHỐI / ẨN ĐÁNH GIÁ KHÁCH HÀNG (FR-15 AUDIT LOG) */}
+      {rejectionModalReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px] animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6 text-left animate-in zoom-in-95 duration-150 flex flex-col gap-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#1A1612] m-0">
+                  {reviewRejectionActionType === 'REJECTED'
+                    ? 'Từ chối đánh giá khách hàng'
+                    : 'Ẩn đánh giá khỏi landing sản phẩm'}
+                </h3>
+                <p className="text-xs text-[#7D715E] m-0 mt-0.5">
+                  Bắt buộc cung cấp lý do kiểm duyệt để lưu AuditLog
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-[#1A1612] block mb-1">
+                Lý do kiểm duyệt <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={reviewRejectionReasonInput}
+                onChange={(e) => setReviewRejectionReasonInput(e.target.value)}
+                placeholder="Ví dụ: Đánh giá có ngôn từ khiếm nhã, sai thông tin sản phẩm, hoặc spam..."
+                rows={3}
+                className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#B88E4F] resize-none"
+                required
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRejectionModalReview(null)}
+              >
+                Hủy bỏ
+              </Button>
+              <button
+                type="button"
+                onClick={handleConfirmReviewRejection}
+                disabled={!reviewRejectionReasonInput.trim()}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                Xác nhận
               </button>
             </div>
           </div>

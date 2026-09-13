@@ -34,22 +34,31 @@ async function bootstrap() {
       'api/r/:shortCode',
       'r/rate-limit/health',
       'api/referral-links/rate-limit/health',
+      'products/:idOrSlug',
+      'p/:idOrSlug',
     ],
   });
-  const allowedOrigins = (
-    process.env.CORS_ORIGINS ||
-    process.env.FRONTEND_URL ||
-    'http://localhost:5173'
-  )
-    .split(',')
-    .map((origin) => origin.trim().replace(/\/$/, ''))
-    .filter(Boolean);
+  const rawOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : []),
+    ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : []),
+  ];
+  const allowedOrigins = Array.from(
+    new Set(rawOrigins.map((origin) => origin.trim().replace(/\/$/, '')).filter(Boolean)),
+  );
 
   app.enableCors({
     origin: (origin, callback) => {
       // Cho phép request không có Origin (server-to-server/curl) và các frontend
-      // đã khai báo; tuyệt đối không dùng wildcard khi credentials=true.
-      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+      // đã khai báo hoặc localhost dev port
+      if (
+        !origin ||
+        allowedOrigins.includes(origin.replace(/\/$/, '')) ||
+        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+      ) {
         callback(null, true);
         return;
       }
@@ -57,7 +66,12 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Idempotency-Key'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'X-Idempotency-Key',
+    ],
   });
 
   app.useGlobalPipes(
