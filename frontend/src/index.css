@@ -155,10 +155,7 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
-button,
-input,
-select,
-textarea {
+button, input, select, textarea {
   font: inherit;
 }
 

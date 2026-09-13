@@ -1,4 +1,19 @@
-# React + TypeScript + Vite
+# SCANMS frontend
+
+Chạy giao diện đang phát triển bằng `npm.cmd run dev` trong thư mục `frontend`.
+Chạy bản build bằng `npm.cmd run preview`; lệnh này tự build lại trước khi mở
+preview để tránh phục vụ giao diện cũ còn trong `dist`.
+
+Trang chi trả dùng chung trang React tích hợp API qua hai đường dẫn:
+
+- `/app/payouts`: nhúng trang chi trả React trong sidebar/header prototype vàng be.
+- `/merchant/payouts`: trang React tích hợp API trong `src/pages/merchant/PayoutApprovalPage.tsx`.
+
+Khi kiểm tra giao diện, dùng cùng một đường dẫn và địa chỉ server. Trang `/`
+còn khôi phục màn hình prototype gần nhất từ localStorage. Thay đổi trong
+`docs/ui-ux/NGUYENDINHTUAN` không tự đồng bộ sang `public/reference`.
+
+## React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
