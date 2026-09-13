@@ -13,7 +13,7 @@ export function calculateCart(lines: CartLine[], products: Product[], creator: C
   // Demo eligibility follows product-to-coupon associations, not a global discount.
   const eligibleSubtotal = lines.reduce((sum, line) => {
     const product = products.find(p => p.id === line.productId);
-    return sum + (product?.kol.coupon === creator.coupon ? product.price * line.quantity : 0);
+    return sum + (product?.kol?.coupon === creator.coupon ? (product.price ?? 0) * line.quantity : 0);
   }, 0);
   const minimum = Number(creator.voucherInfo.minOrder.replace(/\D/g, ''));
   const maximum = Number(creator.voucherInfo.maxDiscount.replace(/\D/g, ''));

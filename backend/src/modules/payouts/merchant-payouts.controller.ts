@@ -41,7 +41,7 @@ import { PayoutBatchesService } from './payout-batches.service';
 @ApiTags('Merchant Payouts')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SHOP_MANAGER)
+@Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
 @Controller('stores/:storeId/payouts')
 export class MerchantPayoutsController {
   constructor(

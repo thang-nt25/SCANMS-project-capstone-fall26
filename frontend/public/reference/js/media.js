@@ -67,6 +67,57 @@ export const products = [
   },
 ];
 
+// Khôi phục các video do KOL nộp từ localStorage vào kho tài nguyên
+// ---------------------------------------------------------------------
+// LƯU TRỮ VÀ KHÔI PHỤC VIDEO REVIEW CỦA KOL TỪ LOCALSTORAGE
+// ---------------------------------------------------------------------
+const STORAGE_KEY_SUBMISSIONS = "scanms_kol_video_submissions";
+
+export function loadSavedSubmissions() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SUBMISSIONS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [
+    {
+      id: "SUBMISSION-INIT-01",
+      productId: "SKIN-C15",
+      productName: "Serum vitamin C 15%",
+      title: "Trải nghiệm thực tế Serum Vitamin C sau 14 ngày – Da sáng mờ thâm rõ rệt",
+      type: "video",
+      format: "MP4",
+      ratio: "9:16",
+      ratioClass: "ratio-9-16",
+      resolution: "1080 x 1920 px",
+      duration: "00:42",
+      durationSec: 42,
+      fps: "60 fps",
+      bitrate: "8.5 Mbps",
+      fileSize: "18.2 MB",
+      sizeBytes: 19084083,
+      downloads: 0,
+      isApproved: false,
+      isBroken: false,
+      isSubmission: true,
+      status: "PENDING",
+      image: productImage,
+      videoUrl: sampleVideoUrl,
+      recommendedChannels: "TikTok, Reels, Shorts",
+      tags: ["Review KOL", "Chờ duyệt", "Sora Skin"],
+      updatedAt: "Hôm nay",
+    },
+  ];
+}
+
+export function saveSubmissionsToStorage(list) {
+  try {
+    localStorage.setItem(STORAGE_KEY_SUBMISSIONS, JSON.stringify(list));
+  } catch (e) {}
+}
+
 // Kho tài nguyên đa phương tiện
 export const mediaAssets = [
   {
@@ -382,6 +433,19 @@ export const mediaAssets = [
 ];
 
 // 4 Mẫu nội dung Caption chuẩn hóa (không khẳng định chưa kiểm chứng)
+// Restore saved KOL submissions only after mediaAssets has been initialized.
+const storedSubs = loadSavedSubmissions();
+if (storedSubs.length > 0) {
+  storedSubs.forEach((sub) => {
+    const existing = mediaAssets.find((asset) => asset.id === sub.id);
+    if (existing) {
+      Object.assign(existing, sub);
+    } else {
+      mediaAssets.unshift(sub);
+    }
+  });
+}
+
 export const captionPresets = {
   short: {
     id: "short",
@@ -457,7 +521,8 @@ export const mediaState = {
   isRatioPopoverOpen: false,
   isMobileFilterDrawerOpen: false,
 
-  // Soạn Caption Studio
+  // Soạn Caption Studio (Mặc định thu gọn Accordion theo yêu cầu)
+  isCaptionAccordionOpen: false,
   activeCaptionPreset: "short", // short, review, offer, livestream
   customCaptionText: null, // null khi dùng mẫu gốc, chuỗi khi người dùng gõ sửa
   isCaptionModified: false,
@@ -471,8 +536,13 @@ export const mediaState = {
   isPreviewDrawerOpen: false,
   socialPreviewPlatform: "tiktok", // tiktok, facebook, threads
 
+  // Tabs góc nhìn: "shop" (Tài nguyên Shop) hoặc "my_reviews" (Video review của tôi)
+  activeTab: "shop",
+
   // Modals
-  activeModal: null, // preview-image, preview-video, guidelines, download-progress
+  activeModal: null, // preview-image, preview-video, guidelines, download-progress, submit-kol-video, confirm-delete-submission
+  submitForm: null,
+  deleteConfirmItem: null,
   selectedAsset: null,
   downloadProgress: 0,
   zoomLevel: 100,
@@ -483,6 +553,22 @@ export const mediaState = {
   videoVolume: 1,
   videoPlaybackRate: 1,
 };
+
+// Khởi tạo form nộp video review hoàn toàn sạch sẽ (FR-15)
+export function createCleanSubmitKolForm() {
+  return {
+    productId: "SKIN-C15",
+    title: "",
+    videoFile: null,
+    videoFileName: "",
+    videoFileSize: "",
+    videoPreviewUrl: "",
+    posterFile: null,
+    posterFileName: "",
+    posterPreviewUrl: productImage,
+    caption: "",
+  };
+}
 
 // Định dạng tiền tệ VND
 function money(val) {
@@ -556,8 +642,36 @@ function escapeRegex(string) {
 export function mediaPage(globalState = {}) {
   const currentProduct = products.find((p) => p.id === mediaState.selectedProduct) || products[0];
 
+  // Luôn lấy trạng thái kiểm duyệt mới nhất do Chủ Shop vừa cập nhật.
+  // Module này sống lâu trong SPA nên không thể chỉ đọc localStorage một lần khi import.
+  const latestSubmissions = loadSavedSubmissions();
+  const latestIds = new Set(latestSubmissions.map((item) => item.id));
+  for (let index = mediaAssets.length - 1; index >= 0; index -= 1) {
+    if (mediaAssets[index].isSubmission && !latestIds.has(mediaAssets[index].id)) {
+      mediaAssets.splice(index, 1);
+    }
+  }
+  latestSubmissions.forEach((submission) => {
+    const existing = mediaAssets.find((asset) => asset.id === submission.id);
+    if (existing) Object.assign(existing, submission);
+    else mediaAssets.unshift(submission);
+  });
+
+  // Phân chia tài nguyên Shop cung cấp và Video do KOL đã nộp
+  const mySubmissions = mediaAssets.filter((a) => a.isSubmission);
+  const shopAssets = mediaAssets.filter((a) => !a.isSubmission);
+
+  const isMyReviewsTab = mediaState.activeTab === "my_reviews";
+  const baseList = isMyReviewsTab ? mySubmissions : shopAssets;
+
+  const shopAssetsCount = shopAssets.length;
+  const myReviewsCount = mySubmissions.length;
+  const pendingReviewsCount = mySubmissions.filter((a) => a.status === "PENDING").length;
+  const approvedReviewsCount = mySubmissions.filter((a) => a.status === "APPROVED").length;
+  const rejectedReviewsCount = mySubmissions.filter((a) => a.status === "REJECTED").length;
+
   // Lọc danh sách tài nguyên
-  let filtered = mediaAssets.filter((asset) => {
+  let filtered = baseList.filter((asset) => {
     // Lọc theo sản phẩm
     if (mediaState.selectedProduct !== "ALL" && asset.productId !== mediaState.selectedProduct) {
       return false;
@@ -575,8 +689,8 @@ export function mediaPage(globalState = {}) {
       const q = mediaState.searchQuery.toLowerCase().trim();
       const matchTitle = asset.title.toLowerCase().includes(q);
       const matchProd = asset.productName.toLowerCase().includes(q);
-      const matchTag = asset.tags.some((t) => t.toLowerCase().includes(q));
-      const matchExt = asset.format.toLowerCase().includes(q);
+      const matchTag = asset.tags ? asset.tags.some((t) => t.toLowerCase().includes(q)) : false;
+      const matchExt = asset.format ? asset.format.toLowerCase().includes(q) : false;
       if (!matchTitle && !matchProd && !matchTag && !matchExt) return false;
     }
     return true;
@@ -590,9 +704,9 @@ export function mediaPage(globalState = {}) {
   }
 
   // Đếm số lượng theo loại
-  const photoCount = mediaAssets.filter((a) => a.type === "photo").length;
-  const videoCount = mediaAssets.filter((a) => a.type === "video").length;
-  const bannerCount = mediaAssets.filter((a) => a.type === "banner").length;
+  const photoCount = baseList.filter((a) => a.type === "photo").length;
+  const videoCount = baseList.filter((a) => a.type === "video").length;
+  const bannerCount = baseList.filter((a) => a.type === "banner").length;
 
   // Lọc danh sách sản phẩm trong dropdown tìm kiếm sản phẩm
   const pQuery = mediaState.productSearchQuery.toLowerCase().trim();
@@ -611,8 +725,8 @@ export function mediaPage(globalState = {}) {
   // Số lượng tài nguyên của sản phẩm đang chọn
   const currentProdAssetCount =
     mediaState.selectedProduct === "ALL"
-      ? mediaAssets.length
-      : mediaAssets.filter((a) => a.productId === mediaState.selectedProduct).length;
+      ? baseList.length
+      : baseList.filter((a) => a.productId === mediaState.selectedProduct).length;
 
   return `
     <div class="media-workspace">
@@ -623,50 +737,200 @@ export function mediaPage(globalState = {}) {
           <h1>Kho nội dung bán hàng</h1>
           <p>Tài nguyên hình ảnh, video review và caption do Shop cung cấp, sẵn sàng quảng bá trên mạng xã hội.</p>
 
-          <!-- 2 Nút Chuyển Sang Bên Trái & Thiết Kế Lại Cao Cấp -->
+          <!-- Các nút điều khiển & chuyển nhanh chức năng thật FR-15 -->
           <div class="media-header-left-controls">
-            <!-- Chế độ kiểm thử UI/UX Capsule -->
-            <div class="media-state-capsule" title="Chuyển đổi trạng thái trải nghiệm để kiểm thử UI/UX">
-              <span class="media-capsule-icon-wrap"><i class="ph ph-sliders"></i></span>
-              <select class="media-state-select" id="media-mode-select" aria-label="Chọn chế độ hiển thị UI/UX">
-                <option value="normal" ${mediaState.uiMode === "normal" ? "selected" : ""}>Chế độ: Bình thường</option>
-                <option value="loading" ${mediaState.uiMode === "loading" ? "selected" : ""}>Chế độ: Đang tải (Skeleton)</option>
-                <option value="empty" ${mediaState.uiMode === "empty" ? "selected" : ""}>Chế độ: Kho trống (Empty)</option>
-                <option value="error" ${mediaState.uiMode === "error" ? "selected" : ""}>Chế độ: Lỗi CDN (Error)</option>
-              </select>
+            <!-- CỤM 2 NÚT THAO TÁC NẰM SÁT BÊN TRÁI -->
+            <div class="media-header-actions-left">
+              <!-- NÚT NỘP VIDEO REVIEW FR-15 CHÍNH -->
+              <button
+                class="media-guidelines-btn"
+                id="btn-open-kol-video-submission"
+                type="button"
+                title="Bấm để mở trực tiếp biểu mẫu Nộp video review (FR-15) trên Web"
+                style="background: linear-gradient(135deg, #C59B58 0%, #B88E4F 100%) !important; color: #FFFFFF !important; border: 1.5px solid #DEBE85 !important; font-weight: 800 !important; padding: 0 16px !important; height: 38px !important; border-radius: 10px !important; display: inline-flex !important; align-items: center !important; gap: 8px !important; box-shadow: 0 4px 12px rgba(184, 142, 79, 0.35) !important; cursor: pointer !important; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);"
+              >
+                <i class="ph-bold ph-video-camera" style="color: #FFFFFF !important; font-size: 16px !important;"></i>
+                <span style="color: #FFFFFF !important; font-weight: 800 !important;">Nộp video review (FR-15)</span>
+              </button>
+
+              <!-- NÚT MỞ TRANG LANDING PAGE FR-15 CÔNG KHAI (TONE MÀU VÀNG BE SÁNG NHẸ) -->
+              <button
+                class="media-guidelines-btn"
+                id="btn-open-landing-page"
+                type="button"
+                title="Bấm để mở trực tiếp Landing Page sản phẩm công khai có video review và đặt hàng"
+                style="background: #FDF8EE !important; color: #8C6320 !important; border: 1.5px solid #D8BC8A !important; font-weight: 750 !important; padding: 0 16px !important; height: 38px !important; border-radius: 10px !important; display: inline-flex !important; align-items: center !important; gap: 8px !important; box-shadow: 0 2px 6px rgba(197, 155, 88, 0.12) !important; cursor: pointer !important; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);"
+              >
+                <i class="ph-bold ph-shopping-bag-open" style="color: #B88E4F !important; font-size: 16px !important;"></i>
+                <span style="color: #8C6320 !important; font-weight: 750 !important;">Xem Landing Page (FR-15)</span>
+              </button>
             </div>
 
-            <!-- Nút Mở Hướng dẫn & Quy định -->
-            <button class="media-guidelines-btn" id="btn-open-guidelines" title="Xem quy định bản quyền và khuyến nghị đăng bài">
-              <i class="ph ph-book-open"></i> <span>Quy định sử dụng</span>
-            </button>
+            <!-- CỤM KHUNG ICON TIỆN ÍCH THIẾT KẾ ĐỒNG BỘ NẰM BÊN PHẢI -->
+            <div class="media-header-actions-right">
+              <!-- Chế độ kiểm thử UI/UX Capsule -->
+              <div class="media-state-capsule" title="Chuyển đổi trạng thái trải nghiệm để kiểm thử UI/UX">
+                <span class="media-capsule-icon-wrap"><i class="ph-bold ph-sliders"></i></span>
+                <select class="media-state-select" id="media-mode-select" aria-label="Chọn chế độ hiển thị UI/UX">
+                  <option value="normal" ${mediaState.uiMode === "normal" ? "selected" : ""}>Chế độ: Bình thường</option>
+                  <option value="loading" ${mediaState.uiMode === "loading" ? "selected" : ""}>Chế độ: Đang tải (Skeleton)</option>
+                  <option value="empty" ${mediaState.uiMode === "empty" ? "selected" : ""}>Chế độ: Kho trống (Empty)</option>
+                  <option value="error" ${mediaState.uiMode === "error" ? "selected" : ""}>Chế độ: Lỗi CDN (Error)</option>
+                </select>
+                <i class="ph-bold ph-caret-down" style="color:#8C7E6A;font-size:12px;margin-left:2px;pointer-events:none;"></i>
+              </div>
+
+              <!-- Nút Mở Hướng dẫn & Quy định -->
+              <button class="media-guidelines-btn" id="btn-open-guidelines" title="Xem quy định bản quyền và khuyến nghị đăng bài">
+                <span class="media-capsule-icon-wrap"><i class="ph-bold ph-book-open"></i></span>
+                <span>Quy định sử dụng</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <!-- BANNER SHOP THU GỌN 1 DÒNG DUY NHẤT -->
-      <section class="media-compact-banner">
-        <div class="media-banner-brand">
-          <div class="media-banner-icon" title="Cửa hàng chính hãng Sora Skin">
-            <i class="ph ph-storefront"></i>
+      <!-- TAB CHUYỂN ĐỔI: TÀI NGUYÊN SHOP vs VIDEO REVIEW CỦA TÔI -->
+      <div class="media-view-tabs" style="display:flex;align-items:center;gap:10px;margin-top:14px;margin-bottom:14px;border-bottom:1.5px solid #EAE4D7;padding-bottom:12px;">
+        <button
+          type="button"
+          id="tab-shop-assets"
+          style="padding:9px 18px;border-radius:12px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:all 0.15s;border:none;${
+            !isMyReviewsTab
+              ? "background:linear-gradient(135deg, #C59B58 0%, #B88E4F 100%);color:#FFFFFF;box-shadow:0 3px 10px rgba(184,142,79,0.3);"
+              : "background:#F3EFE6;color:#7D715E;"
+          }"
+        >
+          <i class="ph-bold ph-storefront" style="font-size:16px;"></i>
+          <span>Tài nguyên Shop cung cấp</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:800;${
+            !isMyReviewsTab ? "background:rgba(255,255,255,0.25);color:#FFFFFF;" : "background:#EAE4D7;color:#1A1612;"
+          }">
+            ${shopAssetsCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          id="tab-my-reviews"
+          style="padding:9px 18px;border-radius:12px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:all 0.15s;border:none;${
+            isMyReviewsTab
+              ? "background:linear-gradient(135deg, #C59B58 0%, #B88E4F 100%);color:#FFFFFF;box-shadow:0 3px 10px rgba(184,142,79,0.3);"
+              : "background:#F3EFE6;color:#7D715E;"
+          }"
+        >
+          <i class="ph-bold ph-video-camera" style="font-size:16px;"></i>
+          <span>Video review của tôi</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:800;${
+            isMyReviewsTab ? "background:rgba(255,255,255,0.25);color:#FFFFFF;" : "background:#EAE4D7;color:#1A1612;"
+          }">
+            ${myReviewsCount}
+          </span>
+        </button>
+      </div>
+
+      <!-- BANNER COMPACT CẬP NHẬT THEO TAB ĐANG CHỌN -->
+      ${
+        isMyReviewsTab
+          ? `
+        <section class="media-compact-banner my-reviews-banner">
+          <div class="media-banner-brand">
+            <div class="media-banner-avatar-wrap">
+              <div class="media-banner-icon reviews-icon" title="Video review cá nhân đã nộp cho Shop">
+                <i class="ph-bold ph-video-camera"></i>
+              </div>
+            </div>
+            <div class="media-banner-info">
+              <div class="media-banner-title-row">
+                <h2 class="media-banner-name">Video Review cá nhân đã nộp cho Shop</h2>
+                <span class="media-banner-verified-badge kol-badge">
+                  <i class="ph-bold ph-user-circle-gear"></i> Tài khoản KOL
+                </span>
+                <span class="media-banner-category-tag">
+                  <i class="ph-bold ph-clock"></i> Chờ Shop phê duyệt (${pendingReviewsCount} video)
+                </span>
+              </div>
+              <div class="media-banner-sub-row">
+                <span class="banner-sub-item"><i class="ph-bold ph-info" style="color:#B88E4F;"></i> Sau khi duyệt, video sẽ xuất hiện trên Landing Page và gắn link hoa hồng của bạn</span>
+              </div>
+            </div>
           </div>
-          <div class="media-banner-info">
-            <span class="media-banner-name">Sora Skin Official Store</span>
-            <span class="media-banner-badge"><i class="ph ph-shield-check"></i> Tài nguyên Shop cung cấp</span>
+          <div class="media-banner-metrics-capsule">
+            <div class="banner-metric-block">
+              <span class="metric-icon-tile"><i class="ph-bold ph-video-camera"></i></span>
+              <span class="metric-label">Đã gửi:</span>
+              <strong class="metric-val metric-val-brand">${myReviewsCount} video</strong>
+            </div>
+            <div class="banner-metric-sep"></div>
+            <div class="banner-metric-block">
+              <span class="metric-icon-tile"><i class="ph-bold ph-shield-check"></i></span>
+              <span class="metric-label">Trạng thái:</span>
+              <strong class="metric-val" style="color:#B88E4F;">${pendingReviewsCount} chờ · ${approvedReviewsCount} đã duyệt${rejectedReviewsCount ? ` · ${rejectedReviewsCount} từ chối` : ''}</strong>
+            </div>
+            <div class="banner-metric-sep"></div>
+            <button type="button" id="btn-submit-another-review" class="btn-banner-action" title="Nộp thêm video review mới">
+              <span class="btn-action-icon-tile"><i class="ph-bold ph-plus"></i></span>
+              <span>Nộp thêm video</span>
+            </button>
           </div>
-        </div>
-        <div class="media-banner-meta">
-          <span class="media-banner-meta-item"><i class="ph ph-clock-counter-clockwise"></i> Cập nhật: <strong>08/09/2026</strong></span>
-          <span class="media-banner-meta-item"><i class="ph ph-files"></i> Tổng số: <strong>${mediaAssets.length} tài nguyên</strong></span>
-        </div>
-      </section>
+        </section>
+      `
+          : `
+        <section class="media-compact-banner">
+          <div class="media-banner-brand">
+            <div class="media-banner-avatar-wrap">
+              <div class="media-banner-icon" title="Gian hàng chính hãng Sora Skin Official Store">
+                <i class="ph-bold ph-storefront"></i>
+              </div>
+            </div>
+            <div class="media-banner-info">
+              <div class="media-banner-title-row">
+                <h2 class="media-banner-name">Sora Skin Official Store</h2>
+                <span class="media-banner-verified-badge" title="Gian hàng đối tác phân phối chính thức trên sàn SCANMS">
+                  <i class="ph-bold ph-seal-check"></i> Gian hàng đối tác
+                </span>
+                <span class="media-banner-category-tag">
+                  <i class="ph-bold ph-tag"></i> Mỹ phẩm thuần chay
+                </span>
+              </div>
+              <div class="media-banner-sub-row">
+                <span class="banner-sub-item"><i class="ph-bold ph-shield-check" style="color:#B88E4F;"></i> Bản quyền chính hãng</span>
+                <span class="banner-sub-dot">•</span>
+                <span class="banner-sub-item"><i class="ph-bold ph-star" style="color:#D97706;"></i> 4.9/5 (1.2k CTV)</span>
+                <span class="banner-sub-dot">•</span>
+                <span class="banner-sub-item"><i class="ph-bold ph-percent" style="color:#059669;"></i> Hoa hồng tới 22%</span>
+              </div>
+            </div>
+          </div>
+          <div class="media-banner-metrics-capsule">
+            <div class="banner-metric-block">
+              <span class="metric-icon-tile"><i class="ph-bold ph-files"></i></span>
+              <span class="metric-label">Tài nguyên:</span>
+              <strong class="metric-val metric-val-brand">${shopAssetsCount} tệp</strong>
+            </div>
+            <div class="banner-metric-sep"></div>
+            <div class="banner-metric-block">
+              <span class="metric-icon-tile"><i class="ph-bold ph-clock"></i></span>
+              <span class="metric-label">Cập nhật:</span>
+              <strong class="metric-val">08/09/2026</strong>
+            </div>
+            <div class="banner-metric-sep"></div>
+            <div class="banner-metric-block">
+              <span class="metric-icon-tile"><i class="ph-bold ph-video-camera"></i></span>
+              <span class="metric-label">Định dạng:</span>
+              <strong class="metric-val">MP4 • PNG • Bài</strong>
+            </div>
+          </div>
+        </section>
+      `
+      }
 
       <!-- THANH LỌC CHÍNH (ĐÚNG THỨ TỰ: TÌM KIẾM -> SP -> LOẠI -> BỘ LỌC TỶ LỆ -> SẮP XẾP) -->
       <section class="media-filter-bar-container">
         <div class="media-main-filter-bar">
           <!-- 1. Ô tìm kiếm tài nguyên -->
           <div class="media-search-input-wrap">
-            <i class="ph ph-magnifying-glass"></i>
+            <span class="search-icon-tile"><i class="ph-bold ph-magnifying-glass"></i></span>
             <input 
               type="text" 
               class="media-search-input" 
@@ -680,10 +944,10 @@ export function mediaPage(globalState = {}) {
           <!-- 2. Dropdown sản phẩm kèm tìm kiếm bên trong -->
           <div class="media-dropdown-relative" id="prod-dropdown-wrap">
             <button class="media-filter-trigger ${mediaState.selectedProduct !== "ALL" ? "is-active" : ""}" id="btn-product-dropdown-trigger" type="button">
-              <i class="ph ph-package"></i>
+              <span class="filter-icon-tile"><i class="ph-bold ph-package"></i></span>
               <span class="trigger-label">${escapeHtml(currentProduct.name)}</span>
               <span class="trigger-count">(${currentProdAssetCount})</span>
-              <i class="ph ph-caret-down"></i>
+              <i class="ph-bold ph-caret-down trigger-arrow"></i>
             </button>
 
             <!-- Menu popover sản phẩm -->
@@ -717,7 +981,8 @@ export function mediaPage(globalState = {}) {
           </div>
 
           <!-- 3. Dropdown Loại nội dung -->
-          <div class="media-type-select-wrap">
+          <div class="media-select-pill-wrap">
+            <span class="filter-icon-tile"><i class="ph-bold ph-squares-four"></i></span>
             <select class="media-native-select" id="media-type-select">
               <option value="all" ${mediaState.selectedType === "all" ? "selected" : ""}>Tất cả loại (${mediaAssets.length})</option>
               <option value="photo" ${mediaState.selectedType === "photo" ? "selected" : ""}>Ảnh (${photoCount})</option>
@@ -725,15 +990,16 @@ export function mediaPage(globalState = {}) {
               <option value="banner" ${mediaState.selectedType === "banner" ? "selected" : ""}>Banner (${bannerCount})</option>
               <option value="caption" ${mediaState.selectedType === "caption" ? "selected" : ""}>Caption</option>
             </select>
+            <i class="ph-bold ph-caret-down trigger-arrow"></i>
           </div>
 
           <!-- 4. Nút Bộ lọc (Mở Popover tỷ lệ khung hình) -->
           <div class="media-dropdown-relative" id="ratio-popover-wrap">
-            <button class="media-filter-trigger ${mediaState.selectedRatio !== "all" ? "has-badge" : ""}" id="btn-ratio-popover-trigger" type="button">
-              <i class="ph ph-sliders-horizontal"></i>
+            <button class="media-filter-trigger ${mediaState.selectedRatio !== "all" ? "has-badge is-active" : ""}" id="btn-ratio-popover-trigger" type="button">
+              <span class="filter-icon-tile"><i class="ph-bold ph-sliders-horizontal"></i></span>
               <span>Bộ lọc</span>
               ${mediaState.selectedRatio !== "all" ? `<span class="filter-active-pill">${mediaState.selectedRatio}</span>` : ""}
-              <i class="ph ph-caret-down"></i>
+              <i class="ph-bold ph-caret-down trigger-arrow"></i>
             </button>
 
             <!-- Popover Bộ lọc tỷ lệ khung hình -->
@@ -768,57 +1034,59 @@ export function mediaPage(globalState = {}) {
           </div>
 
           <!-- 5. Dropdown Sắp xếp -->
-          <div class="media-sort-select-wrap">
+          <div class="media-select-pill-wrap">
+            <span class="filter-icon-tile"><i class="ph-bold ph-arrows-down-up"></i></span>
             <select class="media-native-select" id="media-sort-select">
               <option value="latest" ${mediaState.sortBy === "latest" ? "selected" : ""}>Mới nhất</option>
               <option value="downloads" ${mediaState.sortBy === "downloads" ? "selected" : ""}>Lượt tải nhiều nhất</option>
               <option value="size" ${mediaState.sortBy === "size" ? "selected" : ""}>Dung lượng file</option>
             </select>
+            <i class="ph-bold ph-caret-down trigger-arrow"></i>
           </div>
         </div>
 
-        <!-- HÀNG NHÃN LỌC ĐÃ ÁP DỤNG (ACTIVE FILTERS ROW) -->
-        <div class="media-active-filters-row ${hasActiveFilters ? "active" : ""}">
+        <!-- HÀNG THÔNG TIN TỔNG HỢP & NHÃN LỌC ĐÃ ÁP DỤNG -->
+        <div class="media-active-filters-row">
           <div class="active-tags-list">
-            ${hasActiveFilters ? `<span class="active-tags-title">Đang lọc:</span>` : ""}
-
-            ${mediaState.searchQuery ? `
-              <span class="active-tag-chip">
-                <span>Từ khóa: <strong>"${escapeHtml(mediaState.searchQuery)}"</strong></span>
-                <button type="button" class="btn-remove-tag" data-remove-filter="search" title="Xóa từ khóa"><i class="ph ph-x"></i></button>
-              </span>
-            ` : ""}
-
-            ${mediaState.selectedProduct !== "ALL" ? `
-              <span class="active-tag-chip">
-                <span>Sản phẩm: <strong>${escapeHtml(currentProduct.name)}</strong></span>
-                <button type="button" class="btn-remove-tag" data-remove-filter="product" title="Bỏ lọc sản phẩm"><i class="ph ph-x"></i></button>
-              </span>
-            ` : ""}
-
-            ${mediaState.selectedType !== "all" ? `
-              <span class="active-tag-chip">
-                <span>Loại: <strong>${getTypeName(mediaState.selectedType)}</strong></span>
-                <button type="button" class="btn-remove-tag" data-remove-filter="type" title="Bỏ lọc loại"><i class="ph ph-x"></i></button>
-              </span>
-            ` : ""}
-
-            ${mediaState.selectedRatio !== "all" ? `
-              <span class="active-tag-chip">
-                <span>Tỷ lệ: <strong>${mediaState.selectedRatio}</strong></span>
-                <button type="button" class="btn-remove-tag" data-remove-filter="ratio" title="Bỏ lọc tỷ lệ"><i class="ph ph-x"></i></button>
-              </span>
-            ` : ""}
-
             ${hasActiveFilters ? `
+              <span class="active-tags-title">Đang lọc:</span>
+              ${mediaState.searchQuery ? `
+                <span class="active-tag-chip">
+                  <span>Từ khóa: <strong>"${escapeHtml(mediaState.searchQuery)}"</strong></span>
+                  <button type="button" class="btn-remove-tag" data-remove-filter="search" title="Xóa từ khóa"><i class="ph ph-x"></i></button>
+                </span>
+              ` : ""}
+              ${mediaState.selectedProduct !== "ALL" ? `
+                <span class="active-tag-chip">
+                  <span>Sản phẩm: <strong>${escapeHtml(currentProduct.name)}</strong></span>
+                  <button type="button" class="btn-remove-tag" data-remove-filter="product" title="Bỏ lọc sản phẩm"><i class="ph ph-x"></i></button>
+                </span>
+              ` : ""}
+              ${mediaState.selectedType !== "all" ? `
+                <span class="active-tag-chip">
+                  <span>Loại: <strong>${getTypeName(mediaState.selectedType)}</strong></span>
+                  <button type="button" class="btn-remove-tag" data-remove-filter="type" title="Bỏ lọc loại"><i class="ph ph-x"></i></button>
+                </span>
+              ` : ""}
+              ${mediaState.selectedRatio !== "all" ? `
+                <span class="active-tag-chip">
+                  <span>Tỷ lệ: <strong>${mediaState.selectedRatio}</strong></span>
+                  <button type="button" class="btn-remove-tag" data-remove-filter="ratio" title="Bỏ lọc tỷ lệ"><i class="ph ph-x"></i></button>
+                </span>
+              ` : ""}
               <button class="btn-clear-all-filters" id="btn-clear-all-filters" type="button">
                 <i class="ph ph-arrows-counter-clockwise"></i> Xóa tất cả bộ lọc
               </button>
-            ` : ""}
+            ` : `
+              <span class="media-filters-hint">
+                <i class="ph-bold ph-sparkle" style="color:#B88E4F"></i> Tài nguyên độc quyền do Shop cung cấp cho KOL / CTV
+              </span>
+            `}
           </div>
 
           <div class="active-results-summary">
-            Hiển thị <strong>${filtered.length}</strong> / ${mediaAssets.length} tài nguyên phù hợp
+            <i class="ph-bold ph-check-circle"></i>
+            <span>Hiển thị <strong>${filtered.length}</strong> / ${baseList.length} tài nguyên phù hợp</span>
           </div>
         </div>
       </section>
@@ -889,6 +1157,22 @@ function renderContentBody(filtered, globalState) {
 
   // 3. Trạng thái Không có kết quả hoặc Kho trống
   if (mediaState.uiMode === "empty" || filtered.length === 0) {
+    if (mediaState.activeTab === "my_reviews") {
+      return `
+        <div class="media-empty-card" style="padding: 60px 24px; background: #FFFFFF; border: 1.5px solid #EAE4D7; border-radius: 16px; text-align: center;">
+          <div class="media-state-icon" style="background: #FBF5EB; color: #B88E4F; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; margin: 0 auto 16px;">
+            <i class="ph-bold ph-video-camera"></i>
+          </div>
+          <h3 style="font-size: 18px; font-weight: 800; color: #1A1612; margin: 0 0 8px;">Bạn chưa nộp video review nào</h3>
+          <p style="font-size: 13px; color: #7D715E; max-width: 480px; margin: 0 auto 20px; line-height: 1.5;">
+            Hãy quay video trải nghiệm thực tế về sản phẩm Sora Skin và gửi cho Shop kiểm duyệt. Khi được duyệt, video sẽ hiển thị công khai trên Landing Page và kích hoạt tính năng tiếp thị nhận hoa hồng.
+          </p>
+          <button class="btn" id="btn-empty-submit-review" style="background: linear-gradient(135deg, #C59B58 0%, #B88E4F 100%); color: #FFFFFF; font-weight: 800; border: none; padding: 0 24px; height: 42px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(184, 142, 79, 0.35);">
+            <i class="ph-bold ph-video-camera"></i> Nộp video review ngay (FR-15)
+          </button>
+        </div>
+      `;
+    }
     return `
       <div class="media-empty-card">
         <div class="media-state-icon">
@@ -915,6 +1199,15 @@ function renderContentBody(filtered, globalState) {
 function renderAssetCard(asset) {
   const isVideo = asset.type === "video";
   const isBanner = asset.type === "banner";
+  const isSubmission = Boolean(asset.isSubmission);
+  const isPendingSubmission = isSubmission && asset.status === "PENDING";
+  const isApprovedSubmission = isSubmission && asset.status === "APPROVED";
+  const isRejectedSubmission = isSubmission && asset.status === "REJECTED";
+  const submissionBadge = isApprovedSubmission
+    ? `<span class="media-tag-pill" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-weight:700;"><i class="ph-bold ph-seal-check"></i> Đã duyệt</span>`
+    : isRejectedSubmission
+      ? `<span class="media-tag-pill" style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;font-weight:700;"><i class="ph-bold ph-x-circle"></i> Bị từ chối</span>`
+      : `<span class="media-tag-pill" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;font-weight:700;"><i class="ph-bold ph-clock"></i> Chờ duyệt</span>`;
 
   let tagClass = "tag-photo";
   let typeLabel = "Ảnh PNG";
@@ -938,9 +1231,11 @@ function renderAssetCard(asset) {
 
         <!-- BADGE NHÃN TRÊN ẢNH (GÓC TRÊN TRÁI) -->
         <div class="media-badge-group">
-          <span class="media-tag-pill ${tagClass}">
-            <i class="ph ${typeIcon}"></i> ${typeLabel}
-          </span>
+          ${
+            isSubmission
+              ? submissionBadge
+              : `<span class="media-tag-pill ${tagClass}"><i class="ph ${typeIcon}"></i> ${typeLabel}</span>`
+          }
           <span class="media-tag-pill tag-ratio">
             ${asset.ratio} • ${asset.fileSize}
           </span>
@@ -975,7 +1270,13 @@ function renderAssetCard(asset) {
             <i class="ph ph-eye"></i>
           </button>
           ${
-            !asset.isBroken
+            isPendingSubmission
+              ? `
+            <button class="media-quick-btn action-delete-submission" data-asset-id="${asset.id}" title="Hủy nộp & Xóa video" aria-label="Hủy nộp & Xóa video" style="background:#DC2626;color:#FFFFFF;border:none;">
+              <i class="ph ph-trash"></i>
+            </button>
+          `
+              : !asset.isBroken
               ? `
             <button class="media-quick-btn action-download" data-asset-id="${asset.id}" title="Tải tệp về máy tính" aria-label="Tải tệp về máy">
               <i class="ph ph-download-simple"></i>
@@ -1011,18 +1312,46 @@ function renderAssetCard(asset) {
           <span class="media-card-downloads">
             <i class="ph ph-download"></i> ${asset.downloads} lượt tải
           </span>
-          <span style="color:var(--brand);font-weight:600;display:flex;align-items:center;gap:3px">
-            <i class="ph ph-check-circle"></i> Shop đã duyệt
-          </span>
+          ${
+            isPendingSubmission
+              ? `
+            <span style="color:#D97706;font-weight:700;display:flex;align-items:center;gap:4px">
+              <i class="ph-bold ph-clock"></i> Chờ Shop duyệt
+            </span>
+          `
+              : isApprovedSubmission
+                ? `
+            <span style="color:#059669;font-weight:700;display:flex;align-items:center;gap:4px">
+              <i class="ph-bold ph-seal-check"></i> Shop đã duyệt
+            </span>
+          `
+                : isRejectedSubmission
+                  ? `
+            <span style="color:#DC2626;font-weight:700;display:flex;align-items:center;gap:4px">
+              <i class="ph-bold ph-x-circle"></i> Shop đã từ chối
+            </span>
+          `
+              : `
+            <span style="color:var(--brand);font-weight:600;display:flex;align-items:center;gap:3px">
+              <i class="ph ph-check-circle"></i> Shop đã duyệt
+            </span>
+          `
+          }
         </div>
 
         <!-- CỤM NÚT HÀNH ĐỘNG -->
         <div class="media-card-actions">
-          <button class="btn small secondary action-preview" data-asset-id="${asset.id}">
+          <button class="btn small secondary action-preview" data-asset-id="${asset.id}" style="flex:1;">
             <i class="ph ph-eye"></i> Xem trước
           </button>
           ${
-            asset.isBroken
+            isPendingSubmission
+              ? `
+            <button class="btn small danger action-delete-submission" data-asset-id="${asset.id}" title="Hủy nộp & Xóa video review" style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;">
+              <i class="ph ph-trash"></i> Hủy & Xóa
+            </button>
+          `
+              : asset.isBroken
               ? `
             <button class="btn small danger action-retry-file" data-asset-id="${asset.id}">
               <i class="ph ph-arrow-clockwise"></i> Thử lại
@@ -1051,114 +1380,141 @@ function renderCaptionStudio(currentProduct, globalState) {
   const productPrice = money(currentProduct.price || 459000);
   const currentText = compileCaptionText(currentProduct);
 
+  const isOpen = Boolean(mediaState.isCaptionAccordionOpen);
+
   return `
-    <section class="media-caption-studio" id="caption-studio-section">
-      <!-- HEADER GỌN 1 HÀNG: TIÊU ĐỀ + TRẠNG THÁI + NÚT XEM TRƯỚC -->
-      <div class="media-caption-header-v2">
-        <div class="caption-header-left">
-          <h2 class="caption-title">Soạn caption</h2>
-          ${
-            mediaState.isCaptionModified
-              ? `<span class="caption-badge edited" id="caption-status-badge"><i class="ph ph-pencil-simple-line"></i> Đã chỉnh sửa từ mẫu Shop</span>`
-              : `<span class="caption-badge verified" id="caption-status-badge"><i class="ph ph-shield-check"></i> Đã duyệt bởi Shop</span>`
-          }
+    <section class="media-caption-studio ${isOpen ? "is-open" : "is-collapsed"}" id="caption-studio-section">
+      <!-- THANH ACCORDION ĐÓNG / MỞ TINH GỌN (MẶC ĐỊNH THU GỌN THEO YÊU CẦU) -->
+      <div 
+        class="media-caption-accordion-trigger" 
+        id="btn-toggle-caption-accordion" 
+        role="button" 
+        tabindex="0" 
+        aria-expanded="${isOpen}" 
+        title="Bấm để ${isOpen ? "thu gọn" : "mở rộng"} mẫu kịch bản & caption"
+      >
+        <div class="caption-accordion-left">
+          <span class="caption-accordion-icon"><i class="ph-bold ph-note-pencil"></i></span>
+          <strong class="caption-accordion-title">📝 Mẫu caption & Kịch bản đăng bài có sẵn</strong>
+          <span class="caption-badge verified"><i class="ph-bold ph-shield-check"></i> Đã duyệt bởi Shop</span>
+          <span class="caption-accordion-hint">(Tự động gắn link tiếp thị riêng & mã giảm giá của bạn)</span>
         </div>
-        <div class="caption-header-right">
-          <button class="btn secondary small btn-preview-trigger" id="btn-open-caption-drawer" type="button" aria-label="Mở xem trước bài đăng">
-            <i class="ph ph-eye"></i>
-            <span>Xem trước</span>
-          </button>
+        <div class="caption-accordion-right">
+          ${isOpen ? `
+            <button class="btn secondary small btn-preview-trigger" id="btn-open-caption-drawer" type="button" aria-label="Mở xem trước bài đăng" style="height: 32px; font-size: 12px; padding: 0 10px; margin-right: 6px;">
+              <i class="ph ph-eye"></i>
+              <span>Xem trước</span>
+            </button>
+            <span class="caption-accordion-pill">
+              <span>Thu gọn</span>
+              <i class="ph-bold ph-caret-up"></i>
+            </span>
+          ` : `
+            <span class="caption-accordion-pill">
+              <span>Bấm để mở rộng</span>
+              <i class="ph-bold ph-caret-down"></i>
+            </span>
+          `}
         </div>
       </div>
 
-      <!-- THANH CÔNG CỤ: DROPDOWN MẪU + 3 CHECKBOX + POPOVER THÔNG TIN CHÈN -->
-      <div class="caption-toolbar-v2">
-        <div class="caption-toolbar-preset">
-          <label for="caption-preset-select" class="caption-field-label">Mẫu nội dung:</label>
-          <select class="media-native-select caption-select" id="caption-preset-select">
-            <option value="short" ${mediaState.activeCaptionPreset === "short" ? "selected" : ""}>Giới thiệu ngắn</option>
-            <option value="review" ${mediaState.activeCaptionPreset === "review" ? "selected" : ""}>Review chi tiết</option>
-            <option value="offer" ${mediaState.activeCaptionPreset === "offer" ? "selected" : ""}>Ưu đãi</option>
-            <option value="livestream" ${mediaState.activeCaptionPreset === "livestream" ? "selected" : ""}>Kịch bản livestream</option>
-          </select>
-        </div>
+      ${isOpen ? `
+        <!-- NỘI DUNG SOẠN THẢO CHI TIẾT (KHI MỞ RỘNG) -->
+        <div class="caption-accordion-body" id="caption-accordion-body">
+          <!-- THANH CÔNG CỤ: DROPDOWN MẪU + 3 CHECKBOX + POPOVER THÔNG TIN CHÈN -->
+          <div class="caption-toolbar-v2">
+            <div class="caption-toolbar-preset">
+              <label for="caption-preset-select" class="caption-field-label">Mẫu nội dung:</label>
+              <select class="media-native-select caption-select" id="caption-preset-select">
+                <option value="short" ${mediaState.activeCaptionPreset === "short" ? "selected" : ""}>Giới thiệu ngắn</option>
+                <option value="review" ${mediaState.activeCaptionPreset === "review" ? "selected" : ""}>Review chi tiết</option>
+                <option value="offer" ${mediaState.activeCaptionPreset === "offer" ? "selected" : ""}>Ưu đãi</option>
+                <option value="livestream" ${mediaState.activeCaptionPreset === "livestream" ? "selected" : ""}>Kịch bản livestream</option>
+              </select>
+            </div>
 
-        <div class="caption-toolbar-inserts">
-          <div class="caption-checkbox-group">
-            <label class="caption-checkbox-label" title="Bật/tắt link tiếp thị">
-              <input type="checkbox" id="switch-link" ${mediaState.includeLink ? "checked" : ""} />
-              <span>Link</span>
-            </label>
-            <label class="caption-checkbox-label" title="Bật/tắt mã ưu đãi">
-              <input type="checkbox" id="switch-coupon" ${mediaState.includeCoupon ? "checked" : ""} />
-              <span>Coupon</span>
-            </label>
-            <label class="caption-checkbox-label" title="Bật/tắt hashtag">
-              <input type="checkbox" id="switch-hashtags" ${mediaState.includeHashtags ? "checked" : ""} />
-              <span>Hashtag</span>
-            </label>
-          </div>
-
-          <!-- Popover Thông tin chèn -->
-          <div class="caption-popover-anchor">
-            <button class="btn-popover-trigger ${mediaState.isInsertPopoverOpen ? "active" : ""}" id="btn-toggle-insert-info" type="button" aria-expanded="${mediaState.isInsertPopoverOpen}" title="Tùy chỉnh link, coupon, hashtag">
-              <i class="ph ph-sliders-horizontal"></i>
-              <span>Thông tin chèn</span>
-              <i class="ph ph-caret-down"></i>
-            </button>
-
-            <div class="caption-insert-popover ${mediaState.isInsertPopoverOpen ? "open" : ""}" id="insert-details-popover" role="dialog" aria-label="Tùy chỉnh thông tin chèn">
-              <div class="popover-header">
-                <strong>Thông tin chèn</strong>
-                <button class="popover-close-btn" id="btn-close-insert-popover" type="button" title="Đóng popover">
-                  <i class="ph ph-x"></i>
-                </button>
+            <div class="caption-toolbar-inserts">
+              <div class="caption-checkbox-group">
+                <label class="caption-checkbox-label" title="Bật/tắt link tiếp thị">
+                  <input type="checkbox" id="switch-link" ${mediaState.includeLink ? "checked" : ""} />
+                  <span>Link</span>
+                </label>
+                <label class="caption-checkbox-label" title="Bật/tắt mã ưu đãi">
+                  <input type="checkbox" id="switch-coupon" ${mediaState.includeCoupon ? "checked" : ""} />
+                  <span>Coupon</span>
+                </label>
+                <label class="caption-checkbox-label" title="Bật/tắt hashtag">
+                  <input type="checkbox" id="switch-hashtags" ${mediaState.includeHashtags ? "checked" : ""} />
+                  <span>Hashtag</span>
+                </label>
               </div>
-              <div class="popover-body">
-                <div class="popover-field">
-                  <label for="input-custom-link" class="popover-label">Link tiếp thị định danh:</label>
-                  <input type="text" class="insert-info-input" id="input-custom-link" value="${escapeHtml(affiliateLink)}" placeholder="https://scanms.vn/r/..." />
-                </div>
-                <div class="popover-field">
-                  <label for="input-custom-coupon" class="popover-label">Mã ưu đãi độc quyền:</label>
-                  <input type="text" class="insert-info-input" id="input-custom-coupon" value="${escapeHtml(couponCode)}" placeholder="Mã ưu đãi" />
-                </div>
-                <div class="popover-field">
-                  <label for="input-custom-hashtags" class="popover-label">Hashtag đề xuất:</label>
-                  <input type="text" class="insert-info-input" id="input-custom-hashtags" value="${escapeHtml(mediaState.customHashtags)}" placeholder="#Hashtag" />
+
+              <!-- Popover Thông tin chèn -->
+              <div class="caption-popover-anchor">
+                <button class="btn-popover-trigger ${mediaState.isInsertPopoverOpen ? "active" : ""}" id="btn-toggle-insert-info" type="button" aria-expanded="${mediaState.isInsertPopoverOpen}" title="Tùy chỉnh link, coupon, hashtag">
+                  <i class="ph ph-sliders-horizontal"></i>
+                  <span>Thông tin chèn</span>
+                  <i class="ph ph-caret-down"></i>
+                </button>
+
+                <div class="caption-insert-popover ${mediaState.isInsertPopoverOpen ? "open" : ""}" id="insert-details-popover" role="dialog" aria-label="Tùy chỉnh thông tin chèn">
+                  <div class="popover-header">
+                    <strong>Thông tin chèn</strong>
+                    <button class="popover-close-btn" id="btn-close-insert-popover" type="button" title="Đóng popover">
+                      <i class="ph ph-x"></i>
+                    </button>
+                  </div>
+                  <div class="popover-body">
+                    <div class="popover-field">
+                      <label for="input-custom-link" class="popover-label">Link tiếp thị định danh:</label>
+                      <input type="text" class="insert-info-input" id="input-custom-link" value="${escapeHtml(affiliateLink)}" placeholder="https://scanms.vn/r/..." />
+                    </div>
+                    <div class="popover-field">
+                      <label for="input-custom-coupon" class="popover-label">Mã ưu đãi độc quyền:</label>
+                      <input type="text" class="insert-info-input" id="input-custom-coupon" value="${escapeHtml(couponCode)}" placeholder="Mã ưu đãi" />
+                    </div>
+                    <div class="popover-field">
+                      <label for="input-custom-hashtags" class="popover-label">Hashtag đề xuất:</label>
+                      <input type="text" class="insert-info-input" id="input-custom-hashtags" value="${escapeHtml(mediaState.customHashtags)}" placeholder="#Hashtag" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Ô SOẠN THẢO 1 CỘT (CAO 180-220px, KÉO GIÃN DỌC) -->
-      <div class="caption-textarea-wrapper-v2">
-        <textarea 
-          class="caption-editor-textarea-v2" 
-          id="media-caption-box" 
-          placeholder="Nhập hoặc tùy chỉnh nội dung caption..."
-          spellcheck="false"
-        >${escapeHtml(currentText)}</textarea>
-      </div>
+          <!-- Ô SOẠN THẢO 1 CỘT (CAO 180-220px, KÉO GIÃN DỌC) -->
+          <div class="caption-textarea-wrapper-v2">
+            <textarea 
+              class="caption-editor-textarea-v2" 
+              id="media-caption-box" 
+              placeholder="Nhập hoặc tùy chỉnh nội dung caption..."
+              spellcheck="false"
+            >${escapeHtml(currentText)}</textarea>
+          </div>
 
-      <!-- FOOTER NGAY DƯỚI Ô SOẠN (KHÔNG KHOẢNG TRẮNG DƯ THỪA) -->
-      <div class="caption-footer-v2">
-        <div class="caption-char-counter" id="caption-char-count">
-          <span>${currentText.length} ký tự</span>
+          <!-- FOOTER NGAY DƯỚI Ô SOẠN (KHÔNG KHOẢNG TRẮNG DƯ THỪA) -->
+          <div class="caption-footer-v2">
+            <div class="caption-char-counter" id="caption-char-count">
+              <span>${currentText.length} ký tự</span>
+            </div>
+            <div class="caption-action-buttons">
+              <button class="btn secondary small" id="btn-collapse-caption" type="button" title="Thu gọn khung mẫu caption">
+                <i class="ph ph-caret-up"></i>
+                <span>Thu gọn</span>
+              </button>
+              <button class="btn secondary small" id="btn-reset-caption" type="button" title="Khôi phục lại mẫu nguyên bản từ Shop">
+                <i class="ph ph-arrow-counter-clockwise"></i>
+                <span>Khôi phục mẫu</span>
+              </button>
+              <button class="btn small" id="btn-copy-caption" type="button" title="Sao chép caption vào bộ nhớ tạm">
+                <i class="ph ph-copy"></i>
+                <span>Sao chép</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="caption-action-buttons">
-          <button class="btn secondary small" id="btn-reset-caption" type="button" title="Khôi phục lại mẫu nguyên bản từ Shop">
-            <i class="ph ph-arrow-counter-clockwise"></i>
-            <span>Khôi phục mẫu</span>
-          </button>
-          <button class="btn small" id="btn-copy-caption" type="button" title="Sao chép caption vào bộ nhớ tạm">
-            <i class="ph ph-copy"></i>
-            <span>Sao chép</span>
-          </button>
-        </div>
-      </div>
+      ` : ""}
     </section>
 
     <!-- DRAWER XEM TRƯỚC BÊN PHẢI (CHỈ MỞ KHI BẤM XEM TRƯỚC) -->
@@ -1237,6 +1593,274 @@ function renderCaptionStudio(currentProduct, globalState) {
 // ---------------------------------------------------------------------
 function renderActiveModal(globalState) {
   if (!mediaState.activeModal) return "";
+
+  // 0.1. Modal Xác Nhận Hủy Nộp & Xóa Video Review (Thiết kế sang trọng, chuyên nghiệp thay thế window.confirm)
+  if (mediaState.activeModal === "confirm-delete-submission" && mediaState.deleteConfirmItem) {
+    const item = mediaState.deleteConfirmItem;
+    return `
+      <div class="media-modal-backdrop" id="modal-backdrop">
+        <div class="media-modal-window" style="max-width: 440px; background: #FFFFFF; border-radius: 20px; border: 1.5px solid #EAE4D7; overflow: hidden; box-shadow: 0 24px 60px rgba(35, 29, 21, 0.25); animation: modalFadeIn 0.2s ease; position: relative;">
+          <!-- Nút X tắt nhanh góc trên bên phải -->
+          <button
+            type="button"
+            class="media-modal-close-btn"
+            id="modal-close"
+            title="Đóng cửa sổ"
+            aria-label="Đóng cửa sổ"
+            style="position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 10px; border: 1.5px solid #EAE4D7; background: #FAF8F5; color: #7D715E; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.15s ease; z-index: 10;"
+            onmouseover="this.style.background='#F3EFE6'; this.style.borderColor='#C59B58'; this.style.color='#1A1612';"
+            onmouseout="this.style.background='#FAF8F5'; this.style.borderColor='#EAE4D7'; this.style.color='#7D715E';"
+          >
+            <i class="ph-bold ph-x"></i>
+          </button>
+
+          <div style="padding: 26px 24px 22px; text-align: center;">
+            <!-- Icon cảnh báo xóa chuẩn màu Danger -->
+            <div style="width: 58px; height: 58px; margin: 0 auto 16px; border-radius: 18px; background: #FEF2F2; border: 1.5px solid #FEE2E2; color: #DC2626; display: grid; place-items: center; font-size: 26px; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.15);">
+              <i class="ph-bold ph-trash"></i>
+            </div>
+
+            <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #1A1612; letter-spacing: -0.01em;">
+              Hủy nộp & Xóa video review?
+            </h3>
+            <p style="margin: 0 0 16px; font-size: 13px; color: #7D715E; line-height: 1.55;">
+              Bạn có chắc chắn muốn hủy nộp và xóa video này không? Video sẽ bị gỡ khỏi danh sách chờ Shop duyệt và không thể khôi phục.
+            </p>
+
+            <!-- Khung tóm tắt thẻ video chuẩn bị xóa -->
+            <div style="background: #FAF8F5; border: 1.5px solid #EAE4D7; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-align: left; margin-bottom: 22px;">
+              <img
+                src="${escapeHtml(item.image || productImage)}"
+                alt="${escapeHtml(item.title)}"
+                style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #EAE4D7; flex-shrink: 0;"
+              />
+              <div style="min-width: 0; flex: 1;">
+                <div style="font-size: 13px; font-weight: 700; color: #1A1612; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${escapeHtml(item.title)}
+                </div>
+                <div style="font-size: 11px; color: #D97706; font-weight: 700; margin-top: 3px; display: flex; align-items: center; gap: 4px;">
+                  <i class="ph-bold ph-clock"></i> Chờ Shop phê duyệt
+                </div>
+              </div>
+            </div>
+
+            <!-- Các nút bấm thao tác -->
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+              <button
+                type="button"
+                id="btn-cancel-delete-modal"
+                style="flex: 1; height: 42px; background: #FAF8F5; border: 1.5px solid #EAE4D7; border-radius: 10px; font-size: 13px; font-weight: 700; color: #7D715E; cursor: pointer; transition: all 0.15s;"
+              >
+                Giữ lại video
+              </button>
+              <button
+                type="button"
+                id="btn-confirm-delete-modal"
+                style="flex: 1.25; height: 42px; background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); color: #FFFFFF; border: none; border-radius: 10px; font-size: 13px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35); transition: all 0.15s;"
+              >
+                <i class="ph-bold ph-trash"></i> Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 0. Modal Nộp Video Review Sản Phẩm (FR-15)
+  if (mediaState.activeModal === "submit-kol-video") {
+    if (!mediaState.submitForm) {
+      mediaState.submitForm = createCleanSubmitKolForm();
+    }
+    const form = mediaState.submitForm;
+
+    const hasVideo = Boolean(form.videoPreviewUrl || form.videoFile);
+
+    return `
+      <div class="media-modal-backdrop" id="modal-backdrop">
+        <div class="media-modal-window" style="max-width: 680px; max-height: 90vh; background: #FFFFFF; border-radius: 16px; border: 1.5px solid #EAE4D7; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 60px rgba(35, 29, 21, 0.25);">
+          <!-- Header -->
+          <div class="media-modal-header" style="background: #FAF8F5; border-bottom: 1px solid #EAE4D7; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 40px; height: 40px; border-radius: 10px; background: #FBF5EB; border: 1.5px solid #EEDFC6; color: #B88E4F; display: grid; place-items: center; font-size: 20px;">
+                <i class="ph-bold ph-video-camera"></i>
+              </div>
+              <div>
+                <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #1A1612;">Nộp Video Review Sản Phẩm (FR-15)</h3>
+                <p style="margin: 2px 0 0; font-size: 12px; color: #7D715E;">Nộp video trải nghiệm cá nhân cho Shop kiểm duyệt để nhận hoa hồng tiếp thị</p>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button
+                class="btn secondary"
+                id="btn-reset-kol-video-form"
+                type="button"
+                title="Làm mới toàn bộ form nhập liệu"
+                style="padding: 0 10px; height: 32px; font-size: 12px; font-weight: 700; color: #7D715E; border: 1px solid #EAE4D7; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"
+              >
+                <i class="ph ph-arrow-counter-clockwise"></i> Làm mới
+              </button>
+              <button class="media-modal-close-btn" id="modal-close" title="Đóng cửa sổ" style="cursor: pointer;"><i class="ph ph-x"></i></button>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div style="padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;">
+            <!-- 1. Chọn sản phẩm -->
+            <div>
+              <label style="display: block; font-size: 13px; font-weight: 700; color: #1A1612; margin-bottom: 6px;">
+                Sản phẩm review <span style="color: #DC2626;">*</span>
+              </label>
+              <select id="submit-kol-product-select" style="width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid #EAE4D7; border-radius: 10px; background: #FAF8F5; color: #1A1612; font-size: 14px; font-weight: 600;">
+                <option value="SKIN-C15" ${form.productId === "SKIN-C15" ? "selected" : ""}>Serum vitamin C 15% (SKIN-C15) — Sora Skin Official Store</option>
+                <option value="SUN-AQUA" ${form.productId === "SUN-AQUA" ? "selected" : ""}>Kem chống nắng SPF50+ (SUN-AQUA) — Sora Skin Official Store</option>
+                <option value="TONER-BHA" ${form.productId === "TONER-BHA" ? "selected" : ""}>Toner BHA 2% Thu Nhỏ Lỗ Chân Lông — Sora Skin Official Store</option>
+              </select>
+            </div>
+
+            <!-- 2. Tiêu đề video review -->
+            <div>
+              <label style="display: block; font-size: 13px; font-weight: 700; color: #1A1612; margin-bottom: 6px;">
+                Tiêu đề video review <span style="color: #DC2626;">*</span>
+              </label>
+              <input
+                id="submit-kol-title-input"
+                type="text"
+                value="${escapeHtml(form.title)}"
+                placeholder="VD: Trải nghiệm thực tế Serum Vitamin C sau 14 ngày - Da sáng rõ rệt"
+                style="width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid #EAE4D7; border-radius: 10px; background: #FAF8F5; color: #1A1612; font-size: 14px;"
+              />
+            </div>
+
+            <!-- 3. Khu vực Tải Video (Bắt buộc) -->
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <label style="font-size: 13px; font-weight: 700; color: #1A1612;">
+                  Tệp Video Review (.mp4, .webm, .mov) <span style="color: #DC2626;">* (Bắt buộc tải video từ máy)</span>
+                </label>
+                ${hasVideo ? `<span style="font-size: 12px; font-weight: 700; color: #059669; display: flex; align-items: center; gap: 4px;"><i class="ph-bold ph-check-circle"></i> Đã tải video lên</span>` : `<span style="font-size: 12px; font-weight: 700; color: #DC2626;">Chưa có video</span>`}
+              </div>
+
+              ${hasVideo ? `
+                <div style="background: #FBF5EB; border: 1.5px solid #C59B58; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                      <div style="width: 44px; height: 44px; border-radius: 8px; background: #231D15; color: #C59B58; display: grid; place-items: center; font-size: 22px; flex-shrink: 0;">
+                        <i class="ph-bold ph-film-strip"></i>
+                      </div>
+                      <div style="min-width: 0;">
+                        <div style="font-size: 14px; font-weight: 700; color: #1A1612; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                          ${escapeHtml(form.videoFileName || "sample-video.mp4")}
+                        </div>
+                        <div style="font-size: 12px; color: #7D715E;">
+                          ${form.videoFileSize || "18.2 MB"} • Định dạng video hợp lệ • <span style="color: #059669; font-weight: 700;">✓ Sẵn sàng gửi</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                      <button type="button" id="btn-change-video" class="btn small secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
+                        <i class="ph ph-arrows-clockwise"></i> Đổi video
+                      </button>
+                      <button type="button" id="btn-remove-video" class="btn small danger" style="font-size: 12px; padding: 6px 12px; border-radius: 8px; background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; cursor: pointer;">
+                        <i class="ph ph-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Video player preview -->
+                  <div style="border-radius: 10px; overflow: hidden; background: #000; max-height: 200px; display: flex; justify-content: center;">
+                    <video src="${form.videoPreviewUrl}" controls playsinline style="max-height: 200px; width: auto; border-radius: 8px;"></video>
+                  </div>
+                </div>
+              ` : `
+                <div id="video-dropzone" style="border: 2px dashed #C59B58; border-radius: 12px; background: #FAF8F5; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.2s;">
+                  <div style="width: 48px; height: 48px; border-radius: 50%; background: #FBF5EB; color: #B88E4F; display: grid; place-items: center; font-size: 24px; margin: 0 auto 10px;">
+                    <i class="ph-bold ph-cloud-arrow-up"></i>
+                  </div>
+                  <p style="margin: 0 0 4px; font-size: 14px; font-weight: 700; color: #1A1612;">Kéo thả video review vào đây hoặc bấm chọn tệp từ máy</p>
+                  <p style="margin: 0 0 14px; font-size: 12px; color: #7D715E;">Hỗ trợ định dạng MP4, WebM, QuickTime (.mov) - Tối đa 100MB</p>
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" id="btn-choose-video-file" style="background: #C59B58; color: #FFFFFF; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                      <i class="ph-bold ph-upload-simple"></i> Chọn video từ máy tính
+                    </button>
+                    <button type="button" id="btn-quick-sample-video" style="background: #F3EFE6; color: #1A1612; border: 1px solid #EAE4D7; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Dùng video kiểm thử có sẵn">
+                      <i class="ph ph-magic-wand"></i> Dùng video mẫu kiểm thử
+                    </button>
+                  </div>
+                </div>
+              `}
+              <input type="file" id="input-video-file" accept="video/mp4,video/webm,video/quicktime" style="display: none;" />
+            </div>
+
+            <!-- 4. Ảnh Poster Thumbnail -->
+            <div>
+              <label style="display: block; font-size: 13px; font-weight: 700; color: #1A1612; margin-bottom: 6px;">
+                Ảnh Poster / Thumbnail hiển thị (.jpg, .png, .webp)
+              </label>
+              <div style="display: flex; align-items: center; gap: 14px; background: #FAF8F5; border: 1.5px solid #EAE4D7; border-radius: 12px; padding: 12px;">
+                <img src="${form.posterPreviewUrl || productImage}" alt="Poster" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #EAE4D7; flex-shrink: 0;" />
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 13px; font-weight: 700; color: #1A1612;">Ảnh đại diện video</div>
+                  <div style="font-size: 11px; color: #7D715E; margin-top: 2px;">Tùy chọn tải ảnh từ máy tính hoặc giữ ảnh sản phẩm mặc định</div>
+                </div>
+                <div>
+                  <button type="button" id="btn-choose-poster-file" class="btn small secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
+                    <i class="ph ph-image"></i> Tải ảnh từ máy
+                  </button>
+                  <input type="file" id="input-poster-file" accept="image/*" style="display: none;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Kịch bản & Caption review đính kèm -->
+            <div>
+              <label style="display: block; font-size: 13px; font-weight: 700; color: #1A1612; margin-bottom: 6px;">
+                Kịch bản & Caption review đính kèm
+              </label>
+              <textarea
+                id="submit-kol-caption-input"
+                rows="3"
+                placeholder="Nhập cảm nhận thực tế, công dụng, lưu ý khi dùng..."
+                style="width: 100%; padding: 10px 14px; border: 1.5px solid #EAE4D7; border-radius: 10px; background: #FAF8F5; color: #1A1612; font-size: 13px; line-height: 1.5; resize: vertical;"
+              >${escapeHtml(form.caption || "")}</textarea>
+            </div>
+
+            <!-- 6. Thông báo quy định -->
+            <div style="display: flex; gap: 10px; padding: 12px 14px; background: #FBF5EB; border: 1px solid #EEDFC6; border-radius: 10px; font-size: 12px; color: #7D715E; line-height: 1.5;">
+              <i class="ph-bold ph-shield-check" style="color: #C59B58; font-size: 18px; flex-shrink: 0; margin-top: 1px;"></i>
+              <div>
+                <strong style="color: #1A1612;">Quy trình kiểm duyệt FR-15:</strong> Video sau khi gửi sẽ ở trạng thái <strong>Chờ Shop phê duyệt</strong>. Bạn có thể xem trước hoặc hủy nộp bất kỳ lúc nào trước khi Shop phê duyệt.
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div style="padding: 16px 24px; background: #FAF8F5; border-top: 1px solid #EAE4D7; display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+            <button type="button" class="btn secondary" id="btn-cancel-submit" style="padding: 0 16px; height: 42px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 10px;">
+              Hủy bỏ
+            </button>
+            ${hasVideo ? `
+              <button
+                type="button"
+                id="btn-submit-kol-video"
+                style="background: linear-gradient(135deg, #C59B58 0%, #B88E4F 100%); color: #FFFFFF; border: none; border-radius: 10px; padding: 0 20px; height: 42px; font-weight: 800; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(184, 142, 79, 0.35);"
+              >
+                <i class="ph-bold ph-paper-plane-tilt"></i> Gửi video cho Shop duyệt
+              </button>
+            ` : `
+              <button
+                type="button"
+                disabled
+                style="background: #EAE4D7; color: #7D715E; border: none; border-radius: 10px; padding: 0 20px; height: 42px; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: not-allowed;"
+                title="Vui lòng tải tệp video lên trước khi gửi"
+              >
+                <i class="ph-bold ph-lock"></i> Cần tải video để gửi
+              </button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }
 
   // 1. Modal Hướng dẫn & Quy định
   if (mediaState.activeModal === "guidelines") {
@@ -1440,12 +2064,26 @@ function renderActiveModal(globalState) {
             </div>
 
             <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
-              <button class="btn action-download" data-asset-id="${asset.id}" style="width: 100%;">
-                <i class="ph ph-download-simple"></i> Tải file gốc về máy (${asset.fileSize})
-              </button>
-              <button class="btn secondary" id="btn-copy-asset-cdn" data-asset-id="${asset.id}" style="width: 100%;">
-                <i class="ph ph-link"></i> Sao chép liên kết CDN
-              </button>
+              ${
+                asset.isSubmission && asset.status === "PENDING"
+                  ? `
+                <div style="padding:10px 12px;background:#FBF5EB;border:1px solid #EEDFC6;border-radius:10px;font-size:12px;color:#7D715E;">
+                  <strong style="color:#D97706;display:flex;align-items:center;gap:4px;"><i class="ph-bold ph-clock"></i> Video đang chờ Shop duyệt</strong>
+                  <p style="margin:4px 0 0;line-height:1.4;">Bạn có thể hủy nộp và xóa video này khỏi danh sách bất cứ lúc nào trước khi Shop duyệt.</p>
+                </div>
+                <button class="btn danger action-delete-submission" data-asset-id="${asset.id}" style="width: 100%;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;font-weight:700;cursor:pointer;">
+                  <i class="ph ph-trash"></i> Hủy nộp & Xóa video này
+                </button>
+              `
+                  : `
+                <button class="btn action-download" data-asset-id="${asset.id}" style="width: 100%;">
+                  <i class="ph ph-download-simple"></i> Tải file gốc về máy (${asset.fileSize})
+                </button>
+                <button class="btn secondary" id="btn-copy-asset-cdn" data-asset-id="${asset.id}" style="width: 100%;">
+                  <i class="ph ph-link"></i> Sao chép liên kết CDN
+                </button>
+              `
+              }
             </div>
           </div>
         </div>
@@ -1777,6 +2415,32 @@ export function bindMedia(root = document, context = {}) {
   const btnOpenDrawer = container.querySelector("#btn-open-caption-drawer");
   const btnCloseCaptionDrawer = container.querySelector("#btn-close-caption-drawer");
   const btnDrawerCloseAction = container.querySelector("#btn-drawer-close-action");
+
+  // Accordion Thu gọn / Mở rộng Mẫu Caption
+  const btnToggleCaptionAccordion = container.querySelector("#btn-toggle-caption-accordion");
+  if (btnToggleCaptionAccordion) {
+    btnToggleCaptionAccordion.onclick = (e) => {
+      if (e.target.closest("#btn-open-caption-drawer")) return;
+      mediaState.isCaptionAccordionOpen = !mediaState.isCaptionAccordionOpen;
+      refresh();
+    };
+    btnToggleCaptionAccordion.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        if (e.target.closest("#btn-open-caption-drawer")) return;
+        e.preventDefault();
+        mediaState.isCaptionAccordionOpen = !mediaState.isCaptionAccordionOpen;
+        refresh();
+      }
+    };
+  }
+
+  const btnCollapseCaption = container.querySelector("#btn-collapse-caption");
+  if (btnCollapseCaption) {
+    btnCollapseCaption.onclick = () => {
+      mediaState.isCaptionAccordionOpen = false;
+      refresh();
+    };
+  }
 
   // Đồng bộ nhanh giao diện văn bản, số ký tự & bài đăng mô phỏng
   const updateLiveCaptionSync = (text) => {
@@ -2138,6 +2802,24 @@ export function bindMedia(root = document, context = {}) {
     };
   }
 
+  // 23.1. Chức năng Nộp video review (FR-15) - Mở modal trực tiếp ngay tại trang (không chuyển trang)
+  const submitKolVideoBtn = container.querySelector("#btn-open-kol-video-submission");
+  if (submitKolVideoBtn) {
+    submitKolVideoBtn.onclick = () => {
+      mediaState.submitForm = createCleanSubmitKolForm();
+      mediaState.activeModal = "submit-kol-video";
+      refresh();
+    };
+  }
+
+  // 23.2. Mở trực tiếp Landing Page sản phẩm công khai có video review và đặt hàng (FR-15) - Chuyển cùng tab
+  const landingBtn = container.querySelector("#btn-open-landing-page");
+  if (landingBtn) {
+    landingBtn.onclick = () => {
+      window.location.hash = "#storefront";
+    };
+  }
+
   // 24. Tải trọn bộ Pack tài nguyên
   const bulkBtn = container.querySelector("#btn-bulk-download");
   if (bulkBtn) {
@@ -2157,6 +2839,7 @@ export function bindMedia(root = document, context = {}) {
     modalBackdrop.onclick = (e) => {
       if (e.target === modalBackdrop) {
         mediaState.activeModal = null;
+        mediaState.deleteConfirmItem = null;
         refresh();
       }
     };
@@ -2166,7 +2849,27 @@ export function bindMedia(root = document, context = {}) {
   if (modalClose) {
     modalClose.onclick = () => {
       mediaState.activeModal = null;
+      mediaState.deleteConfirmItem = null;
       refresh();
+    };
+  }
+
+  const btnCancelSubmit = container.querySelector("#btn-cancel-submit");
+  if (btnCancelSubmit) {
+    btnCancelSubmit.onclick = () => {
+      mediaState.submitForm = createCleanSubmitKolForm();
+      mediaState.activeModal = null;
+      refresh();
+    };
+  }
+
+  const btnResetForm = container.querySelector("#btn-reset-kol-video-form");
+  if (btnResetForm) {
+    btnResetForm.onclick = (e) => {
+      e.stopPropagation();
+      mediaState.submitForm = createCleanSubmitKolForm();
+      refresh();
+      toast("Đã làm mới form nộp video review.");
     };
   }
 
@@ -2184,6 +2887,304 @@ export function bindMedia(root = document, context = {}) {
       mediaState.activeModal = null;
       refresh();
       toast("Đã hủy quá trình tải tệp.");
+    };
+  }
+
+  // 25.1. Xử lý tải tệp Video trong Modal Nộp Video Review
+  const btnChooseVideo = container.querySelector("#btn-choose-video-file");
+  const inputVideoFile = container.querySelector("#input-video-file");
+  if (btnChooseVideo && inputVideoFile) {
+    btnChooseVideo.onclick = (e) => {
+      e.stopPropagation();
+      inputVideoFile.click();
+    };
+  }
+  if (inputVideoFile) {
+    inputVideoFile.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1) + " MB";
+        if (!mediaState.submitForm) mediaState.submitForm = {};
+        mediaState.submitForm.videoFile = file;
+        mediaState.submitForm.videoFileName = file.name;
+        mediaState.submitForm.videoFileSize = sizeMB;
+        mediaState.submitForm.videoPreviewUrl = url;
+        refresh();
+      }
+    };
+  }
+
+  const videoDropzone = container.querySelector("#video-dropzone");
+  if (videoDropzone && inputVideoFile) {
+    videoDropzone.onclick = () => {
+      inputVideoFile.click();
+    };
+    videoDropzone.ondragover = (e) => {
+      e.preventDefault();
+      videoDropzone.style.borderColor = "#B88E4F";
+      videoDropzone.style.background = "#FBF5EB";
+    };
+    videoDropzone.ondragleave = () => {
+      videoDropzone.style.borderColor = "#C59B58";
+      videoDropzone.style.background = "#FAF8F5";
+    };
+    videoDropzone.ondrop = (e) => {
+      e.preventDefault();
+      videoDropzone.style.borderColor = "#C59B58";
+      videoDropzone.style.background = "#FAF8F5";
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1) + " MB";
+        if (!mediaState.submitForm) mediaState.submitForm = {};
+        mediaState.submitForm.videoFile = file;
+        mediaState.submitForm.videoFileName = file.name;
+        mediaState.submitForm.videoFileSize = sizeMB;
+        mediaState.submitForm.videoPreviewUrl = url;
+        refresh();
+      }
+    };
+  }
+
+  const btnQuickSample = container.querySelector("#btn-quick-sample-video");
+  if (btnQuickSample) {
+    btnQuickSample.onclick = (e) => {
+      e.stopPropagation();
+      if (!mediaState.submitForm) mediaState.submitForm = createCleanSubmitKolForm();
+      mediaState.submitForm.videoFile = null;
+      mediaState.submitForm.videoFileName = "sample-video.mp4 (Kiểm thử mẫu)";
+      mediaState.submitForm.videoFileSize = "18.2 MB";
+      mediaState.submitForm.videoPreviewUrl = sampleVideoUrl;
+      if (!mediaState.submitForm.title) {
+        mediaState.submitForm.title = "Trải nghiệm thực tế Serum Vitamin C sau 14 ngày - Da sáng rõ rệt";
+      }
+      if (!mediaState.submitForm.caption) {
+        mediaState.submitForm.caption = "Serum mỏng nhẹ thấm nhanh, mùi cam tự nhiên, hiệu quả làm đều màu da và mờ vết thâm rõ rệt sau 2 tuần trải nghiệm.";
+      }
+      refresh();
+    };
+  }
+
+  const btnChangeVideo = container.querySelector("#btn-change-video");
+  if (btnChangeVideo && inputVideoFile) {
+    btnChangeVideo.onclick = () => inputVideoFile.click();
+  }
+
+  const btnRemoveVideo = container.querySelector("#btn-remove-video");
+  if (btnRemoveVideo) {
+    btnRemoveVideo.onclick = () => {
+      if (mediaState.submitForm) {
+        mediaState.submitForm.videoFile = null;
+        mediaState.submitForm.videoFileName = "";
+        mediaState.submitForm.videoFileSize = "";
+        mediaState.submitForm.videoPreviewUrl = "";
+      }
+      refresh();
+    };
+  }
+
+  // 25.2. Xử lý tải ảnh Poster trong Modal
+  const btnChoosePoster = container.querySelector("#btn-choose-poster-file");
+  const inputPosterFile = container.querySelector("#input-poster-file");
+  if (btnChoosePoster && inputPosterFile) {
+    btnChoosePoster.onclick = () => inputPosterFile.click();
+  }
+  if (inputPosterFile) {
+    inputPosterFile.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        if (!mediaState.submitForm) mediaState.submitForm = {};
+        mediaState.submitForm.posterFile = file;
+        mediaState.submitForm.posterFileName = file.name;
+        mediaState.submitForm.posterPreviewUrl = url;
+        refresh();
+      }
+    };
+  }
+
+  // 25.3. Xử lý cập nhật thông tin ô nhập liệu trong Modal
+  const titleInput = container.querySelector("#submit-kol-title-input");
+  if (titleInput) {
+    titleInput.oninput = (e) => {
+      if (mediaState.submitForm) mediaState.submitForm.title = e.target.value;
+    };
+  }
+  const captionInput = container.querySelector("#submit-kol-caption-input");
+  if (captionInput) {
+    captionInput.oninput = (e) => {
+      if (mediaState.submitForm) mediaState.submitForm.caption = e.target.value;
+    };
+  }
+  const productSelect = container.querySelector("#submit-kol-product-select");
+  if (productSelect) {
+    productSelect.onchange = (e) => {
+      if (mediaState.submitForm) mediaState.submitForm.productId = e.target.value;
+    };
+  }
+
+  // TAB CHUYỂN ĐỔI: TÀI NGUYÊN SHOP vs VIDEO REVIEW CỦA TÔI
+  const tabShop = container.querySelector("#tab-shop-assets");
+  if (tabShop) {
+    tabShop.onclick = () => {
+      mediaState.activeTab = "shop";
+      refresh();
+    };
+  }
+
+  const tabMyReviews = container.querySelector("#tab-my-reviews");
+  if (tabMyReviews) {
+    tabMyReviews.onclick = () => {
+      mediaState.activeTab = "my_reviews";
+      refresh();
+    };
+  }
+
+  const btnSubmitAnother = container.querySelector("#btn-submit-another-review");
+  if (btnSubmitAnother) {
+    btnSubmitAnother.onclick = () => {
+      mediaState.submitForm = createCleanSubmitKolForm();
+      mediaState.activeModal = "submit-kol-video";
+      refresh();
+    };
+  }
+
+  const btnEmptySubmit = container.querySelector("#btn-empty-submit-review");
+  if (btnEmptySubmit) {
+    btnEmptySubmit.onclick = () => {
+      mediaState.submitForm = createCleanSubmitKolForm();
+      mediaState.activeModal = "submit-kol-video";
+      refresh();
+    };
+  }
+
+  // 25.4. Xử lý bấm nút Gửi video cho Shop duyệt
+  const btnSubmitReview = container.querySelector("#btn-submit-kol-video");
+  if (btnSubmitReview) {
+    btnSubmitReview.onclick = () => {
+      const form = mediaState.submitForm || {};
+      if (!form.videoPreviewUrl && !form.videoFile) {
+        toast("Vui lòng tải video review lên trước khi gửi!", "danger");
+        return;
+      }
+
+      const title = (form.title || "").trim() || "Trải nghiệm thực tế Serum Vitamin C";
+      const newAsset = {
+        id: "SUBMISSION-" + Date.now(),
+        productId: form.productId || "SKIN-C15",
+        productName: form.productId === "SUN-AQUA" ? "Kem chống nắng SPF50+" : form.productId === "TONER-BHA" ? "Toner BHA 2%" : "Serum vitamin C 15%",
+        title: title,
+        type: "video",
+        format: "MP4",
+        ratio: "9:16",
+        ratioClass: "ratio-9-16",
+        resolution: "1080 x 1920 px",
+        duration: "00:42",
+        durationSec: 42,
+        fps: "60 fps",
+        bitrate: "8.5 Mbps",
+        fileSize: form.videoFileSize || "18.2 MB",
+        sizeBytes: 19084083,
+        downloads: 0,
+        isApproved: false,
+        isBroken: false,
+        isSubmission: true,
+        status: "PENDING",
+        image: form.posterPreviewUrl || productImage,
+        videoUrl: form.videoPreviewUrl || sampleVideoUrl,
+        recommendedChannels: "TikTok, Reels, Shorts",
+        tags: ["Review KOL", "Chờ duyệt", "Sora Skin"],
+        updatedAt: "Vừa xong",
+      };
+
+      mediaAssets.unshift(newAsset);
+
+      // Lưu vào localStorage để F5 không bị mất
+      const savedSubs = loadSavedSubmissions().filter((a) => a.id !== newAsset.id);
+      savedSubs.unshift(newAsset);
+      saveSubmissionsToStorage(savedSubs);
+
+      // Tự động chuyển sang Tab "Video review của tôi" để xem lại ngay
+      mediaState.activeTab = "my_reviews";
+      mediaState.activeModal = null;
+      // Reset form hoàn toàn sạch sẽ sau khi nộp thành công
+      mediaState.submitForm = createCleanSubmitKolForm();
+
+      // Đồng bộ ngầm với Backend API nếu có phiên đăng nhập
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          fetch("/api/media/kol-submission", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              productId: "11111111-1111-1111-1111-111111111111",
+              title: title,
+              videoUrl: newAsset.videoUrl,
+              thumbnailUrl: newAsset.image,
+              captionTemplate: form.caption || ""
+            })
+          }).catch(err => console.warn("API sync silent fail:", err));
+        }
+      } catch (e) {}
+
+      toast("Nộp video review thành công! Đã chuyển sang tab Video của tôi để xem lại.", "success");
+      refresh();
+    };
+  }
+
+  // 25.5. Xử lý Hủy nộp & Xóa video review - Mở Modal xác nhận xóa chuẩn thương hiệu (Không dùng window.confirm)
+  container.querySelectorAll(".action-delete-submission").forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-asset-id");
+      if (!id) return;
+      const asset = mediaAssets.find((a) => a.id === id);
+      if (!asset) return;
+
+      mediaState.deleteConfirmItem = asset;
+      mediaState.activeModal = "confirm-delete-submission";
+      refresh();
+    };
+  });
+
+  // Xử lý nút Giữ lại / Hủy trong Modal xác nhận xóa
+  const btnCancelDeleteModal = container.querySelector("#btn-cancel-delete-modal");
+  if (btnCancelDeleteModal) {
+    btnCancelDeleteModal.onclick = () => {
+      mediaState.deleteConfirmItem = null;
+      mediaState.activeModal = null;
+      refresh();
+    };
+  }
+
+  // Xử lý nút Xác nhận xóa vĩnh viễn trong Modal xác nhận xóa
+  const btnConfirmDeleteModal = container.querySelector("#btn-confirm-delete-modal");
+  if (btnConfirmDeleteModal) {
+    btnConfirmDeleteModal.onclick = () => {
+      if (mediaState.deleteConfirmItem) {
+        const id = mediaState.deleteConfirmItem.id;
+        const idx = mediaAssets.findIndex((a) => a.id === id);
+        if (idx !== -1) {
+          mediaAssets.splice(idx, 1);
+          // Cập nhật localStorage
+          const savedSubs = loadSavedSubmissions().filter((a) => a.id !== id);
+          saveSubmissionsToStorage(savedSubs);
+
+          if (mediaState.selectedAsset && mediaState.selectedAsset.id === id) {
+            mediaState.activeModal = null;
+            mediaState.selectedAsset = null;
+          }
+          toast("Đã hủy nộp và xóa video review thành công.");
+        }
+        mediaState.deleteConfirmItem = null;
+        mediaState.activeModal = null;
+        refresh();
+      }
     };
   }
 

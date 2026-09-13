@@ -32,6 +32,24 @@ export class MerchantPayoutsService {
     userId: string,
     db: Prisma.TransactionClient = this.prisma,
   ) {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (
+      user?.role === UserRole.SYSTEM_ADMIN ||
+      user?.role === UserRole.SYSTEM_MANAGER
+    ) {
+      const store = await db.store.findFirst({
+        where: { id: storeId, isDeleted: false },
+      });
+      if (!store) {
+        throw new NotFoundException('Shop không tồn tại');
+      }
+      return store;
+    }
+
     const store = await db.store.findFirst({
       where: {
         id: storeId,

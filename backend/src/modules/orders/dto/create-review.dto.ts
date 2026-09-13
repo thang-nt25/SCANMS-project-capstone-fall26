@@ -18,6 +18,22 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOrderReviewDto {
   @ApiProperty({
+    description: 'Token bí mật được cấp khi khách tạo đơn hoặc sau khi xác minh mã đơn + SĐT',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Thiếu reviewToken để xác minh quyền sở hữu đơn hàng' })
+  @MaxLength(1000)
+  reviewToken: string;
+
+  @ApiPropertyOptional({
+    description: 'Số điện thoại đã dùng khi đặt hàng',
+    example: '0933888999',
+  })
+  @IsOptional()
+  @IsString()
+  customerPhone?: string;
+
+  @ApiProperty({
     description: 'ID sản phẩm cần đánh giá',
     example: 'b54934c3-0762-40b4-868e-e7f66dac1684',
   })
@@ -25,12 +41,6 @@ export class CreateOrderReviewDto {
   @IsNotEmpty()
   @IsUUID('4')
   productId: string;
-
-  @ApiProperty({ description: 'Token ngắn hạn sau khi xác minh mã đơn + SĐT' })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(1000)
-  reviewToken: string;
 
   @ApiProperty({
     description: 'Số sao đánh giá (từ 1 đến 5 sao)',

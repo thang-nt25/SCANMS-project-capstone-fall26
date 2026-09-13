@@ -40,12 +40,14 @@ import {
   HelpCircle,
   BarChart3,
   ShieldCheck,
+  Video,
 } from 'lucide-react';
 import { referralLinksService } from '../../services/referralLinksService';
 import type {
   ReferralLinkItem,
   EligibleProduct,
 } from '../../services/referralLinksService';
+import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
 
 import QRCode from 'qrcode';
 
@@ -136,6 +138,8 @@ export default function ReferralLinksPage() {
   const [selectedLinkForQr, setSelectedLinkForQr] = useState<ReferralLinkItem | null>(null);
   const [selectedLinkForDelete, setSelectedLinkForDelete] = useState<ReferralLinkItem | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isSubmitVideoModalOpen, setIsSubmitVideoModalOpen] = useState(false);
+  const [selectedProductForVideo, setSelectedProductForVideo] = useState<{ id: string; title: string } | null>(null);
 
   // State tạo link mới
   const [eligibleProducts, setEligibleProducts] = useState<EligibleProduct[]>([]);
@@ -835,8 +839,18 @@ export default function ReferralLinksPage() {
 
           <div className="flex items-center gap-3">
             <button
+              onClick={() => {
+                setSelectedProductForVideo(null);
+                setIsSubmitVideoModalOpen(true);
+              }}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#F3EFE6] hover:bg-[#EAE4D7] text-[#1A1612] font-bold border border-[#E8DAC4] active:scale-95 transition-all cursor-pointer"
+            >
+              <Video className="w-4.5 h-4.5 text-[#B88E4F]" />
+              Nộp video review (FR-15)
+            </button>
+            <button
               onClick={handleOpenCreateModal}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#C59B58] via-[#B88E4F] to-[#9E7933] hover:from-[#B88E4F] hover:to-[#8C682A] text-white font-bold shadow-md shadow-[#9E7933]/20 border border-[#DEBE85] active:scale-95 transition-all"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#C59B58] via-[#B88E4F] to-[#9E7933] hover:from-[#B88E4F] hover:to-[#8C682A] text-white font-bold shadow-md shadow-[#9E7933]/20 border border-[#DEBE85] active:scale-95 transition-all cursor-pointer"
             >
               <Plus className="w-5 h-5" />
               Tạo link tiếp thị mới
@@ -1123,10 +1137,25 @@ export default function ReferralLinksPage() {
                               setSelectedLinkForQr(link);
                               setIsQrModalOpen(true);
                             }}
-                            className="p-2 text-[#7D6D55] hover:text-[#C59B58] hover:bg-[#FAF8F5] rounded-xl transition-colors"
+                            className="p-2 text-[#7D6D55] hover:text-[#C59B58] hover:bg-[#FAF8F5] rounded-xl transition-colors cursor-pointer"
                             title="Mã QR Code"
                           >
                             <QrCode className="w-4.5 h-4.5" />
+                          </button>
+
+                          {/* Nộp video review cho sản phẩm này (FR-15) */}
+                          <button
+                            onClick={() => {
+                              setSelectedProductForVideo({
+                                id: link.product?.id || link.productId,
+                                title: link.product?.title || 'Sản phẩm tiếp thị',
+                              });
+                              setIsSubmitVideoModalOpen(true);
+                            }}
+                            className="p-2 text-[#7D6D55] hover:text-[#C59B58] hover:bg-[#FAF8F5] rounded-xl transition-colors cursor-pointer"
+                            title="Nộp video review sản phẩm này (FR-15)"
+                          >
+                            <Video className="w-4.5 h-4.5 text-[#B88E4F]" />
                           </button>
 
                           {/* Xem Thống kê & Phân tích (FR-13 Tracking Analytics) */}
@@ -2564,6 +2593,21 @@ export default function ReferralLinksPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Nộp Video Review KOL (FR-15) */}
+      <SubmitKolVideoModal
+        isOpen={isSubmitVideoModalOpen}
+        initialProductId={selectedProductForVideo?.id}
+        initialProductTitle={selectedProductForVideo?.title}
+        onClose={() => {
+          setIsSubmitVideoModalOpen(false);
+          setSelectedProductForVideo(null);
+        }}
+        onSuccess={() => {
+          setIsSubmitVideoModalOpen(false);
+          setSelectedProductForVideo(null);
+        }}
+      />
     </div>
   );
 }

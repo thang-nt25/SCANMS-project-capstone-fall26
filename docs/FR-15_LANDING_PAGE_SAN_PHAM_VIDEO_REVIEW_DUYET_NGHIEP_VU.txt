@@ -1,0 +1,618 @@
+ĐẶC TẢ NGHIỆP VỤ ĐỂ DUYỆT
+FR-15 — LANDING PAGE SẢN PHẨM & VIDEO REVIEW
+
+Yêu cầu gốc:
+Giao diện mua hàng công khai hiện đại, hiển thị thông tin sản phẩm và video review của KOL.
+
+HƯỚNG DẪN DUYỆT CHO TỪNG MỤC
+[x] Có — giữ nguyên nội dung đề xuất.
+[ ] Sửa mới — thay nội dung cũ bằng nội dung bạn tự ghi.
+[ ] Không — bỏ mục khỏi FR-15.
+
+Chỉ chọn một phương án cho mỗi mục. Nếu chọn “Sửa mới”, bắt buộc ghi nội dung thay thế.
+
+======================================================================
+1. MỤC TIÊU
+======================================================================
+Tạo trang sản phẩm công khai thuộc sàn SCANMS để khách xem đầy đủ thông tin, ảnh,
+video review KOL, đánh giá đã duyệt và bắt đầu thao tác mua hàng mà không cần đăng nhập.
+
+Duyệt: [x] Có — giữ  
+======================================================================
+2. RANH GIỚI CHỨC NĂNG
+======================================================================
+FR-15 phụ trách hiển thị landing page. FR-10/11 tạo link và QR; FR-13/14 xử lý
+attribution/cookie/rate-limit; FR-16 tạo đơn Guest Checkout; FR-18 nhận và duyệt review.
+FR-15 chỉ gọi và hiển thị kết quả của các chức năng liên quan, không tự tính hoa hồng.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+3. URL CÔNG KHAI CHÍNH
+======================================================================
+Đề xuất URL chuẩn: /products/{productId-or-slug}. Khách đi qua /r/{shortCode} được backend
+ghi nhận tracking rồi redirect về URL này. Không đưa collaboratorId/commission vào URL.
+
+Duyệt: [x] Có — giữ 
+
+======================================================================
+4. KHÔNG BẮT BUỘC ĐĂNG NHẬP
+======================================================================
+Khách vãng lai được xem landing, media, giá, tồn kho công khai và đánh giá đã duyệt.
+Các dữ liệu quản trị, hoa hồng nội bộ, IP, fingerprint và thông tin khách khác không công khai.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+5. NHẬN DIỆN NỀN TẢNG
+======================================================================
+Header/footer mang thương hiệu SCANMS và thể hiện đây là sàn multi-merchant. Tên, logo,
+trạng thái xác minh của Shop được hiển thị như gian hàng đối tác, không thay thương hiệu SCANMS.
+
+Duyệt: [x] Có — giữ 
+
+======================================================================
+6. ĐIỀU KIỆN SẢN PHẨM ĐƯỢC HIỂN THỊ
+======================================================================
+Chỉ hiển thị sản phẩm không xóa mềm, đang ACTIVE, Shop còn hoạt động và không bị khóa.
+Nếu sản phẩm/Shop bị xóa hoặc không tồn tại trả 404; nếu tạm ngừng thì hiển thị trạng thái
+không thể mua và không cho tạo checkout mới.
+
+Duyệt: [x] Có — giữ  
+======================================================================
+7. THÔNG TIN SẢN PHẨM BẮT BUỘC
+======================================================================
+- Tên, SKU, danh mục, mô tả.
+- Giá bán hiện tại; giá gốc chỉ hiện khi lớn hơn giá bán.
+- Ảnh đại diện và thư viện ảnh đã duyệt.
+- Tồn kho/trạng thái còn hàng.
+- Tên và trạng thái xác minh Shop.
+- Chính sách giao hàng, đổi trả, bảo hành do Shop cấu hình thật.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+8. GIÁ VÀ KHUYẾN MÃI
+======================================================================
+Giá hiển thị lấy từ backend, không hard-code và không tin giá do client gửi. Phần trăm giảm
+được tính từ giá gốc/giá bán hợp lệ. Coupon chỉ hiển thị mức giảm sau khi backend FR-12 xác thực.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+9. TỒN KHO
+======================================================================
+Nếu tồn kho bằng 0, hiển thị “Hết hàng” và vô hiệu hóa CTA mua. Tồn kho cuối cùng phải được
+backend FR-16 kiểm tra lại trong transaction khi đặt hàng; số trên landing chỉ để tham khảo.
+
+Duyệt: [x] Có — giữ 
+
+======================================================================
+10. ẢNH SẢN PHẨM
+======================================================================
+Ảnh phải do Shop/Admin tải lên hoặc khai báo từ nguồn được phép. Có ảnh đại diện và gallery;
+nếu thiếu dùng placeholder SCANMS trung tính, tuyệt đối không dùng ảnh ngẫu nhiên có thể sai sản phẩm.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+11. NGUỒN VIDEO REVIEW
+======================================================================
+Video review thuộc đúng sản phẩm, gắn rõ KOL tạo nội dung và Shop. Nguồn có thể là video upload
+nội bộ/CDN hoặc URL nền tảng nằm trong allowlist; không cho nhúng URL tùy ý gây XSS/phishing.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+12. DUYỆT VIDEO TRƯỚC KHI CÔNG KHAI
+======================================================================
+Video KOL nộp có trạng thái PENDING/APPROVED/REJECTED/HIDDEN. Chỉ video APPROVED được xuất hiện
+trên landing. Shop duyệt nội dung thuộc sản phẩm của mình; Admin có quyền ẩn nội dung vi phạm.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+13. ƯU TIÊN VIDEO ĐÚNG KOL GIỚI THIỆU
+======================================================================
+Nếu khách đến từ referral link hợp lệ của KOL A, landing ưu tiên video APPROVED của KOL A cho
+sản phẩm đó. Nếu không có, hiển thị video chính do Shop chọn hoặc danh sách video đã duyệt khác.
+Không tiết lộ cookie/attribution trong HTML hoặc API công khai.
+
+Duyệt: [x] Có — giữ  
+======================================================================
+14. NHIỀU VIDEO REVIEW
+======================================================================
+Cho phép danh sách nhiều video đã duyệt, nhưng một video được chọn làm featured. Thứ tự đề xuất:
+video đúng KOL referral → video featured của Shop → mới nhất/phù hợp nhất đã duyệt.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+15. TRÌNH PHÁT VIDEO
+======================================================================
+Hỗ trợ play/pause, âm lượng, tua, toàn màn hình, tốc độ phát và poster. Không autoplay có tiếng;
+trên mobile dùng playsInline. Có phụ đề/caption nếu Shop cung cấp và fallback khi video lỗi.
+
+Duyệt: [x] Có — giữ 
+
+======================================================================
+16. THÔNG TIN KOL TRÊN VIDEO
+======================================================================
+Hiển thị tên công khai/avatar/xác minh của KOL và nhãn “Nội dung tiếp thị” hoặc “Video review”.
+Không hiển thị email, số điện thoại, địa chỉ, tài khoản ngân hàng hoặc dữ liệu KYC của KOL.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+17. MINH BẠCH QUẢNG CÁO
+======================================================================
+Nếu KOL nhận hoa hồng, tài trợ hoặc sản phẩm mẫu, giao diện phải có nhãn công khai phù hợp như
+“Nội dung có liên kết tiếp thị”/“Sản phẩm được tài trợ” theo chính sách và pháp luật áp dụng.
+
+Duyệt: [x] Có — giữ 
+
+======================================================================
+18. ĐÁNH GIÁ KHÁCH HÀNG
+======================================================================
+Chỉ hiển thị review đã APPROVED. Ưu tiên review “Đã mua hàng” được xác minh từ đơn DELIVERED hoặc
+COMPLETED. Hiển thị điểm trung bình, phân bố sao, nội dung, ảnh review an toàn và ngày đánh giá.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+19. QUYỀN RIÊNG TƯ NGƯỜI REVIEW
+======================================================================
+Tên khách phải che một phần hoặc dùng display name; không trả số điện thoại, địa chỉ, email,
+orderId nội bộ hay dữ liệu thanh toán ra landing công khai.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+20. NỘI DUNG CẤM VÀ KIỂM DUYỆT
+======================================================================
+Không hiển thị video/review chứa lừa đảo, nội dung cấm, vi phạm bản quyền, thông tin cá nhân,
+tuyên bố y tế sai lệch hoặc link ngoài nguy hiểm. Có báo cáo nội dung và audit khi ẩn/khôi phục.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+21. CTA MUA HÀNG
+======================================================================
+CTA “Mua ngay/Đặt mua ngay” mở luồng FR-16 với productId và số lượng; không giả lập thành công
+chỉ bằng state frontend. Backend mới là bên tạo order, tính giá, coupon, tồn kho và attribution.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+22. SỐ LƯỢNG VÀ BIẾN THỂ
+======================================================================
+Khách chọn số lượng từ 1 đến giới hạn tồn kho/giới hạn Shop. Nếu hỗ trợ size/màu/dung tích thì
+phải có ProductVariant/SKU và tồn kho riêng; không hard-code lựa chọn 30ml/50ml ở frontend.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+23. COUPON
+======================================================================
+Landing có thể nhận coupon từ URL hoặc cho khách nhập, nhưng phải gọi backend FR-12 validate.
+Không tự gắn mã mẫu THANGVIP10/giảm 10%; lỗi coupon phải hiển thị tiếng Việt dễ hiểu.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+24. ATTRIBUTION
+======================================================================
+Frontend không đọc/sửa cookie HttpOnly và không gửi collaboratorId/commission đáng tin cậy.
+Backend FR-13 resolve attribution khi checkout. Landing không được làm mất cookie khi điều hướng.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+25. LINK KHÔNG HỢP LỆ
+======================================================================
+Nếu khách vào qua short link không tồn tại/xóa/khóa, xử lý theo FR-10/13 trước khi tới landing.
+Không tự lấy sản phẩm đầu tiên làm fallback vì có thể hiển thị sai sản phẩm và sai Shop/KOL.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+26. TRẠNG THÁI TẢI VÀ LỖI
+======================================================================
+Có skeleton/loading, empty state, lỗi mạng và nút thử lại. 404 có trang “Không tìm thấy sản phẩm”.
+Không hiển thị dữ liệu sản phẩm mẫu hoặc giá mặc định khi API thất bại.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+27. MULTI-MERCHANT ISOLATION
+======================================================================
+Mọi ảnh, video, review, coupon và chính sách hiển thị phải thuộc đúng productId/storeId.
+Không trộn video hoặc chính sách vận chuyển của Shop A vào sản phẩm Shop B.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+28. QUYỀN SHOP
+======================================================================
+Shop chỉ được sửa landing content, media và duyệt video/review của sản phẩm thuộc Shop mình.
+Shop không sửa attribution, lượt xem, đánh giá xác minh hoặc nội dung Shop khác.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+29. QUYỀN KOL
+======================================================================
+KOL được nộp video review cho sản phẩm/campaign mà mình đủ điều kiện; được xem trạng thái duyệt.
+KOL không tự APPROVE, không sửa giá/tồn kho/sản phẩm và không xóa video của KOL khác.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+30. QUYỀN ADMIN
+======================================================================
+Admin được ẩn/khôi phục media hoặc review vi phạm, xem lịch sử kiểm duyệt và audit. Admin không
+sửa lịch sử mua hàng/review xác minh âm thầm; mọi thao tác quản trị nhạy cảm phải có lý do.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+31. API CÔNG KHAI
+======================================================================
+Đề xuất endpoint riêng GET /public/products/{id-or-slug}/landing chỉ select trường an toàn cần
+cho landing. Không tái sử dụng response quản trị chứa commission nội bộ, deletedAt hoặc metadata.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+32. HIỆU NĂNG MEDIA
+======================================================================
+Ảnh dùng kích thước phù hợp, WebP/AVIF nếu có và lazy-load ảnh dưới màn hình. Video dùng CDN,
+poster, preload=metadata/none và streaming/range request; không tải toàn bộ video khi vừa mở trang.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+33. CACHE
+======================================================================
+Dữ liệu landing công khai có thể cache ngắn theo product/version; khi Shop sửa giá, tồn kho,
+media hoặc trạng thái phải invalidation. Không cache response có coupon cá nhân hoặc PII ở public CDN.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+34. SEO VÀ CHIA SẺ MẠNG XÃ HỘI
+======================================================================
+Có title, description, canonical URL, Open Graph/Twitter image và Product structured data từ dữ
+liệu thật. Không index sản phẩm xóa/tạm ngừng; không đưa mã KOL/cookie/PII vào canonical URL.
+
+Duyệt: [x] Có — giữ 
+
+======================================================================
+35. ACCESSIBILITY
+======================================================================
+Ảnh có alt đúng sản phẩm; video có caption khi khả dụng; nút dùng được bằng bàn phím; focus rõ;
+màu đủ tương phản; form và trạng thái lỗi có label/aria phù hợp.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+36. RESPONSIVE
+======================================================================
+Landing hoạt động đúng trên mobile, tablet và desktop; CTA mua quan trọng dễ tiếp cận trên mobile,
+không tràn ngang; gallery/video giữ đúng tỷ lệ và không che nội dung.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+37. BẢO MẬT FRONTEND/MEDIA
+======================================================================
+Escape nội dung mô tả/review; sanitize HTML nếu cho rich text; CSP/allowlist nguồn ảnh/video;
+chống XSS, open redirect, iframe độc hại và URL javascript/data không được phép.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+38. ANALYTICS LANDING
+======================================================================
+Có thể ghi page_view, video_start/progress/complete, CTA_click và checkout_start bằng eventId
+idempotent. Không tính autoplay/bot thành tương tác thật; không dùng analytics để tự sinh hoa hồng.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+39. RIÊNG TƯ VÀ CONSENT
+======================================================================
+Analytics không thiết yếu tuân theo consent. Khách từ chối tracking vẫn xem sản phẩm/video và mua
+được; chỉ attribution/analytics bị giới hạn theo FR-13. Không gửi PII cho player/CDN trái chính sách.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+40. XÓA/ẨN NỘI DUNG
+======================================================================
+Sản phẩm, media và review đã liên quan đơn/audit chỉ xóa mềm. URL media bị ẩn không còn xuất hiện
+trong API landing; lịch sử kiểm duyệt vẫn được giữ trong phạm vi retention.
+
+Duyệt: [x] Có — giữ 
+
+======================================================================
+41. MÃ LỖI NGHIỆP VỤ
+======================================================================
+- PRODUCT_NOT_FOUND.
+- PRODUCT_INACTIVE.
+- PRODUCT_OUT_OF_STOCK.
+- STORE_INACTIVE.
+- MEDIA_NOT_AVAILABLE.
+- VIDEO_NOT_APPROVED.
+- LANDING_DATA_UNAVAILABLE.
+UI hiển thị tiếng Việt dễ hiểu; log nội bộ giữ mã lỗi, requestId và chi tiết kỹ thuật.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+42. SWAGGER VÀ TÀI LIỆU
+======================================================================
+API landing mô tả request, response an toàn, phân trang media/review và các lỗi 400/404/410/429/500.
+Tài liệu nêu rõ ranh giới FR-15 với checkout, attribution, coupon và review submission.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+43. MONITORING
+======================================================================
+Theo dõi landing latency/error, 404 rate, ảnh/video lỗi, CDN latency, video start/completion và
+CTA-to-checkout rate theo product/Shop; cảnh báo spike lỗi, không log cookie/PII.
+
+Duyệt: [x] Có — giữ  
+======================================================================
+44. KIỂM THỬ BẮT BUỘC
+======================================================================
+- Khách không đăng nhập xem được sản phẩm hợp lệ.
+- Link KOL redirect đúng sản phẩm và ưu tiên đúng video APPROVED của KOL đó.
+- Không có video KOL thì fallback đúng; video PENDING/REJECTED không lộ.
+- Sản phẩm Shop khác không bị trộn media/review/coupon.
+- Hết hàng/tạm ngừng/xóa xử lý đúng; không fallback sang sản phẩm khác.
+- Giá/tồn kho lấy backend; CTA gọi checkout thật, không giả thành công frontend.
+- KOL/Shop/Admin đúng quyền; API public không lộ PII/commission/hash.
+- Responsive, accessibility, SEO, XSS, lỗi mạng và hiệu năng media đạt.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+45. TIÊU CHÍ HOÀN THÀNH
+======================================================================
+- Landing công khai dùng dữ liệu thật, đúng product và đúng Shop.
+- Có ảnh và video review KOL đã duyệt; ưu tiên đúng KOL referral khi có.
+- Không hard-code sản phẩm, giá, ảnh, coupon, review hoặc chính sách giao hàng.
+- Không lộ dữ liệu nội bộ/PII; media an toàn và có kiểm duyệt.
+- CTA nối với FR-16 thật; attribution FR-13 không bị mất hoặc bị frontend giả mạo.
+- Có migration nếu đổi schema, Swagger, unit/integration/E2E, monitoring và tài liệu vận hành.
+
+Duyệt: [x] Có — giữ  
+
+======================================================================
+46. CÁC QUYẾT ĐỊNH QUAN TRỌNG CẦN CHỐT NHANH
+======================================================================
+
+1. Landing là trang công khai, không bắt buộc đăng nhập?
+[x] Có — giữ  
+Khách bấm link TikTok/Facebook/QR phải xem được sản phẩm ngay:
+Khách bấm link
+→ xem sản phẩm
+→ xem video
+→ đặt hàng
+Bắt đăng nhập sẽ làm khách dễ bỏ đi. Chỉ các màn hình KOL, Shop và Admin mới cần đăng nhập.
+2. URL chuẩn là /products/{id-or-slug}, còn /r/{shortCode} chỉ tracking rồi redirect?
+[x] Có — giữ  
+Luồng đúng:
+/r/abc12345
+→ FR-14 kiểm tra spam
+→ FR-13 ghi Last-Click và cookie
+→ redirect 302
+→ /products/{id-or-slug}
+/r/... không nên tự làm toàn bộ landing vì đường dẫn này có nhiệm vụ tracking. Trang sản phẩm có URL riêng sẽ tốt hơn cho SEO, chia sẻ và cache.
+3. Chỉ hiển thị sản phẩm và Shop đang hoạt động?
+[x] Có — giữ  
+Không được bán sản phẩm khi:
+- Sản phẩm đã xóa.
+- Sản phẩm tạm ngừng.
+- Shop bị khóa hoặc đã đóng.
+- Dữ liệu sản phẩm không còn hợp lệ.
+Nếu sản phẩm tạm ngừng nhưng vẫn cần giữ trang, có thể hiển thị thông tin và trạng thái “Tạm hết hàng”, nhưng phải khóa nút mua.
+4. Không fallback sang sản phẩm đầu tiên hoặc dữ liệu mẫu khi API lỗi?
+[x] Có — giữ  
+Đây là yêu cầu rất quan trọng.
+Nếu khách mở sản phẩm A nhưng API lỗi, hệ thống không được tự hiển thị sản phẩm B. Việc này có thể gây:
+- Khách mua nhầm.
+- Attribution sai KOL.
+- Giá sai.
+- Shop sai.
+- Khiếu nại đơn hàng.
+Luồng đúng là hiển thị lỗi và nút “Thử lại”.
+5. Giá, tồn kho và khuyến mãi chỉ lấy/tính từ backend?
+[x] Có — giữ  
+Frontend chỉ hiển thị. Backend là nguồn dữ liệu tin cậy:
+Frontend gửi productId + số lượng
+→ Backend đọc giá thật
+→ kiểm tra tồn kho
+→ xác thực coupon
+→ tính tổng tiền
+Không được tin giá hoặc mức giảm do trình duyệt gửi lên vì người dùng có thể sửa request.
+6. Thiếu ảnh dùng placeholder SCANMS, không dùng ảnh Internet ngẫu nhiên?
+[x] Có — giữ  
+Không được dùng ảnh Internet ngẫu nhiên vì không biết đó có đúng sản phẩm hay không.
+Luồng đúng:
+Có ảnh thật → hiển thị ảnh thật
+Không có ảnh → placeholder “Chưa có ảnh sản phẩm”
+Ảnh lỗi → placeholder SCANMS
+7. Chỉ video APPROVED được công khai?
+[x] Có — giữ  
+Trạng thái video nên có:
+PENDING → KOL vừa nộp, chưa công khai
+APPROVED → được hiển thị
+REJECTED → không hiển thị
+HIDDEN → từng duyệt nhưng đã bị ẩn
+Việc này ngăn nội dung sai sản phẩm, vi phạm bản quyền hoặc có thông tin không phù hợp.
+8. Khách từ link KOL nào thì ưu tiên video đã duyệt của KOL đó?
+[x] Có — giữ  
+Ví dụ:
+Khách bấm link KOL A
+→ Landing ưu tiên video của KOL A
+
+Khách bấm link KOL B
+→ Landing ưu tiên video của KOL B
+Nhưng video phải đồng thời:
+- Thuộc đúng sản phẩm.
+- Đã APPROVED.
+- Chưa bị ẩn/xóa.
+- KOL vẫn hợp lệ.
+Nếu KOL đó chưa có video, landing dùng video featured của Shop hoặc video đã duyệt khác.
+9. Shop duyệt video sản phẩm của Shop; Admin có quyền ẩn nội dung vi phạm?
+[x] Có — giữ  
+Phân quyền đúng:
+- KOL: nộp video.
+- Shop: duyệt video của sản phẩm thuộc Shop mình.
+- Admin: ẩn nội dung vi phạm toàn hệ thống.
+- Khách: chỉ xem video đã duyệt.
+Shop không được duyệt video của Shop khác. Khi từ chối hoặc ẩn phải nhập lý do và ghi audit.
+10. Hiển thị nhãn nội dung tiếp thị/tài trợ phù hợp?
+[x] Có — giữ  
+Video cần ghi rõ, ví dụ:
+- “Video review từ KOL”.
+- “Nội dung có liên kết tiếp thị”.
+- “KOL có thể nhận hoa hồng”.
+- “Sản phẩm được Shop tài trợ”, nếu có.
+Điều này giúp khách hiểu mối quan hệ thương mại và tránh gây hiểu nhầm là đánh giá hoàn toàn độc lập
+11. Chỉ review APPROVED, ưu tiên review “Đã mua hàng”?
+[x] Có — giữ  
+Review “Đã mua hàng” phải liên kết với đơn:
+DELIVERED hoặc COMPLETED
+→ khách được gửi review
+→ hệ thống gắn “Đã mua hàng”
+→ kiểm duyệt
+→ APPROVED
+→ xuất hiện trên landing
+Review chưa duyệt hoặc bị từ chối không được công khai.
+12. Không công khai PII khách/KOL hoặc commission nội bộ?
+[x] Có — giữ  
+Không được trả ra landing:
+- Số điện thoại và email khách.
+- Địa chỉ giao hàng.
+- Order ID nội bộ.
+- KYC, ngân hàng của KOL.
+- IP, fingerprint, cookie.
+- Commission rate nội bộ nếu đây không phải thông tin dành cho khách.
+Tên người review nên che một phần, ví dụ:
+Nguyễn T***
+Trần V*** N***
+13. CTA phải gọi Guest Checkout FR-16 thật, không giả lập thành công frontend?
+[x] Có — giữ  
+Không được dùng:
+setIsBought(true);
+rồi báo “Đặt hàng thành công” khi backend chưa tạo đơn.
+Luồng đúng:
+Khách bấm Mua ngay
+→ nhập thông tin nhận hàng
+→ frontend gọi API FR-16
+→ backend kiểm tra sản phẩm/giá/tồn kho/coupon/attribution
+→ tạo đơn thành công
+→ mới hiển thị mã đơn
+14. Coupon phải validate qua backend FR-12, không hard-code mã/10%?
+[x] Có — giữ  
+Không hard-code:
+THANGVIP10
+NHATXINH
+Giảm mặc định 10%
+Backend phải kiểm tra:
+- Mã tồn tại và đang hoạt động.
+- Đúng Shop/sản phẩm.
+- Đạt giá trị đơn tối thiểu.
+- Còn lượt dùng và ngân sách.
+- Đúng thời hạn.
+- Chính sách cộng dồn.
+15. Frontend không đọc/sửa attribution cookie và không gửi collaboratorId đáng tin cậy?
+[x] Có — giữ  
+Cookie nên là HttpOnly, nên JavaScript frontend không thể đọc được.
+Checkout chỉ gửi request kèm cookie:
+credentials: "include"
+Backend tự xác định:
+- KOL nào giới thiệu.
+- Link nào đã được bấm.
+- Attribution còn hạn không.
+- Có bị rate-limit/bot/khóa không.
+Không tin collaboratorId do frontend gửi.
+16. Có API public landing riêng chỉ trả trường an toàn?
+[x] Có — giữ  
+Đề xuất:
+GET /api/public/products/{id-or-slug}/landing
+Response chỉ chứa dữ liệu công khai:
+{
+  "product": {},
+  "store": {},
+  "images": [],
+  "videos": [],
+  "reviews": {},
+  "availability": {}
+}
+Không nên dùng chung API quản trị nếu API đó trả thêm commission, trạng thái nội bộ, dữ liệu đã xóa hoặc metadata nhạy cảm.
+17. Video không autoplay có tiếng và hỗ trợ mobile/caption/fallback?
+[x] Có — giữ  
+Trình duyệt thường chặn autoplay có âm thanh. Hành vi tốt nhất:
+- Mặc định không autoplay.
+- Khách chủ động nhấn Play.
+- Nếu cần autoplay preview thì phải muted.
+- Có play/pause, âm lượng, tua và toàn màn hình.
+- Có poster.
+- Có phụ đề nếu khả dụng.
+- Video lỗi thì hiển thị fallback, không làm hỏng toàn trang.
+18. Có SEO/Open Graph/Product structured data từ dữ liệu thật?
+[x] Có — giữ  
+Cần cho trang sản phẩm được chia sẻ đẹp trên Facebook/Zalo và dễ được tìm thấy:
+- Tiêu đề sản phẩm.
+- Mô tả.
+- Ảnh đại diện.
+- Giá và trạng thái còn hàng.
+- Canonical URL.
+- Open Graph.
+- Product JSON-LD.
+Dữ liệu phải lấy từ backend, không dùng thông tin mẫu.
+19. Media/review/product chỉ xóa mềm và có audit kiểm duyệt?
+[x] Có — giữ  
+Nên xóa mềm vì sản phẩm/media/review có thể đã liên quan đến:
+- Đơn hàng.
+- KOL.
+- Khiếu nại.
+- Attribution.
+- Báo cáo.
+- Đối soát.
+Khi Shop/Admin ẩn, từ chối hoặc khôi phục nội dung phải lưu:
+Ai thao tác
+Thời gian
+Nội dung nào
+Lý do
+Giá trị trước/sau
+20. Có Swagger, monitoring, accessibility, responsive và E2E trước khi hoàn thành?
+[x] Có — giữ  
+Đây là tiêu chí để xác định chức năng thực sự hoàn thành:
+- Swagger: mô tả API và lỗi.
+- Monitoring: biết landing/video/API có lỗi không.
+- Accessibility: bàn phím, alt ảnh, caption, focus.
+- Responsive: dùng được trên điện thoại.
+- E2E: kiểm tra toàn bộ link → landing → video → mua hàng.
+Luồng hoàn chỉnh được khuyến nghị
+Shop tạo sản phẩm và tải ảnh
+→ KOL hợp tác với Shop
+→ KOL nộp video review
+→ Shop duyệt video
+→ KOL tạo link tiếp thị
+→ Khách bấm /r/{shortCode}
+→ FR-14 kiểm tra click spam
+→ FR-13 ghi attribution/cookie
+→ Redirect tới landing sản phẩm FR-15
+→ Landing tải sản phẩm, ảnh, review và video APPROVED
+→ Ưu tiên video đúng KOL giới thiệu
+→ Khách nhập coupon nếu có
+→ Khách bấm Mua ngay
+→ FR-16 kiểm tra lại giá/tồn kho/coupon/attribution
+→ Backend tạo đơn
+→ Khi đơn hoàn thành mới phát sinh hoa hồng

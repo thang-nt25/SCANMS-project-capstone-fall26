@@ -4,11 +4,14 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -22,6 +25,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const exceptionResponse =
       exception instanceof HttpException ? exception.getResponse() : null;
 
+    if (!(exception instanceof HttpException)) {
+      const errStack = exception instanceof Error ? exception.stack : String(exception);
+      this.logger.error(`${request.method} ${request.url}`, errStack);
+    }
+
     const details: unknown =
       exceptionResponse && typeof exceptionResponse === 'object'
         ? (exceptionResponse as Record<string, unknown>).message
@@ -29,9 +37,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const validationErrors = Array.isArray(details)
       ? details.filter((value): value is string => typeof value === 'string')
       : undefined;
+
     const message =
       status >= 500
-        ? 'Internal server error'
+        ? request.url.includes('/public/products/')
+          ? 'LANDING_DATA_UNAVAILABLE'
+          : 'Internal server error'
         : validationErrors?.[0] ||
           (typeof details === 'string' ? details : undefined) ||
           (exception instanceof Error ? exception.message : 'Request failed');

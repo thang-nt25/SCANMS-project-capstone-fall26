@@ -1,9 +1,9 @@
 import { dashboard, bindDashboard, withdrawal, kolProfileScreen, bindKolProfile, kolProfileState } from './dashboard.js?v=62';
 import { linksPage, bindLinks } from './links.js?v=50';
-import { mediaPage, bindMedia } from './media.js?v=50';
+import { mediaPage, bindMedia } from './media.js?v=191';
 import { samplesPage, bindSamples } from './samples.js?v=50';
 import { trackingScreen, bindTracking } from './tracking.js?v=50';
-import { storefrontScreen, bindStorefront } from './storefront.js?v=65';
+import { storefrontScreen, bindStorefront } from './storefront.js?v=66';
 import { marketplaceScreen, bindMarketplace } from './marketplace.js?v=15';
 
 import {

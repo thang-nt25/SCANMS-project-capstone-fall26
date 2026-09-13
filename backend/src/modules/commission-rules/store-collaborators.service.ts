@@ -13,6 +13,28 @@ export class StoreCollaboratorsService {
   constructor(private readonly prisma: PrismaService) {}
 
   private async getOwnedStore(ownerId: string, storeId?: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { role: true },
+    });
+
+    if (
+      user?.role === UserRole.SYSTEM_ADMIN ||
+      user?.role === UserRole.SYSTEM_MANAGER
+    ) {
+      const store = await this.prisma.store.findFirst({
+        where: { id: storeId, isDeleted: false },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (store) return store;
+      const fallback = await this.prisma.store.findFirst({
+        where: { isDeleted: false },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (!fallback) throw new NotFoundException('Hệ thống chưa có cửa hàng');
+      return fallback;
+    }
+
     const store = await this.prisma.store.findFirst({
       where: { id: storeId, ownerId, isDeleted: false },
       orderBy: { createdAt: 'asc' },

@@ -344,7 +344,48 @@ export class RedirectController {
         destinationUrl = `${publicAppUrl}${cleanPath}`;
       }
 
-      // 7. Chuyển hướng trực tiếp HTTP 302 Found đến sản phẩm đích
+      // 7. Nhận diện Social Crawlers (Facebook, Zalo, Twitter...) để phục vụ Server-Side Open Graph (Issue 7)
+      if (this.isSocialBot(userAgent)) {
+        const product = result.link?.product;
+        const store = result.link?.store;
+        const title = product?.title || 'Sản phẩm đối tác - SCANMS';
+        const description = `Khám phá ${product?.title || 'sản phẩm'} chính hãng phân phối bởi ${store?.name || 'gian hàng đối tác'} trên sàn SCANMS.`;
+        const imageUrl = product?.imageUrl || `${publicAppUrl}/assets/product-placeholder.svg`;
+        const price = product?.price ? Number(product.price) : 0;
+
+        return res.status(HttpStatus.OK).send(`<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title)} - SCANMS</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:site_name" content="SCANMS - Sàn Thương Mại Tiếp Thị Liên Kết">
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:image" content="${escapeHtml(imageUrl)}">
+  <meta property="og:url" content="${escapeHtml(destinationUrl)}">
+  ${price > 0 ? `<meta property="product:price:amount" content="${price}">
+  <meta property="product:price:currency" content="VND">
+  <meta property="og:price:amount" content="${price}">
+  <meta property="og:price:currency" content="VND">` : ''}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(imageUrl)}">
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(destinationUrl)}">
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p>${escapeHtml(description)}</p>
+  ${price > 0 ? `<p>Giá: ${price.toLocaleString('vi-VN')} ₫</p>` : ''}
+  <a href="${escapeHtml(destinationUrl)}">Bấm vào đây để tiếp tục</a>
+  <script>window.location.replace(${JSON.stringify(destinationUrl)});</script>
+</body>
+</html>`);
+      }
+
+      // 8. Chuyển hướng trực tiếp HTTP 302 Found đến sản phẩm đích cho người dùng thông thường
       return res.redirect(HttpStatus.FOUND, destinationUrl);
     } catch (err: any) {
       const status =
@@ -403,5 +444,38 @@ export class RedirectController {
       return 'Tablet';
     }
     return 'Desktop';
+  }
+
+  private isSocialBot(ua?: string): boolean {
+    if (!ua) return false;
+    return /facebookexternalhit|Facebot|ZaloPC|ZaloBot|zalo-crawler|Twitterbot|TelegramBot|WhatsApp|LinkedInBot|Pinterest|Googlebot|bingbot|Baiduspider/i.test(
+      ua,
+    );
+  }
+
+  @Get(['products/:idOrSlug', 'p/:idOrSlug'])
+  @ApiOperation({
+    summary: 'Chuyển hướng URL sản phẩm: Bot mạng xã hội vào SEO HTML, người dùng vào React SPA (FR-15)',
+  })
+  async handleDirectProductUrl(
+    @Param('idOrSlug') idOrSlug: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const userAgent = req.headers['user-agent'] || '';
+    const isBot = this.isSocialBot(userAgent);
+    const frontendUrl = this.getPublicAppUrl();
+
+    if (isBot) {
+      return res.redirect(
+        HttpStatus.FOUND,
+        `/api/public/products/${encodeURIComponent(idOrSlug)}/seo`,
+      );
+    } else {
+      return res.redirect(
+        HttpStatus.FOUND,
+        `${frontendUrl}/products/${encodeURIComponent(idOrSlug)}`,
+      );
+    }
   }
 }
