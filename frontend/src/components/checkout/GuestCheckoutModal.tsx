@@ -189,7 +189,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
           {
             productId: product.id,
             quantity,
-            unitPrice,
           },
         ],
       });
@@ -422,7 +421,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </div>
                 <div className="flex justify-between text-[#7D715E]">
                   <span>Số điện thoại:</span>
-                  <span className="font-mono text-[#1A1612]">{customerPhone}</span>
+                  <span className="font-mono text-[#1A1612]">
+                    {customerPhone.replace(/^(\d{3})\d+(\d{3})$/, '$1****$2')}
+                  </span>
                 </div>
                 <div className="flex justify-between text-[#7D715E]">
                   <span>Tổng thanh toán:</span>
@@ -471,7 +472,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             {/* Các nút hành động */}
             <div className="flex flex-col gap-2">
               <Link
-                to={`/tracking?phone=${encodeURIComponent(customerPhone)}&orderSn=${encodeURIComponent(orderSuccess.publicOrderCode)}`}
+                to={`/tracking?orderSn=${encodeURIComponent(orderSuccess.publicOrderCode)}`}
                 className="w-full py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
               >
                 <Truck className="w-4 h-4" />

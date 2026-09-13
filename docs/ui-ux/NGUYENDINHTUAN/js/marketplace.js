@@ -6,6 +6,7 @@
 export const marketplaceProducts = [
   {
     id: "P01",
+    backendSku: "SR-VTC-15",
     name: "Serum Vitamin C 15% Dưỡng Sáng Mờ Thâm Sora Skin",
     brand: "Sora Skin Official",
     category: "skincare",
@@ -150,6 +151,7 @@ export const marketplaceProducts = [
   },
   {
     id: "P08",
+    backendSku: "TECH-KB-002",
     name: "Bàn Phím Cơ Không Dây Bluetooth RGB ZenHome Pro Switch Hot-Swap",
     brand: "TechSmart Store",
     category: "tech",
@@ -400,6 +402,26 @@ function money(v) {
 function escapeHtml(s) {
   if (!s) return "";
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+async function resolveBackendProduct(product) {
+  const response = await fetch("/api/public/products?limit=100", {
+    credentials: "include",
+    headers: { Accept: "application/json" }
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body?.message || "Không thể tải sản phẩm từ hệ thống.");
+  const items = body?.data?.items || body?.items || [];
+  return items.find(item => item.sku === product.backendSku) || null;
+}
+
+function createIdempotencyKey() {
+  return globalThis.crypto?.randomUUID?.() || `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function maskPhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits.replace(/^(\d{3})\d+(\d{3})$/, "$1****$2");
 }
 
 export function marketplaceScreen() {
@@ -2279,9 +2301,22 @@ function openCreatorProfileModal(creator, { toast, onSelectCreator, onFilterProd
 }
 
 // 14. Guest Checkout Modal Helper (Phân biệt rõ Đã chọn ưu đãi và Đã áp dụng giảm giá)
-function openGuestCheckoutModal(product, defaultCoupon, { toast, renderCurrentPage }) {
-  let appliedCoupon = defaultCoupon ? defaultCoupon.trim().toUpperCase() : "";
-  let basePrice = product.price;
+async function openGuestCheckoutModal(product, defaultCoupon, { toast, renderCurrentPage }) {
+  let couponDraft = defaultCoupon ? defaultCoupon.trim().toUpperCase() : "";
+  let appliedCoupon = "";
+  let backendProduct = null;
+  try {
+    backendProduct = await resolveBackendProduct(product);
+  } catch (error) {
+    toast(error?.message || "Không thể kết nối hệ thống đặt hàng.");
+    return;
+  }
+  if (!backendProduct) {
+    toast("Sản phẩm này chưa có dữ liệu thật trong hệ thống nên chưa thể đặt hàng.");
+    return;
+  }
+  let basePrice = Number(backendProduct.price);
+  const idempotencyKey = createIdempotencyKey();
 
   // Kiểm tra điều kiện voucher
   const checkVoucherEligibility = (code) => {
@@ -2332,8 +2367,12 @@ function openGuestCheckoutModal(product, defaultCoupon, { toast, renderCurrentPa
     };
   };
 
-  let voucherStatus = checkVoucherEligibility(appliedCoupon);
-  let discountAmount = voucherStatus.eligible ? voucherStatus.amount : 0;
+  let voucherStatus = {
+    eligible: false,
+    amount: 0,
+    msg: couponDraft ? "Mã gợi ý chưa được xác thực. Nhấn Áp dụng để kiểm tra." : "Chưa áp dụng mã ưu đãi."
+  };
+  let discountAmount = 0;
   let finalPrice = basePrice - discountAmount;
 
   const renderModalContent = () => `
@@ -2372,24 +2411,24 @@ function openGuestCheckoutModal(product, defaultCoupon, { toast, renderCurrentPa
             <!-- Form fields -->
             <div class="mp-form-group">
               <label for="mp-buyer-name">Họ và tên người nhận <span class="req">*</span></label>
-              <input class="mp-form-input" id="mp-buyer-name" placeholder="VD: Nguyễn Văn A" value="Nguyễn Hải Yến" required />
+              <input class="mp-form-input" id="mp-buyer-name" name="customerName" autocomplete="name" placeholder="VD: Nguyễn Văn A" required />
             </div>
 
             <div class="mp-form-group">
               <label for="mp-buyer-phone">Số điện thoại nhận hàng <span class="req">*</span></label>
-              <input class="mp-form-input" id="mp-buyer-phone" type="tel" placeholder="0903 xxx xxx" value="0903 218 456" required />
+              <input class="mp-form-input" id="mp-buyer-phone" name="customerPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678" required />
             </div>
 
             <div class="mp-form-group">
               <label for="mp-buyer-address">Địa chỉ giao hàng chi tiết <span class="req">*</span></label>
-              <input class="mp-form-input" id="mp-buyer-address" placeholder="Số nhà, tên đường, phường/xã, quận/huyện" value="12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP.HCM" required />
+              <input class="mp-form-input" id="mp-buyer-address" name="shippingAddress" autocomplete="street-address" placeholder="Số nhà, tên đường, phường/xã, quận/huyện" required />
             </div>
 
             <!-- Coupon section -->
             <div class="mp-form-group">
               <label for="mp-coupon-input">Mã giảm giá Creator</label>
               <div class="mp-coupon-input-wrap">
-                <input class="mp-form-input mp-coupon-input" id="mp-coupon-input" placeholder="Nhập mã ưu đãi..." value="${appliedCoupon}" />
+                <input class="mp-form-input mp-coupon-input" id="mp-coupon-input" placeholder="Nhập mã ưu đãi..." value="${couponDraft}" />
                 <button type="button" class="mp-coupon-apply-btn" id="mp-apply-coupon-btn">Áp dụng</button>
               </div>
 
@@ -2460,51 +2499,113 @@ function openGuestCheckoutModal(product, defaultCoupon, { toast, renderCurrentPa
     const couponInput = modalRoot.querySelector("#mp-coupon-input");
     const applyBtn = modalRoot.querySelector("#mp-apply-coupon-btn");
 
-    applyBtn?.addEventListener("click", () => {
+    applyBtn?.addEventListener("click", async () => {
       const code = couponInput?.value.trim().toUpperCase();
+      const preservedName = modalRoot.querySelector("#mp-buyer-name")?.value || "";
+      const preservedPhone = modalRoot.querySelector("#mp-buyer-phone")?.value || "";
+      const preservedAddress = modalRoot.querySelector("#mp-buyer-address")?.value || "";
       if (!code) {
         toast("Vui lòng nhập mã ưu đãi!");
         return;
       }
-      appliedCoupon = code;
-      voucherStatus = checkVoucherEligibility(appliedCoupon);
-      discountAmount = voucherStatus.eligible ? voucherStatus.amount : 0;
-      finalPrice = basePrice - discountAmount;
-      toast(voucherStatus.msg);
+      couponDraft = code;
+      applyBtn.disabled = true;
+      applyBtn.textContent = "Đang kiểm tra...";
+      try {
+        const response = await fetch("/api/coupons/validate", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            code,
+            storeId: backendProduct.store?.id,
+            customerPhone: modalRoot.querySelector("#mp-buyer-phone")?.value.trim() || undefined,
+            items: [{ productId: backendProduct.id, quantity: 1 }]
+          })
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body?.message || "Mã giảm giá không hợp lệ.");
+        const result = body?.data || body;
+        appliedCoupon = code;
+        discountAmount = Number(result.discountAmount ?? result.appliedDiscountAmount ?? 0);
+        voucherStatus = {
+          eligible: true,
+          amount: discountAmount,
+          msg: `Đã áp dụng ${code}, giảm ${money(discountAmount)}.`
+        };
+        finalPrice = basePrice - discountAmount;
+        toast(voucherStatus.msg);
+      } catch (error) {
+        appliedCoupon = "";
+        discountAmount = 0;
+        finalPrice = basePrice;
+        voucherStatus = { eligible: false, amount: 0, msg: error?.message || "Mã giảm giá không hợp lệ." };
+        toast(voucherStatus.msg);
+      }
       modalRoot.innerHTML = renderModalContent();
       bindInner();
+      modalRoot.querySelector("#mp-buyer-name").value = preservedName;
+      modalRoot.querySelector("#mp-buyer-phone").value = preservedPhone;
+      modalRoot.querySelector("#mp-buyer-address").value = preservedAddress;
     });
 
     const form = modalRoot.querySelector("#mp-guest-checkout-form");
-    form?.addEventListener("submit", (e) => {
+    form?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const buyerName = modalRoot.querySelector("#mp-buyer-name")?.value.trim();
       const buyerPhone = modalRoot.querySelector("#mp-buyer-phone")?.value.trim();
-      const orderCode = `IN${Math.floor(10000 + Math.random() * 90000)}`;
+      const shippingAddress = modalRoot.querySelector("#mp-buyer-address")?.value.trim();
+      const submitButton = modalRoot.querySelector("#mp-submit-order-btn");
 
-      const newOrder = {
-        code: orderCode,
-        phone: buyerPhone,
-        name: buyerName,
-        product: product.name,
-        amount: finalPrice,
-        coupon: appliedCoupon || "KHONG_MA",
-        kol: product.kol ? product.kol.name : "Creator Đối Tác",
-        status: "Đang xử lý & đóng gói",
-        statusStep: 1,
-        date: new Intl.DateTimeFormat("vi-VN").format(new Date()),
-        carrier: "Giao Hàng Nhanh (GHN)",
-        trackingNum: `GHN${Math.floor(10000000 + Math.random() * 90000000)}VN`,
-        escrowDaysLeft: 14
-      };
+      if (!buyerName || !buyerPhone || !shippingAddress) {
+        toast("Vui lòng nhập đầy đủ họ tên, số điện thoại và địa chỉ giao hàng.");
+        return;
+      }
 
-      const existingOrders = getDemoOrders();
-      existingOrders.unshift(newOrder);
-      localStorage.setItem("scanms-guest-orders", JSON.stringify(existingOrders));
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Đang tạo đơn...';
 
-      state.cartCount = 0;
-      modalRoot.innerHTML = "";
-      openOrderSuccessModal(newOrder, { toast });
+      try {
+        const response = await fetch("/api/orders", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            storeId: backendProduct.store?.id,
+            customerName: buyerName,
+            customerPhone: buyerPhone,
+            shippingAddress,
+            paymentMethod: "COD",
+            couponCode: appliedCoupon || undefined,
+            idempotencyKey,
+            items: [{ productId: backendProduct.id, quantity: 1 }]
+          })
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const message = Array.isArray(body?.message) ? body.message.join(" ") : body?.message;
+          throw new Error(message || "Không thể tạo đơn hàng.");
+        }
+        const result = body?.data || body;
+        const newOrder = {
+          code: result.publicOrderCode,
+          cancellationToken: result.cancellationToken,
+          phone: buyerPhone,
+          name: buyerName,
+          product: backendProduct.title || product.name,
+          amount: Number(result.finalAmount),
+          coupon: appliedCoupon || "Không áp dụng",
+          status: result.status || "PENDING"
+        };
+
+        state.cartCount = 0;
+        modalRoot.innerHTML = "";
+        openOrderSuccessModal(newOrder, { toast });
+      } catch (error) {
+        toast(error?.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="ph-fill ph-check-circle"></i> Xác nhận đặt hàng';
+      }
     });
   };
 
@@ -2515,21 +2616,25 @@ function openOrderSuccessModal(order, { toast }) {
   const modalRoot = document.querySelector("#modal-root");
   modalRoot.innerHTML = `
     <div class="modal-backdrop mp-modal-backdrop" data-close-modal>
-      <div class="mp-checkout-modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()" style="max-width:480px;text-align:center;padding:24px 20px;border-radius:20px">
+      <div class="mp-checkout-modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()" style="position:relative;max-width:480px;text-align:center;padding:24px 20px;border-radius:20px">
+        <button type="button" data-close-modal aria-label="Đóng thông báo đặt hàng" title="Đóng" style="position:absolute;top:14px;right:14px;width:36px;height:36px;border:1px solid #EADCC7;border-radius:50%;background:#fff;color:#715842;display:grid;place-items:center;font-size:20px;cursor:pointer">
+          <i class="ph ph-x"></i>
+        </button>
         <div style="width:64px;height:64px;border-radius:50%;background:#dcfce7;color:#15803d;display:grid;place-items:center;font-size:32px;margin:0 auto 16px">
           <i class="ph-fill ph-check-circle"></i>
         </div>
         <h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#261A0E">Đặt hàng thành công!</h2>
         <p style="font-size:13.5px;color:#715842;line-height:1.5;margin:0 0 20px">
-          Cảm ơn quý khách <strong>${escapeHtml(order.name)}</strong>. Đơn hàng <strong>#${order.code}</strong> đã được chuyển tới kho đóng gói.
+          Cảm ơn quý khách <strong>${escapeHtml(order.name)}</strong>. Đơn hàng <strong>${escapeHtml(order.code)}</strong> đã được ghi nhận trên hệ thống.
         </p>
 
         <div style="background:#FDFBF7;border:1.5px solid #EADCC7;border-radius:14px;padding:16px;text-align:left;font-size:13px;line-height:1.6;margin-bottom:20px">
-          <div>Mã vận đơn: <strong class="mono" style="color:#261A0E">${order.trackingNum}</strong> (${order.carrier})</div>
+          <div>Trạng thái: <strong style="color:#261A0E">${escapeHtml(order.status)}</strong></div>
           <div>Tổng thanh toán COD: <strong style="color:#9E6413;font-size:15px">${money(order.amount)}</strong></div>
           <div>Mã ưu đãi: <strong>${order.coupon}</strong></div>
+          ${order.cancellationToken ? `<div style="margin-top:8px">Mã bảo mật hủy đơn: <strong class="mono" style="overflow-wrap:anywhere">${escapeHtml(order.cancellationToken)}</strong></div>` : ''}
           <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #DECCA8;color:#7A561B;font-size:12px;line-height:1.5">
-            <i class="ph-fill ph-shield-check"></i> Bảo hộ đổi trả: <strong>14 ngày</strong> an toàn. Quý khách có thể tra cứu đơn bất kỳ lúc nào bằng SĐT <strong>${order.phone}</strong>.
+            <i class="ph-fill ph-shield-check"></i> Hãy lưu mã đơn và mã bảo mật để tra cứu hoặc hủy đơn. SĐT: <strong>${maskPhone(order.phone)}</strong>.
           </div>
         </div>
 
@@ -2549,7 +2654,7 @@ function openOrderSuccessModal(order, { toast }) {
     });
   });
 
-  toast(`Đặt hàng thành công! Mã đơn: #${order.code}`);
+  toast(`Đặt hàng thành công! Mã đơn: ${order.code}`);
 }
 
 function openVideoPlayerModal(video, { toast, go }) {
