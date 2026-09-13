@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import request from 'supertest';
 import * as bcrypt from 'bcryptjs';
 import {
@@ -381,9 +382,24 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
 
   afterAll(async () => {
     delete process.env.TRUST_PROXY;
+
+    try {
+      const schedulerRegistry = app.get(SchedulerRegistry, { strict: false });
+      if (schedulerRegistry) {
+        const cronJobs = schedulerRegistry.getCronJobs();
+        cronJobs.forEach((job) => job.stop());
+        const intervals = schedulerRegistry.getIntervals();
+        intervals.forEach((interval) => schedulerRegistry.deleteInterval(interval));
+        const timeouts = schedulerRegistry.getTimeouts();
+        timeouts.forEach((timeout) => schedulerRegistry.deleteTimeout(timeout));
+      }
+    } catch {}
+
     if (clickQueueService) {
       await clickQueueService.waitUntilIdle().catch(() => {});
+      await clickQueueService.onModuleDestroy().catch(() => {});
     }
+
     const redis = cacheService?.getRedisClient();
     if (redis) {
       await redis
@@ -394,6 +410,11 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
         )
         .catch(() => {});
     }
+
+    if (cacheService) {
+      await cacheService.onModuleDestroy().catch(() => {});
+    }
+
     try {
       await cleanup();
     } catch (err: any) {
@@ -403,8 +424,12 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
         message: err?.message,
       });
     }
+
     if (app) {
       await app.close();
+    }
+    if (prisma) {
+      await prisma.$disconnect().catch(() => {});
     }
   });
 

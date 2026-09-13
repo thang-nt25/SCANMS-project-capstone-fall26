@@ -27,6 +27,7 @@ import {
   ReferralLinkStatus,
   StoreCollaboratorStatus,
   OrderSourcePlatform,
+  ReviewStatus,
   Prisma,
 } from '@prisma/client';
 import {
@@ -1554,9 +1555,9 @@ export class OrdersService {
   async trackOrderByPhoneOrSn(query: TrackOrderQueryDto) {
     const { phone, orderSn } = query;
 
-    if (!phone?.trim() && !orderSn?.trim()) {
+    if (!phone?.trim() || !orderSn?.trim()) {
       throw new BadRequestException(
-        'Vui lòng nhập số điện thoại hoặc mã đơn hàng để tra cứu tiến trình đơn hàng.',
+        'Vui lòng nhập đầy đủ số điện thoại và mã đơn hàng để tra cứu.',
       );
     }
 
@@ -1733,6 +1734,25 @@ export class OrdersService {
       throw new NotFoundException('Không tìm thấy đơn hàng yêu cầu');
     }
 
+    const suppliedToken = dto.reviewToken?.trim();
+    const storedToken = order.cancellationToken?.trim();
+    const suppliedPhone = dto.customerPhone?.trim();
+    const storedPhone = order.customerPhone?.trim();
+    const tokenMatches =
+      !!suppliedToken &&
+      !!storedToken &&
+      suppliedToken.length === storedToken.length &&
+      crypto.timingSafeEqual(
+        Buffer.from(suppliedToken),
+        Buffer.from(storedToken),
+      );
+
+    if (!tokenMatches || !suppliedPhone || suppliedPhone !== storedPhone) {
+      throw new ForbiddenException(
+        'Không thể xác minh quyền đánh giá đơn hàng. Vui lòng mở đơn từ thiết bị đã đặt hàng.',
+      );
+    }
+
     // 2. Nghiệp vụ FR-18: Đơn hàng phải ở trạng thái DELIVERED hoặc COMPLETED mới được review
     if (
       order.status !== OrderStatus.DELIVERED &&
@@ -1800,13 +1820,15 @@ export class OrdersService {
           images:
             dto.images ?? (dto.reviewImageUrl ? [dto.reviewImageUrl] : []),
           video: dto.video ?? null,
-          isApproved: true,
+          status: ReviewStatus.PENDING,
+          isApproved: false,
         },
       });
     });
 
     return {
-      message: 'Cảm ơn bạn đã gửi đánh giá sản phẩm thành công!',
+      message:
+        'Cảm ơn bạn đã gửi đánh giá sản phẩm thành công! Nội dung đang chờ Shop kiểm duyệt trước khi công khai.',
       review,
     };
   }

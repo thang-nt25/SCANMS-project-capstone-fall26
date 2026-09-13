@@ -34,6 +34,9 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
+  // Các route nghiệp vụ có thể được mở từ UI Reference trong iframe.
+  // Chúng vẫn phải giữ nguyên Sidebar và Topbar của cổng quản trị;
+  // chỉ các trang đăng nhập/đăng ký mới dùng layout trống.
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   if (isAuth || isIframe) {
