@@ -81,13 +81,13 @@ export class OrdersController {
   })
   async createOrder(@Body() dto: CreateOrderDto, @Req() req: Request) {
     const cookieAttr = readCookie(req, ['scanms_attr', 'scanms_attribution']);
-    const cookieRef = readCookie(req, [
+    const legacyCookieRef = readCookie(req, [
       'scanms_referral_link',
       'referral_code',
       'scanms_ref',
     ]);
-    if (cookieRef && !dto.cookieRefCode) {
-      dto.cookieRefCode = cookieRef;
+    if (legacyCookieRef && !dto.cookieRefCode) {
+      dto.cookieRefCode = legacyCookieRef;
     }
 
     const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
@@ -95,6 +95,7 @@ export class OrdersController {
 
     return this.ordersService.createOrder(dto, {
       cookieAttr,
+      legacyCookieRef,
       ip: rawIp,
       userAgent,
     });

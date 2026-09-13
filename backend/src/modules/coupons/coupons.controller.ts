@@ -54,7 +54,8 @@ export class PublicCouponsController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Mã không tồn tại, hết hạn, không đủ điều kiện hoặc vi phạm chính sách cộng dồn',
+    description:
+      'Mã không tồn tại, hết hạn, không đủ điều kiện hoặc vi phạm chính sách cộng dồn',
   })
   @ApiResponse({
     status: 404,
@@ -104,12 +105,28 @@ export class CollaboratorCouponsController {
   @ApiOperation({
     summary: 'KOL đề xuất mã giảm giá riêng mới cho Shop hợp tác (Section 6)',
   })
-  @ApiResponse({ status: 201, description: 'Đề xuất mã thành công (PENDING_APPROVAL)' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc Shop chưa có chính sách hoa hồng hợp lệ' })
+  @ApiResponse({
+    status: 201,
+    description: 'Đề xuất mã thành công (PENDING_APPROVAL)',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Dữ liệu không hợp lệ hoặc Shop chưa có chính sách hoa hồng hợp lệ',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực hoặc token hết hạn' })
-  @ApiResponse({ status: 403, description: 'Không có quyền truy cập (yêu cầu COLLABORATOR)' })
-  @ApiResponse({ status: 409, description: 'Mã coupon đã tồn tại trong hệ thống' })
-  @ApiResponse({ status: 429, description: 'Tần suất đề xuất quá nhanh (Rate Limit)' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền truy cập (yêu cầu COLLABORATOR)',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Mã coupon đã tồn tại trong hệ thống',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Tần suất đề xuất quá nhanh (Rate Limit)',
+  })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async proposeCoupon(
     @CurrentUser('id') collaboratorId: string,
@@ -121,9 +138,13 @@ export class CollaboratorCouponsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Lấy danh sách mã giảm giá của tôi kèm số liệu sử dụng (Section 38)',
+    summary:
+      'Lấy danh sách mã giảm giá của tôi kèm số liệu sử dụng (Section 38)',
   })
-  @ApiResponse({ status: 200, description: 'Danh sách coupon kèm tổng hợp doanh thu và hoa hồng' })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách coupon kèm tổng hợp doanh thu và hoa hồng',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
   @ApiResponse({ status: 403, description: 'Không có quyền truy cập' })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
@@ -136,7 +157,8 @@ export class CollaboratorCouponsController {
 
   @Get('eligible-stores')
   @ApiOperation({
-    summary: 'Lấy danh sách các Gian hàng KOL đã được APPROVED để tạo coupon (FR-12)',
+    summary:
+      'Lấy danh sách các Gian hàng KOL đã được APPROVED để tạo coupon (FR-12)',
   })
   @ApiResponse({ status: 200, description: 'Danh sách gian hàng hợp lệ' })
   async getEligibleStores(@CurrentUser('id') collaboratorId: string) {
@@ -163,10 +185,20 @@ export class CollaboratorCouponsController {
     summary: 'Tạm ngưng hoặc tiếp tục sử dụng mã giảm giá (Section 4.1)',
   })
   @ApiParam({ name: 'id', description: 'ID của coupon' })
-  @ApiResponse({ status: 200, description: 'Cập nhật trạng thái tạm dừng thành công kèm cảnh báo đơn đang xử lý nếu có' })
-  @ApiResponse({ status: 400, description: 'Trạng thái coupon không cho phép tạm ngưng' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Cập nhật trạng thái tạm dừng thành công kèm cảnh báo đơn đang xử lý nếu có',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Trạng thái coupon không cho phép tạm ngưng',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Không có quyền truy cập coupon này' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền truy cập coupon này',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy coupon' })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async togglePause(
@@ -183,7 +215,11 @@ export class CollaboratorCouponsController {
   })
   @ApiParam({ name: 'id', description: 'ID của coupon' })
   @ApiResponse({ status: 200, description: 'Xóa mềm coupon thành công' })
-  @ApiResponse({ status: 400, description: 'Chỉ có thể xóa coupon ở trạng thái PENDING_APPROVAL hoặc REJECTED' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Chỉ có thể xóa coupon ở trạng thái PENDING_APPROVAL hoặc REJECTED',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
   @ApiResponse({ status: 403, description: 'Không có quyền xóa coupon này' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy coupon' })
@@ -211,12 +247,16 @@ export class StoreCouponsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Lấy danh sách coupon của Gian hàng (Chờ duyệt và Đang áp dụng) (Section 39)',
+    summary:
+      'Lấy danh sách coupon của Gian hàng (Chờ duyệt và Đang áp dụng) (Section 39)',
   })
   @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
   @ApiResponse({ status: 200, description: 'Danh sách coupon của gian hàng' })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Không có quyền quản lý gian hàng này' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền quản lý gian hàng này',
+  })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async getStoreCoupons(
     @Param('storeId') storeId: string,
@@ -229,15 +269,29 @@ export class StoreCouponsController {
 
   @Patch(':id/approve')
   @ApiOperation({
-    summary: 'Chủ shop phê duyệt và cấu hình chính sách ưu đãi cho coupon (Section 6 & 7)',
+    summary:
+      'Chủ shop phê duyệt và cấu hình chính sách ưu đãi cho coupon (Section 6 & 7)',
   })
   @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
   @ApiParam({ name: 'id', description: 'ID coupon' })
-  @ApiResponse({ status: 200, description: 'Phê duyệt coupon thành công và kích hoạt ACTIVE' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu chính sách không hợp lệ hoặc tổng tỷ lệ tài trợ khác 100%' })
+  @ApiResponse({
+    status: 200,
+    description: 'Phê duyệt coupon thành công và kích hoạt ACTIVE',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Dữ liệu chính sách không hợp lệ hoặc tổng tỷ lệ tài trợ khác 100%',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên gian hàng này' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy coupon hoặc gian hàng' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền thao tác trên gian hàng này',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Không tìm thấy coupon hoặc gian hàng',
+  })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async approveCoupon(
     @Param('storeId') storeId: string,
@@ -247,19 +301,37 @@ export class StoreCouponsController {
     @Body() dto: ApproveCouponDto,
     @Ip() ipAddress: string,
   ) {
-    return this.service.approveCoupon(storeId, id, userId, role, dto, ipAddress);
+    return this.service.approveCoupon(
+      storeId,
+      id,
+      userId,
+      role,
+      dto,
+      ipAddress,
+    );
   }
 
   @Patch(':id/reject')
   @ApiOperation({
-    summary: 'Chủ shop từ chối yêu cầu coupon (Bắt buộc nhập lý do) (Section 4.2)',
+    summary:
+      'Chủ shop từ chối yêu cầu coupon (Bắt buộc nhập lý do) (Section 4.2)',
   })
   @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
   @ApiParam({ name: 'id', description: 'ID coupon' })
-  @ApiResponse({ status: 200, description: 'Từ chối yêu cầu coupon thành công' })
-  @ApiResponse({ status: 400, description: 'Lý do từ chối không hợp lệ hoặc trạng thái không phải PENDING' })
+  @ApiResponse({
+    status: 200,
+    description: 'Từ chối yêu cầu coupon thành công',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Lý do từ chối không hợp lệ hoặc trạng thái không phải PENDING',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên gian hàng này' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền thao tác trên gian hàng này',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy coupon' })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async rejectCoupon(
@@ -275,14 +347,21 @@ export class StoreCouponsController {
 
   @Patch(':id/policy')
   @ApiOperation({
-    summary: 'Cập nhật chính sách giảm giá, thời hạn, ngân sách của coupon (Section 4.2)',
+    summary:
+      'Cập nhật chính sách giảm giá, thời hạn, ngân sách của coupon (Section 4.2)',
   })
   @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
   @ApiParam({ name: 'id', description: 'ID coupon' })
-  @ApiResponse({ status: 200, description: 'Cập nhật chính sách coupon thành công' })
+  @ApiResponse({
+    status: 200,
+    description: 'Cập nhật chính sách coupon thành công',
+  })
   @ApiResponse({ status: 400, description: 'Thông tin cập nhật không hợp lệ' })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên gian hàng này' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền thao tác trên gian hàng này',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy coupon' })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async updatePolicy(
@@ -293,19 +372,30 @@ export class StoreCouponsController {
     @Body() dto: UpdateCouponPolicyDto,
     @Ip() ipAddress: string,
   ) {
-    return this.service.updateCouponPolicy(storeId, id, userId, role, dto, ipAddress);
+    return this.service.updateCouponPolicy(
+      storeId,
+      id,
+      userId,
+      role,
+      dto,
+      ipAddress,
+    );
   }
 
   @Patch(':id/block')
   @ApiOperation({
-    summary: 'Khóa hoặc tạm dừng coupon của Shop (Bắt buộc nhập lý do) (Section 4.2)',
+    summary:
+      'Khóa hoặc tạm dừng coupon của Shop (Bắt buộc nhập lý do) (Section 4.2)',
   })
   @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
   @ApiParam({ name: 'id', description: 'ID coupon' })
   @ApiResponse({ status: 200, description: 'Khóa coupon thành công' })
   @ApiResponse({ status: 400, description: 'Lý do khóa không hợp lệ' })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên gian hàng này' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền thao tác trên gian hàng này',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy coupon' })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async blockCoupon(
@@ -332,22 +422,33 @@ export class AdminCouponsController {
   constructor(private readonly service: CouponsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Admin tra cứu danh sách toàn bộ coupon trong hệ thống (Section 4.3)' })
+  @ApiOperation({
+    summary:
+      'Admin tra cứu danh sách toàn bộ coupon trong hệ thống (Section 4.3)',
+  })
   @ApiResponse({ status: 200, description: 'Danh sách coupon toàn hệ thống' })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Yêu cầu quyền SYSTEM_ADMIN hoặc SYSTEM_MANAGER' })
+  @ApiResponse({
+    status: 403,
+    description: 'Yêu cầu quyền SYSTEM_ADMIN hoặc SYSTEM_MANAGER',
+  })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async getAdminCoupons(@Query() query: QueryCouponsDto) {
     return this.service.getAdminCoupons(query);
   }
 
   @Patch(':id/block')
-  @ApiOperation({ summary: 'Admin khóa coupon gian lận hoặc vi phạm quy định (Section 4.3)' })
+  @ApiOperation({
+    summary: 'Admin khóa coupon gian lận hoặc vi phạm quy định (Section 4.3)',
+  })
   @ApiParam({ name: 'id', description: 'ID coupon' })
   @ApiResponse({ status: 200, description: 'Khóa coupon thành công' })
   @ApiResponse({ status: 400, description: 'Lý do khóa không hợp lệ' })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Yêu cầu quyền SYSTEM_ADMIN hoặc SYSTEM_MANAGER' })
+  @ApiResponse({
+    status: 403,
+    description: 'Yêu cầu quyền SYSTEM_ADMIN hoặc SYSTEM_MANAGER',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy coupon' })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async blockCoupon(
@@ -362,10 +463,19 @@ export class AdminCouponsController {
   @Patch(':id/unblock')
   @ApiOperation({ summary: 'Admin mở khóa coupon (Section 4.3)' })
   @ApiParam({ name: 'id', description: 'ID coupon' })
-  @ApiResponse({ status: 200, description: 'Mở khóa coupon thành công và khôi phục trạng thái ACTIVE' })
-  @ApiResponse({ status: 400, description: 'Coupon chưa bị khóa hoặc không thể mở khóa' })
+  @ApiResponse({
+    status: 200,
+    description: 'Mở khóa coupon thành công và khôi phục trạng thái ACTIVE',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Coupon chưa bị khóa hoặc không thể mở khóa',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Yêu cầu quyền SYSTEM_ADMIN hoặc SYSTEM_MANAGER' })
+  @ApiResponse({
+    status: 403,
+    description: 'Yêu cầu quyền SYSTEM_ADMIN hoặc SYSTEM_MANAGER',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy coupon' })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ' })
   async unblockCoupon(

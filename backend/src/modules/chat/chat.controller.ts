@@ -43,10 +43,22 @@ export class ChatController {
   }
 
   @Get('conversations/:conversationId/messages')
-  @ApiOperation({ summary: 'Lấy lịch sử tin nhắn của một hội thoại (có phân trang cursor)' })
+  @ApiOperation({
+    summary: 'Lấy lịch sử tin nhắn của một hội thoại (có phân trang cursor)',
+  })
   @ApiParam({ name: 'conversationId', type: 'string', format: 'uuid' })
-  @ApiQuery({ name: 'take', required: false, type: Number, description: 'Số tin nhắn mỗi page (default 50)' })
-  @ApiQuery({ name: 'cursor', required: false, type: String, description: 'ID tin nhắn cuối cùng để load more' })
+  @ApiQuery({
+    name: 'take',
+    required: false,
+    type: Number,
+    description: 'Số tin nhắn mỗi page (default 50)',
+  })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    type: String,
+    description: 'ID tin nhắn cuối cùng để load more',
+  })
   getMessages(
     @Param('conversationId', ParseUUIDPipe) conversationId: string,
     @CurrentUser() user: any,

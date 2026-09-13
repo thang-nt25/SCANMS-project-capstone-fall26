@@ -34,7 +34,7 @@ async function main() {
   // 1.1 Super Admin
   const admin = await prisma.user.upsert({
     where: { email: 'admin@scanms.vn' },
-    update: {},
+    update: { passwordHash: defaultPasswordHash },
     create: {
       email: 'admin@scanms.vn',
       passwordHash: defaultPasswordHash,
@@ -46,10 +46,10 @@ async function main() {
 
   // 1.2 Chủ Cửa hàng (Shop Manager)
   const shopOwner = await prisma.user.upsert({
-    where: { email: 'shop@techstore.vn' },
-    update: {},
+    where: { email: 'shop@scanms.vn' },
+    update: { passwordHash: defaultPasswordHash },
     create: {
-      email: 'shop@techstore.vn',
+      email: 'shop@scanms.vn',
       passwordHash: defaultPasswordHash,
       role: UserRole.SHOP_MANAGER,
       fullName: 'Trần Văn Chủ Shop',
@@ -57,12 +57,24 @@ async function main() {
     },
   });
 
-  // 1.3 KOL 1: Nguyễn Thành Thắng (Tier Vàng)
-  const kol1 = await prisma.user.upsert({
-    where: { email: 'kol1@scanms.vn' },
-    update: {},
+  await prisma.user.upsert({
+    where: { email: 'shop@techstore.vn' },
+    update: { passwordHash: defaultPasswordHash },
     create: {
-      email: 'kol1@scanms.vn',
+      email: 'shop@techstore.vn',
+      passwordHash: defaultPasswordHash,
+      role: UserRole.SHOP_MANAGER,
+      fullName: 'Trần Văn Chủ Shop (TechStore)',
+      phoneNumber: '0902000003',
+    },
+  });
+
+  // 1.3 KOL 1: Nguyễn Thành Thắng (Tier Vàng) - demo@scanms.vn & kol1@scanms.vn
+  const kol1 = await prisma.user.upsert({
+    where: { email: 'demo@scanms.vn' },
+    update: { passwordHash: defaultPasswordHash },
+    create: {
+      email: 'demo@scanms.vn',
       passwordHash: defaultPasswordHash,
       role: UserRole.COLLABORATOR,
       fullName: 'Nguyễn Thành Thắng (Top KOL)',
@@ -70,10 +82,22 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: { email: 'kol1@scanms.vn' },
+    update: { passwordHash: defaultPasswordHash },
+    create: {
+      email: 'kol1@scanms.vn',
+      passwordHash: defaultPasswordHash,
+      role: UserRole.COLLABORATOR,
+      fullName: 'Nguyễn Thành Thắng (Top KOL)',
+      phoneNumber: '0987654322',
+    },
+  });
+
   // 1.4 KOL 2: Lê Thu Hà (Tier Bạc)
   const kol2 = await prisma.user.upsert({
     where: { email: 'kol2@scanms.vn' },
-    update: {},
+    update: { passwordHash: defaultPasswordHash },
     create: {
       email: 'kol2@scanms.vn',
       passwordHash: defaultPasswordHash,

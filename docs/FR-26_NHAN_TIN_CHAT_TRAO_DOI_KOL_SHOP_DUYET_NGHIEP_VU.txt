@@ -1,0 +1,40 @@
+Đặc tả nghiệp vụ đầy đủ FR-26 — Hệ Thống Trò Chuyện Trực Tuyến Thời Gian Thực (Real-Time Chat)
+FR-26 — Nhắn Tin Trao Đổi KOL & Shop: Kết nối trực tuyến qua Socket.io → Đính kèm sản phẩm/mẫu thử/chiến dịch.
+
+Đây là bản đặc tả đã tổng hợp các quyết định nghiệp vụ được duyệt cho FR-26.
+
+1. Mục tiêu chức năng
+Cho phép KOL và Chủ Shop trò chuyện trao đổi trực tiếp, đàm phán hoa hồng, thống nhất kịch bản sáng tạo nội dung và gửi đính kèm các thẻ thông tin sản phẩm, mẫu thử hoặc chiến dịch tiếp thị độc quyền.
+Hệ thống sử dụng WebSocket Gateway (Socket.io) kết hợp REST API Fallback, đảm bảo thông điệp được truyền tức thì (< 100ms) với độ tin cậy tuyệt đối.
+
+2. Phạm vi FR-26
+FR-26 chịu trách nhiệm chính:
+1. Xác thực bảo mật kết nối WebSocket qua JWT Handshake.
+2. Tự động gom nhóm kết nối vào các Room định danh (user:userId, conv:conversationId).
+3. Danh sách cuộc trò chuyện gần nhất kèm đếm số lượng tin nhắn chưa đọc (unreadCount).
+4. Phân trang tải lịch sử tin nhắn (cursor-based hoặc limit/offset).
+5. Gửi tin nhắn văn bản, emoji và đính kèm thẻ dữ liệu có cấu trúc JSON (Product Card, Sample Card, Campaign Invite Card).
+6. Tự động đánh dấu đã đọc khi người dùng mở phòng chat.
+7. Xử lý trạng thái người dùng (Online/Offline) và chỉ báo đang nhập (Typing indicator).
+
+3. Đối tượng sử dụng
+3.1. KOL / Cộng tác viên (COLLABORATOR)
+- Nhắn tin trực tiếp với Shop bán hàng.
+- Nhận phản hồi về yêu cầu mẫu thử và thẻ mời chiến dịch độc quyền.
+3.2. Chủ Gian Hàng (SHOP_MANAGER)
+- Tư vấn sản phẩm, giải đáp thắc mắc cho KOL.
+- Gửi thẻ mời chiến dịch độc quyền VIP trực tiếp từ cửa sổ chat.
+3.3. Quản trị viên hệ thống (SYSTEM_ADMIN)
+- Giám sát luồng kết nối và bảo mật thông tin liên lạc.
+
+4. Danh sách Endpoint API & Socket Event
+- GET /api/chat/conversations: Danh sách hội thoại.
+- POST /api/chat/conversations: Khởi tạo/lấy hội thoại.
+- GET /api/chat/conversations/:id/messages: Lịch sử tin nhắn.
+- POST /api/chat/conversations/:id/messages: Gửi tin nhắn qua REST.
+- PATCH /api/chat/conversations/:id/read: Đánh dấu đã đọc.
+- WS Events: join_room, leave_room, send_message, new_message, user_typing.
+
+5. Quy tắc kiểm thử và Audit Log
+- Chống truy cập trái phép vào cuộc trò chuyện của người khác (403 Forbidden).
+- 100% kịch bản E2E kiểm tra bắt tay WebSocket và gửi nhận dữ liệu real-time.

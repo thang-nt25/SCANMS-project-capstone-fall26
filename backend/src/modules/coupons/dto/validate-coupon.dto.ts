@@ -49,7 +49,8 @@ export class ValidateCouponDto {
   storeId?: string;
 
   @ApiPropertyOptional({
-    description: 'Số điện thoại của khách hàng (dùng để kiểm tra quota trên khách)',
+    description:
+      'Số điện thoại của khách hàng (dùng để kiểm tra quota trên khách)',
     example: '0987654321',
   })
   @IsOptional()

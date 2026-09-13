@@ -34,16 +34,40 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
   let tokenOtherShop: string;
 
   async function cleanup() {
-    await prisma.clickTrafficLog.deleteMany({
-      where: { referralLinkId: linkId },
-    });
-    await prisma.referralLink.deleteMany({ where: { id: linkId } });
-    await prisma.product.deleteMany({ where: { id: productId } });
-    await prisma.storeCollaborator.deleteMany({ where: { storeId } });
-    await prisma.store.deleteMany({ where: { id: storeId } });
-    await prisma.user.deleteMany({
-      where: { id: { in: [kolAId, kolBId, shopOwnerId, otherShopOwnerId] } },
-    });
+    await prisma.attributionAdjustment
+      .deleteMany({
+        where: { order: { storeId } },
+      })
+      .catch(() => {});
+    await prisma.attributionSession
+      .deleteMany({
+        where: {
+          OR: [{ storeId }, { referralLinkId: linkId }],
+        },
+      })
+      .catch(() => {});
+    await prisma.clickTrafficLog
+      .deleteMany({
+        where: { referralLinkId: linkId },
+      })
+      .catch(() => {});
+    await prisma.referralLink
+      .deleteMany({ where: { id: linkId } })
+      .catch(() => {});
+    await prisma.product
+      .deleteMany({ where: { id: productId } })
+      .catch(() => {});
+    await prisma.storeCollaborator
+      .deleteMany({ where: { storeId } })
+      .catch(() => {});
+    await prisma.store
+      .deleteMany({ where: { id: storeId } })
+      .catch(() => {});
+    await prisma.user
+      .deleteMany({
+        where: { id: { in: [kolAId, kolBId, shopOwnerId, otherShopOwnerId] } },
+      })
+      .catch(() => {});
   }
 
   beforeAll(async () => {
