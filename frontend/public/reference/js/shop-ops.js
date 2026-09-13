@@ -113,76 +113,8 @@ export const shopOpsState = {
 // --------------------------------------------------------------------------
 export function shopSamplesScreen() {
   return `
-    <header class="page-head">
-      <div>
-        <div class="crumb"><span>Chủ Shop / </span><strong>Duyệt hàng mẫu</strong></div>
-        <h1>Quản Lý Yêu Cầu Hàng Mẫu Từ KOL / CTV</h1>
-        <p>Thẩm định hồ sơ KOL, phê duyệt gửi sản phẩm mẫu, cập nhật mã vận đơn và theo dõi bài review nghiệm thu.</p>
-      </div>
-      <div class="actions">
-        <span class="badge" style="background:var(--brand-soft);color:var(--brand-strong);padding:8px 14px;font-weight:600">
-          ${icon("ph-package")} Phân biệt rõ: Màn duyệt mẫu của Shop (không dùng màn xin mẫu của KOL)
-        </span>
-      </div>
-    </header>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Mã / Ngày Gửi</th>
-            <th>KOL / KOC Đề Xuất</th>
-            <th>Sản Phẩm Yêu Cầu</th>
-            <th>Kế Hoạch Nội Dung (Pitch)</th>
-            <th>Địa Chỉ Nhận Hàng</th>
-            <th>Trạng Thái & Vận Đơn</th>
-            <th style="text-align:right">Thao Tác Duyệt</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${shopOpsState.sampleRequests.map(smp => `
-            <tr>
-              <td>
-                <strong class="mono">${smp.id}</strong>
-                <div style="font-size:11px;color:var(--muted)">${smp.requestedAt}</div>
-              </td>
-              <td>
-                <strong style="color:var(--text)">${smp.kolName}</strong>
-                <div style="font-size:11.5px;color:var(--brand);font-weight:600">${smp.tier}</div>
-                <div style="font-size:11px;color:var(--muted)">${smp.channel}</div>
-              </td>
-              <td style="font-weight:600;font-size:13px">${smp.productName}</td>
-              <td style="max-width:280px;font-size:12px;line-height:1.4">${smp.pitch}</td>
-              <td style="font-size:12px;color:var(--muted);max-width:200px">${smp.shippingAddress}</td>
-              <td>
-                ${smp.status === 'approved' ? `
-                  <span class="badge success" style="font-size:11px"><i class="ph ph-check"></i> Đã duyệt gửi mẫu</span>
-                  <div class="mono" style="font-size:11px;color:var(--muted);margin-top:2px">Vận đơn: ${smp.waybillCode}</div>
-                ` : (smp.status === 'pending' ? `
-                  <span class="badge warning" style="font-size:11px"><i class="ph ph-clock"></i> Chờ duyệt</span>
-                ` : `
-                  <span class="badge danger" style="font-size:11px"><i class="ph ph-x"></i> Từ chối</span>
-                  <div style="font-size:11px;color:#dc2626;margin-top:2px">${smp.rejectReason}</div>
-                `)}
-              </td>
-              <td style="text-align:right">
-                <div class="actions" style="justify-content:flex-end">
-                  ${smp.status === 'pending' ? `
-                    <button class="btn small" data-shop-approve-sample="${smp.id}" style="background:#059669;color:#fff"><i class="ph ph-check"></i> Duyệt</button>
-                    <button class="btn small danger" data-shop-reject-sample="${smp.id}"><i class="ph ph-x"></i> Từ chối</button>
-                  ` : ''}
-                  ${smp.waybillCode ? `
-                    <button class="btn small secondary" data-shop-view-waybill="${smp.waybillCode}"><i class="ph ph-truck"></i> Vận đơn</button>
-                  ` : ''}
-                  ${smp.reviewLink ? `
-                    <a href="${smp.reviewLink}" target="_blank" class="btn small secondary" style="text-decoration:none"><i class="ph ph-video"></i> Xem Review</a>
-                  ` : ''}
-                </div>
-              </td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);background:#FAF8F5;">
+      <iframe id="shop-samples-iframe" src="/merchant/sample-requests" style="width: 100%; height: 100%; border: none; background: transparent; display: block;" title="Duyệt Hàng Mẫu Shop"></iframe>
     </div>
   `;
 }
@@ -238,62 +170,8 @@ export function shopMediaScreen() {
 // --------------------------------------------------------------------------
 export function shopCampaignsScreen() {
   return `
-    <header class="page-head">
-      <div>
-        <div class="crumb"><span>Chủ Shop / </span><strong>Chiến dịch & Hoa hồng</strong></div>
-        <h1>Chiến Dịch Tiếp Thị & Chính Sách Hoa Hồng</h1>
-        <p>Thiết lập tỷ lệ hoa hồng bậc thang theo từng cấp bậc CTV và quản lý thời hạn hiệu lực của chiến dịch.</p>
-      </div>
-      <div class="actions">
-        <button class="btn" data-shop-create-campaign><i class="ph ph-plus"></i> Tạo chiến dịch mới</button>
-      </div>
-    </header>
-
-    <div style="display:flex;flex-direction:column;gap:18px">
-      ${shopOpsState.campaigns.map(cmp => `
-        <div class="card" style="padding:22px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px">
-            <div>
-              <strong style="font-size:17px">${cmp.name}</strong>
-              <div style="font-size:12px;color:var(--muted);margin-top:4px">
-                Thời gian hiệu lực: <strong>${cmp.startDate}</strong> &rarr; <strong>${cmp.endDate}</strong>
-              </div>
-            </div>
-            <span class="badge ${cmp.status === 'running' ? 'success' : 'neutral'}" style="font-weight:700">
-              ${cmp.status === 'running' ? 'ĐANG CHẠY' : 'HOẠT ĐỘNG'}
-            </span>
-          </div>
-
-          <!-- Bảng Tỷ Lệ Hoa Hồng Bậc Thang -->
-          <div class="grid" style="grid-template-columns:repeat(4, 1fr);gap:12px;margin-bottom:16px">
-            <div style="padding:12px;background:var(--surface-2);border-radius:8px;text-align:center">
-              <small style="color:var(--muted)">Cấp Đồng (Cơ bản)</small>
-              <strong style="font-size:20px;display:block;margin-top:4px;color:var(--text)">${cmp.rates.bronze}%</strong>
-            </div>
-            <div style="padding:12px;background:var(--surface-2);border-radius:8px;text-align:center">
-              <small style="color:var(--muted)">Cấp Bạc</small>
-              <strong style="font-size:20px;display:block;margin-top:4px;color:var(--text)">${cmp.rates.silver}%</strong>
-            </div>
-            <div style="padding:12px;background:var(--surface-2);border-radius:8px;text-align:center">
-              <small style="color:var(--muted)">Cấp Vàng</small>
-              <strong style="font-size:20px;display:block;margin-top:4px;color:var(--brand)">${cmp.rates.gold}%</strong>
-            </div>
-            <div style="padding:12px;background:var(--surface-2);border-radius:8px;text-align:center">
-              <small style="color:var(--muted)">Cấp Kim Cương</small>
-              <strong style="font-size:20px;display:block;margin-top:4px;color:#059669">${cmp.rates.diamond}%</strong>
-            </div>
-          </div>
-
-          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--line);font-size:13px">
-            <div>
-              Hiệu suất: <strong>${cmp.totalOrders} đơn hàng</strong> • Doanh thu GMV: <strong style="color:var(--brand)">${money(cmp.gmv)}</strong>
-            </div>
-            <div style="display:flex;gap:8px">
-              <button class="btn small secondary" data-shop-edit-campaign="${cmp.id}"><i class="ph ph-pencil"></i> Chỉnh sửa</button>
-            </div>
-          </div>
-        </div>
-      `).join("")}
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);background:#FAF8F5;">
+      <iframe id="shop-campaigns-iframe" src="/merchant/campaigns" style="width: 100%; height: 100%; border: none; background: transparent; display: block;" title="Quản Lý Chiến Dịch & Mời KOL"></iframe>
     </div>
   `;
 }
