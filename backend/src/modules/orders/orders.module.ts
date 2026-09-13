@@ -7,15 +7,18 @@ import { ManualOrdersService } from './manual-orders.service';
 import { ExcelOrderImportService } from './excel-order-import.service';
 import { CouponsModule } from '../coupons/coupons.module';
 import { WalletsModule } from '../wallets/wallets.module';
+import { ReviewMediaService } from './review-media.service';
+import { CloudinaryModule } from '../../core/cloudinary/cloudinary.module';
 
 @Module({
-  imports: [PrismaModule, CouponsModule, WalletsModule],
+  imports: [PrismaModule, CouponsModule, WalletsModule, CloudinaryModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,
     OrderWebhookNormalizerService,
     ManualOrdersService,
     ExcelOrderImportService,
+    ReviewMediaService,
   ],
   exports: [OrdersService],
 })

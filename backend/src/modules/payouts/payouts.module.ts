@@ -12,6 +12,7 @@ import { PayoutBillService } from './payout-bill.service';
 import { MerchantPayoutsService } from './merchant-payouts.service';
 import { PayoutBatchesService } from './payout-batches.service';
 import { MerchantPayoutsController } from './merchant-payouts.controller';
+import { PayoutApprovalController } from './payout-approval.controller';
 
 @Module({
   imports: [ConfigModule],
@@ -31,15 +32,19 @@ class PayoutSettingsModule {}
       inject: [PayoutSettingsService],
       useFactory: (settings: PayoutSettingsService) => ({
         limits: {
-          fileSize: settings.maxBillBytes,
+          fileSize: Math.min(settings.maxBillBytes, 5 * 1024 * 1024),
           files: 1,
-          fields: 1,
-          fieldSize: 1024,
+          fields: 3,
+          fieldSize: 2048,
         },
       }),
     }),
   ],
-  controllers: [PayoutsController, MerchantPayoutsController],
+  controllers: [
+    PayoutsController,
+    MerchantPayoutsController,
+    PayoutApprovalController,
+  ],
   providers: [
     PayoutsService,
     PayoutTaxService,

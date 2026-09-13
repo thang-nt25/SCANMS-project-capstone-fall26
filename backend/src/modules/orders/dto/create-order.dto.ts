@@ -6,7 +6,6 @@ import {
   ValidateNested,
   IsNumber,
   Min,
-  IsEnum,
   IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -97,7 +96,8 @@ export class CreateOrderDto {
   orderNotes?: string;
 
   @ApiProperty({
-    description: 'Khóa chống gửi trùng lặp đơn hàng (UUID hoặc chuỗi định danh duy nhất - Bắt buộc)',
+    description:
+      'Khóa chống gửi trùng lặp đơn hàng (UUID hoặc chuỗi định danh duy nhất - Bắt buộc)',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @IsString({ message: 'idempotencyKey phải là chuỗi định danh hợp lệ' })
