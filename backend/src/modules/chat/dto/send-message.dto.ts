@@ -1,4 +1,10 @@
-import { IsString, IsUUID, IsOptional, IsNotEmpty, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsNotEmpty,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendMessageDto {
@@ -19,12 +25,18 @@ export class SendMessageDto {
 }
 
 export class CreateConversationDto {
-  @ApiPropertyOptional({ description: 'ID cửa hàng (tùy chọn nếu Shop gọi)', example: 'uuid-here' })
+  @ApiPropertyOptional({
+    description: 'ID cửa hàng (tùy chọn nếu Shop gọi)',
+    example: 'uuid-here',
+  })
   @IsOptional()
   @IsUUID()
   storeId?: string;
 
-  @ApiPropertyOptional({ description: 'ID KOL/CTV (tùy chọn nếu KOL gọi)', example: 'uuid-here' })
+  @ApiPropertyOptional({
+    description: 'ID KOL/CTV (tùy chọn nếu KOL gọi)',
+    example: 'uuid-here',
+  })
   @IsOptional()
   @IsUUID()
   collaboratorId?: string;

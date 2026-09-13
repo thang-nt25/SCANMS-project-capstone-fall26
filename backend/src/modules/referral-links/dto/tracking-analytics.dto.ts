@@ -54,14 +54,20 @@ export class QueryTrackingEventsDto {
   @IsString()
   to?: string;
 
-  @ApiPropertyOptional({ description: 'Trang hiện tại (Mặc định 1)', default: 1 })
+  @ApiPropertyOptional({
+    description: 'Trang hiện tại (Mặc định 1)',
+    default: 1,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ description: 'Số bản ghi / trang (Mặc định 20)', default: 20 })
+  @ApiPropertyOptional({
+    description: 'Số bản ghi / trang (Mặc định 20)',
+    default: 20,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -76,12 +82,16 @@ export class AttributionAdjustmentDto {
   @IsNotEmpty()
   newCollaboratorId: string;
 
-  @ApiProperty({ description: 'Lý do điều chỉnh (Bắt buộc cho audit & giải quyết khiếu nại)' })
+  @ApiProperty({
+    description: 'Lý do điều chỉnh (Bắt buộc cho audit & giải quyết khiếu nại)',
+  })
   @IsString()
   @IsNotEmpty()
   reason: string;
 
-  @ApiPropertyOptional({ description: 'Đường dẫn bằng chứng đối soát (nếu có)' })
+  @ApiPropertyOptional({
+    description: 'Đường dẫn bằng chứng đối soát (nếu có)',
+  })
   @IsOptional()
   @IsString()
   evidenceUrl?: string;

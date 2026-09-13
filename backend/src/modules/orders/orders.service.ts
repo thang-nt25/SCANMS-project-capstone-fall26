@@ -507,6 +507,7 @@ export class OrdersService {
     dto: CreateOrderDto,
     clientContext?: {
       cookieAttr?: string;
+      legacyCookieRef?: string;
       ip?: string;
       userAgent?: string;
     },
@@ -982,6 +983,55 @@ export class OrdersService {
                 }
               }
             }
+          }
+        }
+      }
+
+      // (A.2) Tương thích ngược: Nếu request có gửi cookie scanms_referral_link
+      if (
+        !candidateCookieCollaboratorId &&
+        clientContext?.legacyCookieRef?.trim()
+      ) {
+        const refCodeOrId = clientContext.legacyCookieRef.trim();
+        const isUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            refCodeOrId,
+          );
+
+        const link = await tx.referralLink.findFirst({
+          where: {
+            OR: [
+              ...(isUuid ? [{ id: refCodeOrId }] : []),
+              { shortCode: refCodeOrId },
+            ],
+            storeId: lockedStore.id,
+            deletedAt: null,
+            status: ReferralLinkStatus.ACTIVE,
+          },
+          include: { collaborator: true },
+        });
+
+        if (
+          link &&
+          (!link.expiresAt || new Date(link.expiresAt) > new Date()) &&
+          link.collaborator?.isActive
+        ) {
+          const storeCollab = await tx.storeCollaborator.findFirst({
+            where: {
+              storeId: lockedStore.id,
+              collaboratorId: link.collaboratorId,
+              status: StoreCollaboratorStatus.APPROVED,
+            },
+          });
+
+          if (storeCollab) {
+            hasStoreCookieTracking = true;
+            candidateCookieCollaboratorId = link.collaboratorId;
+            candidateCookieReferralLinkId = link.id;
+            candidateCookieSessionId = null;
+            candidateCookieClickId = null;
+            candidateCookieClickedAt = new Date();
+            candidateVia = 'LINK';
           }
         }
       }

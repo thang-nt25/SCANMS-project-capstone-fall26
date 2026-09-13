@@ -32,7 +32,11 @@ const userSocketMap = new Map<string, Set<string>>();
   namespace: '/chat',
 })
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
+  implements
+    OnGatewayInit,
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnModuleDestroy
 {
   @WebSocketServer()
   server: Server;
@@ -186,10 +190,27 @@ export class ChatGateway
   // Utility: push notification tới user cụ thể (gọi từ service khác)
   emitToUser(userId: string, event: string, payload: any) {
     const sockets = userSocketMap.get(userId);
-    if (sockets) {
+    if (sockets && this.server) {
       for (const socketId of sockets) {
         this.server.to(socketId).emit(event, payload);
       }
+    }
+  }
+
+  // Utility: phát sự kiện tới tất cả client đang mở phòng chat conv:xxx
+  broadcastToConversation(conversationId: string, event: string, payload: any) {
+    if (this.server) {
+      this.server.to(`conv:${conversationId}`).emit(event, payload);
+    }
+  }
+
+  // Utility: phát tin nhắn mới đồng thời tới phòng chat và các cá nhân liên quan
+  broadcastNewMessage(conversationId: string, message: any, recipientUserId?: string) {
+    if (this.server) {
+      this.server.to(`conv:${conversationId}`).emit('new_message', message);
+    }
+    if (recipientUserId) {
+      this.emitToUser(recipientUserId, 'new_message', message);
     }
   }
 }
