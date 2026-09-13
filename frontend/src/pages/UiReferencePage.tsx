@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import OrdersManagementPage from "./merchant/OrdersManagementPage";
 import {
   ProductReviewModal,
   type ProductReviewTarget,
@@ -8,6 +9,9 @@ import {
 export default function UiReferencePage() {
   const location = useLocation();
   const referenceFrame = useRef<HTMLIFrameElement>(null);
+  const [orderAction, setOrderAction] = useState<"manual" | "excel" | null>(
+    null,
+  );
   const [reviewTarget, setReviewTarget] = useState<
     (ProductReviewTarget & { prototypeOrderId: string }) | null
   >(null);
@@ -21,6 +25,13 @@ export default function UiReferencePage() {
       )
         return;
       const data = event.data as Record<string, unknown>;
+      if (
+        data.type === "SCANMS_OPEN_ORDER_FORM" &&
+        (data.action === "manual" || data.action === "excel")
+      ) {
+        setOrderAction(data.action);
+        return;
+      }
       if (
         data.type !== "SCANMS_OPEN_PRODUCT_REVIEW" ||
         typeof data.orderId !== "string" ||
@@ -125,6 +136,19 @@ export default function UiReferencePage() {
                 orderSn: result.order.externalOrderSn,
                 review: result.review,
               },
+              window.location.origin,
+            )
+          }
+        />
+      )}
+      {orderAction && (
+        <OrdersManagementPage
+          key={orderAction}
+          initialAction={orderAction}
+          onClose={() => setOrderAction(null)}
+          onCompleted={(message) =>
+            referenceFrame.current?.contentWindow?.postMessage(
+              { type: "SCANMS_ORDER_FORM_COMPLETED", message },
               window.location.origin,
             )
           }

@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  HttpException,
 } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { Workbook, type Cell, type Row } from 'exceljs';
@@ -179,6 +180,10 @@ export class ExcelOrderImportService {
         });
       } catch (error: unknown) {
         skippedOrders += 1;
+        if (!(error instanceof HttpException))
+          this.logger.error(
+            `Excel order save failed: storeId=${store.id}, errorType=${error instanceof Error ? error.name : 'Unknown'}`,
+          );
         const reason = this.getErrorMessage(error);
         for (const row of rows) {
           errors.push({
@@ -210,6 +215,32 @@ export class ExcelOrderImportService {
       importedOrders,
       errors: errors.sort((left, right) => left.row - right.row),
     };
+  }
+
+  async createTemplate(): Promise<Buffer> {
+    const workbook = new Workbook();
+    const sheet = workbook.addWorksheet('Orders');
+    sheet.columns = [
+      ...REQUIRED_HEADERS,
+      'status',
+      'unit_price',
+      'discount_amount',
+    ].map((header) => ({
+      header,
+      key: header,
+      width: header === 'shipping_address' ? 50 : 24,
+    }));
+    sheet.getColumn('customer_phone').numFmt = '@';
+    sheet.getColumn('order_code').numFmt = '@';
+    sheet.getColumn('sku').numFmt = '@';
+    sheet.getRow(1).font = { bold: true, color: { argb: 'FF231D15' } };
+    sheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF3EFE6' },
+    };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+    return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 
   private validateFile(
@@ -545,6 +576,7 @@ export class ExcelOrderImportService {
         return Array.isArray(message) ? message.join('; ') : message;
       }
     }
-    return error instanceof Error ? error.message : 'Không thể import đơn hàng';
+    if (error instanceof HttpException) return error.message;
+    return 'Không thể lưu đơn hàng. Vui lòng thử lại hoặc liên hệ quản trị viên';
   }
 }
