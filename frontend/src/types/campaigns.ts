@@ -9,7 +9,7 @@ export interface Campaign {
   endDate: string;
   isActive: boolean;
   createdAt: string;
-  store?: { id: string; name: string; logoUrl?: string };
+  store?: { id: string; name: string; logoUrl?: string; defaultCommissionRate?: number };
   participants?: CampaignParticipant[];
 }
 
