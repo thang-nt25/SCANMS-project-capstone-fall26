@@ -1,0 +1,691 @@
+ĐẶC TẢ NGHIỆP VỤ ĐỂ DUYỆT
+FR-16 — ĐẶT HÀNG NHANH (GUEST CHECKOUT)
+
+Yêu cầu gốc:
+Form mua hàng siêu tốc gồm Tên, SĐT, Địa chỉ, Mã giảm giá; tạo orders/order_items
+và trừ tồn kho mà khách không bắt buộc đăng nhập.
+
+HƯỚNG DẪN DUYỆT CHO TỪNG MỤC
+[ ] Có — giữ nguyên nội dung đề xuất.
+[ ] Sửa mới — thay nội dung cũ bằng nội dung bạn tự ghi.
+[ ] Không — bỏ mục khỏi FR-16.
+
+Chỉ chọn một phương án cho mỗi mục. Nếu chọn “Sửa mới”, bắt buộc ghi nội dung thay thế.
+
+======================================================================
+1. MỤC TIÊU
+======================================================================
+Cho phép khách mua sản phẩm nhanh từ landing/marketplace mà không cần tạo tài khoản. Hệ thống
+phải tạo đơn thật, lưu dòng sản phẩm, chốt giá/coupon/attribution tại backend và trừ tồn kho an toàn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+2. RANH GIỚI CHỨC NĂNG
+======================================================================
+FR-16 phụ trách nhận thông tin giao hàng, kiểm tra giỏ mua, tính tổng cuối cùng, tạo đơn và trừ kho.
+FR-12 xác thực coupon; FR-13 xác định KOL attribution; FR-14 chống spam; FR-15 hiển thị landing;
+FR-17 tra cứu đơn; FR-18 nhận review; FR-21/22 xử lý hoa hồng và đối soát sau giao hàng.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+3. TÁC NHÂN VÀ VAI TRÒ
+======================================================================
+- PUBLIC_BUYER/khách vãng lai: tạo đơn, nhận mã đơn và thông tin truy cập đơn của chính mình.
+- SHOP_MANAGER: chỉ xem/xử lý đơn thuộc Shop mình; không xem đơn Shop khác.
+- SYSTEM_MANAGER: hỗ trợ vận hành theo quyền được cấp, không tự sửa giá hoặc attribution.
+- SYSTEM_ADMIN: giám sát toàn hệ thống, thao tác nhạy cảm phải có lý do và audit.
+- KOL/CTV: chỉ được ghi nhận gián tiếp qua attribution/coupon; không được xem PII khách.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+4. ĐIỂM BẮT ĐẦU LUỒNG
+======================================================================
+Khách có thể mở Guest Checkout từ Landing Page sản phẩm hoặc Marketplace. CTA phải truyền
+productId/variantId và số lượng; không truyền giá, mức giảm hoặc collaboratorId như dữ liệu tin cậy.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+5. KHÔNG BẮT BUỘC ĐĂNG NHẬP
+======================================================================
+Khách được đặt hàng mà không cần tài khoản. Đăng nhập/đăng ký chỉ là lựa chọn bổ sung và không được
+làm gián đoạn checkout. Khách vẫn phải cung cấp dữ liệu tối thiểu cần cho giao hàng và liên hệ.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+6. ĐIỀU KIỆN SẢN PHẨM VÀ SHOP
+======================================================================
+Backend chỉ cho đặt khi sản phẩm tồn tại, chưa xóa, đang bán, Shop đang hoạt động và SKU/biến thể
+hợp lệ. Sản phẩm tạm dừng, Shop bị khóa hoặc hàng đã xóa phải bị từ chối trước khi tạo đơn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+7. SẢN PHẨM, SKU VÀ BIẾN THỂ
+======================================================================
+Mỗi dòng mua phải xác định đúng productId và variantId/SKU nếu có size, màu, dung tích. Tồn kho
+được kiểm tra theo đúng SKU/biến thể, không dùng tồn kho tổng của sản phẩm thay cho biến thể.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+8. TRƯỜNG FORM BẮT BUỘC
+======================================================================
+- Họ tên người nhận.
+- Số điện thoại.
+- Địa chỉ nhận hàng đầy đủ.
+- Danh sách sản phẩm và số lượng.
+Coupon và ghi chú giao hàng là tùy chọn. Phương thức thanh toán phải có giá trị mặc định hợp lệ.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+9. XÁC THỰC HỌ TÊN
+======================================================================
+Tên được trim, giới hạn độ dài hợp lý, không chỉ chứa khoảng trắng và không chấp nhận HTML/script.
+Không tự ý biến đổi tên gây sai người nhận; UI hiển thị lỗi tiếng Việt ngay tại trường nhập.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+10. XÁC THỰC VÀ CHUẨN HÓA SỐ ĐIỆN THOẠI
+======================================================================
+SĐT được chuẩn hóa thống nhất trước khi lưu/so sánh, chỉ nhận định dạng Việt Nam hợp lệ theo chính
+sách hệ thống. Không tìm kiếm bằng một phần SĐT. Log và response công khai phải che SĐT khi phù hợp.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+11. XÁC THỰC ĐỊA CHỈ
+======================================================================
+Địa chỉ phải đủ để giao hàng, được trim và giới hạn độ dài. Nếu hệ thống hỗ trợ tỉnh/quận/phường,
+nên lưu mã hành chính và địa chỉ chi tiết riêng để tính phí, tránh chỉ dựa vào chuỗi tự do.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+12. GHI CHÚ GIAO HÀNG
+======================================================================
+Ghi chú là tùy chọn, giới hạn độ dài và được escape/sanitize. Ghi chú không được dùng để thay đổi
+giá, coupon, hàng hóa hoặc yêu cầu nghiệp vụ trái với dữ liệu đã xác nhận trong đơn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+13. SỐ LƯỢNG
+======================================================================
+Số lượng phải là số nguyên từ 1 đến giới hạn mua/tồn kho do backend xác định. Frontend có thể chặn
+sớm nhưng backend bắt buộc kiểm tra lại, kể cả khi người dùng sửa request thủ công.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+14. BACKEND LÀ NGUỒN DỮ LIỆU TIN CẬY
+======================================================================
+Backend tự đọc giá hiện tại, tồn kho, Shop, biến thể, phí giao hàng, coupon và attribution. Bỏ qua
+hoặc từ chối unitPrice, discount, finalAmount, commissionRate và collaboratorId do client tự gửi.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+15. BẢNG TÓM TẮT ĐƠN TRƯỚC KHI GỬI
+======================================================================
+UI hiển thị sản phẩm, biến thể, số lượng, tạm tính, giảm giá, phí vận chuyển và tổng thanh toán.
+Đây là số tạm tính; backend tính lại khi khách xác nhận và response cuối là kết quả chính thức.
+
+Duyệt: [ ] Có — giữ  
+======================================================================
+16. COUPON FR-12
+======================================================================
+Coupon được trim/chuẩn hóa và xác thực tại backend về trạng thái, thời hạn, Shop/sản phẩm, giá trị
+tối thiểu, lượt dùng, ngân sách và cộng dồn. Việc giữ lượt dùng phải nằm cùng transaction tạo đơn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+17. ATTRIBUTION KOL/CTV FR-13
+======================================================================
+Backend resolve attribution từ cookie HttpOnly/session/link hợp lệ theo Last-Click. Không tin
+collaboratorId hoặc commission do frontend gửi. Coupon và attribution khác KOL phải xử lý theo
+chính sách đã chốt, không âm thầm gán sai người giới thiệu.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+18. ĐƠN HÀNG MỘT SHOP
+======================================================================
+Mỗi đơn FR-16 chỉ chứa sản phẩm của một Shop. Nếu giỏ có nhiều Shop, backend/frontend phải tách
+thành nhiều đơn độc lập hoặc chặn với thông báo rõ; không gán toàn bộ vào Shop đầu tiên.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+19. PHÍ VẬN CHUYỂN
+======================================================================
+Phí giao hàng do backend hoặc dịch vụ vận chuyển tính từ địa chỉ, Shop và khối lượng. Nếu FR-16
+chưa tích hợp vận chuyển thì phải chốt rõ miễn phí/phí cố định; không để frontend tự đặt giá trị.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+20. PHƯƠNG THỨC THANH TOÁN
+======================================================================
+Giai đoạn cơ bản hỗ trợ COD. Nếu hỗ trợ VIETQR/chuyển khoản, tạo đơn ở trạng thái chờ thanh toán
+và chỉ đánh dấu đã thanh toán từ callback/xác nhận đáng tin cậy; không tin trạng thái từ frontend.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+21. IDEMPOTENCY — CHỐNG TẠO ĐƠN TRÙNG
+======================================================================
+Mỗi lần checkout có idempotencyKey duy nhất. Gửi lại cùng key và cùng payload phải trả lại kết quả
+cũ, không tạo đơn/trừ kho/dùng coupon lần hai. Cùng key nhưng payload khác phải bị từ chối.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+22. CHỐNG BẤM NÚT NHIỀU LẦN
+======================================================================
+Khi đang gửi đơn, UI khóa nút “Đặt mua”, hiển thị loading và không gửi request thứ hai. Cơ chế UI
+chỉ hỗ trợ trải nghiệm; idempotency tại backend vẫn là lớp bảo vệ bắt buộc.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+23. TRANSACTION TẠO ĐƠN
+======================================================================
+Trong một transaction phải thực hiện: khóa/kiểm tra hàng → kiểm tra coupon → tạo orders → tạo
+order_items → trừ kho → ghi coupon redemption → lưu attribution/snapshot. Một bước lỗi phải rollback.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+24. TRỪ KHO AN TOÀN KHI NHIỀU KHÁCH MUA
+======================================================================
+Không dùng luồng “đọc tồn kho rồi update” thiếu khóa. Phải dùng atomic conditional update/row lock
+để chỉ trừ khi stock >= quantity. Hai khách mua món cuối không được cùng thành công hoặc làm kho âm.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+25. SNAPSHOT TẠI THỜI ĐIỂM ĐẶT HÀNG
+======================================================================
+Order/order_items lưu giá bán, số lượng, coupon, tiền giảm, phí giao hàng, tổng tiền, SKU/tên sản
+phẩm cần thiết và attribution/commission snapshot. Shop sửa giá sau đó không làm đổi đơn cũ.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+26. MÃ ĐƠN VÀ TRẠNG THÁI BAN ĐẦU
+======================================================================
+Đơn thành công có UUID nội bộ và mã đơn công khai khó đoán. COD bắt đầu ở PENDING/CONFIRMED theo
+quy trình Shop; đơn online chưa thanh toán dùng trạng thái chờ thanh toán riêng, không ghi COMPLETED.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+27. RESPONSE THÀNH CÔNG AN TOÀN
+======================================================================
+Response 201 chỉ trả trường cần thiết: mã đơn công khai, trạng thái, tổng tiền, phương thức thanh
+toán và hướng dẫn tra cứu. Không trả commission nội bộ, cookie, IP, fingerprint hoặc PII người khác.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+28. QUYỀN TRUY CẬP ĐƠN CỦA KHÁCH
+======================================================================
+Sau khi tạo đơn, hệ thống cấp guest access token/cancellation token ngẫu nhiên hoặc xác minh bằng
+mã đơn + SĐT đầy đủ/OTP. Không cho xem hoặc hủy đơn chỉ vì biết orderId UUID.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+29. XÁC NHẬN VÀ THÔNG BÁO
+======================================================================
+Chỉ hiện “Đặt hàng thành công” sau khi backend commit. Có thể gửi SMS/email/Zalo theo consent với
+mã đơn và hướng dẫn tra cứu; lỗi gửi thông báo không được tạo lại một đơn khác.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+30. XỬ LÝ LỖI VÀ ROLLBACK
+======================================================================
+Nếu hết hàng, coupon hết lượt, Shop bị khóa hoặc database lỗi trước commit thì không được tồn tại
+đơn nửa vời, không trừ kho, không tăng lượt coupon và không tạo commission.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+31. HỦY ĐƠN VÀ HOÀN TÀI NGUYÊN
+======================================================================
+Khách chỉ hủy trong trạng thái cho phép và phải xác minh quyền sở hữu. Hủy thành công hoàn tồn kho,
+lượt dùng/ngân sách coupon và commission liên quan đúng một lần; thao tác lặp phải idempotent.
+
+Duyệt: [ ] Có — giữ  
+======================================================================
+32. QUYỀN RIÊNG TƯ VÀ PII
+======================================================================
+Tên, SĐT và địa chỉ là dữ liệu cá nhân: chỉ Shop sở hữu đơn và nhân sự được cấp quyền mới xem.
+Không đưa PII vào URL, analytics, console, log thường, nội dung lỗi hoặc response public không cần thiết.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+33. QUYỀN SHOP, MANAGER VÀ ADMIN
+======================================================================
+Shop chỉ xử lý đơn của Shop mình. SYSTEM_MANAGER/ADMIN phải có policy rõ cho xem/chỉnh trạng thái.
+Không ai được sửa giá snapshot, coupon hoặc attribution âm thầm; điều chỉnh ngoại lệ cần lý do/audit.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+34. MULTI-MERCHANT ISOLATION
+======================================================================
+Mọi product, variant, coupon, order, order_item, tồn kho và attribution phải cùng đúng storeId.
+Backend không nhận storeId từ client rồi bỏ qua quan hệ thật của sản phẩm.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+35. CHỐNG SPAM VÀ GIAN LẬN
+======================================================================
+Endpoint checkout có rate limit theo IP/session/SĐT đã băm, giới hạn hợp lý và CAPTCHA tăng cường
+khi có dấu hiệu bot. Không chặn nhầm toàn bộ người dùng chung mạng; không lưu IP thô quá retention.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+36. AUDIT VÀ NHẬT KÝ
+======================================================================
+Ghi requestId, orderId, storeId, trạng thái và các bước quan trọng nhưng che PII/token/cookie.
+Thay đổi trạng thái, hủy đơn, hoàn kho và override attribution phải có actor, thời gian và lý do.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+37. API ĐỀ XUẤT
+======================================================================
+POST /api/orders hoặc /api/public/checkout: tạo Guest Order.
+POST /api/public/coupons/validate: xem trước coupon, nhưng phải xác thực lại khi tạo đơn.
+GET /api/public/orders/{publicCode}: chỉ cho truy cập kèm guest token/OTP/thông tin xác minh.
+POST /api/public/orders/{publicCode}/cancel: hủy có xác minh và rate limit.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+38. MÃ LỖI NGHIỆP VỤ
+======================================================================
+- PRODUCT_NOT_FOUND / PRODUCT_INACTIVE / STORE_INACTIVE.
+- VARIANT_NOT_FOUND / PRODUCT_OUT_OF_STOCK / QUANTITY_LIMIT_EXCEEDED.
+- COUPON_INVALID / COUPON_EXPIRED / COUPON_USAGE_EXCEEDED.
+- INVALID_CUSTOMER_INFO / INVALID_SHIPPING_ADDRESS.
+- IDEMPOTENCY_CONFLICT / CHECKOUT_RATE_LIMITED.
+- PAYMENT_METHOD_UNAVAILABLE / ORDER_CREATE_FAILED.
+UI dịch sang tiếng Việt; lỗi 500 không làm lộ stack trace hoặc thông tin database.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+39. TRẠNG THÁI GIAO DIỆN
+======================================================================
+Form có validate, loading, lỗi theo trường, lỗi mạng và nút thử lại an toàn. Nếu thử lại sau timeout,
+phải dùng cùng idempotencyKey. Form không báo thành công khi chưa nhận kết quả commit từ backend.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+40. RESPONSIVE VÀ ACCESSIBILITY
+======================================================================
+Checkout dùng tốt trên mobile/tablet/desktop; bàn phím điều hướng được, label liên kết input, focus
+rõ, lỗi có aria-live, nút đủ lớn và modal không khóa cuộn/focus sai cách.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+41. BẢO MẬT ỨNG DỤNG
+======================================================================
+DTO whitelist trường, giới hạn độ dài/body, chống XSS/SQL injection/mass assignment. Cookie
+attribution dùng HttpOnly/Secure/SameSite phù hợp; CORS chỉ cho origin tin cậy và không lộ token.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+42. LƯU TRỮ, XÓA VÀ RETENTION
+======================================================================
+Đơn đã phát sinh thanh toán, giao hàng, coupon hoặc commission không xóa cứng. PII được giữ theo
+retention/pháp luật, có quy trình ẩn danh khi hết hạn mà vẫn bảo toàn số liệu kế toán/audit.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+43. MONITORING
+======================================================================
+Theo dõi checkout success/error/latency, out-of-stock, duplicate prevented, coupon failure, rollback,
+kho âm và conversion. Cảnh báo spike 500/429 hoặc transaction lỗi; metric không chứa PII.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+44. SWAGGER VÀ TÀI LIỆU
+======================================================================
+Swagger mô tả request/response, idempotencyKey, validation, mã lỗi 400/404/409/422/429/500 và ví dụ.
+Tài liệu nêu rõ backend bỏ qua giá/commission client và transaction trừ kho hoạt động thế nào.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+45. KIỂM THỬ BẮT BUỘC
+======================================================================
+- Khách không đăng nhập đặt được sản phẩm hợp lệ và nhận mã đơn thật.
+- Thiếu/sai tên, SĐT, địa chỉ hoặc số lượng bị chặn đúng.
+- Sản phẩm/Shop/variant ngừng hoạt động không tạo đơn.
+- Giá sửa trên DevTools không ảnh hưởng giá backend.
+- Coupon hợp lệ/sai/hết hạn/hết lượt/khác Shop xử lý đúng.
+- Attribution từ link KOL đúng; collaboratorId giả từ client bị bỏ qua.
+- Double-click/retry cùng idempotencyKey chỉ tạo một đơn và trừ kho một lần.
+- Hai khách tranh món cuối chỉ một người thành công; tồn kho không âm.
+- Lỗi giữa transaction rollback order/item/kho/coupon đầy đủ.
+- Shop A không xem/xử lý đơn Shop B; KOL không xem PII khách.
+- Hủy hợp lệ hoàn kho/coupon một lần; hủy lặp không hoàn hai lần.
+- Responsive, accessibility, rate limit, XSS và response 500 an toàn.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+46. TIÊU CHÍ HOÀN THÀNH
+======================================================================
+- Form Guest Checkout dùng API thật và không yêu cầu tài khoản.
+- Orders/order_items lưu đúng Shop, sản phẩm, snapshot giá và thông tin giao hàng.
+- Trừ kho/coupon/attribution nằm trong transaction an toàn, không tạo bản ghi nửa vời.
+- Có idempotency, chống oversell, rate limit và bảo vệ guest order bằng token/OTP.
+- Đúng phân quyền, không lộ PII/commission; có Swagger, migration, test và monitoring.
+
+Duyệt: [ ] Có — giữ 
+
+======================================================================
+47. LUỒNG NGHIỆP VỤ HOÀN CHỈNH ĐỀ XUẤT
+======================================================================
+Shop tạo sản phẩm, giá và tồn kho
+→ KOL tạo link/coupon
+→ Khách bấm link
+→ FR-14 kiểm tra spam
+→ FR-13 lưu attribution
+→ FR-15 mở landing đúng sản phẩm
+→ Khách chọn biến thể/số lượng
+→ nhập tên, SĐT, địa chỉ, coupon
+→ frontend gửi productId/variantId/quantity + idempotencyKey
+→ backend xác thực Shop/sản phẩm/tồn kho/coupon/attribution
+→ transaction tạo orders + order_items + redemption + trừ kho
+→ commit thành công
+→ trả mã đơn và guest access token/hướng dẫn tra cứu
+→ Shop xử lý đơn
+→ chỉ sau giao hàng hợp lệ mới chuyển sang luồng hoa hồng/đối soát.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+48. NGOÀI PHẠM VI FR-16
+======================================================================
+FR-16 không tự duyệt review, không tự giải ngân hoa hồng, không xử lý toàn bộ logistics/hoàn tiền
+và không thay thế màn quản trị đơn. Các chức năng đó chỉ nhận dữ liệu đơn đã tạo từ FR-16.
+
+Duyệt: [ ] Có — giữ  
+
+======================================================================
+49. CÁC QUYẾT ĐỊNH QUAN TRỌNG CẦN CHỐT NHANH
+======================================================================
+
+1. Khách được đặt hàng mà không bắt buộc đăng nhập?
+[ ] Có — giữ  
+Đây chính là ý nghĩa của Guest Checkout:
+Khách mở sản phẩm
+→ điền thông tin nhận hàng
+→ đặt hàng
+→ nhận mã đơn
+Khách không cần tài khoản KOL, Shop hoặc tài khoản mua hàng.
+2. Form bắt buộc Tên + SĐT + Địa chỉ; coupon và ghi chú là tùy chọn?
+[ ] Có — giữ  
+Bắt buộc:
+- Họ tên người nhận.
+- Số điện thoại hợp lệ.
+- Địa chỉ nhận hàng.
+- Sản phẩm và số lượng.
+Không bắt buộc:
+- Coupon.
+- Ghi chú giao hàng.
+Nếu thiếu trường bắt buộc, frontend báo ngay và backend cũng phải từ chối.
+3. Mỗi đơn FR-16 chỉ chứa sản phẩm của một Shop?
+[ ] Có — giữ  
+Một đơn không nên trộn nhiều Shop vì mỗi Shop có:
+- Kho hàng riêng.
+- Phí vận chuyển riêng.
+- Coupon riêng.
+- Quy trình xử lý riêng.
+- KOL và commission riêng.
+Nếu giỏ có sản phẩm từ nhiều Shop:
+Giỏ hàng nhiều Shop
+→ tách thành nhiều đơn
+→ mỗi Shop nhận một đơn riêng
+4. Backend tự đọc giá/tồn kho, không tin unitPrice/finalAmount từ frontend?
+[ ] Có — giữ  
+Frontend chỉ gửi:
+{
+  "productId": "...",
+  "variantId": "...",
+  "quantity": 1
+}
+Backend phải tự lấy:
+- Giá bán hiện tại.
+- Tồn kho.
+- Khuyến mãi.
+- Phí vận chuyển.
+- Tổng thanh toán.
+Không được tin unitPrice, finalAmount do trình duyệt gửi vì khách có thể sửa request.
+5. Variant/SKU có tồn kho riêng nếu sản phẩm có size/màu/dung tích?
+[ ] Có — giữ  
+Ví dụ:
+Serum 30ml: còn 20
+Serum 50ml: còn 0
+Khách chọn 50ml thì phải báo hết hàng, không được lấy tồn kho 30ml thay thế.
+Nếu sản phẩm hiện chưa có biến thể, có thể coi sản phẩm chính là một SKU duy nhất.
+6. Coupon phải được FR-12 xác thực lại bên trong transaction tạo đơn?
+[ ] Có — giữ  
+Luồng đúng:
+Khách xem trước coupon hợp lệ
+→ bấm đặt hàng
+→ backend kiểm tra coupon lần cuối
+→ giữ lượt sử dụng
+→ tạo đơn
+Coupon có thể vừa hết lượt sau khi khách xem trước, vì vậy bắt buộc xác thực lại lúc tạo đơn.
+7. Attribution do backend FR-13 resolve, không tin collaboratorId từ frontend?
+[ ] Có — giữ  
+Luồng đúng:
+Khách bấm link KOL
+→ backend lưu attribution/cookie
+→ khách đặt hàng
+→ backend tự tìm KOL được ghi nhận
+Frontend không được gửi collaboratorId như dữ liệu đáng tin cậy vì người dùng có thể giả mạo.
+8. Bắt buộc idempotencyKey cho mọi request tạo đơn?
+[ ] Có — giữ  
+Khóa này chống việc một lần đặt hàng tạo ra nhiều đơn.
+Ví dụ trình duyệt gửi lại request do mạng chậm:
+Request lần 1: key ABC → tạo đơn DH001
+Request lần 2: key ABC → trả lại DH001
+Không được tạo DH002 và không trừ kho lần thứ hai.
+9. Tạo order/order_items, dùng coupon và trừ kho trong cùng transaction?
+[ ] Có — giữ  
+Một transaction phải bao gồm:
+Kiểm tra sản phẩm
+→ kiểm tra tồn kho
+→ kiểm tra coupon
+→ tạo orders
+→ tạo order_items
+→ trừ tồn kho
+→ ghi coupon redemption
+→ lưu attribution
+→ commit
+Nếu bất kỳ bước nào thất bại thì phải rollback toàn bộ.
+10. Trừ kho bằng atomic update/row lock để chống oversell và kho âm?
+[ ] Có — giữ  
+Ví dụ chỉ còn 1 sản phẩm nhưng hai khách cùng đặt:
+Khách A → thành công
+Khách B → PRODUCT_OUT_OF_STOCK
+Không được để cả hai thành công hoặc tồn kho trở thành -1
+11. Giai đoạn đầu chỉ hỗ trợ COD?
+[ ] Có — giữ  
+nếu chưa có cổng thanh toán thật
+COD giúp hoàn thành FR-16 an toàn và nhanh hơn.
+Nếu hệ thống đã có callback thanh toán VIETQR đáng tin cậy thì chọn:
+[x] Sửa mới: Hỗ trợ COD và VIETQR; VIETQR chỉ xác nhận thanh toán
+sau khi backend nhận callback hoặc đối soát đáng tin cậy.
+Không được cho frontend tự báo đã thanh toán.
+12. Nếu thêm VIETQR thì đơn phải chờ xác nhận thanh toán đáng tin cậy?
+[ ] Có — giữ  
+Luồng đúng:
+Tạo đơn
+→ trạng thái WAITING_PAYMENT
+→ khách chuyển khoản
+→ backend nhận callback/đối soát
+→ trạng thái PAID hoặc CONFIRMED
+Ảnh chụp giao dịch hoặc nút “Tôi đã thanh toán” không đủ để xác nhận.
+13. Phí vận chuyển do backend tính hoặc dùng chính sách phí cố định đã cấu hình?
+[ ] Có — giữ  
+Backend có thể:
+- Tính bằng API đơn vị vận chuyển.
+- Dùng phí cố định của Shop.
+- Miễn phí theo chính sách.
+- Tính theo khu vực và khối lượng.
+Frontend chỉ hiển thị kết quả.
+14. Chỉ báo đặt hàng thành công sau khi transaction đã commit?
+[ ] Có — giữ  
+Sai:
+Khách bấm nút
+→ frontend lập tức báo thành công
+Đúng:
+Khách bấm nút
+→ backend tạo và commit đơn
+→ trả mã đơn
+→ frontend mới báo thành công
+15. Sau tạo đơn cấp guest access token hoặc OTP để xem/hủy đơn?
+[ ] Có — giữ  
+Sau khi tạo đơn, khách cần nhận:
+- Mã đơn công khai.
+- Guest access token bí mật; hoặc
+- Xác minh OTP khi xem/hủy đơn.
+Khuyến nghị:
+Xem trạng thái cơ bản: mã đơn + SĐT đầy đủ
+Xem PII/hủy đơn: guest token hoặc OTP
+16. Không cho tra cứu/hủy chỉ bằng orderId hoặc một phần SĐT?
+[ ] Có — giữ  
+Không được dùng:
+SĐT chứa "090"
+→ trả về tất cả đơn có chuỗi "090"
+Phải yêu cầu tối thiểu:
+Mã đơn chính xác + SĐT đầy đủ
+Với hành động hủy đơn nên yêu cầu thêm token hoặc OTP
+17. Hủy đơn hợp lệ phải hoàn kho/coupon idempotent đúng một lần?
+[ ] Có — giữ  
+Luồng đúng:
+Đơn PENDING
+→ khách xác minh
+→ hủy đơn
+→ hoàn tồn kho
+→ hoàn lượt/ngân sách coupon
+→ hủy commission pending
+Nếu khách gửi yêu cầu hủy lần hai thì không được hoàn kho lần hai.
+18. Shop chỉ xem và xử lý đơn thuộc Shop mình?
+[ ] Có — giữ  
+Shop A không được:
+- Xem PII đơn Shop B.
+- Sửa trạng thái đơn Shop B.
+- Hủy hoặc hoàn kho Shop B.
+- Xem attribution nội bộ của Shop B.
+Backend bắt buộc kiểm tra storeId, không chỉ ẩn trên giao diện.
+19. KOL không được xem tên/SĐT/địa chỉ khách do mình giới thiệu?
+[ ] Có — giữ  
+KOL chỉ nên xem dữ liệu thống kê:
+- Có đơn phát sinh.
+- Giá trị đơn đủ điều kiện.
+- Commission dự kiến.
+- Trạng thái đối soát.
+Không được xem:
+- Họ tên đầy đủ.
+- Số điện thoại.
+- Địa chỉ.
+- Ghi chú giao hàng.
+20. Mọi override giá/coupon/attribution/trạng thái nhạy cảm phải có audit và lý do?
+[ ] Có — giữ  
+Khi Admin/Manager thay đổi:
+- Giá đơn.
+- Coupon.
+- Attribution KOL.
+- Trạng thái đơn.
+- Tồn kho.
+- Commission.
+Phải lưu:
+Ai thao tác
+→ thao tác lúc nào
+→ lý do
+→ giá trị trước
+→ giá trị sau
+21. Checkout public có rate limit và chống bot tăng cường khi bất thường?
+[ ] Có — giữ  
+Endpoint tạo đơn là endpoint công khai nên có thể bị spam.
+Cần kiểm soát theo:
+- IP.
+- Session.
+- SĐT đã băm.
+- Idempotency key.
+- Tần suất thất bại.
+Khi bất thường mới yêu cầu CAPTCHA, tránh làm phiền mọi khách hợp lệ.
+22. Lỗi 500 chỉ trả mã an toàn, không lộ Prisma/stack/path/database?
+[ ] Có — giữ  
+Response công khai chỉ nên trả:
+{
+  "statusCode": 500,
+  "message": "ORDER_CREATE_FAILED",
+  "requestId": "..."
+}
+Không trả:
+- Stack trace.
+- Đường dẫn máy tính.
+- Prisma query.
+- Database URL.
+- Tên bảng hoặc dòng code.
+23. Đơn lưu snapshot giá/coupon/attribution để thay đổi sau này không sửa lịch sử?
+[ ] Có — giữ  
+Tại thời điểm đặt hàng phải chốt:
+- Tên/SKU sản phẩm.
+- Đơn giá.
+- Số lượng.
+- Tiền giảm.
+- Coupon.
+- Phí giao hàng.
+- Tổng thanh toán.
+- Attribution và tỷ lệ commission áp dụng.
+Shop sửa giá ngày hôm sau không được làm thay đổi đơn cũ.
+24. Đơn đã phát sinh nghiệp vụ chỉ xóa mềm/ẩn danh theo retention, không xóa cứng?
+[ ] Có — giữ  
+Đơn liên quan đến:
+- Kho hàng.
+- Coupon.
+- Thanh toán.
+- Commission.
+- Khiếu nại.
+- Kế toán và đối soát.
+Vì vậy không được xóa cứng. Khi hết thời gian lưu trữ có thể ẩn danh PII nhưng vẫn giữ số liệu nghiệp vụ cần thiết.
+25. Chỉ công nhận FR-16 hoàn thành khi có Swagger, migration, unit/integration/E2E và monitoring?
+[ ] Có — giữ  
+FR-16 chỉ được coi là hoàn thành khi có:
+- Migration database.
+- Swagger.
+- Unit test.
+- Integration test.
+- E2E Guest Checkout.
+- Monitoring.
+- Kiểm thử đồng thời để bảo đảm kho không âm.
+- Kiểm thử double-click không tạo đơn trùng.

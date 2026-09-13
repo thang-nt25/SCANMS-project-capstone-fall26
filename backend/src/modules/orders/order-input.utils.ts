@@ -28,3 +28,46 @@ export function validateOrderMoney(value: number, field: string): void {
     );
   }
 }
+
+export function validateCustomerName(value: string): string {
+  if (!value || typeof value !== 'string') {
+    throw new BadRequestException('Họ và tên người nhận là bắt buộc');
+  }
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 150) {
+    throw new BadRequestException('Họ và tên người nhận phải từ 2 đến 150 ký tự');
+  }
+  // Disallow HTML tags, script injection
+  if (/<[^>]*>/.test(trimmed) || /[<>{}\\]/.test(trimmed)) {
+    throw new BadRequestException(
+      'Họ và tên không được chứa ký tự đặc biệt hoặc mã độc script',
+    );
+  }
+  return trimmed;
+}
+
+export function validateShippingAddress(value: string): string {
+  if (!value || typeof value !== 'string') {
+    throw new BadRequestException('Địa chỉ nhận hàng là bắt buộc');
+  }
+  const trimmed = value.trim();
+  if (trimmed.length < 5 || trimmed.length > 500) {
+    throw new BadRequestException('Địa chỉ nhận hàng phải từ 5 đến 500 ký tự');
+  }
+  if (/<[^>]*>/.test(trimmed)) {
+    throw new BadRequestException('Địa chỉ không được chứa mã độc script');
+  }
+  return trimmed;
+}
+
+export function validateOrderNotes(value?: string): string | undefined {
+  if (!value || typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.length > 500) {
+    throw new BadRequestException('Ghi chú giao hàng không được vượt quá 500 ký tự');
+  }
+  return trimmed.replace(/<[^>]*>/g, '');
+}
+
+

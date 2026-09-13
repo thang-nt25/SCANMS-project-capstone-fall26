@@ -43,6 +43,9 @@ import { CouponsService } from '../coupons/coupons.service';
 import {
   normalizeCustomerPhone,
   validateOrderMoney,
+  validateCustomerName,
+  validateShippingAddress,
+  validateOrderNotes,
   MAX_ORDER_ITEMS,
 } from './order-input.utils';
 import {
@@ -511,17 +514,34 @@ export class OrdersService {
       userAgent?: string;
     },
   ) {
-    if (!dto.items || dto.items.length === 0) {
+    // 0. Kiểm tra thông tin người nhận và giỏ hàng theo chuẩn FR-16
+    const customerName = validateCustomerName(dto.customerName);
+    const customerPhone = normalizeCustomerPhone(dto.customerPhone);
+    const shippingAddress = validateShippingAddress(dto.shippingAddress);
+    const orderNotes = validateOrderNotes(dto.orderNotes);
+
+    if (!dto.items || !Array.isArray(dto.items) || dto.items.length === 0) {
       throw new BadRequestException('Đơn hàng phải có ít nhất 1 sản phẩm');
     }
+    for (const it of dto.items) {
+      if (!it.productId || typeof it.productId !== 'string') {
+        throw new BadRequestException('Mã sản phẩm không hợp lệ');
+      }
+      if (!it.quantity || !Number.isInteger(it.quantity) || it.quantity < 1) {
+        throw new BadRequestException(
+          'Số lượng sản phẩm phải là số nguyên lớn hơn hoặc bằng 1',
+        );
+      }
+    }
 
-    // 0. Kiểm tra Idempotency chống đặt đơn trùng lặp (Issue 3 & 4)
+    // 0.1 Kiểm tra Idempotency chống đặt đơn trùng lặp (Issue 3 & 4)
     if (!dto.idempotencyKey || !dto.idempotencyKey.trim()) {
       throw new BadRequestException('Thiếu idempotencyKey cho phiên đặt hàng.');
     }
+    const cleanIdempotencyKey = dto.idempotencyKey.trim();
 
     const existingOrder = await this.prisma.order.findUnique({
-      where: { idempotencyKey: dto.idempotencyKey.trim() },
+      where: { idempotencyKey: cleanIdempotencyKey },
       include: {
         orderItems: {
           include: {
@@ -554,27 +574,51 @@ export class OrdersService {
     });
 
     if (existingOrder) {
+      const existingItems = existingOrder.orderItems || [];
+      const itemsMatch =
+        existingItems.length === dto.items.length &&
+        dto.items.every((it) =>
+          existingItems.some(
+            (ei) =>
+              ei.productId === it.productId && ei.quantity === it.quantity,
+          ),
+        );
+      if (
+        !itemsMatch ||
+        (existingOrder.customerPhone &&
+          existingOrder.customerPhone !== customerPhone)
+      ) {
+        throw new ConflictException(
+          'IDEMPOTENCY_CONFLICT: Khóa idempotencyKey đã tồn tại nhưng dữ liệu giỏ hàng hoặc người nhận khác với đơn ban đầu.',
+        );
+      }
+      const rawPayload =
+        (existingOrder.rawPayload as Record<string, any>) || {};
       return {
         message: 'Đơn hàng đã được ghi nhận thành công (Idempotent replay)',
+        orderId: existingOrder.id,
+        publicOrderCode: existingOrder.externalOrderSn,
+        status: existingOrder.status,
+        subtotalAmount: Number(existingOrder.subtotalAmount),
+        discountAmount: Number(existingOrder.discountAmount),
+        shippingFee: Number(existingOrder.shippingFee),
+        finalAmount: Number(existingOrder.finalAmount),
+        paymentMethod: rawPayload.paymentMethod || 'COD',
+        paymentStatus: rawPayload.paymentStatus || 'UNPAID',
+        vietqr: rawPayload.vietqr || null,
+        cancellationToken: existingOrder.cancellationToken || undefined,
+        trackingUrl: `/tracking?code=${existingOrder.externalOrderSn}`,
+        items: existingOrder.orderItems.map((item) => ({
+          productId: item.productId,
+          title: item.product?.title || '',
+          sku: item.product?.sku || '',
+          imageUrl: item.product?.imageUrl || '',
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+        })),
+        store: existingOrder.store,
         order: existingOrder,
       };
-    }
-
-    // 1. Xác định Store
-    const store = dto.storeId
-      ? await this.prisma.store.findUnique({
-          where: { id: dto.storeId },
-        })
-      : dto.storeSlug
-        ? await this.prisma.store.findUnique({
-            where: { slug: dto.storeSlug },
-          })
-        : await this.prisma.store.findFirst({
-            where: { isDeleted: false },
-          });
-
-    if (!store) {
-      throw new NotFoundException('Không tìm thấy gian hàng tương ứng');
     }
 
     const jwtSecret =
@@ -585,22 +629,57 @@ export class OrdersService {
       );
     }
 
-    // 2. Lấy danh sách sản phẩm từ DB và xác thực tính hợp lệ
+    // 1. Xác thực tính hợp lệ của sản phẩm và kiểm tra ranh giới Multi-merchant
     const productIds = dto.items.map((i) => i.productId);
     const dbProducts = await this.prisma.product.findMany({
       where: {
         id: { in: productIds },
-        storeId: store.id,
         isDeleted: false,
-        isActive: true,
+      },
+      include: {
+        store: true,
       },
     });
 
     if (dbProducts.length !== dto.items.length) {
       throw new BadRequestException(
-        'Một hoặc nhiều sản phẩm trong giỏ hàng không tồn tại, đã ngừng kinh doanh hoặc không thuộc gian hàng này.',
+        'Một hoặc nhiều sản phẩm trong giỏ hàng không tồn tại hoặc đã bị xóa.',
       );
     }
+
+    for (const p of dbProducts) {
+      if (!p.isActive) {
+        throw new BadRequestException(
+          `Sản phẩm "${p.title}" đã ngừng kinh doanh.`,
+        );
+      }
+    }
+
+    // Đảm bảo đơn hàng chỉ thuộc một gian hàng duy nhất (Multi-Merchant Isolation)
+    const distinctStoreIds = Array.from(
+      new Set(dbProducts.map((p) => p.storeId)),
+    );
+    if (distinctStoreIds.length > 1) {
+      throw new BadRequestException(
+        'MULTI_STORE_ORDER_NOT_ALLOWED: Đơn hàng chỉ được chứa sản phẩm của cùng một Gian hàng. Vui lòng tách đơn cho từng Shop.',
+      );
+    }
+
+    const targetStore = dbProducts[0].store;
+    if (!targetStore || targetStore.isDeleted || !targetStore.isActive) {
+      throw new BadRequestException(
+        'STORE_INACTIVE: Gian hàng của sản phẩm hiện không hoạt động hoặc đã bị đóng.',
+      );
+    }
+
+    if (dto.storeId && dto.storeId !== targetStore.id) {
+      throw new BadRequestException(
+        'STORE_MISMATCH: Sản phẩm đã chọn không thuộc gian hàng được chỉ định.',
+      );
+    }
+
+    const store = targetStore;
+
 
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
 
@@ -665,6 +744,25 @@ export class OrdersService {
           'Gian hàng không tồn tại hoặc đã ngừng kinh doanh.',
         );
       }
+
+      // 4.2 Trừ kho an toàn bằng atomic conditional update (FR-16 Mục 24 & Quyết định 10)
+      for (const item of dto.items) {
+        const prod = productMap.get(item.productId)!;
+        const updatedCount = await tx.$executeRaw`
+          UPDATE products
+          SET stock_quantity = stock_quantity - ${item.quantity}
+          WHERE id = ${item.productId}::uuid
+            AND stock_quantity >= ${item.quantity}
+            AND is_deleted = false
+            AND is_active = true
+        `;
+        if (updatedCount === 0) {
+          throw new BadRequestException(
+            `PRODUCT_OUT_OF_STOCK: Sản phẩm "${prod.title}" không đủ số lượng tồn kho (yêu cầu: ${item.quantity}).`,
+          );
+        }
+      }
+
 
       // 6.1 Khóa hàng và kiểm tra toàn diện quy tắc Coupon trong Transaction (Issue 2 & 3)
       if (couponValidationResult) {
@@ -1211,13 +1309,40 @@ export class OrdersService {
         couponCode: couponValidationResult?.code || null,
       };
 
+      const paymentMethod = (dto.paymentMethod || 'COD').toUpperCase();
+      const isVietQr = paymentMethod === 'VIETQR';
+      let vietqrData: any = null;
+      if (isVietQr) {
+        const bankCode = 'MB';
+        const accountNumber = '0383344696';
+        const accountName = 'SCANMS MARKETPLACE';
+        const memo = externalOrderSn;
+        const qrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNumber}-compact2.png?amount=${orderFinalAmount}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(accountName)}`;
+        vietqrData = {
+          bankCode,
+          accountNumber,
+          accountName,
+          amount: orderFinalAmount,
+          memo,
+          qrUrl,
+        };
+      }
+
       // 6.2 Lưu đơn hàng kèm đầy đủ snapshot coupon & attribution & idempotencyKey (Issue 3 & 4)
       const order = await tx.order.create({
         data: {
           storeId: store.id,
           externalOrderSn,
-          idempotencyKey: dto.idempotencyKey?.trim() || null,
+          idempotencyKey: cleanIdempotencyKey,
           cancellationToken,
+          rawPayload: {
+            orderNotes: orderNotes || null,
+            paymentMethod,
+            paymentStatus: isVietQr ? 'WAITING_PAYMENT' : 'UNPAID',
+            vietqr: vietqrData,
+            clientIp: clientContext?.ip || null,
+            userAgent: clientContext?.userAgent || null,
+          },
           attributedCollaboratorId,
           attributionMethod,
           referralLinkId,
@@ -1233,11 +1358,9 @@ export class OrdersService {
           overrideReason,
           originalAttributionMethod,
           originalCollaboratorId,
-          customerName: dto.customerName,
-          customerPhone: dto.customerPhone
-            ? normalizeCustomerPhone(dto.customerPhone)
-            : undefined,
-          shippingAddress: dto.shippingAddress,
+          customerName,
+          customerPhone,
+          shippingAddress,
           subtotalAmount,
           discountAmount: appliedDiscountAmount,
           finalAmount: orderFinalAmount,
@@ -1292,7 +1415,7 @@ export class OrdersService {
             orderId: order.id,
             collaboratorId: couponValidationResult.collaboratorId,
             storeId: couponValidationResult.storeId,
-            customerPhone: dto.customerPhone || null,
+            customerPhone: customerPhone || null,
             status: CouponRedemptionStatus.USED,
             discountAmount: new Prisma.Decimal(appliedDiscountAmount),
             shopFundedAmount: new Prisma.Decimal(shopFundedAmount),
@@ -1320,10 +1443,31 @@ export class OrdersService {
       return order;
     });
 
+    const raw = (createdOrder.rawPayload as Record<string, any>) || {};
     return {
       message: 'Đặt hàng thành công!',
-      order: createdOrder,
+      orderId: createdOrder.id,
+      publicOrderCode: createdOrder.externalOrderSn,
+      status: createdOrder.status,
+      subtotalAmount: Number(createdOrder.subtotalAmount),
+      discountAmount: Number(createdOrder.discountAmount),
+      shippingFee: Number(createdOrder.shippingFee),
+      finalAmount: Number(createdOrder.finalAmount),
+      paymentMethod: raw.paymentMethod || 'COD',
+      paymentStatus: raw.paymentStatus || 'UNPAID',
+      vietqr: raw.vietqr || null,
       cancellationToken: createdOrder.cancellationToken || undefined,
+      trackingUrl: `/tracking?code=${createdOrder.externalOrderSn}`,
+      items: createdOrder.orderItems.map((item) => ({
+        productId: item.productId,
+        title: item.product?.title || '',
+        sku: item.product?.sku || '',
+        imageUrl: item.product?.imageUrl || '',
+        quantity: item.quantity,
+        unitPrice: Number(item.unitPrice),
+      })),
+      store: createdOrder.store,
+      order: createdOrder,
     };
   }
 
@@ -1379,15 +1523,15 @@ export class OrdersService {
   }
 
   /**
-   * Khách mua hàng vãng lai yêu cầu hủy đơn (Xác thực bằng Cancellation Token + Số điện thoại + Rate Limit) (Issue 2)
+   * Khách mua hàng vãng lai yêu cầu hủy đơn (Xác thực bằng Cancellation Token + Số điện thoại + Rate Limit) (FR-16 Mục 28, 31)
    */
   async guestCancelOrder(
-    orderId: string,
+    orderIdentifier: string,
     dto: GuestCancelOrderDto,
     clientIp?: string,
   ) {
     // 1. Rate limit chống Brute-Force: Tối đa 5 lần thử trong 15 phút
-    const rateLimitKey = `guest_cancel_${orderId}_${clientIp || 'unknown'}`;
+    const rateLimitKey = `guest_cancel_${orderIdentifier}_${clientIp || 'unknown'}`;
     const isAllowed = await this.cacheService.checkRateLimit(
       rateLimitKey,
       5,
@@ -1400,8 +1544,16 @@ export class OrdersService {
       );
     }
 
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        orderIdentifier,
+      );
+    const order = await this.prisma.order.findFirst({
+      where: isUuid
+        ? {
+            OR: [{ id: orderIdentifier }, { externalOrderSn: orderIdentifier }],
+          }
+        : { externalOrderSn: orderIdentifier },
     });
 
     if (!order) {
@@ -1419,15 +1571,20 @@ export class OrdersService {
       );
     }
 
-    // 3. Xác thực kép cùng số điện thoại đặt hàng
-    if (
-      !dto.customerPhone ||
-      !order.customerPhone ||
-      dto.customerPhone.trim() !== order.customerPhone.trim()
-    ) {
+    // 3. Xác thực kép cùng số điện thoại đặt hàng (FR-16 Mục 28)
+    const inputPhone = normalizeCustomerPhone(dto.customerPhone);
+    if (!order.customerPhone || inputPhone !== order.customerPhone.trim()) {
       throw new ForbiddenException(
         'Số điện thoại xác minh không khớp với số điện thoại đặt hàng',
       );
+    }
+
+    // Idempotent: Nếu đơn đã hủy trước đó, trả kết quả thành công mà không trừ kho lần 2
+    if (order.status === OrderStatus.CANCELLED) {
+      return {
+        message: 'Đơn hàng đã được hủy trước đó (Idempotent replay)',
+        order,
+      };
     }
 
     if (order.status !== OrderStatus.PENDING) {
@@ -1437,13 +1594,117 @@ export class OrdersService {
     }
 
     return this.executeOrderCancellation(
-      orderId,
+      order.id,
       dto.reason || 'Khách vãng lai yêu cầu hủy đơn',
     );
   }
 
   /**
-   * Thực hiện hủy đơn, hoàn lại Coupon và thu hồi hoa hồng trong Transaction
+   * Tra cứu thông tin chi tiết đơn hàng công khai cho khách (FR-16 Mục 27 & 28)
+   */
+  async getPublicOrderDetail(
+    publicCode: string,
+    phone?: string,
+    token?: string,
+  ) {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        publicCode,
+      );
+    const order = await this.prisma.order.findFirst({
+      where: isUuid
+        ? { OR: [{ id: publicCode }, { externalOrderSn: publicCode }] }
+        : { externalOrderSn: publicCode },
+      include: {
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                title: true,
+                sku: true,
+                imageUrl: true,
+                categoryName: true,
+              },
+            },
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng tương ứng.');
+    }
+
+    // Xác minh quyền truy cập: token hoặc số điện thoại trùng khớp (FR-16 Mục 28)
+    let isAuthorized = false;
+    if (
+      token &&
+      order.cancellationToken &&
+      token.trim() === order.cancellationToken.trim()
+    ) {
+      isAuthorized = true;
+    } else if (phone && order.customerPhone) {
+      const canonicalPhone = normalizeCustomerPhone(phone);
+      if (canonicalPhone === order.customerPhone.trim()) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      throw new ForbiddenException(
+        'Yêu cầu cung cấp đúng số điện thoại đặt hàng hoặc mã token để tra cứu thông tin đơn hàng.',
+      );
+    }
+
+    const raw = (order.rawPayload as Record<string, any>) || {};
+
+    // Che số điện thoại bảo mật PII (FR-16 Mục 32): 098****321
+    const rawPhone = order.customerPhone || '';
+    const maskedPhone =
+      rawPhone.length >= 7
+        ? `${rawPhone.slice(0, 3)}****${rawPhone.slice(-3)}`
+        : rawPhone;
+
+    return {
+      orderId: order.id,
+      publicOrderCode: order.externalOrderSn,
+      status: order.status,
+      subtotalAmount: Number(order.subtotalAmount),
+      discountAmount: Number(order.discountAmount),
+      shippingFee: Number(order.shippingFee),
+      finalAmount: Number(order.finalAmount),
+      customerName: order.customerName,
+      customerPhoneMasked: maskedPhone,
+      shippingAddress: order.shippingAddress,
+      orderNotes: raw.orderNotes || null,
+      paymentMethod: raw.paymentMethod || 'COD',
+      paymentStatus: raw.paymentStatus || 'UNPAID',
+      vietqr: raw.vietqr || null,
+      createdAt: order.createdAt,
+      items: order.orderItems.map((oi) => ({
+        productId: oi.productId,
+        title: oi.product?.title || '',
+        sku: oi.product?.sku || '',
+        imageUrl: oi.product?.imageUrl || '',
+        quantity: oi.quantity,
+        unitPrice: Number(oi.unitPrice),
+        totalPrice: Number(oi.unitPrice) * oi.quantity,
+      })),
+      store: order.store,
+    };
+  }
+
+  /**
+   * Thực hiện hủy đơn, hoàn lại tồn kho, coupon và thu hồi hoa hồng trong Transaction (FR-16 Mục 31)
    */
   private async executeOrderCancellation(
     orderId: string,
@@ -1454,6 +1715,7 @@ export class OrdersService {
       const order = await tx.order.findUnique({
         where: { id: orderId },
         include: {
+          orderItems: true,
           commissions: true,
           referralLink: true,
         },
@@ -1461,6 +1723,14 @@ export class OrdersService {
 
       if (!order) {
         throw new NotFoundException('Đơn hàng không tồn tại');
+      }
+
+      // Idempotent cancellation
+      if (order.status === OrderStatus.CANCELLED) {
+        return {
+          message: 'Đơn hàng đã được hủy trước đó (Idempotent)',
+          order,
+        };
       }
 
       if (order.status !== OrderStatus.PENDING) {
@@ -1475,19 +1745,26 @@ export class OrdersService {
         data: { status: OrderStatus.CANCELLED },
       });
 
-      // 2. Xử lý hoàn trả Coupon (Issue 4)
+      // 2. Hoàn lại tồn kho cho từng mặt hàng (FR-16 Mục 31)
+      for (const item of order.orderItems) {
+        await tx.$executeRaw`
+          UPDATE products
+          SET stock_quantity = stock_quantity + ${item.quantity}
+          WHERE id = ${item.productId}::uuid
+        `;
+      }
+
+      // 3. Xử lý hoàn trả Coupon (Issue 4 & FR-16 Mục 31)
       const redemption = await tx.couponRedemption.findUnique({
         where: { orderId },
       });
 
       if (redemption && redemption.status === CouponRedemptionStatus.USED) {
-        // Chuyển redemption status sang CANCELLED
         await tx.couponRedemption.update({
           where: { id: redemption.id },
           data: { status: CouponRedemptionStatus.CANCELLED },
         });
 
-        // Hoàn lại usageCount và budgetUsed
         await tx.coupon.update({
           where: { id: redemption.couponId },
           data: {
@@ -1497,7 +1774,7 @@ export class OrdersService {
         });
       }
 
-      // 3. Thu hồi hoa hồng (Clawback) của KOL
+      // 4. Thu hồi hoa hồng (Clawback) của KOL
       if (order.attributedCollaboratorId) {
         for (const comm of order.commissions) {
           if (comm.status === CommissionStatus.PENDING) {
@@ -1506,7 +1783,6 @@ export class OrdersService {
               data: { status: CommissionStatus.REVERSED },
             });
 
-            // Trừ lại số dư ví chờ của KOL sở hữu hoa hồng này
             if (comm.commissionAmount.greaterThan(0)) {
               await this.walletsService.reversePendingBalance(
                 tx,
@@ -1519,7 +1795,6 @@ export class OrdersService {
           }
         }
 
-        // Giảm totalOrders trên ReferralLink nếu có
         if (order.referralLinkId) {
           await tx.referralLink.update({
             where: { id: order.referralLinkId },
@@ -1528,7 +1803,7 @@ export class OrdersService {
         }
       }
 
-      // 4. Audit Log
+      // 5. Audit Log
       await tx.auditLog.create({
         data: {
           userId: actorId || null,
@@ -1538,6 +1813,7 @@ export class OrdersService {
             orderSn: order.externalOrderSn,
             reason: reason || 'Khách hủy hoặc Shop hủy',
             couponRedemptionReversed: !!redemption,
+            itemsCount: order.orderItems.length,
           },
         },
       });

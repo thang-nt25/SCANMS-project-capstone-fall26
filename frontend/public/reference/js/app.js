@@ -1971,7 +1971,11 @@ function samplesScreen() {
 }
 
 function walletScreen() {
-  return `${header("Ví và lịch sử giao dịch", "Mọi biến động số dư đều được ghi nhận bất biến để bạn dễ dàng đối soát.", `<button class="btn" data-modal="withdraw">${icon("ph-bank")} Rút tiền</button>`)}<section class="wallet-hero card"><small>Số dư có thể rút</small><div class="balance">12.450.000 ₫</div><div class="wallet-meta"><span>Chờ duyệt 1.850.000 ₫</span><span>Đã rút tháng này 4.500.000 ₫</span></div></section><div class="grid kpis" style="margin-top:16px">${kpi("Hoa hồng đã duyệt", money(14320000), "42 giao dịch", "ph-check-circle")}${kpi("Đang giữ 14 ngày", money(1850000), "12 đơn hàng", "ph-hourglass")}${kpi("Thuế TNCN", money(450000), "Khấu trừ tháng 9", "ph-file-text")}${kpi("Tổng đã rút", money(32500000), "Từ tháng 1/2026", "ph-bank")}</div><section class="card" style="margin-top:18px"><div class="card-title"><h2>Lịch sử giao dịch</h2><button class="btn small secondary">${icon("ph-download-simple")} Xuất sao kê</button></div><div class="feed">${feedRow("ph-check-circle", "Hoa hồng đơn #IN23918", "Đã qua thời gian đối soát 14 ngày", "+185.000 ₫")}${feedRow("ph-hourglass", "Hoa hồng đơn #IN23902", "Khả dụng sau ngày 16/09", "+92.000 ₫")}${feedRow("ph-bank", "Rút tiền về Vietcombank", "Mã ngân hàng VCB090218", "-2.000.000 ₫", true)}${feedRow("ph-arrow-u-down-left", "Thu hồi đơn #IN23845", "Khách hoàn trả toàn bộ đơn hàng", "-75.000 ₫", true)}</div></section>`;
+  return `
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);background:#FAF8F5;">
+      <iframe id="wallet-iframe" src="/collaborator/wallet" style="width: 100%; height: 100%; border: none; background: transparent; display: block;" title="Ví & Lịch Sử Rút Tiền"></iframe>
+    </div>
+  `;
 }
 
 function shopDashboard() {
@@ -2388,30 +2392,35 @@ function payoutsScreen() {
 }
 
 function chatScreen() {
-  const ctx = window.__SCANMS_CHAT_CONTEXT__;
-  const contextSnippet = ctx
-    ? `<div class="chat-context-card" style="margin: 0 16px 14px; padding: 10px 14px; background: var(--brand-soft); border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <img src="${ctx.image || productImage}" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover;" />
-          <div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <span class="mono" style="font-weight: 700; font-size: 11.5px; color: var(--brand);">${ctx.orderId}</span>
-              <span class="badge warning" style="font-size: 10px; padding: 1px 6px;">${ctx.status}</span>
-            </div>
-            <strong style="font-size: 13px; display: block; margin-top: 2px;">${escapeHtml(ctx.productName)}</strong>
-          </div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button class="btn small" data-go="samples" style="font-size: 11px; padding: 4px 8px;"><i class="ph ph-package"></i> Xem đơn mẫu</button>
-          <button class="icon-btn small" id="btn-clear-chat-ctx" title="Gỡ ngữ cảnh đơn mẫu" style="width: 28px; height: 28px;"><i class="ph ph-x"></i></button>
-        </div>
-      </div>`
-    : "";
-  const defaultMsg = ctx
-    ? `Chào Shop Sora Skin, em đang cần hỗ trợ về đơn hàng mẫu [${ctx.orderId} - ${ctx.productName}].`
-    : "";
+  try {
+    const currentToken = localStorage.getItem('token');
+    const role = state.role || 'kol';
+    const email = role === 'shop' ? 'shop@scanms.vn' : (role === 'admin' ? 'admin@scanms.vn' : 'demo@scanms.vn');
+    if (!currentToken || currentToken.startsWith('session-')) {
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'Password@123' })
+      }).then(r => r.json()).then(res => {
+        const tok = res?.data?.accessToken || res?.accessToken;
+        const u = res?.data?.user || res?.user;
+        if (tok) {
+          localStorage.setItem('token', tok);
+          if (u) localStorage.setItem('user', JSON.stringify(u));
+          const iframe = document.getElementById('chat-realtime-iframe');
+          if (iframe && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage({ type: 'SCANMS_AUTH_SYNC' }, '*'); } catch (e) {}
+          }
+        }
+      }).catch(() => {});
+    }
+  } catch {}
 
-  return `${header("Tin nhắn", "Trao đổi trực tiếp với KOL, gửi tài nguyên và lời mời chiến dịch trong một luồng.")}<section class="card chat"><aside class="conversations"><label class="search"><input class="input" placeholder="Tìm cuộc trò chuyện" /></label><div style="margin-top:12px"><button class="conversation active"><span class="avatar">N</span><span><strong>Trần Văn Nhật</strong><p>${ctx ? `Đang hỏi về ${ctx.orderId}...` : "Em đã nhận được brief rồi ạ."}</p></span>${status("2")}</button><button class="conversation"><span class="avatar">M</span><span><strong>Lê Mai Anh</strong><p>Shop gửi giúp mình ảnh vuông nhé.</p></span><small>10:24</small></button><button class="conversation"><span class="avatar">K</span><span><strong>Phạm Khánh Linh</strong><p>Cảm ơn shop nhiều.</p></span><small>T6</small></button></div></aside><div class="thread"><header class="thread-head"><div class="person"><span class="avatar">N</span><div><strong>Trần Văn Nhật</strong><small style="display:block;color:var(--muted)">Đang hoạt động</small></div></div><button class="icon-btn" aria-label="Thông tin cuộc trò chuyện">${icon("ph-info")}</button></header>${contextSnippet}<div class="messages"><div class="bubble">Chào Nhật, team rất thích video routine sáng của bạn. Bên mình muốn mời bạn vào chiến dịch mới.</div><div class="invite"><h3>Ra mắt serum vitamin C 15%</h3><p>Hoa hồng riêng 14%, tặng sản phẩm mẫu và ngân sách hỗ trợ nội dung.</p><button class="btn small" data-toast="Đã gửi lời mời chiến dịch">Gửi lời mời</button></div><div class="bubble mine">Em quan tâm ạ. Shop gửi giúp em brief và thời gian dự kiến nhé.</div><div class="bubble">Mình gửi brief ngay trong Media Hub. Thời gian đăng dự kiến từ 12 đến 18/09.</div>${ctx ? `<div class="bubble mine">${escapeHtml(defaultMsg)}</div>` : ""}</div><form class="composer" data-action="message"><button type="button" class="icon-btn" aria-label="Đính kèm">${icon("ph-paperclip")}</button><input class="input" name="message" value="${escapeHtml(defaultMsg)}" placeholder="Nhập tin nhắn" required /><button class="btn" aria-label="Gửi">${icon("ph-paper-plane-tilt")}</button></form></div></section>`;
+  return `
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);background:#FAF8F5;">
+      <iframe id="chat-realtime-iframe" src="/chat" style="width: 100%; height: 100%; border: none; background: transparent; display: block;" title="Hệ thống Tin nhắn Realtime SCANMS"></iframe>
+    </div>
+  `;
 }
 
 // Ghi chú: Màn hình Trang mua hàng (Storefront - FR-15, FR-16) được module hóa tại ./storefront.js
@@ -2812,162 +2821,11 @@ function adminStoresScreen() {
 }
 
 function adminUsersScreen() {
-  return `${header(
-    "Quản trị Tài khoản Người dùng & KOL Toàn Sàn",
-    "Thực thi cơ chế phân quyền RBAC 5 vai trò, duyệt hồ sơ KYC định danh (CMND/CCCD, Mã số thuế) và bảo vệ an ninh hệ thống.",
-    `<button class="btn secondary" data-toast="Đã xuất danh sách User định dạng Excel">${icon("ph-download-simple")} Xuất danh sách</button>`
-  )}
-  <div class="grid kpis">
-    ${kpi("Tổng tài khoản", "10.420", "+240 tài khoản tuần này", "ph-users")}
-    ${kpi("KOL / Cộng tác viên", "9.850", "94,5% tổng người dùng", "ph-sparkle")}
-    ${kpi("Chủ Shop", "570", "156 gian hàng liên kết", "ph-storefront")}
-    ${kpi("Chờ duyệt KYC CMND", "38", "Cần xử lý trong 24h", "ph-identification-card", true)}
-  </div>
-  <div class="toolbar" style="margin-top:18px">
-    <label class="search">${icon("ph-magnifying-glass")}<input class="input" placeholder="Tìm theo tên, email, CCCD hoặc mã KOL..." /></label>
-    <select class="select" id="admin-user-role-filter" style="width:auto">
-      <option value="all">Tất cả 5 vai trò</option>
-      <option value="SYSTEM_ADMIN">Quản Trị Hệ Thống</option>
-      <option value="SYSTEM_MANAGER">Vận Hành Sàn</option>
-      <option value="SHOP_MANAGER">Chủ Shop</option>
-      <option value="COLLABORATOR">Cộng Tác Viên (KOL / CTV)</option>
-      <option value="CUSTOMER">Khách Mua Hàng</option>
-    </select>
-    <select class="select" style="width:auto">
-      <option>Tất cả trạng thái KYC</option>
-      <option>Đã xác minh</option>
-      <option>Chờ duyệt</option>
-      <option>Bị từ chối</option>
-    </select>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Người dùng</th>
-          <th>Email</th>
-          <th>Vai trò (RBAC)</th>
-          <th>Định danh KYC</th>
-          <th>Cấp bậc / Đơn vị</th>
-          <th>Ngày tạo</th>
-          <th>Trạng thái</th>
-          <th>Thao tác</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><div class="person"><span class="avatar" style="background:#1e1b4b;color:#a5b4fc">SA</span><strong>Nguyễn Thành Thắng</strong></div></td>
-          <td>admin@scanms.vn</td>
-          <td><span class="status danger">Quản Trị Hệ Thống</span></td>
-          <td><span class="status">Đã xác minh 2FA</span></td>
-          <td>Quản trị Kỹ thuật (SaaS)</td>
-          <td>01/01/2026</td>
-          <td>${status("Hoạt động")}</td>
-          <td>
-            <div class="actions">
-              <span style="font-size:11.5px;color:var(--muted);font-weight:600">Root Admin</span>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td><div class="person"><span class="avatar" style="background:#e0e7ff;color:#4338ca">SM</span><strong>Lê Hồng Phúc</strong></div></td>
-          <td>manager@scanms.vn</td>
-          <td><span class="status info">Vận Hành Sàn</span></td>
-          <td><span class="status">Đã xác minh 2FA</span></td>
-          <td>Vận hành Nền tảng</td>
-          <td>15/01/2026</td>
-          <td>${status("Hoạt động")}</td>
-          <td>
-            <div class="actions">
-              <button class="btn small secondary" data-toast="Đã xem hồ sơ phân quyền Vận Hành Sàn">Phân quyền</button>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td><div class="person"><span class="avatar" style="background:var(--brand-soft);color:var(--brand-strong)">N</span><strong>Trần Văn Nhật</strong></div></td>
-          <td>demo@scanms.vn</td>
-          <td><span class="status">KOL / CTV</span></td>
-          <td><span class="status">Đã xác minh (CCCD + MST)</span></td>
-          <td><span class="tier-pill gold">KOL Vàng</span></td>
-          <td>12/01/2026</td>
-          <td>${status("Hoạt động")}</td>
-          <td>
-            <div class="actions">
-              <button class="btn small secondary" data-toast="Đã mở chi tiết hồ sơ KYC của Trần Văn Nhật">Xem KYC</button>
-              <button class="icon-btn" aria-label="Khóa tài khoản" data-toast="Đã gửi cảnh báo bảo mật tới người dùng">${icon("ph-lock")}</button>
-            </div>
-          </td>
-        </tr>
-        ${managerState.stores.map(st => `
-          <tr>
-            <td><div class="person"><span class="avatar" style="background:#F5E7CC;color:#7A561B">${escapeHtml(st.name.charAt(0).toUpperCase())}</span><strong>${escapeHtml(st.name)}</strong></div></td>
-            <td>${escapeHtml(st.email)}</td>
-            <td><span class="status">Chủ Shop</span></td>
-            <td><span class="status ${st.status === 'approved' ? '' : 'warning'}">${st.status === 'approved' ? 'Đã xác minh (GPKD DN)' : 'Chờ thẩm định GPKD'}</span></td>
-            <td>${escapeHtml(st.id)} • ${escapeHtml(st.owner)}</td>
-            <td>${st.submittedAt || '09/09/2026'}</td>
-            <td>${st.status === 'approved' ? status("Hoạt động") : `<span class="badge warning" style="background:#fef3c7;color:#d97706;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:600"><i class="ph ph-clock"></i> Chờ duyệt</span>`}</td>
-            <td>
-              <div class="actions">
-                ${st.status !== 'approved' ? `
-                  <button class="btn small" data-mgr-approve-store="${st.id}" style="background:#059669;color:#fff;font-size:11.5px;padding:3px 8px">
-                    <i class="ph ph-check"></i> Duyệt
-                  </button>
-                  <button class="btn small secondary" data-mgr-view-store="${st.id}" style="font-size:11.5px;padding:3px 8px">
-                    Thẩm định
-                  </button>
-                ` : `
-                  <button class="btn small secondary" data-mgr-view-store="${st.id}">Xem KYC</button>
-                `}
-              </div>
-            </td>
-          </tr>
-        `).join('')}
-        <tr>
-          <td><div class="person"><span class="avatar" style="background:#fef3c7;color:#b45309">Y</span><strong>Nguyễn Hải Yến</strong></div></td>
-          <td>customer@scanms.vn</td>
-          <td><span class="status">Khách Hàng</span></td>
-          <td><span class="status">Đã xác minh (SĐT + OTP)</span></td>
-          <td>Thành viên VIP</td>
-          <td>12/03/2026</td>
-          <td>${status("Hoạt động")}</td>
-          <td>
-            <div class="actions">
-              <button class="btn small secondary" data-toast="Đã mở lịch sử mua hàng của khách">Lịch sử</button>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td><div class="person"><span class="avatar">H</span><strong>Vũ Minh Hoàng</strong></div></td>
-          <td>hoang.kol@gmail.com</td>
-          <td><span class="status">KOL / CTV</span></td>
-          <td><span class="status warning">Chờ duyệt CCCD</span></td>
-          <td><span class="tier-pill bronze">KOL Đồng</span></td>
-          <td>06/09/2026</td>
-          <td>${status("Chờ duyệt", "warning")}</td>
-          <td>
-            <div class="actions">
-              <button class="btn small" data-toast="Đã phê duyệt hồ sơ KYC định danh">Duyệt KYC</button>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td><div class="person"><span class="avatar" style="background:#fee2e2;color:#991b1b">K</span><strong>Trần Hữu Kiên</strong></div></td>
-          <td>kien.bot99@gmail.com</td>
-          <td><span class="status danger">KOL / CTV</span></td>
-          <td><span class="status danger">Thiếu MST cá nhân</span></td>
-          <td>Tài khoản vi phạm</td>
-          <td>15/08/2026</td>
-          <td>${status("Bị khóa (Fraud)", "danger")}</td>
-          <td>
-            <div class="actions">
-              <button class="btn small danger" data-toast="Đã mở khóa tài khoản kiểm tra">Mở khóa</button>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>`;
+  return `
+    <div style="padding:0;width:100%;height:calc(100vh - 68px);background:#FAF8F5;">
+      <iframe id="admin-users-iframe" src="/admin/users" style="width: 100%; height: 100%; border: none; background: transparent; display: block;" title="Quan Tri User va Duyet KYC"></iframe>
+    </div>
+  `;
 }
 
 function adminBanksScreen() {

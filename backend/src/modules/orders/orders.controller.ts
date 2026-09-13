@@ -308,4 +308,45 @@ export class OrdersController {
     const clientIp = req.ip || ip;
     return this.ordersService.guestCancelOrder(orderId, dto, clientIp);
   }
+
+  @Get('public/:publicCode')
+  @ApiOperation({
+    summary:
+      'FR-16 & FR-17: Tra cứu chi tiết đơn hàng cho khách vãng lai (Mã đơn + SĐT/Token)',
+    description:
+      'Chỉ trả thông tin cần thiết và che PII khách hàng, không lộ hoa hồng hay thông tin nội bộ.',
+  })
+  @ApiResponse({ status: 200, description: 'Thông tin đơn hàng an toàn' })
+  @ApiResponse({
+    status: 403,
+    description: 'Chưa xác thực đúng số điện thoại hoặc mã token',
+  })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy đơn hàng' })
+  async getPublicOrder(
+    @Param('publicCode') publicCode: string,
+    @Query('phone') phone?: string,
+    @Query('token') token?: string,
+    @Ip() ip?: string,
+  ) {
+    await this.ordersService.checkPublicOrderRateLimit(ip || '127.0.0.1');
+    return this.ordersService.getPublicOrderDetail(publicCode, phone, token);
+  }
+
+  @Post('public/:publicCode/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'FR-16: Khách vãng lai hủy đơn hàng qua mã đơn công khai',
+    description:
+      'Hủy đơn an toàn bằng mã đơn công khai kết hợp token hoặc số điện thoại',
+  })
+  async publicCancelOrder(
+    @Param('publicCode') publicCode: string,
+    @Body() dto: GuestCancelOrderDto,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    const clientIp = req.ip || ip;
+    return this.ordersService.guestCancelOrder(publicCode, dto, clientIp);
+  }
 }
+

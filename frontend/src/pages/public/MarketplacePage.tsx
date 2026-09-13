@@ -11,8 +11,10 @@ import {
   ArrowRight,
   X,
   Loader2,
+  ShoppingBag,
 } from 'lucide-react';
 import api from '../../services/api';
+import { GuestCheckoutModal } from '../../components/checkout/GuestCheckoutModal';
 
 export default function MarketplacePage() {
   const [items, setItems] = useState<any[]>([]);
@@ -21,6 +23,8 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeCheckoutProduct, setActiveCheckoutProduct] = useState<any | null>(null);
+
 
   const load = async (term = '') => {
     setLoading(true);
@@ -352,10 +356,27 @@ export default function MarketplacePage() {
                       </div>
 
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#EAE4D7] text-[11px] text-[#7D715E]">
-                        <span>{inStock ? `Còn ${p.stockQuantity} sản phẩm` : 'Hết hàng'}</span>
-                        <span className="font-bold text-[#B88E4F] flex items-center gap-0.5 group-hover:translate-x-1 transition">
-                          Xem chi tiết <ArrowRight className="w-3 h-3" />
-                        </span>
+                        <span>{inStock ? `Còn ${p.stockQuantity} món` : 'Hết hàng'}</span>
+                        <div className="flex items-center gap-1.5">
+                          {inStock && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setActiveCheckoutProduct(p);
+                              }}
+                              className="px-2.5 py-1 bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[11px] font-bold rounded-lg shadow-xs flex items-center gap-1 active:scale-95 transition cursor-pointer"
+                              title="Mua nhanh không cần tài khoản"
+                            >
+                              <ShoppingBag className="w-3 h-3" />
+                              <span>Mua ngay</span>
+                            </button>
+                          )}
+                          <span className="font-bold text-[#7D715E] group-hover:text-[#B88E4F] flex items-center gap-0.5 transition ml-1">
+                            Chi tiết <ArrowRight className="w-3 h-3" />
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -387,6 +408,32 @@ export default function MarketplacePage() {
           </div>
         </div>
       </footer>
+
+      {/* 6. GUEST CHECKOUT MODAL (FR-16) */}
+      {activeCheckoutProduct && (
+        <GuestCheckoutModal
+          isOpen={!!activeCheckoutProduct}
+          onClose={() => setActiveCheckoutProduct(null)}
+          product={{
+            id: activeCheckoutProduct.id,
+            title: activeCheckoutProduct.title,
+            sku: activeCheckoutProduct.sku,
+            price: activeCheckoutProduct.price,
+            originalPrice: activeCheckoutProduct.originalPrice,
+            imageUrl: activeCheckoutProduct.imageUrl,
+            stockQuantity: activeCheckoutProduct.stockQuantity || 10,
+          }}
+          store={{
+            id: activeCheckoutProduct.store?.id || '',
+            name: activeCheckoutProduct.store?.name || 'Gian hàng đối tác',
+            slug: activeCheckoutProduct.store?.slug,
+          }}
+          onOrderPlaced={() => {
+            void load(); // Tự động làm mới tồn kho sau khi mua thành công
+          }}
+        />
+      )}
     </main>
   );
+
 }
