@@ -63,7 +63,7 @@ const KolDashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').t
 
 // Admin Pages (FR-12)
 const AdminCouponsPage = lazy(() => import('../pages/admin/AdminCouponsPage'));
-import { ProtectedRoute } from './ProtectedRoute';
+import { RouteContent } from './RouteContent';
 
 function AppRoutes() {
   return (
@@ -106,8 +106,8 @@ function AppRoutes() {
           <Route path="/portal" element={<DashboardDispatcher />} />
           <Route path="/dashboard" element={<DashboardDispatcher />} />
 
-          {/* ── Merchant Protected Routes ── */}
-          <Route element={<ProtectedRoute allowedRoles={['SHOP_MANAGER', 'SYSTEM_MANAGER', 'SYSTEM_ADMIN']} />}>
+          {/* ── Merchant Routes ── */}
+          <Route element={<RouteContent />}>
             <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
             <Route path="merchant/products" element={<ProductManagementPage />} />
             <Route path="merchant/orders" element={<OrdersManagementPage />} />
@@ -127,8 +127,8 @@ function AppRoutes() {
             <Route path="merchant/stats" element={<ShopDashboardStatsPage />} />
           </Route>
 
-          {/* ── Collaborator Protected Routes ── */}
-          <Route element={<ProtectedRoute allowedRoles={['COLLABORATOR', 'SYSTEM_ADMIN']} />}>
+          {/* ── Collaborator Routes ── */}
+          <Route element={<RouteContent />}>
             <Route path="collaborator/dashboard" element={<HomePage />} />
             <Route path="collaborator/links" element={<ReferralLinksPage />} />
             <Route path="collaborator/referral-links" element={<ReferralLinksPage />} />
@@ -148,8 +148,8 @@ function AppRoutes() {
             <Route path="collaborator/stats" element={<KolDashboardPage />} />
           </Route>
 
-          {/* ── Admin Protected Routes ── */}
-          <Route element={<ProtectedRoute allowedRoles={['SYSTEM_ADMIN', 'SYSTEM_MANAGER']} />}>
+          {/* ── Admin Routes ── */}
+          <Route element={<RouteContent />}>
             <Route path="admin/users" element={<KycApprovalPage />} />
             <Route path="admin/referral-links" element={<AdminReferralLinksPage />} />
             <Route path="admin/coupons" element={<AdminCouponsPage />} />
