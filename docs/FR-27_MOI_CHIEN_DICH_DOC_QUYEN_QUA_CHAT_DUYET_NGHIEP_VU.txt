@@ -1,0 +1,45 @@
+Đặc tả nghiệp vụ đầy đủ FR-27 — Mời Chiến Dịch Độc Quyền Qua Chat (VIP Campaign Invitations)
+FR-27 — Mời Chiến Dịch Độc Quyền: Shop gửi "Thẻ Mời VIP" kèm hoa hồng thưởng vào Chat của KOL → KOL chấp nhận/từ chối tức thì.
+
+Đây là bản đặc tả đã tổng hợp các quyết định nghiệp vụ được duyệt cho FR-27.
+
+1. Mục tiêu chức năng
+Cho phép Shop tạo các chiến dịch tiếp thị bán hàng có mức hoa hồng thưởng thêm (bonusCommissionRate, ví dụ +5% đến +15%) dành riêng cho các Top KOL / Creator xuất sắc và gửi "Thẻ Mời VIP" trực tiếp vào khung chat của KOL.
+KOL nhận thẻ mời với hiệu ứng mạ vàng sang trọng và có thể Chấp Nhận (Accept) hoặc Từ Chối (Reject) ngay trong giao diện chat hoặc qua trang quản lý chiến dịch cá nhân.
+
+2. Phạm vi FR-27
+FR-27 chịu trách nhiệm chính:
+1. Shop tạo chiến dịch VIP (POST /api/campaigns) kèm bonusCommissionRate, ngày bắt đầu và kết thúc.
+2. Shop gửi lời mời VIP trực tiếp từ cửa sổ Chat (POST /api/campaigns/chat/:conversationId/invite).
+3. Hệ thống tạo bản ghi CampaignParticipant ở trạng thái INVITED.
+4. Hệ thống tạo tin nhắn Chat dạng Card JSON (type: CAMPAIGN_INVITE) và broadcast qua Socket.io.
+5. KOL bấm "Chấp Nhận VIP" (PATCH /api/campaigns/invitations/:id/accept) -> trạng thái chuyển sang ACCEPTED, kích hoạt hoa hồng thưởng khi phát sinh đơn.
+6. KOL bấm "Từ Chối" (PATCH /api/campaigns/invitations/:id/reject) -> trạng thái chuyển sang REJECTED.
+7. Ghi nhận toàn bộ Audit Log và gửi thông báo Notification cho cả hai bên.
+8. KOL quản lý danh sách các lời mời tại trang /app/campaigns.
+
+3. Đối tượng sử dụng
+3.1. Chủ Gian Hàng (SHOP_MANAGER)
+- Tạo chiến dịch tiếp thị và quản lý tỷ lệ hoa hồng thưởng.
+- Mở danh sách chat và bấm gửi "Thẻ Mời VIP" cho KOL.
+- Theo dõi danh sách KOL đã tham gia chiến dịch.
+3.2. KOL / Cộng tác viên (COLLABORATOR)
+- Nhận Thẻ Mời VIP mạ vàng trong khung chat.
+- Xem chi tiết tỷ lệ hoa hồng cơ bản + hoa hồng thưởng thêm.
+- Chấp nhận hoặc từ chối lời mời.
+3.3. Quản trị viên hệ thống (SYSTEM_ADMIN)
+- Giám sát các chiến dịch trên toàn sàn và các giao dịch phát sinh hoa hồng thưởng.
+
+4. Danh sách Endpoint API
+- POST /api/campaigns: Tạo chiến dịch VIP mới.
+- GET /api/campaigns/shop: Shop lấy danh sách chiến dịch của mình.
+- POST /api/campaigns/:id/invite: Gửi lời mời VIP bằng collaboratorId.
+- POST /api/campaigns/chat/:conversationId/invite: Gửi Thẻ Mời VIP trực tiếp từ cửa sổ Chat.
+- GET /api/campaigns/my-invitations: KOL lấy danh sách lời mời nhận được.
+- PATCH /api/campaigns/invitations/:id/accept: KOL chấp nhận lời mời.
+- PATCH /api/campaigns/invitations/:id/reject: KOL từ chối lời mời.
+- GET /api/campaigns/:id: Xem chi tiết chiến dịch và danh sách thành viên.
+
+5. Quy tắc kiểm thử và Audit Log
+- Action Log: CAMPAIGN_CREATED, CAMPAIGN_INVITE_SENT, CAMPAIGN_INVITE_ACCEPTED, CAMPAIGN_INVITE_REJECTED.
+- 100% kịch bản E2E kiểm tra 16 trường hợp: tạo chiến dịch, gửi thẻ mời qua chat, chống mời trùng lặp, chấp nhận, từ chối, bảo mật chéo và kiểm tra AuditLog/Notification.
