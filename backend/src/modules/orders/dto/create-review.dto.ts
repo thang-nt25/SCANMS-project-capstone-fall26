@@ -5,24 +5,33 @@ import {
   IsInt,
   Min,
   Max,
+  IsUUID,
+  MinLength,
+  MaxLength,
+  IsUrl,
+  IsArray,
+  ArrayMaxSize,
+  ArrayUnique,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOrderReviewDto {
   @ApiProperty({
-    description: 'Token bí mật được cấp khi khách tạo đơn',
+    description: 'Token bí mật được cấp khi khách tạo đơn hoặc sau khi xác minh mã đơn + SĐT',
   })
   @IsString()
   @IsNotEmpty({ message: 'Thiếu reviewToken để xác minh quyền sở hữu đơn hàng' })
+  @MaxLength(1000)
   reviewToken: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Số điện thoại đã dùng khi đặt hàng',
     example: '0933888999',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Thiếu số điện thoại xác minh đơn hàng' })
-  customerPhone: string;
+  customerPhone?: string;
 
   @ApiProperty({
     description: 'ID sản phẩm cần đánh giá',
@@ -30,6 +39,7 @@ export class CreateOrderReviewDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsUUID('4')
   productId: string;
 
   @ApiProperty({
@@ -50,6 +60,11 @@ export class CreateOrderReviewDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @MinLength(10)
+  @MaxLength(1000)
   comment: string;
 
   @ApiPropertyOptional({
@@ -59,6 +74,7 @@ export class CreateOrderReviewDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(150)
   customerName?: string;
 
   @ApiPropertyOptional({
@@ -66,5 +82,27 @@ export class CreateOrderReviewDto {
   })
   @IsOptional()
   @IsString()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(2048)
   reviewImageUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tối đa 5 URL ảnh đã upload',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @IsUrl({ protocols: ['https'], require_protocol: true }, { each: true })
+  @MaxLength(2048, { each: true })
+  images?: string[];
+
+  @ApiPropertyOptional({ description: 'URL video đã upload (MP4/MOV)' })
+  @IsOptional()
+  @IsString()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(2048)
+  video?: string;
 }

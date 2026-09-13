@@ -60,7 +60,7 @@ describeLocal(
         const id = randomUUID();
         return Promise.resolve({
           publicId: `test-bills/${id}`,
-          format: 'png',
+          format: file.mimetype === 'application/pdf' ? 'pdf' : 'png',
           sha256: createHash('sha256').update(file.buffer).digest('hex'),
           secureUrl: `https://example.test/authenticated/${id}.png`,
         });
@@ -426,6 +426,86 @@ describeLocal(
         ).status,
       ).toBe(400);
       expect(fakeBills.uploadBill).not.toHaveBeenCalled();
+    });
+
+    it('supports POST receipt approval with PDF and note, preserving ownership and wallet balances', async () => {
+      const request = await withdraw();
+      const path = `${apiUrl}/api/payouts/${request.request.id}/approve`;
+      // Financial fixtures are retained; each test run needs its own bill hash.
+      const pdfContent = `%PDF-1.7\n% ${randomUUID()}\n1 0 obj\n<<>>\nendobj\n%%EOF\n`;
+      const body = () => {
+        const form = new FormData();
+        form.append('note', ' transferred successfully ');
+        form.append(
+          'bill',
+          new Blob([pdfContent], {
+            type: 'application/pdf',
+          }),
+          'bill.pdf',
+        );
+        return form;
+      };
+      expect((await fetch(path, { method: 'POST', body: body() })).status).toBe(
+        401,
+      );
+      expect(
+        (
+          await fetch(path, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${kolToken}` },
+            body: body(),
+          })
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await fetch(path, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${otherToken}` },
+            body: body(),
+          })
+        ).status,
+      ).toBe(404);
+      expect(fakeBills.uploadBill).not.toHaveBeenCalled();
+      const before = await balances();
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${merchantToken}` },
+        body: body(),
+      });
+      expect(response.status).toBe(201);
+      const result = (await response.json()) as {
+        data: {
+          status: string;
+          hasBill: boolean;
+          bankRefCode: string | null;
+          payoutId: string;
+        };
+      };
+      expect(result.data).toMatchObject({
+        status: 'APPROVED',
+        hasBill: true,
+        bankRefCode: null,
+        payoutId: request.request.id,
+      });
+      expect(await balances()).toEqual(before);
+      const audit = await prisma.auditLog.findFirstOrThrow({
+        where: { userId: ownerId, action: 'APPROVE_PAYOUT' },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(audit.details).toMatchObject({
+        payoutId: request.request.id,
+        note: 'transferred successfully',
+      });
+      expect(
+        (
+          await fetch(path, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${merchantToken}` },
+            body: body(),
+          })
+        ).status,
+      ).toBe(409);
     });
 
     it('enforces JWT roles and store ownership for listing, approval and bill access', async () => {

@@ -6,6 +6,7 @@ import {
   ApprovePayoutDto,
   ExportPayoutBatchDto,
   RejectPayoutDto,
+  ReceiptApprovalDto,
 } from './dto/manage-payout.dto';
 
 const png = Buffer.from(
@@ -28,6 +29,27 @@ describe('Payout bill validation', () => {
   it('accepts a PNG and produces a stable SHA256 for duplicate detection', () => {
     expect(bills.validateBill(testBill())).toMatch(/^[a-f0-9]{64}$/);
     expect(bills.validateBill(testBill())).toBe(bills.validateBill(testBill()));
+  });
+  it('accepts a PDF only when the extension, MIME, header and EOF match', () => {
+    const pdf = {
+      ...testBill(Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n')),
+      originalname: 'bill.PDF',
+      mimetype: 'application/pdf',
+    };
+    expect(bills.validateBill(pdf)).toMatch(/^[a-f0-9]{64}$/);
+    expect(() => bills.validateBill({ ...pdf, mimetype: 'image/png' })).toThrow(
+      BadRequestException,
+    );
+    expect(() =>
+      bills.validateBill({ ...pdf, originalname: 'bill.png' }),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      bills.validateBill({
+        ...testBill(Buffer.from('%PDF-1.7\ntruncated')),
+        originalname: 'bill.pdf',
+        mimetype: 'application/pdf',
+      }),
+    ).toThrow(BadRequestException);
   });
   it.each([
     undefined,
@@ -88,6 +110,26 @@ describe('Merchant payout DTOs', () => {
     transform: true,
     whitelist: true,
     forbidNonWhitelisted: true,
+  });
+  it('accepts a receipt and optional note without inventing a bank reference', async () => {
+    expect(
+      await pipe.transform(
+        { note: ' transferred ' },
+        { type: 'body', metatype: ReceiptApprovalDto },
+      ),
+    ).toEqual({ note: 'transferred' });
+    await expect(
+      pipe.transform(
+        { note: 'x'.repeat(501) },
+        { type: 'body', metatype: ReceiptApprovalDto },
+      ),
+    ).rejects.toThrow();
+    await expect(
+      pipe.transform(
+        { bankRefCode: '' },
+        { type: 'body', metatype: ReceiptApprovalDto },
+      ),
+    ).rejects.toThrow();
   });
   it('normalizes a bank reference and rejects client-supplied status', async () => {
     expect(

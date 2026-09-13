@@ -386,6 +386,8 @@ model ProductReview {
   rating          Int          @default(5)
   comment         String?
   reviewImageUrl  String?      @map("review_image_url")
+  images          String[]     @default([])
+  video           String?      @map("video_url")
   status          ReviewStatus @default(PENDING)
   isApproved      Boolean      @default(false) @map("is_approved")
   reviewedBy      String?      @map("reviewed_by") @db.Uuid
@@ -394,12 +396,13 @@ model ProductReview {
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([productId], map: "idx_fk_product_reviews_product")
   @@index([orderId], map: "idx_fk_product_reviews_order")
   @@index([status], map: "idx_fk_product_reviews_status")
+  @@unique([orderId, productId], map: "idx_unique_review_order_product")
   @@map("product_reviews")
 }
 
@@ -813,6 +816,7 @@ model Order {
   storeId                   String              @map("store_id") @db.Uuid
   sourcePlatform            OrderSourcePlatform @default(INTERNAL) @map("source_platform")
   rawPayload                Json?               @map("raw_payload")
+  sourceUpdatedAt           DateTime?           @map("source_updated_at") @db.Timestamptz(6)
   externalOrderSn           String              @map("external_order_sn") @db.VarChar(100)
   idempotencyKey            String?             @unique @map("idempotency_key") @db.VarChar(100)
   cancellationToken         String?             @map("cancellation_token") @db.VarChar(100)
@@ -938,6 +942,7 @@ model OrderItem {
   unitPrice                  Decimal  @map("unit_price") @db.Decimal(15, 2)
   appliedCommissionRate      Decimal  @map("applied_commission_rate") @db.Decimal(5, 2)
   calculatedCommissionAmount Decimal  @map("calculated_commission_amount") @db.Decimal(15, 2)
+  commissionSnapshotAt       DateTime? @map("commission_snapshot_at") @db.Timestamptz(6)
   createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations

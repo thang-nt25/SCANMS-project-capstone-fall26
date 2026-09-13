@@ -6,13 +6,13 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
 
-  catch(exception: any, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
@@ -26,25 +26,32 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException ? exception.getResponse() : null;
 
     if (!(exception instanceof HttpException)) {
-      this.logger.error(
-        `${request.method} ${request.url}`,
-        exception?.stack || String(exception),
-      );
+      const errStack = exception instanceof Error ? exception.stack : String(exception);
+      this.logger.error(`${request.method} ${request.url}`, errStack);
     }
 
+    const details: unknown =
+      exceptionResponse && typeof exceptionResponse === 'object'
+        ? (exceptionResponse as Record<string, unknown>).message
+        : exceptionResponse;
+    const validationErrors = Array.isArray(details)
+      ? details.filter((value): value is string => typeof value === 'string')
+      : undefined;
+
     const message =
-      status === HttpStatus.INTERNAL_SERVER_ERROR
+      status >= 500
         ? request.url.includes('/public/products/')
           ? 'LANDING_DATA_UNAVAILABLE'
-          : 'INTERNAL_SERVER_ERROR'
-        : exceptionResponse && typeof exceptionResponse === 'object'
-          ? (exceptionResponse as any).message || 'Yêu cầu không hợp lệ'
-          : exceptionResponse || 'Yêu cầu không hợp lệ';
+          : 'Internal server error'
+        : validationErrors?.[0] ||
+          (typeof details === 'string' ? details : undefined) ||
+          (exception instanceof Error ? exception.message : 'Request failed');
 
     response.status(status).json({
       success: false,
       statusCode: status,
-      message: Array.isArray(message) ? message[0] : message,
+      message,
+      ...(status < 500 && validationErrors ? { errors: validationErrors } : {}),
       timestamp: new Date().toISOString(),
       path: request.url,
     });

@@ -100,7 +100,7 @@ describe('OrderWebhookNormalizerService', () => {
     expect(order).toMatchObject({
       externalOrderId: '3001',
       platform: ExternalOrderPlatform.SHOPIFY,
-      status: OrderStatus.DELIVERED,
+      status: OrderStatus.SHIPPING,
       customerName: 'Le C',
       shippingAddress: 'Da Nang',
       items: [{ sku: 'CLEANSER-01', quantity: 3, unitPrice: 99000 }],

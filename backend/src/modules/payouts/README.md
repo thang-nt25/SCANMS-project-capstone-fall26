@@ -74,6 +74,8 @@ Known pre-existing limitation: FR-09 successive partial refunds apply each refun
 
 ## FR-24: approved multi-merchant flow
 
+The live Merchant form and prototype integration are documented in [FR24_MERCHANT_PAYOUT_FORMS.md](../../../../docs/FR24_MERCHANT_PAYOUT_FORMS.md). The new `POST /api/payouts/:payoutId/approve` accepts a required JPG/PNG/PDF bill (max 5 MiB), optional note and optional genuine bank reference. Apply the separate `20260913123000_fr24_receipt_approval` migration through the reviewed deployment workflow; it preserves required private proof and duplicate-proof indexes while allowing a NULL bank reference. Notes are stored in approval audit details transactionally. The existing shop-scoped PATCH endpoint still requires a bank reference.
+
 Each shop pays only its own commissions. `store_wallets` holds pending/available balances per global wallet and shop; the global wallet remains the aggregate. Every new scoped movement updates both wallets and appends one ledger entry containing both global and shop before/after balances in the same transaction. Lock order is always global wallet then shop wallet. Withdrawals require enough available balance in both; another shop's earnings cannot fund a payout.
 
 New commissions set `storeWalletTracked=true` and keep their existing 14-day approval/clawback rules. Existing order cancellation and bonus/refund writers only receive the required shop scope; unrelated formulas are not rewritten. Clawback may record an available-balance debt, as before, but withdrawal must never create one.

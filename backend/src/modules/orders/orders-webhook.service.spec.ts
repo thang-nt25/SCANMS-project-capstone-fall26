@@ -53,7 +53,11 @@ describe('OrdersService FR-19 webhook', () => {
       new OrderWebhookNormalizerService(),
       {} as CouponsService,
       {} as CacheService,
-      new ConfigService(),
+      new ConfigService({
+        ORDER_WEBHOOK_SECRETS: JSON.stringify({
+          [`${store.id}:shopee`]: 'qa-webhook-secret-at-least-32-characters',
+        }),
+      }),
       new WalletsService(new FinancialLedgerService()),
     );
     return { prisma, service };
@@ -82,7 +86,10 @@ describe('OrdersService FR-19 webhook', () => {
         callback({ order: { create: createOrder } }),
     );
 
-    const result = await service.receiveWebhook(dto);
+    const result = await service.receiveWebhook(
+      dto,
+      'qa-webhook-secret-at-least-32-characters',
+    );
     const createInput = createOrder.mock.calls[0][0] as {
       data: {
         sourcePlatform: OrderSourcePlatform;
@@ -124,7 +131,10 @@ describe('OrdersService FR-19 webhook', () => {
     prisma.store.findUnique.mockResolvedValue(store);
     prisma.order.findFirst.mockResolvedValue(existingOrder);
 
-    const result = await service.receiveWebhook(dto);
+    const result = await service.receiveWebhook(
+      dto,
+      'qa-webhook-secret-at-least-32-characters',
+    );
 
     expect(result).toMatchObject({ created: false, idempotent: true });
     expect(prisma.product.findMany).not.toHaveBeenCalled();
