@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import {
+  ProductReviewModal,
+  type ProductReviewTarget,
+} from "../../components/reviews/ProductReviewModal";
+import {
   Search,
   Package,
   Truck,
@@ -16,7 +20,6 @@ import {
   Store,
   Tag,
   Star,
-  X,
 } from "lucide-react";
 import api from "../../services/api";
 import { Button } from "../../components/ui/Button";
@@ -34,6 +37,8 @@ interface OrderItem {
 }
 
 interface OrderReview {
+  images?: string[];
+  video?: string | null;
   id: string;
   productId: string;
   rating: number;
@@ -86,17 +91,9 @@ export default function OrderTrackingPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Review Modal State (FR-18)
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<OrderData | null>(null);
-  const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null);
-  const [rating, setRating] = useState(5);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [reviewerName, setReviewerName] = useState("");
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const [verificationPhone, setVerificationPhone] = useState("");
-  const reviewInFlight = useRef(false);
+  const [reviewTarget, setReviewTarget] = useState<ProductReviewTarget | null>(
+    null,
+  );
   const searchSequence = useRef(0);
 
   const showToast = (msg: string) => {
@@ -157,81 +154,14 @@ export default function OrderTrackingPage() {
     }
   };
 
-  // Mở Modal viết đánh giá cho 1 món trong đơn hàng
   const handleOpenReviewModal = (order: OrderData, item: OrderItem) => {
-    setSelectedOrder(order);
-    setSelectedItem(item);
-    setRating(5);
-    setComment("");
-    setReviewerName(order.customerName || "");
-    setVerificationPhone(
-      /^[0-9+() -]{10,20}$/.test(searchInput) ? searchInput : "",
-    );
-    setReviewModalOpen(true);
-  };
-
-  // Gửi đánh giá 1-5 sao lên API (FR-18)
-  const handleSubmitReview = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (reviewInFlight.current) return;
-    if (!selectedOrder || !selectedItem) return;
-
-    if (comment.trim().length < 5 || comment.trim().length > 500) {
-      showToast("Nội dung nhận xét tối thiểu 5 ký tự!");
-      return;
-    }
-
-    reviewInFlight.current = true;
-    setSubmittingReview(true);
-    try {
-      const verification = (await api.get("/orders/track", {
-        params: {
-          phone: verificationPhone,
-          orderSn: selectedOrder.externalOrderSn,
-        },
-      })) as unknown as { data: { orders: OrderData[] } };
-      const token = verification.data.orders.find(
-        (order) => order.id === selectedOrder.id,
-      )?.reviewToken;
-      if (!token) throw new Error("Số điện thoại không khớp đơn hàng");
-      const res: any = await api.post(`/orders/${selectedOrder.id}/review`, {
-        reviewToken: token,
-        productId: selectedItem.productId,
-        rating,
-        comment: comment.trim(),
-        customerName: reviewerName.trim() || selectedOrder.customerName,
-      });
-
-      const newReview: OrderReview = {
-        id: res?.review?.id || `rev-${Date.now()}`,
-        productId: selectedItem.productId,
-        rating,
-        comment: comment.trim(),
-        customerName: reviewerName.trim() || selectedOrder.customerName,
-        createdAt: new Date().toISOString(),
-      };
-
-      // Cập nhật ngay vào danh sách reviews của đơn hàng trong state
-      setOrders((prev) =>
-        prev.map((ord) => {
-          if (ord.id === selectedOrder.id) {
-            return {
-              ...ord,
-              reviews: [...(ord.reviews || []), newReview],
-            };
-          }
-          return ord;
-        }),
-      );
-
-      setReviewModalOpen(false);
-      showToast("Cảm ơn bạn đã gửi đánh giá 5 sao cho sản phẩm! ⭐⭐⭐⭐⭐");
-    } catch (err: any) {
-      showToast(err.message || "Gửi đánh giá thất bại, vui lòng thử lại!");
-    } finally {
-      reviewInFlight.current = false;
-      setSubmittingReview(false);
-    }
+    setReviewTarget({
+      productId: item.productId,
+      productTitle: item.productTitle,
+      imageUrl: item.imageUrl,
+      externalOrderSn: order.externalOrderSn,
+      customerPhone: /^[0-9+() -]{10,20}$/.test(searchInput) ? searchInput : "",
+    });
   };
 
   const getTimelineSteps = (currentStep: number, status: string) => {
@@ -306,23 +236,6 @@ export default function OrderTrackingPage() {
         current: currentStep === 4,
       },
     ];
-  };
-
-  const getRatingLabel = (stars: number) => {
-    switch (stars) {
-      case 1:
-        return "1★ Rất thất vọng";
-      case 2:
-        return "2★ Chưa hài lòng";
-      case 3:
-        return "3★ Bình thường";
-      case 4:
-        return "4★ Hài lòng";
-      case 5:
-        return "5★ Cực kỳ hài lòng / Tuyệt vời!";
-      default:
-        return `${stars} sao`;
-    }
   };
 
   return (
@@ -657,6 +570,37 @@ export default function OrderTrackingPage() {
                                 <p className="text-[11.5px] text-ink m-0 italic">
                                   "{itemReview.comment}"
                                 </p>
+                                {!!itemReview.images?.length && (
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {itemReview.images.map((url) => (
+                                      <a
+                                        key={url}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <img
+                                          src={url}
+                                          alt="Ảnh khách hàng đánh giá"
+                                          loading="lazy"
+                                          className="h-16 w-16 rounded-lg border border-line object-cover"
+                                        />
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                                {itemReview.video && (
+                                  <video
+                                    src={itemReview.video}
+                                    controls
+                                    playsInline
+                                    preload="metadata"
+                                    className="mt-2 max-h-52 w-full rounded-lg"
+                                  >
+                                    <track kind="captions" />
+                                    Trình duyệt không hỗ trợ video.
+                                  </video>
+                                )}
                               </div>
                             ) : canReview ? (
                               <div className="w-full flex items-center justify-between gap-2 bg-white p-2 rounded-xl border border-[#EEDFC6]">
@@ -770,164 +714,21 @@ export default function OrderTrackingPage() {
         })}
       </main>
 
-      {/* 4. MODAL VIẾT ĐÁNH GIÁ 5 SAO (FR-18) */}
-      {reviewModalOpen && selectedItem && selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#EAE4D7] rounded-3xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">
-              <div>
-                <span className="text-[10.5px] font-black uppercase tracking-wider text-[#B88E4F]">
-                  ĐÁNH GIÁ TRẢI NGHIỆM SẢN PHẨM
-                </span>
-                <h3 className="text-base font-black text-[#1A1612] m-0 mt-0.5">
-                  Gửi Đánh Giá & Review 5 Sao
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReviewModalOpen(false)}
-                className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Product Summary Header */}
-            <div className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7]">
-              <img
-                src={
-                  selectedItem.imageUrl || "/assets/serum-hero-optimized.jpg"
-                }
-                alt={selectedItem.productTitle}
-                className="w-12 h-12 rounded-xl object-contain bg-white border border-[#EAE4D7] shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <strong className="text-xs font-bold text-[#1A1612] block truncate">
-                  {selectedItem.productTitle}
-                </strong>
-                <span className="text-[11px] text-[#7D715E] font-mono">
-                  Mã đơn: #{selectedOrder.externalOrderSn}
-                </span>
-              </div>
-            </div>
-
-            {/* Review Form */}
-            <form onSubmit={handleSubmitReview} className="flex flex-col gap-4">
-              <label className="text-xs text-ink">
-                Số điện thoại đặt hàng để xác minh
-                <input
-                  aria-label="Số điện thoại xác minh đánh giá"
-                  type="tel"
-                  required
-                  maxLength={20}
-                  value={verificationPhone}
-                  onChange={(event) => setVerificationPhone(event.target.value)}
-                  disabled={submittingReview}
-                  className="mt-2 w-full rounded-xl border border-line bg-white p-3"
-                />
-              </label>
-              {/* Star Rating Selector */}
-              <div className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6]">
-                <span className="text-xs font-bold text-[#8A662C]">
-                  Bạn cảm thấy thế nào về sản phẩm?
-                </span>
-                <div className="flex items-center gap-2 my-1">
-                  {[1, 2, 3, 4, 5].map((starValue) => {
-                    const isFilled = (hoverRating || rating) >= starValue;
-                    return (
-                      <button
-                        key={starValue}
-                        type="button"
-                        onClick={() => setRating(starValue)}
-                        onMouseEnter={() => setHoverRating(starValue)}
-                        onMouseLeave={() => setHoverRating(0)}
-                        className="p-1 text-amber-500 hover:scale-125 transition duration-150 cursor-pointer outline-none"
-                      >
-                        <Star
-                          className={`w-7 h-7 ${
-                            isFilled
-                              ? "fill-amber-500 text-amber-500"
-                              : "text-[#D8D0C3]"
-                          }`}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-                <strong className="text-xs font-black text-[#B88E4F]">
-                  {getRatingLabel(hoverRating || rating)}
-                </strong>
-              </div>
-
-              {/* Reviewer Name */}
-              <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                  Họ tên của bạn
-                </label>
-                <input
-                  type="text"
-                  value={reviewerName}
-                  maxLength={150}
-                  onChange={(e) => setReviewerName(e.target.value)}
-                  placeholder="VD: Hoàng Minh Tuấn"
-                  required
-                  className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2 text-xs text-[#1A1612] outline-none focus:bg-white focus:border-[#C59B58]"
-                />
-              </div>
-
-              {/* Review Comment Textarea */}
-              <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                  Nhận xét chi tiết * (Tối thiểu 5 ký tự)
-                </label>
-                <textarea
-                  rows={3}
-                  value={comment}
-                  maxLength={500}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Chia sẻ cảm nhận thực tế của bạn về chất lượng sản phẩm, hiệu quả phục hồi da, mùi hương hoặc dịch vụ đóng gói giao hàng..."
-                  required
-                  className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 text-xs text-[#1A1612] outline-none focus:bg-white focus:border-[#C59B58] resize-none"
-                />
-                <div className="flex justify-between items-center text-[10px] text-[#7D715E] mt-0.5">
-                  <span>Khuyên dùng nhận xét khách quan giúp cộng đồng</span>
-                  <span>{comment.length}/500 ký tự</span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 text-xs"
-                  onClick={() => setReviewModalOpen(false)}
-                >
-                  Hủy bỏ
-                </Button>
-                <Button
-                  type="submit"
-                  variant="gold"
-                  disabled={submittingReview}
-                  className="flex-1 text-xs font-bold shadow-xs flex items-center justify-center gap-1.5"
-                >
-                  {submittingReview ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Đang gửi...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Star className="w-3.5 h-3.5 fill-current" />
-                      <span>Gửi Đánh Giá Ngay</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {reviewTarget && (
+        <ProductReviewModal
+          target={reviewTarget}
+          onClose={() => setReviewTarget(null)}
+          onSubmitted={({ order, review }) => {
+            setOrders((previous) =>
+              previous.map((item) =>
+                item.id === order.id
+                  ? { ...item, reviews: [...(item.reviews ?? []), review] }
+                  : item,
+              ),
+            );
+            showToast("Đánh giá đã được lưu thành công. Cảm ơn bạn!");
+          }}
+        />
       )}
     </div>
   );

@@ -9,6 +9,9 @@ import {
   MinLength,
   MaxLength,
   IsUrl,
+  IsArray,
+  ArrayMaxSize,
+  ArrayUnique,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -50,8 +53,8 @@ export class CreateOrderReviewDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
-  @MinLength(5)
-  @MaxLength(500)
+  @MinLength(10)
+  @MaxLength(1000)
   comment: string;
 
   @ApiPropertyOptional({
@@ -72,4 +75,24 @@ export class CreateOrderReviewDto {
   @IsUrl({ protocols: ['https'], require_protocol: true })
   @MaxLength(2048)
   reviewImageUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tối đa 5 URL ảnh đã upload',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @IsUrl({ protocols: ['https'], require_protocol: true }, { each: true })
+  @MaxLength(2048, { each: true })
+  images?: string[];
+
+  @ApiPropertyOptional({ description: 'URL video đã upload (MP4/MOV)' })
+  @IsOptional()
+  @IsString()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(2048)
+  video?: string;
 }

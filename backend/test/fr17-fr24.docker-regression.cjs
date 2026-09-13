@@ -158,6 +158,31 @@ async function main() {
     );
     const reviewToken = verified.body.data.orders[0].reviewToken;
     assert.ok(reviewToken);
+    const upload = async (bytes, name, type, token = reviewToken) => {
+      const form = new FormData();
+      form.append('file', new Blob([bytes], { type }), name);
+      form.append('productId', product.id);
+      form.append('reviewToken', token);
+      return fetch(base + '/orders/' + order.id + '/review/media', {
+        method: 'POST',
+        body: form,
+      });
+    };
+    assert.equal(
+      (await upload(Buffer.from('<svg/>'), 'bad.png', 'image/png')).status,
+      400,
+    );
+    const pngHeader = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
+    assert.equal(
+      (await upload(pngHeader, 'review.png', 'image/png', 'invalid-proof'))
+        .status,
+      403,
+    );
+    // QA deliberately has no Cloudinary credentials: retain the draft on provider failure.
+    assert.equal(
+      (await upload(pngHeader, 'review.png', 'image/png')).status,
+      503,
+    );
     assert.equal(
       (
         await request('/orders/not-a-uuid/review', {
@@ -182,7 +207,7 @@ async function main() {
         await request('/orders/' + order.id + '/review', {
           ...reviewBody,
           reviewToken,
-          comment: 'x'.repeat(600),
+          comment: 'x'.repeat(1001),
         })
       ).status,
       400,
@@ -192,10 +217,17 @@ async function main() {
         request('/orders/' + order.id + '/review', {
           ...reviewBody,
           reviewToken,
+          images: ['https://example.test/review.png'],
+          video: 'https://example.test/review.mp4',
         }),
       ),
     );
     assert.equal(reviews.filter((item) => item.status === 201).length, 1);
+    const savedReview = await db.productReview.findFirst({
+      where: { orderId: order.id, productId: product.id },
+    });
+    assert.deepEqual(savedReview.images, ['https://example.test/review.png']);
+    assert.equal(savedReview.video, 'https://example.test/review.mp4');
     assert.equal(
       await db.productReview.count({
         where: { orderId: order.id, productId: product.id },

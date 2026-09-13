@@ -171,10 +171,11 @@ try {
       .find((el) => el.textContent.includes("Viết đánh giá"))
       .click(),
   );
-  await customer.type("textarea", "x".repeat(600));
+  await customer.click('[role="radio"][aria-label^="5 sao"]');
+  await customer.type("textarea", "Sản phẩm tốt, đóng gói đẹp. ".repeat(45));
   assert.equal(
     await customer.$eval("textarea", (input) => input.value.length),
-    500,
+    1000,
   );
   await customer.type(
     'input[aria-label="Số điện thoại xác minh đánh giá"]',
@@ -186,7 +187,7 @@ try {
     JSON.stringify({
       id: "QA-22",
       realReviewIntegration: true,
-      clientLimitedTo500Characters: true,
+      clientLimitedTo1000Characters: true,
       greenReviewPanel: await customer.$eval("main", (el) =>
         Boolean(el.querySelector('[class*="bg-emerald"]')),
       ),

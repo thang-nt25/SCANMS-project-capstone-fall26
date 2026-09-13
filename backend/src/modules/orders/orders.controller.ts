@@ -44,6 +44,11 @@ import {
 } from './excel-order-import.service';
 import { ImportOrdersDto } from './dto/import-orders.dto';
 import { CancelOrderDto, GuestCancelOrderDto } from './dto/cancel-order.dto';
+import {
+  ReviewMediaService,
+  MAX_REVIEW_UPLOAD_BYTES,
+} from './review-media.service';
+import { UploadReviewMediaDto } from './dto/upload-review-media.dto';
 
 function readCookie(req: Request, names: string[]): string | undefined {
   const cookies: unknown = req.cookies;
@@ -62,6 +67,7 @@ export class OrdersController {
     private readonly ordersService: OrdersService,
     private readonly manualOrdersService: ManualOrdersService,
     private readonly excelOrderImportService: ExcelOrderImportService,
+    private readonly reviewMediaService: ReviewMediaService,
   ) {}
 
   @Post()
@@ -172,6 +178,35 @@ export class OrdersController {
   async trackOrder(@Query() query: TrackOrderQueryDto, @Ip() ip: string) {
     await this.ordersService.checkPublicOrderRateLimit(ip);
     return this.ordersService.trackOrderByPhoneOrSn(query);
+  }
+
+  @Post(':id/review/media')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_REVIEW_UPLOAD_BYTES, files: 1 },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'FR-18: Upload ảnh/video sau xác minh đơn hàng' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file', 'productId', 'reviewToken'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        productId: { type: 'string', format: 'uuid' },
+        reviewToken: { type: 'string' },
+      },
+    },
+  })
+  async uploadReviewMedia(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) orderId: string,
+    @Body() dto: UploadReviewMediaDto,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Ip() ip: string,
+  ) {
+    await this.ordersService.checkPublicOrderRateLimit(ip);
+    return this.reviewMediaService.upload(orderId, dto, file);
   }
 
   @Post(':id/review')

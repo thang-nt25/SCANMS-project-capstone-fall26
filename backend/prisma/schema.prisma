@@ -365,6 +365,8 @@ model ProductReview {
   rating         Int      @default(5)
   comment        String?
   reviewImageUrl String?  @map("review_image_url")
+  images         String[] @default([])
+  video          String?  @map("video_url")
   isApproved     Boolean  @default(true) @map("is_approved")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

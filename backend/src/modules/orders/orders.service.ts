@@ -1693,6 +1693,8 @@ export class OrdersService {
           comment: review.comment,
           createdAt: review.createdAt,
           customerName: 'Khách mua hàng',
+          images: review.images,
+          video: review.video,
         })),
       };
     });
@@ -1707,6 +1709,17 @@ export class OrdersService {
    * FR-18: Gửi đánh giá 1-5 sao và nhận xét sau khi nhận hàng thành công
    */
   async addOrderReview(orderId: string, dto: CreateOrderReviewDto) {
+    const comment = dto.comment.trim();
+    if (
+      comment.length < 10 ||
+      comment.length > 1000 ||
+      /([^\s])\1{14,}/u.test(comment) ||
+      /(?:^|\s)(?:fuck|shit|địt|đụ mẹ)(?:\s|[.!?,]|$)/iu.test(comment) ||
+      (comment.match(/https?:\/\//gi)?.length ?? 0) >= 3
+    )
+      throw new BadRequestException(
+        'Nhận xét cần 10–1000 ký tự, lịch sự và không spam',
+      );
     verifyReviewToken(this.configService, orderId, dto.reviewToken ?? '');
     // 1. Kiểm tra đơn hàng tồn tại
     const order = await this.prisma.order.findUnique({
@@ -1783,7 +1796,10 @@ export class OrdersService {
             dto.customerName || order.customerName || 'Khách mua hàng',
           rating: dto.rating,
           comment: dto.comment.trim(),
-          reviewImageUrl: dto.reviewImageUrl || null,
+          reviewImageUrl: dto.images?.[0] ?? dto.reviewImageUrl ?? null,
+          images:
+            dto.images ?? (dto.reviewImageUrl ? [dto.reviewImageUrl] : []),
+          video: dto.video ?? null,
           isApproved: true,
         },
       });
