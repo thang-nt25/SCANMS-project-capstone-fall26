@@ -25,10 +25,20 @@ import {
   Gauge,
 } from 'lucide-react';
 import api from '../services/api';
+import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
 
 // SCANMS Neutral SVG Placeholder (Tuân thủ FR-15 Mục 10: Không dùng ảnh Unsplash ngẫu nhiên)
 const SCANMS_PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23F3EFE6'/%3E%3Cg fill='%23C59B58' text-anchor='middle' font-family='sans-serif'%3E%3Ccircle cx='300' cy='260' r='50' fill='%23EEDFC6'/%3E%3Cpath d='M285 245h30v30h-30z' fill='%23B88E4F'/%3E%3Ctext x='300' y='350' font-size='22' font-weight='bold' fill='%231A1612'%3ESCANMS MARKETPLACE%3C/text%3E%3Ctext x='300' y='380' font-size='14' fill='%237D715E'%3EH%C3%ACnh %E1%BA%A3nh s%E1%BA%A3n ph%E1%BA%A9m %C4%91ang %C4%91%C6%B0%E1%BB%A3c c%E1%BA%ADp nh%E1%BA%ADt%3C/text%3E%3C/g%3E%3C/svg%3E";
+
+interface ProductVariantItem {
+  id: string;
+  sku: string;
+  name: string;
+  price: number;
+  stockQuantity: number;
+  isActive?: boolean;
+}
 
 interface LandingProduct {
   id: string;
@@ -42,6 +52,7 @@ interface LandingProduct {
   isActive: boolean;
   canPurchase: boolean;
   status?: string;
+  variants?: ProductVariantItem[];
 }
 
 interface LandingStore {
@@ -183,18 +194,6 @@ export default function ProductDetailPage() {
 
   // Guest Checkout Modal (FR-16)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [checkoutName, setCheckoutName] = useState('');
-  const [checkoutPhone, setCheckoutPhone] = useState('');
-  const [checkoutAddress, setCheckoutAddress] = useState('');
-  const [checkoutNote, setCheckoutNote] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'VIETQR'>('COD');
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState<{
-    orderId: string;
-    orderCode: string;
-    totalAmount: number;
-  } | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // Tải dữ liệu landing page từ Backend (Không fallback dữ liệu ảo - Mục 13)
   useEffect(() => {
@@ -538,100 +537,7 @@ export default function ProductDetailPage() {
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const finalTotal = Math.max(0, subtotal - discountAmount);
 
-  // Đặt hàng thực tế qua POST /orders (Mục 1 & Mục 2)
-  const handleConfirmOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!data) return;
 
-    if (!checkoutName.trim()) {
-      setCheckoutError('Vui lòng nhập họ và tên người nhận');
-      return;
-    }
-    if (
-      !checkoutPhone.trim() ||
-      !/^[0-9+() -]{9,15}$/.test(checkoutPhone.trim())
-    ) {
-      setCheckoutError(
-        'Vui lòng nhập số điện thoại nhận hàng hợp lệ (10 chữ số)',
-      );
-      return;
-    }
-    if (!checkoutAddress.trim()) {
-      setCheckoutError('Vui lòng nhập địa chỉ nhận hàng chi tiết');
-      return;
-    }
-
-    setIsSubmittingOrder(true);
-    setCheckoutError(null);
-
-    try {
-      // IdempotencyKey bắt buộc để chống đặt trùng lặp
-      const idempotencyKey =
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-
-      // Gọi API POST /orders thật của backend (DTO CreateOrderDto)
-      const res: any = await api.post('/orders', {
-        storeId: data.store.id,
-        customerName: checkoutName.trim(),
-        customerPhone: checkoutPhone.trim(),
-        shippingAddress: checkoutAddress.trim(),
-        orderNotes: checkoutNote.trim() || undefined,
-        couponCode: appliedCoupon?.code || undefined,
-        paymentMethod: paymentMethod,
-        idempotencyKey,
-        items: [
-          {
-            productId: data.product.id,
-            quantity: quantity,
-          },
-        ],
-      });
-
-      const orderData = res?.data?.order || res?.data?.data || res?.data;
-
-      // Tuyệt đối không giả lập mã đơn (Mục 2: Chỉ thành công khi có id và orderCode hợp lệ từ backend)
-      if (!orderData || !orderData.id) {
-        throw new Error(
-          res?.data?.message ||
-            'Hệ thống không nhận diện được mã đơn hàng hợp lệ từ máy chủ.',
-        );
-      }
-
-      const orderCode =
-        orderData.externalOrderSn || orderData.orderCode || orderData.id;
-      const reviewToken = res?.data?.cancellationToken;
-      if (reviewToken) {
-        localStorage.setItem(
-          `scanms_order_review_token:${orderData.id}`,
-          reviewToken,
-        );
-      }
-
-      setOrderSuccess({
-        orderId: orderData.id,
-        orderCode: orderCode,
-        totalAmount: Number(orderData.finalAmount ?? finalTotal),
-      });
-
-      trackAnalytics('order_complete', {
-        orderId: orderData.id,
-        orderCode: orderCode,
-        totalAmount: Number(orderData.finalAmount ?? finalTotal),
-        paymentMethod,
-      });
-    } catch (err: any) {
-      console.error('Lỗi khi tạo đơn hàng:', err);
-      const errMsg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Không thể hoàn tất đơn hàng lúc này. Vui lòng kiểm tra lại thông tin hoặc thử lại sau ít phút.';
-      setCheckoutError(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
-    } finally {
-      setIsSubmittingOrder(false);
-    }
-  };
 
   // Trạng thái Loading phong cách Vàng Be
   if (loading) {
@@ -1572,252 +1478,35 @@ export default function ProductDetailPage() {
       {/* ─────────────────────────────────────────────────────────────
           6. MODAL GUEST CHECKOUT THẬT (FR-16 GUEST CHECKOUT QUA POST /orders)
       ───────────────────────────────────────────────────────────── */}
-      {isCheckoutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 border border-[#EAE4D7] shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => {
-                setIsCheckoutOpen(false);
-                setOrderSuccess(null);
-                setCheckoutError(null);
-              }}
-              className="absolute top-5 right-5 text-[#7D715E] hover:text-[#1A1612] p-1.5 rounded-full hover:bg-[#F3EFE6] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {orderSuccess ? (
-              /* Màn hình đặt hàng thành công thật (Chỉ hiển thị khi có orderId thật từ backend - Mục 2) */
-              <div className="text-center py-6">
-                <div className="w-16 h-16 rounded-full bg-[#FBF5EB] border-2 border-[#C59B58] text-[#C59B58] flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="w-10 h-10" />
-                </div>
-                <h3 className="text-2xl font-extrabold text-[#1A1612] mb-1">
-                  Đặt Hàng Thành Công!
-                </h3>
-                <p className="text-xs text-[#7D715E] mb-6">
-                  Đơn hàng của bạn đã được ghi nhận vào hệ thống và chuyển tới gian hàng{' '}
-                  <strong>{store.name}</strong> để chuẩn bị.
-                </p>
-
-                <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-4 text-left space-y-2 mb-6 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-[#7D715E]">Mã đơn hàng:</span>
-                    <span className="font-bold text-[#1A1612] font-mono">
-                      {orderSuccess.orderCode}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#7D715E]">Sản phẩm:</span>
-                    <span className="font-semibold text-[#1A1612]">
-                      {product.title} (x{quantity})
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#7D715E]">Tổng tiền thanh toán:</span>
-                    <span className="font-extrabold text-[#B88E4F]">
-                      {orderSuccess.totalAmount.toLocaleString('vi-VN')} ₫
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#7D715E]">Hình thức:</span>
-                    <span className="font-medium text-[#1A1612]">
-                      {paymentMethod === 'COD'
-                        ? 'Thanh toán khi nhận hàng (COD)'
-                        : 'Chuyển khoản VietQR'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#7D715E]">Ghi nhận tiếp thị:</span>
-                    <span className="text-[#15803d] font-semibold">
-                      Attribution Session Active (FR-13)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2.5">
-                  <Link
-                    to={`/tracking?phone=${encodeURIComponent(checkoutPhone)}`}
-                    className="w-full py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <span>Theo dõi hành trình đơn hàng</span>
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setIsCheckoutOpen(false);
-                      setOrderSuccess(null);
-                    }}
-                    className="w-full py-2.5 border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#1A1612] font-semibold text-xs rounded-xl transition-colors"
-                  >
-                    Đóng cửa sổ
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Form Guest Checkout thật */
-              <div>
-                <div className="mb-6">
-                  <span className="text-[11px] font-bold text-[#B88E4F] uppercase tracking-wider">
-                    GUEST CHECKOUT (FR-16)
-                  </span>
-                  <h3 className="text-xl font-extrabold text-[#1A1612] mt-0.5">
-                    Thông Tin Đặt Hàng Nhanh
-                  </h3>
-                  <p className="text-xs text-[#7D715E] mt-0.5">
-                    Mua hàng không cần tạo tài khoản • Đảm bảo quyền lợi sàn SCANMS
-                  </p>
-                </div>
-
-                {checkoutError && (
-                  <div className="mb-4 p-3 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] flex items-center gap-1.5">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{checkoutError}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleConfirmOrder} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-[#1A1612] mb-1">
-                      Họ và tên người nhận <span className="text-[#DC2626]">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ví dụ: Nguyễn Văn An"
-                      value={checkoutName}
-                      onChange={(e) => setCheckoutName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] focus:bg-white focus:outline-hidden focus:border-[#C59B58] transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#1A1612] mb-1">
-                      Số điện thoại nhận hàng <span className="text-[#DC2626]">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="Ví dụ: 0987654321"
-                      value={checkoutPhone}
-                      onChange={(e) => setCheckoutPhone(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] focus:bg-white focus:outline-hidden focus:border-[#C59B58] transition-colors font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#1A1612] mb-1">
-                      Địa chỉ nhận hàng chi tiết <span className="text-[#DC2626]">*</span>
-                    </label>
-                    <textarea
-                      required
-                      rows={2}
-                      placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/TP..."
-                      value={checkoutAddress}
-                      onChange={(e) => setCheckoutAddress(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] focus:bg-white focus:outline-hidden focus:border-[#C59B58] transition-colors resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#1A1612] mb-1">
-                      Ghi chú cho gian hàng (Tùy chọn)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi đến..."
-                      value={checkoutNote}
-                      onChange={(e) => setCheckoutNote(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] focus:bg-white focus:outline-hidden focus:border-[#C59B58] transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#1A1612] mb-1">
-                      Phương thức thanh toán
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('COD')}
-                        className={`p-3 rounded-xl border text-left text-xs font-semibold transition-all ${
-                          paymentMethod === 'COD'
-                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#B88E4F]'
-                            : 'border-[#EAE4D7] bg-white text-[#7D715E]'
-                        }`}
-                      >
-                        <div className="font-bold">💵 Thanh toán COD</div>
-                        <div className="text-[10px] text-[#7D715E] mt-0.5">
-                          Trả tiền mặt khi nhận hàng
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('VIETQR')}
-                        className={`p-3 rounded-xl border text-left text-xs font-semibold transition-all ${
-                          paymentMethod === 'VIETQR'
-                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#B88E4F]'
-                            : 'border-[#EAE4D7] bg-white text-[#7D715E]'
-                        }`}
-                      >
-                        <div className="font-bold">📱 Quét VietQR</div>
-                        <div className="text-[10px] text-[#7D715E] mt-0.5">
-                          Chuyển khoản tức thì 24/7
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Tóm tắt thanh toán */}
-                  <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl space-y-1.5 text-xs">
-                    <div className="flex justify-between text-[#7D715E]">
-                      <span>Tiền hàng ({quantity} món):</span>
-                      <span>{subtotal.toLocaleString('vi-VN')} ₫</span>
-                    </div>
-                    {appliedCoupon && (
-                      <div className="flex justify-between text-[#B88E4F] font-medium">
-                        <span>Giảm giá ({appliedCoupon.code}):</span>
-                        <span>
-                          -{appliedCoupon.discountAmount.toLocaleString('vi-VN')} ₫
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-[#7D715E]">
-                      <span>Phí vận chuyển:</span>
-                      <span className="text-[#15803d] font-semibold">
-                        Miễn phí (Freeship)
-                      </span>
-                    </div>
-                    <div className="pt-2 border-t border-[#EAE4D7] flex justify-between font-bold text-sm text-[#1A1612]">
-                      <span>Tổng thanh toán:</span>
-                      <span className="text-[#B88E4F] text-base">
-                        {finalTotal.toLocaleString('vi-VN')} ₫
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmittingOrder}
-                    className="w-full py-3.5 bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-white font-extrabold text-sm rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-2"
-                  >
-                    {isSubmittingOrder ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Đang xử lý đơn hàng...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>XÁC NHẬN ĐẶT HÀNG</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-        </div>
+      {isCheckoutOpen && product && store && (
+        <GuestCheckoutModal
+          isOpen={isCheckoutOpen}
+          onClose={() => setIsCheckoutOpen(false)}
+          product={{
+            id: product.id,
+            title: product.title,
+            sku: product.sku,
+            price: product.price,
+            originalPrice: product.originalPrice || undefined,
+            imageUrl: product.imageUrl || undefined,
+            stockQuantity: availability.stockQuantity ?? 0,
+            variants: product.variants,
+          }}
+          store={{
+            id: store.id,
+            name: store.name,
+            slug: store.slug,
+          }}
+          initialQuantity={quantity}
+          initialCouponCode={appliedCoupon?.code || ''}
+          onOrderPlaced={(order) => {
+            trackAnalytics('purchase', {
+              orderId: order.orderId,
+              orderCode: order.publicOrderCode,
+              total: order.totalAmount,
+            });
+          }}
+        />
       )}
     </div>
   );

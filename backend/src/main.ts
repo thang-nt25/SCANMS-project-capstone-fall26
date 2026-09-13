@@ -16,7 +16,7 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.use(cookieParser());
 

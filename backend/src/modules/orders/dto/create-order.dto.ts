@@ -7,9 +7,15 @@ import {
   IsNumber,
   Min,
   IsBoolean,
+  IsEnum,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export enum PaymentMethod {
+  COD = 'COD',
+  VIETQR = 'VIETQR',
+}
 
 export class OrderItemInputDto {
   @ApiProperty({ description: 'ID sản phẩm', example: 'uuid-product-id' })
@@ -17,19 +23,26 @@ export class OrderItemInputDto {
   @IsNotEmpty()
   productId: string;
 
+  @ApiPropertyOptional({
+    description: 'ID phân loại sản phẩm (variant/SKU nếu có)',
+    example: 'uuid-variant-id',
+  })
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+
   @ApiProperty({ description: 'Số lượng mua', example: 1, minimum: 1 })
   @IsNumber()
   @Min(1)
   quantity: number;
 
   @ApiPropertyOptional({
-    description: 'Đơn giá tùy chọn (nếu có)',
-    example: 413100,
+    description: 'Bị bỏ qua bởi backend (giá luôn được chốt an toàn từ database)',
   })
   @IsOptional()
-  @IsNumber()
   unitPrice?: number;
 }
+
 
 export class CreateOrderDto {
   @ApiPropertyOptional({
@@ -84,11 +97,16 @@ export class CreateOrderDto {
 
   @ApiPropertyOptional({
     description: 'Phương thức thanh toán (COD hoặc VIETQR)',
-    example: 'COD',
+    enum: PaymentMethod,
+    example: PaymentMethod.COD,
+    default: PaymentMethod.COD,
   })
   @IsOptional()
-  @IsString()
-  paymentMethod?: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @IsEnum(PaymentMethod, {
+    message: 'Phương thức thanh toán phải là COD hoặc VIETQR',
+  })
+  paymentMethod?: PaymentMethod;
 
   @ApiPropertyOptional({ description: 'Ghi chú giao hàng' })
   @IsOptional()
@@ -103,30 +121,6 @@ export class CreateOrderDto {
   @IsString({ message: 'idempotencyKey phải là chuỗi định danh hợp lệ' })
   @IsNotEmpty({ message: 'Thiếu idempotencyKey cho phiên đặt hàng' })
   idempotencyKey: string;
-
-  @ApiPropertyOptional({
-    description: 'Đơn hàng có áp dụng giảm giá trực tiếp trên sản phẩm',
-    default: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  hasProductDiscount?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Đơn hàng có áp dụng voucher khác của Shop',
-    default: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  hasShopVoucher?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Đơn hàng có áp dụng voucher toàn sàn SCANMS',
-    default: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  hasPlatformVoucher?: boolean;
 
   @ApiProperty({
     description: 'Danh sách sản phẩm trong đơn',

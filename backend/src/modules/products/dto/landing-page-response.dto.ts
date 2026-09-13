@@ -33,6 +33,9 @@ export class LandingProductDto {
 
   @ApiProperty({ example: 'ACTIVE', description: 'Trạng thái kinh doanh sản phẩm (ACTIVE | INACTIVE | OUT_OF_STOCK)' })
   status: string;
+
+  @ApiPropertyOptional({ description: 'Danh sách các phân loại SKU/Variant của sản phẩm' })
+  variants?: any[];
 }
 
 export class LandingStoreDto {

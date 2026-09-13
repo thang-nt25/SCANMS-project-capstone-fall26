@@ -10,8 +10,12 @@ import { WalletsModule } from '../wallets/wallets.module';
 import { ReviewMediaService } from './review-media.service';
 import { CloudinaryModule } from '../../core/cloudinary/cloudinary.module';
 
+import { CheckoutMetricsService } from './checkout-metrics.service';
+
+import { AuthModule } from '../auth/auth.module';
+
 @Module({
-  imports: [PrismaModule, CouponsModule, WalletsModule, CloudinaryModule],
+  imports: [PrismaModule, CouponsModule, WalletsModule, CloudinaryModule, AuthModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,
@@ -19,7 +23,8 @@ import { CloudinaryModule } from '../../core/cloudinary/cloudinary.module';
     ManualOrdersService,
     ExcelOrderImportService,
     ReviewMediaService,
+    CheckoutMetricsService,
   ],
-  exports: [OrdersService],
+  exports: [OrdersService, CheckoutMetricsService],
 })
 export class OrdersModule {}
