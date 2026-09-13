@@ -55,16 +55,19 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
         'kola-fr12@scanms.test',
         'kolb-fr12@scanms.test',
       ];
-      const baseUserIds = [adminId, shopOwnerId, otherShopOwnerId, kolAId, kolBId];
+      const baseUserIds = [
+        adminId,
+        shopOwnerId,
+        otherShopOwnerId,
+        kolAId,
+        kolBId,
+      ];
       const baseStoreIds = [storeId, otherStoreId];
 
       // 0. Tìm tất cả users & stores liên quan (theo cả ID, email, và slug)
       const existingUsers = await prisma.user.findMany({
         where: {
-          OR: [
-            { id: { in: baseUserIds } },
-            { email: { in: testEmails } },
-          ],
+          OR: [{ id: { in: baseUserIds } }, { email: { in: testEmails } }],
         },
         select: { id: true },
       });
@@ -307,10 +310,7 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
         await prisma.user
           .deleteMany({
             where: {
-              OR: [
-                { id: { in: allUserIds } },
-                { email: { in: testEmails } },
-              ],
+              OR: [{ id: { in: allUserIds } }, { email: { in: testEmails } }],
             },
           })
           .catch(() => {});
@@ -411,7 +411,7 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
       });
     }
 
-    // 3. Liên kết KOL A với Store (APPROVED)
+    // 3. Liên kết KOL A & KOL B với Store (APPROVED)
     await prisma.storeCollaborator.upsert({
       where: {
         storeId_collaboratorId: {
@@ -422,6 +422,23 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
       create: {
         storeId,
         collaboratorId: kolAId,
+        status: StoreCollaboratorStatus.APPROVED,
+      },
+      update: {
+        status: StoreCollaboratorStatus.APPROVED,
+      },
+    });
+
+    await prisma.storeCollaborator.upsert({
+      where: {
+        storeId_collaboratorId: {
+          storeId,
+          collaboratorId: kolBId,
+        },
+      },
+      create: {
+        storeId,
+        collaboratorId: kolBId,
         status: StoreCollaboratorStatus.APPROVED,
       },
       update: {
@@ -635,7 +652,9 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
     expect(res.body.order.attributionMethod).toBe(AttributionMethod.COUPON);
 
     // Kiểm tra quota coupon đã được cập nhật
-    const c = await prisma.coupon.findUnique({ where: { id: createdCouponId } });
+    const c = await prisma.coupon.findUnique({
+      where: { id: createdCouponId },
+    });
     expect(c?.usageCount).toBe(1);
     expect(Number(c?.budgetUsed)).toBe(40_000);
 
@@ -665,7 +684,9 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
     expect(res.body.order.id).toBe(firstOrderId);
 
     // Quota coupon vẫn là 1, không tăng thêm
-    const c = await prisma.coupon.findUnique({ where: { id: createdCouponId } });
+    const c = await prisma.coupon.findUnique({
+      where: { id: createdCouponId },
+    });
     expect(c?.usageCount).toBe(1);
     expect(Number(c?.budgetUsed)).toBe(40_000);
   });
@@ -835,7 +856,9 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
     expect(red?.status).toBe(CouponRedemptionStatus.CANCELLED);
 
     // Kiểm tra Coupon được hoàn lại usageCount và budgetUsed
-    const c = await prisma.coupon.findUnique({ where: { id: createdCouponId } });
+    const c = await prisma.coupon.findUnique({
+      where: { id: createdCouponId },
+    });
     expect(c?.usageCount).toBe(1); // vì đơn ở test 8 đã dùng 1 lượt
     expect(Number(c?.budgetUsed)).toBe(40_000);
 
@@ -1108,6 +1131,11 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
   });
 
   it('20. KOL tra cứu danh sách gian hàng đủ điều kiện tạo coupon (chỉ lấy APPROVED)', async () => {
+    // Xóa liên kết của KOL B để kiểm tra trường hợp KOL chưa có liên kết APPROVED
+    await prisma.storeCollaborator.deleteMany({
+      where: { collaboratorId: kolBId },
+    });
+
     // KOL A có liên kết APPROVED với storeId
     const resKolA = await request(app.getHttpServer())
       .get('/api/collaborator/coupons/eligible-stores')
@@ -1186,7 +1214,9 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
       data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
     });
 
-    const cBefore = await prisma.coupon.findUnique({ where: { id: createdCouponId } });
+    const cBefore = await prisma.coupon.findUnique({
+      where: { id: createdCouponId },
+    });
     const usageBefore = cBefore?.usageCount || 0;
     const budgetBefore = Number(cBefore?.budgetUsed || 0);
 
@@ -1210,7 +1240,9 @@ describe('FR-12 — Coupon Attribution & Redemption E2E Suite (Real PostgreSQL &
     expect(red?.status).toBe(CouponRedemptionStatus.REFUNDED);
 
     // Coupon: usageCount GIẢM 1 lượt, budgetUsed GIẢM 75k
-    const cAfter = await prisma.coupon.findUnique({ where: { id: createdCouponId } });
+    const cAfter = await prisma.coupon.findUnique({
+      where: { id: createdCouponId },
+    });
     expect(cAfter?.usageCount).toBe(usageBefore - 1);
     expect(Number(cAfter?.budgetUsed)).toBe(budgetBefore - 75_000);
   });

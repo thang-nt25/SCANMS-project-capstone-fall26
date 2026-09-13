@@ -39,15 +39,11 @@ export class OrdersController {
   })
   async createOrder(@Body() dto: CreateOrderDto, @Req() req: any) {
     const cookieAttr =
-      req?.cookies?.['scanms_attr'] ||
-      req?.cookies?.['scanms_attribution'];
-    const cookieRef =
+      req?.cookies?.['scanms_attr'] || req?.cookies?.['scanms_attribution'];
+    const legacyCookieRef =
       req?.cookies?.['scanms_referral_link'] ||
       req?.cookies?.['referral_code'] ||
       req?.cookies?.['scanms_ref'];
-    if (cookieRef && !dto.cookieRefCode) {
-      dto.cookieRefCode = cookieRef;
-    }
 
     const rawIp =
       (req?.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -58,6 +54,7 @@ export class OrdersController {
 
     return this.ordersService.createOrder(dto, {
       cookieAttr,
+      legacyCookieRef,
       ip: rawIp,
       userAgent,
     });
@@ -120,7 +117,8 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: 'Hủy đơn hàng thành công' })
   @ApiResponse({
     status: 400,
-    description: 'Đơn hàng không ở trạng thái PENDING hoặc thông tin không hợp lệ',
+    description:
+      'Đơn hàng không ở trạng thái PENDING hoặc thông tin không hợp lệ',
   })
   @ApiResponse({
     status: 403,

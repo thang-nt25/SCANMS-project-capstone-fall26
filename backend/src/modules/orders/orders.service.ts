@@ -53,6 +53,7 @@ export class OrdersService {
     dto: CreateOrderDto,
     clientContext?: {
       cookieAttr?: string;
+      legacyCookieRef?: string;
       ip?: string;
       userAgent?: string;
     },
@@ -129,7 +130,9 @@ export class OrdersService {
     const jwtSecret =
       this.configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
     if (!jwtSecret || !jwtSecret.trim()) {
-      throw new InternalServerErrorException('Cấu hình JWT_SECRET bị thiếu trong hệ thống!');
+      throw new InternalServerErrorException(
+        'Cấu hình JWT_SECRET bị thiếu trong hệ thống!',
+      );
     }
 
     // 2. Lấy danh sách sản phẩm từ DB và xác thực tính hợp lệ
@@ -156,7 +159,9 @@ export class OrdersService {
     for (const item of dto.items) {
       const prod = productMap.get(item.productId);
       if (!prod) {
-        throw new BadRequestException(`Sản phẩm ${item.productId} không hợp lệ.`);
+        throw new BadRequestException(
+          `Sản phẩm ${item.productId} không hợp lệ.`,
+        );
       }
       const unitPrice = Number(prod.price);
       rawSubtotalAmount += unitPrice * item.quantity;
@@ -175,7 +180,8 @@ export class OrdersService {
           storeId: store.id,
           customerPhone: dto.customerPhone,
           items: dto.items,
-          hasProductDiscount: dto.hasProductDiscount || anyProductHasDirectDiscount,
+          hasProductDiscount:
+            dto.hasProductDiscount || anyProductHasDirectDiscount,
           hasShopVoucher: dto.hasShopVoucher,
           hasPlatformVoucher: dto.hasPlatformVoucher,
         },
@@ -201,7 +207,9 @@ export class OrdersService {
         where: { id: store.id },
       });
       if (!lockedStore || lockedStore.deletedAt || lockedStore.isDeleted) {
-        throw new BadRequestException('Gian hàng không tồn tại hoặc đã ngừng kinh doanh.');
+        throw new BadRequestException(
+          'Gian hàng không tồn tại hoặc đã ngừng kinh doanh.',
+        );
       }
 
       // 6.1 Khóa hàng và kiểm tra toàn diện quy tắc Coupon trong Transaction (Issue 2 & 3)
@@ -226,7 +234,9 @@ export class OrdersService {
         }
 
         if (lockedCoupon.status !== CouponStatus.ACTIVE) {
-          throw new ConflictException('Mã giảm giá không còn ở trạng thái hiệu lực');
+          throw new ConflictException(
+            'Mã giảm giá không còn ở trạng thái hiệu lực',
+          );
         }
 
         // Kiểm tra thời hạn hiệu lực trong transaction (Issue 3)
@@ -252,7 +262,10 @@ export class OrdersService {
             'Mã giảm giá này không được cộng dồn với voucher khác của Shop',
           );
         }
-        if (!lockedCoupon.stackableWithPlatformVoucher && dto.hasPlatformVoucher) {
+        if (
+          !lockedCoupon.stackableWithPlatformVoucher &&
+          dto.hasPlatformVoucher
+        ) {
           throw new ConflictException(
             'Mã giảm giá này không được cộng dồn với voucher toàn sàn SCANMS',
           );
@@ -340,7 +353,9 @@ export class OrdersService {
           lockedCoupon.usageLimitTotal !== null &&
           lockedCoupon.usageCount >= lockedCoupon.usageLimitTotal
         ) {
-          throw new ConflictException('Mã giảm giá đã đạt giới hạn lượt sử dụng');
+          throw new ConflictException(
+            'Mã giảm giá đã đạt giới hạn lượt sử dụng',
+          );
         }
 
         // Kiểm tra ngân sách tổng trong transaction
@@ -387,7 +402,8 @@ export class OrdersService {
 
         // Tính phân bổ tỷ lệ đồng tài trợ
         const shopRate = Number(lockedCoupon.shopFundingRate || 100) / 100;
-        const platformRate = Number(lockedCoupon.platformFundingRate || 0) / 100;
+        const platformRate =
+          Number(lockedCoupon.platformFundingRate || 0) / 100;
         shopFundedAmount = Math.round(txDiscount * shopRate);
         platformFundedAmount = txDiscount - shopFundedAmount;
 
@@ -473,7 +489,10 @@ export class OrdersService {
           }
         } else {
           // Tương thích ngược: Thử giải mã token Multi-Shop định dạng cũ
-          const legacyDecoded = verifyMultiShopAttributionToken(cookieStr, jwtSecret);
+          const legacyDecoded = verifyMultiShopAttributionToken(
+            cookieStr,
+            jwtSecret,
+          );
           if (legacyDecoded?.shops?.[lockedStore.id]) {
             hasStoreCookieTracking = true;
             const shopEntry = legacyDecoded.shops[lockedStore.id];
@@ -504,11 +523,62 @@ export class OrdersService {
                   candidateCookieReferralLinkId = link.id;
                   candidateCookieSessionId = shopEntry.sessionId;
                   candidateCookieClickId = null;
-                  candidateCookieClickedAt = shopEntry.clickedAt ? new Date(shopEntry.clickedAt) : null;
+                  candidateCookieClickedAt = shopEntry.clickedAt
+                    ? new Date(shopEntry.clickedAt)
+                    : null;
                   candidateVia = shopEntry.via || 'LINK';
                 }
               }
             }
+          }
+        }
+      }
+
+      // (A.2) Tương thích ngược: Nếu request có gửi cookie scanms_referral_link
+      if (
+        !candidateCookieCollaboratorId &&
+        clientContext?.legacyCookieRef?.trim()
+      ) {
+        const refCodeOrId = clientContext.legacyCookieRef.trim();
+        const isUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            refCodeOrId,
+          );
+
+        const link = await tx.referralLink.findFirst({
+          where: {
+            OR: [
+              ...(isUuid ? [{ id: refCodeOrId }] : []),
+              { shortCode: refCodeOrId },
+            ],
+            storeId: lockedStore.id,
+            deletedAt: null,
+            status: ReferralLinkStatus.ACTIVE,
+          },
+          include: { collaborator: true },
+        });
+
+        if (
+          link &&
+          (!link.expiresAt || new Date(link.expiresAt) > new Date()) &&
+          link.collaborator?.isActive
+        ) {
+          const storeCollab = await tx.storeCollaborator.findFirst({
+            where: {
+              storeId: lockedStore.id,
+              collaboratorId: link.collaboratorId,
+              status: StoreCollaboratorStatus.APPROVED,
+            },
+          });
+
+          if (storeCollab) {
+            hasStoreCookieTracking = true;
+            candidateCookieCollaboratorId = link.collaboratorId;
+            candidateCookieReferralLinkId = link.id;
+            candidateCookieSessionId = null;
+            candidateCookieClickId = null;
+            candidateCookieClickedAt = new Date();
+            candidateVia = 'LINK';
           }
         }
       }
@@ -521,7 +591,11 @@ export class OrdersService {
       let candidateFpClickedAt: Date | null = null;
       let isAmbiguousFingerprint = false;
 
-      if (!hasStoreCookieTracking && !candidateCookieCollaboratorId && clientContext?.ip) {
+      if (
+        !hasStoreCookieTracking &&
+        !candidateCookieCollaboratorId &&
+        clientContext?.ip
+      ) {
         const fingerprintHash = generateDeviceFingerprint(
           clientContext.ip,
           clientContext.userAgent || '',
@@ -551,7 +625,8 @@ export class OrdersService {
             click.referralLink &&
             !click.referralLink.deletedAt &&
             click.referralLink.status === ReferralLinkStatus.ACTIVE &&
-            (!click.referralLink.expiresAt || new Date(click.referralLink.expiresAt) > new Date()) &&
+            (!click.referralLink.expiresAt ||
+              new Date(click.referralLink.expiresAt) > new Date()) &&
             click.referralLink.storeId === lockedStore.id &&
             click.referralLink.collaborator?.isActive
           ) {
@@ -601,14 +676,16 @@ export class OrdersService {
         attributedCollaboratorId = couponValidationResult.collaboratorId;
         attributionMethod = AttributionMethod.COUPON;
         attributionConfidence = 'HIGH';
-        referralLinkId = candidateCookieReferralLinkId || candidateFpReferralLinkId || null;
+        referralLinkId =
+          candidateCookieReferralLinkId || candidateFpReferralLinkId || null;
         attributionSessionId = candidateCookieSessionId || null;
         clickId = candidateCookieClickId || candidateFpClickId || null;
         clickedAt = candidateCookieClickedAt || candidateFpClickedAt || null;
 
         if (
           candidateCookieCollaboratorId &&
-          candidateCookieCollaboratorId !== couponValidationResult.collaboratorId
+          candidateCookieCollaboratorId !==
+            couponValidationResult.collaboratorId
         ) {
           originalCollaboratorId = candidateCookieCollaboratorId;
           originalAttributionMethod = AttributionMethod.COOKIE;
@@ -647,7 +724,9 @@ export class OrdersService {
         attributedCollaboratorId = null;
         attributionMethod = AttributionMethod.ORGANIC;
         referralLinkId = null;
-        attributionConfidence = isAmbiguousFingerprint ? 'AMBIGUOUS' : 'ORGANIC';
+        attributionConfidence = isAmbiguousFingerprint
+          ? 'AMBIGUOUS'
+          : 'ORGANIC';
         if (isAmbiguousFingerprint) {
           overrideReason = 'ATTRIBUTION_AMBIGUOUS_MULTIPLE_KOLS';
         }
@@ -705,7 +784,10 @@ export class OrdersService {
         });
       }
 
-      const orderFinalAmount = Math.max(0, subtotalAmount - appliedDiscountAmount);
+      const orderFinalAmount = Math.max(
+        0,
+        subtotalAmount - appliedDiscountAmount,
+      );
       const cancellationToken = randomUUID();
 
       const snapshotPayload = {
@@ -715,7 +797,9 @@ export class OrdersService {
         referralLinkId: referralLinkId || null,
         sessionId: attributionSessionId || null,
         clickId: clickId || null,
-        attributedAt: attributedCollaboratorId ? new Date().toISOString() : null,
+        attributedAt: attributedCollaboratorId
+          ? new Date().toISOString()
+          : null,
         clickedAt: clickedAt ? clickedAt.toISOString() : null,
         attributionWindowDays: lockedStore.attributionWindowDays || 30,
         via: candidateVia || 'LINK',

@@ -156,7 +156,10 @@ const BAD_WORDS: string[] = [
 /**
  * Kiểm tra xem chuỗi văn bản có chứa từ ngữ thô tục hay không
  */
-export function checkProfanity(text: string): { isProfane: boolean; matched?: string } {
+export function checkProfanity(text: string): {
+  isProfane: boolean;
+  matched?: string;
+} {
   if (!text) return { isProfane: false };
 
   const raw = text.toLowerCase();
@@ -173,7 +176,10 @@ export function checkProfanity(text: string): { isProfane: boolean; matched?: st
 
   for (const bw of BAD_WORDS) {
     const escaped = bw.replace(/\s+/g, '\\s+');
-    const regex = new RegExp('(^|\\s|[.,!?])' + escaped + '($|\\s|[.,!?])', 'i');
+    const regex = new RegExp(
+      '(^|\\s|[.,!?])' + escaped + '($|\\s|[.,!?])',
+      'i',
+    );
     if (regex.test(unaccented) || regex.test(raw)) {
       return { isProfane: true, matched: bw };
     }

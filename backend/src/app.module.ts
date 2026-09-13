@@ -50,7 +50,9 @@ import { JwtStrategy } from './common/strategies/jwt.strategy';
         }
         return {
           secret,
-          signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '7d' },
+          signOptions: {
+            expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '7d',
+          },
         };
       },
     }),

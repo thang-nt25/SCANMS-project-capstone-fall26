@@ -91,7 +91,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         where: { id: couponId },
       });
       await prisma.clickTrafficLog.deleteMany({
-        where: { referralLinkId: { in: [link1KolAId, link2KolBId, link3KolCId] } },
+        where: {
+          referralLinkId: { in: [link1KolAId, link2KolBId, link3KolCId] },
+        },
       });
       await prisma.attributionSession.deleteMany({
         where: { storeId: { in: [store1Id, store2Id] } },
@@ -115,7 +117,11 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         where: { collaboratorId: { in: [kolAId, kolBId, kolCId] } },
       });
       await prisma.user.deleteMany({
-        where: { id: { in: [kolAId, kolBId, kolCId, shopOwner1Id, shopOwner2Id, adminId] } },
+        where: {
+          id: {
+            in: [kolAId, kolBId, kolCId, shopOwner1Id, shopOwner2Id, adminId],
+          },
+        },
       });
     } catch (e) {
       console.warn('Cleanup error (ignored):', e);
@@ -144,7 +150,10 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
     prisma = app.get(PrismaService);
     cacheService = app.get(CacheService);
     const configService = app.get(ConfigService);
-    secret = configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET || 'fr13-super-secret-jwt-key-for-testing-123456';
+    secret =
+      configService.get<string>('JWT_SECRET') ||
+      process.env.JWT_SECRET ||
+      'fr13-super-secret-jwt-key-for-testing-123456';
 
     await cleanup();
 
@@ -154,12 +163,54 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
     // KOL A, B, C
     await prisma.user.createMany({
       data: [
-        { id: kolAId, email: 'kol.a.fr13@scanms.vn', passwordHash, role: UserRole.COLLABORATOR, fullName: 'KOL Alpha', isActive: true },
-        { id: kolBId, email: 'kol.b.fr13@scanms.vn', passwordHash, role: UserRole.COLLABORATOR, fullName: 'KOL Beta', isActive: true },
-        { id: kolCId, email: 'kol.c.fr13@scanms.vn', passwordHash, role: UserRole.COLLABORATOR, fullName: 'KOL Charlie', isActive: true },
-        { id: shopOwner1Id, email: 'shop1.owner.fr13@scanms.vn', passwordHash, role: UserRole.SHOP_MANAGER, fullName: 'Chủ Shop 1', isActive: true },
-        { id: shopOwner2Id, email: 'shop2.owner.fr13@scanms.vn', passwordHash, role: UserRole.SHOP_MANAGER, fullName: 'Chủ Shop 2', isActive: true },
-        { id: adminId, email: 'admin.fr13@scanms.vn', passwordHash, role: UserRole.SYSTEM_ADMIN, fullName: 'System Admin FR13', isActive: true },
+        {
+          id: kolAId,
+          email: 'kol.a.fr13@scanms.vn',
+          passwordHash,
+          role: UserRole.COLLABORATOR,
+          fullName: 'KOL Alpha',
+          isActive: true,
+        },
+        {
+          id: kolBId,
+          email: 'kol.b.fr13@scanms.vn',
+          passwordHash,
+          role: UserRole.COLLABORATOR,
+          fullName: 'KOL Beta',
+          isActive: true,
+        },
+        {
+          id: kolCId,
+          email: 'kol.c.fr13@scanms.vn',
+          passwordHash,
+          role: UserRole.COLLABORATOR,
+          fullName: 'KOL Charlie',
+          isActive: true,
+        },
+        {
+          id: shopOwner1Id,
+          email: 'shop1.owner.fr13@scanms.vn',
+          passwordHash,
+          role: UserRole.SHOP_MANAGER,
+          fullName: 'Chủ Shop 1',
+          isActive: true,
+        },
+        {
+          id: shopOwner2Id,
+          email: 'shop2.owner.fr13@scanms.vn',
+          passwordHash,
+          role: UserRole.SHOP_MANAGER,
+          fullName: 'Chủ Shop 2',
+          isActive: true,
+        },
+        {
+          id: adminId,
+          email: 'admin.fr13@scanms.vn',
+          passwordHash,
+          role: UserRole.SYSTEM_ADMIN,
+          fullName: 'System Admin FR13',
+          isActive: true,
+        },
       ],
     });
 
@@ -200,17 +251,41 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
     // Store 1 (Sora Skin) & Store 2 (Aura Bio)
     await prisma.store.createMany({
       data: [
-        { id: store1Id, ownerId: shopOwner1Id, name: 'Sora Skin Official', slug: 'sora-skin-fr13', attributionWindowDays: 30 },
-        { id: store2Id, ownerId: shopOwner2Id, name: 'Aura Bio Cosmetics', slug: 'aura-bio-fr13', attributionWindowDays: 14 },
+        {
+          id: store1Id,
+          ownerId: shopOwner1Id,
+          name: 'Sora Skin Official',
+          slug: 'sora-skin-fr13',
+          attributionWindowDays: 30,
+        },
+        {
+          id: store2Id,
+          ownerId: shopOwner2Id,
+          name: 'Aura Bio Cosmetics',
+          slug: 'aura-bio-fr13',
+          attributionWindowDays: 14,
+        },
       ],
     });
 
     // Quyền tiếp thị của KOLs trên Shop 1 & Shop 2
     await prisma.storeCollaborator.createMany({
       data: [
-        { storeId: store1Id, collaboratorId: kolAId, status: StoreCollaboratorStatus.APPROVED },
-        { storeId: store1Id, collaboratorId: kolCId, status: StoreCollaboratorStatus.APPROVED },
-        { storeId: store2Id, collaboratorId: kolBId, status: StoreCollaboratorStatus.APPROVED },
+        {
+          storeId: store1Id,
+          collaboratorId: kolAId,
+          status: StoreCollaboratorStatus.APPROVED,
+        },
+        {
+          storeId: store1Id,
+          collaboratorId: kolCId,
+          status: StoreCollaboratorStatus.APPROVED,
+        },
+        {
+          storeId: store2Id,
+          collaboratorId: kolBId,
+          status: StoreCollaboratorStatus.APPROVED,
+        },
       ],
     });
 
@@ -352,9 +427,21 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
     });
 
     it('1.3 generateDeviceFingerprint tạo Server-Side HMAC không lưu fingerprint thô', () => {
-      const fp1 = generateDeviceFingerprint('203.0.113.195', 'Mozilla/5.0 TestBrowser', secret);
-      const fp2 = generateDeviceFingerprint('203.0.113.195', 'Mozilla/5.0 TestBrowser', secret);
-      const fpDifferent = generateDeviceFingerprint('198.51.100.1', 'DifferentBrowser', secret);
+      const fp1 = generateDeviceFingerprint(
+        '203.0.113.195',
+        'Mozilla/5.0 TestBrowser',
+        secret,
+      );
+      const fp2 = generateDeviceFingerprint(
+        '203.0.113.195',
+        'Mozilla/5.0 TestBrowser',
+        secret,
+      );
+      const fpDifferent = generateDeviceFingerprint(
+        '198.51.100.1',
+        'DifferentBrowser',
+        secret,
+      );
 
       expect(fp1).toBe(fp2);
       expect(fp1).not.toBe(fpDifferent);
@@ -394,7 +481,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       expect(verifyMultiShopAttributionToken(tampered, secret)).toBeNull();
 
       // Sai secret -> verify trả về null
-      expect(verifyMultiShopAttributionToken(signedToken, 'wrong-secret')).toBeNull();
+      expect(
+        verifyMultiShopAttributionToken(signedToken, 'wrong-secret'),
+      ).toBeNull();
     });
   });
 
@@ -414,7 +503,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       const setCookieHeader = getSetCookies(res.headers);
       expect(setCookieHeader.length).toBeGreaterThan(0);
 
-      const attrCookieStr = setCookieHeader.find((c: string) => c.startsWith('scanms_attr='));
+      const attrCookieStr = setCookieHeader.find((c: string) =>
+        c.startsWith('scanms_attr='),
+      );
       expect(attrCookieStr).toBeDefined();
       expect(attrCookieStr).toContain('HttpOnly');
       expect(attrCookieStr).toContain('SameSite=Lax');
@@ -430,7 +521,10 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       expect(capturedCookie1).not.toContain(store1Id);
 
       // Kiểm tra AttributionSession được tạo trong cơ sở dữ liệu với latestClickId hợp lệ (Issue 1)
-      const visitorIdHash = crypto.createHmac('sha256', secret).update(visitorId!).digest('hex');
+      const visitorIdHash = crypto
+        .createHmac('sha256', secret)
+        .update(visitorId!)
+        .digest('hex');
       const session = await prisma.attributionSession.findUnique({
         where: {
           storeId_visitorIdHash: {
@@ -444,18 +538,25 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       expect(session?.referralLinkId).toBe(link1KolAId);
       expect(session?.latestClickId).toBeDefined();
       // latestClickId phải là UUID hợp lệ
-      expect(session?.latestClickId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(session?.latestClickId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
     });
 
     it('2.2 Quét QR kèm via=qr -> Chuyển hướng thành công và ghi nhận truy cập', async () => {
       const res = await request(app.getHttpServer())
         .get(`/r/${shortCode1}?via=qr`)
-        .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)')
+        .set(
+          'User-Agent',
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
+        )
         .set('X-Forwarded-For', '203.0.113.11');
 
       expect(res.status).toBe(302);
       const setCookieHeader = getSetCookies(res.headers);
-      const attrCookieStr = setCookieHeader.find((c: string) => c.startsWith('scanms_attr='));
+      const attrCookieStr = setCookieHeader.find((c: string) =>
+        c.startsWith('scanms_attr='),
+      );
       expect(attrCookieStr).toBeDefined();
     });
 
@@ -469,12 +570,17 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       expect(res.status).toBe(302);
       // Max-Age cho Store 2 (14 ngày = 1209600s)
       const setCookieHeader = getSetCookies(res.headers);
-      const attrCookieStr = setCookieHeader.find((c: string) => c.startsWith('scanms_attr='));
+      const attrCookieStr = setCookieHeader.find((c: string) =>
+        c.startsWith('scanms_attr='),
+      );
       expect(attrCookieStr).toBeDefined();
       expect(attrCookieStr).toContain('Max-Age=1209600');
 
       const visitorId = verifyOpaqueVisitorToken(capturedCookie1, secret);
-      const visitorIdHash = crypto.createHmac('sha256', secret).update(visitorId!).digest('hex');
+      const visitorIdHash = crypto
+        .createHmac('sha256', secret)
+        .update(visitorId!)
+        .digest('hex');
 
       // Cả 2 session của 2 shop đều tồn tại song song trong DB (Multi-Merchant Isolation)
       const session1 = await prisma.attributionSession.findUnique({
@@ -498,7 +604,10 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       expect(res.status).toBe(302);
 
       const visitorId = verifyOpaqueVisitorToken(capturedCookie1, secret);
-      const visitorIdHash = crypto.createHmac('sha256', secret).update(visitorId!).digest('hex');
+      const visitorIdHash = crypto
+        .createHmac('sha256', secret)
+        .update(visitorId!)
+        .digest('hex');
 
       const session1 = await prisma.attributionSession.findUnique({
         where: { storeId_visitorIdHash: { storeId: store1Id, visitorIdHash } },
@@ -536,14 +645,19 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
     it('3.1 Social Bot / Crawler mạng xã hội -> Chuyển hướng an toàn nhưng KHÔNG cấp cookie', async () => {
       const res = await request(app.getHttpServer())
         .get(`/r/${shortCode1}`)
-        .set('User-Agent', 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)')
+        .set(
+          'User-Agent',
+          'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+        )
         .set('X-Forwarded-For', '66.220.144.1');
 
       // Vẫn redirect an toàn không làm hỏng trải nghiệm chia sẻ link
       expect(res.status).toBe(302);
       // Không được cấp cookie attribution
       const setCookieHeader = getSetCookies(res.headers);
-      const attrCookie = setCookieHeader.find((c: string) => c.startsWith('scanms_attr='));
+      const attrCookie = setCookieHeader.find((c: string) =>
+        c.startsWith('scanms_attr='),
+      );
       expect(attrCookie).toBeUndefined();
     });
   });
@@ -733,7 +847,11 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
     it('4.7 Fingerprint mơ hồ (nhiều KOL cùng fingerprint trong 24h) -> Không tự gán bừa, chuyển thành AMBIGUOUS / ORGANIC (Issue 8)', async () => {
       const ambiguousIp = '198.51.200.55';
       const ambiguousUa = 'Shared-Wifi-Public-Library-Browser/2.0';
-      const ambiguousFp = generateDeviceFingerprint(ambiguousIp, ambiguousUa, secret);
+      const ambiguousFp = generateDeviceFingerprint(
+        ambiguousIp,
+        ambiguousUa,
+        secret,
+      );
 
       // Click 1 từ KOL A
       await prisma.clickTrafficLog.create({
@@ -932,7 +1050,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       expect(orderAfterAdj?.attributedCollaboratorId).toBe(originalCollabId);
 
       // 3. Kiểm tra resolveEffectiveOrderAttribution trả về KOL B (Issue 3)
-      const effectiveInfo = await app.get(ReferralLinksService).resolveEffectiveOrderAttribution(order!.id);
+      const effectiveInfo = await app
+        .get(ReferralLinksService)
+        .resolveEffectiveOrderAttribution(order!.id);
       expect(effectiveInfo.effectiveCollaboratorId).toBe(kolBId);
       expect(effectiveInfo.isAdjusted).toBe(true);
       expect(effectiveInfo.originalCollaboratorId).toBe(originalCollabId);
@@ -974,8 +1094,12 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         // Bị chặn vì domain ngoài allowlist
         expect(res.status).not.toBe(302);
       } finally {
-        await prisma.attributionSession.deleteMany({ where: { referralLinkId: maliciousLink.id } });
-        await prisma.clickTrafficLog.deleteMany({ where: { referralLinkId: maliciousLink.id } });
+        await prisma.attributionSession.deleteMany({
+          where: { referralLinkId: maliciousLink.id },
+        });
+        await prisma.clickTrafficLog.deleteMany({
+          where: { referralLinkId: maliciousLink.id },
+        });
         await prisma.referralLink.delete({ where: { id: maliciousLink.id } });
       }
     });
@@ -989,7 +1113,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         .set('X-Forwarded-For', '203.0.113.88');
 
       expect(resDnt.status).toBe(302);
-      const dntCookie = getSetCookies(resDnt.headers).find((c: string) => c.startsWith('scanms_attr='));
+      const dntCookie = getSetCookies(resDnt.headers).find((c: string) =>
+        c.startsWith('scanms_attr='),
+      );
       expect(dntCookie).toBeUndefined();
 
       // 2. API opt-out /r/consent
@@ -999,7 +1125,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
 
       expect(resConsent.status).toBe(200);
       expect(resConsent.body.allowTracking).toBe(false);
-      const optOutCookie = getSetCookies(resConsent.headers).find((c: string) => c.startsWith('scanms_opt_out='));
+      const optOutCookie = getSetCookies(resConsent.headers).find((c: string) =>
+        c.startsWith('scanms_opt_out='),
+      );
       expect(optOutCookie).toBeDefined();
     });
 
@@ -1019,12 +1147,17 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       });
 
       // Gọi handler cron dọn dẹp dữ liệu tự động
-      const cronResult = await app.get(ReferralLinksService).handleScheduledDataRetentionCleanup();
+      const cronResult = await app
+        .get(ReferralLinksService)
+        .handleScheduledDataRetentionCleanup();
       expect(cronResult).toBeDefined();
       expect(cronResult!.anonymizedLogsCount).toBeGreaterThanOrEqual(1);
 
       const cleanedLog = await prisma.clickTrafficLog.findFirst({
-        where: { referralLinkId: link1KolAId, createdAt: { lt: new Date(Date.now() - 95 * 24 * 60 * 60 * 1000) } },
+        where: {
+          referralLinkId: link1KolAId,
+          createdAt: { lt: new Date(Date.now() - 95 * 24 * 60 * 60 * 1000) },
+        },
       });
       if (cleanedLog) {
         expect(cleanedLog.userAgent).toBeNull();
@@ -1067,7 +1200,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       expect(order).toBeDefined();
 
       const res = await request(app.getHttpServer())
-        .get(`/api/stores/${store1Id}/referral-links/orders/${order!.id}/effective-attribution`)
+        .get(
+          `/api/stores/${store1Id}/referral-links/orders/${order!.id}/effective-attribution`,
+        )
         .set('Authorization', `Bearer ${tokenShop1}`);
 
       expect(res.status).toBe(200);
@@ -1092,7 +1227,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
 
       // Shop 2 cố dùng token của mình để tra cứu đơn thuộc Shop 1
       const res = await request(app.getHttpServer())
-        .get(`/api/stores/${store1Id}/referral-links/orders/${order1!.id}/effective-attribution`)
+        .get(
+          `/api/stores/${store1Id}/referral-links/orders/${order1!.id}/effective-attribution`,
+        )
         .set('Authorization', `Bearer ${tokenShop2}`);
 
       expect(res.status).toBe(403);
@@ -1105,7 +1242,9 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       expect(order1).toBeDefined();
 
       const res = await request(app.getHttpServer())
-        .get(`/api/admin/referral-links/orders/${order1!.id}/effective-attribution`)
+        .get(
+          `/api/admin/referral-links/orders/${order1!.id}/effective-attribution`,
+        )
         .set('Authorization', `Bearer ${tokenAdmin}`);
 
       expect(res.status).toBe(200);

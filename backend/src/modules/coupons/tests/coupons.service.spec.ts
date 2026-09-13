@@ -99,7 +99,9 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
 
   describe('Section 8 & 9: normalizeAndValidateCode', () => {
     it('should trim and uppercase valid alphanumeric code', () => {
-      expect(service.normalizeAndValidateCode('  thangvip10  ')).toBe('THANGVIP10');
+      expect(service.normalizeAndValidateCode('  thangvip10  ')).toBe(
+        'THANGVIP10',
+      );
       expect(service.normalizeAndValidateCode('kol2026')).toBe('KOL2026');
       expect(service.normalizeAndValidateCode('nhatxinh')).toBe('NHATXINH');
     });
