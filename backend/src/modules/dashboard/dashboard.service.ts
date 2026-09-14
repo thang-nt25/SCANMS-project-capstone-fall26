@@ -317,7 +317,7 @@ export class DashboardService {
 
     const orderWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
-      status: { in: ['DELIVERED', 'COMPLETED', 'CONFIRMED', 'PROCESSING'] },
+      status: { in: ['DELIVERED', 'COMPLETED'] },
     };
 
     if (isShop && storeId) {
@@ -574,7 +574,7 @@ export class DashboardService {
       const orderWhere: any = {
         referralLink: { campaignId: camp.id },
         createdAt: { gte: startDate, lte: endDate },
-        status: { in: ['DELIVERED', 'COMPLETED', 'CONFIRMED'] },
+        status: { in: ['DELIVERED', 'COMPLETED'] },
       };
       if (role === UserRole.COLLABORATOR) {
         orderWhere.attributedCollaboratorId = userId;
@@ -599,12 +599,14 @@ export class DashboardService {
       results.push({
         campaignId: camp.id,
         name: camp.name,
+        campaignName: camp.name,
         bonusCommissionRate: Number(camp.bonusCommissionRate || 0),
         isActive: camp.isActive,
         startDate: camp.startDate,
         endDate: camp.endDate,
         storeName: camp.store?.name,
         participantsCount: camp.participants?.length || 0,
+        participantCount: camp.participants?.length || 0,
         totalOrders,
         totalRevenue,
         totalCommissions,
