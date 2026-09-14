@@ -182,15 +182,27 @@ const mockOrders = [
   }
 ];
 
+const STORAGE_KEY_REVIEWS = "scanms_prototype_tracking_reviews";
+function loadSavedReviews() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY_REVIEWS) || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveReviewsToStorage(reviews) {
+  try {
+    localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify(reviews));
+  } catch {}
+}
+
 // State quản lý màn hình Tra cứu
 const trackingState = {
   query: "IN23931",
   activeOrder: mockOrders[0],
   searchState: "found", // 'idle' | 'searching' | 'found' | 'not_found'
   isUnlockedPII: false,
-  reviews: {
-    // Lưu các đánh giá đã gửi
-  },
+  reviews: loadSavedReviews(),
   currentRating: 5,
   reviewComment: "",
   reviewImages: [],
@@ -839,6 +851,7 @@ export function bindTracking(root, helpers) {
           images: [...trackingState.reviewImages],
           submittedAt: timeStr
         };
+        saveReviewsToStorage(trackingState.reviews);
       }
 
       trackingState.isSubmittingReview = false;
@@ -856,6 +869,7 @@ export function bindTracking(root, helpers) {
         trackingState.reviewComment = rev.comment;
         trackingState.reviewImages = [...rev.images];
         delete trackingState.reviews[trackingState.activeOrder.id];
+        saveReviewsToStorage(trackingState.reviews);
         renderCurrentPage();
         toast("Bạn có thể cập nhật lại số sao và nhận xét.");
       }

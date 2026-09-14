@@ -29,6 +29,11 @@ import { UserRole } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import {
+  OrderCreatedResponseDto,
+  PublicOrderDetailResponseDto,
+  PaymentWebhookDto,
+} from './dto/order-response.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
 import { CreateOrderReviewDto } from './dto/create-review.dto';
 import { OrderWebhookDto } from './dto/order-webhook.dto';
@@ -45,7 +50,11 @@ import {
 } from './excel-order-import.service';
 import { ImportOrdersDto } from './dto/import-orders.dto';
 import { ManualOrderDiscountDto } from './dto/manual-order-discount.dto';
-import { CancelOrderDto, GuestCancelOrderDto } from './dto/cancel-order.dto';
+import {
+  CancelOrderDto,
+  GuestCancelOrderDto,
+  RequestCancellationOtpDto,
+} from './dto/cancel-order.dto';
 import {
   ReviewMediaService,
   MAX_REVIEW_UPLOAD_BYTES,
@@ -79,7 +88,30 @@ export class OrdersController {
     description:
       'Nhận diện mã Coupon hoặc Link rút gọn của KOL và lưu đơn hàng. Hoa hồng được chuyển vào ví chờ sau khi giao hàng thành công.',
   })
+  @ApiResponse({
+    status: 201,
+    description: 'Đặt hàng thành công',
+    type: OrderCreatedResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Dữ liệu đầu vào không hợp lệ' })
+  @ApiResponse({
+    status: 409,
+    description:
+      'IDEMPOTENCY_CONFLICT: Khóa đặt hàng đã tồn tại nhưng payload bị sửa đổi',
+  })
+  @ApiResponse({
+    status: 422,
+    description: 'Sản phẩm hoặc phân loại đã hết hàng',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Quá nhiều yêu cầu tạo đơn trong 1 phút',
+  })
+  @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ kèm requestId' })
   async createOrder(@Body() dto: CreateOrderDto, @Req() req: Request) {
+    const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    await this.ordersService.checkCreateOrderRateLimit(rawIp, dto.customerPhone);
+
     const cookieAttr = readCookie(req, ['scanms_attr', 'scanms_attribution']);
     const legacyCookieRef = readCookie(req, [
       'scanms_referral_link',
@@ -90,7 +122,6 @@ export class OrdersController {
       dto.cookieRefCode = legacyCookieRef;
     }
 
-    const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
     const userAgent = req.get('user-agent') || '';
 
     return this.ordersService.createOrder(dto, {
@@ -119,6 +150,31 @@ export class OrdersController {
   ) {
     return this.ordersService.receiveWebhook(dto, secret);
   }
+
+  @Post('payment-webhook')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'FR-16: Tiếp nhận webhook đối soát thanh toán VietQR từ cổng thanh toán/ngân hàng',
+    description:
+      'Xác thực chữ ký HMAC-SHA256, kiểm tra số tiền và cập nhật trạng thái đơn sang PAID kèm ghi nhận AuditLog nguyên tử.',
+  })
+  @ApiResponse({ status: 200, description: 'Đối soát thanh toán thành công' })
+  @ApiResponse({ status: 400, description: 'Số tiền hoặc đơn hàng không hợp lệ' })
+  @ApiResponse({ status: 403, description: 'Chữ ký webhook không hợp lệ' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy đơn hàng' })
+  async reconcilePayment(
+    @Body() dto: PaymentWebhookDto,
+    @Headers('x-payment-webhook-secret') secretHeader?: string,
+    @Headers('x-webhook-signature') signatureHeader?: string,
+    @Headers('x-signature') altSignatureHeader?: string,
+    @Req() req?: Request,
+  ) {
+    const signatureOrSecret = signatureHeader || altSignatureHeader || secretHeader;
+    const rawBody = (req as any)?.rawBody;
+    return this.ordersService.reconcilePayment(dto, signatureOrSecret, rawBody);
+  }
+
 
   @Post('manual')
   @HttpCode(HttpStatus.CREATED)
@@ -309,4 +365,68 @@ export class OrdersController {
     const clientIp = req.ip || ip;
     return this.ordersService.guestCancelOrder(orderId, dto, clientIp);
   }
+
+  @Get('public/:publicCode')
+  @ApiOperation({
+    summary:
+      'FR-16 & FR-17: Tra cứu chi tiết đơn hàng cho khách vãng lai (Mã đơn + SĐT/Token)',
+    description:
+      'Chỉ trả thông tin cần thiết và che PII khách hàng, không lộ hoa hồng hay thông tin nội bộ.',
+  })
+  @ApiResponse({ status: 200, description: 'Thông tin đơn hàng an toàn' })
+  @ApiResponse({
+    status: 403,
+    description: 'Chưa xác thực đúng số điện thoại hoặc mã token',
+  })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy đơn hàng' })
+  async getPublicOrder(
+    @Param('publicCode') publicCode: string,
+    @Query('phone') phone?: string,
+    @Query('token') token?: string,
+    @Ip() ip?: string,
+  ) {
+    await this.ordersService.checkPublicOrderRateLimit(ip || '127.0.0.1');
+    return this.ordersService.getPublicOrderDetail(publicCode, phone, token);
+  }
+
+  @Post('public/:publicCode/request-cancellation-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'FR-16: Yêu cầu mã OTP hủy đơn hàng công khai',
+    description:
+      'Gửi mã OTP 6 chữ số đến số điện thoại đặt hàng để khách xác thực hủy đơn khi không còn cancellationToken.',
+  })
+  @ApiResponse({ status: 200, description: 'Mã OTP đã được tạo và gửi thành công' })
+  @ApiResponse({ status: 400, description: 'Thông tin hoặc trạng thái đơn không hợp lệ' })
+  @ApiResponse({ status: 403, description: 'Số điện thoại không khớp' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy đơn hàng' })
+  @ApiResponse({ status: 429, description: 'Quá nhiều yêu cầu gửi OTP' })
+  async requestCancellationOtp(
+    @Param('publicCode') publicCode: string,
+    @Body() dto: RequestCancellationOtpDto,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    const clientIp = req.ip || ip;
+    return this.ordersService.requestCancellationOtp(publicCode, dto, clientIp);
+  }
+
+  @Post('public/:publicCode/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'FR-16: Khách vãng lai hủy đơn hàng qua mã đơn công khai',
+    description:
+      'Hủy đơn an toàn bằng mã đơn công khai kết hợp token hoặc số điện thoại và OTP',
+  })
+  async publicCancelOrder(
+    @Param('publicCode') publicCode: string,
+    @Body() dto: GuestCancelOrderDto,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    const clientIp = req.ip || ip;
+    return this.ordersService.guestCancelOrder(publicCode, dto, clientIp);
+  }
 }
+
+

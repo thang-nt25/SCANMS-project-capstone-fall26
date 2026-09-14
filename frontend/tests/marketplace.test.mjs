@@ -52,3 +52,19 @@ test('currency is formatted in Vietnamese dong', () => {
 test('source prototype remains present', () => {
   assert(existsSync(pathToFileURL(resolve('..', 'docs/ui-ux/NGUYENDINHTUAN/index.html'))));
 });
+
+test('FR16 reference UI submits checkout to backend and never fabricates success data', () => {
+  const source = readFileSync(new URL('../public/reference/js/marketplace.js', import.meta.url), 'utf8');
+  const checkout = source.slice(
+    source.indexOf('async function openGuestCheckoutModal'),
+    source.indexOf('function openVideoPlayerModal'),
+  );
+
+  assert.match(checkout, /fetch\("\/api\/orders"/);
+  assert.match(checkout, /result\.publicOrderCode/);
+  assert.match(checkout, /result\.cancellationToken/);
+  assert.match(checkout, /maskPhone\(order\.phone\)/);
+  assert.doesNotMatch(checkout, /Math\.random\(\).*90000/);
+  assert.doesNotMatch(checkout, /trackingNum/);
+  assert.doesNotMatch(checkout, /localStorage\.setItem/);
+});

@@ -107,6 +107,63 @@ export class MailService {
   }
 
   /**
+   * Gửi mã OTP xác thực hủy đơn hàng cho khách mua hàng
+   */
+  async sendOrderCancellationOtp(
+    email: string,
+    otp: string,
+    orderCode: string,
+  ) {
+    const subject = `🔐 [SCANMS] Mã OTP xác thực hủy đơn hàng ${orderCode}`;
+    const html = `
+      <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; background: #FAF8F5; padding: 30px; color: #1A1612;">
+        <div style="max-width: 520px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border: 1px solid #EAE4D7; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 24px; font-weight: 800; color: #C59B58; letter-spacing: -0.5px;">SCANMS</span>
+            <p style="font-size: 11px; color: #7D715E; margin: 4px 0 0; text-transform: uppercase; font-weight: 700;">Hệ thống đặt hàng nhanh & Tiếp thị liên kết</p>
+          </div>
+
+          <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px; text-align: center; color: #1A1612;">Mã xác thực hủy đơn hàng</h2>
+          <p style="font-size: 13.5px; line-height: 1.6; color: #7D715E; margin: 0 0 24px; text-align: center;">
+            Hệ thống nhận được yêu cầu hủy đơn hàng <strong>${orderCode}</strong>. Sử dụng mã OTP dưới đây để hoàn tất việc xác thực hủy đơn:
+          </p>
+
+          <div style="background: #FBF5EB; border: 1.5px dashed #C59B58; border-radius: 12px; padding: 18px; text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #B88E4F;">${otp}</span>
+            <p style="margin: 6px 0 0; font-size: 12px; color: #7D715E;">Mã có hiệu lực trong vòng 5 phút (300 giây)</p>
+          </div>
+
+          <p style="font-size: 12px; color: #7D715E; line-height: 1.5; margin: 0;">
+            * Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email. Đơn hàng của bạn vẫn sẽ được giữ nguyên trạng thái xử lý bình thường.
+          </p>
+        </div>
+      </div>
+    `;
+
+    await this.sendMail(
+      email,
+      subject,
+      html,
+      `Mã OTP xác thực hủy đơn hàng ${orderCode} của bạn là: ${otp} (Hiệu lực 5 phút).`,
+    );
+  }
+
+  /**
+   * Dispatch tin nhắn SMS/ZNS chứa OTP xác thực hủy đơn tới SĐT
+   */
+  async sendOrderCancellationSms(
+    phoneNumber: string,
+    otp: string,
+    orderCode: string,
+  ) {
+    const smsContent = `[SCANMS] Ma OTP xac thuc huy don hang ${orderCode} la: ${otp}. Hieu luc trong 5 phut. Khong chia se ma cho bat ky ai.`;
+    console.log('\n======================================================');
+    console.log(`📱 [SCANMS SMS/ZNS DISPATCHER] Gửi tin nhắn tới SĐT: ${phoneNumber}`);
+    console.log(`Nội dung: ${smsContent}`);
+    console.log('======================================================\n');
+  }
+
+  /**
    * Phương thức chung gửi email hoặc fallback ra console đẹp mắt
    */
   private async sendMail(

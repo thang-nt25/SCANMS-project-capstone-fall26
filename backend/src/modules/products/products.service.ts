@@ -225,6 +225,18 @@ export class ProductsService {
           price: true,
           originalPrice: true,
           stockQuantity: true,
+          variants: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              sku: true,
+              name: true,
+              price: true,
+              stockQuantity: true,
+              isActive: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          },
           store: {
             select: {
               id: true,
@@ -621,6 +633,18 @@ export class ProductsService {
           : [{ sku: { equals: trimmed, mode: 'insensitive' } }],
       },
       include: {
+        variants: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            sku: true,
+            name: true,
+            price: true,
+            stockQuantity: true,
+            isActive: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
         store: {
           select: {
             id: true,
@@ -688,6 +712,18 @@ export class ProductsService {
           ],
         },
         include: {
+          variants: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              sku: true,
+              name: true,
+              price: true,
+              stockQuantity: true,
+              isActive: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          },
           store: {
             select: {
               id: true,
@@ -970,6 +1006,14 @@ export class ProductsService {
         imageUrl: this.isSafeUrl(product.imageUrl) ? product.imageUrl : null,
         isActive: isProductActive,
         canPurchase,
+        variants: (product as any).variants?.map((v: any) => ({
+          id: v.id,
+          sku: v.sku,
+          name: v.name,
+          price: Number(v.price),
+          stockQuantity: v.stockQuantity,
+          isActive: v.isActive,
+        })) || [],
       },
       store: {
         id: product.store.id,
