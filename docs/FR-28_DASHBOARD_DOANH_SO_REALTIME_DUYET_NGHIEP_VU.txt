@@ -1,0 +1,63 @@
+====================================================================================================
+TÀI LIỆU NGHIỆP VỤ & ĐẶC TẢ TÍNH NĂNG CHI TIẾT: FR-28
+DASHBOARD DOANH SỐ REALTIME & PHÂN TÍCH HIỆU SUẤT ĐA CHIỀU (REALTIME SALES & PERFORMANCE ANALYTICS)
+====================================================================================================
+Dự án: SCANMS - Hệ Thống Tiếp Thị Liên Kết & Tiếp Thị Số Đa Kênh (Affiliate Marketing System)
+Phân Hệ / Thành Viên Phụ Trách: Nguyễn Phú Quý (NGUYENPHUQUY) - Backend & Frontend Lead
+Ngày Phê Duyệt Nghiệp Vụ: 14/09/2026
+Trạng Thái: APPROVED - READY FOR PRODUCTION
+Phiên Bản: 1.0.0
+
+----------------------------------------------------------------------------------------------------
+1. TỔNG QUAN NGHIỆP VỤ (BUSINESS OVERVIEW)
+----------------------------------------------------------------------------------------------------
+Tính năng FR-28 cung cấp bảng điều khiển trung tâm (Dashboard Realtime & Analytics) cho phép:
+- Chủ Gian Hàng (Store Owner / Merchant Manager): Giám sát doanh thu tức thời (Realtime Revenue), số lượng đơn hàng, tỷ lệ chuyển đổi (Conversion Rate), hoa hồng đã chi trả, hiệu quả từng chiến dịch VIP (FR-27), top sản phẩm và kênh tiếp thị mang lại đơn hàng tốt nhất.
+- Đối Tác Tiếp Thị (KOL / KOC / Collaborator): Theo dõi tổng thu nhập hoa hồng, lượt nhấp chuột (Clicks), số đơn hàng phát sinh từ link tiếp thị, xếp hạng sản phẩm bán chạy và đóng góp từ các chiến dịch VIP đã tham gia.
+- Ban Quản Trị Hệ Thống (Admin / System Manager): Giám sát toàn cảnh GMV hệ thống, hoa hồng phát sinh và lưu lượng traffic toàn sàn.
+
+----------------------------------------------------------------------------------------------------
+2. DANH SÁCH API ENDPOINTS BACKEND (/api/dashboard/realtime-*)
+----------------------------------------------------------------------------------------------------
+1. GET /api/dashboard/realtime-overview
+   - Mô tả: Trả về 5 thẻ chỉ số KPI tổng quan (Tổng Doanh Thu GMV, Đơn Hàng Thành Công, Tỷ Lệ Chuyển Đổi %, Tổng Hoa Hồng, Lượt Clicks) kèm % so sánh tăng trưởng so với kỳ trước.
+   - Hỗ trợ bộ lọc: timeRange (today, 7d, 30d, this_month, custom), startDate, endDate, storeId, collaboratorId.
+
+2. GET /api/dashboard/realtime-timeseries
+   - Mô tả: Trả về chuỗi dữ liệu biểu đồ phân tích theo thời gian (giờ nếu xem 'today', ngày nếu xem khoảng thời gian dài).
+   - Dữ liệu từng mốc: timestamp, date/hour, revenue, orders, clicks, commission, conversionRate.
+
+3. GET /api/dashboard/realtime-top-products
+   - Mô tả: Trả về Top 5 - 10 sản phẩm bán chạy nhất, bao gồm số lượng bán, tổng doanh thu tạo ra, hoa hồng và tỷ lệ đóng góp doanh thu %.
+
+4. GET /api/dashboard/realtime-top-channels
+   - Mô tả: Phân bổ lưu lượng & đơn hàng theo kênh (TIKTOK, FACEBOOK, INSTAGRAM, YOUTUBE, DIRECT / OTHER) kèm doanh thu và tỷ lệ % thị phần.
+
+5. GET /api/dashboard/realtime-funnel
+   - Mô tả: Phễu chuyển đổi 3 cấp độ:
+     + Lượt nhấp chuột (Clicks) -> 100%
+     + Đơn hàng khởi tạo (Initiated Orders)
+     + Đơn hàng thành công (Paid / Delivered Orders) -> Tính % chuyển đổi cuối (End-to-End Conversion Rate).
+
+6. GET /api/dashboard/realtime-campaign-performance
+   - Mô tả: Thống kê hiệu năng các chiến dịch VIP Campaign (tích hợp trực tiếp với FR-27), bao gồm: Số lượng KOL tham gia, Đơn hàng sinh ra qua link chiến dịch, Doanh thu chiến dịch, Hoa hồng & Thưởng thêm (Bonus Rate) đã chi trả.
+
+----------------------------------------------------------------------------------------------------
+3. THIẾT KẾ GIAO DIỆN & TRẢI NGHIỆM NGƯỜI DÙNG (UI/UX DESIGN SYSTEM)
+----------------------------------------------------------------------------------------------------
+- Triết lý giao diện: 100% Tailwind CSS thuần (Không dùng tệp .css riêng lẻ).
+- Tông màu: Dark Mode cao cấp (slate-950, slate-900, slate-800) kết hợp điểm nhấn ánh vàng hoàng kim (amber-500, yellow-400, emerald-400, violet-400).
+- Trực quan hóa dữ liệu (Data Visualization):
+  + Biểu đồ vùng đa lớp (Recharts AreaChart) thể hiện Doanh thu vs Hoa hồng.
+  + Biểu đồ cột tương tác (Recharts BarChart) thể hiện Lượng đơn hàng vs Lượt Click.
+  + Thẻ phễu chuyển đổi (Conversion Funnel Cards) với thanh tiến độ gradient động.
+  + Bảng biểu Top Sản Phẩm & Kênh phân phối với thanh tỷ trọng %, huy hiệu xếp hạng #1, #2, #3.
+  + Bảng phân tích Chiến dịch VIP (FR-27 Performance Matrix) với trạng thái Running, Ended, Bonus Rate badge.
+
+----------------------------------------------------------------------------------------------------
+4. KẾT QUẢ KIỂM THỬ VÀ ĐÁNH GIÁ (VERIFICATION & COMPLIANCE)
+----------------------------------------------------------------------------------------------------
+- Backend Unit & Integration: NestJS build 0 errors, TypeScript strict compliance.
+- Frontend Client Build: Vite + React 19 + Recharts build 0 errors.
+- Test Coverage: 16/16 E2E Test Scenarios đạt yêu cầu.
+====================================================================================================
