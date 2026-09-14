@@ -48,7 +48,7 @@ export default function UiReferencePage() {
           );
           if (url.origin === window.location.origin) imageUrl = url.href;
         } catch {
-          /* A missing/invalid preview must not prevent opening the form. */
+
         }
       }
       setReviewTarget({
@@ -63,7 +63,7 @@ export default function UiReferencePage() {
     return () => window.removeEventListener("message", openReview);
   }, []);
 
-  // Đọc role và màn hình gần nhất được lưu trong localStorage để giữ nguyên ngữ cảnh khi reload F5
+
   const savedRole = localStorage.getItem("scanms-current-role") || "shop";
   const defaultScreenForRole =
     savedRole === "shop"

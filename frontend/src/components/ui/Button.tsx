@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'amber' | 'gold';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'amber' | 'gold' | 'dark';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   icon?: ReactNode;
@@ -36,7 +36,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-[#231D15] text-white hover:bg-[#382E21] shadow-xs focus:ring-[#231D15]',
+        'bg-[#C59B58] text-white hover:bg-[#B88E4F] shadow-xs focus:ring-[#C59B58]',
       gold:
         'bg-[#B88E4F] text-white hover:bg-[#9E7933] shadow-xs focus:ring-[#B88E4F]',
       secondary:
@@ -49,6 +49,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'bg-rose-600 text-white hover:bg-rose-700 shadow-xs focus:ring-rose-500',
       amber:
         'bg-[#C59B58] text-white hover:bg-[#B88E4F] shadow-xs focus:ring-[#C59B58]',
+      dark:
+        'bg-[#231D15] text-white hover:bg-[#382E21] shadow-xs focus:ring-[#231D15]',
     };
 
     return (

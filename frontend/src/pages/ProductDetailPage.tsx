@@ -27,7 +27,7 @@ import {
 import api from '../services/api';
 import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
 
-// SCANMS Neutral SVG Placeholder (Tuân thủ FR-15 Mục 10: Không dùng ảnh Unsplash ngẫu nhiên)
+
 const SCANMS_PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23F3EFE6'/%3E%3Cg fill='%23C59B58' text-anchor='middle' font-family='sans-serif'%3E%3Ccircle cx='300' cy='260' r='50' fill='%23EEDFC6'/%3E%3Cpath d='M285 245h30v30h-30z' fill='%23B88E4F'/%3E%3Ctext x='300' y='350' font-size='22' font-weight='bold' fill='%231A1612'%3ESCANMS MARKETPLACE%3C/text%3E%3Ctext x='300' y='380' font-size='14' fill='%237D715E'%3EH%C3%ACnh %E1%BA%A3nh s%E1%BA%A3n ph%E1%BA%A9m %C4%91ang %C4%91%C6%B0%E1%BB%A3c c%E1%BA%ADp nh%E1%BA%ADt%3C/text%3E%3C/g%3E%3C/svg%3E";
 
@@ -116,9 +116,7 @@ interface LandingData {
   };
 }
 
-/**
- * SCANMS Client Analytics Dispatcher (FR-15 Analytics: page_view, video_start, cta_click...)
- */
+
 function trackAnalytics(eventName: string, payload?: Record<string, any>) {
   if (typeof window === 'undefined') return;
   if (window.localStorage.getItem('scanms_analytics_consent') !== 'granted') return;
@@ -140,7 +138,7 @@ function trackAnalytics(eventName: string, payload?: Record<string, any>) {
   if (import.meta.env.DEV) {
     console.debug('[SCANMS Analytics Event]:', eventName, eventData);
   }
-  // Gửi sự kiện phân tích lên Backend (FR-15 Analytics: POST /api/public/products/analytics/events)
+
   api
     .post('/public/products/analytics/events', {
       eventId,
@@ -150,7 +148,7 @@ function trackAnalytics(eventName: string, payload?: Record<string, any>) {
       metadata: payload,
     })
     .catch(() => {
-      // Non-blocking telemetry
+
     });
 }
 
@@ -162,18 +160,18 @@ export default function ProductDetailPage() {
       : window.localStorage.getItem('scanms_analytics_consent'),
   );
 
-  // State dữ liệu Landing
+
   const [data, setData] = useState<LandingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Gallery
+
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-  // Số lượng mua
+
   const [quantity, setQuantity] = useState(1);
 
-  // Video review player & controls
+
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -182,7 +180,7 @@ export default function ProductDetailPage() {
   const [videoStarted, setVideoStarted] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Coupon (FR-12)
+
   const [couponCode, setCouponCode] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -192,10 +190,10 @@ export default function ProductDetailPage() {
   } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
 
-  // Guest Checkout Modal (FR-16)
+
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-  // Tải dữ liệu landing page từ Backend (Không fallback dữ liệu ảo - Mục 13)
+
   useEffect(() => {
     async function loadLanding() {
       if (!slug) {
@@ -210,16 +208,16 @@ export default function ProductDetailPage() {
       try {
         let res: any;
         try {
-          // Tuyến đường chuẩn FR-15: /public/products/:slug/landing
+
           res = await api.get(
             `/public/products/${encodeURIComponent(slug)}/landing`,
           );
         } catch {
           try {
-            // Tuyến đường alias: /products/:slug/landing
+
             res = await api.get(`/products/${encodeURIComponent(slug)}/landing`);
           } catch {
-            // Fallback alias SKU nếu truy cập qua slug serum-vitamin-c
+
             if (slug.toLowerCase().includes('serum')) {
               res = await api.get('/public/products/SR-VTC-15/landing');
             }
@@ -235,9 +233,9 @@ export default function ProductDetailPage() {
           landingPayload.product &&
           landingPayload.product.id
         ) {
-          // Đồng bộ video KOL của giao diện prototype trong môi trường local.
-          // Production vẫn lấy nguồn chuẩn từ API; nhánh này giúp luồng KOL → Shop → Landing
-          // hoạt động liền mạch khi người dùng đang kiểm thử bằng cùng một trình duyệt.
+
+
+
           let localApprovedVideos: LandingVideo[] = [];
           try {
             const parsed = JSON.parse(
@@ -291,7 +289,7 @@ export default function ProductDetailPage() {
           return;
         }
 
-        // Tuyệt đối không tự sinh data giả mạo hoặc fallback cửa hàng ảo
+
         throw new Error(
           'Dữ liệu sản phẩm trả về từ máy chủ không hợp lệ hoặc thiếu trường bắt buộc.',
         );
@@ -309,7 +307,7 @@ export default function ProductDetailPage() {
     loadLanding();
   }, [slug]);
 
-  // Dynamic SEO Tags, Open Graph & Schema.org JSON-LD (FR-15 SEO)
+
   useEffect(() => {
     if (!data) return;
 
@@ -323,7 +321,7 @@ export default function ProductDetailPage() {
     const prevTitle = document.title;
     document.title = `${data.product.title} - ${data.store.name} | Sàn SCANMS`;
 
-    // Canonical Link (FR-15 SEO)
+
     let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!canonicalLink) {
       canonicalLink = document.createElement('link');
@@ -359,7 +357,7 @@ export default function ProductDetailPage() {
     setOg('og:type', 'product');
     setOg('og:url', window.location.href);
 
-    // Twitter Card Tags (FR-15 SEO)
+
     const setTwitter = (name: string, content: string) => {
       let el = document.querySelector(`meta[name="${name}"]`);
       if (!el) {
@@ -375,7 +373,7 @@ export default function ProductDetailPage() {
     setTwitter('twitter:description', data.product.description || data.product.title);
     setTwitter('twitter:image', data.product.imageUrl || '');
 
-    // Schema.org Product JSON-LD
+
     const scriptId = 'scanms-product-jsonld';
     let script = document.getElementById(scriptId) as HTMLScriptElement | null;
     if (!script) {
@@ -431,7 +429,7 @@ export default function ProductDetailPage() {
     };
   }, [data, analyticsConsent]);
 
-  // Video Controls
+
   const togglePlay = () => {
     if (!videoRef.current) return;
     if (isPlaying) {
@@ -477,7 +475,7 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Xác thực Coupon qua API backend FR-12 (Không fallback 10% ảo - Mục 3)
+
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!couponCode.trim() || !data) return;
@@ -514,7 +512,7 @@ export default function ProductDetailPage() {
         });
         setCouponError(null);
       } else {
-        // Tuyệt đối không fallback sang giảm 10% hard-code (Mục 3)
+
         setCouponError(
           'Mã ưu đãi hợp lệ nhưng mức giảm giá bằng 0 hoặc không đủ điều kiện áp dụng.',
         );
@@ -531,7 +529,7 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Tính toán số tiền thanh toán
+
   const unitPrice = data?.product?.price || 0;
   const subtotal = unitPrice * quantity;
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
@@ -539,7 +537,7 @@ export default function ProductDetailPage() {
 
 
 
-  // Trạng thái Loading phong cách Vàng Be
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center p-6 text-center">
@@ -554,7 +552,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  // Trạng thái Error (Tuân thủ FR-15: Không fallback bừa sang sản phẩm khác)
+
   if (error || !data) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center p-6 text-center">
@@ -597,14 +595,12 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] font-sans pb-28 selection:bg-[#EEDFC6]">
-      {/* ─────────────────────────────────────────────────────────────
-          1. HEADER SÀN SCANMS (MULTI-MERCHANT IDENTITY)
-      ───────────────────────────────────────────────────────────── */}
+
       <header className="bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] sticky top-0 z-30 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          {/* KHỐI TRÁI: LOGO SCANMS & ĐIỀU HƯỚNG */}
+
           <div className="flex items-center gap-2.5 sm:gap-3">
-            {/* Logo Thương hiệu Sàn SCANMS */}
+
             <Link
               to="/"
               className="flex items-center gap-2 group shrink-0"
@@ -620,7 +616,7 @@ export default function ProductDetailPage() {
 
             <div className="h-4 w-px bg-[#EAE4D7] hidden sm:block mx-1" />
 
-            {/* Nút Quay lại - Khung viền Sand bo tròn cao cấp */}
+
             <button
               type="button"
               onClick={() => {
@@ -637,7 +633,7 @@ export default function ProductDetailPage() {
               <span>Quay lại</span>
             </button>
 
-            {/* Nút Chợ Tiếp Thị - Khung viền Sand bo tròn */}
+
             <Link
               to="/marketplace"
               className="h-8 px-3 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#1A1612] text-xs font-semibold hidden sm:inline-flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
@@ -648,9 +644,9 @@ export default function ProductDetailPage() {
             </Link>
           </div>
 
-          {/* KHỐI PHẢI: GIAN HÀNG ĐỐI TÁC, CỔNG ĐỐI TÁC & NÚT MUA NGAY */}
+
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Thẻ Gian hàng đối tác uy tín */}
+
             <div className="hidden md:flex items-center gap-2 h-8 px-3.5 bg-[#FBF5EB] border border-[#EEDFC6] rounded-full text-xs shadow-2xs">
               <span
                 className="w-2 h-2 rounded-full bg-[#059669] animate-pulse"
@@ -667,7 +663,7 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* Nút Cổng Đối Tác (Login/Admin portal) */}
+
             <Link
               to="/login"
               className="h-8 px-3 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#1A1612] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs"
@@ -677,7 +673,7 @@ export default function ProductDetailPage() {
               <span className="hidden sm:inline">Cổng Đối Tác</span>
             </Link>
 
-            {/* Nút Mua Ngay chính - Vàng Be Gold CTA */}
+
             <button
               type="button"
               onClick={() => {
@@ -694,11 +690,9 @@ export default function ProductDetailPage() {
         </div>
       </header>
 
-      {/* ─────────────────────────────────────────────────────────────
-          2. PRODUCT HERO: GALLERY & DETAILS
-      ───────────────────────────────────────────────────────────── */}
+
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
-        {/* Breadcrumb */}
+
         <div className="text-xs text-[#7D715E] mb-4 flex items-center gap-1.5 overflow-hidden whitespace-nowrap">
           <Link to="/marketplace" className="hover:text-[#C59B58]">
             Sàn SCANMS
@@ -712,9 +706,9 @@ export default function ProductDetailPage() {
         </div>
 
         <div className="bg-white rounded-3xl border border-[#EAE4D7] shadow-xs overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0 p-6 sm:p-8">
-          {/* CỘT TRÁI: ẢNH SẢN PHẨM & GALLERY (5 Cột) */}
+
           <div className="lg:col-span-5 space-y-4 pr-0 lg:pr-6 border-b lg:border-b-0 lg:border-r border-[#EAE4D7] pb-6 lg:pb-0">
-            {/* Ảnh lớn chính */}
+
             <div className="aspect-square bg-[#F3EFE6] rounded-2xl overflow-hidden border border-[#EAE4D7] relative group">
               <img
                 src={gallery[selectedImageIndex] || SCANMS_PLACEHOLDER}
@@ -739,7 +733,7 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* Gallery Thumbnails */}
+
             {gallery.length > 1 && (
               <div className="flex gap-2.5 overflow-x-auto pb-1 pt-1">
                 {gallery.map((img, idx) => (
@@ -767,7 +761,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* Thông tin chứng thực gian hàng */}
+
             <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-sm">
@@ -791,15 +785,15 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* CỘT PHẢI: THÔNG TIN MUA HÀNG (7 Cột) */}
+
           <div className="lg:col-span-7 pl-0 lg:pl-8 pt-6 lg:pt-0 flex flex-col justify-between">
             <div>
-              {/* Tiêu đề sản phẩm */}
+
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] leading-snug tracking-tight mb-2">
                 {product.title}
               </h1>
 
-              {/* SKU, Category & Review Stars (Mục 11: Không hiển thị 5 sao khi 0 đánh giá) */}
+
               <div className="flex flex-wrap items-center gap-3 text-xs text-[#7D715E] mb-5">
                 <span>
                   SKU:{' '}
@@ -831,7 +825,7 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              {/* KHỐI GIÁ BÁN NIÊM YẾT */}
+
               <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 mb-5">
                 <div className="text-xs text-[#7D715E] mb-1 font-medium">
                   Giá bán niêm yết:
@@ -859,7 +853,7 @@ export default function ProductDetailPage() {
                     )}
                 </div>
 
-                {/* Tồn kho */}
+
                 <div className="mt-3 pt-3 border-t border-[#EAE4D7] flex items-center justify-between text-xs">
                   <span className="text-[#7D715E]">Trạng thái kho hàng:</span>
                   {availability.inStock ? (
@@ -875,12 +869,12 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* KHỐI MÔ TẢ NGẮN */}
+
               <p className="text-sm text-[#7D715E] leading-relaxed mb-6">
                 {product.description}
               </p>
 
-              {/* CHỌN SỐ LƯỢNG */}
+
               <div className="flex items-center gap-4 mb-6">
                 <span className="text-xs font-semibold text-[#7D715E]">
                   Số lượng:
@@ -918,7 +912,7 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              {/* NHẬP MÃ GIẢM GIÁ (COUPON FR-12) */}
+
               <div className="mb-6">
                 <form onSubmit={handleApplyCoupon} className="flex gap-2">
                   <div className="relative flex-1">
@@ -973,7 +967,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* KHỐI NÚT CTA MUA HÀNG (FR-16 GUEST CHECKOUT) */}
+
             <div>
               <div className="mb-4 flex items-center justify-between text-xs text-[#7D715E]">
                 <span>Tổng thanh toán dự kiến:</span>
@@ -982,7 +976,7 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              {/* Thông báo sản phẩm tạm ngừng kinh doanh (Mục 6 FR-15) */}
+
               {(!product.isActive || product.status === 'INACTIVE') && (
                 <div className="mb-3 p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl flex items-center gap-2 text-xs text-[#B88E4F] font-bold">
                   <AlertCircle className="w-4 h-4 text-[#B88E4F] shrink-0" />
@@ -1009,7 +1003,7 @@ export default function ProductDetailPage() {
                 </span>
               </button>
 
-              {/* Cam kết dịch vụ Shop thật */}
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5 pt-5 border-t border-[#EAE4D7] text-center text-[11px] text-[#7D715E]">
                 <div
                   className="flex flex-col items-center gap-1"
@@ -1044,9 +1038,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────
-            3. VIDEO REVIEW REEL (FR-15 FEATURED VIDEO PLAYER)
-        ───────────────────────────────────────────────────────────── */}
+
         <section className="mt-12 bg-[#F3EFE6] rounded-3xl border border-[#EEDFC6] p-6 sm:p-10 relative overflow-hidden shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
@@ -1062,7 +1054,7 @@ export default function ProductDetailPage() {
               </p>
             </div>
 
-            {/* Đổi video nếu có nhiều video */}
+
             {videos && videos.length > 1 && (
               <div className="flex flex-wrap gap-2">
                 {videos.map((vid, vIdx) => (
@@ -1091,7 +1083,7 @@ export default function ProductDetailPage() {
 
           {activeVideo ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-              {/* TRÌNH PHÁT VIDEO HIỆN ĐẠI (7 Cột) */}
+
               <div className="lg:col-span-7 bg-[#1A1612] rounded-2xl overflow-hidden aspect-video relative group shadow-lg border border-[#EAE4D7]">
                 <video
                   ref={videoRef}
@@ -1108,7 +1100,7 @@ export default function ProductDetailPage() {
                   className="w-full h-full object-contain"
                 />
 
-                {/* Phụ đề Caption nổi */}
+
                 {activeVideo.caption && showCaptions && (
                   <div className="absolute bottom-16 left-4 right-4 text-center pointer-events-none z-10">
                     <span className="bg-[#1A1612]/85 text-[#FAF8F5] text-xs px-3.5 py-1.5 rounded-xl backdrop-blur-xs font-medium inline-block shadow-md border border-[#C59B58]/30">
@@ -1117,7 +1109,7 @@ export default function ProductDetailPage() {
                   </div>
                 )}
 
-                {/* Overlay điều khiển video */}
+
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-4 z-20">
                   <div className="flex items-center justify-between text-white text-xs font-semibold">
                     <span className="bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-md line-clamp-1 max-w-[70%]">
@@ -1196,7 +1188,7 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
 
-                {/* Nút Play to chính giữa khi đang pause */}
+
                 {!isPlaying && (
                   <button
                     onClick={togglePlay}
@@ -1207,7 +1199,7 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              {/* THÔNG TIN NHÀ SÁNG TẠO / MINH BẠCH QUẢNG CÁO (5 Cột) */}
+
               <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-[#EEDFC6] shadow-xs space-y-4">
                 <div className="flex items-center gap-3">
                   {activeVideo.kol.avatarUrl ? (
@@ -1262,7 +1254,7 @@ export default function ProductDetailPage() {
                     className="w-full p-3 bg-gradient-to-r from-[#FAF8F5] via-[#FBF5EB] to-[#F3EFE6] hover:from-[#F3EFE6] hover:to-[#EEDFC6] border border-[#DEBE85] hover:border-[#B88E4F] rounded-2xl flex items-center justify-between gap-3 transition-all duration-200 shadow-xs hover:shadow-md hover:shadow-[#C59B58]/15 group cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {/* Khung icon vàng be sang trọng */}
+
                       <div className="w-9 h-9 rounded-xl bg-white border border-[#DEBE85] flex items-center justify-center text-[#B88E4F] shadow-xs shrink-0 group-hover:scale-105 group-hover:bg-[#FAF8F5] group-hover:border-[#B88E4F] transition-all">
                         <ShoppingBag className="w-4.5 h-4.5 text-[#B88E4F]" />
                       </div>
@@ -1276,7 +1268,7 @@ export default function ProductDetailPage() {
                       </div>
                     </div>
 
-                    {/* Khung mũi tên chuyển tiếp */}
+
                     <div className="w-8 h-8 rounded-xl bg-white border border-[#EEDFC6] flex items-center justify-center text-[#8C6320] shadow-2xs group-hover:border-[#C59B58] group-hover:bg-[#FBF5EB] transition-all shrink-0">
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                     </div>
@@ -1297,9 +1289,7 @@ export default function ProductDetailPage() {
           )}
         </section>
 
-        {/* ─────────────────────────────────────────────────────────────
-            4. VERIFIED CUSTOMER FEEDBACK & REVIEWS (Mục 10 & 11)
-        ───────────────────────────────────────────────────────────── */}
+
         <section className="mt-12 bg-white rounded-3xl border border-[#EAE4D7] p-6 sm:p-10 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#EAE4D7]">
             <div>
@@ -1346,7 +1336,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* Danh sách review */}
+
           <div className="space-y-4">
             {reviews.items && reviews.items.length > 0 ? (
               reviews.items.map((rev) => (
@@ -1447,9 +1437,7 @@ export default function ProductDetailPage() {
         </aside>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────
-          5. MOBILE STICKY BOTTOM ACTION BAR
-      ───────────────────────────────────────────────────────────── */}
+
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#EAE4D7] p-3 px-4 z-20 flex items-center justify-between shadow-lg">
         <div>
           <div className="text-[10px] text-[#7D715E]">Giá thanh toán:</div>
@@ -1475,9 +1463,7 @@ export default function ProductDetailPage() {
         </button>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          6. MODAL GUEST CHECKOUT THẬT (FR-16 GUEST CHECKOUT QUA POST /orders)
-      ───────────────────────────────────────────────────────────── */}
+
       {isCheckoutOpen && product && store && (
         <GuestCheckoutModal
           isOpen={isCheckoutOpen}

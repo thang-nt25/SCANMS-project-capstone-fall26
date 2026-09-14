@@ -27,6 +27,7 @@ import {
   type CouponScope,
   type ApproveCouponPayload,
 } from '../../services/coupon.service';
+import { toast } from '../../utils/toast';
 import api from '../../services/api';
 
 interface CustomSandSelectOption<T extends string> {
@@ -142,7 +143,7 @@ export const ShopCouponsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'PENDING' | 'ACTIVE' | 'HISTORY'>('PENDING');
 
-  // Approve & Policy Modal State
+
   const [selectedCouponToApprove, setSelectedCouponToApprove] = useState<CouponItem | null>(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [approveForm, setApproveForm] = useState<ApproveCouponPayload>({
@@ -162,12 +163,12 @@ export const ShopCouponsPage: React.FC = () => {
   const [isSubmittingApprove, setIsSubmittingApprove] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
 
-  // Reject Modal State
+
   const [selectedCouponToReject, setSelectedCouponToReject] = useState<CouponItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
 
-  // Block Modal State
+
   const [selectedCouponToBlock, setSelectedCouponToBlock] = useState<CouponItem | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
@@ -242,8 +243,10 @@ export const ShopCouponsPage: React.FC = () => {
     };
   }, [hasOpenModal]);
 
+  const initStoreRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   useEffect(() => {
-    initStore();
+    initStoreRef.current();
   }, [targetStoreId]);
 
   const initStore = async () => {
@@ -272,8 +275,8 @@ export const ShopCouponsPage: React.FC = () => {
         }
       }
 
-      // Chỉ hiển thị gian hàng mà backend xác nhận tài khoản hiện tại sở hữu.
-      // Không ghép danh sách demo/hard-code vì sẽ cho phép chọn nhầm Shop khác.
+
+
       setStoresList(availableStores);
 
       let foundStore: any = null;
@@ -283,7 +286,7 @@ export const ShopCouponsPage: React.FC = () => {
         );
       }
       if (!foundStore) {
-        // Chỉ dùng lựa chọn đã lưu nếu Shop hiện tại thực sự có quyền truy cập.
+
         const savedStoreId = localStorage.getItem('current_store_id');
         foundStore =
           (savedStoreId && availableStores.find((s) => s.id === savedStoreId)) ||
@@ -306,6 +309,7 @@ export const ShopCouponsPage: React.FC = () => {
       setLoading(false);
     }
   };
+  initStoreRef.current = initStore;
 
   const handleStoreChange = (newStoreId: string) => {
     const selected = storesList.find((s) => s.id === newStoreId);
@@ -402,9 +406,10 @@ export const ShopCouponsPage: React.FC = () => {
       );
       setSelectedCouponToReject(null);
       setRejectReason('');
+      toast.success('Đã từ chối mã giảm giá');
       await fetchStoreCoupons(storeId);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể từ chối coupon');
+      toast.error(err.response?.data?.message || 'Không thể từ chối coupon');
     } finally {
       setIsSubmittingReject(false);
     }
@@ -423,15 +428,16 @@ export const ShopCouponsPage: React.FC = () => {
       );
       setSelectedCouponToBlock(null);
       setBlockReason('');
+      toast.success('Đã khóa mã giảm giá');
       await fetchStoreCoupons(storeId);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể khóa coupon');
+      toast.error(err.response?.data?.message || 'Không thể khóa coupon');
     } finally {
       setIsSubmittingBlock(false);
     }
   };
 
-  // Defensive filter lists
+
   const safeCoupons = Array.isArray(coupons) ? coupons : [];
   const pendingCoupons = safeCoupons.filter(
     (c) => c && c.status === 'PENDING_APPROVAL',
@@ -470,7 +476,7 @@ export const ShopCouponsPage: React.FC = () => {
   return (
     <div className="min-h-screen h-full overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
       <div className="max-w-7xl mx-auto mb-8">
-        {/* Header */}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE4D7] pb-6 mb-6">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -501,7 +507,7 @@ export const ShopCouponsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats Row */}
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
@@ -563,7 +569,7 @@ export const ShopCouponsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Navigation Tabs and Search */}
+
         <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2 border-b md:border-b-0 pb-2 md:pb-0">
             <button
@@ -646,7 +652,7 @@ export const ShopCouponsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Coupons Table / Cards */}
+
         {loading ? (
           <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-[#C59B58] mx-auto mb-3" />
@@ -684,7 +690,7 @@ export const ShopCouponsPage: React.FC = () => {
                         key={coupon.id}
                         className="hover:bg-[#FAF8F5] transition-colors"
                       >
-                        {/* Coupon Code */}
+
                         <td className="px-5 py-4">
                           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FBF5EB] via-[#FAF8F5] to-[#F3EFE6] border border-[#EEDFC6] shadow-2xs group hover:border-[#C59B58] transition-all">
                             <div className="w-6 h-6 rounded-lg bg-[#FAF0DC] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-[#C59B58] group-hover:text-white transition-colors">
@@ -696,7 +702,7 @@ export const ShopCouponsPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* KOL Info */}
+
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className="relative shrink-0">
@@ -726,7 +732,7 @@ export const ShopCouponsPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Policy */}
+
                         <td className="px-5 py-4">
                           {coupon.status === 'PENDING_APPROVAL' ? (
                             <div className="inline-flex items-center gap-2 text-amber-700 italic">
@@ -766,7 +772,7 @@ export const ShopCouponsPage: React.FC = () => {
                           )}
                         </td>
 
-                        {/* Usage & Budget */}
+
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2.5">
                             <div className="w-6 h-6 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] flex items-center justify-center shrink-0">
@@ -796,7 +802,7 @@ export const ShopCouponsPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Dates */}
+
                         <td className="px-5 py-4 text-[#7D715E]">
                           <div className="inline-flex items-center gap-2">
                             <div className="w-5 h-5 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center shrink-0">
@@ -814,7 +820,7 @@ export const ShopCouponsPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Status */}
+
                         <td className="px-5 py-4">
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border shadow-2xs ${
@@ -853,7 +859,7 @@ export const ShopCouponsPage: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* Actions */}
+
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {coupon.status === 'PENDING_APPROVAL' && (
@@ -917,7 +923,7 @@ export const ShopCouponsPage: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL: PHÊ DUYỆT & CẤU HÌNH ƯU ĐÃI (SECTION 6, 7, 13, 14, 15, 16) */}
+
       {isApproveModalOpen && selectedCouponToApprove && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white w-full max-w-xl rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
@@ -956,7 +962,7 @@ export const ShopCouponsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Financial responsibility warning (Section 16) */}
+
               <div className="p-3.5 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl flex items-start gap-3 text-xs text-[#7D715E]">
                 <div className="w-8 h-8 rounded-xl bg-[#FAF0DC] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] shadow-2xs">
                   <Coins className="w-4 h-4" />
@@ -973,7 +979,7 @@ export const ShopCouponsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Discount Type & Value */}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
@@ -1022,7 +1028,7 @@ export const ShopCouponsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Limits: Max discount & Min order */}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {approveForm.discountType === 'PERCENTAGE' && (
                   <div>
@@ -1067,7 +1073,7 @@ export const ShopCouponsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quotas & Budget */}
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
@@ -1128,7 +1134,7 @@ export const ShopCouponsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Scope */}
+
               <div>
                 <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
                   Phạm vi áp dụng
@@ -1149,7 +1155,7 @@ export const ShopCouponsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Stackable Checkboxes (Section 26) */}
+
               <div className="p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl space-y-2 text-xs">
                 <p className="font-semibold text-[#1A1612]">
                   Cộng dồn khuyến mãi (Section 26):
@@ -1184,7 +1190,7 @@ export const ShopCouponsPage: React.FC = () => {
                 </label>
               </div>
 
-              {/* Submit CTA */}
+
               <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
                 <button
                   type="button"
@@ -1213,7 +1219,7 @@ export const ShopCouponsPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: TỪ CHỐI YÊU CẦU (SECTION 4.2) */}
+
       {selectedCouponToReject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white w-full max-w-md rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden p-6 my-auto animate-in fade-in zoom-in-95 duration-200">
@@ -1261,7 +1267,7 @@ export const ShopCouponsPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: KHÓA MÃ COUPON (SECTION 4.2 & 18) */}
+
       {selectedCouponToBlock && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white w-full max-w-md rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden p-6 my-auto animate-in fade-in zoom-in-95 duration-200">

@@ -6,8 +6,8 @@ export default function RedirectHandlerPage() {
 
   useEffect(() => {
     if (shortCode) {
-      // Chuyển hướng trực tiếp cấp trình duyệt tới Backend để nhận header Set-Cookie HttpOnly và HTTP 302
-      // Chuẩn hóa backend URL loại bỏ hậu tố /api nếu có để luôn trúng endpoint gốc /r/:shortCode
+
+
       const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const backendBaseUrl = rawApiUrl.replace(/\/api\/?$/, '');
       const search = window.location.search || '';

@@ -44,7 +44,7 @@ export const mediaService = {
     return res.data;
   },
 
-  // FR-15 / FR-08: KOL nộp video review sản phẩm cho gian hàng duyệt
+
   async submitKolVideo(data: {
     productId: string;
     title: string;

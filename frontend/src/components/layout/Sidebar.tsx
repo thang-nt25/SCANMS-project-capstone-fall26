@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogIn, LogOut, RefreshCw } from 'lucide-react';
+import { LogIn, LogOut, RefreshCw, Store, ExternalLink } from 'lucide-react';
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
 import type { UserProfile } from '../../services/auth.service';
 
@@ -24,28 +24,41 @@ export function Sidebar({ currentUser, onOpenRoleSwitcher, onLogout }: SidebarPr
   };
 
   return (
-    <aside className="w-64 min-w-[256px] h-screen sticky top-0 flex flex-col bg-[#F3EFE6] border-r border-[#EAE4D7] z-20 text-left select-none">
-      {/* Brand Logo Header */}
-      <div className="p-5 pb-4 flex items-center gap-3 border-b border-[#EAE4D7]/80">
-        <span className="w-10 h-10 rounded-xl bg-[#C59B58] text-white font-extrabold text-xl flex items-center justify-center shadow-xs">
-          S
-        </span>
-        <div className="flex flex-col">
-          <strong className="text-base font-extrabold text-[#1A1612] leading-tight tracking-wide">
-            SCANMS
-          </strong>
-          <small className="text-[11px] font-bold text-[#7D715E] leading-none mt-1">
-            {navConfig.subTitle}
-          </small>
+    <aside className="w-64 min-w-[256px] h-full shrink-0 flex flex-col bg-[#F3EFE6] border-r border-[#EAE4D7] z-30 text-left select-none overflow-hidden">
+
+      <div className="p-4 pb-3 border-b border-[#EAE4D7]/80 flex flex-col gap-2.5">
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white font-black text-lg flex items-center justify-center shadow-xs">
+            S
+          </span>
+          <div className="flex flex-col">
+            <strong className="text-base font-extrabold text-[#1A1612] leading-tight tracking-wide">
+              SCANMS
+            </strong>
+            <small className="text-[11px] font-bold text-[#7D715E] leading-none mt-1">
+              {navConfig.subTitle}
+            </small>
+          </div>
         </div>
+
+        <Link
+          to="/marketplace"
+          className="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-[#8A662C] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition shadow-2xs group"
+          title="Mở Sàn Tiếp Thị Đa Gian Hàng Công Khai"
+        >
+          <span className="flex items-center gap-2">
+            <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
+            <span>Sàn Mua Sắm Chính</span>
+          </span>
+          <ExternalLink className="w-3 h-3 text-[#A49B8B] group-hover:text-[#B88E4F] transition" />
+        </Link>
       </div>
 
-      {/* Role Navigation Group Label */}
-      <div className="px-4 pt-4 pb-2 text-[10.5px] font-bold text-[#8C7D6B] uppercase tracking-wider">
+      <div className="px-4 pt-3 pb-1 text-[10.5px] font-bold text-[#8C7D6B] uppercase tracking-wider">
         {navConfig.title}
       </div>
 
-      {/* Navigation Links */}
+
       <nav className="flex-1 px-3 py-1 flex flex-col gap-1 overflow-y-auto" aria-label="Menu chức năng">
         {navConfig.items.map((item) => {
           const active = isLinkActive(item.path);
@@ -80,7 +93,6 @@ export function Sidebar({ currentUser, onOpenRoleSwitcher, onLogout }: SidebarPr
         })}
       </nav>
 
-      {/* Bottom Account & Actions */}
       <div className="p-3 border-t border-[#EAE4D7] flex flex-col gap-1.5 bg-[#EAE4D7]/30">
         <button
           type="button"

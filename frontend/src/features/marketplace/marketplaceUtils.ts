@@ -10,7 +10,7 @@ export function normalizeSearch(value: string): string {
 
 export function calculateCart(lines: CartLine[], products: Product[], creator: Creator) {
   const subtotal = lines.reduce((sum, line) => sum + (products.find(p => p.id === line.productId)?.price ?? 0) * line.quantity, 0);
-  // Demo eligibility follows product-to-coupon associations, not a global discount.
+
   const eligibleSubtotal = lines.reduce((sum, line) => {
     const product = products.find(p => p.id === line.productId);
     return sum + (product?.kol?.coupon === creator.coupon ? (product.price ?? 0) * line.quantity : 0);

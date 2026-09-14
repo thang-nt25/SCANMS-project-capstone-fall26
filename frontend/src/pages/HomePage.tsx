@@ -37,7 +37,6 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  // 7 days daily data matching Figma prototype
   const dailyData = [
     { date: '2026-09-02', label: 'T2', clicks: 1200, orders: 14, revenue: 6426000, commission: 706860 },
     { date: '2026-09-03', label: 'T3', clicks: 1100, orders: 12, revenue: 5508000, commission: 605880 },
@@ -50,7 +49,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-6 text-left">
-      {/* 1. HEADER */}
+
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">
@@ -71,11 +70,10 @@ export default function HomePage() {
         </Button>
       </header>
 
-      {/* 2. FILTER ROW (4-field bar with mini-labels on top) */}
       <Card className="p-4 bg-white border border-[#EAE4D7]">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-wrap items-end gap-3.5">
-            {/* Field 1: Period */}
+
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold text-[#7D715E] flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -95,7 +93,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Field 2: Start Date */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold text-[#7D715E] flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-[#A49B8B]" />
@@ -109,7 +106,6 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Field 3: End Date */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold text-[#7D715E] flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-[#A49B8B]" />
@@ -123,7 +119,6 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Filter Action Buttons */}
             <div className="flex items-center gap-2">
               <Button variant="gold" size="sm" icon={<Filter className="w-3.5 h-3.5" />}>
                 Áp dụng
@@ -134,7 +129,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Field 4: UX State Simulator */}
           <div className="flex flex-col gap-1.5 ml-auto">
             <label className="text-[11px] font-bold text-[#7D715E] flex items-center gap-1">
               🧪 Xem trạng thái UX
@@ -155,7 +149,6 @@ export default function HomePage() {
         </div>
       </Card>
 
-      {/* 3. HERO WALLET BALANCE CARD (Warm Cream with Concentric Ripples) */}
       <div className="relative overflow-hidden rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612] p-6 sm:p-7 shadow-2xs">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div className="flex flex-col gap-1">
@@ -176,22 +169,20 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => navigate('/collaborator/kyc')}
-            className="px-5 py-2.5 bg-[#231D15] hover:bg-[#382E21] text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shadow-xs shrink-0 flex items-center justify-center gap-2"
+            className="px-5 py-2.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shadow-xs shrink-0 flex items-center justify-center gap-2"
           >
             <span>Yêu cầu rút tiền</span>
-            <ArrowUpRight className="w-4 h-4 text-[#B88E4F]" />
+            <ArrowUpRight className="w-4 h-4 text-white" />
           </button>
         </div>
 
-        {/* Decorative Concentric Gold Ripple Rings matching Figma */}
         <div className="absolute -right-12 -top-12 w-72 h-72 rounded-full border-24 border-[#EEDFC6]/40 pointer-events-none" />
         <div className="absolute right-4 top-2 w-52 h-52 rounded-full border-16 border-[#EEDFC6]/50 pointer-events-none" />
         <div className="absolute right-14 top-10 w-32 h-32 rounded-full border-12 border-[#C59B58]/20 pointer-events-none" />
       </div>
 
-      {/* 4. 4 KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* KPI 1: Traffic */}
+
         <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
           <div className="flex justify-between items-center">
             <div className="w-8 h-8 rounded-xl bg-[#EBF3FE] text-[#2563EB] flex items-center justify-center">
@@ -211,11 +202,10 @@ export default function HomePage() {
             <div className="h-1.5 w-full bg-[#F3EFE6] rounded-full overflow-hidden">
               <div className="h-full bg-[#2563EB] rounded-full" style={{ width: '82%' }} />
             </div>
-            <span className="text-[11px] text-[#A49B8B]">82% chỉ tiêu chu kỳ • +1.310 lượt</span>
+            <span className="text-[11px] text-[#7D715E]">82% chỉ tiêu chu kỳ • +1.310 lượt</span>
           </div>
         </Card>
 
-        {/* KPI 2: Orders */}
         <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
           <div className="flex justify-between items-center">
             <div className="w-8 h-8 rounded-xl bg-[#FEF5E7] text-[#D97706] flex items-center justify-center">
@@ -235,11 +225,10 @@ export default function HomePage() {
             <div className="h-1.5 w-full bg-[#F3EFE6] rounded-full overflow-hidden">
               <div className="h-full bg-[#D97706] rounded-full" style={{ width: '76%' }} />
             </div>
-            <span className="text-[11px] text-[#A49B8B]">Tỷ lệ hủy hoàn chỉ 0.9% • Đã giao 88</span>
+            <span className="text-[11px] text-[#7D715E]">Tỷ lệ hủy hoàn chỉ 0.9% • Đã giao 88</span>
           </div>
         </Card>
 
-        {/* KPI 3: CR */}
         <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
           <div className="flex justify-between items-center">
             <div className="w-8 h-8 rounded-xl bg-[#F3EBFD] text-[#7C3AED] flex items-center justify-center">
@@ -259,11 +248,10 @@ export default function HomePage() {
             <div className="h-1.5 w-full bg-[#F3EFE6] rounded-full overflow-hidden">
               <div className="h-full bg-[#7C3AED] rounded-full" style={{ width: '70%' }} />
             </div>
-            <span className="text-[11px] text-[#A49B8B]">Mức trung bình ngành mỹ phẩm: 1.05%</span>
+            <span className="text-[11px] text-[#7D715E]">Mức trung bình ngành mỹ phẩm: 1.05%</span>
           </div>
         </Card>
 
-        {/* KPI 4: GMV */}
         <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
           <div className="flex justify-between items-center">
             <div className="w-8 h-8 rounded-xl bg-[#EAF8F1] text-[#059669] flex items-center justify-center">
@@ -290,9 +278,8 @@ export default function HomePage() {
         </Card>
       </div>
 
-      {/* 5. CHART & RECENT COMMISSIONS SPLIT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* CHART SECTION (8 cols) */}
+
         <Card className="lg:col-span-8 p-5 sm:p-6 flex flex-col gap-5 bg-white">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -321,7 +308,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* 4 Summary Tiles */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7]">
               <span className="text-[11px] text-[#7D715E] block">Tổng chu kỳ</span>
@@ -341,7 +327,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* BAR CHART COLUMNS */}
           <div className="flex items-end justify-between h-48 pt-4 pb-2 border-b border-[#EAE4D7] gap-2">
             {dailyData.map((d) => {
               const heightPct = Math.round((d.clicks / 1500) * 100);
@@ -352,7 +337,7 @@ export default function HomePage() {
                   onClick={() => setSelectedDay(d.date)}
                   className="flex flex-col items-center gap-1.5 flex-1 cursor-pointer group"
                 >
-                  {/* Peak Crown Badge for Sunday (CN) */}
+
                   {d.isPeak && (
                     <span className="px-1.5 py-0.5 rounded-full bg-[#B88E4F] text-white text-[9px] font-extrabold flex items-center gap-0.5 shadow-2xs">
                       👑 Đỉnh
@@ -388,7 +373,6 @@ export default function HomePage() {
           </p>
         </Card>
 
-        {/* RECENT COMMISSIONS SECTION (4 cols) */}
         <Card className="lg:col-span-4 p-5 sm:p-6 flex flex-col justify-between gap-5 bg-white">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-[#1A1612] m-0">Hoa hồng gần đây</h3>
@@ -427,7 +411,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* TIER REWARD BADGE */}
           <div className="p-3.5 bg-[#FBF5EB] rounded-xl border border-[#EEDFC6] flex flex-col gap-1.5 mt-auto">
             <div className="flex items-center gap-2">
               <Crown className="w-4 h-4 text-[#B88E4F] shrink-0" />

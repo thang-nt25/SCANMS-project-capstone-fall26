@@ -114,7 +114,7 @@ export default function KolCampaignsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6" id="kol-campaigns-page">
-      {/* Toast Notification */}
+
       {toast && (
         <div
           className={`fixed bottom-6 right-6 px-4 py-3 rounded-2xl text-xs font-bold shadow-2xl z-50 border flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200 ${
@@ -133,7 +133,7 @@ export default function KolCampaignsPage() {
         </div>
       )}
 
-      {/* Page Header */}
+
       <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 space-y-2 max-w-2xl">
@@ -150,7 +150,7 @@ export default function KolCampaignsPage() {
         </div>
       </div>
 
-      {/* Stats Counter Bar */}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border border-amber-200/80 rounded-2xl p-5 shadow-xs flex items-center justify-between">
           <div>
@@ -195,7 +195,7 @@ export default function KolCampaignsPage() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
+
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab('ALL')}
@@ -239,7 +239,7 @@ export default function KolCampaignsPage() {
         </button>
       </div>
 
-      {/* Main Content Area */}
+
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-3 py-24 text-stone-500">
           <div className="w-9 h-9 border-3 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
@@ -272,7 +272,7 @@ export default function KolCampaignsPage() {
                 id={`invitation-${inv.id}`}
                 className="bg-white border-2 border-stone-200 hover:border-amber-300 rounded-3xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative"
               >
-                {/* Header card */}
+
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
@@ -306,7 +306,7 @@ export default function KolCampaignsPage() {
                     </span>
                   </div>
 
-                  {/* Campaign Title & Bonus Rate Box */}
+
                   <div className="space-y-2">
                     <h3 className="text-base font-black text-stone-900 leading-snug">
                       🎯 {campaign?.name}
@@ -330,7 +330,7 @@ export default function KolCampaignsPage() {
                     </div>
                   </div>
 
-                  {/* Date Timeline */}
+
                   <div className="flex items-center gap-2 text-xs text-stone-600 bg-stone-50 p-3 rounded-xl border border-stone-200">
                     <Calendar className="w-4 h-4 text-stone-400 flex-shrink-0" />
                     <span>
@@ -343,7 +343,7 @@ export default function KolCampaignsPage() {
                   </div>
                 </div>
 
-                {/* Footer Action Buttons */}
+
                 <div className="pt-3 border-t border-stone-100 flex items-center gap-2">
                   {isPending ? (
                     <>

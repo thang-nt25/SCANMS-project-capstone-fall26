@@ -42,12 +42,13 @@ import {
   ShieldCheck,
   Video,
 } from 'lucide-react';
-import { referralLinksService } from '../../services/referralLinksService';
+import { referralLinksService } from '../../services/referral-links.service';
 import type {
   ReferralLinkItem,
   EligibleProduct,
-} from '../../services/referralLinksService';
+} from '../../services/referral-links.service';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
+import { toast } from '../../utils/toast';
 
 import QRCode from 'qrcode';
 
@@ -112,14 +113,14 @@ export default function ReferralLinksPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Bộ lọc và tìm kiếm
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
   const [page, setPage] = useState(1);
   const limit = 15;
 
-  // Modals
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -141,7 +142,7 @@ export default function ReferralLinksPage() {
   const [isSubmitVideoModalOpen, setIsSubmitVideoModalOpen] = useState(false);
   const [selectedProductForVideo, setSelectedProductForVideo] = useState<{ id: string; title: string } | null>(null);
 
-  // State tạo link mới
+
   const [eligibleProducts, setEligibleProducts] = useState<EligibleProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [loadProductsError, setLoadProductsError] = useState<string | null>(null);
@@ -199,14 +200,14 @@ export default function ReferralLinksPage() {
   const [isDownloadingSuccessQr, setIsDownloadingSuccessQr] = useState<boolean>(false);
   const [successQrDownloadError, setSuccessQrDownloadError] = useState<string | null>(null);
 
-  // Focus trap ref cho modal QR
+
   const qrModalRef = useRef<HTMLDivElement>(null);
   const qrCloseBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!isQrModalOpen) return;
 
-    // Tự động focus vào nút đóng khi modal mở (Item 8)
+
     const timer = setTimeout(() => {
       qrCloseBtnRef.current?.focus();
     }, 50);
@@ -217,7 +218,7 @@ export default function ReferralLinksPage() {
         return;
       }
 
-      // Focus trap (Item 8)
+
       if (e.key === 'Tab' && qrModalRef.current) {
         const focusableElements = qrModalRef.current.querySelectorAll<HTMLElement>(
           'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -249,7 +250,7 @@ export default function ReferralLinksPage() {
     };
   }, [isQrModalOpen]);
 
-  // Tải QR chính thức qua Backend (không fallback client để đảm bảo bảo mật và audit log - Item 6)
+
   const handleDownloadQr = async (format: 'png' | 'svg') => {
     if (!selectedLinkForQr) return;
     try {
@@ -261,7 +262,7 @@ export default function ReferralLinksPage() {
         format,
         qrPngSize,
       );
-      // Tăng số lượt tải hiển thị cục bộ (Item 4)
+
       setSelectedLinkForQr((prev) =>
         prev ? { ...prev, qrDownloadCount: (prev.qrDownloadCount || 0) + 1 } : null
       );
@@ -285,7 +286,7 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Tải bản QR chuẩn 1024x1024 sau khi vừa tạo link thành công (Item 2)
+
   const handleDownloadSuccessQr = async (linkItem: ReferralLinkItem) => {
     try {
       setIsDownloadingSuccessQr(true);
@@ -316,10 +317,10 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Chỉ mở toàn màn hình (ẩn shell) cho Modal Tạo Link, Modal QR và Modal Thống Kê
+
   const hasOpenModal = isCreateModalOpen || isQrModalOpen || isAnalyticsModalOpen;
 
-  // Mở modal thống kê tracking chi tiết (FR-13)
+
   const handleOpenAnalytics = async (link: ReferralLinkItem) => {
     setSelectedLinkForAnalytics(link);
     setIsAnalyticsModalOpen(true);
@@ -341,7 +342,7 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Trình kiểm thử trực tiếp FR-14 Chống Spam Click Redis Rate Limit
+
   const handleRunSpamTest = async (shortCode: string, linkId: string) => {
     setIsSpamTesting(true);
     setSpamTestResult(null);
@@ -352,7 +353,7 @@ export default function ReferralLinksPage() {
           fetch(targetUrl, { redirect: 'manual' }).catch(() => null),
         ),
       );
-      // Đợi hàng đợi ClickQueue xử lý đồng bộ
+
       await new Promise((r) => setTimeout(r, 1000));
 
       const res = await api.get(`/collaborator/referral-links/${linkId}/analytics`);
@@ -375,7 +376,7 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Danh sách các Cửa hàng khả dụng từ danh mục sản phẩm
+
   const availableShops = useMemo(() => {
     const shopMap = new Map<string, { id: string; name: string }>();
     eligibleProducts.forEach((p) => {
@@ -386,7 +387,7 @@ export default function ReferralLinksPage() {
     return Array.from(shopMap.values());
   }, [eligibleProducts]);
 
-  // Danh sách các Ngành hàng khả dụng
+
   const availableCategories = useMemo(() => {
     const cats = new Set<string>();
     eligibleProducts.forEach((p) => {
@@ -397,7 +398,7 @@ export default function ReferralLinksPage() {
     return Array.from(cats);
   }, [eligibleProducts]);
 
-  // Danh sách sản phẩm sau lọc và tìm kiếm real-time
+
   const filteredEligibleProducts = useMemo(() => {
     return eligibleProducts.filter((p) => {
       if (modalShopFilter !== 'ALL' && p.store?.id !== modalShopFilter) {
@@ -420,7 +421,7 @@ export default function ReferralLinksPage() {
     });
   }, [eligibleProducts, modalShopFilter, modalCategoryFilter, modalProductSearch]);
 
-  // Đếm số link KOL đã tạo cho sản phẩm này (tối đa 20 link/sản phẩm theo backend)
+
   const productLinksCount = useMemo(() => {
     if (!selectedProduct) return 0;
     return links.filter(
@@ -428,10 +429,10 @@ export default function ReferralLinksPage() {
     ).length;
   }, [selectedProduct, links]);
 
-  // Hạn mức còn lại
+
   const productRemainingQuota = Math.max(0, 20 - productLinksCount);
 
-  // Danh sách chiến dịch hợp lệ của Shop cho sản phẩm đang chọn
+
   const eligibleCampaignsForProduct = useMemo(() => {
     if (!selectedProduct) return [];
     return availableCampaigns.filter((item: any) => {
@@ -445,7 +446,7 @@ export default function ReferralLinksPage() {
     });
   }, [selectedProduct, availableCampaigns]);
 
-  // Chiến dịch hiện đang được chọn
+
   const activeSelectedCampaign = useMemo(() => {
     if (!selectedCampaignId) return null;
     const found = eligibleCampaignsForProduct.find(
@@ -454,7 +455,7 @@ export default function ReferralLinksPage() {
     return found?.campaign || null;
   }, [selectedCampaignId, eligibleCampaignsForProduct]);
 
-  // Lỗi validation theo thời gian thực
+
   const formValidationErrors = useMemo(() => {
     const errors: { product?: string; label?: string; coupon?: string } = {};
     if (formTouched.product && !selectedProduct) {
@@ -477,7 +478,7 @@ export default function ReferralLinksPage() {
     return errors;
   }, [formTouched, selectedProduct, formLabel, formCoupon]);
 
-  // Cấu trúc URL xem trước của UTM tham số
+
   const livePreviewUrl = useMemo(() => {
     const base = 'https://scanms.vn/r/ABC12345';
     const params = new URLSearchParams();
@@ -489,14 +490,14 @@ export default function ReferralLinksPage() {
     return query ? `${base}?${query}` : base;
   }, [utmSource, utmMedium, utmCampaign, utmContent]);
 
-  // Kiểm tra xem người dùng có tùy biến UTM ngoài mặc định không
+
   const hasCustomUtm = useMemo(() => {
     const isDefaultSource = utmSource.trim().toLowerCase() === formChannel.toLowerCase();
     const isDefaultMedium = utmMedium.trim().toLowerCase() === 'creator';
     return !isDefaultSource || !isDefaultMedium || !!utmCampaign.trim() || !!utmContent.trim();
   }, [utmSource, utmMedium, utmCampaign, utmContent, formChannel]);
 
-  // Kiểm tra điều kiện vô hiệu hóa nút submit
+
   const isSubmitDisabled = useMemo(() => {
     if (!selectedProduct) return true;
     if (!formLabel.trim()) return true;
@@ -524,8 +525,8 @@ export default function ReferralLinksPage() {
     };
   }, [hasOpenModal]);
 
-  // Tải danh sách link của KOL
-  const fetchLinks = async () => {
+
+  const fetchLinks = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -543,11 +544,11 @@ export default function ReferralLinksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, selectedStatus, selectedChannel, searchQuery]);
 
   useEffect(() => {
     fetchLinks();
-  }, [page, selectedStatus, selectedChannel]);
+  }, [fetchLinks]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -555,7 +556,7 @@ export default function ReferralLinksPage() {
     fetchLinks();
   };
 
-  // Tải danh sách sản phẩm hợp lệ & chiến dịch
+
   const loadEligibleProductsAndCampaigns = async () => {
     setLoadingProducts(true);
     setLoadProductsError(null);
@@ -585,7 +586,7 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Mở modal tạo link & nạp dữ liệu
+
   const handleOpenCreateModal = async () => {
     setIsCreateModalOpen(true);
     setCreatedSuccessLink(null);
@@ -604,7 +605,7 @@ export default function ReferralLinksPage() {
     await loadEligibleProductsAndCampaigns();
   };
 
-  // Chọn sản phẩm tiếp thị
+
   const handleSelectProduct = (prod: EligibleProduct) => {
     setSelectedProduct(prod);
     setIsChangingProduct(false);
@@ -617,7 +618,7 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Chọn chiến dịch áp dụng
+
   const handleSelectCampaign = (campId: string) => {
     setSelectedCampaignId(campId);
     if (!campId) {
@@ -632,7 +633,7 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Submit tạo link mới có bảo vệ chống submit nhiều lần
+
   const handleCreateSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e && e.preventDefault) e.preventDefault();
     console.log('[ReferralLinksPage] handleCreateSubmit called. selectedProduct:', selectedProduct?.id, 'label:', formLabel, 'isSubmitting:', isSubmitting);
@@ -653,7 +654,7 @@ export default function ReferralLinksPage() {
       return;
     }
     if (productRemainingQuota <= 0) {
-      alert('Bạn đã đạt giới hạn tối đa 20 liên kết cho sản phẩm này.');
+      toast.warning('Bạn đã đạt giới hạn tối đa 20 liên kết cho sản phẩm này.');
       return;
     }
 
@@ -676,57 +677,58 @@ export default function ReferralLinksPage() {
 
       console.log('[ReferralLinksPage] createLink success! newLink:', newLink);
       setCreatedSuccessLink(newLink);
+      toast.success('Tạo liên kết tiếp thị thành công!');
       fetchLinks();
     } catch (err: any) {
       console.error('[ReferralLinksPage] createLink failed:', err);
-      alert(err.response?.data?.message || err.message || 'Lỗi khi tạo liên kết tiếp thị');
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi tạo liên kết tiếp thị');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Xử lý sao chép link
   const handleCopyLink = (url: string, code: string) => {
     navigator.clipboard.writeText(url);
     setCopiedCode(code);
+    toast.success('Đã sao chép liên kết vào bộ nhớ tạm!');
     setTimeout(() => {
       setCopiedCode(null);
     }, 2500);
   };
 
-  // Chuyển đổi trạng thái Bật / Tạm ngừng
   const handleToggleStatus = async (link: ReferralLinkItem) => {
     if (link.status === 'BLOCKED') {
-      alert(`Liên kết này đã bị Cửa hàng khóa với lý do: "${link.disabledReason || 'Vi phạm chính sách'}". Bạn không thể tự mở lại.`);
+      toast.error(`Liên kết này đã bị Cửa hàng khóa với lý do: "${link.disabledReason || 'Vi phạm chính sách'}". Bạn không thể tự mở lại.`);
       return;
     }
     try {
       await referralLinksService.toggleStatus(link.id);
+      toast.success(link.status === 'ACTIVE' ? 'Đã tạm dừng liên kết' : 'Đã kích hoạt lại liên kết');
       fetchLinks();
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi thay đổi trạng thái');
+      toast.error(err.message || 'Lỗi khi thay đổi trạng thái');
     }
   };
 
-  // Xác nhận xóa mềm link
   const handleConfirmDelete = async () => {
     if (!selectedLinkForDelete) return;
     try {
       await referralLinksService.deleteLink(selectedLinkForDelete.id);
       setIsDeleteModalOpen(false);
       setSelectedLinkForDelete(null);
+      toast.success('Đã xóa liên kết tiếp thị');
       fetchLinks();
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi xóa liên kết');
+      toast.error(err.message || 'Lỗi khi xóa liên kết');
     }
   };
 
-  // Tính toán số liệu thống kê tổng hợp
+
   const totalClicks = links.reduce((sum, l) => sum + (l.totalClicks || 0), 0);
   const totalUniqueClicks = links.reduce((sum, l) => sum + (l.uniqueClicks || 0), 0);
   const totalOrders = links.reduce((sum, l) => sum + (l.totalOrders || 0), 0);
 
-  // Helper hiển thị tên trạng thái tiếng Việt chuẩn
+
   const renderStatusBadge = (link: ReferralLinkItem) => {
     switch (link.status) {
       case 'ACTIVE':
@@ -787,7 +789,7 @@ export default function ReferralLinksPage() {
     }
   };
 
-  // Helper hiển thị tên kênh tiếng Việt
+
   const getChannelLabel = (channel: string | null) => {
     switch (channel) {
       case 'TIKTOK':
@@ -811,9 +813,9 @@ export default function ReferralLinksPage() {
 
   return (
     <div className="space-y-6 text-[#1A1612] font-sans pb-12">
-      {/* 1. Header Card - Chuẩn tone màu SCANMS Luxury Gold & Sand */}
+
       <div className="bg-white rounded-2xl border border-[#E8DAC4] p-6 sm:p-8 shadow-sm relative overflow-hidden">
-        {/* Glow hạt sáng nhẹ góc */}
+
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#C59B58]/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative z-10">
@@ -858,7 +860,7 @@ export default function ReferralLinksPage() {
           </div>
         </div>
 
-        {/* 2. Thống kê tổng hợp 4 KPI Cards */}
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-[#E8DAC4]/60">
           <div className="bg-[#FAF8F5] border border-[#E8DAC4] hover:border-[#DEBE85] rounded-xl p-4 transition-all hover:shadow-sm">
             <div className="flex items-center justify-between text-[#7D6D55] text-xs font-semibold mb-1">
@@ -908,7 +910,7 @@ export default function ReferralLinksPage() {
         </div>
       </div>
 
-      {/* 3. Bộ lọc và Tìm kiếm */}
+
       <div className="bg-white rounded-2xl border border-[#E8DAC4] p-5 sm:p-6 shadow-sm">
         <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3 sm:gap-4">
           <div className="relative flex-1">
@@ -962,7 +964,7 @@ export default function ReferralLinksPage() {
         </form>
       </div>
 
-      {/* 4. Danh sách Link Table */}
+
       <div className="bg-white rounded-2xl border border-[#E8DAC4] shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-16 text-center text-[#7D6D55]">
@@ -1016,7 +1018,7 @@ export default function ReferralLinksPage() {
                   const isCopied = copiedCode === link.shortCode;
                   return (
                     <tr key={link.id} className="hover:bg-[#FAF8F5]/60 transition-colors">
-                      {/* Cột 1: Sản phẩm & Shop */}
+
                       <td className="py-5 px-5 sm:px-6">
                         <div className="flex items-center gap-3.5 max-w-sm">
                           <img
@@ -1047,7 +1049,7 @@ export default function ReferralLinksPage() {
                         </div>
                       </td>
 
-                      {/* Cột 2: Mã rút gọn & Kênh */}
+
                       <td className="py-5 px-5">
                         <div className="flex flex-col gap-1.5">
                           <div className="flex items-center gap-2">
@@ -1082,12 +1084,12 @@ export default function ReferralLinksPage() {
                         </div>
                       </td>
 
-                      {/* Cột 3: Trạng thái */}
+
                       <td className="py-5 px-5 text-center whitespace-nowrap">
                         {renderStatusBadge(link)}
                       </td>
 
-                      {/* Cột 4: Clicks */}
+
                       <td className="py-5 px-5 text-center whitespace-nowrap">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#FAF8F5] border border-[#E8DAC4] rounded-xl shadow-2xs text-left">
                           <div className="w-6 h-6 rounded-lg bg-white border border-[#E8DAC4]/60 flex items-center justify-center text-[#9E7933] flex-shrink-0">
@@ -1104,7 +1106,7 @@ export default function ReferralLinksPage() {
                         </div>
                       </td>
 
-                      {/* Cột 5: Đơn hàng */}
+
                       <td className="py-5 px-5 text-center whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FDF8EE] border border-[#DEBE85] text-[#9E7933] rounded-xl shadow-2xs font-bold text-xs">
                           <ShoppingBag className="w-3.5 h-3.5 text-[#C59B58] flex-shrink-0" />
@@ -1112,15 +1114,15 @@ export default function ReferralLinksPage() {
                         </div>
                       </td>
 
-                      {/* Cột 6: Ngày tạo */}
+
                       <td className="py-5 px-5 text-xs sm:text-sm text-[#7D6D55] whitespace-nowrap">
                         {new Date(link.createdAt).toLocaleDateString('vi-VN')}
                       </td>
 
-                      {/* Cột 7: Thao tác */}
+
                       <td className="py-5 px-5 sm:px-6 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Mở link thử nghiệm */}
+
                           <a
                             href={`/r/${link.shortCode}`}
                             target="_blank"
@@ -1131,7 +1133,7 @@ export default function ReferralLinksPage() {
                             <ExternalLink className="w-4.5 h-4.5" />
                           </a>
 
-                          {/* Xem QR Code */}
+
                           <button
                             onClick={() => {
                               setSelectedLinkForQr(link);
@@ -1143,7 +1145,7 @@ export default function ReferralLinksPage() {
                             <QrCode className="w-4.5 h-4.5" />
                           </button>
 
-                          {/* Nộp video review cho sản phẩm này (FR-15) */}
+
                           <button
                             onClick={() => {
                               setSelectedProductForVideo({
@@ -1158,7 +1160,7 @@ export default function ReferralLinksPage() {
                             <Video className="w-4.5 h-4.5 text-[#B88E4F]" />
                           </button>
 
-                          {/* Xem Thống kê & Phân tích (FR-13 Tracking Analytics) */}
+
                           <button
                             onClick={() => handleOpenAnalytics(link)}
                             className="p-2 text-[#7D6D55] hover:text-[#C59B58] hover:bg-[#FAF8F5] rounded-xl transition-colors cursor-pointer"
@@ -1167,7 +1169,7 @@ export default function ReferralLinksPage() {
                             <TrendingUp className="w-4.5 h-4.5" />
                           </button>
 
-                          {/* Tạm ngừng / Kích hoạt lại */}
+
                           <button
                             onClick={() => handleToggleStatus(link)}
                             disabled={link.status === 'BLOCKED'}
@@ -1185,7 +1187,7 @@ export default function ReferralLinksPage() {
                             )}
                           </button>
 
-                          {/* Xóa mềm */}
+
                           <button
                             onClick={() => {
                               setSelectedLinkForDelete(link);
@@ -1207,14 +1209,14 @@ export default function ReferralLinksPage() {
         )}
       </div>
 
-      {/* ======================================================== */}
-      {/* ======================================================== */}
-      {/* 5. MODAL TẠO LINK TIẾP THỊ MỚI (THIẾT KẾ THON GỌN & CÂN ĐỐI) */}
-      {/* ======================================================== */}
+
+
+
+
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl border border-[#E8DAC4] w-full max-w-[590px] max-h-[92vh] flex flex-col overflow-hidden">
-            {/* 1. Header modal (Cố định, sang trọng, thanh mảnh) */}
+
             <div className="px-4 sm:px-5 py-2.5 border-b border-[#E8DAC4] flex items-center justify-between bg-gradient-to-r from-white via-[#FAF8F5]/80 to-white flex-shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-[#FAF3E8] border border-[#DEBE85]/50 flex items-center justify-center text-[#9E7933] shadow-2xs flex-shrink-0">
@@ -1238,7 +1240,7 @@ export default function ReferralLinksPage() {
               </button>
             </div>
 
-            {/* Nội dung form hoặc màn hình thành công */}
+
             {createdSuccessLink ? (
               <div className="p-5 sm:p-6 text-center overflow-y-auto custom-scrollbar flex-1">
                 <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2.5 shadow-sm">
@@ -1249,7 +1251,7 @@ export default function ReferralLinksPage() {
                   Đường dẫn rút gọn của bạn đã sẵn sàng hoạt động với thời hạn ghi nhận cookie 30 ngày (Last Click Attribution).
                 </p>
 
-                {/* Khung link rút gọn */}
+
                 <div className="bg-[#FAF8F5] border border-[#E8DAC4] rounded-xl p-3 mb-4 text-left">
                   <div className="text-[10px] font-semibold text-[#7D6D55] uppercase tracking-wider mb-1">
                     Đường dẫn tiếp thị rút gọn:
@@ -1275,7 +1277,7 @@ export default function ReferralLinksPage() {
                   </div>
                 </div>
 
-                {/* Xem trước QR và Tải PNG 1024x1024 chính thức (Item 2 & 7) */}
+
                 <div className="flex flex-col items-center justify-center mb-4">
                   <div className="w-28 h-28 border border-[#E8DAC4] rounded-xl p-1 bg-white shadow-xs flex items-center justify-center mb-1.5">
                     {createdQrLoading ? (
@@ -1351,11 +1353,11 @@ export default function ReferralLinksPage() {
                 onSubmit={handleCreateSubmit}
                 className={`flex flex-col flex-1 min-h-0 overflow-hidden ${isSubmitting ? 'pointer-events-none opacity-90' : ''}`}
               >
-                {/* 2. Scrollable Form Body */}
+
                 <div className="p-4 sm:p-5 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-2.5">
-                  {/* ======================================================== */}
-                  {/* 1. CHỌN SẢN PHẨM TIẾP THỊ                                */}
-                  {/* ======================================================== */}
+
+
+
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-xs font-bold text-[#7D6D55] uppercase tracking-wider flex items-center gap-1.5">
@@ -1379,7 +1381,7 @@ export default function ReferralLinksPage() {
                     </div>
 
                     {selectedProduct && !isChangingProduct ? (
-                      /* Card sản phẩm đã chọn siêu gọn gàng, cân đối */
+
                       <div className="p-2 bg-[#FDF8EE] border border-[#DEBE85] rounded-xl flex items-center justify-between gap-2.5 shadow-2xs animate-fadeIn">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <img
@@ -1417,7 +1419,7 @@ export default function ReferralLinksPage() {
                         </div>
                       </div>
                     ) : (
-                      /* Khi chưa chọn hoặc đang bấm Đổi sản phẩm: hiển thị tìm kiếm & danh sách gọn gàng */
+
                       <div className="space-y-1.5 animate-fadeIn">
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5">
                           <div className="sm:col-span-6 relative">
@@ -1465,7 +1467,7 @@ export default function ReferralLinksPage() {
                           </div>
                         </div>
 
-                        {/* Thông báo lỗi khi tải sản phẩm */}
+
                         {loadProductsError && (
                           <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between gap-2 text-xs text-rose-700 animate-fadeIn">
                             <div className="flex items-center gap-1.5">
@@ -1482,7 +1484,7 @@ export default function ReferralLinksPage() {
                           </div>
                         )}
 
-                        {/* Danh sách cuộn gọn gàng */}
+
                         {loadingProducts ? (
                           <div className="p-3 text-center text-[#7D6D55] bg-[#FAF8F5] rounded-lg border border-[#E8DAC4]">
                             <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1 text-[#C59B58]" />
@@ -1542,9 +1544,9 @@ export default function ReferralLinksPage() {
                     )}
                   </div>
 
-                  {/* ======================================================== */}
-                  {/* 1.5. CHIẾN DỊCH THƯỞNG THÊM (NẾU CÓ - DẠNG CHỌN GỌN)    */}
-                  {/* ======================================================== */}
+
+
+
                   {selectedProduct && eligibleCampaignsForProduct.length > 0 && (
                     <div className="p-2 bg-[#FAF8F5] rounded-xl border border-[#E8DAC4] space-y-1 animate-fadeIn">
                       <div className="flex items-center justify-between text-[11px]">
@@ -1579,9 +1581,9 @@ export default function ReferralLinksPage() {
                     </div>
                   )}
 
-                  {/* ======================================================== */}
-                  {/* 2. KÊNH QUẢNG BÁ & MÃ COUPON (2 CỘT CÂN ĐỐI)              */}
-                  {/* ======================================================== */}
+
+
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block text-xs font-bold text-[#7D6D55] uppercase tracking-wider mb-1">
@@ -1634,9 +1636,9 @@ export default function ReferralLinksPage() {
                     </div>
                   </div>
 
-                  {/* ======================================================== */}
-                  {/* 3. NHÃN GỢI NHỚ (LABEL)                                  */}
-                  {/* ======================================================== */}
+
+
+
                   <div>
                     <label className="block text-xs font-bold text-[#7D6D55] uppercase tracking-wider mb-1">
                       3. Nhãn gợi nhớ (Label) *
@@ -1665,11 +1667,11 @@ export default function ReferralLinksPage() {
                     )}
                   </div>
 
-                  {/* ======================================================== */}
-                  {/* 4. TÙY CHỈNH THAM SỐ UTM NÂNG CAO (SIÊU THON GỌN & ICON) */}
-                  {/* ======================================================== */}
+
+
+
                   <div className="pt-1.5 border-t border-[#E8DAC4]/60">
-                    {/* Header Accordion Compact */}
+
                     <div className="flex items-center justify-between py-0.5">
                       <button
                         type="button"
@@ -1711,10 +1713,10 @@ export default function ReferralLinksPage() {
                       )}
                     </div>
 
-                    {/* Expanded Content */}
+
                     {showAdvancedUtm && (
                       <div className="mt-1 space-y-2 p-2.5 bg-gradient-to-b from-[#FAF8F5] to-white rounded-xl border border-[#E8DAC4] shadow-2xs animate-fadeIn text-xs">
-                        {/* Hướng Dẫn Sử Dụng Gọn Gàng */}
+
                         {showUtmGuide && (
                           <div className="p-2.5 bg-white rounded-lg border border-[#DEBE85]/60 text-[10px] text-[#7D6D55] space-y-1 animate-fadeIn leading-relaxed shadow-2xs">
                             <p className="flex items-center gap-1 font-medium text-[#1A1612]">
@@ -1730,9 +1732,9 @@ export default function ReferralLinksPage() {
                           </div>
                         )}
 
-                        {/* Grid 4 Ô Nhập Liệu Thon Gọn với INNER ICON */}
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {/* utm_source */}
+
                           <div>
                             <div className="flex items-center justify-between mb-0.5">
                               <label className="font-bold text-[#1A1612] text-[10px] flex items-center gap-1">
@@ -1782,7 +1784,7 @@ export default function ReferralLinksPage() {
                             </div>
                           </div>
 
-                          {/* utm_medium */}
+
                           <div>
                             <div className="flex items-center justify-between mb-0.5">
                               <label className="font-bold text-[#1A1612] text-[10px] flex items-center gap-1">
@@ -1832,7 +1834,7 @@ export default function ReferralLinksPage() {
                             </div>
                           </div>
 
-                          {/* utm_campaign */}
+
                           <div>
                             <div className="flex items-center justify-between mb-0.5">
                               <label className="font-bold text-[#1A1612] text-[10px] flex items-center gap-1">
@@ -1896,7 +1898,7 @@ export default function ReferralLinksPage() {
                             </div>
                           </div>
 
-                          {/* utm_content */}
+
                           <div>
                             <div className="flex items-center justify-between mb-0.5">
                               <label className="font-bold text-[#1A1612] text-[10px] flex items-center gap-1">
@@ -1947,7 +1949,7 @@ export default function ReferralLinksPage() {
                           </div>
                         </div>
 
-                        {/* Link Preview Thon Gọn với Icon và Copy */}
+
                         <div className="pt-1.5 border-t border-[#E8DAC4]/60 flex items-center justify-between gap-2 text-[10px]">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
                             <span className="text-[#7D6D55] font-semibold flex items-center gap-1 flex-shrink-0">
@@ -1982,7 +1984,7 @@ export default function ReferralLinksPage() {
                   </div>
                 </div>
 
-                {/* 3. Sticky Footer Cố Định */}
+
                 <div className="px-4 sm:px-5 py-2.5 border-t border-[#E8DAC4] bg-[#FAF8F5] flex items-center justify-between gap-3 flex-shrink-0">
                   <div className="text-xs text-[#7D6D55] truncate max-w-[180px] sm:max-w-xs">
                     {!selectedProduct ? (
@@ -2037,9 +2039,9 @@ export default function ReferralLinksPage() {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 6. MODAL XEM VÀ TẢI MÃ QR ĐỘNG (FR-11)                   */}
-      {/* ======================================================== */}
+
+
+
       {isQrModalOpen && selectedLinkForQr && (
         <div
           onClick={(e) => {
@@ -2054,8 +2056,8 @@ export default function ReferralLinksPage() {
             ref={qrModalRef}
             className="bg-white rounded-2xl shadow-2xl border border-[#E8DAC4] w-full max-w-md p-5 sm:p-6 text-center animate-in zoom-in-95 duration-150 relative"
           >
-            {/* Header */}
-            {/* Modal Header */}
+
+
             <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-[#E8DAC4]/60">
               <div className="flex items-center gap-2.5 text-left">
                 <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#FDFBF7] via-[#FAF8F5] to-[#F5EFE6] border border-[#E8DAC4] shadow-2xs flex items-center justify-center text-[#9E7933] ring-2 ring-[#9E7933]/10 flex-shrink-0">
@@ -2084,7 +2086,7 @@ export default function ReferralLinksPage() {
               </button>
             </div>
 
-            {/* QR Preview Box with quiet zone (Item 7: qrLoading & qrError) */}
+
             <div className="relative p-4 bg-gradient-to-b from-white via-white to-[#FDFBF7] rounded-3xl border-2 border-[#E8DAC4] shadow-lg shadow-[#9E7933]/5 inline-block mb-3.5 transition-all hover:border-[#C59B58]">
               {selectedQrLoading ? (
                 <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 text-[#7D715E]">
@@ -2119,12 +2121,12 @@ export default function ReferralLinksPage() {
               )}
             </div>
 
-            {/* Product & Store info */}
+
             <div className="text-sm font-black text-[#1A1612] line-clamp-2 mb-2 px-2 tracking-tight">
               {selectedLinkForQr.product?.title}
             </div>
 
-            {/* Badges xịn sò */}
+
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs mb-3.5">
               {selectedLinkForQr.product?.store?.name && (
                 <div className="inline-flex items-center gap-1.5 bg-gradient-to-b from-[#FAF8F5] via-[#FFFFFF] to-[#F5EFE6] px-2.5 py-1 rounded-xl border border-[#E8DAC4]/90 shadow-2xs">
@@ -2144,8 +2146,8 @@ export default function ReferralLinksPage() {
                   {selectedLinkForQr.shortCode}
                 </span>
               </div>
-              <div 
-                className="inline-flex items-center gap-1.5 bg-gradient-to-b from-amber-50/90 via-amber-50/60 to-amber-100/50 px-2.5 py-1 rounded-xl border border-amber-200/90 shadow-2xs text-amber-900" 
+              <div
+                className="inline-flex items-center gap-1.5 bg-gradient-to-b from-amber-50/90 via-amber-50/60 to-amber-100/50 px-2.5 py-1 rounded-xl border border-amber-200/90 shadow-2xs text-amber-900"
                 title="Tổng số lượt tải ảnh QR"
               >
                 <span className="w-5 h-5 rounded-lg bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-700 shadow-2xs flex-shrink-0">
@@ -2157,7 +2159,7 @@ export default function ReferralLinksPage() {
               </div>
             </div>
 
-            {/* Short URL with copy */}
+
             <div className="mb-3.5 group flex items-center gap-2 bg-gradient-to-r from-[#FAF8F5] via-[#FFFFFF] to-[#FAF8F5] p-1.5 pl-2.5 rounded-2xl border border-[#E8DAC4] shadow-xs focus-within:border-[#B88E4F] focus-within:ring-2 focus-within:ring-[#B88E4F]/20 transition-all">
               <span className="w-6 h-6 rounded-lg bg-[#9E7933]/10 border border-[#9E7933]/20 flex items-center justify-center text-[#9E7933] flex-shrink-0">
                 <Globe className="w-3.5 h-3.5" />
@@ -2196,7 +2198,7 @@ export default function ReferralLinksPage() {
               </button>
             </div>
 
-            {/* Size selector for PNG (Gọn gàng, thanh mảnh, không bị xuống dòng) */}
+
             <div className="flex items-center justify-between gap-2 mb-3 text-xs">
               <span className="text-[11px] font-bold text-[#7D6D55] whitespace-nowrap">
                 Kích thước PNG:
@@ -2219,7 +2221,7 @@ export default function ReferralLinksPage() {
               </div>
             </div>
 
-            {/* Thông báo lỗi tải QR nếu Backend từ chối hoặc quá rate limit (Item 6) */}
+
             {qrDownloadError && (
               <div className="mb-3 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center justify-between gap-2 text-left animate-fadeIn">
                 <div className="flex items-center gap-1.5">
@@ -2236,7 +2238,7 @@ export default function ReferralLinksPage() {
               </div>
             )}
 
-            {/* Action buttons */}
+
             <div className="grid grid-cols-3 gap-2.5 mb-3.5">
               <button
                 type="button"
@@ -2279,7 +2281,7 @@ export default function ReferralLinksPage() {
               </a>
             </div>
 
-            {/* Hint Notice according to Section 29 */}
+
             <div className="p-3 bg-gradient-to-r from-[#FAF8F5] via-[#FFFDF9] to-[#FAF8F5] rounded-2xl border border-[#E8DAC4]/90 text-xs text-[#7D6D55] flex items-center gap-3 text-left shadow-2xs leading-relaxed">
               <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200/70 border border-amber-300/80 flex items-center justify-center text-amber-800 flex-shrink-0 shadow-2xs ring-2 ring-amber-50">
                 <Lightbulb className="w-4 h-4" />
@@ -2292,9 +2294,9 @@ export default function ReferralLinksPage() {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 6.5 MODAL THỐNG KÊ CHI TIẾT & ATTRIBUTION (FR-13)        */}
-      {/* ======================================================== */}
+
+
+
       {isAnalyticsModalOpen && selectedLinkForAnalytics && (
         <div
           onClick={(e) => {
@@ -2305,7 +2307,7 @@ export default function ReferralLinksPage() {
           aria-modal="true"
         >
           <div className="bg-white rounded-3xl shadow-2xl border border-[#E8DAC4] w-full max-w-xl p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150 relative max-h-[90vh] flex flex-col">
-            {/* Header */}
+
             <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-[#E8DAC4]/70 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#FAF8F5] to-[#F3EFE6] border border-[#E8DAC4] flex items-center justify-center text-[#B88E4F] shadow-2xs">
@@ -2334,9 +2336,9 @@ export default function ReferralLinksPage() {
               </button>
             </div>
 
-            {/* Scrollable Content */}
+
             <div className="overflow-y-auto pr-1 space-y-4 flex-1">
-              {/* Link overview snippet */}
+
               <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-[#E8DAC4] flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-[#1A1612] truncate">
@@ -2369,7 +2371,7 @@ export default function ReferralLinksPage() {
                 </div>
               ) : analyticsData ? (
                 <>
-                  {/* Grid 6 cards */}
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     <div className="p-3 bg-white border border-[#E8DAC4] rounded-2xl shadow-2xs">
                       <div className="text-[11px] font-semibold text-[#7D715E]">Tổng Clicks (Raw)</div>
@@ -2420,7 +2422,7 @@ export default function ReferralLinksPage() {
                     </div>
                   </div>
 
-                  {/* Nguồn truy cập Link vs QR */}
+
                   <div className="p-3.5 bg-[#FAF8F5] border border-[#E8DAC4] rounded-2xl space-y-2">
                     <div className="text-xs font-bold text-[#1A1612] flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
@@ -2453,7 +2455,7 @@ export default function ReferralLinksPage() {
                     </div>
                   </div>
 
-                  {/* Công cụ kiểm thử bảo mật & Chống Spam FR-14 trực tiếp trên Web */}
+
                   <div className="p-3.5 bg-[#FAF5EB] border border-[#EEDFC6] rounded-2xl space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -2525,7 +2527,7 @@ export default function ReferralLinksPage() {
                     )}
                   </div>
 
-                  {/* Thông báo quyền riêng tư & bảo mật tuân thủ FR-13 Section 33, 34, 37 */}
+
                   <div className="p-3 bg-[#FAF5EB] border border-[#EEDFC6] rounded-2xl text-xs text-[#7D715E] flex items-start gap-2.5">
                     <ShieldCheck className="w-4 h-4 text-[#B88E4F] flex-shrink-0 mt-0.5" />
                     <div className="text-[11px] leading-relaxed">
@@ -2536,7 +2538,7 @@ export default function ReferralLinksPage() {
               ) : null}
             </div>
 
-            {/* Footer */}
+
             <div className="pt-3.5 mt-2 border-t border-[#E8DAC4]/70 flex items-center justify-end flex-shrink-0">
               <button
                 type="button"
@@ -2550,9 +2552,9 @@ export default function ReferralLinksPage() {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 7. MODAL XÁC NHẬN XÓA MỀM LINK (Giữ nguyên màn hình phía sau) */}
-      {/* ======================================================== */}
+
+
+
       {isDeleteModalOpen && selectedLinkForDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-[1.5px] animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-xl border border-[#E8DAC4] w-full max-w-sm p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150">
@@ -2594,7 +2596,7 @@ export default function ReferralLinksPage() {
         </div>
       )}
 
-      {/* Modal Nộp Video Review KOL (FR-15) */}
+
       <SubmitKolVideoModal
         isOpen={isSubmitVideoModalOpen}
         initialProductId={selectedProductForVideo?.id}

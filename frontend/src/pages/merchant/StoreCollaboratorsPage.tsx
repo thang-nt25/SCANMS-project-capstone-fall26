@@ -30,8 +30,8 @@ export default function StoreCollaboratorsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Resolve the shop from the authenticated account. A store id cached by a
-      // previous role/account can point at another owner's shop and cause a 404.
+
+
       const res: any = await api.get('/store-collaborators/shop');
       const body = res?.data || res;
       setMembers(body.members || []);

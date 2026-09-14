@@ -18,6 +18,7 @@ import {
   type CouponItem,
   type CouponStatus,
 } from '../../services/coupon.service';
+import { toast } from '../../utils/toast';
 
 const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: string; border: string }> = {
   ACTIVE: {
@@ -70,16 +71,16 @@ export const AdminCouponsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  // Modal Detail State
+
   const [detailCoupon, setDetailCoupon] = useState<CouponItem | null>(null);
 
-  // Block Modal State
+
   const [blockTarget, setBlockTarget] = useState<CouponItem | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [blockLoading, setBlockLoading] = useState(false);
   const [blockError, setBlockError] = useState<string | null>(null);
 
-  // Unblock State
+
   const [unblockLoading, setUnblockLoading] = useState(false);
 
   const hasOpenModal = detailCoupon !== null || blockTarget !== null;
@@ -156,15 +157,16 @@ export const AdminCouponsPage: React.FC = () => {
     try {
       setUnblockLoading(true);
       await couponService.adminUnblockCoupon(coupon.id);
+      toast.success('Đã mở khóa mã giảm giá thành công');
       await fetchCoupons();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể mở khóa coupon');
+      toast.error(err.response?.data?.message || 'Không thể mở khóa coupon');
     } finally {
       setUnblockLoading(false);
     }
   };
 
-  // Filter coupons
+
   const filteredCoupons = coupons.filter((c) => {
     const matchSearch =
       c.codeNormalized.includes(searchTerm.trim().toUpperCase()) ||
@@ -175,7 +177,7 @@ export const AdminCouponsPage: React.FC = () => {
     return matchSearch && matchStatus;
   });
 
-  // Calculate platform stats
+
   const totalCount = coupons.length;
   const activeCount = coupons.filter((c) => c.status === 'ACTIVE').length;
   const blockedCount = coupons.filter((c) => c.status === 'BLOCKED').length;
@@ -184,7 +186,7 @@ export const AdminCouponsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
       <div className="max-w-7xl mx-auto mb-8">
-        {/* Page Header */}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE4D7] pb-6 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -202,7 +204,7 @@ export const AdminCouponsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* High-level platform stats */}
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
@@ -237,7 +239,7 @@ export const AdminCouponsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter and Search Row */}
+
         <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
@@ -274,7 +276,7 @@ export const AdminCouponsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Coupons Table */}
+
         {loading ? (
           <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-[#C59B58] mx-auto mb-3" />
@@ -408,7 +410,7 @@ export const AdminCouponsPage: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL: CHI TIẾT COUPON */}
+
       {detailCoupon && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 border border-[#EAE4D7] shadow-2xl text-left my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
@@ -513,7 +515,7 @@ export const AdminCouponsPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: KHÓA COUPON */}
+
       {blockTarget && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#EAE4D7] shadow-2xl text-left my-auto animate-in fade-in zoom-in-95 duration-200">
