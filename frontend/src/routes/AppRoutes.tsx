@@ -58,8 +58,7 @@ const ShopCampaignsPage = lazy(() => import('../pages/merchant/ShopCampaignsPage
 const KolCampaignsPage = lazy(() => import('../pages/collaborator/KolCampaignsPage'));
 
 // Dashboard Realtime (Quý - FR-28)
-const ShopDashboardStatsPage = lazy(() => import('../pages/dashboard/DashboardPage').then(m => ({ default: m.ShopDashboardStatsPage })));
-const KolDashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then(m => ({ default: m.KolDashboardPage })));
+const RealtimeAnalyticsPage = lazy(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 
 // Admin Pages (FR-12)
 const AdminCouponsPage = lazy(() => import('../pages/admin/AdminCouponsPage'));
@@ -124,12 +123,14 @@ function AppRoutes() {
             <Route path="stores/:storeId/referral-links" element={<StoreReferralLinksPage />} />
             <Route path="merchant/sample-requests" element={<ShopSampleRequestsPage />} />
             <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
-            <Route path="merchant/stats" element={<ShopDashboardStatsPage />} />
+            <Route path="merchant/analytics" element={<RealtimeAnalyticsPage />} />
+            <Route path="merchant/stats" element={<RealtimeAnalyticsPage />} />
           </Route>
 
           {/* ── Collaborator Routes ── */}
           <Route element={<RouteContent />}>
             <Route path="collaborator/dashboard" element={<HomePage />} />
+            <Route path="collaborator/analytics" element={<RealtimeAnalyticsPage />} />
             <Route path="collaborator/links" element={<ReferralLinksPage />} />
             <Route path="collaborator/referral-links" element={<ReferralLinksPage />} />
             <Route path="kol/referral-links" element={<ReferralLinksPage />} />
@@ -145,17 +146,19 @@ function AppRoutes() {
             <Route path="collaborator/wallet" element={<WalletPage />} />
             <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
             <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
-            <Route path="collaborator/stats" element={<KolDashboardPage />} />
+            <Route path="collaborator/stats" element={<RealtimeAnalyticsPage />} />
           </Route>
 
           {/* ── Admin Routes ── */}
           <Route element={<RouteContent />}>
+            <Route path="admin/analytics" element={<RealtimeAnalyticsPage />} />
             <Route path="admin/users" element={<KycApprovalPage />} />
             <Route path="admin/referral-links" element={<AdminReferralLinksPage />} />
             <Route path="admin/coupons" element={<AdminCouponsPage />} />
           </Route>
 
-          {/* ── Chat ── */}
+          {/* ── Analytics & Chat ── */}
+          <Route path="analytics" element={<RealtimeAnalyticsPage />} />
           <Route path="chat" element={<ChatBoxPage />} />
           <Route path="collaborator/messages" element={<ChatBoxPage />} />
           <Route path="merchant/messages" element={<ChatBoxPage />} />
