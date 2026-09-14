@@ -36,7 +36,7 @@ export default function PayoutBillUpload({
         ? "Chỉ chọn một file bill cho mỗi payout."
         : validatePayoutBill(files[0], maxBytes);
     setError(message);
-    // A rejected replacement must not silently submit the previously selected bill.
+
     onChange(message ? null : files[0]);
   }
 

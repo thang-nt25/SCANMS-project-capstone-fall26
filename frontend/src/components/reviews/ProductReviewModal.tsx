@@ -135,7 +135,7 @@ export function ProductReviewModal({
     setError("");
     setPhase("Đang xác minh...");
     try {
-      // Refresh proof/status on every retry; an old token may have expired.
+
       const order = await verify();
       const selected =
         order.items.find((item) => item.productId === productId) ??

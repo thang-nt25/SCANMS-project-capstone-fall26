@@ -1,3 +1,5 @@
+import { toast } from './toast';
+
 declare global {
   interface Window {
     google?: any;
@@ -16,7 +18,7 @@ export function triggerGoogleSignIn(
     if (onError) {
       onError('Thư viện Google Identity Services đang tải hoặc bị chặn bởi trình duyệt. Vui lòng kiểm tra kết nối mạng.');
     } else {
-      alert('Thư viện Google Identity Services đang tải hoặc bị chặn. Vui lòng kiểm tra kết nối mạng.');
+      toast.error('Thư viện Google Identity Services đang tải hoặc bị chặn. Vui lòng kiểm tra kết nối mạng.');
     }
     return;
   }
@@ -35,7 +37,6 @@ export function triggerGoogleSignIn(
       cancel_on_tap_outside: true,
     });
 
-    // Mở popup chọn tài khoản Google (One-Tap prompt)
     window.google.accounts.id.prompt((notification: any) => {
       if (notification.isNotDisplayed()) {
         console.warn('Google prompt không hiển thị:', notification.getNotDisplayedReason?.());

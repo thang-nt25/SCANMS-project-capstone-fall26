@@ -140,9 +140,9 @@ export interface CouponFilterParams {
 }
 
 export const couponService = {
-  // ==========================================
-  // Public Checkout
-  // ==========================================
+
+
+
   validateCoupon: async (
     payload: ValidateCouponPayload,
   ): Promise<ValidateCouponResponse> => {
@@ -150,9 +150,9 @@ export const couponService = {
     return res.data;
   },
 
-  // ==========================================
-  // Collaborator / KOL (FR-12)
-  // ==========================================
+
+
+
   getKolCoupons: async (params?: CouponFilterParams) => {
     const res = await api.get('/collaborator/coupons', { params });
     return res.data;
@@ -180,9 +180,9 @@ export const couponService = {
     return res.data;
   },
 
-  // ==========================================
-  // Store / Merchant (FR-12)
-  // ==========================================
+
+
+
   getStoreCoupons: async (storeId: string, params?: CouponFilterParams) => {
     const res = await api.get(`/stores/${storeId}/coupons`, { params });
     return res.data;
@@ -227,9 +227,9 @@ export const couponService = {
     return res.data;
   },
 
-  // ==========================================
-  // Admin (FR-12)
-  // ==========================================
+
+
+
   getAdminCoupons: async (params?: CouponFilterParams) => {
     const res = await api.get('/admin/coupons', { params });
     return res.data;

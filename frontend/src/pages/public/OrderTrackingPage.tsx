@@ -100,12 +100,16 @@ export default function OrderTrackingPage() {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  // Tự động tìm kiếm nếu URL có sẵn param
+  const handleSearchRef = useRef<
+    (phoneValue?: string, orderSnValue?: string) => Promise<void>
+  >(() => Promise.resolve());
+
+
   useEffect(() => {
     if (initialPhone || initialSn) {
-      handleSearch(initialPhone, initialSn);
+      handleSearchRef.current(initialPhone, initialSn);
     }
-  }, []);
+  }, [initialPhone, initialSn]);
 
   const handleSearch = async (phoneValue?: string, orderSnValue?: string) => {
     const phone = (phoneValue !== undefined ? phoneValue : phoneInput).trim();
@@ -151,6 +155,7 @@ export default function OrderTrackingPage() {
       if (sequence === searchSequence.current) setLoading(false);
     }
   };
+  handleSearchRef.current = handleSearch;
 
   const handleOpenReviewModal = (order: OrderData, item: OrderItem) => {
     setReviewTarget({
@@ -238,7 +243,7 @@ export default function OrderTrackingPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-left flex flex-col font-sans">
-      {/* TOAST ALERT */}
+
       {toastMsg && (
         <div className="fixed top-5 right-5 z-50 bg-[#231D15] text-white px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 border border-[#C59B58]">
           <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
@@ -246,7 +251,7 @@ export default function OrderTrackingPage() {
         </div>
       )}
 
-      {/* 1. TOP HEADER */}
+
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] px-4 sm:px-8 py-3 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-3">
           <Link
@@ -285,7 +290,7 @@ export default function OrderTrackingPage() {
         </div>
       </header>
 
-      {/* 2. HERO & SEARCH SECTION */}
+
       <section className="bg-gradient-to-b from-white to-[#F3EFE6]/60 border-b border-[#EAE4D7] px-4 sm:px-8 py-10">
         <div className="max-w-3xl mx-auto text-center flex flex-col items-center gap-4">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide text-[#8A662C] bg-[#FBF5EB] border border-[#EEDFC6]">
@@ -303,7 +308,7 @@ export default function OrderTrackingPage() {
             tra tiến trình đóng gói, giao hàng và gửi đánh giá nhận quà ưu đãi.
           </p>
 
-          {/* Search Box Form */}
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -351,7 +356,7 @@ export default function OrderTrackingPage() {
             </Button>
           </form>
 
-          {/* Sample Tags for 1-Click Testing */}
+
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
             <span className="text-[11px] text-[#7D715E] font-medium">
               Gợi ý kiểm thử:
@@ -381,7 +386,7 @@ export default function OrderTrackingPage() {
         </div>
       </section>
 
-      {/* 3. ORDER RESULTS LIST */}
+
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
         {errorMessage && (
           <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-3">
@@ -390,7 +395,7 @@ export default function OrderTrackingPage() {
           </div>
         )}
 
-        {/* Empty state before searching */}
+
         {!hasSearched && !loading && (
           <div className="py-16 text-center flex flex-col items-center justify-center gap-3">
             <div className="w-16 h-16 rounded-3xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F]">
@@ -406,7 +411,7 @@ export default function OrderTrackingPage() {
           </div>
         )}
 
-        {/* Search result found 0 */}
+
         {hasSearched && !loading && orders.length === 0 && !errorMessage && (
           <div className="py-16 text-center flex flex-col items-center justify-center gap-3">
             <div className="w-16 h-16 rounded-3xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
@@ -422,7 +427,7 @@ export default function OrderTrackingPage() {
           </div>
         )}
 
-        {/* Orders list */}
+
         {orders.map((order) => {
           const steps = getTimelineSteps(order.timelineStep, order.status);
           const canReview =
@@ -433,7 +438,7 @@ export default function OrderTrackingPage() {
               key={order.id}
               className="bg-white border border-[#EAE4D7] rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition duration-200 flex flex-col"
             >
-              {/* Order Header Bar */}
+
               <div className="p-4 sm:p-5 border-b border-[#EAE4D7] bg-[#FAF8F5]/80 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
@@ -466,7 +471,7 @@ export default function OrderTrackingPage() {
                 </div>
               </div>
 
-              {/* TIMELINE PROGRESS BAR */}
+
               <div className="px-4 sm:px-6 py-6 border-b border-[#EAE4D7] bg-white">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative">
                   {steps.map((st, idx) => (
@@ -498,9 +503,9 @@ export default function OrderTrackingPage() {
                 </div>
               </div>
 
-              {/* Order Body Details */}
+
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Col 1 & 2: Items List */}
+
                 <div className="md:col-span-2 flex flex-col gap-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black uppercase tracking-wider text-[#7D715E]">
@@ -551,7 +556,7 @@ export default function OrderTrackingPage() {
                             </div>
                           </div>
 
-                          {/* REVIEW SECTION FOR THIS ITEM (FR-18) */}
+
                           <div className="border-t border-[#EAE4D7]/70 pt-2 flex items-center justify-between gap-2">
                             {itemReview ? (
                               <div className="w-full bg-brand-soft border border-brand-border rounded-xl p-2.5 text-xs flex flex-col gap-1">
@@ -643,7 +648,7 @@ export default function OrderTrackingPage() {
                     })}
                   </div>
 
-                  {/* KOL ATTRIBUTION BADGE */}
+
                   {order.attributedCollaborator && (
                     <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center gap-2.5 text-xs text-[#8A662C]">
                       <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0" />
@@ -657,9 +662,9 @@ export default function OrderTrackingPage() {
                   )}
                 </div>
 
-                {/* Col 3: Customer & Payment Summary */}
+
                 <div className="flex flex-col gap-4 border-t md:border-t-0 md:border-l border-[#EAE4D7] md:pl-6 pt-4 md:pt-0">
-                  {/* Delivery Info */}
+
                   <div>
                     <span className="text-xs font-black uppercase tracking-wider text-[#7D715E] block mb-2">
                       Thông tin giao nhận
@@ -682,7 +687,7 @@ export default function OrderTrackingPage() {
                     </div>
                   </div>
 
-                  {/* Payment Summary */}
+
                   <div className="pt-2 border-t border-[#EAE4D7] flex flex-col gap-1.5 text-xs">
                     <span className="text-xs font-black uppercase tracking-wider text-[#7D715E] block mb-1">
                       Chi tiết thanh toán

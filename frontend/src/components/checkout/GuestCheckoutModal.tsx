@@ -63,7 +63,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   initialCouponCode = '',
   onOrderPlaced,
 }) => {
-  // Form state
+
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
@@ -74,7 +74,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     undefined,
   );
 
-  // Coupon state
+
   const [couponCode, setCouponCode] = useState(initialCouponCode);
   const [couponLoading, setCouponLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -87,7 +87,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     text: string;
   } | null>(null);
 
-  // Submission & validation state
+
   const [idempotencyKey, setIdempotencyKey] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -108,21 +108,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     cancellationToken?: string;
   } | null>(null);
 
-  // Copy state
+
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
 
-  // Initialize or reset when modal opens
+
   useEffect(() => {
     if (isOpen) {
-      // Sinh UUID idempotencyKey duy nhất cho phiên checkout (FR-16 Mục 21)
+
       const newKey =
         typeof crypto !== 'undefined' && crypto.randomUUID
           ? crypto.randomUUID()
           : `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       setIdempotencyKey(newKey);
 
-      // Khởi tạo phân loại variant mặc định nếu có
+
       if (product.variants && product.variants.length > 0) {
         const available =
           product.variants.find((v) => v.stockQuantity > 0) ||
@@ -163,13 +163,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const finalTotal = Math.max(0, subtotal - discountAmount);
 
 
-  // Kiểm tra tính hợp lệ số điện thoại Việt Nam (FR-16 Mục 10)
+
   const isPhoneValid = (phone: string) => {
     const clean = phone.trim().replace(/[()\s-]/g, '');
     return /^(0|\+84)[35789]\d{8}$/.test(clean);
   };
 
-  // Xem trước & Xác thực mã giảm giá (FR-16 Mục 16 & 37)
+
   const handleValidateCoupon = async () => {
     const codeToTest = couponCode.trim().toUpperCase();
     if (!codeToTest) {
@@ -228,19 +228,19 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setCouponMessage(null);
   };
 
-  // Đặt hàng (FR-16 Mục 1, 8, 20, 21, 23)
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    // Validate tên
+
     const trimmedName = customerName.trim();
     if (!trimmedName || trimmedName.length < 2) {
       setErrorMessage('Họ và tên người nhận phải có ít nhất 2 ký tự.');
       return;
     }
 
-    // Validate SĐT
+
     if (!isPhoneValid(customerPhone)) {
       setErrorMessage(
         'Số điện thoại không hợp lệ. Vui lòng nhập 10 số (bắt đầu bằng 03, 05, 07, 08, 09).',
@@ -248,14 +248,14 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
-    // Validate địa chỉ
+
     const trimmedAddress = shippingAddress.trim();
     if (!trimmedAddress || trimmedAddress.length < 5) {
       setErrorMessage('Địa chỉ giao hàng phải chi tiết ít nhất 5 ký tự.');
       return;
     }
 
-    // Validate tồn kho (hỗ trợ variant hoặc sản phẩm)
+
     if (quantity > currentStock) {
       setErrorMessage(
         `Số lượng đặt (${quantity}) vượt quá tồn kho hiện có (${currentStock}).`,
@@ -333,7 +333,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
     >
       <div className="bg-[#FFFFFF] rounded-3xl max-w-xl w-full p-5 sm:p-7 border border-[#EAE4D7] shadow-2xl relative max-h-[92vh] overflow-y-auto font-sans">
-        {/* Close button */}
+
         <button
           type="button"
           onClick={onClose}
@@ -344,9 +344,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         </button>
 
         {orderSuccess ? (
-          /* =========================================================================
-             MÀN HÌNH ĐẶT HÀNG THÀNH CÔNG (FR-16 Mục 26, 27, 28)
-             ========================================================================= */
+
           <div className="text-center py-4">
             <div className="w-16 h-16 rounded-full bg-[#FBF5EB] border-2 border-[#C59B58] text-[#C59B58] flex items-center justify-center mx-auto mb-3 shadow-xs">
               <CheckCircle2 className="w-10 h-10" />
@@ -360,7 +358,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               <strong className="text-[#1A1612]">{store.name}</strong> để đóng gói.
             </p>
 
-            {/* Khối mã đơn hàng & Token bảo mật */}
+
             <div className="bg-[#FAF8F5] border border-[#EEDFC6] rounded-2xl p-4 text-left space-y-3 mb-5">
               <div className="flex items-center justify-between pb-2.5 border-b border-[#EAE4D7]">
                 <div>
@@ -380,7 +378,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </button>
               </div>
 
-              {/* Cancellation Token an toàn cho khách (Mục 28) */}
+
               {orderSuccess.cancellationToken && (
                 <div className="bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl p-3 text-xs">
                   <div className="flex items-center justify-between gap-2">
@@ -407,7 +405,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </div>
               )}
 
-              {/* Chi tiết tóm tắt */}
+
               <div className="text-xs space-y-1.5 pt-1">
                 <div className="flex justify-between text-[#7D715E]">
                   <span>Sản phẩm:</span>
@@ -440,7 +438,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             </div>
 
-            {/* Khối hướng dẫn thanh toán VietQR nếu khách chọn VIETQR (FR-16 Mục 20) */}
+
             {orderSuccess.paymentMethod === 'VIETQR' && orderSuccess.vietqr && (
               <div className="bg-[#FFFFFF] border-2 border-[#C59B58] rounded-2xl p-4 text-center mb-5 shadow-sm">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FBF5EB] rounded-full text-xs font-bold text-[#B88E4F] mb-3">
@@ -469,7 +467,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             )}
 
-            {/* Các nút hành động */}
+
             <div className="flex flex-col gap-2">
               <Link
                 to={`/tracking?orderSn=${encodeURIComponent(orderSuccess.publicOrderCode)}`}
@@ -488,11 +486,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             </div>
           </div>
         ) : (
-          /* =========================================================================
-             FORM NHẬP THÔNG TIN GUEST CHECKOUT THẬT
-             ========================================================================= */
+
           <div>
-            {/* Header Form */}
+
             <div className="mb-5">
               <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider mb-1.5">
                 <ShoppingBag className="w-3 h-3" />
@@ -512,7 +508,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             </div>
 
-            {/* Thông báo lỗi nếu có */}
+
             {errorMessage && (
               <div className="mb-4 p-3 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/30 text-xs text-[#DC2626] flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -520,7 +516,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             )}
 
-            {/* Thẻ tóm tắt sản phẩm đang mua */}
+
             <div className="mb-3.5 p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl flex items-center gap-3">
               <div className="w-14 h-14 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] overflow-hidden shrink-0">
                 <img
@@ -554,7 +550,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </div>
               </div>
 
-              {/* Bộ chọn số lượng */}
+
               <div className="flex items-center border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shrink-0">
                 <button
                   type="button"
@@ -576,7 +572,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             </div>
 
-            {/* Bộ chọn Phân loại sản phẩm (Variant Selector) nếu sản phẩm có variants */}
+
             {product.variants && product.variants.length > 0 && (
               <div className="mb-4 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl">
                 <div className="flex items-center justify-between mb-2">
@@ -628,10 +624,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             )}
 
-            {/* Form chính */}
+
             <form onSubmit={handleSubmitOrder} className="space-y-3.5">
 
-              {/* Họ và tên */}
+
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1">
                   Họ và tên người nhận <span className="text-[#DC2626]">*</span>
@@ -646,7 +642,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 />
               </div>
 
-              {/* Số điện thoại */}
+
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1">
                   Số điện thoại nhận hàng <span className="text-[#DC2626]">*</span>
@@ -670,7 +666,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 )}
               </div>
 
-              {/* Địa chỉ giao hàng */}
+
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1">
                   Địa chỉ nhận hàng chi tiết <span className="text-[#DC2626]">*</span>
@@ -685,7 +681,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 />
               </div>
 
-              {/* Mã giảm giá Coupon (FR-16 Mục 16 & 37) */}
+
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1">
                   Mã giảm giá KOL / Shop (Tùy chọn)
@@ -738,7 +734,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 )}
               </div>
 
-              {/* Ghi chú */}
+
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1">
                   Ghi chú cho gian hàng (Tùy chọn)
@@ -752,7 +748,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 />
               </div>
 
-              {/* Phương thức thanh toán (FR-16 Mục 20) */}
+
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1.5">
                   Phương thức thanh toán
@@ -786,7 +782,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </div>
               </div>
 
-              {/* Tóm tắt đơn hàng (FR-16 Mục 15) */}
+
               <div className="p-3.5 bg-[#FAF8F5] border border-[#EEDFC6] rounded-2xl space-y-1.5 text-xs">
                 <div className="flex justify-between text-[#7D715E]">
                   <span>Tiền hàng ({quantity} món):</span>
@@ -810,7 +806,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </div>
               </div>
 
-              {/* Nút gửi đơn hàng (Chống double-click - FR-16 Mục 22) */}
+
               <button
                 type="submit"
                 disabled={isSubmitting || product.stockQuantity <= 0}

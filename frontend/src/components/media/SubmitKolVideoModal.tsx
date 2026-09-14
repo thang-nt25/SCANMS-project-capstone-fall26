@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { mediaService } from '../../services/media.service';
-import { referralLinksService, type EligibleProduct } from '../../services/referralLinksService';
+import { referralLinksService, type EligibleProduct } from '../../services/referral-links.service';
 import api from '../../services/api';
 
 const ALLOWED_DOMAINS = [
@@ -70,7 +70,7 @@ export function SubmitKolVideoModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Xử lý upload video trực tiếp từ máy tính
+
   const processSelectedVideoFile = async (file: File) => {
     if (!file) return;
 
@@ -80,7 +80,7 @@ export function SubmitKolVideoModal({
       return;
     }
 
-    const maxVideoSize = 100 * 1024 * 1024; // 100MB
+    const maxVideoSize = 100 * 1024 * 1024;
     if (file.size > maxVideoSize) {
       setVideoUploadError('Dung lượng video vượt quá 100 MB. Vui lòng nén video hoặc chọn file nhỏ hơn.');
       return;
@@ -90,7 +90,7 @@ export function SubmitKolVideoModal({
     setVideoFileName(file.name);
     setVideoFileSize((file.size / (1024 * 1024)).toFixed(1) + ' MB');
 
-    // Tạo preview video tức thì
+
     const localVideoUrl = URL.createObjectURL(file);
     setVideoPreview(localVideoUrl);
 
@@ -109,7 +109,7 @@ export function SubmitKolVideoModal({
       setVideoUrl(uploadedUrl);
     } catch (err: any) {
       console.error('Upload video error:', err);
-      // Fallback: nếu lỗi upload máy chủ, dùng URL nội bộ để KOL vẫn kiểm thử được
+
       setVideoUrl(localVideoUrl);
       setVideoUploadError(
         'Đã lưu video để kiểm thử.'
@@ -133,7 +133,7 @@ export function SubmitKolVideoModal({
     }
   };
 
-  // Xử lý upload ảnh bìa poster từ máy tính
+
   const processSelectedFile = async (file: File) => {
     if (!file) return;
 
@@ -143,7 +143,7 @@ export function SubmitKolVideoModal({
       return;
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       setPosterUploadError('Dung lượng ảnh vượt quá 5 MB. Vui lòng chọn ảnh nhỏ hơn.');
       return;
@@ -152,11 +152,11 @@ export function SubmitKolVideoModal({
     setPosterUploadError(null);
     setPosterFileName(file.name);
 
-    // Instant local preview
+
     const localUrl = URL.createObjectURL(file);
     setPosterPreview(localUrl);
 
-    // Upload lên Cloudinary qua backend
+
     setIsUploadingPoster(true);
     try {
       const formData = new FormData();
@@ -219,15 +219,13 @@ export function SubmitKolVideoModal({
     }
   };
 
-  // Load danh sách sản phẩm KOL được phép tiếp thị (StoreCollaborator = APPROVED)
+
   useEffect(() => {
     if (!isOpen) return;
 
-    // Không tự động điền videoUrl để bắt buộc người dùng phải tải file video từ máy lên
-    if (!title) {
-      setTitle('Trải nghiệm thực tế Serum Vitamin C sau 14 ngày - Da sáng rõ rệt');
-      setCaption('Serum mỏng nhẹ thấm nhanh, mùi cam dễ chịu, hiệu quả làm đều màu da rõ rệt sau 2 tuần.');
-    }
+
+    setTitle((prev) => prev || 'Trải nghiệm thực tế Serum Vitamin C sau 14 ngày - Da sáng rõ rệt');
+    setCaption((prev) => prev || 'Serum mỏng nhẹ thấm nhanh, mùi cam dễ chịu, hiệu quả làm đều màu da rõ rệt sau 2 tuần.');
 
     if (initialProductId) {
       setSelectedProductId(initialProductId);
@@ -252,7 +250,7 @@ export function SubmitKolVideoModal({
 
   if (!isOpen) return null;
 
-  // Kiểm tra tính hợp lệ của domain video URL
+
   const isDomainAllowed = (urlStr: string): boolean => {
     if (!urlStr.trim()) return false;
     if (urlStr.startsWith('blob:') || urlStr.startsWith('/')) return true;
@@ -328,7 +326,7 @@ export function SubmitKolVideoModal({
 
       setTimeout(() => {
         onClose();
-        // Reset form
+
         setTitle('');
         setVideoUrl('');
         setVideoPreview(null);
@@ -361,7 +359,7 @@ export function SubmitKolVideoModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-xl max-h-[90vh] flex flex-col p-6 text-left animate-in zoom-in-95 duration-150">
-        {/* Modal Header */}
+
         <header className="flex items-start justify-between gap-4 border-b border-[#EAE4D7] pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-xs">
@@ -386,7 +384,7 @@ export function SubmitKolVideoModal({
           </button>
         </header>
 
-        {/* Modal Body / Form */}
+
         <form onSubmit={handleSubmit} className="overflow-y-auto py-4 space-y-4 flex-1">
 
           {errorMsg && (
@@ -403,7 +401,7 @@ export function SubmitKolVideoModal({
             </div>
           )}
 
-          {/* 1. Chọn sản phẩm */}
+
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1">
               Sản phẩm review <span className="text-rose-500">*</span>
@@ -454,7 +452,7 @@ export function SubmitKolVideoModal({
             </p>
           </div>
 
-          {/* 2. Tiêu đề video review */}
+
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1">
               Tiêu đề video review <span className="text-rose-500">*</span>
@@ -469,7 +467,7 @@ export function SubmitKolVideoModal({
             />
           </div>
 
-          {/* 3. Video review (Bắt buộc tải từ máy tính) */}
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-[#1A1612]">
@@ -590,7 +588,7 @@ export function SubmitKolVideoModal({
             )}
           </div>
 
-          {/* 4. Ảnh bìa Poster (Tải từ máy tính) */}
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-[#1A1612]">
@@ -692,7 +690,7 @@ export function SubmitKolVideoModal({
             )}
           </div>
 
-          {/* 5. Mô tả / Kịch bản review */}
+
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1">
               Mô tả hoặc kịch bản review <span className="text-[#7D715E] font-normal">(Tùy chọn)</span>
@@ -706,7 +704,7 @@ export function SubmitKolVideoModal({
             />
           </div>
 
-          {/* 6. Tùy chọn chiến dịch */}
+
           <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
@@ -739,7 +737,7 @@ export function SubmitKolVideoModal({
             )}
           </div>
 
-          {/* Quy định kiểm duyệt */}
+
           <div className="p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl text-xs text-[#7D715E] flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0 mt-0.5" />
             <span>
@@ -747,7 +745,7 @@ export function SubmitKolVideoModal({
             </span>
           </div>
 
-          {/* Modal Actions */}
+
           <div className="flex items-center justify-between pt-3 border-t border-[#EAE4D7]">
             <span className="text-[11px] text-[#7D715E]">
               {!videoUrl.trim() ? (

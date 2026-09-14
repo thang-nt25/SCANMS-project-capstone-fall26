@@ -1389,16 +1389,22 @@ function authScreen() {
         <!-- 1. PHẦN CHỮ BÊN TRÁI (LEFT TEXT & FEATURES) -->
         <div class="auth-spec-left-panel">
           <div class="auth-spec-left-top">
-            <!-- Brand Logo -->
-            <a href="#/" class="auth-spec-brand" title="Trang chủ SCANMS">
-              <div class="auth-spec-brand-icon">
-                <i class="ph-fill ph-sparkle"></i>
-              </div>
-              <div class="auth-spec-brand-text">
-                <span class="auth-spec-brand-name">SCANMS</span>
-                <span class="auth-spec-brand-sub">HỆ THỐNG QUẢN LÝ MẠNG LƯỚI CTV &amp; TIẾP THỊ</span>
-              </div>
-            </a>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+              <a href="#marketplace" class="auth-spec-brand" title="Trang chủ SCANMS">
+                <div class="auth-spec-brand-icon">
+                  <i class="ph-fill ph-sparkle"></i>
+                </div>
+                <div class="auth-spec-brand-text">
+                  <span class="auth-spec-brand-name">SCANMS</span>
+                  <span class="auth-spec-brand-sub">HỆ THỐNG QUẢN LÝ MẠNG LƯỚI CTV &amp; TIẾP THỊ</span>
+                </div>
+              </a>
+              <a href="#marketplace" class="btn secondary auth-back-to-shop-btn" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:#fff;border:1px solid #EAE4D7;color:#1A1612;font-size:12px;font-weight:700;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,0.04);cursor:pointer">
+                <i class="ph ph-arrow-left" style="color:#B88E4F"></i>
+                <i class="ph ph-shopping-bag" style="color:#B88E4F"></i>
+                <span>Quay về Sàn mua sắm</span>
+              </a>
+            </div>
 
             <!-- Badge Pill -->
             <div class="auth-spec-pill">
@@ -1599,6 +1605,22 @@ function authScreen() {
 
                 <div class="auth-switch-note">
                   Chưa có tài khoản? <button type="button" class="text-btn auth-inline-switch" data-auth-mode="register">Đăng ký thành viên ngay →</button>
+                </div>
+
+                <div style="margin-top:14px;padding:12px 14px;border-radius:14px;background:#FBF5EB;border:1px solid #EEDFC6;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left">
+                  <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                    <div style="width:32px;height:32px;border-radius:10px;background:#C59B58;color:#fff;display:grid;place-items:center;flex-shrink:0">
+                      <i class="ph ph-shopping-bag"></i>
+                    </div>
+                    <div style="min-width:0">
+                      <strong style="font-size:12px;color:#1A1612;display:block">Khách mua hàng trực tiếp</strong>
+                      <span style="font-size:11px;color:#7D715E;display:block">Không cần tài khoản đối tác</span>
+                    </div>
+                  </div>
+                  <a href="#marketplace" class="btn" style="flex-shrink:0;padding:6px 12px;border-radius:10px;background:#fff;border:1px solid #EEDFC6;color:#B88E4F;font-size:11.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+                    <span>Vào mua sắm</span>
+                    <i class="ph ph-arrow-right"></i>
+                  </a>
                 </div>
               </div>
             </form>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from '../../utils/toast';
 
 export default function SamplesPage() {
   const [selectedId, setSelectedId] = useState('SMP-9821');
@@ -85,7 +86,6 @@ export default function SamplesPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {toastMsg && <div className="toast show">{toastMsg}</div>}
 
-      {/* 1. HEADER */}
       <header className="page-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h1 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 4px', color: 'var(--ink)' }}>
@@ -100,7 +100,7 @@ export default function SamplesPage() {
           <button
             type="button"
             className="btn secondary"
-            onClick={() => alert('Chính sách: KOL Hạng Vàng được tài trợ 5 sản phẩm dùng thử miễn phí mỗi tháng.')}
+            onClick={() => toast.info('Chính sách: KOL Hạng Vàng được tài trợ 5 sản phẩm dùng thử miễn phí mỗi tháng.')}
             style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--ink)', padding: '9px 14px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
           >
             Chính sách Shop
@@ -116,7 +116,6 @@ export default function SamplesPage() {
         </div>
       </header>
 
-      {/* 2. CAMPAIGN STRIP */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'var(--surface-2)', borderRadius: '12px', border: '1px solid var(--line)', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--brand-soft)', color: 'var(--brand-strong)', display: 'grid', placeItems: 'center', fontSize: '16px' }}>
@@ -135,9 +134,8 @@ export default function SamplesPage() {
         </div>
       </div>
 
-      {/* 3. MASTER - DETAIL SPLIT LAYOUT */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1.9fr)', gap: '20px', alignItems: 'start' }}>
-        {/* LEFT LIST (MASTER) */}
+
         <div className="card" style={{ padding: '16px', background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: 'var(--shadow)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 600 }}>{samplesList.length} yêu cầu</span>
@@ -189,9 +187,8 @@ export default function SamplesPage() {
           </div>
         </div>
 
-        {/* RIGHT DETAIL (DETAIL) */}
         <div className="card" style={{ padding: '24px', background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: 'var(--shadow)' }}>
-          {/* TOP CARD INFO */}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', borderBottom: '1px solid var(--line)', paddingBottom: '16px' }}>
             <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
               <img
@@ -223,7 +220,6 @@ export default function SamplesPage() {
             </button>
           </div>
 
-          {/* PROGRESS STEPS */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <strong style={{ fontSize: '13px', color: 'var(--ink)' }}>Tiến trình xử lý &amp; Giao nhận hàng mẫu</strong>
@@ -265,7 +261,6 @@ export default function SamplesPage() {
             </div>
           </div>
 
-          {/* CARRIER INFO */}
           <div style={{ background: 'var(--surface-2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -293,7 +288,7 @@ export default function SamplesPage() {
               <button
                 type="button"
                 className="btn secondary small"
-                onClick={() => alert('Đang kết nối cuộc gọi tới Shipper: 0912 345 678')}
+                onClick={() => toast.info('Đang kết nối cuộc gọi tới Shipper: 0912 345 678')}
                 style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
                 <i className="ph ph-phone"></i> Gọi Shipper
@@ -309,7 +304,6 @@ export default function SamplesPage() {
             </div>
           </div>
 
-          {/* TWO INFO BLOCKS AT BOTTOM */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div style={{ background: 'var(--surface-2)', padding: '14px', borderRadius: '10px', border: '1px solid var(--line)', fontSize: '12px', lineHeight: 1.6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -334,7 +328,6 @@ export default function SamplesPage() {
         </div>
       </div>
 
-      {/* REQUEST MODAL */}
       {showRequestModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ background: 'var(--surface)', borderRadius: '16px', padding: '28px', maxWidth: '500px', width: '100%', boxShadow: '0 24px 48px rgba(0,0,0,0.2)', border: '1px solid var(--line)' }}>

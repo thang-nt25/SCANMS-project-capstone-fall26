@@ -113,7 +113,6 @@ export default function ShopSettingsPage() {
         </div>
       )}
 
-      {/* 1. HEADER */}
       <header>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">
           Cài Đặt Gian Hàng &amp; Quy Tắc Tiếp Thị
@@ -123,7 +122,6 @@ export default function ShopSettingsPage() {
         </p>
       </header>
 
-      {/* 2. FORM CARD */}
       <Card className="p-6 sm:p-7 bg-white border border-[#EAE4D7]">
         <form onSubmit={handleSave} className="flex flex-col gap-5">
           <div>

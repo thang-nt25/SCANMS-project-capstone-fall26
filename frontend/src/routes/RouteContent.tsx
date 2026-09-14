@@ -1,8 +1,8 @@
 import { useEffect, type ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 
-// Render the page without a login screen replacing its content.
-// API endpoints enforce authentication and role permissions on the server.
+
+
 export function RouteContent({ children }: { children?: ReactNode }) {
   useEffect(() => {
     if (window.parent === window) return;

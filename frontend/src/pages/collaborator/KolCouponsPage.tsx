@@ -23,6 +23,7 @@ import {
   type CouponItem,
   type CouponStatus,
 } from '../../services/coupon.service';
+import { toast as sonnerToast } from '../../utils/toast';
 import api from '../../services/api';
 
 const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: string; border: string }> = {
@@ -83,7 +84,7 @@ export const KolCouponsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  // Propose Modal State
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [approvedStores, setApprovedStores] = useState<any[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState('');
@@ -94,12 +95,12 @@ export const KolCouponsPage: React.FC = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
 
-  // Delete Modal State
+
   const [deleteTarget, setDeleteTarget] = useState<CouponItem | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Top-Right Corner Toast Notification State
+
   const [toast, setToast] = useState<{
     id: number;
     type: 'success' | 'error' | 'info';
@@ -158,7 +159,7 @@ export const KolCouponsPage: React.FC = () => {
     };
   }, [hasOpenModal]);
 
-  // Click outside to close custom store dropdown
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -176,24 +177,27 @@ export const KolCouponsPage: React.FC = () => {
     };
   }, [isStoreDropdownOpen]);
 
+  const fetchCouponsRef = useRef<(retryCount?: number) => Promise<void>>(() => Promise.resolve());
+  const fetchApprovedStoresRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   useEffect(() => {
-    fetchCoupons();
-    fetchApprovedStores();
+    fetchCouponsRef.current();
+    fetchApprovedStoresRef.current();
 
     const handleSync = (e: MessageEvent) => {
       if (e.data?.type === 'SCANMS_AUTH_SYNC') {
-        fetchCoupons();
-        fetchApprovedStores();
+        fetchCouponsRef.current();
+        fetchApprovedStoresRef.current();
       }
     };
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'token' || e.key === 'user' || e.key === 'scanms-current-role') {
-        fetchCoupons();
-        fetchApprovedStores();
+        fetchCouponsRef.current();
+        fetchApprovedStoresRef.current();
       }
     };
     const handleFocus = () => {
-      fetchCoupons();
+      fetchCouponsRef.current();
     };
 
     window.addEventListener('message', handleSync);
@@ -230,10 +234,11 @@ export const KolCouponsPage: React.FC = () => {
       setLoading(false);
     }
   };
+  fetchCouponsRef.current = fetchCoupons;
 
   const fetchApprovedStores = async () => {
     try {
-      // Fetch ONLY shops where collaborator has APPROVED partnership for coupon creation (FR-12)
+
       const res = await api.get('/collaborator/coupons/eligible-stores');
       const storeList = res.data?.data || res.data || [];
       setApprovedStores(storeList);
@@ -248,19 +253,22 @@ export const KolCouponsPage: React.FC = () => {
       setSelectedStoreId('');
     }
   };
+  fetchApprovedStoresRef.current = fetchApprovedStores;
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
+    sonnerToast.success('Đã sao chép mã giảm giá!');
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
   const handleTogglePause = async (coupon: CouponItem) => {
     try {
       await couponService.togglePauseCoupon(coupon.id);
+      sonnerToast.success(coupon.status === 'ACTIVE' ? 'Đã tạm dừng mã giảm giá' : 'Đã kích hoạt lại mã giảm giá');
       await fetchCoupons();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể thay đổi trạng thái coupon');
+      sonnerToast.error(err.response?.data?.message || 'Không thể thay đổi trạng thái coupon');
     }
   };
 
@@ -271,15 +279,16 @@ export const KolCouponsPage: React.FC = () => {
       await couponService.deleteCoupon(deleteTarget.id, deleteReason);
       setDeleteTarget(null);
       setDeleteReason('');
+      sonnerToast.success('Đã xóa mã giảm giá');
       await fetchCoupons();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể xóa mã giảm giá');
+      sonnerToast.error(err.response?.data?.message || 'Không thể xóa mã giảm giá');
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  // Live syntax validator for proposed code
+
   const trimmedCode = proposeCode.trim().toUpperCase();
   const isLengthValid = trimmedCode.length >= 4 && trimmedCode.length <= 20;
   const isAlphanumeric = /^[A-Z0-9]+$/.test(trimmedCode);
@@ -321,7 +330,7 @@ export const KolCouponsPage: React.FC = () => {
         code: trimmedCode,
       });
 
-      // Quick visual feedback then close modal and pop toast in top-right
+
       setModalSuccess(
         `Đề xuất mã "${trimmedCode}" thành công! Đang chuyển tiếp...`,
       );
@@ -346,7 +355,7 @@ export const KolCouponsPage: React.FC = () => {
     }
   };
 
-  // Filter coupons
+
   const safeCoupons = Array.isArray(coupons) ? coupons : [];
   const filteredCoupons = safeCoupons.filter((c) => {
     if (!c) return false;
@@ -362,7 +371,7 @@ export const KolCouponsPage: React.FC = () => {
     return matchSearch && matchStatus;
   });
 
-  // Calculate high-level stats
+
   const totalCount = safeCoupons.length;
   const activeCount = safeCoupons.filter((c) => c && c.status === 'ACTIVE').length;
   const pendingCount = safeCoupons.filter(
@@ -375,7 +384,7 @@ export const KolCouponsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen h-full overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
-      {/* Top Header */}
+
       <div className="max-w-7xl mx-auto mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE4D7] pb-6">
           <div>
@@ -407,7 +416,7 @@ export const KolCouponsPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Stats Row */}
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
@@ -461,7 +470,7 @@ export const KolCouponsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters and Search Bar */}
+
         <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
@@ -498,7 +507,7 @@ export const KolCouponsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Coupons List / Table */}
+
         {loading ? (
           <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-[#C59B58] mx-auto mb-3" />
@@ -541,7 +550,7 @@ export const KolCouponsPage: React.FC = () => {
                   className="bg-white rounded-xl border border-[#EAE4D7] p-5 shadow-xs hover:border-[#C59B58] transition-all duration-200 flex flex-col justify-between"
                 >
                   <div>
-                    {/* Top Store & Status */}
+
                     <div className="flex items-center justify-between gap-2 mb-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <Store className="w-4 h-4 text-[#B88E4F] shrink-0" />
@@ -556,7 +565,7 @@ export const KolCouponsPage: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Coupon Code Pill */}
+
                     <div className="bg-[#FAF8F5] border border-[#EEDFC6] rounded-xl p-3 flex items-center justify-between mb-4">
                       <div>
                         <span className="text-[10px] uppercase font-bold text-[#7D715E] tracking-wider block">
@@ -579,7 +588,7 @@ export const KolCouponsPage: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Policy breakdown */}
+
                     <div className="space-y-2 mb-4 text-xs text-[#7D715E]">
                       {coupon.status === 'PENDING_APPROVAL' ? (
                         <div className="bg-amber-50/60 p-2.5 rounded-lg border border-amber-200/60 flex items-start gap-2">
@@ -666,7 +675,7 @@ export const KolCouponsPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Financial Performance Pill for Active/Paused Coupons */}
+
                     {(coupon.status === 'ACTIVE' || coupon.status === 'PAUSED') && (
                       <div className="mb-4 p-2.5 rounded-lg bg-[#FAF8F5] border border-[#EEDFC6] text-xs space-y-1.5">
                         <div className="flex items-center justify-between">
@@ -685,7 +694,7 @@ export const KolCouponsPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Actions Bar */}
+
                   <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-between gap-2">
                     <span className="text-[11px] text-[#7D715E]">
                       Tạo lúc:{' '}
@@ -731,7 +740,7 @@ export const KolCouponsPage: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL: ĐỀ XUẤT MÃ GIẢM GIÁ MỚI */}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white w-full max-w-lg rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto max-h-[92vh] flex flex-col">
@@ -767,7 +776,7 @@ export const KolCouponsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Store Selection - Custom Warm Sand & Gold Dropdown */}
+
               <div>
                 <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
                   Chọn Gian hàng đối tác <span className="text-red-500">*</span>
@@ -806,7 +815,7 @@ export const KolCouponsPage: React.FC = () => {
                     />
                   </button>
 
-                  {/* Dropdown Menu - Tone sáng Vàng Be chuẩn SCANMS */}
+
                   {isStoreDropdownOpen && (
                     <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-[#EEDFC6] rounded-xl shadow-xl overflow-hidden py-1.5 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150">
                       {approvedStores.length > 0 ? (
@@ -862,7 +871,7 @@ export const KolCouponsPage: React.FC = () => {
                 </span>
               </div>
 
-              {/* Code Input */}
+
               <div>
                 <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
                   Mã coupon mong muốn <span className="text-red-500">*</span>
@@ -888,7 +897,7 @@ export const KolCouponsPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Validation checklist */}
+
                 <div className="mt-3 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl space-y-1.5 text-[11px]">
                   <p className="font-semibold text-[#1A1612] mb-1">
                     Tiêu chuẩn mã hợp lệ (Section 8 & 10):
@@ -931,7 +940,7 @@ export const KolCouponsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Preview Box */}
+
               {trimmedCode && (
                 <div className="p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl flex items-center justify-between">
                   <div>
@@ -948,7 +957,7 @@ export const KolCouponsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Footer CTA */}
+
               <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
                 <button
                   type="button"
@@ -977,7 +986,7 @@ export const KolCouponsPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: XÓA MỀM COUPON */}
+
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white w-full max-w-md rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden p-6 my-auto animate-in fade-in zoom-in-95 duration-200">
@@ -1022,7 +1031,7 @@ export const KolCouponsPage: React.FC = () => {
         </div>
       )}
 
-      {/* TOAST NOTIFICATION: GÓC TRÊN BÊN PHẢI (CHỈNH CHU THEO YÊU CẦU NGƯỜI DÙNG) */}
+
       {toast && (
         <div
           role="status"

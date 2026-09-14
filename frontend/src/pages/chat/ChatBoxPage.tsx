@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   Crown,
 } from 'lucide-react';
-import { getChatSocket } from '../../services/chatSocket';
+import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '../../types/chat';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
@@ -68,20 +68,20 @@ function isProfaneText(text: string): boolean {
   return false;
 }
 
-// ============================================================
-// Helper: detect & parse campaign invite card
-// ============================================================
+
+
+
 function tryParseCampaignCard(text: string) {
   try {
     const obj = JSON.parse(text);
     if (['CAMPAIGN_INVITE', 'CAMPAIGN_ACCEPTED', 'CAMPAIGN_REJECTED'].includes(obj.type)) return obj;
   } catch {
-    /* not JSON */
+
   }
   return null;
 }
 
-// Campaign Invite Card UI (Pure Tailwind CSS)
+
 function CampaignCardBubble({
   card,
   isMine,
@@ -173,10 +173,10 @@ function CampaignCardBubble({
 
   return (
     <div className="p-4 bg-gradient-to-br from-amber-50/90 via-orange-50/80 to-amber-100/60 border-2 border-amber-300 rounded-3xl shadow-sm text-stone-800 space-y-3 max-w-sm relative overflow-hidden backdrop-blur-xs">
-      {/* Decorative Gold Glow */}
+
       <div className="absolute top-0 right-0 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
 
-      {/* Top Header */}
+
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs">
           <Sparkles className="w-3 h-3 text-amber-100" /> THẺ MỜI VIP
@@ -187,7 +187,7 @@ function CampaignCardBubble({
         </div>
       </div>
 
-      {/* Campaign Details */}
+
       <div className="space-y-1">
         <div className="font-extrabold text-stone-900 text-sm leading-snug">
           🎯 {card.campaignName}
@@ -203,14 +203,14 @@ function CampaignCardBubble({
         </div>
       </div>
 
-      {/* Personal Greeting if any */}
+
       {card.personalMessage && (
         <div className="p-2.5 bg-white/80 border border-amber-200/80 rounded-xl text-xs text-stone-700 italic">
           "{card.personalMessage}"
         </div>
       )}
 
-      {/* Timeline */}
+
       <div className="text-[11px] text-stone-600 bg-white/70 px-3 py-1.5 rounded-xl border border-amber-200/60 flex items-center justify-between">
         <span>Thời hạn áp dụng:</span>
         <span className="font-bold text-stone-800">
@@ -219,14 +219,14 @@ function CampaignCardBubble({
         </span>
       </div>
 
-      {/* Feedback Error if any */}
+
       {feedbackError && (
         <div className="p-2 bg-rose-50 border border-rose-200 rounded-xl text-[11px] text-rose-700 font-medium">
           {feedbackError}
         </div>
       )}
 
-      {/* Action Buttons for Recipient KOL */}
+
       {!isMine && !statusOverride && (
         <div className="pt-1 space-y-1.5">
           {isExpired ? (
@@ -265,9 +265,9 @@ function CampaignCardBubble({
   );
 }
 
-// ============================================================
-// New Conversation Modal
-// ============================================================
+
+
+
 function NewConversationModal({
   onClose,
   onCreated,
@@ -333,7 +333,7 @@ function NewConversationModal({
         className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
+
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 bg-stone-50/50">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
@@ -352,7 +352,7 @@ function NewConversationModal({
           </button>
         </div>
 
-        {/* Search */}
+
         <div className="p-4 border-b border-stone-100">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -379,7 +379,7 @@ function NewConversationModal({
           </div>
         </div>
 
-        {/* Results */}
+
         <div className="flex-1 overflow-y-auto p-3 space-y-1 divide-y divide-stone-50 min-h-[220px]">
           {loading && (
             <div className="py-12 text-center text-xs font-semibold text-stone-400 flex flex-col items-center gap-2">
@@ -437,9 +437,9 @@ function NewConversationModal({
   );
 }
 
-// ============================================================
-// Helper: format timestamp
-// ============================================================
+
+
+
 function formatMsgTime(dateStr: string) {
   const d = new Date(dateStr);
   if (isToday(d)) return format(d, 'HH:mm');
@@ -454,9 +454,9 @@ function formatConvTime(dateStr: string) {
   return format(d, 'dd/MM/yy', { locale: vi });
 }
 
-// ============================================================
-// Main ChatBoxPage Component (Pure Tailwind CSS)
-// ============================================================
+
+
+
 export default function ChatBoxPage() {
   const currentUser = (() => {
     try {
@@ -486,20 +486,21 @@ export default function ChatBoxPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const openConversationRef = useRef<(conv: Conversation) => Promise<void>>(() => Promise.resolve());
 
   const scrollToBottom = useCallback((smooth = false) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
   }, []);
 
-  // ---- Load conversations ----
+
   useEffect(() => {
     api
       .get('/chat/conversations')
       .then((res: any) => {
         const list: Conversation[] = Array.isArray(res) ? res : res?.data || [];
         setConversations(list);
-        if (list.length > 0 && !activeConvId) {
-          openConversation(list[0]);
+        if (list.length > 0) {
+          openConversationRef.current(list[0]);
         }
       })
       .catch(console.error);
@@ -517,7 +518,7 @@ export default function ChatBoxPage() {
     setTimeout(() => setSuccessMessage(null), 4000);
   };
 
-  // ---- Socket.io setup ----
+
   useEffect(() => {
     const socket = getChatSocket();
     setIsConnected(socket.connected);
@@ -578,7 +579,7 @@ export default function ChatBoxPage() {
     };
   }, [scrollToBottom]);
 
-  // ---- Open conversation ----
+
   const openConversation = async (conv: Conversation) => {
     if (!conv || !conv.id) return;
     const socket = getChatSocket();
@@ -606,8 +607,9 @@ export default function ChatBoxPage() {
 
     socket.emit('join_conversation', { conversationId: conv.id });
   };
+  openConversationRef.current = openConversation;
 
-  // ---- Load more (scroll to top) ----
+
   const loadMore = async () => {
     if (!activeConvId || !oldestMsgId || !hasMore) return;
     const container = messagesContainerRef.current;
@@ -632,12 +634,12 @@ export default function ChatBoxPage() {
     }
   };
 
-  // ---- Send message ----
+
   const sendMessage = useCallback(() => {
     const trimmed = inputText.trim();
     if (!trimmed || !activeConvId || isSending) return;
 
-    // Kiểm tra từ ngữ thô tục / cấm kỵ ngay tại Client
+
     if (isProfaneText(trimmed)) {
       showErrorToast(
         '⚠️ Tin nhắn chứa từ ngữ không phù hợp hoặc vi phạm chuẩn mực. Vui lòng giao tiếp văn minh lịch sự!'
@@ -657,7 +659,7 @@ export default function ChatBoxPage() {
     socket.emit('typing', { conversationId: activeConvId, isTyping: false });
   }, [inputText, activeConvId, isSending]);
 
-  // ---- Typing indicator ----
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputText(e.target.value);
     if (!activeConvId) return;
@@ -669,7 +671,7 @@ export default function ChatBoxPage() {
     }, 2000);
   };
 
-  // ---- Key handler ----
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -703,12 +705,12 @@ export default function ChatBoxPage() {
       className="flex h-[calc(100vh-5.5rem)] bg-white rounded-2xl border border-stone-200/80 shadow-sm overflow-hidden"
       id="chat-page"
     >
-      {/* ====== Sidebar: Conversation List ====== */}
+
       <aside
         className="w-80 flex-shrink-0 flex flex-col border-r border-stone-200/80 bg-stone-50/40"
         aria-label="Danh sách hội thoại"
       >
-        {/* Header */}
+
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-stone-200/60 bg-white/50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
@@ -734,7 +736,7 @@ export default function ChatBoxPage() {
           </div>
         </div>
 
-        {/* Search */}
+
         <div className="p-3 border-b border-stone-200/60">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -749,7 +751,7 @@ export default function ChatBoxPage() {
           </div>
         </div>
 
-        {/* Conversation List */}
+
         <div className="flex-1 overflow-y-auto divide-y divide-stone-100" role="list">
           {filteredConversations.length === 0 && (
             <div className="py-16 text-center text-stone-400 text-xs space-y-2">
@@ -817,7 +819,7 @@ export default function ChatBoxPage() {
         </div>
       </aside>
 
-      {/* ====== Main Chat Area ====== */}
+
       <main className="flex-1 flex flex-col bg-stone-50/30 relative min-w-0" aria-label="Khung chat">
         {!activeConv ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-3">
@@ -831,7 +833,7 @@ export default function ChatBoxPage() {
           </div>
         ) : (
           <>
-            {/* Header */}
+
             <header className="px-6 py-3.5 bg-white border-b border-stone-200/80 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-sm flex items-center justify-center shadow-xs">
@@ -859,7 +861,7 @@ export default function ChatBoxPage() {
                 </div>
               </div>
 
-              {/* Shop Action: Mời Chiến Dịch VIP (FR-27) */}
+
               {isShop && (
                 <button
                   id="btn-open-vip-invite"
@@ -873,7 +875,7 @@ export default function ChatBoxPage() {
               )}
             </header>
 
-            {/* Messages Container */}
+
             <div
               className="flex-1 overflow-y-auto p-6 space-y-4"
               ref={messagesContainerRef}
@@ -1001,7 +1003,7 @@ export default function ChatBoxPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
+
             <div className="p-4 bg-white border-t border-stone-200 flex items-center gap-2.5 shadow-xs">
               <button
                 className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-xl transition-colors"
@@ -1059,7 +1061,7 @@ export default function ChatBoxPage() {
         )}
       </main>
 
-      {/* Toast Success Notification */}
+
       {successMessage && (
         <div className="fixed bottom-6 right-6 z-50 max-w-md bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
           <CheckCircle2 className="w-5 h-5 text-emerald-200 flex-shrink-0" />
@@ -1073,7 +1075,7 @@ export default function ChatBoxPage() {
         </div>
       )}
 
-      {/* Toast Error Notification */}
+
       {errorMessage && (
         <div className="fixed bottom-6 right-6 z-50 max-w-md bg-rose-600 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
           <AlertTriangle className="w-5 h-5 text-rose-200 flex-shrink-0" />
@@ -1087,7 +1089,7 @@ export default function ChatBoxPage() {
         </div>
       )}
 
-      {/* Send VIP Campaign Modal (FR-27) */}
+
       {showVipModal && activeConv && (
         <SendVipCampaignModal
           conversationId={activeConv.id}
@@ -1106,7 +1108,7 @@ export default function ChatBoxPage() {
         />
       )}
 
-      {/* New Conversation Modal */}
+
       {showNewChat && (
         <NewConversationModal
           isShop={isShop}

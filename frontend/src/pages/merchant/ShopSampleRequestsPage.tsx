@@ -35,7 +35,7 @@ function formatDate(d: string) {
   return format(new Date(d), 'dd/MM/yyyy HH:mm');
 }
 
-// ─── Tracking Number Modal ───────────────────────────────────────────────
+
 function TrackingModal({
   request,
   onClose,
@@ -159,7 +159,7 @@ function TrackingModal({
   );
 }
 
-// ─── Shop Page ────────────────────────────────────────────────────────────
+
 export default function ShopSampleRequestsPage() {
   const [requests, setRequests] = useState<SampleRequest[]>([]);
   const [stats, setStats] = useState<ShopStats | null>(null);
@@ -231,7 +231,7 @@ export default function ShopSampleRequestsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6" id="shop-sample-requests-page">
-      {/* Toast */}
+
       {toast && (
         <div
           className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl text-xs font-extrabold shadow-lg z-50 border ${
@@ -245,7 +245,7 @@ export default function ShopSampleRequestsPage() {
         </div>
       )}
 
-      {/* Header */}
+
       <div className="pb-2 border-b border-[#EAE4D7]">
         <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] flex items-center gap-2.5">
           <span>📋</span> Quản Lý Yêu Cầu Mẫu Trải Nghiệm
@@ -255,7 +255,7 @@ export default function ShopSampleRequestsPage() {
         </p>
       </div>
 
-      {/* Stats cards */}
+
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
@@ -289,7 +289,7 @@ export default function ShopSampleRequestsPage() {
         </div>
       )}
 
-      {/* Filters */}
+
       <div className="flex items-center gap-2 overflow-x-auto pb-1" role="tablist">
         {(['ALL', 'PENDING', 'APPROVED', 'SHIPPED', 'REJECTED'] as const).map((s) => (
           <button
@@ -323,7 +323,7 @@ export default function ShopSampleRequestsPage() {
         ))}
       </div>
 
-      {/* Table */}
+
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-3 p-20 text-[#7D715E]">
           <div className="w-8 h-8 border-3 border-[#C59B58]/20 border-t-[#C59B58] rounded-full animate-spin" />

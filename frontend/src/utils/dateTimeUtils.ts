@@ -1,7 +1,4 @@
-/**
- * Trích xuất Năm và Tháng hiện tại theo chuẩn múi giờ Việt Nam (Asia/Ho_Chi_Minh)
- * Đảm bảo các chức năng chốt thưởng và theo dõi tiến độ luôn lấy đúng kỳ tháng hiện hành.
- */
+
 export const getVietnamCurrentMonthYear = (): { year: string; month: string } => {
   try {
     const formatter = new Intl.DateTimeFormat('en-US', {

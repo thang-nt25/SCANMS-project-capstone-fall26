@@ -79,13 +79,12 @@ export interface SettlementResponse {
 }
 
 export const commissionRulesService = {
-  // Lấy danh sách các mốc thưởng của Shop
+
   async getRules(storeId: string): Promise<CommissionRule[]> {
     const res: any = await api.get(`/stores/${storeId}/commission-rules`);
     return res.data || res;
   },
 
-  // Xem chi tiết một mốc thưởng
   async getRule(storeId: string, ruleId: string): Promise<CommissionRule> {
     const res: any = await api.get(
       `/stores/${storeId}/commission-rules/${ruleId}`,
@@ -93,7 +92,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Tạo mốc thưởng mới
   async createRule(
     storeId: string,
     data: {
@@ -112,7 +110,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Cập nhật mốc thưởng
   async updateRule(
     storeId: string,
     ruleId: string,
@@ -132,7 +129,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Kích hoạt hoặc tạm ngừng áp dụng mốc
   async updateStatus(
     storeId: string,
     ruleId: string,
@@ -145,7 +141,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Xóa mềm mốc thưởng
   async deleteRule(
     storeId: string,
     ruleId: string,
@@ -156,7 +151,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Mô phỏng tính thưởng doanh số tháng theo công thức lũy tiến
   async previewBonus(
     storeId: string,
     monthlyRevenue: string,
@@ -168,7 +162,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Chốt thưởng tháng cho KOL (Idempotent)
   async settleMonthlyBonus(
     storeId: string,
     collaboratorId: string,
@@ -181,7 +174,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Lấy lịch sử chốt thưởng
   async getSettlementHistory(
     storeId: string,
     yearMonth?: string,
@@ -195,7 +187,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Duyệt thưởng tháng (PENDING -> APPROVED)
   async approveSettlement(
     storeId: string,
     settlementId: string,
@@ -206,7 +197,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Chi trả tiền thưởng vào Ví KOL (APPROVED -> PAID)
   async payoutSettlement(
     storeId: string,
     settlementId: string,
@@ -217,7 +207,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Khôi phục mốc thưởng đã xóa mềm
   async restoreRule(
     storeId: string,
     ruleId: string,
@@ -228,7 +217,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Xử lý hoàn tiền đơn hàng và tạo khoản điều chỉnh âm
   async handleRefund(
     storeId: string,
     data: { orderId: string; refundAmount: string; reason: string },
@@ -240,7 +228,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Xem tiến độ của KOL trong tháng (dành cho Shop xem KOL bất kỳ)
   async getKolProgress(
     storeId: string,
     collaboratorId: string,
@@ -253,7 +240,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // API tự xem dành cho KOL (Self-service lấy định danh từ JWT token)
   async getMyBonusProgress(
     storeId: string,
     yearMonth?: string,
@@ -265,7 +251,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Lịch sử nhận thưởng doanh số của chính KOL từ JWT
   async getMyBonusHistory(
     storeId?: string,
     yearMonth?: string,
@@ -277,7 +262,6 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
-  // Lấy danh sách các cửa hàng có chính sách mốc thưởng
   async getCollaboratorStores(discovery?: boolean): Promise<any[]> {
     const params = discovery !== undefined ? { discovery } : {};
     const res: any = await api.get('/collaborator/stores', { params });
@@ -285,3 +269,4 @@ export const commissionRulesService = {
   },
 };
 
+export default commissionRulesService;

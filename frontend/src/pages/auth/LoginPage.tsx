@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { triggerGoogleSignIn } from '../../utils/googleAuth';
+import { toast } from '../../utils/toast';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -167,15 +168,16 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-10">
-      {/* Top Banner Navigation: Prominent Link to Return to Guest Store */}
+
       <div className="max-w-7xl mx-auto w-full mb-4 flex flex-wrap justify-between items-center gap-3 text-xs">
         <Link
-          to="/"
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#EAE4D7] text-[#1A1612] font-bold hover:bg-[#F3EFE6] transition shadow-2xs group cursor-pointer"
+          to="/marketplace"
+          id="btn-back-to-marketplace"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EAE4D7] text-[#1A1612] font-bold hover:bg-[#F3EFE6] transition shadow-2xs group cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4 text-[#B88E4F] group-hover:-translate-x-0.5 transition-transform" />
+          <ArrowLeft className="w-4 h-4 text-[#B88E4F] group-hover:-translate-x-1 transition-transform" />
           <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
-          <span>← Quay lại Cửa Hàng Sora Skin (Mua hàng cho Khách vãng lai)</span>
+          <span>Quay về Sàn Mua Sắm Chính (SCANMS Marketplace)</span>
         </Link>
         <span className="text-[#7D715E] hidden sm:inline font-semibold">
           Cổng Đăng Nhập Quản Trị Hệ Thống SCANMS
@@ -183,9 +185,9 @@ export default function LoginPage() {
       </div>
 
       <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
-        {/* LEFT COLUMN: BRAND HERO WITH WARM SAND / GOLD THEME (Matching App's Vàng Be Brand System) */}
+
         <div className="lg:col-span-7 bg-[#F3EFE6] border border-[#EAE4D7] rounded-3xl p-7 sm:p-10 flex flex-col justify-between gap-6 text-left relative overflow-hidden shadow-xs">
-          {/* Subtle Grid Pattern Overlay */}
+
           <div
             className="absolute inset-0 pointer-events-none opacity-35"
             style={{
@@ -197,7 +199,7 @@ export default function LoginPage() {
           />
 
           <div className="relative z-10 flex flex-col gap-5">
-            {/* Brand Header */}
+
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-[#B88E4F] text-white flex items-center justify-center shadow-xs">
                 <Sparkles className="w-6 h-6 text-amber-100" />
@@ -212,13 +214,11 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Pill Badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold w-fit">
               <span className="w-2 h-2 rounded-full bg-[#B88E4F]" />
               <span>Chuẩn Đề Án FA26SE032 • Quản Trị Mạng Lưới CTV Toàn Diện</span>
             </div>
 
-            {/* Heading */}
             <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1A1612] tracking-tight leading-tight m-0">
               Quản trị mạng lưới CTV &amp;{' '}
               <span className="text-[#B88E4F]">bứt phá doanh số tiếp thị.</span>
@@ -229,7 +229,6 @@ export default function LoginPage() {
               định danh, đối soát hoa hồng minh bạch và mở rộng kênh phân phối vượt trội.
             </p>
 
-            {/* Showcase Illustration Card matching Figma */}
             <div className="bg-white/95 backdrop-blur-xs p-5 rounded-2xl border border-[#EAE4D7] shadow-xs flex flex-col gap-3 my-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold text-[#B88E4F]">
@@ -256,7 +255,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* 3 Pills */}
             <div className="flex flex-wrap gap-2 pt-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-[#1A1612] border border-[#EAE4D7] text-xs font-bold shadow-2xs">
                 <span className="text-[#B88E4F] font-black">✓</span> Định Danh CTV Đa Kênh
@@ -269,7 +267,6 @@ export default function LoginPage() {
               </span>
             </div>
 
-            {/* 3 Mini Cards */}
             <div className="grid grid-cols-3 gap-3 pt-2">
               <div className="bg-white p-3 rounded-xl border border-[#EAE4D7] text-center shadow-2xs">
                 <strong className="text-xs sm:text-sm font-extrabold text-[#1A1612] block">Đa Nền Tảng</strong>
@@ -286,7 +283,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Footer Status Bar in Left Column */}
           <div className="relative z-10 pt-4 border-t border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 text-[11px] font-semibold text-[#7D715E]">
             <div className="flex items-center gap-3">
               <span>• Hệ thống hoạt động 99.98% SLA</span>
@@ -297,7 +293,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: LOGIN CARD (Pure White with Gold Submit Button matching 01_Dang_Nhap_Auth.png) */}
         <div className="lg:col-span-5 w-full flex flex-col justify-center">
           <div className="bg-white rounded-3xl border border-[#EAE4D7] shadow-lg p-6 sm:p-8 flex flex-col gap-5 text-left">
             <div>
@@ -309,7 +304,6 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* ROLE PICKER TABS (in Warm Sand track) */}
             <div>
               <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl">
                 <button
@@ -351,7 +345,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* ERROR & SUCCESS ALERTS */}
             {error && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -365,7 +358,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* 1-CLICK DEMO ACCOUNTS ACCORDION */}
             <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[11px] font-extrabold text-[#B88E4F] uppercase tracking-wider flex items-center gap-1">
@@ -415,7 +407,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* LOGIN FORM */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1.5 flex items-center gap-1.5">
@@ -440,7 +431,7 @@ export default function LoginPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => alert('Vui lòng liên hệ Quản trị viên để đặt lại mật khẩu.')}
+                    onClick={() => toast.info('Vui lòng liên hệ Quản trị viên để đặt lại mật khẩu.')}
                     className="text-xs font-semibold text-[#B88E4F] hover:underline bg-transparent border-none cursor-pointer"
                   >
                     Quên mật khẩu?
@@ -477,7 +468,6 @@ export default function LoginPage() {
                 </label>
               </div>
 
-              {/* PRIMARY SUBMIT BUTTON: SOLID WARM GOLD MATCHING FIGMA */}
               <button
                 type="submit"
                 disabled={loading}
@@ -511,7 +501,7 @@ export default function LoginPage() {
 
                 <button
                   type="button"
-                  onClick={() => alert('Đăng nhập TikTok Open API đang được bảo trì.')}
+                  onClick={() => toast.info('Đăng nhập TikTok Open API đang được bảo trì.')}
                   className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] transition cursor-pointer shadow-2xs"
                 >
                   <span className="font-extrabold text-sm">🎵</span>
@@ -519,20 +509,35 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <div className="text-center text-xs text-[#7D715E] mt-2 flex flex-col gap-2.5">
+              <div className="text-center text-xs text-[#7D715E] mt-2 flex flex-col gap-3">
                 <div>
                   Chưa có tài khoản?{' '}
                   <Link to="/register" className="font-bold text-[#C59B58] hover:underline">
                     Đăng ký thành viên ngay →
                   </Link>
                 </div>
-                <div className="pt-2 border-t border-[#EAE4D7] flex items-center justify-center">
+
+                <div className="p-3.5 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between gap-3 text-left">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[#C59B58] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <ShoppingBag className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <strong className="text-xs font-bold text-[#1A1612] block truncate">
+                        Khách mua hàng trực tiếp
+                      </strong>
+                      <span className="text-[11px] text-[#7D715E] block truncate">
+                        Không cần đăng nhập để đặt mua sản phẩm
+                      </span>
+                    </div>
+                  </div>
                   <Link
-                    to="/"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-xs font-bold text-[#1A1612] transition"
+                    to="/marketplace"
+                    id="btn-goto-shopping-marketplace"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] hover:text-[#92400E] shadow-2xs transition cursor-pointer"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5 text-[#B88E4F]" />
-                    <span>Quay lại trang mua hàng Sora Skin</span>
+                    <span>Vào mua sắm</span>
+                    <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
                   </Link>
                 </div>
               </div>

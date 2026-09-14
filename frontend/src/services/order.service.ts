@@ -90,7 +90,7 @@ export const orderService = {
   },
 
   async downloadExcelTemplate() {
-    // File downloads are deliberately not wrapped by the JSON response envelope.
+
     const blob = (await api.get("/orders/import-excel/template", {
       responseType: "blob",
     })) as unknown as Blob;
