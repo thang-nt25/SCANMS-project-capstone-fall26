@@ -1,9 +1,9 @@
 import type { Product, Creator, ReviewVideo } from './marketplace.types';
-// Demo fixtures migrated from the original UI. No backend writes or real orders.
-// ==========================================================================
-// SCANMS MARKETPLACE - Sàn Mua Sắm & Tiếp Thị Liên Kết Công Khai (FR-15, FR-16, FR-17, FR-29)
-// Truy cập không cần đăng nhập • Toàn bộ danh mục sản phẩm • Tra cứu đơn • Xem review KOL
-// ==========================================================================
+
+
+
+
+
 
 export const marketplaceProducts: Product[] = [
   {
@@ -17,7 +17,7 @@ export const marketplaceProducts: Product[] = [
     sold: "1.4k",
     origPrice: 520000,
     price: 459000,
-    kolDiscountPrice: 413100, // -10%
+    kolDiscountPrice: 413100,
     image: "/reference/assets/serum-hero-optimized.jpg",
     kol: {
       name: "Trần Văn Nhật",

@@ -10,12 +10,12 @@ const api = axios.create({
   },
 });
 
-// Determine the exact user role needed for a given request
+
 function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'SYSTEM_ADMIN' {
   const reqUrl = (url || '').toLowerCase();
   const currentPath = (typeof window !== 'undefined' ? window.location?.pathname || '' : '').toLowerCase();
 
-  // StoreCollaborator có cả API của Shop và KOL. Phải phân loại trước
+
   if (
     reqUrl.includes('/store-collaborators/shop') ||
     reqUrl.includes('/store-collaborators/invite')
@@ -29,7 +29,7 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
     return 'COLLABORATOR';
   }
 
-  // Sample Requests (FR-26) có cả API của Shop và KOL.
+
   if (
     reqUrl.includes('/sample-requests/shop') ||
     /\/sample-requests\/[^/]+\/(approve|reject|ship)(?:\?|$)/.test(reqUrl)
@@ -43,7 +43,7 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
     return 'COLLABORATOR';
   }
 
-  // Real-time Chat (FR-25): Phân định chính xác API của Shop vs KOL
+
   if (reqUrl.includes('/chat/search-collaborators')) {
     return 'SHOP_MANAGER';
   }
@@ -64,8 +64,8 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
     return 'COLLABORATOR';
   }
 
-  // 1. COLLABORATOR / KOL routes:
-  // MUST CHECK FIRST: routes like /collaborator/stores/... contain both /collaborator and /stores/!
+
+
   if (
     reqUrl.includes('/collaborator') ||
     reqUrl.includes('/kol') ||
@@ -77,12 +77,12 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
     return 'COLLABORATOR';
   }
 
-  // 2. ADMIN routes:
+
   if (reqUrl.includes('/admin') || currentPath.includes('/admin')) {
     return 'SYSTEM_ADMIN';
   }
 
-  // 3. MERCHANT / SHOP routes:
+
   if (
     reqUrl.includes('/merchant') ||
     reqUrl.includes('/commission-rules') ||
@@ -99,7 +99,7 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
   return 'COLLABORATOR';
 }
 
-// Helper for DEV auto-login when token is missing, expired, or wrong role
+
 const isDemoAutoLoginEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_AUTO_LOGIN === 'true';
 
 function isStillOnTargetRole(targetRole: 'COLLABORATOR' | 'SHOP_MANAGER' | 'SYSTEM_ADMIN') {
@@ -132,20 +132,20 @@ async function getDevFallbackToken(url?: string): Promise<string | null> {
     );
     const newToken = res.data?.data?.accessToken || res.data?.accessToken;
     const user = res.data?.data?.user || res.data?.user;
-    // Một request của iframe role cũ có thể hoàn tất sau khi người dùng đã đổi role.
-    // Không cho response cũ ghi đè JWT của role đang hoạt động.
+
+
     if (newToken && isStillOnTargetRole(targetRole)) {
       localStorage.setItem('token', newToken);
       if (user) localStorage.setItem('user', JSON.stringify(user));
       return newToken;
     }
   } catch {
-    // Ignore dev login failure
+
   }
   return null;
 }
 
-// Request Interceptor: Automatically attach Authorization token
+
 api.interceptors.request.use(
   async (config) => {
     let token = localStorage.getItem('token');
@@ -162,7 +162,7 @@ api.interceptors.request.use(
     const isRoleMismatch = currentUserRole && currentUserRole !== targetRole;
 
     if (isDemoAutoLoginEnabled && !config.url?.includes('/auth/')) {
-      // Auto-switch token ONLY if missing token or if current role differs from target
+
       if (!token || isRoleMismatch) {
         token = await getDevFallbackToken(config.url);
       }
@@ -178,7 +178,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Format errors & auto-retry 401/403 only when demo auto-login is enabled
+
 api.interceptors.response.use(
   (response) => response.data,
   async (error) => {

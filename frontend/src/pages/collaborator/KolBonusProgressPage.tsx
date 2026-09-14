@@ -19,7 +19,7 @@ import {
   Check,
   Loader2,
 } from 'lucide-react';
-import { commissionRulesService } from '../../services/commissionRulesService';
+import { commissionRulesService } from '../../services/commission-rules.service';
 import api from '../../services/api';
 import { getVietnamCurrentMonthYear } from '../../utils/dateTimeUtils';
 
@@ -109,8 +109,8 @@ export const KolBonusProgressPage: React.FC = () => {
   const isDevMockEnabled = import.meta.env.VITE_ENABLE_MOCK_DEMO === 'true';
   const currentYearMonth = `${selectedYear}-${selectedMonth}`;
 
-  // Iframe có thể được mở bằng JWT cũ trong lúc ứng dụng cha đang đổi vai trò.
-  // Khi JWT mới đã sẵn sàng, tải lại để lấy đúng Shop và lời mời của KOL mới.
+
+
   useEffect(() => {
     const handleAuthSync = (event: MessageEvent) => {
       if (event.data?.type === 'SCANMS_AUTH_SYNC') {
@@ -121,7 +121,7 @@ export const KolBonusProgressPage: React.FC = () => {
     return () => window.removeEventListener('message', handleAuthSync);
   }, []);
 
-  // Load danh sách Store thực tế của KOL
+
   useEffect(() => {
     let isMounted = true;
     async function loadStores() {
@@ -176,7 +176,7 @@ export const KolBonusProgressPage: React.FC = () => {
     }
   };
 
-  // Tự động báo chiều cao đầy đủ ra khung cha để trang cha cuộn mượt mà tự nhiên 100% (không bị 2 thanh cuộn)
+
   useEffect(() => {
     if (window.parent && window.parent !== window) {
       const sendHeight = () => {
@@ -196,7 +196,7 @@ export const KolBonusProgressPage: React.FC = () => {
     }
   }, [loading, data, errorMessage, activeTab, historyList, historyLoading, selectedStoreId]);
 
-  // Tải dữ liệu tiến độ thưởng
+
   useEffect(() => {
     if (!selectedStoreId) {
       setLoading(false);
@@ -284,7 +284,7 @@ export const KolBonusProgressPage: React.FC = () => {
     fetchProgress();
   }, [selectedStoreId, currentYearMonth, isDevMockEnabled, stores]);
 
-  // Tải lịch sử nhận thưởng
+
   useEffect(() => {
     if (activeTab !== 'history' || !selectedStoreId) return;
 
@@ -407,7 +407,7 @@ export const KolBonusProgressPage: React.FC = () => {
   const nextMinNum = parseFloat(data?.nextMilestone?.minMonthlyRevenue || '0');
   const prevMinNum = parseFloat(data?.currentMilestone?.minMonthlyRevenue || '0');
 
-  // Tính tỷ lệ % hoàn thành tới mốc tiếp theo
+
   let progressPercent = 100;
   if (data?.nextMilestone && nextMinNum > 0) {
     if (nextMinNum > prevMinNum) {
@@ -493,7 +493,7 @@ export const KolBonusProgressPage: React.FC = () => {
             </div>
           </div>
         ))}
-        {/* Header Section */}
+
         <div
           style={{
             display: 'flex',
@@ -561,7 +561,7 @@ export const KolBonusProgressPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Filter: Chọn Cửa Hàng & Kỳ Tháng */}
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div
               style={{
@@ -662,7 +662,7 @@ export const KolBonusProgressPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Navigation */}
+
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
             onClick={() => setActiveTab('progress')}
@@ -714,7 +714,7 @@ export const KolBonusProgressPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Tab 1: Tiến độ và chính sách mốc thưởng */}
+
         {!storesLoading && stores.length === 0 ? (
           <div
             style={{
@@ -817,7 +817,7 @@ export const KolBonusProgressPage: React.FC = () => {
           </div>
         ) : activeTab === 'progress' ? (
           <>
-            {/* Status Announcement Card */}
+
             <div
               style={{
                 background: statusInfo.bg,
@@ -891,9 +891,9 @@ export const KolBonusProgressPage: React.FC = () => {
               )}
             </div>
 
-            {/* 4 Key Metric Cards (KPIs) */}
+
             <div className="kol-kpi-grid">
-              {/* Metric 1: Doanh số hợp lệ */}
+
               <div
                 style={{
                   background: '#FFFFFF',
@@ -921,7 +921,7 @@ export const KolBonusProgressPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metric 2: Mốc đã đạt */}
+
               <div
                 style={{
                   background: '#FFFFFF',
@@ -949,7 +949,7 @@ export const KolBonusProgressPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metric 3: Thưởng KPI & Phần Vượt */}
+
               <div
                 style={{
                   background: '#FFFFFF',
@@ -986,7 +986,7 @@ export const KolBonusProgressPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metric 4: Tổng Thưởng Dự Kiến */}
+
               <div
                 style={{
                   background: 'linear-gradient(135deg, #DEBE85 0%, #C9A363 100%)',
@@ -1014,7 +1014,7 @@ export const KolBonusProgressPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Next Milestone Progress Bar Card */}
+
             {data?.nextMilestone ? (
               <div
                 style={{
@@ -1049,7 +1049,7 @@ export const KolBonusProgressPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Progress Bar Container */}
+
                 <div
                   style={{
                     width: '100%',
@@ -1109,7 +1109,7 @@ export const KolBonusProgressPage: React.FC = () => {
               </div>
             )}
 
-            {/* Milestones Policy Table */}
+
             <div
               style={{
                 background: '#FFFFFF',
@@ -1267,7 +1267,7 @@ export const KolBonusProgressPage: React.FC = () => {
                 </table>
               </div>
 
-              {/* Note / Explanation */}
+
               <div
                 style={{
                   padding: '10px 16px',
@@ -1355,7 +1355,7 @@ export const KolBonusProgressPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          /* Tab 2: Lịch sử nhận thưởng */
+
           <div
             style={{
               background: '#FFFFFF',

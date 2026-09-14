@@ -40,7 +40,7 @@ const TRANSACTION_LABELS: Record<LedgerEntry["transactionType"], string> = {
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Có lỗi xảy ra, vui lòng thử lại.";
 
-// Compare minor units without floating-point rounding in client validation.
+
 function toMinorUnits(amount: string): bigint {
   const negative = amount.startsWith("-");
   const [whole, fraction = ""] = (negative ? amount.slice(1) : amount).split(
@@ -176,7 +176,7 @@ export default function WalletPage() {
       if (page === 1) await loadWallet();
       else setPage(1);
     } catch (err: unknown) {
-      // Never automatically resubmit a financial POST after a timeout.
+
       setError(
         `${getErrorMessage(err)} Nếu kết nối bị gián đoạn, hãy tải lại lịch sử trước khi gửi lại.`,
       );

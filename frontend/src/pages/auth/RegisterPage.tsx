@@ -22,11 +22,11 @@ import {
 import { authService } from '../../services/auth.service';
 import { triggerGoogleSignIn } from '../../utils/googleAuth';
 import { Modal } from '../../components/ui/Modal';
+import { toast } from '../../utils/toast';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
 
-  // Form states
   const [role, setRole] = useState<'kol' | 'shop' | 'customer'>('kol');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,17 +39,14 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // OTP Modal states
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState('');
   const [mockOtpHint, setMockOtpHint] = useState<string | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
 
-  // UI status
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Password strength calculation
   const getPasswordStrength = (pass: string) => {
     if (!pass) return { score: 0, label: 'Chưa nhập', color: 'bg-slate-200' };
     let score = 0;
@@ -127,7 +124,7 @@ export default function RegisterPage() {
         otp,
       });
 
-      alert('Kích hoạt tài khoản SCANMS thành công! Bạn có thể đăng nhập ngay.');
+      toast.success('Kích hoạt tài khoản SCANMS thành công! Bạn có thể đăng nhập ngay.');
       navigate('/login');
     } catch (err: any) {
       setError(err.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
@@ -146,7 +143,7 @@ export default function RegisterPage() {
             role === 'kol' ? 'COLLABORATOR' : role === 'shop' ? 'SHOP_MANAGER' : 'COLLABORATOR';
 
           await authService.googleLogin(idToken, apiRole, role === 'shop' ? shopName : undefined);
-          alert('Đăng ký & xác thực tài khoản Google thành công!');
+          toast.success('Đăng ký & xác thực tài khoản Google thành công!');
           navigate('/');
         } catch (err: any) {
           setError(err.message || 'Đăng ký qua Google thất bại');
@@ -163,15 +160,16 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-10">
-      {/* Top Banner Navigation: Link to Guest Store */}
+
       <div className="max-w-7xl mx-auto w-full mb-4 flex flex-wrap justify-between items-center gap-3 text-xs">
         <Link
-          to="/"
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#EAE4D7] text-[#1A1612] font-bold hover:bg-[#F3EFE6] transition shadow-2xs group cursor-pointer"
+          to="/marketplace"
+          id="btn-back-to-marketplace-register"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EAE4D7] text-[#1A1612] font-bold hover:bg-[#F3EFE6] transition shadow-2xs group cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4 text-[#B88E4F] group-hover:-translate-x-0.5 transition-transform" />
+          <ArrowLeft className="w-4 h-4 text-[#B88E4F] group-hover:-translate-x-1 transition-transform" />
           <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
-          <span>← Quay lại Cửa Hàng Sora Skin (Mua hàng cho Khách vãng lai)</span>
+          <span>Quay về Sàn Mua Sắm Chính (SCANMS Marketplace)</span>
         </Link>
         <span className="text-[#7D715E] hidden sm:inline font-semibold">
           Cổng Đăng Ký Đối Tác Hệ Thống SCANMS
@@ -179,9 +177,9 @@ export default function RegisterPage() {
       </div>
 
       <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-        {/* LEFT COLUMN: HERO VALUE PROPOSITION (WARM SAND & GOLD THEME) */}
+
         <div className="lg:col-span-6 bg-[#F3EFE6] border border-[#EAE4D7] rounded-3xl p-7 sm:p-10 flex flex-col gap-6 text-left relative overflow-hidden shadow-xs">
-          {/* Subtle Grid Pattern */}
+
           <div
             className="absolute inset-0 pointer-events-none opacity-35"
             style={{
@@ -193,7 +191,7 @@ export default function RegisterPage() {
           />
 
           <div className="relative z-10 flex flex-col gap-5">
-            {/* Brand Header */}
+
             <Link to="/login" className="flex items-center gap-3 no-underline w-fit">
               <div className="w-11 h-11 rounded-xl bg-[#B88E4F] text-white flex items-center justify-center shadow-xs">
                 <Sparkles className="w-6 h-6 text-amber-100" />
@@ -223,7 +221,6 @@ export default function RegisterPage() {
               tiếp thị tự động và chính sách chi trả hoa hồng tự động 24/7.
             </p>
 
-            {/* 4 Feature Items */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
               <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
@@ -268,7 +265,6 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: REGISTRATION FORM */}
         <div className="lg:col-span-6 w-full">
           <div className="bg-white rounded-3xl border border-[#EAE4D7] shadow-lg p-6 sm:p-8 flex flex-col gap-5 text-left">
             <div>
@@ -278,7 +274,6 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            {/* ROLE PICKER TABS */}
             <div>
               <label className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider block mb-2">
                 BẠN THAM GIA VỚI VAI TRÒ
@@ -323,7 +318,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* ERROR ALERT */}
             {error && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -331,7 +325,6 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* REGISTRATION FORM FIELDS */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -453,7 +446,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Password strength meter */}
               {password && (
                 <div className="flex flex-col gap-1">
                   <div className="flex justify-between items-center text-[11px] font-semibold text-[#7D715E]">
@@ -520,13 +512,27 @@ export default function RegisterPage() {
                     Đăng nhập ngay →
                   </Link>
                 </div>
-                <div className="pt-2 border-t border-[#EAE4D7] flex items-center justify-center">
+                <div className="p-3.5 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between gap-3 text-left">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[#C59B58] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <ShoppingBag className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <strong className="text-xs font-bold text-[#1A1612] block truncate">
+                        Khách mua hàng trực tiếp
+                      </strong>
+                      <span className="text-[11px] text-[#7D715E] block truncate">
+                        Không cần tài khoản đối tác để mua sắm
+                      </span>
+                    </div>
+                  </div>
                   <Link
-                    to="/"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-xs font-bold text-[#1A1612] transition"
+                    to="/marketplace"
+                    id="btn-goto-shopping-marketplace-register"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] hover:text-[#92400E] shadow-2xs transition cursor-pointer"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5 text-[#B88E4F]" />
-                    <span>Quay lại trang mua hàng Sora Skin</span>
+                    <span>Vào mua sắm</span>
+                    <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
                   </Link>
                 </div>
               </div>
@@ -535,7 +541,6 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* OTP VERIFICATION MODAL */}
       <Modal
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
@@ -563,14 +568,14 @@ export default function RegisterPage() {
               onChange={(e) => setOtp(e.target.value)}
               placeholder="123456"
               required
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center text-xl tracking-widest font-mono font-bold text-slate-900 focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none"
+              className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-4 py-2.5 text-center text-xl tracking-widest font-mono font-bold text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading || otp.length < 4}
-            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+            className="w-full py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
           >
             <span>{loading ? 'Đang xác thực...' : 'Xác thực & Kích hoạt'}</span>
             <ArrowRight className="w-4 h-4" />

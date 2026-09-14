@@ -8,7 +8,7 @@ export const getChatSocket = (): Socket => {
   const token = localStorage.getItem('token');
 
   if (socket) {
-    // If token changed, reconnect with new token
+
     if ((socket as any)._currentToken !== token) {
       socket.disconnect();
       socket = null;

@@ -18,7 +18,7 @@ import { storeService } from "../../services/store.service";
 import {
   loadShippingAddresses,
   type ShippingProvince,
-} from "../../services/orderAddress.service";
+} from "../../services/order-address.service";
 import {
   moneyInCents,
   validateExcelFile,

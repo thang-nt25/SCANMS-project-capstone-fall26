@@ -21,12 +21,12 @@ import {
 import api from '../../services/api';
 import {
   commissionRulesService,
-} from '../../services/commissionRulesService';
+} from '../../services/commission-rules.service';
 import type {
   CommissionRule,
   BonusPreviewResult,
   SettlementHistoryItem,
-} from '../../services/commissionRulesService';
+} from '../../services/commission-rules.service';
 import { getVietnamCurrentMonthYear } from '../../utils/dateTimeUtils';
 
 export const CommissionRulesPage: React.FC = () => {
@@ -39,12 +39,12 @@ export const CommissionRulesPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Modal States
+
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [editingRule, setEditingRule] = useState<CommissionRule | null>(null);
   const [deletingRule, setDeletingRule] = useState<CommissionRule | null>(null);
 
-  // Form States
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -54,12 +54,12 @@ export const CommissionRulesPage: React.FC = () => {
     isActive: true,
   });
 
-  // Simulator States
+
   const [simRevenue, setSimRevenue] = useState<string>('120000000');
   const [simResult, setSimResult] = useState<BonusPreviewResult | null>(null);
   const [simLoading, setSimLoading] = useState<boolean>(false);
 
-  // Settlement States (Tự động theo múi giờ Việt Nam Asia/Ho_Chi_Minh)
+
   const [selectedYear, setSelectedYear] = useState<string>(currentVnYear);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentVnMonth);
   const settleYearMonth = `${selectedYear}-${selectedMonth}`;
@@ -69,7 +69,7 @@ export const CommissionRulesPage: React.FC = () => {
   const [historyList, setHistoryList] = useState<SettlementHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
 
-  // Unique accessible IDs
+
   const ruleNameInputId = useId();
   const ruleDescInputId = useId();
   const ruleRevenueInputId = useId();
@@ -89,7 +89,7 @@ export const CommissionRulesPage: React.FC = () => {
 
   const isReadOnlyAdmin = currentUserRole === 'SYSTEM_ADMIN';
 
-  // Tải danh sách mốc thưởng
+
   const loadRules = useCallback(async (targetStoreId?: string) => {
     const sId = targetStoreId || storeId;
     if (!sId) {
@@ -108,7 +108,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   }, [storeId]);
 
-  // Tải lịch sử chốt thưởng
+
   const loadHistory = useCallback(async (targetMonth?: string, targetStoreId?: string) => {
     const sId = targetStoreId || storeId;
     if (!sId) {
@@ -130,7 +130,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   }, [settleYearMonth, storeId]);
 
-  // Xác thực quyền thật từ server qua /auth/me và lấy storeId của người dùng
+
   useEffect(() => {
     let isCurrent = true;
     async function verifyAuthAndLoadStore() {
@@ -142,7 +142,7 @@ export const CommissionRulesPage: React.FC = () => {
           if (userStr) user = JSON.parse(userStr);
         } catch {}
 
-        // Nếu ở môi trường DEV mà chưa có token hoặc token thuộc COLLABORATOR, tự động chuyển sang shop@scanms.vn
+
         if (import.meta.env.DEV && (!token || user?.role === 'COLLABORATOR')) {
           try {
             const loginRes: any = await api.post('/auth/login', {
@@ -175,7 +175,7 @@ export const CommissionRulesPage: React.FC = () => {
             setCurrentUserRole(authUser.role);
             localStorage.setItem('user', JSON.stringify(authUser));
           }
-          // Ưu tiên cửa hàng mà tài khoản Shop Manager thực sự sở hữu
+
           const myStore =
             authUser.stores?.find((s: any) => s.id === storeId) ||
             authUser.stores?.[0] ||
@@ -216,8 +216,8 @@ export const CommissionRulesPage: React.FC = () => {
 
   const isAnyModalOpen = Boolean(isCreateOpen || editingRule || deletingRule);
 
-  // Helper render modal qua Portal lên document của cửa sổ cha (hoặc document hiện tại)
-  // Giúp modal luôn nằm chính giữa màn hình (viewport thật) 100%, không bị ảnh hưởng bởi thanh cuộn iframe
+
+
   const renderModalPortal = (children: React.ReactNode) => {
     let targetMount: Element | null = null;
     try {
@@ -236,7 +236,7 @@ export const CommissionRulesPage: React.FC = () => {
     return createPortal(children, targetMount);
   };
 
-  // Khóa cuộn trang nền khi modal đang mở để chuột không bị khựng / giật trang phía sau
+
   useEffect(() => {
     if (!isAnyModalOpen) return;
     try {
@@ -249,7 +249,7 @@ export const CommissionRulesPage: React.FC = () => {
     } catch {}
   }, [isAnyModalOpen]);
 
-  // Tự động báo chiều cao đầy đủ ra khung cha để trang cha cuộn mượt mà tự nhiên 100% (không bị 2 thanh cuộn)
+
   useEffect(() => {
     if (window.parent && window.parent !== window) {
       const sendHeight = () => {
@@ -269,7 +269,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   }, [loading, rules, historyList, storeId]);
 
-  // Chạy mô phỏng tính thưởng theo công thức lũy tiến
+
   const runSimulation = useCallback(async (revenueVal: string) => {
     if (!storeId || !revenueVal || isNaN(Number(revenueVal)) || Number(revenueVal) < 0) {
       setSimResult(null);
@@ -294,7 +294,7 @@ export const CommissionRulesPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [simRevenue, rules, runSimulation, loading, storeId]);
 
-  // Submit tạo mốc thưởng
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -323,7 +323,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   };
 
-  // Submit sửa mốc thưởng
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRule) return;
@@ -345,7 +345,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   };
 
-  // Bật / Tắt trạng thái kích hoạt mốc
+
   const handleToggleStatus = async (rule: CommissionRule) => {
     try {
       setErrorMsg(null);
@@ -361,7 +361,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   };
 
-  // Xác nhận xóa mềm mốc thưởng
+
   const handleDelete = async () => {
     if (!deletingRule) return;
     try {
@@ -375,7 +375,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   };
 
-  // Chốt thưởng tháng cho KOL (Idempotent)
+
   const handleSettleBonus = async () => {
     if (!settleKolId.trim()) {
       setErrorMsg('Vui lòng nhập UUID của Cộng tác viên / KOL để chốt thưởng');
@@ -399,7 +399,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   };
 
-  // Duyệt thưởng tháng (PENDING -> APPROVED)
+
   const handleApprove = async (settlementId: string) => {
     try {
       setErrorMsg(null);
@@ -411,7 +411,7 @@ export const CommissionRulesPage: React.FC = () => {
     }
   };
 
-  // Chi trả tiền thưởng vào Ví KOL (APPROVED -> PAID)
+
   const handlePayout = async (settlementId: string) => {
     try {
       setErrorMsg(null);
@@ -460,7 +460,7 @@ export const CommissionRulesPage: React.FC = () => {
           height: 0 !important;
         }
       `}</style>
-      {/* Top Header */}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -478,7 +478,7 @@ export const CommissionRulesPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Actions header */}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             onClick={() => {
@@ -505,7 +505,7 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Admin Read-Only Audit Banner */}
+
       {isReadOnlyAdmin && (
         <div style={{
           background: '#EFF6FF',
@@ -529,7 +529,7 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Alerts */}
+
       {errorMsg && (
         <div style={{
           background: '#FDEBED',
@@ -574,7 +574,7 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Overview Stats (4 Cards) */}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 22 }}>
         <div style={{ background: '#FFFFFF', border: '1.5px solid #E8DAC4', borderRadius: 16, padding: '18px 22px', boxShadow: '0 3px 12px rgba(110, 84, 39, 0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#7D6D55', fontSize: 14.5, fontWeight: 650, marginBottom: 6 }}>
@@ -615,9 +615,9 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid: 2 Columns - Left: Rules List, Right: Simulator & Settlement */}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1.18fr 1fr', gap: 22 }}>
-        {/* Left: Rules List */}
+
         <div style={{ background: '#FFFFFF', border: '1.5px solid #E8DAC4', borderRadius: 18, padding: '26px 28px', boxShadow: '0 4px 18px rgba(110, 84, 39, 0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
@@ -705,7 +705,7 @@ export const CommissionRulesPage: React.FC = () => {
                     transition: 'all 0.2s',
                   }}
                 >
-                  {/* Số thứ tự mốc */}
+
                   <div style={{
                     width: 46,
                     height: 46,
@@ -723,13 +723,13 @@ export const CommissionRulesPage: React.FC = () => {
                     #{idx + 1}
                   </div>
 
-                  {/* Nội dung thông tin mốc */}
+
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 18.5, color: '#2C2114', wordBreak: 'break-word', marginBottom: 10 }}>
                       {rule.name}
                     </div>
 
-                    {/* Hàng huy hiệu trạng thái, phiên bản và tỷ lệ thưởng */}
+
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 12px', marginBottom: 10 }}>
                       <span style={{
                         fontSize: 13,
@@ -787,7 +787,7 @@ export const CommissionRulesPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Nhóm nút thao tác */}
+
                   {!isReadOnlyAdmin ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                       <button
@@ -861,9 +861,9 @@ export const CommissionRulesPage: React.FC = () => {
           )}
         </div>
 
-        {/* Right: Simulator & Settlement Tool */}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-          {/* Simulator */}
+
           <div style={{ background: '#FFFFFF', border: '1.5px solid #E8DAC4', borderRadius: 18, padding: '26px 28px', boxShadow: '0 4px 18px rgba(110, 84, 39, 0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <Calculator size={24} color="#C9A363" />
@@ -913,7 +913,7 @@ export const CommissionRulesPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Range bonuses breakdown */}
+
                 {simResult.rangeBonuses.length > 0 && (
                   <div style={{ marginBottom: 12, paddingTop: 12, borderTop: '1px dashed #E8DAC4' }}>
                     <div style={{ fontSize: 13.5, fontWeight: 750, color: '#7D6D55', marginBottom: 8 }}>
@@ -948,7 +948,7 @@ export const CommissionRulesPage: React.FC = () => {
             )}
           </div>
 
-          {/* Settlement Section */}
+
           <div style={{ background: '#FFFFFF', border: '1.5px solid #E8DAC4', borderRadius: 18, padding: '26px 28px', boxShadow: '0 4px 18px rgba(110, 84, 39, 0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <History size={24} color="#C9A363" />
@@ -957,7 +957,7 @@ export const CommissionRulesPage: React.FC = () => {
               </h2>
             </div>
 
-            {/* Khung chọn kỳ tháng và năm Tiếng Việt */}
+
             <div style={{ marginBottom: 18 }}>
               <label htmlFor={settleMonthInputId} style={{ display: 'block', fontSize: 14.5, fontWeight: 700, color: '#7D6D55', marginBottom: 8 }}>
                 Kỳ chốt thưởng tháng (Tiếng Việt):
@@ -1024,7 +1024,7 @@ export const CommissionRulesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Nhập Cộng Tác Viên / KOL nhận thưởng (Nhập tay hoặc chọn nhanh) */}
+
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <label htmlFor={settleKolInputId} style={{ fontSize: 14.5, fontWeight: 700, color: '#7D6D55' }}>
@@ -1154,7 +1154,7 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Settlement History Table */}
+
       <div style={{ marginTop: 26, background: '#FFFFFF', border: '1.5px solid #E8DAC4', borderRadius: 18, padding: '26px 28px', boxShadow: '0 4px 18px rgba(110, 84, 39, 0.06)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 850, color: '#2C2114' }}>
@@ -1289,7 +1289,7 @@ export const CommissionRulesPage: React.FC = () => {
         )}
       </div>
 
-      {/* Modal Thêm Mốc Thưởng */}
+
       {isCreateOpen && renderModalPortal(
         <div
           onClick={(e) => {
@@ -1437,7 +1437,7 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Sửa Mốc Thưởng */}
+
       {editingRule && renderModalPortal(
         <div
           onClick={(e) => {
@@ -1585,7 +1585,7 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Xác Nhận Xóa */}
+
       {deletingRule && renderModalPortal(
         <div
           onClick={(e) => {

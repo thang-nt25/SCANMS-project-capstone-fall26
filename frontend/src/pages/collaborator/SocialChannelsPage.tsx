@@ -32,7 +32,6 @@ export default function SocialChannelsPage() {
   const [filterPlatform, setFilterPlatform] = useState('ALL');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Form state
   const [platformName, setPlatformName] = useState('TIKTOK');
   const [channelName, setChannelName] = useState('');
   const [channelUrl, setChannelUrl] = useState('');
@@ -90,7 +89,6 @@ export default function SocialChannelsPage() {
     }
   };
 
-  // Mock initial channels matching prototype if backend list is empty
   const displayChannels = channels.length > 0 ? channels : [
     {
       id: 'c1',
@@ -165,7 +163,7 @@ export default function SocialChannelsPage() {
 
   return (
     <div className="flex flex-col gap-6 text-left">
-      {/* TOAST ALERT */}
+
       {toastMsg && (
         <div className="fixed top-5 right-5 z-50 bg-[#231D15] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
@@ -173,7 +171,6 @@ export default function SocialChannelsPage() {
         </div>
       )}
 
-      {/* 1. HEADER */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -212,7 +209,6 @@ export default function SocialChannelsPage() {
         </div>
       </header>
 
-      {/* 2. 4 KPI SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 flex flex-col justify-between gap-2 bg-white">
           <div className="flex justify-between items-center">
@@ -261,7 +257,6 @@ export default function SocialChannelsPage() {
         </Card>
       </div>
 
-      {/* 3. SEARCH & FILTER ROW */}
       <Card className="p-3.5 bg-white flex flex-wrap gap-3 items-center justify-between">
         <div className="flex-1 min-w-[280px] relative">
           <Search className="w-4 h-4 text-[#A49B8B] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -293,11 +288,10 @@ export default function SocialChannelsPage() {
         </div>
       </Card>
 
-      {/* 4. CHANNELS GRID (2 COLUMNS) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filtered.map((c, idx) => (
           <Card key={c.id || idx} className="p-5 flex flex-col justify-between gap-4 bg-white">
-            {/* Top row */}
+
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center">
@@ -334,7 +328,6 @@ export default function SocialChannelsPage() {
               </div>
             </div>
 
-            {/* Metrics box */}
             <div className="grid grid-cols-4 gap-2 bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7] text-center">
               <div>
                 <span className="text-[11px] text-[#7D715E] block">Lượt Click</span>
@@ -362,7 +355,6 @@ export default function SocialChannelsPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center justify-between pt-2 border-t border-[#EAE4D7]">
               <div className="flex items-center gap-2">
                 <Button
@@ -399,7 +391,6 @@ export default function SocialChannelsPage() {
         ))}
       </div>
 
-      {/* MODAL THÊM KÊNH */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-[#EAE4D7] shadow-xl">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Link2,
   ShieldAlert,
@@ -16,8 +16,9 @@ import {
   TrendingUp,
   ShoppingBag,
 } from 'lucide-react';
-import { referralLinksService } from '../../services/referralLinksService';
-import type { ReferralLinkItem } from '../../services/referralLinksService';
+import { referralLinksService } from '../../services/referral-links.service';
+import type { ReferralLinkItem } from '../../services/referral-links.service';
+import { toast } from '../../utils/toast';
 
 export default function AdminReferralLinksPage() {
   const [links, setLinks] = useState<ReferralLinkItem[]>([]);
@@ -25,20 +26,20 @@ export default function AdminReferralLinksPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  // Search & Filters
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalLinks, setTotalLinks] = useState(0);
 
-  // Modal Khóa link vi phạm
+
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [selectedLinkToBlock, setSelectedLinkToBlock] = useState<ReferralLinkItem | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
 
-  const fetchAdminLinks = async () => {
+  const fetchAdminLinks = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -56,11 +57,11 @@ export default function AdminReferralLinksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, statusFilter, channelFilter, search]);
 
   useEffect(() => {
     fetchAdminLinks();
-  }, [page, statusFilter, channelFilter]);
+  }, [fetchAdminLinks]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,14 +69,14 @@ export default function AdminReferralLinksPage() {
     fetchAdminLinks();
   };
 
-  // Mở modal khóa link
+
   const handleOpenBlockModal = (link: ReferralLinkItem) => {
     setSelectedLinkToBlock(link);
     setBlockReason('');
     setIsBlockModalOpen(true);
   };
 
-  // Xác nhận khóa link
+
   const handleConfirmBlock = async () => {
     if (!selectedLinkToBlock || !blockReason.trim()) return;
     setIsSubmittingBlock(true);
@@ -84,36 +85,37 @@ export default function AdminReferralLinksPage() {
       setIsBlockModalOpen(false);
       setSelectedLinkToBlock(null);
       setBlockReason('');
+      toast.success('Đã khóa liên kết tiếp thị vi phạm thành công');
       fetchAdminLinks();
     } catch (err: any) {
-      alert(err.message || 'Không thể khóa liên kết tiếp thị này');
+      toast.error(err.message || 'Không thể khóa liên kết tiếp thị này');
     } finally {
       setIsSubmittingBlock(false);
     }
   };
 
-  // Mở khóa link
   const handleUnblock = async (link: ReferralLinkItem) => {
     if (!window.confirm(`Bạn có chắc chắn muốn mở khóa liên kết ${link.shortCode} không?`)) return;
     try {
       await referralLinksService.unblockLinkByAdmin(link.id);
+      toast.success('Đã mở khóa liên kết tiếp thị thành công');
       fetchAdminLinks();
     } catch (err: any) {
-      alert(err.message || 'Không thể mở khóa liên kết tiếp thị');
+      toast.error(err.message || 'Không thể mở khóa liên kết tiếp thị');
     }
   };
 
-  // Sao chép short URL
   const handleCopy = (shortCode: string, url: string) => {
     navigator.clipboard.writeText(url);
     setCopiedCode(shortCode);
+    toast.success('Đã sao chép liên kết vào bộ nhớ tạm!');
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header Dashboard */}
+
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -141,7 +143,7 @@ export default function AdminReferralLinksPage() {
           </div>
         </div>
 
-        {/* Thống kê nhanh */}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
@@ -176,7 +178,7 @@ export default function AdminReferralLinksPage() {
           </div>
         </div>
 
-        {/* Thanh tìm kiếm & Bộ lọc */}
+
         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
           <form onSubmit={handleSearch} className="w-full md:w-96 flex gap-2">
             <div className="relative flex-1">
@@ -235,7 +237,7 @@ export default function AdminReferralLinksPage() {
           </div>
         </div>
 
-        {/* Bảng dữ liệu */}
+
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {errorMsg && (
             <div className="p-4 bg-red-50 border-b border-red-200 flex items-center gap-3 text-red-700 text-sm">
@@ -428,7 +430,7 @@ export default function AdminReferralLinksPage() {
           )}
         </div>
 
-        {/* Modal Khóa liên kết vi phạm */}
+
         {isBlockModalOpen && selectedLinkToBlock && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">

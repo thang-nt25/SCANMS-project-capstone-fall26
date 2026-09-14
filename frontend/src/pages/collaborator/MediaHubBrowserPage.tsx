@@ -25,6 +25,7 @@ import { mediaService, type MediaAsset } from '../../services/media.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
+import { toast } from '../../utils/toast';
 
 export default function MediaHubBrowserPage() {
   const currentUser = authService.getCurrentUser();
@@ -34,7 +35,7 @@ export default function MediaHubBrowserPage() {
     currentUser?.role === 'SYSTEM_ADMIN' ||
     currentUser?.role === 'SYSTEM_MANAGER';
 
-  // 1. Coupons State
+
   const [activeCoupons, setActiveCoupons] = useState<CouponItem[]>([]);
   const [selectedCouponId, setSelectedCouponId] = useState<string>('');
 
@@ -63,7 +64,7 @@ export default function MediaHubBrowserPage() {
       : `giảm thêm ${Number(selectedCoupon.discountValue).toLocaleString('vi-VN')} ₫`
     : '';
 
-  // 2. Real API Data Loading State
+
   const [mediaList, setMediaList] = useState<MediaAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export default function MediaHubBrowserPage() {
       const res: any = await mediaService.getMediaAssets({ limit: 100 });
       const items = res?.items || (Array.isArray(res) ? res : []);
       setMediaList(items);
-    } catch (err: any) {
+    } catch {
       setFetchError('Không thể tải danh sách tài nguyên lúc này. Vui lòng thử lại.');
       setMediaList([]);
     } finally {
@@ -112,7 +113,7 @@ export default function MediaHubBrowserPage() {
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  // 2.2 Xóa / Hủy nộp video review của KOL
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDeleteSubmission = async (asset: MediaAsset) => {
@@ -140,7 +141,7 @@ export default function MediaHubBrowserPage() {
     }
   };
 
-  // Dynamic Product Options from loaded assets
+
   const availableProducts = useMemo(() => {
     const map = new Map<string, string>();
     for (const m of mediaList) {
@@ -151,7 +152,7 @@ export default function MediaHubBrowserPage() {
     return Array.from(map.entries()).map(([id, title]) => ({ id, title }));
   }, [mediaList]);
 
-  // Filtered Media List
+
   const filteredMedia = useMemo(() => {
     return mediaList.filter((m) => {
       if (viewMode === 'MY_SUBMISSIONS' && m.collaboratorId !== currentUser?.id) {
@@ -173,7 +174,7 @@ export default function MediaHubBrowserPage() {
     });
   }, [mediaList, viewMode, currentUser?.id, search, selectedProduct, selectedType]);
 
-  // Caption Templates generated dynamically per previewed asset
+
   const targetProductName = previewAsset?.product?.title || 'Sản phẩm chính hãng';
   const targetStoreName = previewAsset?.store?.name || 'Gian hàng đối tác';
   const targetProductSlug = previewAsset?.product?.sku || previewAsset?.productId || 'san-pham';
@@ -209,7 +210,7 @@ export default function MediaHubBrowserPage() {
         </div>
       )}
 
-      {/* 1. HEADER */}
+
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">
@@ -250,7 +251,7 @@ export default function MediaHubBrowserPage() {
               variant="outline"
               size="sm"
               icon={<Upload className="w-3.5 h-3.5" />}
-              onClick={() => alert('Vui lòng vào Quản lý sản phẩm > Chi tiết để tải lên hình ảnh hoặc video cho sản phẩm của bạn.')}
+              onClick={() => toast.info('Vui lòng vào Quản lý sản phẩm > Chi tiết để tải lên hình ảnh hoặc video cho sản phẩm của bạn.')}
             >
               Tải tài nguyên mới
             </Button>
@@ -259,7 +260,7 @@ export default function MediaHubBrowserPage() {
             variant="gold"
             size="sm"
             icon={<Download className="w-3.5 h-3.5" />}
-            onClick={() => showToast(`Đang chuẩn bị gói tài nguyên (${filteredMedia.length} tệp)...`)}
+            onClick={() => toast.info(`Đang chuẩn bị gói tài nguyên (${filteredMedia.length} tệp)...`)}
           >
             Tải trọn bộ Pack
           </Button>
@@ -267,7 +268,7 @@ export default function MediaHubBrowserPage() {
             variant="outline"
             size="sm"
             onClick={() =>
-              alert(
+              toast.info(
                 'Quy định sử dụng: Tài nguyên được cấp quyền thương mại cho các Nhà sáng tạo & Đối tác tiếp thị thuộc mạng lưới SCANMS để quảng bá sản phẩm chính hãng.'
               )
             }
@@ -277,7 +278,7 @@ export default function MediaHubBrowserPage() {
         </div>
       </header>
 
-      {/* 2. PLATFORM REPOSITORY BANNER BADGE */}
+
       <Card className="p-4 bg-[#FAF8F5] border border-[#EAE4D7] flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#EEDFC6] text-[#B88E4F] font-black flex items-center justify-center text-lg shadow-xs">
@@ -302,7 +303,7 @@ export default function MediaHubBrowserPage() {
         </div>
       </Card>
 
-      {/* 2.1 TAB CHUYỂN ĐỔI GÓC NHÌN DÀNH CHO KOL */}
+
       {!isShopOrAdmin && (
         <div className="flex items-center gap-2 border-b border-[#EAE4D7] pb-2">
           <button
@@ -343,7 +344,7 @@ export default function MediaHubBrowserPage() {
         </div>
       )}
 
-      {/* 3. FILTERS ROW */}
+
       <Card className="p-3.5 bg-white border border-[#EAE4D7] flex flex-wrap gap-3 items-center">
         <div className="flex-1 min-w-[240px] relative">
           <Search className="w-4 h-4 text-[#A49B8B] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -389,7 +390,7 @@ export default function MediaHubBrowserPage() {
         </div>
       </Card>
 
-      {/* 4. MEDIA CARDS GRID */}
+
       {loading ? (
         <div className="py-16 text-center text-[#7D715E] flex flex-col items-center gap-2">
           <Loader2 className="w-6 h-6 animate-spin text-[#B88E4F]" />
@@ -458,7 +459,7 @@ export default function MediaHubBrowserPage() {
                 key={m.id}
                 className="bg-white border border-[#EAE4D7] overflow-hidden flex flex-col justify-between"
               >
-                {/* THUMBNAIL */}
+
                 <div
                   className="relative h-52 bg-[#F3EFE6] cursor-pointer overflow-hidden group"
                   onClick={() => setPreviewAsset(m)}
@@ -481,14 +482,14 @@ export default function MediaHubBrowserPage() {
                     />
                   )}
 
-                  {/* BADGES TOP */}
+
                   <div className="absolute top-2.5 left-2.5 flex gap-1.5">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${badgeBg}`}>
                       {displayBadge}
                     </span>
                   </div>
 
-                  {/* QUICK DELETE FOR KOL SUBMISSION */}
+
                   {m.collaboratorId === currentUser?.id && (
                     <button
                       type="button"
@@ -508,7 +509,7 @@ export default function MediaHubBrowserPage() {
                     </button>
                   )}
 
-                  {/* VIDEO PLAY OVERLAY */}
+
                   {isVideo && (
                     <div className="absolute inset-0 grid place-items-center bg-black/20 group-hover:bg-black/30 transition">
                       <div className="w-12 h-12 rounded-full bg-white/90 text-[#1A1612] grid place-items-center shadow-lg">
@@ -518,7 +519,7 @@ export default function MediaHubBrowserPage() {
                   )}
                 </div>
 
-                {/* CONTENT */}
+
                 <div className="p-4 flex flex-col gap-2.5 flex-1">
                   <h3 className="text-xs sm:text-sm font-bold text-[#1A1612] m-0 line-clamp-2 leading-snug">
                     {m.title}
@@ -571,7 +572,7 @@ export default function MediaHubBrowserPage() {
                     </div>
                   )}
 
-                  {/* ACTIONS */}
+
                   <div className="flex flex-col gap-1.5 pt-1">
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -600,7 +601,7 @@ export default function MediaHubBrowserPage() {
                       </Button>
                     </div>
 
-                    {/* Nút xóa dành riêng cho video KOL đã nộp */}
+
                     {m.collaboratorId === currentUser?.id && (
                       <button
                         type="button"
@@ -628,7 +629,7 @@ export default function MediaHubBrowserPage() {
         </div>
       )}
 
-      {/* 5. PREVIEW & CAPTION MODAL */}
+
       {previewAsset && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-[#EAE4D7] shadow-2xl">
@@ -651,7 +652,7 @@ export default function MediaHubBrowserPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 p-5 sm:p-6">
-              {/* Media Preview */}
+
               <div className="md:col-span-5 rounded-xl overflow-hidden bg-black flex items-center justify-center max-h-80">
                 {previewAsset.assetType === 'VIDEO' ? (
                   <video
@@ -675,7 +676,7 @@ export default function MediaHubBrowserPage() {
                 )}
               </div>
 
-              {/* Caption Studio */}
+
               <div className="md:col-span-7 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
                   <strong className="text-xs font-bold text-[#1A1612]">
@@ -691,7 +692,7 @@ export default function MediaHubBrowserPage() {
                   </Button>
                 </div>
 
-                {/* Tabs */}
+
                 <div className="flex gap-1.5 p-1 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]">
                   {[
                     { id: 'review', label: 'Review chi tiết' },
@@ -714,7 +715,7 @@ export default function MediaHubBrowserPage() {
                   ))}
                 </div>
 
-                {/* Coupon selector in caption studio */}
+
                 {activeCoupons.length > 0 ? (
                   <div className="flex items-center justify-between text-xs bg-[#FAF8F5] px-3 py-2 rounded-xl border border-[#EAE4D7]">
                     <span className="flex items-center gap-1.5 font-bold text-[#1A1612]">
@@ -739,7 +740,7 @@ export default function MediaHubBrowserPage() {
                   </div>
                 )}
 
-                {/* Caption Textarea */}
+
                 <textarea
                   readOnly
                   value={captionTemplates[activeCaptionTab]}
@@ -791,7 +792,7 @@ export default function MediaHubBrowserPage() {
           </div>
         </div>
       )}
-      {/* 6. MODAL NỘP VIDEO REVIEW CHO KOL (FR-15) */}
+
       <SubmitKolVideoModal
         isOpen={showSubmitModal}
         onClose={() => setShowSubmitModal(false)}

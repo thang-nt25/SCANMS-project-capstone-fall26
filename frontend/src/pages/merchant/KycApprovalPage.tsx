@@ -56,7 +56,6 @@ export default function KycApprovalPage() {
     }
   };
 
-  // Mock list matching prototype 17_Nguoi_Dung_Duyet_KYC.png
   const fallbackUsers = [
     {
       id: 'u0',
@@ -183,7 +182,6 @@ export default function KycApprovalPage() {
     <div className="flex flex-col gap-6">
       {toastMsg && <div className="toast show">{toastMsg}</div>}
 
-      {/* 1. HEADER */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight m-0">
@@ -205,7 +203,6 @@ export default function KycApprovalPage() {
         </Button>
       </header>
 
-      {/* 2. 4 KPI STAT CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Tổng tài khoản"
@@ -242,7 +239,6 @@ export default function KycApprovalPage() {
         />
       </div>
 
-      {/* 3. FILTERS CARD */}
       <Card className="p-3.5 flex flex-wrap items-center gap-3">
         <Input
           placeholder="Tìm theo tên, email, CCCD hoặc mã KOL..."
@@ -277,7 +273,6 @@ export default function KycApprovalPage() {
         />
       </Card>
 
-      {/* 4. MODERN DATA TABLE */}
       <Card className="overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
@@ -296,7 +291,7 @@ export default function KycApprovalPage() {
             <tbody className="divide-y divide-slate-100">
               {filtered.map((u: any) => (
                 <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
-                  {/* User */}
+
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <span
@@ -308,19 +303,16 @@ export default function KycApprovalPage() {
                     </div>
                   </td>
 
-                  {/* Email */}
                   <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-500 font-mono">
                     {u.email}
                   </td>
 
-                  {/* Role */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <Badge variant="neutral" size="sm">
                       {u.role}
                     </Badge>
                   </td>
 
-                  {/* KYC Status */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     {u.kycStatus === 'VERIFIED' && (
                       <Badge variant="success" dot size="md">
@@ -339,19 +331,16 @@ export default function KycApprovalPage() {
                     )}
                   </td>
 
-                  {/* Tier */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <Badge variant="amber" size="sm">
                       {u.tier}
                     </Badge>
                   </td>
 
-                  {/* Created At */}
                   <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-500">
                     {u.createdAt}
                   </td>
 
-                  {/* Status */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     {u.status === 'active' && (
                       <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600">
@@ -373,7 +362,6 @@ export default function KycApprovalPage() {
                     )}
                   </td>
 
-                  {/* Action Button */}
                   <td className="py-3.5 px-4 whitespace-nowrap text-right">
                     {u.kycStatus === 'PENDING' ? (
                       <Button
@@ -411,7 +399,6 @@ export default function KycApprovalPage() {
         </div>
       </Card>
 
-      {/* 5. MODAL XEM & DUYỆT KYC */}
       {inspectProfile && (
         <Modal
           isOpen={Boolean(inspectProfile)}

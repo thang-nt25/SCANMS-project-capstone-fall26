@@ -121,7 +121,7 @@ export async function getPayoutErrorMessage(error: unknown): Promise<string> {
             .filter((value: unknown) => typeof value === "string")
             .join("; ");
       } catch {
-        /* Non-JSON error body: use the standard API message. */
+
       }
     }
   }

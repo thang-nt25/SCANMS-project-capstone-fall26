@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -32,6 +32,7 @@ import {
 import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
 import { authService } from '../../services/auth.service';
+import { toast } from '../../utils/toast';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -60,7 +61,7 @@ export default function ProductManagementPage() {
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<any | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Video Moderation State (FR-15 / FR-08)
+
   const [selectedVideoProduct, setSelectedVideoProduct] = useState<Product | null>(null);
   const [productVideos, setProductVideos] = useState<any[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(false);
@@ -132,7 +133,7 @@ export default function ProductManagementPage() {
       .map((video: any) => video.id),
   ).size;
 
-  // Customer Review Moderation State (FR-15: Đầy đủ 4 trạng thái nghiệp vụ)
+
   const [showReviewModeration, setShowReviewModeration] = useState(false);
   const [customerReviews, setCustomerReviews] = useState<any[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -202,7 +203,7 @@ export default function ProductManagementPage() {
     if (!rejectionModalReview) return;
     const reason = reviewRejectionReasonInput.trim();
     if (!reason || reason.length < 3) {
-      alert('Vui lòng nhập lý do kiểm duyệt (tối thiểu 3 ký tự)!');
+      toast.warning('Vui lòng nhập lý do kiểm duyệt (tối thiểu 3 ký tự)!');
       return;
     }
 
@@ -241,7 +242,7 @@ export default function ProductManagementPage() {
     }
   };
 
-  // Form State
+
   const [formSku, setFormSku] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formCategory, setFormCategory] = useState('Chăm sóc da');
@@ -251,8 +252,10 @@ export default function ProductManagementPage() {
   const [formImage, setFormImage] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  const loadProductsRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   useEffect(() => {
-    loadProducts();
+    loadProductsRef.current();
   }, []);
 
   const openProductLanding = (product: Product) => {
@@ -359,7 +362,7 @@ export default function ProductManagementPage() {
   const handleConfirmRejection = async () => {
     if (!rejectionModalMedia) return;
     if (!rejectionReasonInput.trim()) {
-      alert('Bắt buộc phải nhập lý do khi từ chối hoặc ẩn video review!');
+      toast.warning('Bắt buộc phải nhập lý do khi từ chối hoặc ẩn video review!');
       return;
     }
 
@@ -402,7 +405,7 @@ export default function ProductManagementPage() {
     }
   };
 
-  // Thông báo trạng thái modal ra iframe cha để ẩn topbar & sidebar, mở toàn màn hình
+
   useEffect(() => {
     if (typeof window === 'undefined' || window.self === window.top) return;
 
@@ -432,6 +435,7 @@ export default function ProductManagementPage() {
       console.error('Lỗi tải sản phẩm:', err);
     }
   };
+  loadProductsRef.current = loadProducts;
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -540,7 +544,7 @@ export default function ProductManagementPage() {
   };
 
 
-  // Mock catalog fallback if server returns empty list
+
   const demoProducts =
     products.length > 0
       ? products
@@ -603,7 +607,7 @@ export default function ProductManagementPage() {
         ];
 
   void demoProducts;
-  // Chỉ dùng dữ liệu thật từ PostgreSQL; không dùng danh sách demo cho CRUD.
+
   const displayProducts = products;
 
   const filtered = displayProducts.filter((p: any) => {
@@ -629,7 +633,7 @@ export default function ProductManagementPage() {
         </div>
       )}
 
-      {/* 1. HEADER */}
+
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight m-0">
@@ -652,7 +656,7 @@ export default function ProductManagementPage() {
             >
               <span className="inline-flex items-center gap-2">
                 Duyệt video KOL
-                <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#231D15] text-white text-[10px] font-extrabold inline-flex items-center justify-center">
+                <span className="min-w-5 h-5 px-1.5 rounded-full bg-white text-[#B88E4F] text-[10px] font-extrabold inline-flex items-center justify-center shadow-xs">
                   {pendingKolVideoCount}
                 </span>
               </span>
@@ -686,7 +690,7 @@ export default function ProductManagementPage() {
         )}
       </header>
 
-      {/* 2. SEARCH & FILTER ROW */}
+
       <Card className="p-3.5 sm:p-4 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 flex-1 min-w-[280px]">
@@ -719,7 +723,7 @@ export default function ProductManagementPage() {
         </div>
       </Card>
 
-      {/* 3. PRODUCT TABLE */}
+
       <Card className="p-0 overflow-hidden shadow-xs">
         <Table>
           <TableHeader>
@@ -859,7 +863,7 @@ export default function ProductManagementPage() {
         </Table>
       </Card>
 
-      {/* 4. MODAL THÊM / SỬA SẢN PHẨM */}
+
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -926,7 +930,7 @@ export default function ProductManagementPage() {
             </div>
 
             <div className="relative flex items-center gap-4 rounded-2xl border border-[#E8DAC4] bg-gradient-to-br from-[#FFFDF9] via-[#FAF6F0] to-[#F5EFE6] p-3.5 shadow-2xs">
-              {/* Khung Icon / Preview Ảnh Cao Cấp */}
+
               <div
                 onClick={() => document.getElementById('product-image-upload')?.click()}
                 title="Bấm để tải ảnh lên"
@@ -946,14 +950,14 @@ export default function ProductManagementPage() {
                   </div>
                 ) : (
                   <div className="relative w-[84px] h-[84px] rounded-2xl border-2 border-dashed border-[#D6BC8C] bg-gradient-to-b from-[#FFFDF9] via-[#FAF5EC] to-[#F3E9D7] flex flex-col items-center justify-center transition-all duration-200 group-hover:border-[#B88E4F] group-hover:bg-[#FFF9EE] group-hover:shadow-xs">
-                    {/* Inner glowing icon badge */}
+
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A] border border-[#DEBE85]/70 flex items-center justify-center text-[#92400E] shadow-2xs group-hover:scale-110 transition-transform">
                       <ImagePlus size={20} className="text-[#92400E]" />
                     </div>
                     <span className="text-[9.5px] font-bold text-[#A89066] mt-1 tracking-wider uppercase">
                       Tải ảnh
                     </span>
-                    {/* Corner mini gold plus badge */}
+
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white flex items-center justify-center shadow-xs border-2 border-white">
                       <Plus size={11} strokeWidth={3} />
                     </div>
@@ -961,7 +965,7 @@ export default function ProductManagementPage() {
                 )}
               </div>
 
-              {/* Thông tin & Nút hành động */}
+
               <div className="min-w-0 flex-1">
                 <input
                   id="product-image-upload"
@@ -1067,7 +1071,7 @@ export default function ProductManagementPage() {
         </form>
       </Modal>
 
-      {/* 5. MODAL XÁC NHẬN XÓA / TẠM DỪNG (Giữ nguyên màn hình phía sau) */}
+
       {deleteConfirmProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-[1.5px] animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-xl border border-[#E8DAC4] w-full max-w-sm p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150">
@@ -1116,7 +1120,7 @@ export default function ProductManagementPage() {
         </div>
       )}
 
-      {/* 6. MODAL KIỂM DUYỆT VIDEO REVIEW KOL (FR-15 / FR-08) */}
+
       {selectedVideoProduct && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px] animate-fadeIn"
@@ -1338,7 +1342,7 @@ export default function ProductManagementPage() {
         </div>
       )}
 
-      {/* 7. MODAL NHẬP LÝ DO TỪ CHỐI / ẨN VIDEO REVIEW (BẮT BUỘC THEO FR-15) */}
+
       {rejectionModalMedia && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px] animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6 text-left animate-in zoom-in-95 duration-150 flex flex-col gap-4">
@@ -1392,7 +1396,7 @@ export default function ProductManagementPage() {
         </div>
       )}
 
-      {/* 7. MODAL KIỂM DUYỆT ĐÁNH GIÁ KHÁCH HÀNG (FR-15: ĐẦY ĐỦ 4 TRẠNG THÁI & AUDIT LOG) */}
+
       {showReviewModeration && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#231D15]/45 backdrop-blur-[3px] animate-fadeIn">
           <section className="bg-[#FAF8F5] rounded-2xl shadow-[0_24px_80px_rgba(77,57,31,0.24)] border border-[#EEDFC6] w-full max-w-4xl max-h-[88vh] overflow-hidden flex flex-col">
@@ -1418,7 +1422,7 @@ export default function ProductManagementPage() {
               </button>
             </header>
 
-            {/* Khay tab lọc theo 4 trạng thái nghiệp vụ */}
+
             <div className="flex gap-2 px-5 sm:px-6 py-3.5 overflow-x-auto bg-white border-b border-[#EAE4D7]">
               {[
                 { key: 'ALL', label: 'Tất cả', count: customerReviews.length, icon: MessageSquareText },
@@ -1453,7 +1457,7 @@ export default function ProductManagementPage() {
                   onClick={() => setReviewFilterStatus(tab.key as any)}
                   className={`h-9 px-3 rounded-xl text-xs font-bold transition cursor-pointer inline-flex items-center gap-2 whitespace-nowrap border ${
                     reviewFilterStatus === tab.key
-                      ? 'bg-[#231D15] text-white border-[#231D15] shadow-sm'
+                      ? 'bg-[#C59B58] text-white border-[#C59B58] shadow-sm'
                       : 'bg-[#FAF8F5] text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] border-[#EAE4D7]'
                   }`}
                 >
@@ -1530,7 +1534,7 @@ export default function ProductManagementPage() {
                             )}
                           </div>
 
-                          {/* Hiển thị lý do từ chối hoặc ẩn nếu có */}
+
                           {(currentStatus === 'REJECTED' || currentStatus === 'HIDDEN') &&
                             review.rejectionReason && (
                               <div className="mt-2.5 p-2.5 rounded-lg bg-rose-50 border border-rose-200/80 flex items-start gap-2 text-xs text-rose-800">
@@ -1626,7 +1630,7 @@ export default function ProductManagementPage() {
         </div>
       )}
 
-      {/* 8. MODAL NHẬP LÝ DO TỪ CHỐI / ẨN ĐÁNH GIÁ KHÁCH HÀNG (FR-15 AUDIT LOG) */}
+
       {rejectionModalReview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px] animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6 text-left animate-in zoom-in-95 duration-150 flex flex-col gap-4">
