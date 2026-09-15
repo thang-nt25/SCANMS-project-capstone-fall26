@@ -416,7 +416,7 @@ export default function OrderTrackingPage() {
       </section>
 
 
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
+      <main className="flex-1 max-w-5xl xl:max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
         {errorMessage && (
           <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />

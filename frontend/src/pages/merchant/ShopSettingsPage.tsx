@@ -105,7 +105,7 @@ export default function ShopSettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto text-left">
+    <div className="flex flex-col gap-6 max-w-5xl mx-auto text-left">
       {toastMsg && (
         <div className="fixed top-5 right-5 z-50 bg-[#231D15] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />

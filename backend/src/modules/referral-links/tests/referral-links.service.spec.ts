@@ -509,6 +509,39 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       expect(redirectRes.attributionData?.collaboratorId).toBe('collab-1');
     });
 
+    it('Link cũ trỏ vào /products được phục hồi về đúng trang chi tiết sản phẩm', async () => {
+      prisma.referralLink.findUnique.mockResolvedValue({
+        id: 'legacy-link',
+        shortCode: 'legacyqr',
+        collaboratorId: 'collab-1',
+        productId: 'prod-legacy',
+        storeId: 'store-1',
+        destinationPath: '/products',
+        status: ReferralLinkStatus.ACTIVE,
+        deletedAt: null,
+        product: {
+          id: 'prod-legacy',
+          isActive: true,
+          isAffiliateEnabled: true,
+          deletedAt: null,
+        },
+        store: { id: 'store-1', deletedAt: null },
+        collaborator: {
+          id: 'collab-1',
+          fullName: 'Creator SCANMS',
+          isActive: true,
+        },
+      });
+      prisma.clickTrafficLog.findFirst.mockResolvedValue(null);
+
+      const redirectRes = await service.handleRedirect('legacyqr', {
+        ip: '1.2.3.4',
+        userAgent: 'Mozilla/5.0',
+      });
+
+      expect(redirectRes.destinationPath).toBe('/products/prod-legacy');
+    });
+
     it('Bot Detection: bot công cụ tìm kiếm không nhận attribution và không tăng unique clicks', async () => {
       prisma.referralLink.findUnique.mockResolvedValue({
         id: 'link-bot',

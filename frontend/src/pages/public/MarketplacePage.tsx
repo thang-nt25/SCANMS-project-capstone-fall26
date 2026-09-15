@@ -659,13 +659,20 @@ const ROTATING_DEALS: FlashDealProduct[] = [
   };
 
   const handleHeroBuyNow = () => {
-    const targetProduct = items.find((p) => p.id === currentDeal.id || p.sku === currentDeal.sku);
-    const storeId = targetProduct?.storeId || 'store-sora-skin-01';
+    const targetProduct =
+      items.find(
+        (p) =>
+          p.id === currentDeal.id ||
+          p.sku === currentDeal.sku ||
+          p.name.toLowerCase().includes(currentDeal.shortTitle.toLowerCase())
+      ) || items[0];
+    const realId = targetProduct?.id || currentDeal.id;
+    const storeId = targetProduct?.storeId || 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
     setActiveCheckoutProduct({
       product: {
-        id: currentDeal.id,
+        id: realId,
         title: currentDeal.title,
-        sku: currentDeal.sku,
+        sku: targetProduct?.sku || currentDeal.sku,
         price: heroProductData.finalPrice,
         originalPrice: heroProductData.origPrice,
         imageUrl: currentDeal.images[heroGalleryIndex]?.src || currentDeal.images[0].src,
@@ -1950,9 +1957,9 @@ const ROTATING_DEALS: FlashDealProduct[] = [
         )}
       </section>
 
-      <section ref={trackingRef} id="tracking-section" className="py-12 px-4 sm:px-6 bg-[#F3EFE6] border-t border-[#EAE4D7]">
-        <div className="max-w-4xl mx-auto text-left">
-          <div className="text-center max-w-xl mx-auto mb-8">
+      <section ref={trackingRef} id="tracking-section" className="py-12 px-4 sm:px-6 lg:px-8 bg-[#F3EFE6] border-t border-[#EAE4D7]">
+        <div className="max-w-5xl xl:max-w-6xl mx-auto text-left">
+          <div className="text-center max-w-2xl mx-auto mb-8">
             <span className="text-xs font-bold text-[#B88E4F] uppercase tracking-wider">
               Tra cứu minh bạch
             </span>
@@ -1984,7 +1991,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
 
           <form
             onSubmit={handleTrackOrder}
-            className="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto bg-white p-2 rounded-2xl border border-[#EEDFC6] shadow-sm"
+            className="flex flex-col sm:flex-row gap-2 max-w-2xl mx-auto bg-white p-2 rounded-2xl border border-[#EEDFC6] shadow-sm"
           >
             <div className="flex-1 flex items-center px-3">
               <Phone className="w-4 h-4 text-[#B88E4F] mr-2 shrink-0" />
@@ -2256,7 +2263,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
         >
-          <div className="bg-black text-white rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl relative">
+          <div className="bg-black text-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative">
             <button
               type="button"
               onClick={() => setActiveVideo(null)}
@@ -2310,7 +2317,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
         >
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-[#EAE4D7] shadow-2xl relative text-left">
+          <div className="bg-white rounded-3xl max-w-2xl lg:max-w-3xl w-full p-6 sm:p-8 border border-[#EAE4D7] shadow-2xl relative text-left">
             <button
               type="button"
               onClick={() => setIsGuideOpen(false)}
@@ -2467,7 +2474,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
           onClick={() => setIsVoucherWalletOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 border border-[#EEDFC6] shadow-2xl relative text-left"
+            className="bg-white rounded-3xl max-w-2xl lg:max-w-3xl w-full p-6 sm:p-8 border border-[#EEDFC6] shadow-2xl relative text-left"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7] mb-4">
