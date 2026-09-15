@@ -751,6 +751,17 @@ export class OrdersService {
       .map((i) => i.variantId)
       .filter((v): v is string => Boolean(v && v.trim()));
 
+    // PostgreSQL stores variant IDs as UUID. Reject malformed/client-only IDs
+    // before Prisma builds the query so public checkout receives a safe 400
+    // instead of leaking an internal database error as HTTP 500.
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (variantIds.some((variantId) => !uuidPattern.test(variantId))) {
+      throw new BadRequestException(
+        'VARIANT_NOT_FOUND: Mã phân loại sản phẩm không hợp lệ.',
+      );
+    }
+
     let dbVariants: any[] = [];
     if (variantIds.length > 0) {
       dbVariants = await this.prisma.productVariant.findMany({

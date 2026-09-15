@@ -10,6 +10,7 @@ import {
   IsEnum,
   IsEmail,
   MaxLength,
+  IsUUID,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -30,7 +31,7 @@ export class OrderItemInputDto {
     example: 'uuid-variant-id',
   })
   @IsOptional()
-  @IsString()
+  @IsUUID('all', { message: 'variantId phải là UUID hợp lệ' })
   variantId?: string;
 
   @ApiProperty({ description: 'Số lượng mua', example: 1, minimum: 1 })

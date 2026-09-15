@@ -56,6 +56,7 @@ export default function MarketplacePage() {
     product: CheckoutProductItem;
     store: CheckoutStoreInfo;
     couponCode?: string;
+    quantity?: number;
   } | null>(null);
 
   const [trackQuery, setTrackQuery] = useState('');
@@ -659,39 +660,42 @@ const ROTATING_DEALS: FlashDealProduct[] = [
   };
 
   const handleHeroBuyNow = () => {
-    const targetProduct =
-      items.find(
-        (p) =>
-          p.id === currentDeal.id ||
-          p.sku === currentDeal.sku ||
-          p.name.toLowerCase().includes(currentDeal.shortTitle.toLowerCase())
-      ) || items[0];
-    const realId = targetProduct?.id || currentDeal.id;
-    const storeId = targetProduct?.storeId || 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
+    const targetProduct = items.find(
+      (p) =>
+        p.id === currentDeal.id ||
+        p.sku === currentDeal.sku ||
+        p.name.toLowerCase().includes(currentDeal.shortTitle.toLowerCase())
+    );
+
+    if (!targetProduct?.storeId) {
+      toast.error('Deal này chưa được liên kết với sản phẩm thật nên chưa thể đặt hàng.');
+      return;
+    }
+
+    const normalizedVariantName = currentVariant.name.trim().toLowerCase();
+    const selectedRealVariant = targetProduct.variants?.find(
+      (variant) =>
+        variant.isActive !== false &&
+        variant.name.trim().toLowerCase() === normalizedVariantName
+    );
+
     setActiveCheckoutProduct({
       product: {
-        id: realId,
-        title: currentDeal.title,
-        sku: targetProduct?.sku || currentDeal.sku,
-        price: heroProductData.finalPrice,
-        originalPrice: heroProductData.origPrice,
+        id: targetProduct.id,
+        title: targetProduct.name,
+        sku: targetProduct.sku,
+        price: selectedRealVariant?.price ?? targetProduct.price,
+        originalPrice: targetProduct.origPrice,
         imageUrl: currentDeal.images[heroGalleryIndex]?.src || currentDeal.images[0].src,
-        stockQuantity: currentDeal.stock,
-        variants: [
-          {
-            id: `var-${currentVariant.name}`,
-            name: currentVariant.name,
-            sku: `${currentDeal.sku}-${currentVariant.name.replace(/\s+/g, '-').toUpperCase()}`,
-            price: heroProductData.finalPrice,
-            stockQuantity: currentDeal.stock,
-          },
-        ],
+        stockQuantity: selectedRealVariant?.stockQuantity ?? targetProduct.stockQuantity ?? 0,
+        variants: selectedRealVariant ? [selectedRealVariant] : undefined,
       },
       store: {
-        id: storeId,
-        name: currentDeal.shopName,
+        id: targetProduct.storeId,
+        name: targetProduct.brand,
       },
       couponCode: heroProductData.activeCoupon,
+      quantity: heroQuantity,
     });
   };
 
@@ -2386,6 +2390,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
           onClose={() => setActiveCheckoutProduct(null)}
           product={activeCheckoutProduct.product}
           store={activeCheckoutProduct.store}
+          initialQuantity={activeCheckoutProduct.quantity}
           initialCouponCode={activeCheckoutProduct.couponCode}
           onOrderPlaced={(order) => {
             toast.success(`Đặt hàng thành công! Mã đơn: ${order?.publicOrderCode || order?.orderId}`);
