@@ -30,6 +30,9 @@ describe('ProfanityFilter (FR-25)', () => {
       expect(checkProfanity('Shop có đủ hàng giao không?').isProfane).toBe(false);
       expect(checkProfanity('Ví dụ như sản phẩm này').isProfane).toBe(false);
       expect(checkProfanity('Dù sao thì tôi vẫn muốn đặt hàng').isProfane).toBe(false);
+      expect(checkProfanity('Giao ko đủ hàng rồi shop ơi').isProfane).toBe(false);
+      expect(checkProfanity('Shop giao không đủ số lượng').isProfane).toBe(false);
+      expect(checkProfanity('đủ').isProfane).toBe(false);
     });
 
     it('should NOT block words with "me" (contact me, cho me)', () => {

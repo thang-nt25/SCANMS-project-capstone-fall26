@@ -1,0 +1,181 @@
+====================================================================================================
+TÀI LIỆU ĐẶC TẢ NGHIỆP VỤ & THUẬT TOÁN AI MATCHING ENGINE (FR-30)
+DỰ ÁN: SCANMS - HỆ THỐNG QUẢN LÝ TIẾP THỊ LIÊN KẾT KOL/KOC E-COMMERCE
+CHỨC NĂNG: FR-30: AI GỢI Ý & GHÉP ĐÔI KOL PHÙ HỢP SẢN PHẨM (SMART KOL RECOMMENDATION)
+TÁC GIẢ: NGUYỄN PHÚ QUÝ (NGUYENPHUQUY) - NHÁNH DEV: quy
+TRẠNG THÁI: ĐÃ PHÊ DUYỆT & TRIỂN KHAI HOÀN TẤT
+====================================================================================================
+
+I. TỔNG QUAN NGHIỆP VỤ (BUSINESS OVERVIEW)
+----------------------------------------------------------------------------------------------------
+1. Bối cảnh & Vấn đề:
+   - Trong mô hình Affiliate Marketing, chủ shop (Shop Manager) thường mất nhiều thời gian và chi phí
+     để tìm kiếm, liên hệ KOL thủ công mà không rõ nhà sáng tạo nào thực sự có tệp người xem phù hợp
+     với sản phẩm và có khả năng chuyển đổi đơn hàng cao.
+   - Các nền tảng thông thường chỉ hiển thị danh sách KOL theo số lượng follower ảo, dẫn đến tình trạng
+     "book nhầm KOL" khiến chi phí marketing bị lãng phí.
+
+2. Mục tiêu chức năng FR-30:
+   - Cung cấp công cụ AI Smart Recommendation & Matching Engine giúp Chủ shop và Quản trị viên
+     tự động quét toàn bộ kho dữ liệu nhà sáng tạo trên SCANMS, tính toán Điểm số tương thích (Match Score)
+     dựa trên ma trận 4 tiêu chí cốt lõi có trọng số.
+   - Cung cấp tính năng Explainable AI (Lý giải thuật toán minh bạch) với câu giải thích trực quan và các
+     thế mạnh then chốt (Key Strengths) của từng KOL đối với sản phẩm mục tiêu.
+   - Tích hợp luồng hành động liền mạch: Gửi Thẻ Mời Hợp Tác VIP (FR-27), Chat đàm phán 1-1 (FR-25),
+     và Xem báo cáo đối sánh chuyên sâu 1-1 (1-on-1 Deep Match Analysis).
+
+----------------------------------------------------------------------------------------------------
+II. THUẬT TOÁN ĐA TIÊU CHÍ (MULTI-CRITERIA WEIGHTED AFFINITY SCORING ENGINE)
+----------------------------------------------------------------------------------------------------
+Hệ thống tính điểm tương thích Match Score (0% - 100%) theo công thức:
+
+   MatchScore = round(0.35 * CategoryScore + 0.25 * CRScore + 0.20 * TierSocialScore + 0.20 * PriceFitScore)
+
+Chi tiết 4 tiêu chí thành phần:
+
+1. Category Affinity (Trọng số 35%):
+   - Đo lường mức độ trùng khớp giữa ngành hàng của sản phẩm và ngành hàng thế mạnh của KOL.
+   - Quy tắc:
+     + Trùng khớp chính xác hoặc tương đồng cao (Vd: Thời trang & Mỹ phẩm): 95 - 100 điểm.
+     + Ngành hàng liên quan (Vd: Gia dụng & Mẹ bé, Sách & Văn phòng phẩm): 70 - 85 điểm.
+     + Ngành hàng khác biệt: 40 - 55 điểm.
+
+2. Conversion Rate Affinity - CR% (Trọng số 25%):
+   - Đánh giá năng lực chốt đơn thực tế dựa trên dữ liệu 30 ngày gần nhất của KOL.
+   - Quy tắc:
+     + CR >= 10.0%: 100 điểm.
+     + CR >= 7.0%: 90 điểm.
+     + CR >= 5.0%: 80 điểm.
+     + CR >= 3.0%: 65 điểm.
+     + CR < 3.0%: max(30, CR * 15) điểm.
+
+3. Tier & Social Follower Affinity (Trọng số 20%):
+   - Đánh giá cấp bậc danh hiệu hệ thống và tổng lượng người theo dõi trên các kênh TikTok, YouTube, Instagram.
+   - Quy tắc:
+     + Cấp bậc DIAMOND (Kim Cương): 100 điểm.
+     + Cấp bậc PLATINUM (Bạch Kim): 88 điểm.
+     + Cấp bậc GOLD (Vàng): 78 điểm.
+     + Cấp bậc SILVER (Bạc): 65 điểm.
+     + Cấp bậc BRONZE (Đồng): 50 điểm.
+     + Cộng thêm điểm thưởng từ quy mô Follower (Follower Bonus: 0 - 10 điểm).
+
+4. Price Range Fit (Trọng số 20%):
+   - Đánh giá khả năng người xem của KOL sẵn sàng chi trả cho tầm giá của sản phẩm.
+   - Quy tắc:
+     + Giá dưới 200.000đ (Phân khúc bình dân): Phù hợp cao với tệp người xem trẻ (TikTok/KOC sinh viên) -> 95 - 100 điểm.
+     + Giá 200.000đ - 500.000đ (Phân khúc tầm trung): Phù hợp đa dạng tệp KOL -> 90 - 95 điểm.
+     + Giá 500.000đ - 1.000.000đ (Phân khúc cận cao cấp): Phù hợp KOL từ Silver/Gold trở lên -> 80 - 90 điểm.
+     + Giá trên 1.000.000đ (Phân khúc cao cấp): Đòi hỏi KOL Platinum/Diamond có uy tín cao -> 70 - 90 điểm.
+
+5. Phân hạng mức độ tương thích (Match Level):
+   - MatchScore >= 85%: "SIÊU PHÙ HỢP" (Match Cực Cao)
+   - 70% <= MatchScore < 85%: "RẤT PHÙ HỢP"
+   - 55% <= MatchScore < 70%: "TIỀM NĂNG"
+   - MatchScore < 55%: "CÂN NHẮC THÊM"
+
+----------------------------------------------------------------------------------------------------
+III. EXPLAINABLE AI (LÝ GIẢI ĐỀ XUẤT MINH BẠCH)
+----------------------------------------------------------------------------------------------------
+Hệ thống tự động sinh câu giải thích logic (aiReasoning) và các thẻ điểm mạnh then chốt (keyStrengths)
+để chủ shop hiểu rõ tại sao KOL này được gợi ý:
+
+- Ví dụ câu lý giải:
+  "KOL Trần Thu Hà có tỷ lệ chốt đơn ấn tượng 8.4% trong ngành Mỹ phẩm & Làm đẹp, cực kỳ tương thích
+   với sản phẩm Serum Dưỡng Trắng Da. Với hơn 850,000 follower trên TikTok và cấp bậc Kim Cương,
+   đây là lựa chọn tối ưu để bùng nổ doanh số."
+- Thẻ điểm mạnh (Key Strengths):
+  + "🎯 Chuyên gia ngành Mỹ phẩm & Làm đẹp"
+  + "🔥 Tỷ lệ chốt đơn vượt trội (8.4%)"
+  + "💎 Cấp bậc Diamond danh giá"
+  + "📱 Lượng tương tác khủng trên TikTok (850k followers)"
+
+----------------------------------------------------------------------------------------------------
+IV. DANH SÁCH API ENDPOINTS (BACKEND REST API CONTRACTS)
+----------------------------------------------------------------------------------------------------
+1. GET /api/ai/recommend-kols/:productId
+   - Mô tả: Gợi ý danh sách Top KOL phù hợp nhất cho 1 sản phẩm cụ thể của gian hàng.
+   - Header: Authorization: Bearer <JWT_TOKEN>
+   - Query Params:
+     + limit: number (Mặc định 10, tối đa 50)
+     + minTier: string (BRONZE, SILVER, GOLD, PLATINUM, DIAMOND)
+     + minConversionRate: number (vd: 5.0)
+     + priceRange: string (ALL, UNDER_200K, FROM_200K_TO_500K, FROM_500K_TO_1M, OVER_1M)
+   - Response 200 OK:
+     {
+       "success": true,
+       "data": {
+         "calculatedAt": "2026-09-15T10:30:00Z",
+         "targetProduct": {
+           "productId": "prod-123",
+           "title": "Serum Dưỡng Trắng Niacinamide",
+           "category": "Mỹ phẩm & Làm đẹp",
+           "price": 350000,
+           "commissionRate": 15
+         },
+         "totalKolsScanned": 24,
+         "recommendedKols": [
+           {
+             "collaboratorId": "collab-01",
+             "fullName": "Trần Thu Hà",
+             "tierName": "DIAMOND",
+             "matchScore": 96,
+             "matchLevel": "SIÊU PHÙ HỢP",
+             "scoreBreakdown": {
+               "categoryScore": 98,
+               "conversionRateScore": 95,
+               "tierAndSocialScore": 96,
+               "priceFitScore": 94
+             },
+             "aiReasoning": "...",
+             "keyStrengths": ["🎯 Chuyên gia ngành Beauty", "🔥 CR% 8.4%"],
+             "socialChannels": [...],
+             "lifetimeStats": { "totalOrders": 1420, "grossRevenue": 480000000, "conversionRate": 8.4 }
+           }
+         ]
+       }
+     }
+
+2. GET /api/ai/recommend-kols
+   - Mô tả: Gợi ý KOL theo bộ lọc tổng quan (khi chưa chọn sản phẩm cụ thể).
+   - Query Params: category, priceRange, minTier, minConversionRate, limit.
+
+3. POST /api/ai/match-analysis
+   - Mô tả: Báo cáo đối sánh chuyên sâu 1-1 giữa 1 sản phẩm và 1 KOL.
+   - Body: { "productId": "prod-123", "collaboratorId": "collab-01" }
+   - Response: Toàn bộ bảng phân tích 4 tiêu chuẩn, phân tích khoảng cách và tư vấn chiến lược hợp tác.
+
+----------------------------------------------------------------------------------------------------
+V. GIAO DIỆN & TRẢI NGHIỆM NGƯỜI DÙNG (UI/UX DESIGN)
+----------------------------------------------------------------------------------------------------
+1. 100% Thuần Tailwind CSS:
+   - Sử dụng hoàn toàn Tailwind utilities, tuyệt đối không dùng file css riêng lẻ.
+2. Banner AI Header với hiệu ứng gradient indigo-purple và badge "Explainable AI".
+3. Dropdown chọn sản phẩm mục tiêu kèm thẻ tóm tắt giá bán, ngành hàng, % hoa hồng.
+4. Bộ lọc tùy biến thuật toán realtime (Thanh kéo CR%, Hạng KOL, Phân khúc giá, Tìm kiếm tên).
+5. Thẻ kết quả KOL thông minh:
+   - Điểm số Match Score dạng badge & vòng tròn nổi bật.
+   - Hộp "💡 Phân tích từ AI Engine" chứa câu lý giải giải trình minh bạch.
+   - Thẻ Pills thế mạnh then chốt.
+   - Thanh tiến độ hiển thị chi tiết 4 tiêu chí thành phần.
+   - Nút hành động trực tiếp: "👑 Gửi Thẻ Mời VIP" và "🔍 Báo cáo 1-1".
+
+----------------------------------------------------------------------------------------------------
+VI. MA TRẬN 16 KỊCH BẢN E2E TEST (VERIFICATION SUITE)
+----------------------------------------------------------------------------------------------------
+1.  [TC01] - Shop Manager lấy danh sách gợi ý KOL cho sản phẩm cụ thể thành công (200 OK).
+2.  [TC02] - Match score nằm trong khoảng hợp lệ [0 - 100%].
+3.  [TC03] - Kết quả trả về được sắp xếp giảm dần theo matchScore (Top Match xếp đầu).
+4.  [TC04] - Response chứa đầy đủ cấu trúc scoreBreakdown 4 tiêu chí.
+5.  [TC05] - Response chứa câu giải thích aiReasoning và mảng keyStrengths.
+6.  [TC06] - Lọc gợi ý tổng quan theo tham số category thành công.
+7.  [TC07] - Lọc danh sách theo minTier=GOLD hoạt động chính xác.
+8.  [TC08] - Lọc danh sách theo minConversionRate=5.0 loại trừ các KOL có CR thấp.
+9.  [TC09] - Lọc danh sách theo priceRange=FROM_200K_TO_500K thành công.
+10. [TC10] - Tham số limit giới hạn đúng số lượng bản ghi trả về (vd: limit=3).
+11. [TC11] - Endpoint phân tích đối sánh 1-1 POST /api/ai/match-analysis trả về dữ liệu chuẩn.
+12. [TC12] - 404 Not Found khi productId không tồn tại trong hệ thống.
+13. [TC13] - Quyền truy cập: Shop Manager và Admin được phép truy cập.
+14. [TC14] - Chặn truy cập (403 Forbidden) đối với vai trò không có thẩm quyền nếu có.
+15. [TC15] - 401 Unauthorized khi không đính kèm JWT Bearer Token.
+16. [TC16] - Kiểm thử hiệu năng: Thời gian phản hồi thuật toán gợi ý < 500ms.
+====================================================================================================

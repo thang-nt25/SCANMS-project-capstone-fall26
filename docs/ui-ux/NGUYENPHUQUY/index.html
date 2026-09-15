@@ -51,7 +51,7 @@
           SCANMS UI/UX Prototype Hub
         </h1>
         <p class="text-xs text-slate-400 font-medium">
-          Phân Hệ Nghiệp Vụ: FR-25 • FR-26 • FR-27 • FR-28 • FR-29 (Tác giả: Nguyễn Phú Quý — NGUYENPHUQUY)
+          Phân Hệ Nghiệp Vụ: FR-25 • FR-26 • FR-27 • FR-28 • FR-29 • FR-30 (Tác giả: Nguyễn Phú Quý — NGUYENPHUQUY)
         </p>
       </div>
     </div>
@@ -72,6 +72,9 @@
       </button>
       <button onclick="switchScreen('fr29')" id="tab-fr29" class="nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800">
         🏆 FR-29: Bảng Vinh Danh
+      </button>
+      <button onclick="switchScreen('fr30')" id="tab-fr30" class="nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800">
+        ✨ FR-30: AI Gợi Ý KOL
       </button>
     </nav>
   </header>
@@ -898,6 +901,291 @@
       </div>
     </section>
 
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- SCREEN 6: FR-30 AI SMART KOL RECOMMENDATION & MATCHING ENGINE -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <section id="screen-fr30" class="hidden space-y-6">
+      {/* Banner AI */}
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-purple-950 p-6 md:p-8 border border-indigo-500/30 shadow-2xl">
+        <div class="relative z-10 max-w-3xl space-y-3">
+          <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-md border border-white/20">
+            <span class="text-amber-300 animate-pulse">✨</span>
+            <span class="text-amber-200 font-bold">FR-30: AI Smart Recommendation & Matching Engine</span>
+          </div>
+          <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+            AI Gợi Ý & Ghép Đôi KOL Phù Hợp Sản Phẩm
+          </h2>
+          <p class="text-xs md:text-sm text-indigo-200 leading-relaxed">
+            Thuật toán đa tiêu chí (Mức độ hợp ngành 35%, CR% chốt đơn 25%, Tầm ảnh hưởng 20%, Phù hợp phân khúc giá 20%) giúp gian hàng tìm đúng nhà sáng tạo có khả năng bùng nổ doanh thu cao nhất.
+          </p>
+          <div class="flex flex-wrap items-center gap-3 pt-1 text-[11px]">
+            <span class="px-2.5 py-1 bg-white/10 rounded-lg text-emerald-300 font-semibold border border-white/10">⚡ Explainable AI</span>
+            <span class="px-2.5 py-1 bg-white/10 rounded-lg text-amber-300 font-semibold border border-white/10">🎯 4-Criteria Weighted Scoring</span>
+            <span class="px-2.5 py-1 bg-white/10 rounded-lg text-indigo-300 font-semibold border border-white/10">📊 Realtime Match Index</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Target Product Selector & Toolbar */}
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1 rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2 font-bold text-white text-sm">
+            <span>🛍️ Sản Phẩm Cần Đẩy Doanh Số:</span>
+          </div>
+          <select id="fr30-product-select" onchange="updateAiMockProduct(this.value)" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-xs font-semibold text-white focus:outline-none focus:border-indigo-500">
+            <option value="p1">Serum Dưỡng Trắng Niacinamide 10% (350.000 ₫)</option>
+            <option value="p2">Áo Polo Nam Form Regular Fit (249.000 ₫)</option>
+            <option value="p3">Nồi Chiên Không Dầu Điện Tử 6.5L (1.290.000 ₫)</option>
+            <option value="p4">Tai Nghe Bluetooth True Wireless ANC (690.000 ₫)</option>
+          </select>
+
+          <div id="fr30-product-card" class="rounded-xl bg-slate-950/80 p-4 border border-indigo-900/40 space-y-2">
+            <div class="flex items-center space-x-3">
+              <div class="w-12 h-12 rounded-lg bg-indigo-900/50 border border-indigo-700 flex items-center justify-center text-2xl">
+                🧴
+              </div>
+              <div>
+                <h4 id="fr30-prod-title" class="font-bold text-white text-xs">Serum Dưỡng Trắng Niacinamide 10%</h4>
+                <p id="fr30-prod-cat" class="text-[11px] text-indigo-400">Mỹ phẩm & Làm đẹp</p>
+                <div class="flex items-center gap-2 text-[11px] mt-1">
+                  <span id="fr30-prod-price" class="font-bold text-amber-400">350.000 ₫</span>
+                  <span class="text-slate-400">• Hoa hồng: <b id="fr30-prod-com" class="text-emerald-400">15%</b></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white text-sm">⚙️ Bộ Lọc Tùy Biến Thuật Toán:</span>
+            <button onclick="simulateAiRescan()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-md">
+              🔄 Quét & Tính Điểm Lại
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label class="block text-slate-400 mb-1">Ngành hàng</label>
+              <select class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200">
+                <option>Mỹ phẩm & Làm đẹp</option>
+                <option>Thời trang & Phụ kiện</option>
+                <option>Đồ gia dụng & Đời sống</option>
+                <option>Công nghệ & Thiết bị số</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Hạng KOL tối thiểu</label>
+              <select class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200">
+                <option>Tất cả cấp bậc</option>
+                <option>Vàng (Gold) trở lên</option>
+                <option>Bạch Kim (Platinum) trở lên</option>
+                <option>Kim Cương (Diamond)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Tỷ lệ CR% tối thiểu</label>
+              <select class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200">
+                <option>Từ 3.0% trở lên</option>
+                <option>Từ 5.0% trở lên (Khuyên dùng)</option>
+                <option>Từ 8.0% trở lên (Siêu chuyển đổi)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recommended KOLs Cards */}
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-white text-base flex items-center gap-2">
+            <span>Danh Sách KOL Phù Hợp Nhất Theo AI Engine</span>
+            <span class="px-2.5 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs rounded-full font-bold">Top 3 AI Pick</span>
+          </h3>
+          <span class="text-xs text-slate-400">Đã quét qua 24 hồ sơ KOL trên sàn SCANMS</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Card 1: Top 1 (96%) */}
+          <div class="rounded-2xl bg-slate-900 border-2 border-emerald-500/50 p-5 space-y-4 shadow-xl relative overflow-hidden flex flex-col justify-between">
+            <div class="absolute top-0 right-0 bg-emerald-500 text-slate-950 text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+              TOP 1 AI PICK
+            </div>
+
+            <div class="flex items-start space-x-3.5 pt-2">
+              <div class="w-14 h-14 rounded-full bg-slate-800 border-2 border-emerald-400 flex items-center justify-center text-3xl">
+                👩‍🦰
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-base">Trần Thu Hà</h4>
+                <p class="text-xs text-emerald-400 font-semibold">💎 Kim Cương (Diamond)</p>
+                <span class="text-[11px] text-slate-400">850k followers • TikTok Beauty</span>
+              </div>
+            </div>
+
+            {/* Match score gauge */}
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400">ĐIỂM TƯƠNG THÍCH AI</span>
+                <p class="text-2xl font-black text-emerald-400">96%</p>
+              </div>
+              <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-lg">
+                SIÊU PHÙ HỢP
+              </span>
+            </div>
+
+            {/* AI Reasoning box */}
+            <div class="p-3 bg-indigo-950/40 border border-indigo-900/50 rounded-xl text-xs space-y-1.5">
+              <div class="flex items-center gap-1.5 font-bold text-indigo-300">
+                <span>💡 Phân tích từ AI:</span>
+              </div>
+              <p class="text-slate-300 text-[11px] leading-relaxed italic">
+                "KOL có tỷ lệ chốt đơn 8.4% dẫn đầu ngành Mỹ phẩm, tệp người xem 18-28 tuổi hoàn toàn trùng khớp với sản phẩm Serum."
+              </p>
+              <div class="flex flex-wrap gap-1 pt-1">
+                <span class="px-2 py-0.5 bg-slate-900 text-emerald-400 text-[10px] rounded border border-emerald-500/30 font-semibold">🎯 Siêu Chuyển Đổi</span>
+                <span class="px-2 py-0.5 bg-slate-900 text-indigo-300 text-[10px] rounded border border-indigo-500/30 font-semibold">🔥 Follower Khủng</span>
+              </div>
+            </div>
+
+            {/* Breakdown */}
+            <div class="space-y-1.5 text-[11px] text-slate-400 pt-1">
+              <div class="flex justify-between">
+                <span>Độ hợp ngành:</span>
+                <b class="text-emerald-400">98%</b>
+              </div>
+              <div class="flex justify-between">
+                <span>Tỷ lệ CR% (8.4%):</span>
+                <b class="text-emerald-400">95%</b>
+              </div>
+              <div class="flex justify-between">
+                <span>Tầm ảnh hưởng & Hạng:</span>
+                <b class="text-emerald-400">96%</b>
+              </div>
+              <div class="flex justify-between">
+                <span>Phân khúc giá (350k):</span>
+                <b class="text-emerald-400">94%</b>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button onclick="openVipInviteModal()" class="py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs rounded-xl shadow-md">
+                👑 Mời VIP
+              </button>
+              <button onclick="openCreatorModal('Trần Thu Hà', '@ha.beauty', '480.000.000 ₫', '1.420 đơn', '8.4%')" class="py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl">
+                🔍 Báo Cáo 1-1
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: Top 2 (89%) */}
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-lg flex flex-col justify-between">
+            <div class="flex items-start space-x-3.5">
+              <div class="w-14 h-14 rounded-full bg-slate-800 border-2 border-purple-400 flex items-center justify-center text-3xl">
+                👩‍💼
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-base">Lê Thị Mai Anh</h4>
+                <p class="text-xs text-purple-400 font-semibold">🏆 Bạch Kim (Platinum)</p>
+                <span class="text-[11px] text-slate-400">520k followers • TikTok Skincare</span>
+              </div>
+            </div>
+
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400">ĐIỂM TƯƠNG THÍCH AI</span>
+                <p class="text-2xl font-black text-blue-400">89%</p>
+              </div>
+              <span class="px-2.5 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/40 text-xs font-bold rounded-lg">
+                RẤT PHÙ HỢP
+              </span>
+            </div>
+
+            <div class="p-3 bg-indigo-950/40 border border-indigo-900/50 rounded-xl text-xs space-y-1.5">
+              <div class="flex items-center gap-1.5 font-bold text-indigo-300">
+                <span>💡 Phân tích từ AI:</span>
+              </div>
+              <p class="text-slate-300 text-[11px] leading-relaxed italic">
+                "Thế mạnh chuyên sâu về dòng sản phẩm chăm sóc da và trị mụn, CR 6.8% ổn định qua nhiều chiến dịch."
+              </p>
+              <div class="flex flex-wrap gap-1 pt-1">
+                <span class="px-2 py-0.5 bg-slate-900 text-blue-400 text-[10px] rounded border border-blue-500/30 font-semibold">🎯 Đúng Tệp Skincare</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 text-[11px] text-slate-400 pt-1">
+              <div class="flex justify-between"><span>Độ hợp ngành:</span><b class="text-blue-400">92%</b></div>
+              <div class="flex justify-between"><span>Tỷ lệ CR% (6.8%):</span><b class="text-blue-400">88%</b></div>
+              <div class="flex justify-between"><span>Tầm ảnh hưởng & Hạng:</span><b class="text-blue-400">88%</b></div>
+              <div class="flex justify-between"><span>Phân khúc giá:</span><b class="text-blue-400">90%</b></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button onclick="openVipInviteModal()" class="py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs rounded-xl shadow-md">
+                👑 Mời VIP
+              </button>
+              <button onclick="openCreatorModal('Lê Thị Mai Anh', '@maianh.skincare', '280.000.000 ₫', '890 đơn', '6.8%')" class="py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl">
+                🔍 Báo Cáo 1-1
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Top 3 (84%) */}
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-lg flex flex-col justify-between">
+            <div class="flex items-start space-x-3.5">
+              <div class="w-14 h-14 rounded-full bg-slate-800 border-2 border-amber-400 flex items-center justify-center text-3xl">
+                🧑‍🎤
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-base">Phạm Quỳnh Trang</h4>
+                <p class="text-xs text-amber-400 font-semibold">🥇 Vàng (Gold)</p>
+                <span class="text-[11px] text-slate-400">310k followers • Đa Nền Tảng</span>
+              </div>
+            </div>
+
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400">ĐIỂM TƯƠNG THÍCH AI</span>
+                <p class="text-2xl font-black text-amber-400">84%</p>
+              </div>
+              <span class="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold rounded-lg">
+                RẤT PHÙ HỢP
+              </span>
+            </div>
+
+            <div class="p-3 bg-indigo-950/40 border border-indigo-900/50 rounded-xl text-xs space-y-1.5">
+              <div class="flex items-center gap-1.5 font-bold text-indigo-300">
+                <span>💡 Phân tích từ AI:</span>
+              </div>
+              <p class="text-slate-300 text-[11px] leading-relaxed italic">
+                "KOL có độ tương tác cao trong phân khúc giá 200k - 400k, tốc độ ra video nhanh và hỗ trợ livestream linh hoạt."
+              </p>
+              <div class="flex flex-wrap gap-1 pt-1">
+                <span class="px-2 py-0.5 bg-slate-900 text-amber-400 text-[10px] rounded border border-amber-500/30 font-semibold">⚡ Tương Tác Cao</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 text-[11px] text-slate-400 pt-1">
+              <div class="flex justify-between"><span>Độ hợp ngành:</span><b class="text-amber-400">85%</b></div>
+              <div class="flex justify-between"><span>Tỷ lệ CR% (5.9%):</span><b class="text-amber-400">82%</b></div>
+              <div class="flex justify-between"><span>Tầm ảnh hưởng & Hạng:</span><b class="text-amber-400">80%</b></div>
+              <div class="flex justify-between"><span>Phân khúc giá:</span><b class="text-amber-400">92%</b></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button onclick="openVipInviteModal()" class="py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs rounded-xl shadow-md">
+                👑 Mời VIP
+              </button>
+              <button onclick="openCreatorModal('Phạm Quỳnh Trang', '@trang.beauty', '195.000.000 ₫', '540 đơn', '5.9%')" class="py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl">
+                🔍 Báo Cáo 1-1
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -1051,6 +1339,31 @@
 
     function openSampleModal(prodName = 'Sản phẩm mẫu') {
       alert('Mở form xin mẫu thử cho: ' + prodName + '\n(KOL nhập địa chỉ giao hàng và kế hoạch review)');
+    }
+
+    function updateAiMockProduct(val) {
+      const pMap = {
+        p1: { title: 'Serum Dưỡng Trắng Niacinamide 10%', cat: 'Mỹ phẩm & Làm đẹp', price: '350.000 ₫', com: '15%' },
+        p2: { title: 'Áo Polo Nam Form Regular Fit', cat: 'Thời trang & Phụ kiện', price: '249.000 ₫', com: '18%' },
+        p3: { title: 'Nồi Chiên Không Dầu Điện Tử 6.5L', cat: 'Đồ gia dụng & Đời sống', price: '1.290.000 ₫', com: '12%' },
+        p4: { title: 'Tai Nghe Bluetooth True Wireless ANC', cat: 'Công nghệ & Thiết bị số', price: '690.000 ₫', com: '14%' },
+      };
+      const p = pMap[val] || pMap.p1;
+      document.getElementById('fr30-prod-title').innerText = p.title;
+      document.getElementById('fr30-prod-cat').innerText = p.cat;
+      document.getElementById('fr30-prod-price').innerText = p.price;
+      document.getElementById('fr30-prod-com').innerText = p.com;
+      simulateAiRescan();
+    }
+
+    function simulateAiRescan() {
+      const btn = document.querySelector('#screen-fr30 button[onclick="simulateAiRescan()"]');
+      if (btn) {
+        btn.innerText = '⏳ Đang quét AI...';
+        setTimeout(() => {
+          btn.innerText = '🔄 Quét & Tính Điểm Lại';
+        }, 500);
+      }
     }
   </script>
 </body>

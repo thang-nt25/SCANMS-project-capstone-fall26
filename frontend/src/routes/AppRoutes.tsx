@@ -63,6 +63,9 @@ const RealtimeAnalyticsPage = lazy(() => import('../pages/dashboard/RealtimeAnal
 // Leaderboard Top 10 Creators (Quý - FR-29)
 const LeaderboardPage = lazy(() => import('../pages/dashboard/LeaderboardPage'));
 
+// AI KOL Smart Recommendation & Matching Engine (Quý - FR-30)
+const KolRecommendationPage = lazy(() => import('../pages/merchant/KolRecommendationPage'));
+
 // Admin Pages (FR-12)
 const AdminCouponsPage = lazy(() => import('../pages/admin/AdminCouponsPage'));
 import { RouteContent } from './RouteContent';
@@ -125,6 +128,7 @@ function AppRoutes() {
             <Route path="stores/:storeId/referral-links" element={<StoreReferralLinksPage />} />
             <Route path="merchant/sample-requests" element={<ShopSampleRequestsPage />} />
             <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
+            <Route path="merchant/kol-recommendations" element={<KolRecommendationPage />} />
             <Route path="merchant/analytics" element={<RealtimeAnalyticsPage />} />
             <Route path="merchant/stats" element={<RealtimeAnalyticsPage />} />
             <Route path="merchant/leaderboard" element={<LeaderboardPage />} />
@@ -157,6 +161,7 @@ function AppRoutes() {
           <Route element={<RouteContent />}>
             <Route path="admin/analytics" element={<RealtimeAnalyticsPage />} />
             <Route path="admin/leaderboard" element={<LeaderboardPage />} />
+            <Route path="admin/kol-recommendations" element={<KolRecommendationPage />} />
             <Route path="admin/users" element={<KycApprovalPage />} />
             <Route path="admin/referral-links" element={<AdminReferralLinksPage />} />
             <Route path="admin/coupons" element={<AdminCouponsPage />} />
