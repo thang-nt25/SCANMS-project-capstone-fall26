@@ -66,7 +66,7 @@ export class RecommendKolsQueryDto {
   minConversionRate?: number;
 
   @ApiPropertyOptional({
-    description: 'Số lượng KOLs gợi ý cần lấy ra (Mặc định 5, tối đa 20)',
+    description: 'Số lượng KOLs gợi ý cần lấy ra (Mặc định 5, tối đa 100)',
     default: 5,
     example: 5,
   })
@@ -74,7 +74,7 @@ export class RecommendKolsQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(20)
+  @Max(100)
   limit?: number = 5;
 }
 

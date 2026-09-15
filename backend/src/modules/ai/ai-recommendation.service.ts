@@ -214,10 +214,11 @@ export class AiRecommendationService {
 
       // Lọc điều kiện PriceRangeFilter
       if (query.priceRange && query.priceRange !== PriceRangeFilter.ALL) {
-        if (query.priceRange === PriceRangeFilter.UNDER_200K && targetPrice >= 200000) continue;
-        if (query.priceRange === PriceRangeFilter.FROM_200K_TO_500K && (targetPrice < 200000 || targetPrice > 500000)) continue;
-        if (query.priceRange === PriceRangeFilter.FROM_500K_TO_1M && (targetPrice < 500000 || targetPrice > 1000000)) continue;
-        if (query.priceRange === PriceRangeFilter.OVER_1M && targetPrice <= 1000000) continue;
+        const evalPrice = targetPrice > 0 ? targetPrice : avgOrderValue;
+        if (query.priceRange === PriceRangeFilter.UNDER_200K && evalPrice >= 200000) continue;
+        if (query.priceRange === PriceRangeFilter.FROM_200K_TO_500K && (evalPrice < 200000 || evalPrice > 500000)) continue;
+        if (query.priceRange === PriceRangeFilter.FROM_500K_TO_1M && (evalPrice < 500000 || evalPrice > 1000000)) continue;
+        if (query.priceRange === PriceRangeFilter.OVER_1M && evalPrice <= 1000000) continue;
       }
 
       // 5. TỔNG HỢP MATCH SCORE (Công thức ma trận trọng số)
@@ -335,6 +336,7 @@ export class AiRecommendationService {
     return {
       productId: dto.productId,
       targetProduct: res.targetProduct,
+      collaborator: found,
       kolAnalysis: found,
       recommendationAction:
         found.matchScore >= 80
