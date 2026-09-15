@@ -692,7 +692,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F] overflow-x-clip">
 
       <aside className="bg-[#F3EFE6] text-[#7A561B] text-[11.5px] font-medium py-2 px-4 border-b border-[#EEDFC6]">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-[1520px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#C59B58] animate-ping"></span>
             <span className="font-bold text-[#1A1612]">SCANMS COMMERCE:</span>
@@ -722,7 +722,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
       </aside>
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3 sm:gap-6">
+        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3 sm:gap-6">
 
           <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white font-black text-lg flex items-center justify-center shadow-xs">
@@ -738,7 +738,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
             </div>
           </Link>
 
-          <div className="flex-1 max-w-xl hidden md:block">
+          <div className="flex-1 max-w-2xl xl:max-w-3xl hidden md:block">
             <div className="relative flex items-center">
               <Search className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
               <input
@@ -876,8 +876,8 @@ const ROTATING_DEALS: FlashDealProduct[] = [
           </div>
         </div>
 
-        <div className="bg-[#F3EFE6]/60 border-t border-[#EAE4D7] px-4 sm:px-6 py-2 relative z-30">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div className="bg-[#F3EFE6]/60 border-t border-[#EAE4D7] px-4 sm:px-6 lg:px-8 py-2 relative z-30">
+          <div className="max-w-[1520px] mx-auto flex items-center justify-between gap-4">
             <div
               className="flex items-center gap-1.5 text-xs font-bold overflow-x-auto py-1 flex-1 [&::-webkit-scrollbar]:hidden"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -1008,10 +1008,10 @@ const ROTATING_DEALS: FlashDealProduct[] = [
         <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-[#C59B58]/10 blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 -right-20 w-80 h-80 rounded-full bg-[#B88E4F]/10 blur-3xl pointer-events-none" />
 
-        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 relative z-10">
+        <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8 relative z-10">
 
           {/* MAIN STAGE: Left Wing Campaign Hub & Right Wing Deal Command Center */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(330px,0.36fr)_minmax(0,0.64fr)] lg:items-stretch">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[380px_1fr] xl:grid-cols-[430px_1fr] 2xl:grid-cols-[460px_1fr] lg:items-stretch">
 
             {/* LEFT WING: Flagship Campaign, Interactive Voucher Ticket & Trust Props */}
             <div className="flex flex-col justify-between gap-4 text-left bg-gradient-to-br from-white via-[#FAF8F5] to-[#FBF5EB] border-2 border-[#EEDFC6] rounded-3xl p-5 sm:p-6 shadow-lg relative overflow-hidden">
@@ -1307,7 +1307,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
                 </div>
 
                 {/* Stage Body: 2 Columns */}
-                <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-[250px_1fr] lg:grid-cols-[265px_1fr] gap-4 sm:gap-5 flex-1">
+                <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr] xl:grid-cols-[360px_1fr] gap-5 sm:gap-6 flex-1">
                   
                   {/* Left Column: Product Image Gallery */}
                   <div className="flex flex-col gap-2.5">
@@ -1764,7 +1764,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
         </div>
       </section>
 
-      <section className="py-12 px-4 sm:px-6 max-w-7xl mx-auto w-full text-left">
+      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-[1520px] mx-auto w-full text-left">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#B88E4F] uppercase tracking-wider mb-1">
@@ -1824,7 +1824,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
         </div>
       </section>
 
-      <section ref={catalogRef} id="catalog-section" className="py-10 px-4 sm:px-6 max-w-7xl mx-auto w-full text-left border-t border-[#EAE4D7]">
+      <section ref={catalogRef} id="catalog-section" className="py-10 px-4 sm:px-6 lg:px-8 max-w-[1520px] mx-auto w-full text-left border-t border-[#EAE4D7]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-[#1A1612] m-0">
@@ -1865,7 +1865,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-5">
             {filteredProducts.map((p) => (
               <div
                 key={p.id}
@@ -2064,8 +2064,8 @@ const ROTATING_DEALS: FlashDealProduct[] = [
         </div>
       </section>
 
-      <footer className="bg-[#F3EFE6] border-t border-[#EAE4D7] text-[#1A1612] py-12 px-4 sm:px-6 mt-auto text-left">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <footer className="bg-[#F3EFE6] border-t border-[#EAE4D7] text-[#1A1612] py-12 px-4 sm:px-6 lg:px-8 mt-auto text-left">
+        <div className="max-w-[1520px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <span className="w-8 h-8 rounded-xl bg-[#C59B58] text-white font-black text-base flex items-center justify-center shadow-xs">
@@ -2147,7 +2147,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto border-t border-[#EAE4D7] mt-8 pt-6 flex flex-wrap items-center justify-between text-xs text-[#7D715E]">
+        <div className="max-w-[1520px] mx-auto border-t border-[#EAE4D7] mt-8 pt-6 flex flex-wrap items-center justify-between text-xs text-[#7D715E]">
           <span>© 2026 SCANMS. All rights reserved. Nền tảng quản lý tiếp thị liên kết FA26SE032.</span>
           <div className="flex items-center gap-4 text-[#7D715E]">
             <span className="hover:text-[#1A1612] cursor-pointer">Điều khoản dịch vụ</span>
@@ -2601,7 +2601,7 @@ const ROTATING_DEALS: FlashDealProduct[] = [
           aria-label="Thanh mua nhanh cố định"
           className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#EAE4D7] shadow-xl px-4 py-2.5 sm:py-3 animate-in slide-in-from-bottom duration-200"
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <img
                 src={currentDeal.images[heroGalleryIndex]?.src || currentDeal.images[0]?.src}

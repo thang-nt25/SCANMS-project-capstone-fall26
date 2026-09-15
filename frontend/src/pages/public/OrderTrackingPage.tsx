@@ -272,7 +272,7 @@ export default function OrderTrackingPage() {
 
       {/* 1. TOP HEADER - SCANMS OFFICIAL TRACKING HEADER */}
       <header className="sticky top-0 z-50 w-full bg-white/98 backdrop-blur-md border-b border-[#EAE4D7] px-4 sm:px-8 py-3.5 shadow-xs min-h-[64px] flex items-center">
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+        <div className="max-w-[1520px] mx-auto w-full flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
           {/* Left: Back to Marketplace button + Brand logo */}
           <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
             <Link
