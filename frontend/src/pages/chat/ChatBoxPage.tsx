@@ -611,7 +611,6 @@ export default function ChatBoxPage() {
 
   const showErrorToast = (msg: string) => {
     setErrorMessage(msg);
-    toast.error(msg);
     setTimeout(() => setErrorMessage(null), 4000);
   };
 
