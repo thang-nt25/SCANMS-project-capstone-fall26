@@ -92,8 +92,14 @@ export class OrderCreatedResponseDto {
   @ApiPropertyOptional({ description: 'Token hủy đơn bảo mật cấp 1 lần cho khách', example: 'token-abc...' })
   cancellationToken?: string;
 
-  @ApiProperty({ description: 'Đường dẫn tra cứu đơn hàng', example: '/tracking?code=DH-2026-A1B2C3D4' })
+  @ApiProperty({ description: 'Đường dẫn tra cứu đơn hàng', example: '/tracking?sn=DH-2026-A1B2C3D4' })
   trackingUrl: string;
+
+  @ApiProperty({
+    description: 'Email xác nhận đã được đưa vào tiến trình gửi sau khi đơn commit',
+    example: true,
+  })
+  confirmationEmailQueued: boolean;
 
   @ApiProperty({ description: 'Danh sách sản phẩm trong đơn', type: [OrderItemResponseDto] })
   items: OrderItemResponseDto[];

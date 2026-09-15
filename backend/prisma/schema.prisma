@@ -859,6 +859,7 @@ model Order {
   clickedAt                 DateTime?           @map("clicked_at") @db.Timestamptz(6)
   customerName              String?             @map("customer_name") @db.VarChar(150)
   customerPhone             String?             @map("customer_phone") @db.VarChar(20)
+  customerEmail             String?             @map("customer_email") @db.VarChar(254)
   shippingAddress           String?             @map("shipping_address")
   subtotalAmount            Decimal             @map("subtotal_amount") @db.Decimal(15, 2)
   discountAmount            Decimal             @default(0.00) @map("discount_amount") @db.Decimal(15, 2)

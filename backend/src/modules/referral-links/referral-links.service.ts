@@ -1437,8 +1437,16 @@ export class ReferralLinksService {
       );
     }
 
+    const storedDestinationPath =
+      typeof link.destinationPath === 'string'
+        ? link.destinationPath.trim()
+        : '';
+    const isLegacyProductCollectionPath =
+      /^\/?products\/?$/i.test(storedDestinationPath);
     const destinationPath =
-      link.destinationPath || `/products/${link.productId}`;
+      !storedDestinationPath || isLegacyProductCollectionPath
+        ? `/products/${link.productId}`
+        : storedDestinationPath;
 
     // Xác định cờ tính hợp lệ & danh sách lý do từ chối attribution (nếu có)
     let allowAttribution = true;

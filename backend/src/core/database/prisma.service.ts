@@ -24,51 +24,18 @@ export class PrismaService
       connectionString?.includes('pooler') ||
       connectionString?.includes('sslmode');
     const configuredPoolMax = Number(
-      configService?.get<string>('DB_POOL_MAX') || process.env.DB_POOL_MAX || 2,
+      configService?.get<string>('DB_POOL_MAX') || process.env.DB_POOL_MAX || 5,
     );
-    // Supabase session mode của dự án chỉ cho tối đa 15 client. Một Nest app chỉ
-    // cần pool nhỏ; giới hạn này cũng tránh hot-reload chiếm hết connection.
+    // Tối ưu pool để hỗ trợ các batch transaction song song ($transaction) mà không bị nghẽn
     const poolMax = Number.isFinite(configuredPoolMax)
-      ? Math.min(5, Math.max(1, Math.trunc(configuredPoolMax)))
-      : 2;
+      ? Math.min(10, Math.max(2, Math.trunc(configuredPoolMax)))
+      : 5;
     const pool = new Pool({
       connectionString,
       max: poolMax,
-      idleTimeoutMillis: 15000,
-      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 20000,
+      connectionTimeoutMillis: 15000,
       ssl: isRemote ? { rejectUnauthorized: false } : undefined,
-    });
-
-    // Tuần tự hóa các truy vấn đồng thời trên cùng một connection client (loại bỏ DeprecationWarning và tương thích pg@9.0)
-    pool.on('connect', (client: any) => {
-      if (client.__querySerialized) return;
-      client.__querySerialized = true;
-      const originalQuery = client.query;
-      let queryQueue: Promise<any> = Promise.resolve();
-
-      client.query = function (this: any, ...args: any[]) {
-        const lastArg = args[args.length - 1];
-        if (typeof lastArg === 'function') {
-          const cb = args.pop();
-          const task = () =>
-            new Promise<void>((resolve) => {
-              originalQuery.call(this, ...args, (err: any, res: any) => {
-                try {
-                  cb(err, res);
-                } finally {
-                  resolve();
-                }
-              });
-            });
-          queryQueue = queryQueue.then(task, task);
-          return;
-        }
-
-        const task = () => originalQuery.apply(this, args);
-        const resultPromise = queryQueue.then(task, task);
-        queryQueue = resultPromise.catch(() => {});
-        return resultPromise;
-      };
     });
 
     const adapter = new PrismaPg(pool);
