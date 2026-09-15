@@ -537,6 +537,7 @@ export class OrdersService {
     // 0. Kiểm tra thông tin người nhận và giỏ hàng theo chuẩn FR-16
     const customerName = validateCustomerName(dto.customerName);
     const customerPhone = normalizeCustomerPhone(dto.customerPhone);
+    const customerEmail = dto.customerEmail?.trim().toLowerCase() || null;
     const shippingAddress = validateShippingAddress(dto.shippingAddress);
     const orderNotes = validateOrderNotes(dto.orderNotes);
 
@@ -663,7 +664,8 @@ export class OrdersService {
         vietqr: rawPayload.vietqr || null,
         canRequestCancellationOtp: true,
         cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
-        trackingUrl: `/tracking?code=${existingOrder.externalOrderSn}`,
+        trackingUrl: `/tracking?sn=${existingOrder.externalOrderSn}`,
+        confirmationEmailQueued: false,
         items: existingOrder.orderItems.map((item) => ({
           productId: item.productId,
           variantId: item.variantId || undefined,
@@ -1526,6 +1528,7 @@ export class OrdersService {
           originalCollaboratorId,
           customerName,
           customerPhone,
+          customerEmail,
           shippingAddress,
           subtotalAmount,
           discountAmount: appliedDiscountAmount,
@@ -1611,6 +1614,25 @@ export class OrdersService {
 
     const raw = (createdOrder.order.rawPayload as Record<string, any>) || {};
 
+    let confirmationEmailQueued = false;
+    if (customerEmail && this.mailService) {
+      confirmationEmailQueued = true;
+      void this.mailService
+        .sendOrderConfirmation({
+          email: customerEmail,
+          customerName,
+          publicOrderCode: createdOrder.order.externalOrderSn,
+          finalAmount: Number(createdOrder.order.finalAmount),
+          paymentMethod: raw.paymentMethod || 'COD',
+          storeName: createdOrder.order.store.name,
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Không thể gửi email xác nhận đơn ${createdOrder.order.externalOrderSn}: ${this.getErrorMessage(error)}`,
+          );
+        });
+    }
+
     return {
       message: 'Đặt hàng thành công!',
       publicOrderCode: createdOrder.order.externalOrderSn,
@@ -1624,7 +1646,8 @@ export class OrdersService {
       paymentStatus: raw.paymentStatus || 'UNPAID',
       vietqr: raw.vietqr || null,
       cancellationToken: createdOrder.rawCancellationToken,
-      trackingUrl: `/tracking?code=${createdOrder.order.externalOrderSn}`,
+      trackingUrl: `/tracking?sn=${createdOrder.order.externalOrderSn}`,
+      confirmationEmailQueued,
       items: createdOrder.order.orderItems.map((item) => ({
         productId: item.productId,
         variantId: item.variantId || undefined,
@@ -1760,13 +1783,12 @@ export class OrdersService {
       await this.mailService.sendOrderCancellationSms(inputPhone, otp, order.externalOrderSn);
     }
     // 2. Gửi Email nếu đơn hàng có customerEmail
-    const raw = (order.rawPayload as Record<string, any>) || {};
-    if (raw.customerEmail && this.mailService) {
-      await this.mailService.sendOrderCancellationOtp(raw.customerEmail, otp, order.externalOrderSn);
+    if (order.customerEmail && this.mailService) {
+      await this.mailService.sendOrderCancellationOtp(order.customerEmail, otp, order.externalOrderSn);
     }
 
     this.logger.log(
-      `[CANCELLATION_OTP] Dispatched OTP for order ${order.externalOrderSn} to phone ${inputPhone} and email ${raw.customerEmail || 'N/A'}`,
+      `[CANCELLATION_OTP] Dispatched OTP for order ${order.externalOrderSn} to phone ${inputPhone} and email ${order.customerEmail || 'N/A'}`,
     );
 
     return {

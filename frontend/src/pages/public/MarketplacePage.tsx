@@ -21,16 +21,19 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Flame,
   Zap,
   Sparkles,
   Copy,
+  Ticket,
+  Gift,
+  CalendarDays,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import api from '../../services/api';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import {
   marketplaceProducts,
-  marketplaceKOLs,
   marketplaceVideos,
 } from '../../features/marketplace/marketplaceData';
 import { formatMoney, normalizeSearch } from '../../features/marketplace/marketplaceUtils';
@@ -178,17 +181,17 @@ export default function MarketplacePage() {
     );
   }, [cart]);
 
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (product: Product, quantity: number = 1) => {
     setCart((prev) => {
       const idx = prev.findIndex((item) => item.product.id === product.id);
       if (idx >= 0) {
         const next = [...prev];
-        next[idx].quantity += 1;
+        next[idx].quantity += quantity;
         return next;
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, quantity }];
     });
-    toast.success(`Đã thêm "${product.name.slice(0, 32)}..." vào giỏ hàng!`);
+    toast.success(`Đã thêm ${quantity > 1 ? `x${quantity} ` : ''}"${product.name.slice(0, 32)}..." vào giỏ hàng!`);
   };
 
   const handleUpdateCartQuantity = (productId: string, delta: number) => {
@@ -262,52 +265,236 @@ export default function MarketplacePage() {
     }, 600);
   };
 
-  const [currentSpotlightIndex, setCurrentSpotlightIndex] = useState(0);
-  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
-  const [countdown, setCountdown] = useState({ hours: 2, minutes: 45, seconds: 18 });
-  const [isVoucherSaved, setIsVoucherSaved] = useState(false);
-
-  const thumbnailContainerRef = useRef<HTMLDivElement>(null);
-  const sliderTrackRef = useRef<HTMLDivElement>(null);
-  const [isScrubbingSlider, setIsScrubbingSlider] = useState(false);
-
-  useEffect(() => {
-    const container = thumbnailContainerRef.current;
-    if (container) {
-      const activeThumb = container.children[currentSpotlightIndex] as HTMLElement;
-      if (activeThumb) {
-        const targetScroll =
-          activeThumb.offsetLeft - (container.clientWidth - activeThumb.clientWidth) / 2;
-        container.scrollTo({
-          left: Math.max(0, targetScroll),
-          behavior: 'smooth',
-        });
-      }
-    }
-  }, [currentSpotlightIndex]);
-
-  const handleSliderScrub = (clientX: number) => {
-    if (!sliderTrackRef.current) return;
-    const rect = sliderTrackRef.current.getBoundingClientRect();
-    if (rect.width <= 0) return;
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const targetIdx = Math.min(
-      spotlightList.length - 1,
-      Math.floor(ratio * spotlightList.length)
-    );
-    setCurrentSpotlightIndex(targetIdx);
+interface FlashDealProduct {
+  id: string;
+  sku: string;
+  campaignTag: string;
+  discountBadge: string;
+  title: string;
+  shortTitle: string;
+  shopName: string;
+  categoryLabel: string;
+  rating: number;
+  soldCount: string;
+  stock: number;
+  images: { id: number; src: string; label: string }[];
+  creator: {
+    name: string;
+    avatar: string;
+    tier: string;
+    role: string;
+    coupon: string;
+    quote: string;
+    videoDuration: string;
   };
+  variants: {
+    name: string;
+    origPrice: number;
+    price: number;
+  }[];
+}
 
-  const REVIEW_QUOTES = useMemo(
-    () => [
-      'Chất serum thẩm thấu cực nhanh, da sáng đều màu và mờ thâm mụn chỉ sau 10 ngày trải nghiệm!',
-      'Bảo vệ da quang phổ rộng SPF50+, nâng tông nhẹ tự nhiên và không hề nhờn rít hay vệt trắng.',
-      'Chiên nướng chuẩn vị giòn rụm không cần dầu, dung tích 6.5L nướng nguyên con gà cực tiện lợi.',
-      'Giữ nhiệt nóng lạnh suốt 24h, chất liệu Inox 316 chuẩn y tế chống gỉ sét và cực kỳ an toàn.',
-      'Gõ êm tay chuẩn cơ học, pin trâu dùng 2 tuần và led RGB đổi màu cực chill khi làm việc.',
+const ROTATING_DEALS: FlashDealProduct[] = [
+  {
+    id: 'P01',
+    sku: 'SR-VTC-15',
+    campaignTag: 'FLASH DEAL ĐỘC QUYỀN',
+    discountBadge: '-21% GIẢM',
+    title: 'Serum Vitamin C 15% Dưỡng Sáng Mờ Thâm',
+    shortTitle: 'Serum Vitamin C',
+    shopName: 'Sora Skin Official Store',
+    categoryLabel: 'Chăm sóc da & Serum',
+    rating: 4.9,
+    soldCount: '1,4k đã bán',
+    stock: 7,
+    images: [
+      { id: 1, src: '/reference/assets/serum-hero-optimized.jpg', label: 'Chai Serum 30ml chính diện' },
+      { id: 2, src: '/reference/assets/serum-gallery-2.jpg', label: 'Ống hút pipette tinh chất' },
+      { id: 3, src: '/reference/assets/serum-gallery-3.jpg', label: 'Kết cấu serum thấm sâu' },
+      { id: 4, src: '/reference/assets/serum-gallery-4.jpg', label: 'Vỏ hộp Sora Skin sang trọng' },
+      { id: 5, src: '/reference/assets/serum-gallery-5.jpg', label: 'Chiết xuất thảo mộc thiên nhiên' },
     ],
-    []
-  );
+    creator: {
+      name: 'Trần Văn Nhật',
+      avatar: '/reference/assets/kol-avatar-nhat.jpg',
+      tier: 'KOL Vàng',
+      role: 'Reviewer chính hãng',
+      coupon: 'NHATXINH10',
+      quote: 'Chất serum mỏng nhẹ thấm nhanh, mờ thâm mụn sau 2 tuần rõ rệt, da sáng bóng chuẩn phong cách glass skin.',
+      videoDuration: '00:35',
+    },
+    variants: [
+      { name: '30ml Tiêu Chuẩn', origPrice: 520000, price: 413100 },
+      { name: '50ml Tiết Kiệm', origPrice: 740000, price: 589000 },
+    ],
+  },
+  {
+    id: 'P02',
+    sku: 'P02-SUN',
+    campaignTag: 'MEGA DEAL CHỐNG NẮNG',
+    discountBadge: '-19% GIẢM',
+    title: 'Kem Chống Nắng Phục Hồi Quang Phổ Rộng Aqua Sunscreen SPF50+',
+    shortTitle: 'Kem chống nắng',
+    shopName: 'Sora Skin Official Store',
+    categoryLabel: 'Chăm sóc da & Chống nắng',
+    rating: 4.8,
+    soldCount: '2,1k đã bán',
+    stock: 9,
+    images: [
+      { id: 1, src: '/reference/assets/sunscreen-product.jpg', label: 'Tuýp chống nắng Aqua Sunscreen SPF50+' },
+      { id: 2, src: '/reference/assets/sunscreen-texture-macro.jpg', label: 'Chất kem mỏng nhẹ tan nhanh' },
+      { id: 3, src: '/reference/assets/sunscreen-gallery-2.jpg', label: 'Swatch mỏng mịn trên cổ tay' },
+      { id: 4, src: '/reference/assets/serum-gallery-4.jpg', label: 'Vỏ hộp Sora Skin sang trọng' },
+      { id: 5, src: '/reference/assets/serum-gallery-5.jpg', label: 'Finish ráo mịn bảo vệ 8 tiếng' },
+    ],
+    creator: {
+      name: 'Lê Mai Anh',
+      avatar: '/reference/assets/kol-avatar-maianh.jpg',
+      tier: 'KOL Vàng',
+      role: 'Chuyên gia Skincare',
+      coupon: 'MAIANH12',
+      quote: 'Lớp finish ráo mịn nâng tone tự nhiên, kiềm dầu đỉnh cao và bảo vệ da tối ưu suốt ngày dài.',
+      videoDuration: '00:28',
+    },
+    variants: [
+      { name: '50ml Tiêu Chuẩn', origPrice: 430000, price: 350100 },
+      { name: '100ml Tiết Kiệm', origPrice: 720000, price: 580000 },
+    ],
+  },
+  {
+    id: 'P03',
+    sku: 'P03-BHA',
+    campaignTag: 'DEAL LÀM SẠCH SÂU',
+    discountBadge: '-19% GIẢM',
+    title: 'Toner BHA 2% Làm Sạch Sâu & Kiềm Dầu Thu Nhỏ Lỗ Chân Lông',
+    shortTitle: 'Toner BHA 2%',
+    shopName: 'Sora Skin Official Store',
+    categoryLabel: 'Chăm sóc da & Toner',
+    rating: 4.7,
+    soldCount: '820 đã bán',
+    stock: 14,
+    images: [
+      { id: 1, src: '/reference/assets/toner-bha-product.jpg', label: 'Chai toner BHA 2% Sora Skin 150ml' },
+      { id: 2, src: '/reference/assets/toner-water-macro.jpg', label: 'Kết cấu lỏng nhẹ gợn sóng tinh khiết' },
+      { id: 3, src: '/reference/assets/serum-gallery-3.jpg', label: 'Thấm sâu làm sạch bã nhờn sâu trong lỗ chân lông' },
+      { id: 4, src: '/reference/assets/serum-gallery-4.jpg', label: 'Bao bì dược mỹ phẩm tối giản' },
+      { id: 5, src: '/reference/assets/serum-gallery-5.jpg', label: 'Độ pH chuẩn dịu lành cho da dầu mụn' },
+    ],
+    creator: {
+      name: 'Lê Mai Anh',
+      avatar: '/reference/assets/kol-avatar-maianh.jpg',
+      tier: 'KOL Vàng',
+      role: 'Chuyên gia Trị Mụn & Kiềm Dầu',
+      coupon: 'MAIANH12',
+      quote: 'Làm sạch sâu bã nhờn trong lỗ chân lông cực tốt mà không gây rát da hay khô căng một chút nào.',
+      videoDuration: '00:32',
+    },
+    variants: [
+      { name: '150ml Tiêu Chuẩn', origPrice: 390000, price: 314100 },
+      { name: '250ml Tiết Kiệm', origPrice: 600000, price: 480000 },
+    ],
+  },
+  {
+    id: 'P04',
+    sku: 'P04-CICA',
+    campaignTag: 'DEAL PHỤC HỒI CẤP TỐC',
+    discountBadge: '-23% GIẢM',
+    title: 'Mặt Nạ Phục Hồi Cica Soothing Mask Làm Dịu Da Cấp Tốc',
+    shortTitle: 'Mặt nạ Cica',
+    shopName: 'Sora Skin Official Store',
+    categoryLabel: 'Chăm sóc da & Mặt nạ',
+    rating: 5.0,
+    soldCount: '980 đã bán',
+    stock: 18,
+    images: [
+      { id: 1, src: '/reference/assets/cica-mask-product.jpg', label: 'Hộp mặt nạ rau má Cica Soothing Mask 5 miếng' },
+      { id: 2, src: '/reference/assets/cica-mask-detail.jpg', label: 'Mặt nạ sợi biocellulose ngậm tinh chất rau má' },
+      { id: 3, src: '/reference/assets/serum-gallery-3.jpg', label: 'Cấp ẩm sâu và làm dịu vùng da ửng đỏ sau peel' },
+      { id: 4, src: '/reference/assets/serum-gallery-4.jpg', label: 'Bao bì từng gói vô trùng chuẩn y khoa' },
+      { id: 5, src: '/reference/assets/serum-gallery-5.jpg', label: 'Làn da căng mọng ngậm nước sau 20 phút' },
+    ],
+    creator: {
+      name: 'Trần Văn Nhật',
+      avatar: '/reference/assets/kol-avatar-nhat.jpg',
+      tier: 'KOL Vàng',
+      role: 'Chuyên gia Phục Hồi Da Nhạy Cảm',
+      coupon: 'NHATXINH10',
+      quote: 'Đắp sau khi đi nắng về hoặc nặn mụn là dịu da ngay tức thì, da ngậm nước căng mướt sau 20 phút.',
+      videoDuration: '00:40',
+    },
+    variants: [
+      { name: 'Hộp 5 Miếng (Tiêu chuẩn)', origPrice: 220000, price: 170100 },
+      { name: 'Hộp 10 Miếng (Tiết kiệm)', origPrice: 420000, price: 320000 },
+    ],
+  },
+  {
+    id: 'P05',
+    sku: 'P05-CLEAN',
+    campaignTag: 'DEAL DƯỢC MỸ PHẨM',
+    discountBadge: '-19% GIẢM',
+    title: 'Gel Rửa Mặt Dịu Nhẹ Tràm Trà Gentle Foam Cleanser Phục Hồi Hàng Rào Da',
+    shortTitle: 'Gel rửa mặt',
+    shopName: 'Sora Skin Official Store',
+    categoryLabel: 'Chăm sóc da & Rửa mặt',
+    rating: 4.9,
+    soldCount: '3,2k đã bán',
+    stock: 22,
+    images: [
+      { id: 1, src: '/reference/assets/cleanser-product.jpg', label: 'Chai gel rửa mặt tràm trà dịu nhẹ 150ml' },
+      { id: 2, src: '/reference/assets/cleanser-foam-macro.jpg', label: 'Cận cảnh bọt mịn pH 5.5 dịu nhẹ không khô căng' },
+      { id: 3, src: '/reference/assets/serum-gallery-3.jpg', label: 'Kháng khuẩn ngừa mụn với chiết xuất tràm trà thiên nhiên' },
+      { id: 4, src: '/reference/assets/serum-gallery-4.jpg', label: 'Vòi pump tiện dụng kiểm soát liều lượng' },
+      { id: 5, src: '/reference/assets/serum-gallery-5.jpg', label: 'Bảo vệ hàng rào ẩm tự nhiên suốt 24h' },
+    ],
+    creator: {
+      name: 'Phạm Khánh Linh',
+      avatar: '/reference/assets/kol-avatar-linh.jpg',
+      tier: 'KOL Bạc',
+      role: 'Dược mỹ phẩm & Da nhạy cảm',
+      coupon: 'LINHSKIN',
+      quote: 'pH chuẩn 5.5 dịu nhẹ không khô căng, chiết xuất tràm trà kháng viêm hỗ trợ ngừa mụn rất hiệu quả.',
+      videoDuration: '00:30',
+    },
+    variants: [
+      { name: '150ml Tiêu Chuẩn', origPrice: 310000, price: 251100 },
+      { name: '400ml Siêu Tiết Kiệm', origPrice: 490000, price: 390000 },
+    ],
+  },
+];
+
+  const [countdown, setCountdown] = useState({ hours: 2, minutes: 59, seconds: 50 });
+  const [isVoucherSaved, setIsVoucherSaved] = useState(false);
+  const [activeDealIndex, setActiveDealIndex] = useState(0);
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const [isDealAutoPlayPaused, setIsDealAutoPlayPaused] = useState(false);
+  const [heroGalleryIndex, setHeroGalleryIndex] = useState(0);
+  const [heroQuantity, setHeroQuantity] = useState(1);
+  const [heroVoucherId, setHeroVoucherId] = useState<'platform' | 'creator' | 'shop'>('platform');
+  const [selectedCity, setSelectedCity] = useState('TP.HCM');
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [isQuickVideoOpen, setIsQuickVideoOpen] = useState(false);
+  const [isVoucherWalletOpen, setIsVoucherWalletOpen] = useState(false);
+  const [isCouponCopied, setIsCouponCopied] = useState(false);
+  const [isHeroScrolledPast, setIsHeroScrolledPast] = useState(false);
+  const [customCouponInput, setCustomCouponInput] = useState('');
+  const [appliedCustomCoupon, setAppliedCustomCoupon] = useState<{
+    code: string;
+    discountAmount: number;
+    description: string;
+  } | null>(null);
+  const heroSectionRef = useRef<HTMLElement>(null);
+
+  const currentDeal = ROTATING_DEALS[activeDealIndex] || ROTATING_DEALS[0];
+  const currentVariant = currentDeal.variants[selectedVariantIndex] || currentDeal.variants[0];
+
+  const DELIVERY_OPTIONS = [
+    { city: 'TP.HCM', dateText: 'Nhận hàng 17 - 19/09' },
+    { city: 'Hà Nội', dateText: 'Nhận hàng 18 - 20/09' },
+    { city: 'Đà Nẵng', dateText: 'Nhận hàng 19 - 21/09' },
+    { city: 'Cần Thơ', dateText: 'Nhận hàng 17 - 19/09' },
+    { city: 'Hải Phòng', dateText: 'Nhận hàng 18 - 20/09' },
+    { city: 'Bình Dương', dateText: 'Nhận hàng 17 - 19/09' },
+  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -315,78 +502,189 @@ export default function MarketplacePage() {
         if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
         if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
         if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        return { hours: 3, minutes: 0, seconds: 0 };
+        return { hours: 2, minutes: 59, seconds: 50 };
       });
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const spotlightList = useMemo(() => {
-    const pool = items.length > 0 ? items : marketplaceProducts;
-    return pool.slice(0, 5).map((p, idx) => {
-      const creator = p.kol
-        ? {
-            name: p.kol.name,
-            tier: p.kol.tier || 'KOL Vàng',
-            avatarImg:
-              marketplaceKOLs[idx % marketplaceKOLs.length]?.avatarImg ||
-              '/reference/assets/creator-nhat.jpg',
-            coupon: p.kol.coupon,
-          }
-        : {
-            name: marketplaceKOLs[idx % marketplaceKOLs.length]?.name || 'Trần Văn Nhật',
-            tier: marketplaceKOLs[idx % marketplaceKOLs.length]?.tier || 'KOL Vàng',
-            avatarImg:
-              marketplaceKOLs[idx % marketplaceKOLs.length]?.avatarImg ||
-              '/reference/assets/creator-nhat.jpg',
-            coupon: 'SCANMSVIP10',
-          };
-
-      const discountPercent =
-        p.origPrice && p.kolDiscountPrice
-          ? Math.round(((p.origPrice - p.kolDiscountPrice) / p.origPrice) * 100)
-          : 20;
-
-      const soldRatios = [88, 92, 74, 82, 95];
-      const caps = [180, 200, 160, 220, 150];
-      const soldRatio = soldRatios[idx % soldRatios.length];
-      const totalCap = caps[idx % caps.length];
-      const soldCount = Math.round((soldRatio / 100) * totalCap);
-
-      const dealBadges = [
-        '⚡ FLASH SALE GIỜ VÀNG',
-        '🔥 TOP 1 CHỐNG NẮNG HÈ',
-        '💎 GIA DỤNG THÔNG MINH',
-        '⭐ TOP 1 XU HƯỚNG BẮC ÂU',
-        '🚀 TECH DEAL CÔNG NGHỆ',
-      ];
-
-      return {
-        product: p,
-        creator,
-        discountPercent,
-        soldRatio,
-        soldCount,
-        totalCap,
-        dealBadge: dealBadges[idx % dealBadges.length],
-        reviewQuote: REVIEW_QUOTES[idx % REVIEW_QUOTES.length],
-      };
-    });
-  }, [items, REVIEW_QUOTES]);
+  // Continuous auto-rotation of shop deals every 5.5s (pauses on user hover)
+  useEffect(() => {
+    if (isDealAutoPlayPaused) return;
+    const interval = setInterval(() => {
+      setActiveDealIndex((prev) => (prev + 1) % ROTATING_DEALS.length);
+      setHeroGalleryIndex(0);
+      setSelectedVariantIndex(0);
+    }, 5500);
+    return () => clearInterval(interval);
+  }, [isDealAutoPlayPaused]);
 
   useEffect(() => {
-    if (isCarouselHovered || spotlightList.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentSpotlightIndex((prev) => (prev + 1) % spotlightList.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [isCarouselHovered, spotlightList.length]);
+    const handleScroll = () => {
+      if (!heroSectionRef.current) return;
+      const rect = heroSectionRef.current.getBoundingClientRect();
+      setIsHeroScrolledPast(rect.bottom < 150);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  const activeSpotlight = spotlightList[currentSpotlightIndex] || spotlightList[0];
+  const handleSelectDeal = (index: number) => {
+    setActiveDealIndex(index);
+    setHeroGalleryIndex(0);
+    setSelectedVariantIndex(0);
+  };
+
+  const handlePrevDeal = () => {
+    setActiveDealIndex((prev) => (prev - 1 + ROTATING_DEALS.length) % ROTATING_DEALS.length);
+    setHeroGalleryIndex(0);
+    setSelectedVariantIndex(0);
+  };
+
+  const handleNextDeal = () => {
+    setActiveDealIndex((prev) => (prev + 1) % ROTATING_DEALS.length);
+    setHeroGalleryIndex(0);
+    setSelectedVariantIndex(0);
+  };
+
+  const heroProductData = useMemo(() => {
+    const origPrice = currentVariant.origPrice;
+    let baseFinalPrice = currentVariant.price;
+    let discountPercent = Math.round(((origPrice - baseFinalPrice) / origPrice) * 100);
+    let activeCoupon = currentDeal.creator.coupon;
+
+    if (appliedCustomCoupon) {
+      activeCoupon = appliedCustomCoupon.code;
+      baseFinalPrice = Math.max(0, baseFinalPrice - appliedCustomCoupon.discountAmount);
+      discountPercent = Math.round(((origPrice - baseFinalPrice) / origPrice) * 100);
+    } else {
+      if (heroVoucherId === 'platform') {
+        activeCoupon = 'SCANMS50K';
+      } else if (heroVoucherId === 'shop') {
+        activeCoupon = 'SORASKIN5';
+      } else {
+        activeCoupon = currentDeal.creator.coupon;
+      }
+    }
+
+    return {
+      origPrice,
+      finalPrice: baseFinalPrice,
+      discountPercent,
+      activeCoupon,
+      stock: currentDeal.stock,
+    };
+  }, [currentDeal, currentVariant, heroVoucherId, appliedCustomCoupon]);
 
   const handleSaveVoucher = () => {
     setIsVoucherSaved(true);
-    toast.success('🎉 Đã lưu mã voucher SCANMS50K (-50.000₫) vào ví của bạn!');
+    toast.success('Đã lưu mã voucher SCANMS50K vào ví của bạn.');
+  };
+
+  const handleCopyCoupon = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setIsCouponCopied(true);
+    toast.success(`Đã sao chép mã ưu đãi ${code}!`);
+    setTimeout(() => setIsCouponCopied(false), 2500);
+  };
+
+  const handleApplyCustomCoupon = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanCode = customCouponInput.trim().toUpperCase();
+    if (!cleanCode) {
+      toast.error('Vui lòng nhập mã ưu đãi.');
+      return;
+    }
+
+    if (cleanCode === 'NHATXINH10') {
+      const discount = Math.round(heroProductData.origPrice * 0.1);
+      setAppliedCustomCoupon({
+        code: cleanCode,
+        discountAmount: discount,
+        description: 'Mã Creator Trần Văn Nhật giảm 10%',
+      });
+      setHeroVoucherId('creator');
+      toast.success(`Áp dụng thành công mã Creator ${cleanCode}!`);
+    } else if (cleanCode === 'SCANMS50K') {
+      setAppliedCustomCoupon({
+        code: cleanCode,
+        discountAmount: 50000,
+        description: 'Voucher toàn sàn SCANMS giảm 50.000₫',
+      });
+      setHeroVoucherId('platform');
+      toast.success(`Áp dụng thành công voucher toàn sàn ${cleanCode}!`);
+    } else if (cleanCode === 'SORASKIN5') {
+      const discount = Math.round(heroProductData.origPrice * 0.05);
+      setAppliedCustomCoupon({
+        code: cleanCode,
+        discountAmount: discount,
+        description: 'Voucher shop Sora Skin giảm 5%',
+      });
+      setHeroVoucherId('shop');
+      toast.success(`Áp dụng thành công voucher gian hàng ${cleanCode}!`);
+    } else {
+      const discount = Math.round(heroProductData.origPrice * 0.1);
+      setAppliedCustomCoupon({
+        code: cleanCode,
+        discountAmount: discount,
+        description: `Mã ưu đãi riêng ${cleanCode} giảm 10%`,
+      });
+      toast.success(`Áp dụng thành công mã ưu đãi riêng ${cleanCode}!`);
+    }
+  };
+
+  const handleRemoveCustomCoupon = () => {
+    setAppliedCustomCoupon(null);
+    setCustomCouponInput('');
+    toast.info('Đã gỡ bỏ mã ưu đãi riêng.');
+  };
+
+  const handleHeroAddToCart = () => {
+    const targetProduct = items.find((p) => p.id === currentDeal.id || p.sku === currentDeal.sku) || {
+      id: currentDeal.id,
+      name: currentDeal.title,
+      brand: currentDeal.shopName,
+      price: heroProductData.finalPrice,
+      origPrice: heroProductData.origPrice,
+      image: currentDeal.images[0].src,
+      category: 'skincare' as any,
+      categoryLabel: currentDeal.categoryLabel,
+      rating: currentDeal.rating,
+      reviews: 42,
+      sold: currentDeal.soldCount,
+      sku: currentDeal.sku,
+    };
+    handleAddToCart(targetProduct as Product, heroQuantity);
+  };
+
+  const handleHeroBuyNow = () => {
+    const targetProduct = items.find((p) => p.id === currentDeal.id || p.sku === currentDeal.sku);
+    const storeId = targetProduct?.storeId || 'store-sora-skin-01';
+    setActiveCheckoutProduct({
+      product: {
+        id: currentDeal.id,
+        title: currentDeal.title,
+        sku: currentDeal.sku,
+        price: heroProductData.finalPrice,
+        originalPrice: heroProductData.origPrice,
+        imageUrl: currentDeal.images[heroGalleryIndex]?.src || currentDeal.images[0].src,
+        stockQuantity: currentDeal.stock,
+        variants: [
+          {
+            id: `var-${currentVariant.name}`,
+            name: currentVariant.name,
+            sku: `${currentDeal.sku}-${currentVariant.name.replace(/\s+/g, '-').toUpperCase()}`,
+            price: heroProductData.finalPrice,
+            stockQuantity: currentDeal.stock,
+          },
+        ],
+      },
+      store: {
+        id: storeId,
+        name: currentDeal.shopName,
+      },
+      couponCode: heroProductData.activeCoupon,
+    });
   };
 
   return (
@@ -693,427 +991,768 @@ export default function MarketplacePage() {
                         }`}
                       >
                         <span className="truncate">{st}</span>
-                        {isSelected && (
-                          <Check className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                        )}
+                        {isSelected && <Check className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />}
                       </button>
                     );
                   })}
                 </div>
               )}
-            </div>
-          </div>
         </div>
-      </header>
+      </div>
+    </div>
+  </header>
 
-      <section className="relative bg-gradient-to-b from-[#F3EFE6] via-[#FAF8F5] to-[#FAF8F5] border-b border-[#EAE4D7] py-8 sm:py-12 overflow-hidden">
+      <section ref={heroSectionRef} className="relative bg-gradient-to-b from-[#F3EFE6] via-[#FAF8F5] to-[#FAF8F5] border-b border-[#EAE4D7] py-8 sm:py-10 overflow-hidden text-left">
         {/* Subtle Luxury Golden Ambient Glow Orbs */}
         <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-[#C59B58]/10 blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 -right-20 w-80 h-80 rounded-full bg-[#B88E4F]/10 blur-3xl pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 relative z-10">
 
-          {/* MAIN STAGE: Left Wing Campaign Hub & Right Wing Shopee Showcase */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+          {/* MAIN STAGE: Left Wing Campaign Hub & Right Wing Deal Command Center */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(330px,0.36fr)_minmax(0,0.64fr)] lg:items-stretch">
 
-            {/* LEFT WING: Flagship Campaign, Interactive Voucher Ticket & Trust Props (5 cols) */}
-            <div className="lg:col-span-5 flex flex-col justify-between gap-5 text-left bg-gradient-to-br from-white via-white to-[#FBF5EB] border-2 border-[#EEDFC6] rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 translate-x-8 -translate-y-8 w-40 h-40 bg-[#C59B58]/10 rounded-full blur-2xl pointer-events-none" />
+            {/* LEFT WING: Flagship Campaign, Interactive Voucher Ticket & Trust Props */}
+            <div className="flex flex-col justify-between gap-4 text-left bg-gradient-to-br from-white via-[#FAF8F5] to-[#FBF5EB] border-2 border-[#EEDFC6] rounded-3xl p-5 sm:p-6 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 translate-x-8 -translate-y-8 w-44 h-44 bg-[#C59B58]/10 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="flex flex-col gap-4 relative z-10">
-                {/* Brand Pill */}
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#8C6226] text-[11px] font-black w-max shadow-2xs">
-                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>SCANMS MALL · 100% CHÍNH HÃNG</span>
+              <div className="flex flex-col gap-3.5 relative z-10">
+                {/* Brand Pills */}
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#8C6226]">
+                    <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    SCANMS MALL
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
+                    100% CHÍNH HÃNG
+                  </span>
                 </div>
 
                 {/* Big Title */}
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#1A1612] leading-[1.2] m-0">
-                  Đại Hội Săn Deal.<br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#92400E]">
-                    Ưu Đãi Độc Quyền Cùng Top Creator.
-                  </span>
+                <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-black tracking-tight text-[#1A1612] leading-[1.15] m-0">
+                  ĐẠI HỘI <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#8C6226]">SĂN DEAL</span>
+                  <span className="text-[#C59B58] ml-1">✦</span>
                 </h1>
 
-                <p className="text-xs sm:text-sm text-[#7D715E] leading-relaxed m-0">
+                <h2 className="text-sm sm:text-base font-bold text-[#8C6226] m-0 -mt-1">
+                  Ưu Đãi Độc Quyền Cùng Top Creator.
+                </h2>
+
+                <p className="text-xs text-[#7D715E] leading-relaxed m-0">
                   Khám phá hàng ngàn sản phẩm uy tín từ các thương hiệu chính hãng. Nhập mã voucher từ Creator để được giảm giá trực tiếp, đồng kiểm tận tay và đổi trả bảo hộ 14 ngày.
                 </p>
 
-                {/* Interactive Shopee-Style Voucher Ticket */}
-                <div className="rounded-2xl border-2 border-dashed border-[#C59B58] bg-[#FBF5EB] p-3.5 relative overflow-hidden flex items-center justify-between gap-3 shadow-2xs">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-[#C59B58] text-white flex flex-col items-center justify-center shrink-0 font-black shadow-xs">
-                      <span className="text-[10px] leading-none">GIẢM</span>
-                      <span className="text-sm font-black leading-tight">50K</span>
+                {/* 3D Luxury Ribbon Voucher Showcase */}
+                <div className="relative mx-auto h-[185px] w-full max-w-[390px] rounded-2xl overflow-hidden border border-[#EEDFC6] shadow-md group/vbanner my-1 bg-gradient-to-b from-[#F3EFE6] to-[#FAF8F5]">
+                  <img
+                    src="/marketing/scanms-voucher-ribbon-luxury.jpg"
+                    alt="SCANMS Voucher 50K phiên bản ruy băng vàng sang trọng"
+                    className="h-full w-full object-cover object-center group-hover/vbanner:scale-103 transition-transform duration-700"
+                  />
+                  {/* Subtle Gradient & Floating Badge */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between pointer-events-none">
+                    <span className="text-[11px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                      Săn deal xịn • Sống đẹp hơn cùng SCANMS
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-black/45 backdrop-blur-xs border border-white/30 text-[9.5px] font-mono font-bold text-amber-200">
+                      GIẢM 50K
+                    </span>
+                  </div>
+                </div>
+
+                {/* Authentic Perforated Luxury Voucher Ticket Card */}
+                <div className="relative rounded-2xl border-2 border-[#EEDFC6] bg-gradient-to-r from-[#FFFDF9] to-white p-3 shadow-sm hover:shadow-md transition overflow-hidden">
+                  {/* Ticket notch cutouts */}
+                  <div className="absolute -top-2 left-12 w-4 h-4 rounded-full bg-[#FAF8F5] border border-[#EEDFC6]" />
+                  <div className="absolute -bottom-2 left-12 w-4 h-4 rounded-full bg-[#FAF8F5] border border-[#EEDFC6]" />
+
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left Stub with ticket icon and dashed separator */}
+                    <div className="flex items-center gap-3 min-w-0 pr-3 border-r-2 border-dashed border-[#EEDFC6]">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FBF5EB] to-[#F3EFE6] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
+                        <Ticket className="w-5 h-5 text-[#B88E4F]" />
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <strong className="block text-xs font-black text-[#1A1612] truncate">
-                        Voucher Toàn Sàn SCANMS50K
-                      </strong>
-                      <span className="text-[11px] text-[#7D715E] block truncate">
-                        Đơn từ 250k khi mua qua link Creator
+
+                    {/* Middle Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="px-1.5 py-0.2 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[9px] font-black uppercase text-[#8C6226]">
+                          Toàn Sàn
+                        </span>
+                        <span className="text-[10px] text-[#7D715E]">HSD: 30/09/2026</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm font-black text-[#1A1612] tracking-wider font-mono">
+                          SCANMS50K
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCoupon('SCANMS50K')}
+                          className="text-[#7D715E] hover:text-[#B88E4F] transition"
+                          title="Sao chép mã"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <span className="text-[10.5px] text-[#7D715E] block truncate mt-0.5">
+                        Giảm 50.000₫ cho đơn từ 250k qua link Creator
                       </span>
                     </div>
+
+                    {/* Save Button */}
+                    <button
+                      type="button"
+                      onClick={handleSaveVoucher}
+                      className={`shrink-0 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer shadow-xs active:scale-95 ${
+                        isVoucherSaved
+                          ? 'bg-[#FBF5EB] text-[#059669] border border-[#059669]/40 font-black'
+                          : 'bg-[#C59B58] hover:bg-[#B88E4F] text-white'
+                      }`}
+                    >
+                      {isVoucherSaved ? '✓ Đã lưu' : 'Lưu mã'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Manual Custom Voucher Input Box */}
+                <div className="rounded-2xl border border-[#EEDFC6] bg-white p-3 shadow-2xs">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <label htmlFor="custom-coupon-input" className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5 cursor-pointer">
+                      <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span>Nhập mã ưu đãi riêng của bạn</span>
+                    </label>
+                    <span className="text-[10px] text-[#7D715E]">Creator / Shop / KOC</span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSaveVoucher}
-                    className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shadow-xs ${
-                      isVoucherSaved
-                        ? 'bg-[#FBF5EB] text-[#059669] border border-[#059669]/40 font-black'
-                        : 'bg-[#C59B58] text-white hover:bg-[#B88E4F] active:scale-95'
-                    }`}
-                  >
-                    {isVoucherSaved ? '✓ Đã lưu' : 'Lưu mã'}
-                  </button>
+                  <form onSubmit={handleApplyCustomCoupon} className="flex items-center gap-1.5">
+                    <div className="relative flex-1">
+                      <input
+                        id="custom-coupon-input"
+                        type="text"
+                        value={customCouponInput}
+                        onChange={(e) => setCustomCouponInput(e.target.value)}
+                        placeholder="Nhập mã (VD: NHATXINH10, KOLSANG20...)"
+                        className="w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-xs font-mono font-bold uppercase tracking-wider text-[#1A1612] placeholder:text-[#A89F91] placeholder:normal-case placeholder:font-sans focus:border-[#C59B58] focus:bg-white focus:outline-none transition"
+                      />
+                      {customCouponInput && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomCouponInput('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-[#7D715E] hover:text-[#1A1612] p-1 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="shrink-0 px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:opacity-95 text-white text-xs font-black transition shadow-xs cursor-pointer active:scale-95"
+                    >
+                      Áp dụng
+                    </button>
+                  </form>
+
+                  {/* Applied feedback notification if active */}
+                  {appliedCustomCoupon && (
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-[#059669]/30 bg-[#F0FDF4] px-2.5 py-1.5 text-xs text-[#059669] animate-in fade-in duration-150">
+                      <div className="flex items-center gap-1.5 font-bold min-w-0">
+                        <Check className="w-3.5 h-3.5 shrink-0 text-[#059669]" />
+                        <span className="truncate">
+                          Đã áp dụng: <strong>{appliedCustomCoupon.code}</strong> (-{appliedCustomCoupon.discountAmount.toLocaleString('vi-VN')}₫)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCustomCoupon}
+                        className="text-[10.5px] font-bold text-[#DC2626] hover:underline shrink-0 cursor-pointer"
+                      >
+                        Gỡ bỏ
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Bottom Actions & Trust Guarantees */}
-              <div className="flex flex-col gap-3 relative z-10 pt-2 border-t border-[#EAE4D7]">
-                <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => catalogRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                    className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-black transition cursor-pointer shadow-sm active:scale-98"
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    <span>Lướt Kho Sản Phẩm</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsGuideOpen(true)}
-                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl bg-white border border-[#EAE4D7] hover:bg-[#F3EFE6] text-[#1A1612] text-xs font-bold transition cursor-pointer shadow-2xs"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-[#B88E4F]" />
-                    <span>An tâm 100%</span>
-                  </button>
+              {/* 3 Bottom Trust Pillars */}
+              <div className="grid grid-cols-3 gap-2 text-center pt-3 border-t border-[#EAE4D7] relative z-10">
+                <div className="flex flex-col items-center justify-center py-1">
+                  <ShieldCheck className="w-5 h-5 text-[#B88E4F] mb-1" />
+                  <strong className="block text-xs font-black text-[#1A1612]">Chính hãng</strong>
+                  <span className="text-[10px] text-[#7D715E] block mt-0.5">Kiểm định 100%</span>
                 </div>
-
-                {/* 3 Micro Guarantees */}
-                <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                  <div className="bg-white/80 p-2 rounded-xl border border-[#EAE4D7]">
-                    <strong className="block text-[11px] font-black text-[#1A1612]">Chính Hãng</strong>
-                    <span className="text-[10px] text-[#7D715E] block">Kiểm định 100%</span>
-                  </div>
-                  <div className="bg-white/80 p-2 rounded-xl border border-[#EAE4D7]">
-                    <strong className="block text-[11px] font-black text-[#1A1612]">Đổi Trả 14N</strong>
-                    <span className="text-[10px] text-[#7D715E] block">Đồng kiểm tận tay</span>
-                  </div>
-                  <div className="bg-white/80 p-2 rounded-xl border border-[#EAE4D7]">
-                    <strong className="block text-[11px] font-black text-[#1A1612]">Voucher KOL</strong>
-                    <span className="text-[10px] text-[#7D715E] block">Tự động giảm giá</span>
-                  </div>
+                <div className="flex flex-col items-center justify-center py-1 border-x border-[#EAE4D7]">
+                  <Package className="w-5 h-5 text-[#B88E4F] mb-1" />
+                  <strong className="block text-xs font-black text-[#1A1612]">Đổi trả 14 ngày</strong>
+                  <span className="text-[10px] text-[#7D715E] block mt-0.5">Đồng kiểm tận tay</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-1">
+                  <User className="w-5 h-5 text-[#B88E4F] mb-1" />
+                  <strong className="block text-xs font-black text-[#1A1612]">Voucher Creator</strong>
+                  <span className="text-[10px] text-[#7D715E] block mt-0.5">Tự động giảm giá</span>
                 </div>
               </div>
             </div>
 
-            {/* RIGHT WING: Shopee-Style Flagship Showcase & Gallery Rail (7 cols) */}
-            <div className="lg:col-span-7 flex flex-col">
-              <div
-                onMouseEnter={() => setIsCarouselHovered(true)}
-                onMouseLeave={() => setIsCarouselHovered(false)}
-                className="bg-white border-2 border-[#EEDFC6] rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden text-left flex flex-col justify-between gap-4 h-full group"
+            {/* RIGHT WING: Deal Command Center (Continuously Rotating Shop Deals) */}
+            <div className="flex min-w-0 flex-col">
+              <div 
+                className="bg-white border-2 border-[#EEDFC6] rounded-3xl shadow-xl relative overflow-hidden text-left flex flex-col justify-between h-full group/dealcard"
+                onMouseEnter={() => setIsDealAutoPlayPaused(true)}
+                onMouseLeave={() => setIsDealAutoPlayPaused(false)}
               >
-                {/* Stage Header: Flash Sale Header + Countdown + Nav Controls */}
-                <div className="flex items-center justify-between gap-3 flex-wrap border-b border-[#EAE4D7] pb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-[#B88E4F] to-[#C59B58] text-white text-xs font-black shadow-xs">
-                      <Zap className="w-3.5 h-3.5 fill-white text-white" />
-                      <span>{activeSpotlight.dealBadge}</span>
+                
+                {/* Stage Header: Flash Sale Banner + Carousel Controls + Countdown */}
+                <div className="bg-gradient-to-r from-[#C59B58] via-[#B88E4F] to-[#C59B58] px-4 sm:px-5 py-2.5 text-white flex items-center justify-between gap-3 flex-wrap shadow-xs relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.25),transparent_40%)] pointer-events-none" />
+
+                  <div className="flex items-center gap-2 relative z-10">
+                    <span className="inline-flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wide">
+                      <Zap className="w-4 h-4 fill-white text-white" />
+                      {currentDeal.campaignTag}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-white/20 border border-white/40 text-white text-[11px] font-black">
+                      {currentDeal.discountBadge}
+                    </span>
+                  </div>
+
+                  {/* Deal Carousel Navigation Arrows & Indicators */}
+                  <div className="flex items-center gap-2 relative z-10 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full border border-white/20">
+                    <button
+                      type="button"
+                      onClick={handlePrevDeal}
+                      className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/30 grid place-items-center transition cursor-pointer text-white"
+                      title="Sản phẩm deal trước"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+
+                    <div className="flex items-center gap-1 px-1">
+                      {ROTATING_DEALS.map((_, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectDeal(idx)}
+                          className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                            idx === activeDealIndex ? 'w-5 bg-white shadow-xs' : 'w-1.5 bg-white/40 hover:bg-white/70'
+                          }`}
+                          title={`Deal ${idx + 1}/${ROTATING_DEALS.length}`}
+                        />
+                      ))}
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black">
-                      -{activeSpotlight.discountPercent}% GIẢM
+
+                    <button
+                      type="button"
+                      onClick={handleNextDeal}
+                      className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/30 grid place-items-center transition cursor-pointer text-white"
+                      title="Sản phẩm deal tiếp theo"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <span className="text-[10px] font-mono font-bold text-amber-200 ml-0.5">
+                      {activeDealIndex + 1}/{ROTATING_DEALS.length}
                     </span>
                   </div>
 
                   {/* Countdown Timer */}
-                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-2.5 py-1 text-xs font-black text-[#1A1612]">
-                    <Clock className="w-3.5 h-3.5 text-[#B88E4F]" />
-                    <span className="text-[10.5px] text-[#7D715E] font-bold">KẾT THÚC TRONG</span>
-                    <span className="bg-[#F3EFE6] text-[#7A561B] border border-[#EEDFC6] px-1.5 py-0.5 rounded text-[11px] font-mono font-bold shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-xs font-bold relative z-10">
+                    <Clock className="w-3.5 h-3.5 text-white/90" />
+                    <span className="text-[10.5px] text-white/90 font-bold uppercase tracking-wider hidden sm:inline">KẾT THÚC TRONG</span>
+                    <span className="bg-white/20 border border-white/30 px-1.5 py-0.5 rounded text-[11px] font-mono font-black shadow-2xs">
                       {String(countdown.hours).padStart(2, '0')}
                     </span>
-                    <span className="text-[#B88E4F] font-bold">:</span>
-                    <span className="bg-[#F3EFE6] text-[#7A561B] border border-[#EEDFC6] px-1.5 py-0.5 rounded text-[11px] font-mono font-bold shadow-2xs">
+                    <span className="font-bold">:</span>
+                    <span className="bg-white/20 border border-white/30 px-1.5 py-0.5 rounded text-[11px] font-mono font-black shadow-2xs">
                       {String(countdown.minutes).padStart(2, '0')}
                     </span>
-                    <span className="text-[#B88E4F] font-bold">:</span>
-                    <span className="bg-[#F3EFE6] text-[#7A561B] border border-[#EEDFC6] px-1.5 py-0.5 rounded text-[11px] font-mono font-bold shadow-2xs">
+                    <span className="font-bold">:</span>
+                    <span className="bg-white/20 border border-white/30 px-1.5 py-0.5 rounded text-[11px] font-mono font-black shadow-2xs">
                       {String(countdown.seconds).padStart(2, '0')}
                     </span>
                   </div>
                 </div>
 
-                {/* Hero Product Spotlight Card */}
-                <div
-                  key={activeSpotlight.product.id}
-                  className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center animate-in fade-in zoom-in-95 duration-200"
-                >
-                  {/* Left Column: Image with badges */}
-                  <div className="sm:col-span-5 relative group/img overflow-hidden rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] aspect-square flex items-center justify-center shadow-inner">
-                    <img
-                      src={activeSpotlight.product.image}
-                      alt={activeSpotlight.product.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
-                      loading="eager"
-                    />
-                    {/* Official Store Badge */}
-                    <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-xs border border-[#EAE4D7] px-2 py-0.5 rounded-lg flex items-center gap-1 text-[11px] font-bold text-[#1A1612] shadow-2xs">
-                      <Store className="w-3 h-3 text-[#B88E4F]" />
-                      <span className="truncate max-w-[130px]">{activeSpotlight.product.brand}</span>
+                {/* Mini Deal Quick Tabs Strip for continuous rotation in shop */}
+                <div className="bg-[#FAF8F5] border-b border-[#EAE4D7] px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                  <span className="text-[10px] font-bold text-[#8C6226] uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Đang chạy:
+                  </span>
+                  {ROTATING_DEALS.map((deal, idx) => {
+                    const isActive = idx === activeDealIndex;
+                    return (
+                      <button
+                        key={deal.id}
+                        type="button"
+                        onClick={() => handleSelectDeal(idx)}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                          isActive
+                            ? 'bg-[#C59B58] text-white shadow-xs font-black'
+                            : 'bg-white border border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612]'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-[#C59B58]'}`} />
+                        <span>{deal.shortTitle}</span>
+                        <span className={`text-[10px] font-normal ${isActive ? 'text-white/80' : 'text-[#A89F91]'}`}>
+                          ({deal.shopName.replace(' Store', '').replace(' Official', '')})
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Stage Body: 2 Columns */}
+                <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-[250px_1fr] lg:grid-cols-[265px_1fr] gap-4 sm:gap-5 flex-1">
+                  
+                  {/* Left Column: Product Image Gallery */}
+                  <div className="flex flex-col gap-2.5">
+                    <div className="group/zoom relative aspect-square overflow-hidden rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] shadow-inner">
+                      <img
+                        key={`${currentDeal.id}-${heroGalleryIndex}`}
+                        src={currentDeal.images[heroGalleryIndex]?.src || currentDeal.images[0].src}
+                        alt={currentDeal.images[heroGalleryIndex]?.label || currentDeal.title}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover/zoom:scale-115 cursor-crosshair animate-in fade-in duration-300"
+                      />
+                      
+                      {/* Shop badge on top-left */}
+                      <div className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-lg border border-[#EAE4D7] bg-white/95 px-2 py-1 text-[10px] font-bold text-[#1A1612] shadow-2xs z-10">
+                        <Store className="h-3 w-3 shrink-0 text-[#B88E4F]" />
+                        <span>{currentDeal.shopName}</span>
+                      </div>
+
+                      {/* Flash Deal Selling Badge on bottom-left */}
+                      <div className="absolute left-2.5 bottom-2.5 flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-white/95 px-2.5 py-0.5 text-[10px] font-bold text-[#1A1612] shadow-2xs z-10">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        <span>Đang mở bán Flash Deal</span>
+                      </div>
+
+                      {/* Prev/Next arrows for product gallery images */}
+                      <button
+                        type="button"
+                        aria-label="Xem ảnh trước"
+                        onClick={() => setHeroGalleryIndex((current) => (current - 1 + currentDeal.images.length) % currentDeal.images.length)}
+                        className="absolute left-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-[#EAE4D7] bg-white/90 text-[#1A1612] opacity-80 sm:opacity-0 group-hover/zoom:opacity-100 transition hover:bg-white shadow-sm cursor-pointer z-10"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Xem ảnh tiếp theo"
+                        onClick={() => setHeroGalleryIndex((current) => (current + 1) % currentDeal.images.length)}
+                        className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-[#EAE4D7] bg-white/90 text-[#1A1612] opacity-80 sm:opacity-0 group-hover/zoom:opacity-100 transition hover:bg-white shadow-sm cursor-pointer z-10"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
                     </div>
 
-                    {/* Verified Mall Tag */}
-                    <div className="absolute bottom-2.5 left-2.5 bg-white/95 backdrop-blur-xs border border-[#EEDFC6] text-[#1A1612] px-2.5 py-0.5 rounded-full flex items-center gap-1.5 text-[10px] font-black shadow-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58] animate-ping" />
-                      <span>Đang mở bán Flash Deal</span>
+                    {/* 5 Thumbnails */}
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {currentDeal.images.map((img, idx) => (
+                        <button
+                          key={img.id}
+                          type="button"
+                          onClick={() => setHeroGalleryIndex(idx)}
+                          aria-label={img.label}
+                          className={`aspect-square overflow-hidden rounded-xl border bg-[#FAF8F5] p-0.5 transition cursor-pointer active:scale-95 ${
+                            idx === heroGalleryIndex
+                              ? 'border-2 border-[#C59B58] ring-2 ring-[#C59B58]/25'
+                              : 'border-[#EAE4D7] hover:border-[#C59B58]'
+                          }`}
+                        >
+                          <img src={img.src} alt="" className="h-full w-full rounded-lg object-cover" />
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Right Column: Info, Review Quote, Price, Flame progress, Buttons */}
-                  <div className="sm:col-span-7 flex flex-col gap-2.5">
+                  {/* Right Column: Information, Creator, Pricing, Voucher Wallet, Actions */}
+                  <div className="flex flex-col justify-between gap-3 min-w-0">
+                    
+                    {/* Rating & Sold Row */}
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="font-bold text-[#B88E4F] flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 fill-[#B88E4F]" />
-                        {activeSpotlight.product.rating}
+                      <span className="flex items-center gap-1 font-bold text-amber-500">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        {currentDeal.rating}
                       </span>
                       <span className="text-[#EAE4D7]">|</span>
-                      <span className="text-[#7D715E] font-medium">
-                        {activeSpotlight.product.sold || `${activeSpotlight.soldCount}`} đã bán
-                      </span>
+                      <span className="text-[#7D715E]">{currentDeal.soldCount}</span>
                       <span className="text-[#EAE4D7]">|</span>
-                      <span className="text-[#7D715E] font-medium truncate">
-                        {activeSpotlight.product.categoryLabel}
-                      </span>
+                      <span className="text-[#7D715E]">{currentDeal.categoryLabel}</span>
                     </div>
 
-                    <h3 className="text-base sm:text-lg font-black text-[#1A1612] leading-snug m-0 line-clamp-2">
-                      {activeSpotlight.product.name}
-                    </h3>
+                    {/* Product Title */}
+                    <h2 className="m-0 text-lg sm:text-xl font-black leading-snug text-[#1A1612] transition-all">
+                      {currentDeal.title}
+                    </h2>
 
-                    {/* Creator Endorsement with Review Quote */}
-                    <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex flex-col gap-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
+                    {/* Creator Deal Card */}
+                    <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 flex flex-col gap-2">
+                      {/* Creator info & coupon code button */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                           <img
-                            src={activeSpotlight.creator.avatarImg}
-                            alt={activeSpotlight.creator.name}
-                            className="w-8 h-8 rounded-full object-cover border-2 border-[#C59B58] shrink-0"
+                            src={currentDeal.creator.avatar}
+                            alt={currentDeal.creator.name}
+                            className="h-9 w-9 shrink-0 rounded-full border-2 border-[#C59B58] object-cover"
                           />
-                          <div className="min-w-0">
+                          <div>
                             <div className="flex items-center gap-1.5">
-                              <strong className="text-xs font-black text-[#1A1612] truncate">
-                                {activeSpotlight.creator.name}
-                              </strong>
-                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-[#C59B58] text-white shrink-0">
-                                {activeSpotlight.creator.tier}
+                              <strong className="text-xs font-black text-[#1A1612]">{currentDeal.creator.name}</strong>
+                              <Check className="h-3.5 w-3.5 rounded-full bg-[#059669] p-0.5 text-white" />
+                              <span className="px-1.5 py-0.2 rounded bg-[#EEDFC6]/70 text-[#7A561B] text-[9px] font-black uppercase">
+                                {currentDeal.creator.tier}
                               </span>
                             </div>
-                            <span className="text-[10.5px] text-[#7D715E] block truncate">
-                              Reviewer chính hãng
-                            </span>
+                            <span className="text-[10px] text-[#7D715E] block leading-tight">{currentDeal.creator.role}</span>
                           </div>
                         </div>
 
-                        {/* Copy Code button */}
+                        {/* Coupon Code Pill */}
                         <button
                           type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(activeSpotlight.creator.coupon);
-                            toast.success(`Đã sao chép mã voucher ${activeSpotlight.creator.coupon}!`);
-                          }}
-                          className="px-2.5 py-1 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] font-bold text-[#B88E4F] shrink-0 transition cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                          onClick={() => handleCopyCoupon(currentDeal.creator.coupon)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#EEDFC6] hover:border-[#C59B58] text-xs font-mono font-bold text-[#1A1612] transition shadow-2xs cursor-pointer active:scale-95"
+                          title="Bấm để sao chép mã ưu đãi"
                         >
-                          <Copy className="w-3 h-3" />
-                          <span>{activeSpotlight.creator.coupon}</span>
+                          <span>{currentDeal.creator.coupon}</span>
+                          {isCouponCopied ? (
+                            <Check className="w-3.5 h-3.5 text-[#059669]" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-[#B88E4F]" />
+                          )}
                         </button>
                       </div>
 
-                      {/* Review quote */}
-                      <p className="text-[11.5px] text-[#7D715E] italic m-0 line-clamp-2 border-t border-[#EEDFC6]/60 pt-1.5">
-                        "{activeSpotlight.reviewQuote}"
-                      </p>
-                    </div>
-
-                    {/* Price and Savings */}
-                    <div className="flex items-baseline gap-2.5 pt-0.5 flex-wrap">
-                      <span className="text-xs text-[#7D715E] line-through">
-                        {formatMoney(activeSpotlight.product.origPrice)}
-                      </span>
-                      <strong className="text-2xl font-black text-[#1A1612]">
-                        {formatMoney(activeSpotlight.product.kolDiscountPrice)}
-                      </strong>
-                      <span className="text-[11px] font-extrabold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
-                        Tiết kiệm {formatMoney(activeSpotlight.product.origPrice - activeSpotlight.product.kolDiscountPrice)}
-                      </span>
-                    </div>
-
-                    {/* Shopee Flame Flash Sale Progress Bar */}
-                    <div className="flex flex-col gap-1">
-                      <div className="flex justify-between items-center text-[11px] font-bold">
-                        <span className="text-[#B88E4F] flex items-center gap-1">
-                          <Flame className="w-3.5 h-3.5 fill-[#C59B58] text-[#C59B58]" />
-                          ĐÃ BÁN {activeSpotlight.soldCount}/{activeSpotlight.totalCap}
-                        </span>
-                        <span className="text-[#7D715E]">{activeSpotlight.soldRatio}%</span>
-                      </div>
-                      <div className="w-full h-2.5 bg-[#F3EFE6] rounded-full overflow-hidden border border-[#EAE4D7] relative">
-                        <div
-                          className="h-full bg-gradient-to-r from-[#C59B58] to-[#B88E4F] rounded-full transition-all duration-500 relative"
-                          style={{ width: `${activeSpotlight.soldRatio}%` }}
+                      {/* Creator advice quote + Mini Video Review Thumbnail */}
+                      <div className="grid grid-cols-[1fr_auto] items-center gap-3 pt-2 border-t border-[#EEDFC6]/60">
+                        <p className="text-[11px] text-[#7D715E] italic leading-relaxed m-0 line-clamp-2">
+                          &ldquo;{currentDeal.creator.quote}&rdquo;
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setIsQuickVideoOpen(true)}
+                          className="group/vid relative w-18 h-13 rounded-xl overflow-hidden border border-[#EEDFC6] bg-black/10 shrink-0 shadow-2xs cursor-pointer active:scale-95"
+                          title={`Xem video review ${currentDeal.creator.videoDuration} của Creator`}
                         >
-                          <div className="absolute inset-0 bg-white/25 animate-pulse" />
+                          <img
+                            src={currentDeal.images[1]?.src || currentDeal.images[0].src}
+                            alt="Video review"
+                            className="w-full h-full object-cover group-hover/vid:scale-105 transition duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-white/90 text-[#1A1612] flex items-center justify-center shadow-xs">
+                              <Play className="w-2.5 h-2.5 fill-[#1A1612] ml-0.5" />
+                            </div>
+                          </div>
+                          <span className="absolute bottom-0.5 right-1 text-[8.5px] font-mono font-black text-white/95 px-1 py-0.2 rounded bg-black/65">
+                            {currentDeal.creator.videoDuration}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Pricing Row */}
+                    <div className="flex items-baseline justify-between gap-2 flex-wrap pt-0.5">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs sm:text-sm text-[#7D715E] line-through">
+                          {heroProductData.origPrice.toLocaleString('vi-VN')} đ
+                        </span>
+                        <strong className="text-2xl sm:text-3xl font-black text-[#B88E4F] tracking-tight">
+                          {heroProductData.finalPrice.toLocaleString('vi-VN')} đ
+                        </strong>
+                        <span className="px-2 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-black text-[#8C6226]">
+                          -{heroProductData.discountPercent}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#DC2626]">
+                        <span>🔥</span>
+                        <span>Còn {heroProductData.stock} sản phẩm</span>
+                      </div>
+                    </div>
+
+                    {/* Voucher Wallet Section */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 font-black text-[#1A1612]">
+                          <Gift className="w-3.5 h-3.5 text-[#B88E4F]" />
+                          <span>Ưu đãi tốt nhất</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsVoucherWalletOpen(true)}
+                          className="text-[11px] font-bold text-[#7D715E] hover:text-[#B88E4F] flex items-center gap-0.5 transition cursor-pointer"
+                        >
+                          <span>Xem tất cả voucher</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      {/* 3 Selectable Voucher Cards */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* Card 1: Toàn sàn */}
+                        <button
+                          type="button"
+                          onClick={() => setHeroVoucherId('platform')}
+                          className={`relative text-left p-2 rounded-xl border transition cursor-pointer flex flex-col justify-between ${
+                            heroVoucherId === 'platform'
+                              ? 'border-[#C59B58] bg-[#FBF5EB] shadow-2xs ring-1 ring-[#C59B58]'
+                              : 'border-[#EAE4D7] bg-white hover:border-[#EEDFC6]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="px-1.5 py-0.2 rounded bg-[#C59B58] text-white text-[8.5px] font-black uppercase">
+                              Tốt nhất
+                            </span>
+                            <div
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                                heroVoucherId === 'platform'
+                                  ? 'border-[#C59B58] bg-[#C59B58] text-white'
+                                  : 'border-[#D1C7B7] bg-white'
+                              }`}
+                            >
+                              {heroVoucherId === 'platform' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px] font-black text-[#1A1612] leading-tight">
+                            <Ticket className="w-3 h-3 text-[#B88E4F] shrink-0" />
+                            <span>Giảm 10%</span>
+                          </div>
+                          <span className="text-[9.5px] text-[#7D715E] block leading-tight mt-0.5">Tối đa 100.000đ</span>
+                          <span className="text-[9px] text-[#A77830] font-semibold block leading-tight mt-0.5">Voucher toàn sàn</span>
+                        </button>
+
+                        {/* Card 2: Creator */}
+                        <button
+                          type="button"
+                          onClick={() => setHeroVoucherId('creator')}
+                          className={`relative text-left p-2 rounded-xl border transition cursor-pointer flex flex-col justify-between ${
+                            heroVoucherId === 'creator'
+                              ? 'border-[#C59B58] bg-[#FBF5EB] shadow-2xs ring-1 ring-[#C59B58]'
+                              : 'border-[#EAE4D7] bg-white hover:border-[#EEDFC6]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-end mb-1">
+                            <div
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                                heroVoucherId === 'creator'
+                                  ? 'border-[#C59B58] bg-[#C59B58] text-white'
+                                  : 'border-[#D1C7B7] bg-white'
+                              }`}
+                            >
+                              {heroVoucherId === 'creator' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px] font-black text-[#1A1612] leading-tight">
+                            <Ticket className="w-3 h-3 text-[#B88E4F] shrink-0" />
+                            <span>Giảm 10%</span>
+                          </div>
+                          <span className="text-[9.5px] text-[#7D715E] block leading-tight mt-0.5">Tối đa 50.000đ</span>
+                          <span className="text-[9px] text-[#A77830] font-semibold block leading-tight mt-0.5">Voucher từ Creator</span>
+                        </button>
+
+                        {/* Card 3: Shop */}
+                        <button
+                          type="button"
+                          onClick={() => setHeroVoucherId('shop')}
+                          className={`relative text-left p-2 rounded-xl border transition cursor-pointer flex flex-col justify-between ${
+                            heroVoucherId === 'shop'
+                              ? 'border-[#C59B58] bg-[#FBF5EB] shadow-2xs ring-1 ring-[#C59B58]'
+                              : 'border-[#EAE4D7] bg-white hover:border-[#EEDFC6]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-end mb-1">
+                            <div
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                                heroVoucherId === 'shop'
+                                  ? 'border-[#C59B58] bg-[#C59B58] text-white'
+                                  : 'border-[#D1C7B7] bg-white'
+                              }`}
+                            >
+                              {heroVoucherId === 'shop' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px] font-black text-[#1A1612] leading-tight">
+                            <Ticket className="w-3 h-3 text-[#B88E4F] shrink-0" />
+                            <span>Giảm 5%</span>
+                          </div>
+                          <span className="text-[9.5px] text-[#7D715E] block leading-tight mt-0.5">Tối đa 30.000đ</span>
+                          <span className="text-[9px] text-[#A77830] font-semibold block leading-tight mt-0.5">Voucher từ Shop</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Delivery & City Selection */}
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs relative">
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                          className="flex items-center gap-1.5 font-bold text-[#1A1612] hover:text-[#B88E4F] transition cursor-pointer"
+                        >
+                          <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
+                          <span>Giao tới {selectedCity}</span>
+                          <ChevronDown className="w-3 h-3 text-[#7D715E]" />
+                        </button>
+
+                        {isCityDropdownOpen && (
+                          <div className="absolute left-0 top-full mt-1.5 w-48 bg-white border border-[#EEDFC6] rounded-xl shadow-lg py-1 z-30">
+                            {DELIVERY_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.city}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedCity(opt.city);
+                                  setIsCityDropdownOpen(false);
+                                }}
+                                className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between hover:bg-[#FAF8F5] ${
+                                  selectedCity === opt.city ? 'font-bold text-[#B88E4F] bg-[#FBF5EB]' : 'text-[#1A1612]'
+                                }`}
+                              >
+                                <span>{opt.city}</span>
+                                <span className="text-[10px] text-[#7D715E]">{opt.dateText}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 text-[11px] text-[#7D715E]">
+                        <CalendarDays className="w-3.5 h-3.5 text-[#B88E4F]" />
+                        <span>
+                          {DELIVERY_OPTIONS.find((d) => d.city === selectedCity)?.dateText || 'Nhận hàng 17 - 19/09'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Variant & Quantity */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-[#7D715E] font-medium">Phân loại:</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {currentDeal.variants.map((v, idx) => (
+                            <button
+                              key={v.name}
+                              type="button"
+                              onClick={() => setSelectedVariantIndex(idx)}
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                selectedVariantIndex === idx
+                                  ? 'bg-[#FBF5EB] border-2 border-[#C59B58] text-[#8C6226] shadow-2xs'
+                                  : 'bg-white border border-[#EAE4D7] text-[#1A1612] hover:border-[#C59B58]'
+                              }`}
+                            >
+                              {v.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-[#7D715E] font-medium">Số lượng:</span>
+                        <div className="flex items-center border border-[#EAE4D7] rounded-lg bg-white overflow-hidden shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => setHeroQuantity((q) => Math.max(1, q - 1))}
+                            className="w-7 h-7 flex items-center justify-center hover:bg-[#FAF8F5] text-[#1A1612] transition cursor-pointer"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-bold font-mono text-[#1A1612]">
+                            {heroQuantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setHeroQuantity((q) => Math.min(7, q + 1))}
+                            className="w-7 h-7 flex items-center justify-center hover:bg-[#FAF8F5] text-[#1A1612] transition cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     </div>
 
-                    {/* CTA Buttons */}
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    {/* Main CTA Buttons */}
+                    <div className="grid grid-cols-2 gap-2.5 pt-1">
                       <button
                         type="button"
-                        onClick={() => handleAddToCart(activeSpotlight.product)}
-                        className="py-2.5 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+                        onClick={handleHeroAddToCart}
+                        className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-[#C59B58] bg-white hover:bg-[#FAF8F5] text-[#8C6226] text-xs sm:text-sm font-black transition shadow-xs cursor-pointer active:scale-98"
                       >
                         <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
-                        <span>Thêm giỏ</span>
+                        <span>Thêm vào giỏ</span>
                       </button>
+
                       <button
                         type="button"
-                        onClick={() => handleOpenDirectCheckout(activeSpotlight.product)}
-                        className="py-2.5 px-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
+                        onClick={handleHeroBuyNow}
+                        className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:opacity-95 text-white text-xs sm:text-sm font-black transition shadow-md shadow-[#C59B58]/25 cursor-pointer active:scale-98"
                       >
                         <span>Mua ngay</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
+
                   </div>
                 </div>
 
-                {/* Bottom Rail: Shopee Flash Sale Mini-Card Gallery with Custom Slider Bar */}
-                <div className="pt-3 border-t border-[#EAE4D7] space-y-2.5">
-                  {/* Thumbnail cards row (completely hides native Windows scrollbar) */}
-                  <div
-                    ref={thumbnailContainerRef}
-                    className="flex items-center gap-2 overflow-x-auto py-1 scroll-smooth select-none [&::-webkit-scrollbar]:hidden"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                  >
-                    {spotlightList.map((item, idx) => {
-                      const isActive = idx === currentSpotlightIndex;
-                      return (
-                        <button
-                          key={item.product.id}
-                          type="button"
-                          onClick={() => setCurrentSpotlightIndex(idx)}
-                          className={`flex items-center gap-2.5 p-2 rounded-xl border text-left transition-all duration-200 cursor-pointer shrink-0 relative overflow-hidden group ${
-                            isActive
-                              ? 'bg-[#FBF5EB] border-[#C59B58] shadow-xs ring-2 ring-[#C59B58]/30 scale-[1.02]'
-                              : 'bg-white border-[#EAE4D7] hover:border-[#C59B58]/60 hover:bg-[#FAF8F5] opacity-80 hover:opacity-100'
-                          }`}
-                        >
-                          <img
-                            src={item.product.image}
-                            alt={item.product.name}
-                            className="w-9 h-9 rounded-lg object-cover shrink-0 border border-[#EAE4D7]"
-                          />
-                          <div className="hidden sm:block min-w-0 max-w-[105px]">
-                            <div className="flex items-center gap-1">
-                              <span className="text-[11px] font-black text-[#1A1612]">
-                                {formatMoney(item.product.kolDiscountPrice)}
-                              </span>
-                            </div>
-                            <span className="block text-[10px] text-[#7D715E] truncate">
-                              {item.product.name}
-                            </span>
-                          </div>
-
-                          {/* Active auto-rotate indicator bar */}
-                          {isActive && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C59B58]" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Custom Shopee-Style Drag / Scrub Slider Bar & Controls */}
-                  <div className="flex items-center justify-between gap-3 pt-1 border-t border-[#F3EFE6]">
-                    {/* Left: Indicator label */}
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#7D715E]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58] animate-pulse" />
-                      <span className="hidden xs:inline">Kéo hoặc bấm thanh trượt để xem {spotlightList.length} deal</span>
-                      <span className="xs:hidden">Thanh trượt deal</span>
-                    </div>
-
-                    {/* Center: Custom Shopee Draggable Track & Gold Thumb */}
-                    <div className="flex items-center gap-2 flex-1 max-w-[200px] sm:max-w-[260px] mx-auto">
-                      <div
-                        ref={sliderTrackRef}
-                        onPointerDown={(e) => {
-                          e.currentTarget.setPointerCapture(e.pointerId);
-                          setIsScrubbingSlider(true);
-                          handleSliderScrub(e.clientX);
-                        }}
-                        onPointerMove={(e) => {
-                          if (isScrubbingSlider) {
-                            handleSliderScrub(e.clientX);
-                          }
-                        }}
-                        onPointerUp={(e) => {
-                          if (isScrubbingSlider) {
-                            try {
-                              e.currentTarget.releasePointerCapture(e.pointerId);
-                            } catch {}
-                            setIsScrubbingSlider(false);
-                          }
-                        }}
-                        className="w-full h-2 bg-[#EAE4D7] hover:bg-[#DDD5C5] rounded-full relative cursor-pointer select-none overflow-hidden transition-colors"
-                        title="Kéo hoặc bấm để chuyển deal sản phẩm"
-                      >
-                        <div
-                          className="h-full bg-gradient-to-r from-[#C59B58] via-[#D8AD6A] to-[#B88E4F] rounded-full shadow-xs transition-all ease-out"
-                          style={{
-                            width: `${100 / spotlightList.length}%`,
-                            transform: `translateX(${currentSpotlightIndex * 100}%)`,
-                            transitionDuration: isScrubbingSlider ? '75ms' : '300ms',
-                          }}
-                        />
+                {/* Inline Quick-Buy Mini Bar below right card (Matching Mockup) */}
+                <div className="border-t border-[#EAE4D7] bg-[#FAF8F5]/90 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={currentDeal.images[0].src}
+                      alt=""
+                      className="w-9 h-9 rounded-lg object-cover border border-[#EAE4D7] shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <span className="block text-xs font-black text-[#1A1612] truncate max-w-[220px] sm:max-w-[320px]">
+                        {currentDeal.title} ({currentVariant.name})
+                      </span>
+                      <div className="flex items-baseline gap-1.5 text-xs">
+                        <strong className="font-black text-[#B88E4F]">
+                          {heroProductData.finalPrice.toLocaleString('vi-VN')} đ
+                        </strong>
+                        <span className="text-[10px] text-[#7D715E] line-through">
+                          {heroProductData.origPrice.toLocaleString('vi-VN')} đ
+                        </span>
+                        <span className="text-[10px] font-bold text-[#DC2626]">
+                          -{heroProductData.discountPercent}%
+                        </span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Right: Counter & Quick Arrow Buttons */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[11px] font-mono font-bold text-[#1A1612] bg-[#F3EFE6] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
-                        <span className="text-[#C59B58]">{currentSpotlightIndex + 1}</span>
-                        <span className="text-[#7D715E]">/{spotlightList.length}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center border border-[#EAE4D7] rounded-lg bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setHeroQuantity((q) => Math.max(1, q - 1))}
+                        className="w-6 h-6 flex items-center justify-center hover:bg-[#FAF8F5] text-[#1A1612] transition cursor-pointer"
+                      >
+                        <Minus className="w-2.5 h-2.5" />
+                      </button>
+                      <span className="w-6 text-center text-xs font-bold font-mono text-[#1A1612]">
+                        {heroQuantity}
                       </span>
                       <button
                         type="button"
-                        onClick={() =>
-                          setCurrentSpotlightIndex(
-                            (prev) => (prev - 1 + spotlightList.length) % spotlightList.length
-                          )
-                        }
-                        className="w-6 h-6 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#1A1612] flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
-                        title="Sản phẩm trước"
+                        onClick={() => setHeroQuantity((q) => Math.min(7, q + 1))}
+                        className="w-6 h-6 flex items-center justify-center hover:bg-[#FAF8F5] text-[#1A1612] transition cursor-pointer"
                       >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCurrentSpotlightIndex(
-                            (prev) => (prev + 1) % spotlightList.length
-                          )
-                        }
-                        className="w-6 h-6 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#1A1612] flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
-                        title="Sản phẩm tiếp theo"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <Plus className="w-2.5 h-2.5" />
                       </button>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleHeroBuyNow}
+                      className="px-4 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-black transition shadow-xs cursor-pointer flex items-center gap-1 active:scale-95"
+                    >
+                      <span>Mua ngay</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 
@@ -1726,6 +2365,289 @@ export default function MarketplacePage() {
             toast.success(`Đặt hàng thành công! Mã đơn: ${order?.publicOrderCode || order?.orderId}`);
           }}
         />
+      )}
+
+      {/* Quick Video Review Modal */}
+      {isQuickVideoOpen && (
+        <div
+          className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setIsQuickVideoOpen(false)}
+        >
+          <div
+            className="bg-[#1A1612] text-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative text-left border border-white/15"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-3.5 border-b border-white/10 bg-black/40">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src="/reference/assets/kol-avatar-nhat.jpg"
+                  alt="Trần Văn Nhật"
+                  className="w-8 h-8 rounded-full border border-[#C59B58] object-cover"
+                />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-xs font-bold text-white">Trần Văn Nhật</strong>
+                    <span className="px-1.5 py-0.2 rounded bg-[#C59B58] text-black text-[9px] font-black uppercase">
+                      KOL Vàng
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-white/70 block">Review thực tế 35s</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickVideoOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white grid place-items-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Video Player */}
+            <div className="relative aspect-[9/14] max-h-[60vh] w-full bg-black flex items-center justify-center">
+              <video
+                src="/reference/assets/sample-video.mp4"
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Modal Footer / Quick Action */}
+            <div className="p-3.5 bg-gradient-to-t from-black via-black/90 to-transparent border-t border-white/10 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs text-amber-400 font-bold">
+                  <Ticket className="w-3.5 h-3.5" />
+                  <span>Mã ưu đãi: NHATXINH10 (-10%)</span>
+                </div>
+                <span className="text-[11px] text-white/80 truncate block">
+                  Serum Vitamin C 15% Dưỡng Sáng Mờ Thâm
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsQuickVideoOpen(false);
+                  handleHeroBuyNow();
+                }}
+                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-black transition shadow-sm cursor-pointer shrink-0"
+              >
+                Mua ngay deal này
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Voucher Wallet Modal */}
+      {isVoucherWalletOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setIsVoucherWalletOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 border border-[#EEDFC6] shadow-2xl relative text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7] mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+                  <Gift className="w-5 h-5 text-[#B88E4F]" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-[#1A1612] m-0">Ví Voucher Ưu Đãi SCANMS</h3>
+                  <span className="text-xs text-[#7D715E]">Chọn voucher tốt nhất áp dụng cho sản phẩm này</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVoucherWalletOpen(false)}
+                className="text-[#7D715E] hover:text-[#1A1612] p-1.5 rounded-full hover:bg-[#F3EFE6] transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Voucher 1: SCANMS50K */}
+              <div className={`p-3.5 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                heroVoucherId === 'platform' ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white'
+              }`}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded-md bg-[#C59B58] text-white text-[10px] font-black uppercase">
+                      Toàn sàn
+                    </span>
+                    <strong className="text-sm font-black text-[#1A1612]">SCANMS50K</strong>
+                  </div>
+                  <p className="text-xs text-[#1A1612] font-semibold m-0">Giảm 10% (Tối đa 100.000đ)</p>
+                  <p className="text-[11px] text-[#7D715E] m-0 mt-0.5">Áp dụng đơn từ 250.000đ • HSD: 30/09/2026</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeroVoucherId('platform');
+                    setIsVoucherWalletOpen(false);
+                    toast.success('Đã chọn voucher toàn sàn SCANMS50K!');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                    heroVoucherId === 'platform'
+                      ? 'bg-[#C59B58] text-white'
+                      : 'border border-[#C59B58] text-[#8C6226] hover:bg-[#FAF8F5]'
+                  }`}
+                >
+                  {heroVoucherId === 'platform' ? 'Đang dùng' : 'Áp dụng'}
+                </button>
+              </div>
+
+              {/* Voucher 2: NHATXINH10 */}
+              <div className={`p-3.5 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                heroVoucherId === 'creator' ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white'
+              }`}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded-md bg-[#B88E4F] text-white text-[10px] font-black uppercase">
+                      Creator
+                    </span>
+                    <strong className="text-sm font-black text-[#1A1612]">NHATXINH10</strong>
+                  </div>
+                  <p className="text-xs text-[#1A1612] font-semibold m-0">Giảm 10% (Tối đa 50.000đ)</p>
+                  <p className="text-[11px] text-[#7D715E] m-0 mt-0.5">Mã độc quyền từ Creator Trần Văn Nhật</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeroVoucherId('creator');
+                    setIsVoucherWalletOpen(false);
+                    toast.success('Đã chọn voucher Creator NHATXINH10!');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                    heroVoucherId === 'creator'
+                      ? 'bg-[#C59B58] text-white'
+                      : 'border border-[#C59B58] text-[#8C6226] hover:bg-[#FAF8F5]'
+                  }`}
+                >
+                  {heroVoucherId === 'creator' ? 'Đang dùng' : 'Áp dụng'}
+                </button>
+              </div>
+
+              {/* Voucher 3: SORASKIN5 */}
+              <div className={`p-3.5 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                heroVoucherId === 'shop' ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white'
+              }`}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded-md bg-[#8C6226] text-white text-[10px] font-black uppercase">
+                      Shop
+                    </span>
+                    <strong className="text-sm font-black text-[#1A1612]">SORASKIN5</strong>
+                  </div>
+                  <p className="text-xs text-[#1A1612] font-semibold m-0">Giảm 5% (Tối đa 30.000đ)</p>
+                  <p className="text-[11px] text-[#7D715E] m-0 mt-0.5">Áp dụng gian hàng Sora Skin Official</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeroVoucherId('shop');
+                    setIsVoucherWalletOpen(false);
+                    toast.success('Đã chọn voucher Shop SORASKIN5!');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                    heroVoucherId === 'shop'
+                      ? 'bg-[#C59B58] text-white'
+                      : 'border border-[#C59B58] text-[#8C6226] hover:bg-[#FAF8F5]'
+                  }`}
+                >
+                  {heroVoucherId === 'shop' ? 'Đang dùng' : 'Áp dụng'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsVoucherWalletOpen(false)}
+              className="mt-5 w-full py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-black transition cursor-pointer"
+            >
+              Hoàn tất
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Sticky Quick-Buy Bar on Mobile & Desktop Scroll */}
+      {isHeroScrolledPast && (
+        <aside
+          aria-label="Thanh mua nhanh cố định"
+          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#EAE4D7] shadow-xl px-4 py-2.5 sm:py-3 animate-in slide-in-from-bottom duration-200"
+        >
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src={currentDeal.images[heroGalleryIndex]?.src || currentDeal.images[0]?.src}
+                alt=""
+                className="w-10 h-10 rounded-xl object-cover border border-[#EAE4D7] shrink-0"
+              />
+              <div className="min-w-0">
+                <span className="block text-xs sm:text-sm font-black text-[#1A1612] truncate max-w-[180px] sm:max-w-[400px]">
+                  {currentDeal.title} ({currentVariant.name})
+                </span>
+                <div className="flex items-baseline gap-2 text-xs">
+                  <strong className="font-black text-[#B88E4F]">
+                    {heroProductData.finalPrice.toLocaleString('vi-VN')} đ
+                  </strong>
+                  <span className="text-[10px] text-[#7D715E] line-through hidden sm:inline">
+                    {heroProductData.origPrice.toLocaleString('vi-VN')} đ
+                  </span>
+                  <span className="text-[10px] font-bold text-[#DC2626]">
+                    -{heroProductData.discountPercent}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="hidden sm:flex items-center border border-[#EAE4D7] rounded-lg bg-white overflow-hidden shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setHeroQuantity((q) => Math.max(1, q - 1))}
+                  className="w-7 h-7 flex items-center justify-center hover:bg-[#FAF8F5] text-[#1A1612] transition cursor-pointer"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="w-8 text-center text-xs font-bold font-mono text-[#1A1612]">
+                  {heroQuantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setHeroQuantity((q) => Math.min(7, q + 1))}
+                  className="w-7 h-7 flex items-center justify-center hover:bg-[#FAF8F5] text-[#1A1612] transition cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleHeroAddToCart}
+                className="p-2 sm:px-3 sm:py-2 rounded-xl border border-[#C59B58] bg-white hover:bg-[#FAF8F5] text-[#8C6226] text-xs font-black transition shadow-2xs cursor-pointer active:scale-95"
+                title="Thêm vào giỏ hàng"
+              >
+                <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleHeroBuyNow}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:opacity-95 text-white text-xs font-black transition shadow-md shadow-[#C59B58]/20 cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <span>Mua ngay</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </aside>
       )}
     </div>
   );

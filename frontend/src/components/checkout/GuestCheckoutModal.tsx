@@ -15,6 +15,10 @@ import {
   Store as StoreIcon,
 } from 'lucide-react';
 import api from '../../services/api';
+import {
+  loadShippingAddresses,
+  type ShippingProvince,
+} from '../../services/order-address.service';
 
 export interface ProductVariantItem {
   id: string;
@@ -66,7 +70,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [shippingProvinces, setShippingProvinces] = useState<ShippingProvince[]>([]);
+  const [provinceCode, setProvinceCode] = useState('');
+  const [districtCode, setDistrictCode] = useState('');
+  const [wardCode, setWardCode] = useState('');
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [addressReload, setAddressReload] = useState(0);
   const [orderNotes, setOrderNotes] = useState('');
   const [quantity, setQuantity] = useState(initialQuantity);
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'VIETQR'>('COD');
@@ -106,6 +118,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       qrUrl: string;
     };
     cancellationToken?: string;
+    confirmationEmailQueued?: boolean;
   } | null>(null);
 
 
@@ -141,8 +154,34 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       setAppliedCoupon(null);
       setCouponMessage(null);
       setCouponCode(initialCouponCode);
+      setProvinceCode('');
+      setDistrictCode('');
+      setWardCode('');
+      setAddressError(null);
     }
   }, [isOpen, initialQuantity, product.stockQuantity, product.variants, initialCouponCode]);
+
+  useEffect(() => {
+    if (!isOpen || shippingProvinces.length) return;
+    const controller = new AbortController();
+    setAddressLoading(true);
+    setAddressError(null);
+
+    void loadShippingAddresses(controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setShippingProvinces(data);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setAddressError('Không tải được danh mục Tỉnh/Thành phố. Vui lòng thử lại.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAddressLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [isOpen, shippingProvinces.length, addressReload]);
 
   if (!isOpen) return null;
 
@@ -162,12 +201,25 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const finalTotal = Math.max(0, subtotal - discountAmount);
 
+  const selectedProvince = shippingProvinces.find(
+    (province) => String(province.code) === provinceCode,
+  );
+  const selectedDistrict = selectedProvince?.districts.find(
+    (district) => String(district.code) === districtCode,
+  );
+  const selectedWard = selectedDistrict?.wards.find(
+    (ward) => String(ward.code) === wardCode,
+  );
+
 
 
   const isPhoneValid = (phone: string) => {
     const clean = phone.trim().replace(/[()\s-]/g, '');
     return /^(0|\+84)[35789]\d{8}$/.test(clean);
   };
+
+  const isEmailValid = (email: string) =>
+    !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
 
   const handleValidateCoupon = async () => {
@@ -193,7 +245,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         ],
       });
 
-      const data = res as any;
+      const data = (res as any)?.data || res;
       if (data && (data.discountAmount !== undefined || data.appliedDiscountAmount !== undefined)) {
         const discount = Number(data.discountAmount || data.appliedDiscountAmount || 0);
         setAppliedCoupon({
@@ -248,12 +300,29 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
-
-    const trimmedAddress = shippingAddress.trim();
-    if (!trimmedAddress || trimmedAddress.length < 5) {
-      setErrorMessage('Địa chỉ giao hàng phải chi tiết ít nhất 5 ký tự.');
+    if (!isEmailValid(customerEmail)) {
+      setErrorMessage('Email nhận thông tin đơn hàng không hợp lệ.');
       return;
     }
+
+
+    const addressDetail = shippingAddress.trim();
+    if (!addressDetail || addressDetail.length < 5) {
+      setErrorMessage('Vui lòng nhập số nhà, tên đường hoặc tòa nhà (ít nhất 5 ký tự).');
+      return;
+    }
+
+    if (!selectedProvince || !selectedDistrict || !selectedWard) {
+      setErrorMessage('Vui lòng chọn đầy đủ Tỉnh/Thành phố, Quận/Huyện và Phường/Xã.');
+      return;
+    }
+
+    const fullShippingAddress = [
+      addressDetail,
+      selectedWard.name,
+      selectedDistrict.name,
+      selectedProvince.name,
+    ].join(', ');
 
 
     if (quantity > currentStock) {
@@ -270,7 +339,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         storeId: store.id,
         customerName: trimmedName,
         customerPhone: customerPhone.trim(),
-        shippingAddress: trimmedAddress,
+        customerEmail: customerEmail.trim().toLowerCase() || undefined,
+        shippingAddress: fullShippingAddress,
         orderNotes: orderNotes.trim() || undefined,
         paymentMethod,
         // Chỉ gửi coupon đã được backend xác thực thành công.
@@ -287,17 +357,34 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
 
       const res = await api.post('/orders', payload);
-      const resData = res as any;
+      const rawResponse = res as any;
+      const resData = rawResponse?.data?.data || rawResponse?.data || rawResponse;
+      const publicOrderCode =
+        resData?.publicOrderCode ||
+        resData?.order?.externalOrderSn ||
+        resData?.externalOrderSn;
+
+      if (!publicOrderCode || publicOrderCode === 'undefined') {
+        throw new Error('Backend chưa trả về mã đơn hàng công khai. Vui lòng liên hệ hỗ trợ và không đặt lại đơn ngay.');
+      }
 
       const orderResult = {
         orderId: resData.orderId || resData.order?.id,
-        publicOrderCode: resData.publicOrderCode || resData.order?.externalOrderSn,
+        publicOrderCode,
         totalAmount: resData.finalAmount !== undefined ? resData.finalAmount : resData.order?.finalAmount,
         paymentMethod: resData.paymentMethod || paymentMethod,
         paymentStatus: resData.paymentStatus || (paymentMethod === 'VIETQR' ? 'WAITING_PAYMENT' : 'UNPAID'),
         vietqr: resData.vietqr,
         cancellationToken: resData.cancellationToken || resData.order?.cancellationToken,
+        confirmationEmailQueued: Boolean(resData.confirmationEmailQueued),
       };
+
+      // Chỉ ghi nhớ mã đơn công khai để khách có thể theo dõi lại sau khi đóng modal.
+      // Không lưu cancellationToken hoặc PII vào localStorage.
+      localStorage.setItem(
+        'scanms-recent-guest-order',
+        JSON.stringify({ publicOrderCode, createdAt: Date.now() }),
+      );
 
       setOrderSuccess(orderResult);
       if (onOrderPlaced) {
@@ -363,6 +450,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               Đơn hàng của bạn đã được ghi nhận vào hệ thống SCANMS và thông báo tới gian hàng{' '}
               <strong className="text-[#1A1612]">{store.name}</strong> để đóng gói.
             </p>
+
+            {orderSuccess.confirmationEmailQueued && customerEmail.trim() && (
+              <div className="mb-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-left text-[11px] text-[#7D715E]">
+                Mã đơn và liên kết tra cứu đang được gửi tới{' '}
+                <strong className="text-[#1A1612]">{customerEmail.trim().toLowerCase()}</strong>.
+              </div>
+            )}
 
 
             <div className="bg-[#FAF8F5] border border-[#EEDFC6] rounded-2xl p-4 text-left space-y-3 mb-5">
@@ -476,7 +570,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
             <div className="flex flex-col gap-2">
               <Link
-                to={`/tracking?orderSn=${encodeURIComponent(orderSuccess.publicOrderCode)}`}
+                to={`/tracking?sn=${encodeURIComponent(orderSuccess.publicOrderCode)}`}
                 className="w-full py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
               >
                 <Truck className="w-4 h-4" />
@@ -672,15 +766,104 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 )}
               </div>
 
+              <div>
+                <label htmlFor="guest-customer-email" className="block text-xs font-bold text-[#1A1612] mb-1">
+                  Email nhận mã đơn <span className="font-medium text-[#7D715E]">(Tùy chọn)</span>
+                </label>
+                <input
+                  id="guest-customer-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  maxLength={254}
+                  placeholder="Ví dụ: khachhang@gmail.com"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  aria-invalid={customerEmail ? !isEmailValid(customerEmail) : undefined}
+                  className={`w-full px-3.5 py-2.5 bg-[#FAF8F5] border rounded-xl text-xs text-[#1A1612] focus:bg-white focus:outline-hidden transition ${
+                    customerEmail && !isEmailValid(customerEmail)
+                      ? 'border-[#DC2626] focus:border-[#DC2626]'
+                      : 'border-[#EAE4D7] focus:border-[#C59B58]'
+                  }`}
+                />
+                <p className="text-[10px] text-[#7D715E] mt-1">
+                  SCANMS sẽ gửi mã đơn và liên kết tra cứu để bạn mở lại trên thiết bị khác.
+                </p>
+              </div>
+
 
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1">
-                  Địa chỉ nhận hàng chi tiết <span className="text-[#DC2626]">*</span>
+                  Địa chỉ nhận hàng <span className="text-[#DC2626]">*</span>
                 </label>
+                {addressError && (
+                  <div
+                    role="alert"
+                    className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-[#FECACA] bg-[#FFF5F5] px-3 py-2 text-[11px] text-[#B91C1C]"
+                  >
+                    <span>{addressError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAddressReload((value) => value + 1)}
+                      className="shrink-0 font-bold underline"
+                    >
+                      Tải lại
+                    </button>
+                  </div>
+                )}
+
+                <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <select
+                    required
+                    value={provinceCode}
+                    disabled={addressLoading}
+                    onChange={(e) => {
+                      setProvinceCode(e.target.value);
+                      setDistrictCode('');
+                      setWardCode('');
+                    }}
+                    className="w-full appearance-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5 text-xs text-[#1A1612] focus:bg-white focus:outline-hidden focus:border-[#C59B58] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <option value="">{addressLoading ? 'Đang tải Tỉnh/Thành phố...' : 'Chọn Tỉnh/Thành phố *'}</option>
+                    {shippingProvinces.map((province) => (
+                      <option key={province.code} value={province.code}>{province.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    required
+                    value={districtCode}
+                    disabled={!selectedProvince || addressLoading}
+                    onChange={(e) => {
+                      setDistrictCode(e.target.value);
+                      setWardCode('');
+                    }}
+                    className="w-full appearance-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5 text-xs text-[#1A1612] focus:bg-white focus:outline-hidden focus:border-[#C59B58] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <option value="">Chọn Quận/Huyện *</option>
+                    {selectedProvince?.districts.map((district) => (
+                      <option key={district.code} value={district.code}>{district.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <select
+                  required
+                  value={wardCode}
+                  disabled={!selectedDistrict || addressLoading}
+                  onChange={(e) => setWardCode(e.target.value)}
+                  className="mb-2 w-full appearance-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5 text-xs text-[#1A1612] focus:bg-white focus:outline-hidden focus:border-[#C59B58] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">Chọn Phường/Xã *</option>
+                  {selectedDistrict?.wards.map((ward) => (
+                    <option key={ward.code} value={ward.code}>{ward.name}</option>
+                  ))}
+                </select>
+
                 <textarea
                   required
                   rows={2}
-                  placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/TP..."
+                  placeholder="Số nhà, tên đường, tên tòa nhà..."
                   value={shippingAddress}
                   onChange={(e) => setShippingAddress(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] focus:bg-white focus:outline-hidden focus:border-[#C59B58] transition resize-none"

@@ -79,8 +79,27 @@ interface OrderData {
 
 export default function OrderTrackingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialPhone = searchParams.get("phone") || "";
-  const initialSn = searchParams.get("sn") || "";
+  const validParam = (value: string | null) => {
+    const normalized = value?.trim() || "";
+    return normalized.toLowerCase() === "undefined" || normalized.toLowerCase() === "null"
+      ? ""
+      : normalized;
+  };
+  const getRecentOrderCode = () => {
+    try {
+      const saved = localStorage.getItem("scanms-recent-guest-order");
+      const parsed = saved ? JSON.parse(saved) : null;
+      return validParam(parsed?.publicOrderCode || null);
+    } catch {
+      return "";
+    }
+  };
+  const initialPhone = validParam(searchParams.get("phone"));
+  // `orderSn` được giữ để các liên kết cũ vẫn hoạt động.
+  const initialSn =
+    validParam(searchParams.get("sn")) ||
+    validParam(searchParams.get("orderSn")) ||
+    getRecentOrderCode();
 
   const [phoneInput, setPhoneInput] = useState(initialPhone);
   const [orderSnInput, setOrderSnInput] = useState(initialSn);
@@ -304,7 +323,7 @@ export default function OrderTrackingPage() {
           <p className="text-xs sm:text-sm text-[#7D715E] max-w-xl m-0 leading-relaxed">
             Nhập{" "}
             <strong className="text-[#1A1612]">Số điện thoại đặt hàng</strong>{" "}
-            hoặc <strong className="text-[#1A1612]">Mã vận đơn</strong> để kiểm
+            hoặc <strong className="text-[#1A1612]">Mã đơn hàng</strong> để kiểm
             tra tiến trình đóng gói, giao hàng và gửi đánh giá nhận quà ưu đãi.
           </p>
 
@@ -332,7 +351,7 @@ export default function OrderTrackingPage() {
                 type="text"
                 value={orderSnInput}
                 onChange={(e) => setOrderSnInput(e.target.value.toUpperCase())}
-                placeholder="Mã đơn: ORD-20260909-001"
+                placeholder="Mã đơn: DH-2026-XXXXXXXX"
                 className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-2 border-[#EAE4D7] text-xs sm:text-sm text-[#1A1612] outline-none focus:border-[#C59B58] shadow-xs transition"
               />
             </div>
@@ -357,32 +376,11 @@ export default function OrderTrackingPage() {
           </form>
 
 
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span className="text-[11px] text-[#7D715E] font-medium">
-              Gợi ý kiểm thử:
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setPhoneInput("0933888999");
-                setOrderSnInput("ORD-20260909-001");
-                handleSearch("0933888999", "ORD-20260909-001");
-              }}
-              className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] px-2.5 py-1 rounded-lg transition cursor-pointer"
-            >
-              📱 0933888999 (Đơn mẫu hoàn tất)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOrderSnInput("ORD-20260909-001");
-                handleSearch(phoneInput, "ORD-20260909-001");
-              }}
-              className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] px-2.5 py-1 rounded-lg transition cursor-pointer"
-            >
-              📦 ORD-20260909-001
-            </button>
-          </div>
+          {initialSn && (
+            <p className="text-[11px] font-semibold text-[#8A662C] bg-[#FBF5EB] border border-[#EEDFC6] px-3 py-1.5 rounded-xl m-0">
+              Mã đơn gần nhất đã được tự động điền và tra cứu. Bạn không cần nhớ hoặc nhập lại.
+            </p>
+          )}
         </div>
       </section>
 
