@@ -21,6 +21,7 @@ import {
   Tag,
   Flame,
   Award,
+  Sparkles,
   type LucideProps,
 } from 'lucide-react';
 
@@ -66,6 +67,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Không gian Chủ Shop',
     items: [
       { path: '/merchant/dashboard', label: 'Tổng quan Shop', icon: Store },
+      { path: '/merchant/kol-recommendations', label: 'AI Gợi ý KOL phù hợp', icon: Sparkles },
       { path: '/merchant/analytics', label: 'Doanh số Realtime', icon: Flame },
       { path: '/merchant/leaderboard', label: 'Bảng vinh danh Top KOL', icon: Trophy },
       { path: '/merchant/products', label: 'Danh mục sản phẩm', icon: Box },
@@ -88,6 +90,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/admin/analytics', label: 'Analytics Toàn sàn', icon: Flame },
       { path: '/admin/leaderboard', label: 'Bảng vinh danh Top KOL', icon: Trophy },
+      { path: '/merchant/kol-recommendations', label: 'AI Gợi ý KOL phù hợp', icon: Sparkles },
       { path: '/admin/users', label: 'Quản lý User & KYC', icon: Users },
       { path: '/admin/referral-links', label: 'Quản trị Link toàn sàn', icon: Link2 },
       { path: '/admin/coupons', label: 'Quản trị Coupon', icon: Tag },
@@ -102,6 +105,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/admin/analytics', label: 'Analytics Toàn sàn', icon: Flame },
       { path: '/admin/leaderboard', label: 'Bảng vinh danh Top KOL', icon: Trophy },
+      { path: '/merchant/kol-recommendations', label: 'AI Gợi ý KOL phù hợp', icon: Sparkles },
       { path: '/admin/users', label: 'Quản lý User & KYC', icon: Users },
       { path: '/admin/referral-links', label: 'Quản trị Link toàn sàn', icon: Link2 },
       { path: '/admin/coupons', label: 'Quản trị Coupon', icon: Tag },
