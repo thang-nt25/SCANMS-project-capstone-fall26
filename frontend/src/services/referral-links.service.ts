@@ -101,13 +101,12 @@ export interface QueryReferralLinksParams {
 }
 
 export const referralLinksService = {
-  // Lấy danh sách sản phẩm được tiếp thị
+
   async getEligibleProducts(params?: { search?: string; storeId?: string }): Promise<EligibleProduct[]> {
     const res: any = await api.get('/collaborator/referral-links/products', { params });
     return res?.data || res || [];
   },
 
-  // Lấy danh sách link tiếp thị của KOL
   async getMyLinks(params?: QueryReferralLinksParams): Promise<{ data: ReferralLinkItem[]; meta: any }> {
     const res: any = await api.get('/collaborator/referral-links', { params });
     const payload = res?.data || res;
@@ -117,37 +116,31 @@ export const referralLinksService = {
     };
   },
 
-  // Lấy chi tiết 1 link
   async getLinkDetail(id: string): Promise<ReferralLinkItem> {
     const res: any = await api.get(`/collaborator/referral-links/${id}`);
     return res?.data?.data || res?.data || res;
   },
 
-  // Tạo link tiếp thị mới
   async createLink(payload: CreateReferralLinkPayload): Promise<ReferralLinkItem> {
     const res: any = await api.post('/collaborator/referral-links', payload);
     return res?.data?.data || res?.data || res;
   },
 
-  // Cập nhật nhãn/kênh link
   async updateLink(id: string, payload: Partial<CreateReferralLinkPayload>): Promise<ReferralLinkItem> {
     const res: any = await api.patch(`/collaborator/referral-links/${id}`, payload);
     return res?.data?.data || res?.data || res;
   },
 
-  // Tạm dừng / Kích hoạt lại
   async toggleStatus(id: string): Promise<ReferralLinkItem> {
     const res: any = await api.patch(`/collaborator/referral-links/${id}/status`);
     return res?.data?.data || res?.data || res;
   },
 
-  // Xóa mềm link
   async deleteLink(id: string): Promise<{ success: boolean; message: string }> {
     const res: any = await api.delete(`/collaborator/referral-links/${id}`);
     return res?.data || res;
   },
 
-  // Chủ Shop xem danh sách link
   async getStoreLinks(storeId: string, params?: QueryReferralLinksParams): Promise<{ data: ReferralLinkItem[]; meta: any }> {
     const res: any = await api.get(`/stores/${storeId}/referral-links`, { params });
     const payload = res?.data || res;
@@ -157,19 +150,16 @@ export const referralLinksService = {
     };
   },
 
-  // Chủ Shop khóa link vi phạm (kèm lý do bắt buộc)
   async blockLink(storeId: string, linkId: string, reason: string): Promise<any> {
     const res: any = await api.patch(`/stores/${storeId}/referral-links/${linkId}/block`, { reason });
     return res?.data || res;
   },
 
-  // Chủ Shop mở khóa link
   async unblockLink(storeId: string, linkId: string): Promise<any> {
     const res: any = await api.patch(`/stores/${storeId}/referral-links/${linkId}/unblock`);
     return res?.data || res;
   },
 
-  // Quản trị viên (Admin) xem danh sách tất cả link toàn sàn
   async getAdminReferralLinks(params?: QueryReferralLinksParams): Promise<{ data: ReferralLinkItem[]; meta: any }> {
     const res: any = await api.get('/admin/referral-links', { params });
     const payload = res?.data || res;
@@ -179,28 +169,21 @@ export const referralLinksService = {
     };
   },
 
-  // Quản trị viên (Admin) khóa link vi phạm toàn hệ thống
   async blockLinkByAdmin(linkId: string, reason: string): Promise<any> {
     const res: any = await api.patch(`/admin/referral-links/${linkId}/block`, { reason });
     return res?.data || res;
   },
 
-  // Quản trị viên (Admin) mở khóa link
   async unblockLinkByAdmin(linkId: string): Promise<any> {
     const res: any = await api.patch(`/admin/referral-links/${linkId}/unblock`);
     return res?.data || res;
   },
 
-  // ==========================================
-  // FR-11 — MÃ QR TIẾP THỊ ĐỘNG
-  // ==========================================
-  // Lấy URL xem trước / tải ảnh QR từ Backend
   getQrDownloadUrl(id: string, format: 'png' | 'svg' = 'png', size: number = 1024): string {
     const baseURL = (api.defaults.baseURL || '/api').replace(/\/$/, '');
     return `${baseURL}/referral-links/${id}/qr?format=${format}&size=${size}&download=true`;
   },
 
-  // Tải ảnh QR với tên file SCANMS-QR-{shortCode}.{format}
   async downloadQrCode(
     id: string,
     shortCode: string,
@@ -228,4 +211,4 @@ export const referralLinksService = {
   },
 };
 
-
+export default referralLinksService;

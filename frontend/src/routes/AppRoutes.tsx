@@ -1,24 +1,24 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
-// Layout & Dispatcher
+
 import MainLayout from '../components/layout/MainLayout';
 const DashboardDispatcher = lazy(() => import('../pages/DashboardDispatcher'));
 const HomePage = lazy(() => import('../pages/HomePage'));
 
-// Auth Pages (Dev)
+
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
 
-// Store / Guest Pages
+
 const ProductDetailPage = lazy(() => import('../pages/ProductDetailPage'));
 const RedirectHandlerPage = lazy(() => import('../pages/RedirectHandlerPage'));
 
-// UI Reference / Prototype Master (Tuấn)
+
 const UiReferencePage = lazy(() => import('../pages/UiReferencePage'));
 const MarketplacePage = lazy(() => import('../pages/public/MarketplacePage'));
 
-// Commission Rules & Referral Links (Tuấn - FR-10 & Milestone Bonus)
+
 const CommissionRulesPage = lazy(() => import('../pages/merchant/CommissionRulesPage'));
 const StoreReferralLinksPage = lazy(() => import('../pages/merchant/StoreReferralLinksPage'));
 const StoreCollaboratorsPage = lazy(() => import('../pages/merchant/StoreCollaboratorsPage'));
@@ -28,7 +28,7 @@ const ReferralLinksPage = lazy(() => import('../pages/collaborator/ReferralLinks
 const KolCouponsPage = lazy(() => import('../pages/collaborator/KolCouponsPage'));
 const ShopCouponsPage = lazy(() => import('../pages/merchant/ShopCouponsPage'));
 
-// Merchant Pages (Thắng - FR-01~08)
+
 const ProductManagementPage = lazy(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazy(() => import('../pages/merchant/ShopDashboardPage'));
 const ShopSettingsPage = lazy(() => import('../pages/merchant/ShopSettingsPage'));
@@ -36,7 +36,7 @@ const KycApprovalPage = lazy(() => import('../pages/merchant/KycApprovalPage'));
 const OrdersManagementPage = lazy(() => import('../pages/merchant/OrdersManagementPage'));
 const PayoutApprovalPage = lazy(() => import('../pages/merchant/PayoutApprovalPage'));
 
-// Collaborator Pages (Thắng - FR-01~08)
+
 const KolTierStatusPage = lazy(() => import('../pages/collaborator/KolTierStatusPage'));
 const SocialChannelsPage = lazy(() => import('../pages/collaborator/SocialChannelsPage'));
 const KycSubmissionPage = lazy(() => import('../pages/collaborator/KycSubmissionPage'));
@@ -44,20 +44,20 @@ const WalletPage = lazy(() => import('../pages/collaborator/WalletPage'));
 const MediaHubBrowserPage = lazy(() => import('../pages/collaborator/MediaHubBrowserPage'));
 const SamplesPage = lazy(() => import('../pages/collaborator/SamplesPage'));
 
-// Realtime Chat (Quý - FR-25)
+
 const OrderTrackingPage = lazy(() => import('../pages/public/OrderTrackingPage'));
-// Quy - FR-25: Chat Realtime
+
 const ChatBoxPage = lazy(() => import('../pages/chat/ChatBoxPage'));
 
-// Sample Product Workflow (Quý - FR-26)
+
 const SampleRequestsPage = lazy(() => import('../pages/collaborator/SampleRequestsPage'));
 const ShopSampleRequestsPage = lazy(() => import('../pages/merchant/ShopSampleRequestsPage'));
 
-// Campaign Invitations (Quý - FR-27)
+
 const ShopCampaignsPage = lazy(() => import('../pages/merchant/ShopCampaignsPage'));
 const KolCampaignsPage = lazy(() => import('../pages/collaborator/KolCampaignsPage'));
 
-// Dashboard Realtime (Quý - FR-28)
+
 const RealtimeAnalyticsPage = lazy(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 
 // Leaderboard Top 10 Creators (Quý - FR-29)
@@ -72,43 +72,42 @@ function AppRoutes() {
     <Router>
       <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>
       <Routes>
-        {/* ================================================================= */}
-        {/* 1. Điểm vào chính: Prototype UI/UX & Storefront                    */}
-        {/* ================================================================= */}
-        <Route path="/" element={<UiReferencePage />} />
-        <Route path="/prototype" element={<UiReferencePage />} />
-        <Route path="/ui-reference" element={<UiReferencePage />} />
-        <Route path="/app" element={<UiReferencePage />} />
-        <Route path="/app/:screenId" element={<UiReferencePage />} />
 
-        {/* SCANMS Multi-Merchant Marketplace & Storefront cho khách mua hàng */}
+
+
+        <Route path="/" element={<MarketplacePage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/store" element={<MarketplacePage />} />
         <Route path="/storefront" element={<MarketplacePage />} />
         <Route path="/shop" element={<MarketplacePage />} />
 
-        {/* Cổng tra cứu tiến trình đơn hàng công khai (FR-17) */}
+        <Route path="/prototype" element={<UiReferencePage />} />
+        <Route path="/ui-reference" element={<UiReferencePage />} />
+        <Route path="/app" element={<UiReferencePage />} />
+        <Route path="/app/:screenId" element={<UiReferencePage />} />
+
+
         <Route path="/tracking" element={<OrderTrackingPage />} />
         <Route path="/order-tracking" element={<OrderTrackingPage />} />
 
-        {/* Cổng đăng nhập & đăng ký riêng biệt */}
+
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* FR-10: Chuyển tiếp liên kết rút gọn công khai /r/:shortCode */}
+
         <Route path="/r/:shortCode" element={<RedirectHandlerPage />} />
 
-        {/* Trang chi tiết sản phẩm kèm nhận diện Attribution */}
+
         <Route path="/products/:slug" element={<ProductDetailPage />} />
 
-        {/* ================================================================= */}
-        {/* 2. Routes tích hợp trong MainLayout (Có Sidebar & Topbar đầy đủ) */}
-        {/* ================================================================= */}
+
+
+
         <Route element={<MainLayout />}>
           <Route path="/portal" element={<DashboardDispatcher />} />
           <Route path="/dashboard" element={<DashboardDispatcher />} />
 
-          {/* ── Merchant Routes ── */}
+
           <Route element={<RouteContent />}>
             <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
             <Route path="merchant/products" element={<ProductManagementPage />} />
@@ -131,7 +130,7 @@ function AppRoutes() {
             <Route path="merchant/leaderboard" element={<LeaderboardPage />} />
           </Route>
 
-          {/* ── Collaborator Routes ── */}
+
           <Route element={<RouteContent />}>
             <Route path="collaborator/dashboard" element={<HomePage />} />
             <Route path="collaborator/analytics" element={<RealtimeAnalyticsPage />} />
@@ -154,7 +153,7 @@ function AppRoutes() {
             <Route path="collaborator/stats" element={<RealtimeAnalyticsPage />} />
           </Route>
 
-          {/* ── Admin Routes ── */}
+
           <Route element={<RouteContent />}>
             <Route path="admin/analytics" element={<RealtimeAnalyticsPage />} />
             <Route path="admin/leaderboard" element={<LeaderboardPage />} />
@@ -163,7 +162,7 @@ function AppRoutes() {
             <Route path="admin/coupons" element={<AdminCouponsPage />} />
           </Route>
 
-          {/* ── Analytics & Chat ── */}
+
           <Route path="analytics" element={<RealtimeAnalyticsPage />} />
           <Route path="leaderboard" element={<LeaderboardPage />} />
           <Route path="chat" element={<ChatBoxPage />} />

@@ -90,82 +90,50 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
   }, 30000);
 
   async function cleanupTestData() {
-    try {
-      await prisma.bonusAdjustment.deleteMany({
-        where: { storeId: testStoreId },
-      });
-      await prisma.financialLedger.deleteMany({
-        where: { wallet: { collaboratorId: testKolId } },
-      });
-      await prisma.wallet.deleteMany({ where: { collaboratorId: testKolId } });
-      await prisma.monthlyBonusResult.deleteMany({
-        where: {
-          OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }],
-        },
-      });
-      await prisma.orderRefund.deleteMany({
-        where: { order: { storeId: testStoreId } },
-      });
-      await prisma.commission.deleteMany({
-        where: {
-          OR: [
-            { order: { storeId: testStoreId } },
-            { collaboratorId: testKolId },
-          ],
-        },
-      });
-      await prisma.orderItem.deleteMany({
-        where: { order: { storeId: testStoreId } },
-      });
-      await prisma.order.deleteMany({
+    const safeDelete = async (fn: () => Promise<any>) => {
+      try {
+        await fn();
+      } catch {
+        // Bỏ qua lỗi khóa ngoại từng bảng đơn lẻ để các bảng khác tiếp tục được dọn
+      }
+    };
+
+    await safeDelete(() => prisma.bonusAdjustment.deleteMany({ where: { storeId: testStoreId } }));
+    await safeDelete(() => prisma.monthlyBonusResult.deleteMany({ where: { OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }] } }));
+    await safeDelete(() => prisma.financialLedger.deleteMany({ where: { wallet: { collaboratorId: testKolId } } }));
+    await safeDelete(() => prisma.payoutRequest.deleteMany({ where: { OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }] } }));
+    await safeDelete(() => prisma.storeWallet.deleteMany({ where: { wallet: { collaboratorId: testKolId } } }));
+    await safeDelete(() => prisma.wallet.deleteMany({ where: { collaboratorId: testKolId } }));
+    await safeDelete(() => prisma.wallet.updateMany({ where: { collaboratorId: testKolId }, data: { availableBalance: 0, pendingBalance: 0, totalWithdrawn: 0 } }));
+    await safeDelete(() => prisma.orderRefund.deleteMany({ where: { order: { storeId: testStoreId } } }));
+    await safeDelete(() => prisma.commission.deleteMany({ where: { OR: [{ order: { storeId: testStoreId } }, { collaboratorId: testKolId }] } }));
+    await safeDelete(() => prisma.orderItem.deleteMany({ where: { order: { storeId: testStoreId } } }));
+    await safeDelete(() =>
+      prisma.order.deleteMany({
         where: {
           OR: [
             { storeId: testStoreId },
             { attributedCollaboratorId: testKolId },
+            { externalOrderSn: { in: ['ORD-REAL-001', 'ORD-REAL-002', 'ORD-REAL-003'] } },
           ],
         },
-      });
-      await prisma.commissionRule.deleteMany({
-        where: { storeId: testStoreId },
-      });
-      await prisma.campaignParticipant.deleteMany({
-        where: { collaboratorId: testKolId },
-      });
-      await prisma.referralLink.deleteMany({
-        where: { collaboratorId: testKolId },
-      });
-      await prisma.sampleProductRequest.deleteMany({
-        where: { collaboratorId: testKolId },
-      });
-      await prisma.collaboratorSocialChannel.deleteMany({
-        where: { collaboratorId: testKolId },
-      });
-      await prisma.collaboratorProfile.deleteMany({
-        where: { userId: testKolId },
-      });
-      await prisma.chatMessage.deleteMany({
-        where: { senderId: { in: [testOwnerId, testKolId] } },
-      });
-      await prisma.conversation.deleteMany({
-        where: {
-          OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }],
-        },
-      });
-      await prisma.payoutRequest.deleteMany({
-        where: {
-          OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }],
-        },
-      });
-      await prisma.auditLog.deleteMany({
-        where: { userId: { in: [testOwnerId, testKolId] } },
-      });
-      await prisma.productReview.deleteMany({
-        where: { product: { storeId: testStoreId } },
-      });
-      await prisma.mediaAsset.deleteMany({ where: { storeId: testStoreId } });
-      await prisma.product.deleteMany({ where: { storeId: testStoreId } });
-      await prisma.store.deleteMany({ where: { id: testStoreId } });
-      await prisma.user.deleteMany({
+      }),
+    );
+    await safeDelete(() => prisma.commissionRule.deleteMany({ where: { storeId: testStoreId } }));
+    await safeDelete(() => prisma.campaignParticipant.deleteMany({ where: { collaboratorId: testKolId } }));
+    await safeDelete(() => prisma.referralLink.deleteMany({ where: { collaboratorId: testKolId } }));
+    await safeDelete(() => prisma.sampleProductRequest.deleteMany({ where: { collaboratorId: testKolId } }));
+    await safeDelete(() => prisma.collaboratorSocialChannel.deleteMany({ where: { collaboratorId: testKolId } }));
+    await safeDelete(() => prisma.collaboratorProfile.deleteMany({ where: { userId: testKolId } }));
+    await safeDelete(() => prisma.chatMessage.deleteMany({ where: { senderId: { in: [testOwnerId, testKolId] } } }));
+    await safeDelete(() => prisma.conversation.deleteMany({ where: { OR: [{ storeId: testStoreId }, { collaboratorId: testKolId }] } }));
+    await safeDelete(() => prisma.auditLog.deleteMany({ where: { userId: { in: [testOwnerId, testKolId] } } }));
+    await safeDelete(() => prisma.productReview.deleteMany({ where: { product: { storeId: testStoreId } } }));
+    await safeDelete(() => prisma.mediaAsset.deleteMany({ where: { storeId: testStoreId } }));
+    await safeDelete(() => prisma.product.deleteMany({ where: { storeId: testStoreId } }));
+    await safeDelete(() => prisma.store.deleteMany({ where: { id: testStoreId } }));
+    await safeDelete(() =>
+      prisma.user.deleteMany({
         where: {
           OR: [
             { id: { in: [testOwnerId, testKolId] } },
@@ -176,10 +144,8 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
             },
           ],
         },
-      });
-    } catch {
-      // Bỏ qua lỗi dọn dẹp nếu bản ghi chưa tồn tại
-    }
+      }),
+    );
   }
 
   describe('1. Real PostgreSQL Partial Unique Index (Soft-delete repeatability)', () => {
@@ -438,6 +404,11 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
       );
       expect(approved.settlement.status).toBe(CommissionStatus.APPROVED);
 
+      const walletBefore = await prisma.wallet.findUnique({
+        where: { collaboratorId: testKolId },
+      });
+      const initialBalance = Number(walletBefore?.availableBalance || 0);
+
       // 3. Thực hiện Payout vào Ví
       const payoutResult = await service.payoutSettlement(
         testStoreId,
@@ -454,7 +425,7 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
       const wallet = await prisma.wallet.findUnique({
         where: { collaboratorId: testKolId },
       });
-      expect(wallet?.availableBalance.toString()).toBe('800000');
+      expect(Number(wallet?.availableBalance)).toBe(initialBalance + 800000);
 
       // 5. Kiểm tra Sổ cái tài chính FinancialLedger trong PostgreSQL
       const ledger = await prisma.financialLedger.findUnique({
@@ -462,7 +433,7 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
       });
       expect(ledger).not.toBeNull();
       expect(ledger?.amount.toString()).toBe('800000');
-      expect(ledger?.balanceAfter.toString()).toBe('800000');
+      expect(Number(ledger?.balanceAfter)).toBe(initialBalance + 800000);
 
       // 6. Chống cộng tiền 2 lần vào ví
       await expect(

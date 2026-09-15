@@ -24,7 +24,7 @@ export interface CampaignParticipant {
   collaborator?: { id: string; fullName: string; email: string };
 }
 
-// Loại thẻ mời VIP được parse từ chat message
+
 export interface CampaignInviteCard {
   type: 'CAMPAIGN_INVITE';
   participantId?: string;

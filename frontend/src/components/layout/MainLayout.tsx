@@ -34,9 +34,9 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
-  // Các route nghiệp vụ có thể được mở từ UI Reference trong iframe.
-  // Chúng vẫn phải giữ nguyên Sidebar và Topbar của cổng quản trị;
-  // chỉ các trang đăng nhập/đăng ký mới dùng layout trống.
+
+
+
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   if (isAuth || isIframe) {
@@ -48,16 +48,14 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-900">
-      {/* 1. SIDEBAR */}
+    <div className="h-screen w-screen overflow-hidden flex bg-[#FAF8F5] text-[#1A1612]">
       <Sidebar
         currentUser={currentUser}
         onOpenRoleSwitcher={() => setShowRoleModal(true)}
         onLogout={handleLogout}
       />
 
-      {/* 2. MAIN CONTENT AREA */}
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <Topbar
           currentUser={currentUser}
           theme={theme}
@@ -65,12 +63,13 @@ export default function MainLayout() {
           onOpenRoleSwitcher={() => setShowRoleModal(true)}
         />
 
-        <main className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-[#FAF8F5]">
+          <div className="max-w-7xl w-full mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
 
-      {/* 3. DEMO ROLE SWITCHER MODAL */}
       <RoleSwitcherModal
         isOpen={showRoleModal}
         onClose={() => setShowRoleModal(false)}
@@ -80,3 +79,4 @@ export default function MainLayout() {
     </div>
   );
 }
+

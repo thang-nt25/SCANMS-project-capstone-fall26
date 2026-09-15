@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import api from '../../services/api';
 import type { Campaign } from '../../types/campaigns';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────
+
 const STATUS_LABEL: Record<string, string> = {
   INVITED: 'Đã mời',
   ACCEPTED: 'Đã tham gia',
@@ -19,7 +19,7 @@ const STATUS_CLASS: Record<string, string> = {
 const fmtDate = (d: string) => format(new Date(d), 'dd/MM/yyyy');
 const isExpired = (endDate: string) => new Date(endDate) < new Date();
 
-// ─── Create Campaign Modal ───────────────────────────────────────────────
+
 function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [form, setForm] = useState({ name: '', bonusCommissionRate: 5, startDate: '', endDate: '' });
   const [loading, setLoading] = useState(false);
@@ -140,7 +140,7 @@ function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSu
   );
 }
 
-// ─── Invite KOL Modal ────────────────────────────────────────────────────
+
 function InviteKolModal({
   campaign,
   onClose,
@@ -238,7 +238,7 @@ function InviteKolModal({
   );
 }
 
-// ─── Campaign Card (Shop side) ───────────────────────────────────────────
+
 function CampaignCard({ campaign, onInvite }: { campaign: Campaign; onInvite: (c: Campaign) => void }) {
   const expired = isExpired(campaign.endDate);
   const accepted = campaign.participants?.filter((p) => p.status === 'ACCEPTED').length || 0;
@@ -289,7 +289,7 @@ function CampaignCard({ campaign, onInvite }: { campaign: Campaign; onInvite: (c
           </div>
         </div>
 
-        {/* Danh sách KOL tham gia */}
+
         {(campaign.participants?.length || 0) > 0 && (
           <div className="space-y-1.5 my-3 pt-2 border-t border-[#EAE4D7]">
             {campaign.participants?.slice(0, 4).map((p) => (
@@ -330,7 +330,7 @@ function CampaignCard({ campaign, onInvite }: { campaign: Campaign; onInvite: (c
   );
 }
 
-// ─── Shop Campaigns Page ──────────────────────────────────────────────────
+
 export default function ShopCampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -349,7 +349,7 @@ export default function ShopCampaignsPage() {
       const res: any = await api.get('/campaigns/shop');
       setCampaigns(res.data || []);
     } catch {
-      /* ignore */
+
     } finally {
       setLoading(false);
     }
@@ -361,7 +361,7 @@ export default function ShopCampaignsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6" id="shop-campaigns-page">
-      {/* Toast */}
+
       {toast && (
         <div
           className="fixed bottom-6 right-6 px-4 py-3 rounded-xl bg-white border border-[#EEDFC6] text-[#B88E4F] text-xs font-extrabold shadow-lg z-50"
@@ -371,7 +371,7 @@ export default function ShopCampaignsPage() {
         </div>
       )}
 
-      {/* Header */}
+
       <div className="flex items-start sm:items-center justify-between gap-4 flex-wrap pb-2 border-b border-[#EAE4D7]">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] flex items-center gap-2.5">
@@ -384,7 +384,7 @@ export default function ShopCampaignsPage() {
         <button
           id="btn-new-campaign"
           type="button"
-          className="px-4 py-2.5 rounded-full bg-[#231D15] hover:bg-[#382E21] text-white text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center gap-1.5"
+          className="px-4 py-2.5 rounded-full bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center gap-1.5"
           onClick={() => setShowCreate(true)}
         >
           <span>+</span> Tạo Chiến Dịch Mới

@@ -95,7 +95,6 @@ export default function KycSubmissionPage() {
         </div>
       )}
 
-      {/* 1. HEADER */}
       <header>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">
           Xác Minh Định Danh Tài Chính (KYC)
@@ -105,7 +104,6 @@ export default function KycSubmissionPage() {
         </p>
       </header>
 
-      {/* 2. STATUS BADGE CARD */}
       <Card
         className={`p-5 sm:p-6 border transition ${
           isVerified
@@ -156,7 +154,6 @@ export default function KycSubmissionPage() {
         </div>
       </Card>
 
-      {/* 3. DOCUMENT PREVIEWS (CCCD) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="p-4 bg-white border border-[#EAE4D7]">
           <div className="flex justify-between items-center mb-2.5">
@@ -183,7 +180,6 @@ export default function KycSubmissionPage() {
         </Card>
       </div>
 
-      {/* 4. FORM CARD */}
       <Card className="p-6 sm:p-7 bg-white border border-[#EAE4D7]">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

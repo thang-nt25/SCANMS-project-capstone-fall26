@@ -30,7 +30,6 @@ const isProvince = (value: unknown): value is ShippingProvince =>
   Array.isArray(value.districts) &&
   value.districts.every(isDistrict);
 
-/** Explicitly v1: the three-level legacy shipping hierarchy requested by the project. */
 export async function loadShippingAddresses(
   signal: AbortSignal,
 ): Promise<ShippingProvince[]> {

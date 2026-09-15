@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Link2,
   Store,
@@ -9,9 +9,10 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
-import { referralLinksService } from '../../services/referralLinksService';
-import type { ReferralLinkItem } from '../../services/referralLinksService';
+import { referralLinksService } from '../../services/referral-links.service';
+import type { ReferralLinkItem } from '../../services/referral-links.service';
 import api from '../../services/api';
+import { toast } from '../../utils/toast';
 
 export default function StoreReferralLinksPage() {
   const [links, setLinks] = useState<ReferralLinkItem[]>([]);
@@ -20,31 +21,31 @@ export default function StoreReferralLinksPage() {
   const [storeId, setStoreId] = useState<string>('');
   const [storeName, setStoreName] = useState<string>('Gian Hàng Của Bạn');
 
-  // Search & Filters
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalLinks, setTotalLinks] = useState(0);
 
-  // Modal Khóa link
+
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [selectedLinkToBlock, setSelectedLinkToBlock] = useState<ReferralLinkItem | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
 
-  // Lấy storeId của user hiện tại
+
   useEffect(() => {
     async function initStore() {
       try {
         const res: any = await api.get('/auth/me');
         const user = res?.data || res;
-        // Lấy store đầu tiên của user nếu có
+
         if (user?.stores && user.stores.length > 0) {
           setStoreId(user.stores[0].id);
           setStoreName(user.stores[0].name);
         } else {
-          // Lấy danh sách store fallback
+
           const storeRes: any = await api.get('/collaborator/stores');
           const stores = storeRes?.data || storeRes || [];
           if (stores.length > 0) {
@@ -59,7 +60,7 @@ export default function StoreReferralLinksPage() {
     initStore();
   }, []);
 
-  const fetchStoreLinks = async () => {
+  const fetchStoreLinks = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
     setErrorMsg(null);
@@ -78,13 +79,11 @@ export default function StoreReferralLinksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [storeId, page, statusFilter, channelFilter, search]);
 
   useEffect(() => {
-    if (storeId) {
-      fetchStoreLinks();
-    }
-  }, [storeId, page, statusFilter, channelFilter]);
+    fetchStoreLinks();
+  }, [fetchStoreLinks]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,18 +91,18 @@ export default function StoreReferralLinksPage() {
     fetchStoreLinks();
   };
 
-  // Mở modal khóa link
+
   const handleOpenBlockModal = (link: ReferralLinkItem) => {
     setSelectedLinkToBlock(link);
     setBlockReason('');
     setIsBlockModalOpen(true);
   };
 
-  // Xác nhận khóa link
+
   const handleConfirmBlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLinkToBlock || !storeId || blockReason.trim().length < 5) {
-      alert('Vui lòng nhập lý do khóa tối thiểu 5 ký tự');
+      toast.warning('Vui lòng nhập lý do khóa tối thiểu 5 ký tự');
       return;
     }
 
@@ -112,62 +111,63 @@ export default function StoreReferralLinksPage() {
       await referralLinksService.blockLink(storeId, selectedLinkToBlock.id, blockReason.trim());
       setIsBlockModalOpen(false);
       setSelectedLinkToBlock(null);
+      toast.success('Đã khóa liên kết tiếp thị thành công');
       fetchStoreLinks();
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi khóa liên kết');
+      toast.error(err.message || 'Lỗi khi khóa liên kết');
     } finally {
       setIsSubmittingBlock(false);
     }
   };
 
-  // Mở khóa link
   const handleUnblock = async (link: ReferralLinkItem) => {
     if (!confirm('Bạn có chắc chắn muốn mở khóa cho liên kết tiếp thị này hoạt động trở lại?')) return;
     try {
       await referralLinksService.unblockLink(storeId, link.id);
+      toast.success('Đã mở khóa liên kết tiếp thị thành công');
       fetchStoreLinks();
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi mở khóa liên kết');
+      toast.error(err.message || 'Lỗi khi mở khóa liên kết');
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-16">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white border-b border-slate-700 shadow-md">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] font-sans pb-16">
+
+      <div className="bg-[#F3EFE6] border-b border-[#EAE4D7]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-indigo-300 text-sm font-medium mb-1">
+          <div className="flex items-center gap-2 text-[#B88E4F] text-sm font-bold mb-1">
             <Store className="w-4 h-4" />
             <span>Dành cho Chủ Cửa hàng (Shop Manager)</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#1A1612] flex items-center gap-3">
             Quản Lý Liên Kết Tiếp Thị Sản Phẩm
           </h1>
-          <p className="mt-1 text-sm text-slate-300 max-w-2xl">
-            Theo dõi tất cả KOL đang quảng bá sản phẩm của gian hàng <strong>{storeName}</strong> ({totalLinks} liên kết). Bạn có quyền tạm khóa các liên kết vi phạm nội dung hoặc chính sách giá.
+          <p className="mt-1 text-sm text-[#7D715E] max-w-2xl">
+            Theo dõi tất cả KOL đang quảng bá sản phẩm của gian hàng <strong className="text-[#1A1612]">{storeName}</strong> ({totalLinks} liên kết). Bạn có quyền tạm khóa các liên kết vi phạm nội dung hoặc chính sách giá.
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        {/* Bộ lọc */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-6">
+
+        <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 shadow-xs mb-6">
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
               <input
                 type="text"
                 placeholder="Tìm theo mã shortCode, tên sản phẩm hoặc tên KOL..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:border-indigo-500 focus:bg-white"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-sm text-[#1A1612] outline-none focus:border-[#C59B58] focus:bg-white transition"
               />
             </div>
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none cursor-pointer"
+              className="px-3 py-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-sm text-[#1A1612] outline-none cursor-pointer"
             >
               <option value="">Tất cả trạng thái</option>
               <option value="ACTIVE">Đang hoạt động</option>
@@ -178,7 +178,7 @@ export default function StoreReferralLinksPage() {
             <select
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none cursor-pointer"
+              className="px-3 py-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-sm text-[#1A1612] outline-none cursor-pointer"
             >
               <option value="">Tất cả kênh</option>
               <option value="TIKTOK">TikTok</option>
@@ -190,18 +190,17 @@ export default function StoreReferralLinksPage() {
 
             <button
               type="submit"
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold transition-colors"
+              className="px-5 py-2.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white rounded-xl text-sm font-bold transition-colors shadow-xs cursor-pointer"
             >
               Lọc kết quả
             </button>
           </form>
         </div>
 
-        {/* Danh sách link */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xs overflow-hidden">
           {loading ? (
-            <div className="p-16 text-center text-slate-500">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-indigo-600" />
+            <div className="p-16 text-center text-[#7D715E]">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-[#B88E4F]" />
               <p className="text-sm">Đang tải danh sách liên kết tiếp thị của Cửa hàng...</p>
             </div>
           ) : errorMsg ? (
@@ -210,16 +209,16 @@ export default function StoreReferralLinksPage() {
               <p className="text-sm font-semibold">{errorMsg}</p>
             </div>
           ) : links.length === 0 ? (
-            <div className="p-16 text-center text-slate-500">
-              <Link2 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="text-base font-semibold text-slate-800">Chưa có liên kết tiếp thị nào cho Cửa hàng</p>
-              <p className="text-xs text-slate-400 mt-1">Khi KOL tạo link cho sản phẩm của bạn, dữ liệu sẽ hiển thị tại đây.</p>
+            <div className="p-16 text-center text-[#7D715E]">
+              <Link2 className="w-12 h-12 mx-auto mb-3 text-[#EAE4D7]" />
+              <p className="text-base font-bold text-[#1A1612]">Chưa có liên kết tiếp thị nào cho Cửa hàng</p>
+              <p className="text-xs text-[#7D715E] mt-1">Khi KOL tạo link cho sản phẩm của bạn, dữ liệu sẽ hiển thị tại đây.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-[#F3EFE6] border-b border-[#EAE4D7] text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
                     <th className="py-3.5 px-4">KOL Tiếp thị</th>
                     <th className="py-3.5 px-4">Sản phẩm</th>
                     <th className="py-3.5 px-4">Mã rút gọn &amp; Kênh</th>
@@ -232,7 +231,7 @@ export default function StoreReferralLinksPage() {
                 <tbody className="divide-y divide-slate-100 text-sm">
                   {links.map((link) => (
                     <tr key={link.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* KOL */}
+
                       <td className="py-4 px-4">
                         <div className="font-semibold text-slate-900 flex items-center gap-1.5">
                           <User className="w-3.5 h-3.5 text-indigo-600" />
@@ -241,7 +240,7 @@ export default function StoreReferralLinksPage() {
                         <div className="text-xs text-slate-400">{link.collaborator?.email}</div>
                       </td>
 
-                      {/* Sản phẩm */}
+
                       <td className="py-4 px-4">
                         <div className="font-medium text-slate-800 max-w-[200px] truncate" title={link.product?.title}>
                           {link.product?.title}
@@ -251,7 +250,7 @@ export default function StoreReferralLinksPage() {
                         </div>
                       </td>
 
-                      {/* Mã & Kênh */}
+
                       <td className="py-4 px-4">
                         <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
                           {link.shortCode}
@@ -261,17 +260,17 @@ export default function StoreReferralLinksPage() {
                         </div>
                       </td>
 
-                      {/* Clicks */}
+
                       <td className="py-4 px-4 text-center font-bold text-slate-900">
                         {link.totalClicks}
                       </td>
 
-                      {/* Đơn hàng */}
+
                       <td className="py-4 px-4 text-center font-bold text-purple-700">
                         {link.totalOrders}
                       </td>
 
-                      {/* Trạng thái */}
+
                       <td className="py-4 px-4">
                         {link.status === 'BLOCKED' ? (
                           <div className="text-xs text-rose-700 font-semibold">
@@ -295,7 +294,7 @@ export default function StoreReferralLinksPage() {
                         )}
                       </td>
 
-                      {/* Action */}
+
                       <td className="py-4 px-4 text-right">
                         {link.status === 'BLOCKED' ? (
                           <button
@@ -323,32 +322,32 @@ export default function StoreReferralLinksPage() {
         </div>
       </div>
 
-      {/* MODAL KHÓA LINK (BẮT BUỘC NHẬP LÝ DO) */}
+
       {isBlockModalOpen && selectedLinkToBlock && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 text-rose-600">
+              <h3 className="text-base font-bold text-rose-600 flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5" />
                 Khóa Liên Kết Tiếp Thị Vi Phạm
               </h3>
               <button
                 onClick={() => setIsBlockModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1 text-[#7D715E] hover:text-[#1A1612] rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleConfirmBlock} className="space-y-4">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-                <div>• <strong>KOL:</strong> {selectedLinkToBlock.collaborator?.fullName}</div>
-                <div>• <strong>Sản phẩm:</strong> {selectedLinkToBlock.product?.title}</div>
-                <div>• <strong>Mã link:</strong> {selectedLinkToBlock.shortCode}</div>
+              <div className="bg-[#FAF8F5] p-3 rounded-xl border border-[#EAE4D7] text-xs text-[#7D715E] space-y-1">
+                <div>• <strong className="text-[#1A1612]">KOL:</strong> {selectedLinkToBlock.collaborator?.fullName}</div>
+                <div>• <strong className="text-[#1A1612]">Sản phẩm:</strong> {selectedLinkToBlock.product?.title}</div>
+                <div>• <strong className="text-[#1A1612]">Mã link:</strong> {selectedLinkToBlock.shortCode}</div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-[#1A1612] uppercase tracking-wider mb-1">
                   Lý do khóa link (Bắt buộc, tối thiểu 5 ký tự) *
                 </label>
                 <textarea
@@ -359,9 +358,9 @@ export default function StoreReferralLinksPage() {
                   placeholder="Ví dụ: Quảng cáo sai thông tin cam kết của Shop, nội dung spam tiêu cực..."
                   value={blockReason}
                   onChange={(e) => setBlockReason(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:border-rose-500 focus:ring-2 focus:ring-rose-100 outline-none"
+                  className="w-full p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] focus:border-rose-500 focus:bg-white focus:ring-2 focus:ring-rose-100 outline-none"
                 />
-                <div className="text-[11px] text-slate-400 mt-1">
+                <div className="text-[11px] text-[#7D715E] mt-1">
                   Lý do này sẽ được ghi nhận vào Audit Log và hiển thị cho KOL trong trang quản lý.
                 </div>
               </div>
@@ -370,14 +369,14 @@ export default function StoreReferralLinksPage() {
                 <button
                   type="button"
                   onClick={() => setIsBlockModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-[#7D715E] hover:bg-[#F3EFE6] rounded-xl cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingBlock || blockReason.trim().length < 5}
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow"
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                 >
                   {isSubmittingBlock ? 'Đang xử lý...' : 'Xác nhận khóa link'}
                 </button>

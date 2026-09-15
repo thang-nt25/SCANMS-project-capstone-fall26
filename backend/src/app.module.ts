@@ -25,6 +25,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { CommissionsModule } from './modules/commissions/commissions.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
+import { WalletsModule } from './modules/wallets/wallets.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
@@ -78,6 +79,7 @@ import { validateEnv } from './core/config/env.validation';
     CommissionsModule,
     PayoutsModule,
     CouponsModule,
+    WalletsModule,
     // Quy's modules
     ChatModule,
     SamplesModule,

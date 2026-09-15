@@ -4,13 +4,6 @@ import HomePage from './HomePage';
 import ShopDashboardPage from './merchant/ShopDashboardPage';
 import KycApprovalPage from './merchant/KycApprovalPage';
 
-/**
- * Điều hướng thông minh theo Vai Trò (RBAC):
- * - COLLABORATOR (KOL/CTV) -> HomePage (Tổng quan KOL)
- * - SHOP_MANAGER (Chủ Shop) -> ShopDashboardPage (Tổng quan Sora Skin)
- * - SYSTEM_ADMIN / SYSTEM_MANAGER (Admin Sàn) -> KycApprovalPage / Admin Dashboard
- * - Khách chưa đăng nhập -> chuyển hướng về /login
- */
 export default function DashboardDispatcher() {
   const user = authService.getCurrentUser();
 

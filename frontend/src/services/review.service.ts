@@ -1,7 +1,7 @@
 import api from "./api";
 import axios from "axios";
 
-// Guest reviews use the order proof, not the portal's demo auto-login/role switching.
+
 const reviewApi = axios.create({
   baseURL: api.defaults.baseURL,
   timeout: 10000,

@@ -62,7 +62,6 @@ export default function KolTierStatusPage() {
         </div>
       )}
 
-      {/* 1. HEADER */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">
@@ -84,7 +83,6 @@ export default function KolTierStatusPage() {
         </Button>
       </header>
 
-      {/* 2. LEADERBOARD PODIUM TOP 1-2-3 (from 07_Bang_Vinh_Danh_Leaderboard.png) */}
       <Card className="p-6 bg-white border border-[#EAE4D7]">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2.5">
@@ -103,9 +101,8 @@ export default function KolTierStatusPage() {
           </span>
         </div>
 
-        {/* Podium cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          {/* Top 2: Silver */}
+
           <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col items-center text-center gap-3 order-2 md:order-1">
             <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
               🥈 HẠNG 2
@@ -123,7 +120,6 @@ export default function KolTierStatusPage() {
             </div>
           </div>
 
-          {/* Top 1: Gold / Center Podium */}
           <div className="bg-[#FBF5EB] border-2 border-[#B88E4F] rounded-2xl p-6 flex flex-col items-center text-center gap-3 relative order-1 md:order-2 shadow-sm scale-105">
             <div className="absolute -top-3.5 px-3 py-0.5 rounded-full bg-[#B88E4F] text-white text-xs font-black flex items-center gap-1 shadow-xs">
               <Crown className="w-3.5 h-3.5" /> QUÁN QUÂN
@@ -142,7 +138,6 @@ export default function KolTierStatusPage() {
             </div>
           </div>
 
-          {/* Top 3: Bronze */}
           <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col items-center text-center gap-3 order-3">
             <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
               🥉 HẠNG 3
@@ -162,7 +157,6 @@ export default function KolTierStatusPage() {
         </div>
       </Card>
 
-      {/* 3. CURRENT TIER HERO CARD */}
       <div className="relative overflow-hidden rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] p-6 sm:p-7 shadow-2xs">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
           <div>
@@ -193,7 +187,6 @@ export default function KolTierStatusPage() {
           </div>
         </div>
 
-        {/* PROGRESS TOWARDS NEXT TIER */}
         <div className="mt-6 pt-5 border-t border-[#EEDFC6]/80">
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs sm:text-sm font-bold text-[#1A1612]">
@@ -215,7 +208,6 @@ export default function KolTierStatusPage() {
         </div>
       </div>
 
-      {/* 4. TIERS MATRIX TABLE */}
       <Card className="p-0 bg-white border border-[#EAE4D7] overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-[#EAE4D7]">
           <h3 className="text-base font-extrabold text-[#1A1612] m-0">

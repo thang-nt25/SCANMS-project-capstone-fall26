@@ -45,7 +45,7 @@ export function SendVipCampaignModal({
       const res: any = await api.get('/campaigns/shop');
       const data = res?.data || res || [];
       const list = Array.isArray(data) ? data : [];
-      // Lọc các chiến dịch đang active và chưa hết hạn
+
       const now = new Date();
       const activeList = list.filter((c: Campaign) => {
         const end = new Date(c.endDate);
@@ -99,7 +99,7 @@ export function SendVipCampaignModal({
         className="bg-white rounded-3xl shadow-2xl border border-amber-200/80 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
-        {/* Modal Header */}
+
         <div className="relative px-6 py-5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 text-white flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shadow-inner border border-white/30">
@@ -128,7 +128,7 @@ export function SendVipCampaignModal({
           </button>
         </div>
 
-        {/* Modal Body */}
+
         <div className="p-6 overflow-y-auto space-y-5 flex-1 bg-stone-50/50">
           {error && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-center gap-2.5">
@@ -156,7 +156,7 @@ export function SendVipCampaignModal({
             </div>
           ) : (
             <>
-              {/* Chọn Chiến Dịch */}
+
               <div className="space-y-2.5">
                 <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
                   1. Chọn chiến dịch gửi mời <span className="text-rose-500">*</span>
@@ -209,7 +209,7 @@ export function SendVipCampaignModal({
                 </div>
               </div>
 
-              {/* Lời nhắn riêng */}
+
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
                   2. Lời nhắn riêng gửi kèm (Tùy chọn)
@@ -223,7 +223,7 @@ export function SendVipCampaignModal({
                 />
               </div>
 
-              {/* Xem trước Thẻ Mời */}
+
               {selectedCampaign && (
                 <div className="p-3.5 bg-gradient-to-br from-amber-100/70 via-orange-50/80 to-amber-50 border border-amber-300/80 rounded-2xl shadow-xs space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-amber-900">
@@ -252,7 +252,7 @@ export function SendVipCampaignModal({
           )}
         </div>
 
-        {/* Modal Footer */}
+
         <div className="px-6 py-4 bg-white border-t border-stone-200 flex items-center justify-end gap-3 shadow-inner">
           <button
             type="button"

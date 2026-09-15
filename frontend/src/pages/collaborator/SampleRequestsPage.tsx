@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import api from '../../services/api';
 import type { SampleRequest, SampleRequestStatus } from '../../types/samples';
 
-// ─── Helpers ────────────────────────────────────────────────────────────
+
 const STATUS_LABEL: Record<SampleRequestStatus, string> = {
   PENDING: 'Chờ duyệt',
   APPROVED: 'Đã duyệt',
@@ -29,7 +29,7 @@ function formatDate(d: string) {
   return format(new Date(d), 'dd/MM/yyyy HH:mm');
 }
 
-// ─── KOL: Form xin mẫu ──────────────────────────────────────────────────
+
 function RequestModal({
   onClose,
   onSuccess,
@@ -61,8 +61,8 @@ function RequestModal({
           ? res.items
           : [];
         setProducts(list);
-        if (list.length > 0 && !productId) {
-          setProductId(list[0].id);
+        if (list.length > 0) {
+          setProductId((prev) => prev || list[0].id);
         }
       })
       .catch(console.error)
@@ -219,7 +219,7 @@ function RequestModal({
   );
 }
 
-// ─── KOL Page ────────────────────────────────────────────────────────────
+
 export default function SampleRequestsPage() {
   const [requests, setRequests] = useState<SampleRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -259,7 +259,7 @@ export default function SampleRequestsPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6" id="kol-sample-requests-page">
-      {/* Header */}
+
       <div className="flex items-start sm:items-center justify-between gap-4 flex-wrap pb-2 border-b border-[#EAE4D7]">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] flex items-center gap-2.5">
@@ -279,7 +279,7 @@ export default function SampleRequestsPage() {
         </button>
       </div>
 
-      {/* Filter tabs */}
+
       <div className="flex items-center gap-2 overflow-x-auto pb-1" role="tablist">
         {(['ALL', 'PENDING', 'APPROVED', 'SHIPPED', 'REJECTED'] as const).map((s) => (
           <button
@@ -307,7 +307,7 @@ export default function SampleRequestsPage() {
         ))}
       </div>
 
-      {/* Content */}
+
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-3 p-20 text-[#7D715E]">
           <div className="w-8 h-8 border-3 border-[#C59B58]/20 border-t-[#C59B58] rounded-full animate-spin" />
@@ -329,7 +329,7 @@ export default function SampleRequestsPage() {
               className="bg-white border border-[#EAE4D7] rounded-2xl p-5 shadow-xs hover:border-[#EEDFC6] transition space-y-4"
               id={`request-${req.id}`}
             >
-              {/* Product info */}
+
               <div className="flex items-start justify-between gap-4 flex-wrap pb-3 border-b border-[#EAE4D7]">
                 <div className="flex items-center gap-3 min-w-0">
                   {req.product.imageUrl ? (
@@ -363,7 +363,7 @@ export default function SampleRequestsPage() {
                 </div>
               </div>
 
-              {/* Details */}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                 <div>
                   <span className="text-[#7D715E] font-semibold block mb-0.5">📍 Địa chỉ nhận mẫu:</span>
@@ -375,7 +375,7 @@ export default function SampleRequestsPage() {
                 </div>
               </div>
 
-              {/* Tracking number */}
+
               {req.trackingNumber && (
                 <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between gap-3 flex-wrap text-xs">
                   <div className="flex items-center gap-2">
@@ -397,7 +397,7 @@ export default function SampleRequestsPage() {
                 </div>
               )}
 
-              {/* Status timeline */}
+
               <div className="pt-2 border-t border-[#EAE4D7] flex items-center justify-between max-w-sm">
                 {(['PENDING', 'APPROVED', 'SHIPPED'] as SampleRequestStatus[]).map((s, i) => {
                   const idx = ['PENDING', 'APPROVED', 'SHIPPED'].indexOf(req.status);
