@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { toast } from 'sonner';
 import {
   MessageSquare,
   Plus,
@@ -30,33 +31,56 @@ function removeAccents(str: string): string {
     .replace(/[đĐ]/g, 'd');
 }
 
+const ACCENTED_STRICT_PATTERNS = [
+  'đụ', 'chó', 'lồn', 'cặc', 'buồi', 'sủa', 'đĩ', 'phò', 'dái', 'đéo', 'đell', 'cút', 'địt', 'chịch', 'xoạc'
+];
+
 const BAD_WORDS: string[] = [
   // Viết tắt / Acronyms / Teencode chửi thề
-  'dm', 'dcm', 'dkm', 'cmm', 'clm', 'vcl', 'vcc', 'vkl', 'vl', 'ccl', 'clgt', 'dmm', 'đmm', 'đcm', 'đm', 'đkm', 'cc', 'cl', 'cđmm', 'cdmm',
-  
+  'dm', 'dcm', 'dkm', 'cmm', 'clm', 'vcl', 'vcc', 'vkl', 'vl', 'ccl', 'clgt', 'dmm', 'đmm', 'đcm', 'đm', 'đkm', 'cl', 'cđmm', 'cdmm', 'vc', 'vch', 'vclol', 'vck', 'vca', 'vlon', 'vclz', 'vloz', 'vklz',
+
   // Các biến thể của Vãi ...
-  'vai lon', 'vai loz', 'vai lozz', 'vai l', 'vai lz', 'vai cut', 'vai ca lon', 'vai ca loz', 'vai buoi', 'vai dai', 'vai lol', 'vai chuong', 'vai ca chuong', 'vai hang',
+  'vai lon', 'vai loz', 'vai lozz', 'vai l', 'vai lz', 'vai cut', 'vai ca lon', 'vai ca loz', 'vai buoi', 'vai dai', 'vai lol', 'vai chuong', 'vai ca chuong', 'vai hang', 'vai ca hang',
 
   // Đéo / Dell
   'deo', 'dell', 'deoo', 'delll',
 
-  // Lol / Lz / Loz / Lồn
-  'lol', 'lolz', 'lozl', 'loll', 'loz', 'lz', 'lon', 'cai lon', 'con lon', 'do lon', 'ham lon', 'lon me', 'lon ma', 'thang lon',
+  // Lol / Lz / Loz / Lồn ghép
+  'lol', 'lolz', 'lozl', 'loll', 'loz', 'lz', 'cái lồn', 'con lồn', 'đồ lồn', 'hãm lồn', 'lồn mẹ', 'lồn má', 'thằng lồn', 'mặt lồn',
+  'cai lon', 'con lon', 'do lon', 'ham lon', 'lon me', 'lon ma', 'thang lon', 'mat lon',
 
-  // Buồi / Cặc / Chim / Cu
-  'cac', 'cak', 'cack', 'buoi', 'dau buoi', 'dau cac', 'dam tac', 'cu to', 'chim to', 'cuc cut',
+  // Buồi / Cặc / Chim / Cu / Dái ghép
+  'cak', 'cack', 'dau buoi', 'đầu buồi', 'dau cac', 'đầu cặc', 'củ cặc', 'cu cac', 'dam tac', 'cu to', 'chim to', 'cuc cut', 'cục cứt', 'hòn dái', 'hon dai', 'bú cu', 'bu cu',
 
-  // Cụm từ chửi thề: Đụ / Địt
-  'du', 'dume', 'duma', 'du me', 'du ma', 'du cha', 'du ba', 'du con me', 'du me may', 'du me m', 'du me no',
+  // Cụm từ chửi thề: Đụ / Địt / Chịch / Xoạc
+  'đụ má', 'đụ mẹ', 'đụ cha', 'đụ bà', 'đụ con mẹ', 'đụ mẹ mày', 'đụ mẹ m',
+  'dume', 'duma', 'du me', 'du ma', 'du cha', 'du ba', 'du con me', 'du me may', 'du me m', 'du me no',
+  'địt mẹ', 'địt má', 'địt cụ', 'địt con mẹ', 'địt mẹ mày', 'địt mẹ m', 'địt nhau', 'địt bà mày',
   'dit', 'ditme', 'dit me', 'dit ma', 'dit ba', 'dit con me', 'dit cu', 'dit me may', 'dit me m', 'dit nhau', 'dit ba may',
+  'phang', 'dam dang',
 
-  // Cụm từ xúc phạm: Mẹ / Bố / Con mẹ / Tiên sư / Cút
+  // Súc sinh / Súc vật / Sủa / Chó
+  'suc sinh', 'súc sinh', 'suc vat', 'súc vật', 'sua bay', 'sủa bậy', 'sua can', 'sủa càn',
+  'con chó', 'thằng chó', 'đồ chó', 'chó đẻ', 'chó chết', 'chó điên', 'chó ngu', 'chó má',
+  'cho de', 'cho chet', 'cho ngu', 'cho dien', 'cho ma', 'con cho', 'thang cho', 'do cho',
+  'oc cho', 'óc chó', 'oc bo', 'óc bò', 'do ngu', 'đồ ngu', 'ngu si', 'ngu dan', 'ngu đần', 'ngu hoc', 'ngu học', 'ngu nhu cho', 'ngu như chó', 'ngu nhu bo', 'ngu như bò', 'ngu nhu heo', 'ngu như heo',
+  'do lon', 'đồ lợn', 'do heo', 'đồ heo', 'do bo', 'đồ bò',
+
+  // Khùng / Điên / Hãm
+  'thang khung', 'thằng khùng', 'con khung', 'con khùng', 'do khung', 'đồ khùng',
+  'thang dien', 'thằng điên', 'con dien', 'con điên', 'do dien', 'đồ điên',
+  'do ham', 'đồ hãm',
+
+  // Gái mại dâm / Sỉ nhục phụ nữ
+  'con di', 'con đĩ', 'di tho', 'đĩ thõa', 'di diem', 'đĩ điếm', 'cave', 'gai goi', 'gái gọi', 'gai bao', 'gái bao', 'lam di', 'làm đĩ', 'con pho', 'con phò',
+
+  // Cụm từ xúc phạm: Mẹ / Bố / Con mẹ / Tiên sư / Cút / Biến
   'con me m', 'con me may', 'con me no', 'con me', 'me may', 'me m', 'me no', 'me cha', 'me kiep',
-  'bo may', 'bo m', 'to cha', 'to su', 'tien su', 'to me', 'tien me', 'mat day', 'mat nap', 'chet me', 'chet tiet', 'chet cha', 'chet ba',
-  'cut di', 'cut me di', 'cut', 'bien di', 'bien me di', 'khon nan', 'do khon', 'vo hoc', 'do hen', 'do ban',
-
-  // Lăng mạ, sỉ nhục
-  'cho de', 'cho chet', 'cho ngu', 'cho dien', 'cho ma', 'oc cho', 'suc vat', 'do ngu', 'do cho', 'thang cho', 'con cho', 'thang khung', 'con khung', 'con di', 'di tho', 'cave', 'gai goi', 'gai bao', 'lam di',
+  'mẹ mày', 'mẹ m', 'mẹ nó', 'mẹ kiếp', 'mẹ cha',
+  'bo may', 'bo m', 'bố mày', 'bố m', 'to cha', 'tổ cha', 'to su', 'tổ sư', 'tien su', 'tiên sư', 'to me', 'tổ mẹ', 'tien me', 'tiên mẹ',
+  'mat day', 'mất dạy', 'mat net', 'mất nết', 'chet me', 'chết mẹ', 'chet tiet', 'chết tiệt', 'chet cha', 'chết cha', 'chet ba', 'chết bà',
+  'cut di', 'cút đi', 'cut me di', 'cút mẹ đi', 'bien di', 'biến đi', 'bien me di', 'biến mẹ đi',
+  'khon nan', 'khốn nạn', 'do khon', 'đồ khốn', 'vo hoc', 'vô học', 'do hen', 'đồ hèn', 'do ban', 'đồ bẩn', 'hen ha', 'hèn hạ',
 
   // Tiếng Anh
   'fuck', 'fucking', 'fucker', 'fck', 'shit', 'bullshit', 'bitch', 'btch', 'asshole', 'bastard', 'dick', 'pussy', 'cunt', 'slut', 'whore', 'motherfucker'
@@ -71,13 +95,11 @@ const BANK_FRAUD_KEYWORDS = [
 
 function isBankAccountOrFraudText(text: string): boolean {
   if (!text) return false;
-  // Cho phép campaign JSON card
   if (text.startsWith('{') && text.includes('CAMPAIGN_')) return false;
 
-  const raw = text.toLowerCase();
+  const raw = text.toLowerCase().trim();
   const unaccented = removeAccents(raw).replace(/\s+/g, ' ').trim();
 
-  // Dãy số tài khoản liên tiếp 8-18 số hoặc phân cách bởi dấu chấm/khoảng trắng
   const bankNumberRegex = /\b\d{8,18}\b/;
   const separatedBankNumberRegex = /\b\d{3,6}[\s.-]\d{3,6}[\s.-]\d{3,6}([\s.-]\d{3,6})?\b/;
 
@@ -96,10 +118,9 @@ function isBankAccountOrFraudText(text: string): boolean {
 
 function isProfaneText(text: string): boolean {
   if (!text) return false;
-  // Cho phép campaign JSON card
   if (text.startsWith('{') && text.includes('CAMPAIGN_')) return false;
 
-  const raw = text.toLowerCase();
+  const raw = text.toLowerCase().trim();
   const unaccented = removeAccents(raw)
     .replace(/[@]/g, 'a')
     .replace(/[0]/g, 'o')
@@ -107,13 +128,40 @@ function isProfaneText(text: string): boolean {
     .replace(/[3]/g, 'e')
     .replace(/[$]/g, 's')
     .replace(/[7]/g, 't')
-    .replace(/[._\-*~`+]/g, ' ')
+    .replace(/[._\-*~`+=/\\;,]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
+  // 1. Kiểm tra từ ngữ đặc biệt: "cc" (Ngoại trừ dung tích: 50 cc, 100cc)
+  const ccRegex = /(^|[\s.,!?:;()_\-"'`~@#$%^&*+=[\]{}|\\/<>])cc($|[\s.,!?:;()_\-"'`~@#$%^&*+=[\]{}|\\/<>])/i;
+  if (ccRegex.test(unaccented) || ccRegex.test(raw)) {
+    const isCapacityUnit = /\b\d+\s*cc\b/i.test(raw) || /\b\d+\s*cc\b/i.test(unaccented);
+    if (!isCapacityUnit) {
+      return true;
+    }
+  }
+
+  // 2. Kiểm tra các từ ngữ có dấu bắt buộc (ACCENTED_STRICT_PATTERNS) trực tiếp trên chuỗi gốc
+  for (const aw of ACCENTED_STRICT_PATTERNS) {
+    const escaped = aw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    const regex = new RegExp(`(^|[\\s.,!?:;()_\\-"'\`~@#$%^&*+=\\[\\]{}|\\\\/<>])` + escaped + `($|[\\s.,!?:;()_\\-"'\`~@#$%^&*+=\\[\\]{}|\\\\/<>])`, 'i');
+    if (regex.test(raw)) {
+      return true;
+    }
+  }
+
+  // 3. Kiểm tra danh sách BAD_WORDS
   for (const bw of BAD_WORDS) {
-    const escaped = bw.replace(/\s+/g, '\\s+');
-    const regex = new RegExp('(^|\\s|[.,!?])' + escaped + '($|\\s|[.,!?])', 'i');
+    const cleanBw = bw.trim().toLowerCase();
+    const cleanBwUnaccented = removeAccents(cleanBw);
+
+    if (raw === cleanBw || unaccented === cleanBwUnaccented) {
+      return true;
+    }
+
+    const escaped = cleanBwUnaccented.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    const regex = new RegExp(`(^|[\\s.,!?:;()_\\-"'\`~@#$%^&*+=\\[\\]{}|\\\\/<>])` + escaped + `($|[\\s.,!?:;()_\\-"'\`~@#$%^&*+=\\[\\]{}|\\\\/<>])`, 'i');
+
     if (regex.test(unaccented) || regex.test(raw)) {
       return true;
     }
@@ -469,8 +517,8 @@ function NewConversationModal({
                       {isShop
                         ? item.email
                         : item.owner?.fullName
-                        ? `Chủ: ${item.owner.fullName}`
-                        : item.owner?.email || 'N/A'}
+                          ? `Chủ: ${item.owner.fullName}`
+                          : item.owner?.email || 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -568,6 +616,7 @@ export default function ChatBoxPage() {
 
   const showSuccessToast = (msg: string) => {
     setSuccessMessage(msg);
+    toast.success(msg);
     setTimeout(() => setSuccessMessage(null), 4000);
   };
 
@@ -586,17 +635,17 @@ export default function ChatBoxPage() {
           .map(c =>
             c.id === msg.conversationId
               ? {
-                  ...c,
-                  lastMessageAt: msg.createdAt,
-                  chatMessages: [
-                    {
-                      messageText: msg.messageText,
-                      createdAt: msg.createdAt,
-                      senderId: msg.senderId,
-                      isRead: msg.isRead,
-                    },
-                  ],
-                }
+                ...c,
+                lastMessageAt: msg.createdAt,
+                chatMessages: [
+                  {
+                    messageText: msg.messageText,
+                    createdAt: msg.createdAt,
+                    senderId: msg.senderId,
+                    isRead: msg.isRead,
+                  },
+                ],
+              }
               : c
           )
           .sort(
@@ -788,9 +837,8 @@ export default function ChatBoxPage() {
               <Plus className="w-4 h-4" />
             </button>
             <div
-              className={`w-2.5 h-2.5 rounded-full ${
-                isConnected ? 'bg-emerald-500 shadow-xs ring-2 ring-emerald-200' : 'bg-rose-500'
-              }`}
+              className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 shadow-xs ring-2 ring-emerald-200' : 'bg-rose-500'
+                }`}
               title={isConnected ? 'Đang kết nối Realtime' : 'Mất kết nối'}
             />
           </div>
@@ -835,11 +883,10 @@ export default function ChatBoxPage() {
               <div
                 key={conv.id}
                 id={`conv-item-${conv.id}`}
-                className={`flex items-center gap-3 p-3.5 cursor-pointer transition-all ${
-                  isActive
+                className={`flex items-center gap-3 p-3.5 cursor-pointer transition-all ${isActive
                     ? 'bg-amber-50/90 border-l-4 border-amber-600 text-stone-900'
                     : 'hover:bg-stone-100/70 text-stone-700'
-                }`}
+                  }`}
                 role="listitem"
                 onClick={() => openConversation(conv)}
                 tabIndex={0}
@@ -862,9 +909,8 @@ export default function ChatBoxPage() {
                   </div>
                   <div className="flex items-center justify-between gap-1">
                     <span
-                      className={`text-xs truncate ${
-                        unread ? 'font-bold text-stone-900' : 'text-stone-500'
-                      }`}
+                      className={`text-xs truncate ${unread ? 'font-bold text-stone-900' : 'text-stone-500'
+                        }`}
                     >
                       {lastMsg ? lastMsg.messageText : 'Bắt đầu cuộc trò chuyện...'}
                     </span>
@@ -910,9 +956,8 @@ export default function ChatBoxPage() {
                     ) : (
                       <span className="flex items-center gap-1.5">
                         <span
-                          className={`w-2 h-2 rounded-full ${
-                            isConnected ? 'bg-emerald-500' : 'bg-rose-500'
-                          }`}
+                          className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-rose-500'
+                            }`}
                         />
                         {isConnected ? 'Đang hoạt động' : 'Ngoại tuyến'}
                       </span>
@@ -968,7 +1013,7 @@ export default function ChatBoxPage() {
                 const showDate =
                   idx === 0 ||
                   new Date(messages[idx - 1].createdAt).toDateString() !==
-                    new Date(msg.createdAt).toDateString();
+                  new Date(msg.createdAt).toDateString();
 
                 return (
                   <div key={msg.id} className="space-y-2">
@@ -978,8 +1023,8 @@ export default function ChatBoxPage() {
                           {isToday(new Date(msg.createdAt))
                             ? 'Hôm nay'
                             : isYesterday(new Date(msg.createdAt))
-                            ? 'Hôm qua'
-                            : format(new Date(msg.createdAt), 'dd/MM/yyyy', { locale: vi })}
+                              ? 'Hôm qua'
+                              : format(new Date(msg.createdAt), 'dd/MM/yyyy', { locale: vi })}
                         </span>
                       </div>
                     )}
@@ -1006,11 +1051,10 @@ export default function ChatBoxPage() {
 
                           return (
                             <div
-                              className={`p-3.5 text-sm shadow-xs ${
-                                isMine
+                              className={`p-3.5 text-sm shadow-xs ${isMine
                                   ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-white rounded-2xl rounded-tr-xs'
                                   : 'bg-white text-stone-900 border border-stone-200/80 rounded-2xl rounded-tl-xs'
-                              }`}
+                                }`}
                             >
                               {msg.mediaUrl && (
                                 <img
@@ -1026,9 +1070,8 @@ export default function ChatBoxPage() {
                         })()}
 
                         <div
-                          className={`flex items-center gap-1 text-[10px] text-stone-400 px-1 ${
-                            isMine ? 'justify-end' : 'justify-start'
-                          }`}
+                          className={`flex items-center gap-1 text-[10px] text-stone-400 px-1 ${isMine ? 'justify-end' : 'justify-start'
+                            }`}
                         >
                           <span>{formatMsgTime(msg.createdAt)}</span>
                           {isMine && (
@@ -1105,11 +1148,10 @@ export default function ChatBoxPage() {
               />
               <button
                 id="chat-send-btn"
-                className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${
-                  inputText.trim() && !isSending
+                className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${inputText.trim() && !isSending
                     ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
                     : 'bg-stone-100 text-stone-300 cursor-not-allowed'
-                }`}
+                  }`}
                 onClick={sendMessage}
                 disabled={!inputText.trim() || isSending}
                 title="Gửi tin nhắn"
