@@ -51,7 +51,7 @@
           SCANMS UI/UX Prototype Hub
         </h1>
         <p class="text-xs text-slate-400 font-medium">
-          Phân Hệ Nghiệp Vụ: FR-25 • FR-26 • FR-27 • FR-28 (Tác giả: Nguyễn Phú Quý — NGUYENPHUQUY)
+          Phân Hệ Nghiệp Vụ: FR-25 • FR-26 • FR-27 • FR-28 • FR-29 (Tác giả: Nguyễn Phú Quý — NGUYENPHUQUY)
         </p>
       </div>
     </div>
@@ -69,6 +69,9 @@
       </button>
       <button onclick="switchScreen('fr28')" id="tab-fr28" class="nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800">
         📊 FR-28: Dashboard Realtime
+      </button>
+      <button onclick="switchScreen('fr29')" id="tab-fr29" class="nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800">
+        🏆 FR-29: Bảng Vinh Danh
       </button>
     </nav>
   </header>
@@ -652,7 +655,299 @@
       </div>
     </section>
 
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- SCREEN 5: FR-29 GAMIFIED LEADERBOARD & HALL OF FAME PODIUM -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <section id="screen-fr29" class="space-y-8 hidden">
+      <!-- Header -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-2">
+            Module FR-29 • Gamification Hall of Fame
+          </span>
+          <h2 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <span>Bảng Vinh Danh Top 10 KOLs Xuất Sắc</span>
+            <span class="text-amber-400 text-2xl">🏆</span>
+          </h2>
+          <p class="text-sm text-slate-400 mt-1">Vinh danh các nhà sáng tạo bùng nổ doanh thu GMV, trao giải thưởng nóng và danh hiệu Quán Quân chu kỳ Tháng 9/2026.</p>
+        </div>
+
+        <!-- Metric Filters -->
+        <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl">
+          <button class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow-md">💰 Doanh Thu</button>
+          <button class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white">📦 Đơn Hàng</button>
+          <button class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white">📈 Tỷ Lệ CR%</button>
+          <button class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white">💎 Hoa Hồng</button>
+        </div>
+      </div>
+
+      <!-- Podium Top 3 Showcase -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-8 pb-4">
+        <!-- Rank 2: Silver (Á Quân 1) -->
+        <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/80 rounded-3xl p-6 text-center space-y-4 shadow-xl relative order-2 md:order-1 hover:scale-105 transition-transform">
+          <div class="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-2xl bg-slate-800 border-2 border-slate-400 flex items-center justify-center text-xl shadow-lg">
+            🥈
+          </div>
+          <div class="pt-4">
+            <span class="px-3 py-1 bg-slate-800 text-slate-300 border border-slate-600 rounded-full text-xs font-bold">Á QUÂN 1 (TOP 2)</span>
+          </div>
+          <div class="w-20 h-20 mx-auto rounded-full bg-slate-800 border-2 border-slate-400 flex items-center justify-center text-3xl overflow-hidden shadow-inner">
+            👩‍💼
+          </div>
+          <div>
+            <h4 class="font-bold text-lg text-white">Lê Thuỳ Linh</h4>
+            <p class="text-xs text-slate-400">@thuylinh.beauty • Platinum</p>
+          </div>
+          <div class="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-1">
+            <span class="text-xs text-slate-400">Doanh thu GMV</span>
+            <p class="text-xl font-extrabold text-slate-200">188.450.000 ₫</p>
+            <p class="text-xs text-slate-400">342 đơn hàng • CR 6.8%</p>
+          </div>
+          <div class="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+            <span class="text-xs font-bold text-emerald-400">🎁 Thưởng nóng: +2.500.000 ₫</span>
+          </div>
+          <button onclick="openCreatorModal('Lê Thuỳ Linh', '@thuylinh.beauty', '188.450.000 ₫', '342 đơn', '6.8%')" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors">
+            Xem Hồ Sơ Vinh Danh
+          </button>
+        </div>
+
+        <!-- Rank 1: Gold Champion (Quán Quân) -->
+        <div class="bg-gradient-to-b from-amber-950/40 via-slate-900 to-slate-950 border-2 border-amber-500 rounded-3xl p-7 text-center space-y-5 shadow-2xl relative order-1 md:order-2 gold-glow hover:scale-105 transition-transform">
+          <div class="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 border-2 border-yellow-200 flex items-center justify-center text-3xl shadow-xl shadow-amber-500/40">
+            👑
+          </div>
+          <div class="pt-6">
+            <span class="px-4 py-1.5 bg-amber-500 text-slate-950 rounded-full text-xs font-extrabold tracking-wide uppercase shadow-md shadow-amber-500/30">
+              QUÁN QUÂN TOÀN SÀN
+            </span>
+          </div>
+          <div class="w-24 h-24 mx-auto rounded-full bg-slate-800 border-4 border-amber-400 flex items-center justify-center text-4xl overflow-hidden shadow-2xl">
+            🌟
+          </div>
+          <div>
+            <h4 class="font-extrabold text-2xl text-white">Nguyễn Minh Châu</h4>
+            <p class="text-xs text-amber-300 font-semibold mt-0.5">@chau.lifestyle • Diamond Tier</p>
+          </div>
+          <div class="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/30 space-y-1">
+            <span class="text-xs text-amber-200">Doanh thu GMV Tháng 9</span>
+            <p class="text-2xl font-black text-amber-400">324.890.000 ₫</p>
+            <p class="text-xs text-slate-300">589 đơn hàng • CR 8.4%</p>
+          </div>
+          <div class="p-3 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-400/40 rounded-xl">
+            <span class="text-sm font-extrabold text-amber-300">🎉 Thưởng nóng: +5.000.000 ₫ + Cúp Vàng</span>
+          </div>
+          <button onclick="openCreatorModal('Nguyễn Minh Châu', '@chau.lifestyle', '324.890.000 ₫', '589 đơn', '8.4%')" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 text-xs font-extrabold rounded-xl shadow-md transition-all">
+            Xem Hồ Sơ Quán Quân
+          </button>
+        </div>
+
+        <!-- Rank 3: Bronze (Á Quân 2) -->
+        <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-amber-800/60 rounded-3xl p-6 text-center space-y-4 shadow-xl relative order-3 md:order-3 hover:scale-105 transition-transform">
+          <div class="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-2xl bg-amber-950 border-2 border-amber-700 flex items-center justify-center text-xl shadow-lg">
+            🥉
+          </div>
+          <div class="pt-4">
+            <span class="px-3 py-1 bg-amber-950/80 text-amber-300 border border-amber-700/60 rounded-full text-xs font-bold">Á QUÂN 2 (TOP 3)</span>
+          </div>
+          <div class="w-20 h-20 mx-auto rounded-full bg-slate-800 border-2 border-amber-700 flex items-center justify-center text-3xl overflow-hidden shadow-inner">
+            🧑‍💻
+          </div>
+          <div>
+            <h4 class="font-bold text-lg text-white">Hoàng Nam</h4>
+            <p class="text-xs text-slate-400">@nam.techreview • Gold</p>
+          </div>
+          <div class="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-1">
+            <span class="text-xs text-slate-400">Doanh thu GMV</span>
+            <p class="text-xl font-extrabold text-amber-300">142.120.000 ₫</p>
+            <p class="text-xs text-slate-400">276 đơn hàng • CR 5.9%</p>
+          </div>
+          <div class="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+            <span class="text-xs font-bold text-emerald-400">🎁 Thưởng nóng: +1.000.000 ₫</span>
+          </div>
+          <button onclick="openCreatorModal('Hoàng Nam', '@nam.techreview', '142.120.000 ₫', '276 đơn', '5.9%')" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors">
+            Xem Hồ Sơ Vinh Danh
+          </button>
+        </div>
+      </div>
+
+      <!-- Top 4 - 10 Ranking Table -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+          <h3 class="font-bold text-white text-base flex items-center gap-2">
+            <span>Danh Sách Top 4 - Top 10 Chiến Binh Xuất Sắc</span>
+            <span class="px-2 py-0.5 bg-brand-500/10 text-brand-400 text-xs rounded-md">Realtime Sync</span>
+          </h3>
+          <span class="text-xs text-slate-400">Cập nhật lúc: Vừa xong</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="py-3.5 px-4 text-center">Thứ Hạng</th>
+                <th class="py-3.5 px-4">Nhà Sáng Tạo (KOL/KOC)</th>
+                <th class="py-3.5 px-4 text-right">Doanh Thu GMV</th>
+                <th class="py-3.5 px-4 text-center">Đơn Hàng</th>
+                <th class="py-3.5 px-4 text-center">Tỷ Lệ CR%</th>
+                <th class="py-3.5 px-4 text-right">Hoa Hồng</th>
+                <th class="py-3.5 px-4 text-center">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800 text-slate-300">
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-3.5 px-4 text-center">
+                  <div class="inline-flex items-center gap-1">
+                    <span class="font-bold text-white text-sm">#4</span>
+                    <span class="text-emerald-400 text-[10px] font-bold">↑ +2</span>
+                  </div>
+                </td>
+                <td class="py-3.5 px-4">
+                  <div class="flex items-center space-x-3">
+                    <span class="text-xl">👩‍🦰</span>
+                    <div>
+                      <p class="font-bold text-white">Trần Bảo Ngọc</p>
+                      <span class="text-[11px] text-slate-400">@baongoc.vlog • Gold Tier</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-3.5 px-4 text-right font-bold text-amber-400">118.320.000 ₫</td>
+                <td class="py-3.5 px-4 text-center font-semibold">215 đơn</td>
+                <td class="py-3.5 px-4 text-center font-semibold text-emerald-400">5.4%</td>
+                <td class="py-3.5 px-4 text-right font-semibold text-slate-200">17.748.000 ₫</td>
+                <td class="py-3.5 px-4 text-center">
+                  <button onclick="openCreatorModal('Trần Bảo Ngọc', '@baongoc.vlog', '118.320.000 ₫', '215 đơn', '5.4%')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">Chi Tiết</button>
+                </td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-3.5 px-4 text-center">
+                  <div class="inline-flex items-center gap-1">
+                    <span class="font-bold text-white text-sm">#5</span>
+                    <span class="text-slate-500 text-[10px] font-bold">-</span>
+                  </div>
+                </td>
+                <td class="py-3.5 px-4">
+                  <div class="flex items-center space-x-3">
+                    <span class="text-xl">🧑‍🦱</span>
+                    <div>
+                      <p class="font-bold text-white">Vũ Đức Trọng</p>
+                      <span class="text-[11px] text-slate-400">@trong.unboxing • Silver Tier</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-3.5 px-4 text-right font-bold text-amber-400">96.750.000 ₫</td>
+                <td class="py-3.5 px-4 text-center font-semibold">184 đơn</td>
+                <td class="py-3.5 px-4 text-center font-semibold text-emerald-400">4.9%</td>
+                <td class="py-3.5 px-4 text-right font-semibold text-slate-200">14.512.500 ₫</td>
+                <td class="py-3.5 px-4 text-center">
+                  <button onclick="openCreatorModal('Vũ Đức Trọng', '@trong.unboxing', '96.750.000 ₫', '184 đơn', '4.9%')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">Chi Tiết</button>
+                </td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="py-3.5 px-4 text-center">
+                  <div class="inline-flex items-center gap-1">
+                    <span class="font-bold text-white text-sm">#6</span>
+                    <span class="text-rose-400 text-[10px] font-bold">↓ -1</span>
+                  </div>
+                </td>
+                <td class="py-3.5 px-4">
+                  <div class="flex items-center space-x-3">
+                    <span class="text-xl">👩‍🦱</span>
+                    <div>
+                      <p class="font-bold text-white">Đặng Hồng Hạnh</p>
+                      <span class="text-[11px] text-slate-400">@hanh.foodie • Gold Tier</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-3.5 px-4 text-right font-bold text-amber-400">84.200.000 ₫</td>
+                <td class="py-3.5 px-4 text-center font-semibold">162 đơn</td>
+                <td class="py-3.5 px-4 text-center font-semibold text-emerald-400">4.6%</td>
+                <td class="py-3.5 px-4 text-right font-semibold text-slate-200">12.630.000 ₫</td>
+                <td class="py-3.5 px-4 text-center">
+                  <button onclick="openCreatorModal('Đặng Hồng Hạnh', '@hanh.foodie', '84.200.000 ₫', '162 đơn', '4.6%')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">Chi Tiết</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sticky Floating My Rank Card (For Collaborator / KOL) -->
+      <div class="sticky bottom-4 z-30 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-2 border-indigo-500/60 rounded-2xl p-4 shadow-2xl backdrop-blur-md flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-extrabold text-lg shadow-lg">
+            #14
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-white text-sm">Vị Trí Của Bạn: Hạng #14</span>
+              <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold rounded-full">KOL Cá Nhân</span>
+            </div>
+            <p class="text-xs text-slate-300">Doanh thu: <b class="text-amber-400">48.250.000 ₫</b> • 92 đơn hàng • CR 4.1%</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <div class="text-right hidden sm:block">
+            <span class="text-[11px] text-indigo-200">Khoảng cách tới Top 10</span>
+            <p class="text-xs font-bold text-white">Cần thêm +14.500.000 ₫ GMV (28 đơn)</p>
+          </div>
+          <button onclick="alert('Đang mở trang nhiệm vụ đẩy số tăng thứ hạng!')" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs rounded-xl shadow-md hover:scale-105 transition-transform">
+            ⚡ Đẩy Số Lên Top
+          </button>
+        </div>
+      </div>
+    </section>
+
   </main>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: CREATOR HALL OF FAME (FR-29) -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="creator-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl shadow-amber-500/10">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="text-2xl">🌟</span>
+          <h3 class="text-lg font-bold text-white">Hồ Sơ Vinh Danh Creator</h3>
+        </div>
+        <button onclick="closeCreatorModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center space-x-4">
+        <div class="w-16 h-16 rounded-full bg-slate-800 border-2 border-amber-400 flex items-center justify-center text-3xl">
+          👑
+        </div>
+        <div>
+          <h4 id="modal-creator-name" class="font-bold text-base text-white">Nguyễn Minh Châu</h4>
+          <p id="modal-creator-handle" class="text-xs text-amber-300 font-medium">@chau.lifestyle</p>
+          <span class="inline-block mt-1 px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold rounded-full">
+            🏆 Quán Quân Tháng 9/2026
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 text-center text-xs">
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-slate-500 text-[10px]">Doanh Thu GMV</span>
+          <p id="modal-creator-gmv" class="font-bold text-amber-400 mt-0.5">324.890.000 ₫</p>
+        </div>
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-slate-500 text-[10px]">Đơn Hàng</span>
+          <p id="modal-creator-orders" class="font-bold text-slate-200 mt-0.5">589 đơn</p>
+        </div>
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-slate-500 text-[10px]">Tỷ Lệ CR%</span>
+          <p id="modal-creator-cr" class="font-bold text-emerald-400 mt-0.5">8.4%</p>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="closeCreatorModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl">
+          Đóng
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- MODAL: GỬI THẺ MỜI VIP (Send VIP Campaign Modal) -->
@@ -700,6 +995,7 @@
       document.getElementById('screen-fr26').classList.add('hidden');
       document.getElementById('screen-fr27').classList.add('hidden');
       document.getElementById('screen-fr28').classList.add('hidden');
+      document.getElementById('screen-fr29').classList.add('hidden');
 
       document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.className = 'nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800';
@@ -707,6 +1003,21 @@
 
       document.getElementById('screen-' + screenId).classList.remove('hidden');
       document.getElementById('tab-' + screenId).className = 'nav-tab px-4 py-2 rounded-lg text-xs font-semibold transition-all bg-brand-600 text-white shadow-md shadow-brand-600/30';
+    }
+
+    function openCreatorModal(name, handle, gmv, orders, cr) {
+      document.getElementById('modal-creator-name').innerText = name;
+      document.getElementById('modal-creator-handle').innerText = handle;
+      document.getElementById('modal-creator-gmv').innerText = gmv;
+      document.getElementById('modal-creator-orders').innerText = orders;
+      document.getElementById('modal-creator-cr').innerText = cr;
+      document.getElementById('creator-modal').classList.remove('hidden');
+      document.getElementById('creator-modal').classList.add('flex');
+    }
+
+    function closeCreatorModal() {
+      document.getElementById('creator-modal').classList.add('hidden');
+      document.getElementById('creator-modal').classList.remove('flex');
     }
 
     function openVipInviteModal() {
