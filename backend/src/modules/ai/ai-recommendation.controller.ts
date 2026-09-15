@@ -44,6 +44,7 @@ export class AiRecommendationController {
     UserRole.SHOP_MANAGER,
     UserRole.SYSTEM_ADMIN,
     UserRole.SYSTEM_MANAGER,
+    UserRole.COLLABORATOR,
   )
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -68,8 +69,8 @@ export class AiRecommendationController {
   ) {
     return this.aiRecommendationService.getRecommendedKols(
       { ...query, productId },
-      user.id,
-      user.role,
+      user?.id,
+      user?.role,
     );
   }
 
@@ -79,6 +80,7 @@ export class AiRecommendationController {
     UserRole.SHOP_MANAGER,
     UserRole.SYSTEM_ADMIN,
     UserRole.SYSTEM_MANAGER,
+    UserRole.COLLABORATOR,
   )
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -95,8 +97,8 @@ export class AiRecommendationController {
   ) {
     return this.aiRecommendationService.getRecommendedKols(
       query,
-      user.id,
-      user.role,
+      user?.id,
+      user?.role,
     );
   }
 
@@ -106,6 +108,7 @@ export class AiRecommendationController {
     UserRole.SHOP_MANAGER,
     UserRole.SYSTEM_ADMIN,
     UserRole.SYSTEM_MANAGER,
+    UserRole.COLLABORATOR,
   )
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

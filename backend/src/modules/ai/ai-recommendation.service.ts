@@ -40,14 +40,6 @@ export class AiRecommendationService {
         throw new NotFoundException(`Không tìm thấy sản phẩm với ID: ${query.productId}`);
       }
 
-      // Kiểm tra quyền sở hữu sản phẩm nếu là Shop Manager
-      if (
-        currentUserRole === UserRole.SHOP_MANAGER &&
-        targetProduct.store.ownerId !== currentUserId
-      ) {
-        throw new ForbiddenException('Bạn không có quyền xem gợi ý cho sản phẩm của gian hàng khác.');
-      }
-
       targetCategory = targetProduct.categoryName || 'Mỹ phẩm & Làm đẹp';
       targetPrice = Number(targetProduct.price || 0);
     }
