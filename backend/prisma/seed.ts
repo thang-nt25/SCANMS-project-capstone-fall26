@@ -491,31 +491,28 @@ async function main() {
   // ==========================================
   console.log('📦 Đang tạo Đơn hàng mẫu & Tính hoa hồng...');
 
-  const sampleOrder = await prisma.order.upsert({
-    where: {
-      storeId_sourcePlatform_externalOrderSn: {
-        storeId: store.id,
-        sourcePlatform: 'INTERNAL',
-        externalOrderSn: 'ORD-20260909-001',
-      },
-    },
-    update: {},
-    create: {
-      storeId: store.id,
-      externalOrderSn: 'ORD-20260909-001',
-      attributedCollaboratorId: kol1.id,
-      attributionMethod: AttributionMethod.COUPON,
-      customerName: 'Hoàng Minh Tuấn',
-      customerPhone: '0933888999',
-      shippingAddress: 'Tòa Landmark 81, Phường 22, Quận Bình Thạnh, TP.HCM',
-      subtotalAmount: 1290000,
-      discountAmount: 129000,
-      shippingFee: 0,
-      finalAmount: 1161000,
-      status: OrderStatus.COMPLETED,
-      completedAt: new Date('2026-09-09T15:22:48.550Z'),
-    },
+  let sampleOrder = await prisma.order.findFirst({
+    where: { storeId: store.id, externalOrderSn: 'ORD-20260909-001' },
   });
+  if (!sampleOrder) {
+    sampleOrder = await prisma.order.create({
+      data: {
+        storeId: store.id,
+        externalOrderSn: 'ORD-20260909-001',
+        attributedCollaboratorId: kol1.id,
+        attributionMethod: AttributionMethod.COUPON,
+        customerName: 'Hoàng Minh Tuấn',
+        customerPhone: '0933888999',
+        shippingAddress: 'Tòa Landmark 81, Phường 22, Quận Bình Thạnh, TP.HCM',
+        subtotalAmount: 1290000,
+        discountAmount: 129000,
+        shippingFee: 0,
+        finalAmount: 1161000,
+        status: OrderStatus.COMPLETED,
+        completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
 
   const existingOrderItem = await prisma.orderItem.findFirst({
     where: { orderId: sampleOrder.id, productId: product1.id },
@@ -613,34 +610,29 @@ async function main() {
     });
   }
 
-  // Đơn IN23931 (Khách: Nguyễn Hải Yến - 0903 218 456)
-  const protoOrder1 = await prisma.order.upsert({
-    where: {
-      storeId_sourcePlatform_externalOrderSn: {
-        storeId: store.id,
-        sourcePlatform: 'INTERNAL',
-        externalOrderSn: 'IN23931',
-      },
-    },
-    update: {
-      status: OrderStatus.COMPLETED,
-    },
-    create: {
-      storeId: store.id,
-      externalOrderSn: 'IN23931',
-      attributedCollaboratorId: kol1.id,
-      attributionMethod: AttributionMethod.COUPON,
-      customerName: 'Nguyễn Hải Yến',
-      customerPhone: '0903218456',
-      shippingAddress: 'Số 48 Đường số 7, KDC Cityland, Phường 7, Quận Gò Vấp, TP. Hồ Chí Minh',
-      subtotalAmount: 560000,
-      discountAmount: 0,
-      shippingFee: 0,
-      finalAmount: 560000,
-      status: OrderStatus.COMPLETED,
-      completedAt: new Date('2026-09-05T15:45:00Z'),
-    },
+  // Đơn IN23931
+  let protoOrder1 = await prisma.order.findFirst({
+    where: { storeId: store.id, externalOrderSn: 'IN23931' },
   });
+  if (!protoOrder1) {
+    protoOrder1 = await prisma.order.create({
+      data: {
+        storeId: store.id,
+        externalOrderSn: 'IN23931',
+        attributedCollaboratorId: kol1.id,
+        attributionMethod: AttributionMethod.COUPON,
+        customerName: 'Nguyễn Hải Yến',
+        customerPhone: '0903218456',
+        shippingAddress: 'Số 48 Đường số 7, KDC Cityland, Phường 7, Quận Gò Vấp, TP. Hồ Chí Minh',
+        subtotalAmount: 560000,
+        discountAmount: 0,
+        shippingFee: 0,
+        finalAmount: 560000,
+        status: OrderStatus.COMPLETED,
+        completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
 
   const existingProtoItem1 = await prisma.orderItem.findFirst({
     where: { orderId: protoOrder1.id, productId: productBinh.id },
@@ -658,34 +650,29 @@ async function main() {
     });
   }
 
-  // Đơn IN23712 (Khách: Nguyễn Hải Yến - Bình giữ nhiệt 500ml)
-  const protoOrder2 = await prisma.order.upsert({
-    where: {
-      storeId_sourcePlatform_externalOrderSn: {
-        storeId: store.id,
-        sourcePlatform: 'INTERNAL',
-        externalOrderSn: 'IN23712',
-      },
-    },
-    update: {
-      status: OrderStatus.COMPLETED,
-    },
-    create: {
-      storeId: store.id,
-      externalOrderSn: 'IN23712',
-      attributedCollaboratorId: kol1.id,
-      attributionMethod: AttributionMethod.COUPON,
-      customerName: 'Nguyễn Hải Yến',
-      customerPhone: '0903218456',
-      shippingAddress: 'Số 48 Đường số 7, KDC Cityland, Phường 7, Quận Gò Vấp, TP. Hồ Chí Minh',
-      subtotalAmount: 560000,
-      discountAmount: 30000,
-      shippingFee: 25000,
-      finalAmount: 555000,
-      status: OrderStatus.COMPLETED,
-      completedAt: new Date('2026-08-17T11:15:00Z'),
-    },
+  // Đơn IN23712
+  let protoOrder2 = await prisma.order.findFirst({
+    where: { storeId: store.id, externalOrderSn: 'IN23712' },
   });
+  if (!protoOrder2) {
+    protoOrder2 = await prisma.order.create({
+      data: {
+        storeId: store.id,
+        externalOrderSn: 'IN23712',
+        attributedCollaboratorId: kol1.id,
+        attributionMethod: AttributionMethod.COUPON,
+        customerName: 'Nguyễn Hải Yến',
+        customerPhone: '0903218456',
+        shippingAddress: 'Số 48 Đường số 7, KDC Cityland, Phường 7, Quận Gò Vấp, TP. Hồ Chí Minh',
+        subtotalAmount: 560000,
+        discountAmount: 30000,
+        shippingFee: 25000,
+        finalAmount: 555000,
+        status: OrderStatus.COMPLETED,
+        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
 
   const existingProtoItem2 = await prisma.orderItem.findFirst({
     where: { orderId: protoOrder2.id, productId: productBinh.id },
@@ -759,6 +746,216 @@ async function main() {
         status: 'SHIPPED',
       },
     });
+  }
+
+  // ==========================================
+  // 10. DỮ LIỆU REALTIME ANALYTICS DASHBOARD (FR-28)
+  // ==========================================
+  console.log('📊 Đang tạo Dữ liệu Realtime Analytics Dashboard (FR-28)...');
+
+  // 10.1 Chiến dịch VIP
+  let vipCampaign = await prisma.campaign.findFirst({
+    where: { storeId: store.id, name: 'Siêu Sale Thu Đông - Gala VIP 2026' },
+  });
+  if (!vipCampaign) {
+    vipCampaign = await prisma.campaign.create({
+      data: {
+        storeId: store.id,
+        name: 'Siêu Sale Thu Đông - Gala VIP 2026',
+        bonusCommissionRate: 7.5,
+        startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+        isActive: true,
+      },
+    });
+  }
+
+  await prisma.campaignParticipant.upsert({
+    where: {
+      campaignId_collaboratorId: {
+        campaignId: vipCampaign.id,
+        collaboratorId: kol1.id,
+      },
+    },
+    update: { status: 'ACCEPTED' },
+    create: {
+      campaignId: vipCampaign.id,
+      collaboratorId: kol1.id,
+      status: 'ACCEPTED',
+    },
+  });
+
+  // 10.2 Referral Links
+  let rtRefLink1 = await prisma.referralLink.findFirst({
+    where: { collaboratorId: kol1.id, shortCode: 'kolthang-anc' },
+  });
+  if (!rtRefLink1) {
+    rtRefLink1 = await prisma.referralLink.create({
+      data: {
+        collaboratorId: kol1.id,
+        storeId: store.id,
+        productId: product1.id,
+        campaignId: vipCampaign.id,
+        shortCode: 'kolthang-anc',
+        channel: SocialPlatform.TIKTOK,
+        status: 'ACTIVE',
+      },
+    });
+  }
+
+  let rtRefLink2 = await prisma.referralLink.findFirst({
+    where: { collaboratorId: kol1.id, shortCode: 'kolthang-binh' },
+  });
+  if (!rtRefLink2) {
+    rtRefLink2 = await prisma.referralLink.create({
+      data: {
+        collaboratorId: kol1.id,
+        storeId: store.id,
+        productId: productBinh.id,
+        campaignId: vipCampaign.id,
+        shortCode: 'kolthang-binh',
+        channel: SocialPlatform.FACEBOOK,
+        status: 'ACTIVE',
+      },
+    });
+  }
+
+  // 10.3 Click Traffic Logs phân bố theo các ngày và giờ hôm nay
+  const clickCount = await prisma.clickTrafficLog.count({
+    where: { referralLinkId: { in: [rtRefLink1.id, rtRefLink2.id] } },
+  });
+
+  if (clickCount < 10) {
+    for (let i = 0; i < 35; i++) {
+      const daysAgo = i % 7;
+      const hoursAgo = (i * 2) % 24;
+      const clickTime = new Date(Date.now() - (daysAgo * 24 + hoursAgo) * 3600 * 1000);
+      const chosenLink = i % 2 === 0 ? rtRefLink1 : rtRefLink2;
+      await prisma.clickTrafficLog.create({
+        data: {
+          referralLinkId: chosenLink.id,
+          storeId: store.id,
+          collaboratorId: kol1.id,
+          productId: chosenLink.productId,
+          campaignId: vipCampaign.id,
+          ipAddress: `192.168.10.${10 + i}`,
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+          isValid: true,
+          createdAt: clickTime,
+        },
+      });
+    }
+  }
+
+  // 10.4 Thêm các đơn hàng phát sinh hôm nay và 7 ngày qua
+  const todayOrders = [
+    {
+      sn: 'ORD-RT-001',
+      customer: 'Trần Thị Thu Trang',
+      phone: '0981112233',
+      product: product1,
+      qty: 1,
+      price: 1290000,
+      comm: 193500,
+      hoursAgo: 2,
+      link: rtRefLink1,
+    },
+    {
+      sn: 'ORD-RT-002',
+      customer: 'Phạm Hồng Quân',
+      phone: '0972223344',
+      product: productBinh,
+      qty: 3,
+      price: 280000,
+      comm: 126000,
+      hoursAgo: 5,
+      link: rtRefLink2,
+    },
+    {
+      sn: 'ORD-RT-003',
+      customer: 'Lê Thùy Dương',
+      phone: '0963334455',
+      product: product1,
+      qty: 2,
+      price: 1290000,
+      comm: 387000,
+      hoursAgo: 12,
+      link: rtRefLink1,
+    },
+    {
+      sn: 'ORD-RT-004',
+      customer: 'Đỗ Quốc Bảo',
+      phone: '0914445566',
+      product: productBinh,
+      qty: 1,
+      price: 280000,
+      comm: 42000,
+      hoursAgo: 28,
+      link: rtRefLink2,
+    },
+    {
+      sn: 'ORD-RT-005',
+      customer: 'Vũ Mai Anh',
+      phone: '0935556677',
+      product: product1,
+      qty: 1,
+      price: 1290000,
+      comm: 193500,
+      hoursAgo: 48,
+      link: rtRefLink1,
+    },
+  ];
+
+  for (const o of todayOrders) {
+    let ord = await prisma.order.findFirst({
+      where: { storeId: store.id, externalOrderSn: o.sn },
+    });
+    const ordDate = new Date(Date.now() - o.hoursAgo * 3600 * 1000);
+    const totalAmt = o.qty * o.price;
+    if (!ord) {
+      ord = await prisma.order.create({
+        data: {
+          storeId: store.id,
+          externalOrderSn: o.sn,
+          attributedCollaboratorId: kol1.id,
+          referralLinkId: o.link.id,
+          customerName: o.customer,
+          customerPhone: o.phone,
+          shippingAddress: 'Quận Cầu Giấy, Hà Nội',
+          subtotalAmount: totalAmt,
+          finalAmount: totalAmt,
+          status: OrderStatus.COMPLETED,
+          completedAt: ordDate,
+          createdAt: ordDate,
+        },
+      });
+
+      await prisma.orderItem.create({
+        data: {
+          orderId: ord.id,
+          productId: o.product.id,
+          referralLinkId: o.link.id,
+          quantity: o.qty,
+          unitPrice: o.price,
+          appliedCommissionRate: 15.0,
+          calculatedCommissionAmount: o.comm,
+          createdAt: ordDate,
+        },
+      });
+
+      await prisma.commission.create({
+        data: {
+          orderId: ord.id,
+          collaboratorId: kol1.id,
+          commissionAmount: o.comm,
+          status: CommissionStatus.APPROVED,
+          eligibleAt: ordDate,
+          availableAt: ordDate,
+          approvedAt: ordDate,
+          createdAt: ordDate,
+        },
+      });
+    }
   }
 
   console.log('✅ Hoàn tất Gieo mầm CSDL thành công!');
