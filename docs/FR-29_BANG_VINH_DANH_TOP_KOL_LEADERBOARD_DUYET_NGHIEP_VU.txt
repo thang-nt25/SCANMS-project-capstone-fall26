@@ -1,0 +1,80 @@
+================================================================================
+TÀI LIỆU ĐẶC TẢ NGHIỆP VỤ & QUY TRÌNH DUYỆT (BUSINESS SPECIFICATION)
+MÃ CHỨC NĂNG: FR-29 - BẢNG VINH DANH TOP 10 KOLS (GAMIFIED LEADERBOARD & HALL OF FAME PODIUM)
+THÀNH VIÊN PHỤ TRÁCH: NGUYỄN PHÚ QUÝ (NGUYENPHUQUY)
+DỰ ÁN: SCANMS - SOCIAL COMMERCE AFFILIATE NETWORK MANAGEMENT SYSTEM
+================================================================================
+
+1. TỔNG QUAN CHỨC NĂNG (FEATURE OVERVIEW)
+   - FR-29 là phân hệ Gamification vinh danh hiệu suất các nhà sáng tạo nội dung (KOL / KOC / CTV)
+     trong hệ sinh thái Affiliate SCANMS.
+   - Bảng xếp hạng tạo động lực cạnh tranh lành mạnh, tăng tỷ lệ chuyển đổi (Conversion Rate),
+     thúc đẩy doanh số GMV bùng nổ theo từng chu kỳ kinh doanh (Tuần, Tháng, Quý).
+   - Tích hợp bục vinh danh Podium Top 1-2-3 (Vàng - Bạc - Đồng), cơ chế thưởng nóng (Cash Bonus + Quà tặng),
+     thanh cố định "Thứ hạng của tôi" (Sticky My Rank) và Modal chi tiết thành tích Creator Hall of Fame.
+
+2. CÁC TÁC NHÂN VÀ PHẠM VI TRUY CẬP (ACTORS & PERMISSIONS)
+   - KOL / CTV (COLLABORATOR):
+     + Xem BXH Top 10 toàn sàn hoặc theo Shop gắn bó.
+     + Xem vị trí hiện tại của bản thân qua Sticky Bar (Thứ hạng, Doanh thu, Đơn hàng, Khoảng cách tới Top 10).
+     + Click xem hồ sơ vinh danh (Hall of Fame) của các Top Creators để học hỏi kinh nghiệm.
+   - CHỦ SHOP (SHOP_MANAGER):
+     + Xem BXH Top KOLs mang lại doanh số lớn nhất cho Gian hàng của mình (Store-scoped Leaderboard).
+     + Xem tỷ lệ đóng góp GMV của Top 10 so với tổng doanh thu của Shop.
+     + Trực tiếp gửi thư mời hợp tác chiến dịch độc quyền (Exclusive Campaign) hoặc thưởng thêm.
+   - ADMIN HỆ THỐNG (SYSTEM_ADMIN / SYSTEM_MANAGER):
+     + Giám sát bảng xếp hạng Realtime toàn sàn, phát hiện gian lận lưu lượng/đơn ảo.
+     + Quản lý cấu hình phần thưởng chu kỳ (Top 1: +5,000,000 VNĐ, Top 2: +2,500,000 VNĐ, Top 3: +1,000,000 VNĐ).
+
+3. BỐ CỤC GIAO DIỆN VÀ TRẢI NGHIỆM NGƯỜI DÙNG (UI/UX SPECIFICATIONS)
+   3.1. Podium Top 3 (Bục Vinh Danh Danh Dự):
+        - Hạng 1 (Quán Quân - Gold Crown): Nằm ở trung tâm, độ cao 320px, viền vàng Gold Gradient hổ phách,
+          vương miện vàng óng ánh, huy hiệu Quán Quân, thưởng nóng +5,000,000 VNĐ tiền mặt vào ví hoa hồng.
+        - Hạng 2 (Á Quân 1 - Silver Medal): Nằm bên trái, độ cao 280px, viền bạc Silver Gradient,
+          huy chương bạc, thưởng nóng +2,500,000 VNĐ tiền mặt.
+        - Hạng 3 (Á Quân 2 - Bronze Shield): Nằm bên phải, độ cao 250px, viền đồng Bronze Amber,
+          khiên đồng chiến binh, thưởng nóng +1,000,000 VNĐ tiền mặt.
+   3.2. Bảng Xếp Hạng Chi Tiết (Top 4 - 20 Ranking Table):
+        - Cột Thứ Hạng với Rank Delta Badge:
+          + Mũi tên xanh lá (↑ +N) biểu thị thăng hạng so với chu kỳ trước.
+          + Mũi tên đỏ (↓ -N) biểu thị tụt hạng.
+          + Dấu gạch ngang xám (-) biểu thị giữ nguyên thứ hạng.
+        - Cột Thông Tin KOL: Avatar, Tên đầy đủ, Username (@handle), Badge Cấp bậc (Diamond, Platinum, Gold, Silver, Bronze).
+        - Cột Doanh Thu Phát Sinh (GMV): Định dạng VNĐ nổi bật.
+        - Cột Đơn Hàng Thành Công: Tổng số đơn hoàn tất/đã giao.
+        - Cột Tỷ Lệ Chuyển Đổi (CR%): Tỷ lệ Đơn / Click Traffic (%).
+        - Cột Hoa Hồng Nhận Được: Tổng hoa hồng thực nhận.
+        - Cột Thao Tác: Nút "Hồ sơ vinh danh" mở Popup Hall of Fame.
+   3.3. Thanh Cố Định "Thứ Hạng Của Tôi" (Sticky Floating Bottom Bar):
+        - Luôn neo ở cạnh đáy màn hình khi xem BXH.
+        - Hiển thị thứ hạng hiện tại của User đăng nhập (VD: #14 / 250 CTV).
+        - Tóm tắt Doanh thu cá nhân, Đơn hàng, CR%.
+        - Chỉ số khoảng cách: Cần thêm bao nhiêu doanh thu/đơn hàng nữa để lọt vào Top 10.
+   3.4. Modal Hồ Sơ Creator Hall of Fame:
+        - Popup hiển thị danh hiệu đã đạt, tổng GMV tích lũy, các chiến dịch tiêu biểu và huy hiệu danh dự.
+
+4. CÁC TIÊU CHÍ VÀ BỘ LỌC XẾP HẠNG (RANKING METRICS & FILTERS)
+   - Tiêu chí xếp hạng (Metric):
+     + REVENUE: Doanh thu thuần GMV từ các đơn hàng thành công (Mặc định).
+     + ORDERS: Số lượng đơn hàng chốt thành công.
+     + CONVERSION_RATE: Tỷ lệ chuyển đổi đơn / click tiếp thị (CR%).
+     + COMMISSION: Tổng tiền hoa hồng kiếm được.
+   - Khung thời gian (Time Range):
+     + this_month: Tháng hiện tại (1 đến ngày hiện tại).
+     + last_month: Toàn bộ tháng trước.
+     + this_quarter: Quý tài chính hiện tại (Q1, Q2, Q3, Q4).
+     + all_time: Toàn thời gian từ khi hệ thống vận hành.
+     + Custom Month/Year: Cho phép tra cứu lại lịch sử BXH các tháng quá khứ.
+   - Phạm vi (Scope):
+     + GLOBAL: Toàn sàn thương mại điện tử SCANMS.
+     + STORE: Theo từng gian hàng chỉ định.
+
+5. QUY TẮC TÍNH TOÁN & CÔNG THỨC (BUSINESS RULES & ALGORITHMS)
+   - Đơn hàng hợp lệ: Chỉ tính các đơn hàng có trạng thái DELIVERED hoặc COMPLETED,
+     và có mã tiếp thị hoặc CTV gán Attribution (attributedCollaboratorId != null).
+   - Đơn hủy / Trả hàng: Tự động khấu trừ khỏi GMV xếp hạng để chống gian lận.
+   - Xử lý đồng hạng: Nếu 2 KOL có cùng GMV, ưu tiên KOL có Tỷ lệ Chuyển đổi (CR%) cao hơn.
+
+================================================================================
+KẾT THÚC ĐẶC TẢ FR-29
+================================================================================
