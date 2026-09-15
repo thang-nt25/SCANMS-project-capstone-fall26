@@ -261,8 +261,8 @@ export default function OrderTrackingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-left flex flex-col font-sans">
-
+    <div className="min-h-screen bg-[#FAF8F5] text-left flex flex-col font-sans overflow-x-clip relative">
+      {/* Toast alert */}
       {toastMsg && (
         <div className="fixed top-5 right-5 z-50 bg-[#231D15] text-white px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 border border-[#C59B58]">
           <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
@@ -270,48 +270,79 @@ export default function OrderTrackingPage() {
         </div>
       )}
 
+      {/* 1. TOP HEADER - SCANMS OFFICIAL TRACKING HEADER */}
+      <header className="sticky top-0 z-50 w-full bg-white/98 backdrop-blur-md border-b border-[#EAE4D7] px-4 sm:px-8 py-3.5 shadow-xs min-h-[64px] flex items-center">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+          {/* Left: Back to Marketplace button + Brand logo */}
+          <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
+            <Link
+              to="/marketplace"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-black text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition shadow-2xs shrink-0 cursor-pointer group"
+              title="Quay lại Sàn Thương Mại SCANMS"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#B88E4F] group-hover:-translate-x-0.5 transition-transform" />
+              <span className="hidden sm:inline">Quay lại Sàn mua sắm</span>
+              <span className="sm:hidden">Về Sàn</span>
+            </Link>
 
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] px-4 sm:px-8 py-3 flex items-center justify-between shadow-2xs">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/storefront"
-            className="flex items-center gap-1.5 text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition"
-          >
-            <ArrowLeft className="w-4 h-4 text-[#B88E4F]" />
-            <span>Quay lại Cửa hàng</span>
-          </Link>
-          <span className="text-[#D8D0C3]">|</span>
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-[#C59B58] text-white font-extrabold text-sm flex items-center justify-center">
-              S
-            </span>
-            <strong className="text-sm font-extrabold text-[#1A1612]">
-              SCANMS Tracking
-            </strong>
+            <span className="text-[#EAE4D7] hidden sm:inline select-none">|</span>
+
+            <Link
+              to="/marketplace"
+              className="flex items-center gap-2 shrink-0 hover:opacity-90 transition cursor-pointer"
+              title="Về trang chủ Sàn SCANMS"
+            >
+              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white font-black text-sm flex items-center justify-center shadow-xs">
+                S
+              </span>
+              <div className="flex flex-col text-left">
+                <span className="text-sm font-black text-[#1A1612] tracking-tight leading-none">
+                  SCANMS
+                </span>
+                <span className="text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider leading-none mt-0.5">
+                  Tra cứu đơn hàng
+                </span>
+              </div>
+            </Link>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Link
-            to="/storefront"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] transition"
-          >
-            <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
-            <span>Mua sắm</span>
-          </Link>
-          <Link
-            to="/login"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-[#C59B58] hover:bg-[#B88E4F] transition shadow-xs"
-          >
-            <span>Đăng nhập Đối tác</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
+          {/* Right: Quick Marketplace & Partner Login */}
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            <Link
+              to="/marketplace"
+              className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-white border border-[#EAE4D7] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition shadow-2xs"
+              title="Khám phá các sản phẩm & deal hot trên sàn"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
+              <span className="hidden md:inline">Khám phá Sàn</span>
+              <span className="md:hidden">Mua sắm</span>
+            </Link>
+            <Link
+              to="/login"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-black text-white bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:opacity-95 transition shadow-xs"
+              title="Cổng đăng nhập CTV, KOL và Chủ Shop"
+            >
+              <User className="w-3.5 h-3.5 text-white/90" />
+              <span className="hidden sm:inline">Cổng Đối tác</span>
+              <span className="sm:hidden">Đối tác</span>
+              <ChevronRight className="w-3.5 h-3.5 hidden sm:inline" />
+            </Link>
+          </div>
         </div>
       </header>
 
-
-      <section className="bg-gradient-to-b from-white to-[#F3EFE6]/60 border-b border-[#EAE4D7] px-4 sm:px-8 py-10">
-        <div className="max-w-3xl mx-auto text-center flex flex-col items-center gap-4">
+      {/* 2. HERO & SEARCH SECTION */}
+      <section className="bg-gradient-to-b from-white to-[#F3EFE6]/60 border-b border-[#EAE4D7] px-4 sm:px-8 py-8 sm:py-10">
+        <div className="max-w-3xl mx-auto text-center flex flex-col items-center gap-3 sm:gap-4">
+          {/* Breadcrumb Navigation */}
+          <nav aria-label="Breadcrumb" className="flex items-center justify-center gap-2 text-xs text-[#7D715E] mb-1">
+            <Link to="/marketplace" className="hover:text-[#B88E4F] font-bold flex items-center gap-1 transition">
+              <ArrowLeft className="w-3 h-3 text-[#B88E4F]" />
+              <span>Trang chủ Sàn SCANMS</span>
+            </Link>
+            <span className="text-[#D8D0C3]">/</span>
+            <span className="text-[#1A1612] font-extrabold">Theo dõi hành trình đơn hàng</span>
+          </nav>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide text-[#8A662C] bg-[#FBF5EB] border border-[#EEDFC6]">
             <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
             HỆ THỐNG TRA CỨU ĐƠN HÀNG & ĐÁNH GIÁ 5 SAO (FR-17 & FR-18)

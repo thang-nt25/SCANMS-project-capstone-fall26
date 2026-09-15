@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Truck,
   ArrowRight,
+  ArrowLeft,
   X,
   ShoppingBag,
   ShoppingCart,
@@ -1961,6 +1962,24 @@ const ROTATING_DEALS: FlashDealProduct[] = [
             <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
               Nhập Số điện thoại mua hàng hoặc Mã vận đơn để kiểm tra trạng thái và lịch trình vận chuyển thực tế.
             </p>
+            <div className="flex flex-wrap items-center justify-center gap-2.5 mt-3">
+              <button
+                type="button"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black text-[#1A1612] bg-white border border-[#EEDFC6] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-[#B88E4F]" />
+                <span>Quay lại Sàn mua sắm</span>
+              </button>
+              <Link
+                to="/tracking"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#8C6226] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] transition shadow-2xs cursor-pointer"
+              >
+                <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
+                <span>Trang Tra cứu & Đánh giá 5 sao</span>
+                <ChevronRight className="w-3.5 h-3.5 text-[#B88E4F]" />
+              </Link>
+            </div>
           </div>
 
           <form
