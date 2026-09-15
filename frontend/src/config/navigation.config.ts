@@ -20,6 +20,7 @@ import {
   Target,
   Tag,
   Flame,
+  Award,
   type LucideProps,
 } from 'lucide-react';
 
@@ -51,7 +52,8 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/collaborator/sample-requests', label: 'Hàng mẫu (FR-25)', icon: Package, numBadge: '06' },
       { path: '/collaborator/social-channels', label: 'Kênh xã hội', icon: Share2, numBadge: '07' },
       { path: '/collaborator/media-hub', label: 'Kho nội dung', icon: Images, numBadge: '08' },
-      { path: '/collaborator/tiers', label: 'Bảng vinh danh', icon: Trophy, numBadge: '09' },
+      { path: '/collaborator/leaderboard', label: 'Bảng vinh danh (FR-29)', icon: Trophy, numBadge: '29' },
+      { path: '/collaborator/tiers', label: 'Cấp bậc & Danh hiệu', icon: Award, numBadge: '09' },
       { path: '/collaborator/wallet', label: 'Ví & rút tiền', icon: Wallet, numBadge: '10' },
       { path: '/collaborator/kyc', label: 'Hồ sơ KYC', icon: ShieldCheck },
       { path: '/collaborator/messages', label: 'Tin nhắn (FR-26)', icon: MessageSquare, numBadge: '11' },
@@ -65,6 +67,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/merchant/dashboard', label: 'Tổng quan Shop', icon: Store, numBadge: '01' },
       { path: '/merchant/analytics', label: 'Doanh số Realtime (FR-28)', icon: Flame, numBadge: '28' },
+      { path: '/merchant/leaderboard', label: 'Bảng vinh danh Top KOL (FR-29)', icon: Trophy, numBadge: '29' },
       { path: '/merchant/products', label: 'Danh mục sản phẩm', icon: Box, numBadge: '02' },
       { path: '/merchant/referral-links', label: 'Quản lý Link tiếp thị', icon: Link2, numBadge: '03' },
       { path: '/merchant/coupons', label: 'Quản lý Coupon KOL (FR-12)', icon: Tag, numBadge: '04' },
@@ -84,6 +87,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Không gian Quản Trị Hệ Thống',
     items: [
       { path: '/admin/analytics', label: 'Analytics Toàn sàn (FR-28)', icon: Flame, numBadge: '28' },
+      { path: '/admin/leaderboard', label: 'Bảng vinh danh Top KOL (FR-29)', icon: Trophy, numBadge: '29' },
       { path: '/admin/users', label: 'Quản lý User & KYC', icon: Users, numBadge: '01' },
       { path: '/admin/referral-links', label: 'Quản trị Link toàn sàn', icon: Link2, numBadge: '02' },
       { path: '/admin/coupons', label: 'Quản trị Coupon (FR-12)', icon: Tag, numBadge: '03' },
@@ -97,6 +101,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Không gian Quản Trị Hệ Thống',
     items: [
       { path: '/admin/analytics', label: 'Analytics Toàn sàn (FR-28)', icon: Flame, numBadge: '28' },
+      { path: '/admin/leaderboard', label: 'Bảng vinh danh Top KOL (FR-29)', icon: Trophy, numBadge: '29' },
       { path: '/admin/users', label: 'Quản lý User & KYC', icon: Users, numBadge: '01' },
       { path: '/admin/referral-links', label: 'Quản trị Link toàn sàn', icon: Link2, numBadge: '02' },
       { path: '/admin/coupons', label: 'Quản trị Coupon (FR-12)', icon: Tag, numBadge: '03' },
