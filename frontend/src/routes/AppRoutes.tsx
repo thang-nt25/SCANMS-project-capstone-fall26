@@ -60,7 +60,10 @@ const KolCampaignsPage = lazy(() => import('../pages/collaborator/KolCampaignsPa
 
 const RealtimeAnalyticsPage = lazy(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 
+// Leaderboard Top 10 Creators (Quý - FR-29)
+const LeaderboardPage = lazy(() => import('../pages/dashboard/LeaderboardPage'));
 
+// Admin Pages (FR-12)
 const AdminCouponsPage = lazy(() => import('../pages/admin/AdminCouponsPage'));
 import { RouteContent } from './RouteContent';
 
@@ -124,12 +127,14 @@ function AppRoutes() {
             <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
             <Route path="merchant/analytics" element={<RealtimeAnalyticsPage />} />
             <Route path="merchant/stats" element={<RealtimeAnalyticsPage />} />
+            <Route path="merchant/leaderboard" element={<LeaderboardPage />} />
           </Route>
 
 
           <Route element={<RouteContent />}>
             <Route path="collaborator/dashboard" element={<HomePage />} />
             <Route path="collaborator/analytics" element={<RealtimeAnalyticsPage />} />
+            <Route path="collaborator/leaderboard" element={<LeaderboardPage />} />
             <Route path="collaborator/links" element={<ReferralLinksPage />} />
             <Route path="collaborator/referral-links" element={<ReferralLinksPage />} />
             <Route path="kol/referral-links" element={<ReferralLinksPage />} />
@@ -151,6 +156,7 @@ function AppRoutes() {
 
           <Route element={<RouteContent />}>
             <Route path="admin/analytics" element={<RealtimeAnalyticsPage />} />
+            <Route path="admin/leaderboard" element={<LeaderboardPage />} />
             <Route path="admin/users" element={<KycApprovalPage />} />
             <Route path="admin/referral-links" element={<AdminReferralLinksPage />} />
             <Route path="admin/coupons" element={<AdminCouponsPage />} />
@@ -158,6 +164,7 @@ function AppRoutes() {
 
 
           <Route path="analytics" element={<RealtimeAnalyticsPage />} />
+          <Route path="leaderboard" element={<LeaderboardPage />} />
           <Route path="chat" element={<ChatBoxPage />} />
           <Route path="collaborator/messages" element={<ChatBoxPage />} />
           <Route path="merchant/messages" element={<ChatBoxPage />} />

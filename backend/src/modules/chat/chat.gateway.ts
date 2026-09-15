@@ -144,11 +144,12 @@ export class ChatGateway
       return;
     }
 
-    // Kiểm tra từ ngữ thô tục / xúc phạm
+    // Kiểm tra từ ngữ thô tục / xúc phạm / lừa đảo chuyển khoản STK
     const profanityCheck = checkProfanity(data.messageText);
     if (profanityCheck.isProfane) {
       client.emit('error', {
         message:
+          profanityCheck.errorMessage ||
           'Tin nhắn bị chặn: Vui lòng không sử dụng từ ngữ thô tục, chửi thề hoặc vi phạm chuẩn mực văn minh.',
       });
       return;
