@@ -98,6 +98,7 @@ export function computeOrderPayloadHash(
     storeSlug: (dto.storeSlug || '').trim().toLowerCase(),
     customerName: normalizedCustomerName.trim().toLowerCase(),
     customerPhone: normalizedCustomerPhone.trim(),
+    customerEmail: (dto.customerEmail || '').trim().toLowerCase(),
     shippingAddress: (dto.shippingAddress || '').trim().toLowerCase(),
     couponCode: (dto.couponCode || '').trim().toUpperCase(),
     cookieRefCode: (dto.cookieRefCode || '').trim().toLowerCase(),

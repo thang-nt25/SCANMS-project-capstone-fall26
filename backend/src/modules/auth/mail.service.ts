@@ -25,6 +25,52 @@ export class MailService {
     }
   }
 
+  async sendOrderConfirmation(input: {
+    email: string;
+    customerName: string;
+    publicOrderCode: string;
+    finalAmount: number;
+    paymentMethod: string;
+    storeName: string;
+  }) {
+    const webUrl = (
+      process.env.PUBLIC_WEB_URL ||
+      process.env.FRONTEND_URL ||
+      'http://localhost:5173'
+    ).replace(/\/$/, '');
+    const trackingUrl = `${webUrl}/tracking?sn=${encodeURIComponent(input.publicOrderCode)}`;
+    const name = this.escapeHtml(input.customerName);
+    const orderCode = this.escapeHtml(input.publicOrderCode);
+    const storeName = this.escapeHtml(input.storeName);
+    const paymentMethod = input.paymentMethod === 'VIETQR' ? 'VietQR' : 'COD';
+    const amount = new Intl.NumberFormat('vi-VN').format(input.finalAmount);
+    const subject = `[SCANMS] Xác nhận đơn hàng ${input.publicOrderCode}`;
+    const html = `
+      <div style="font-family:Arial,sans-serif;background:#FAF8F5;padding:30px;color:#1A1612">
+        <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #EAE4D7;border-radius:16px;padding:28px">
+          <div style="font-size:24px;font-weight:800;color:#B88E4F;text-align:center">SCANMS</div>
+          <h1 style="font-size:20px;text-align:center;margin:18px 0 8px">Đặt hàng thành công</h1>
+          <p style="color:#7D715E;line-height:1.6">Xin chào <strong>${name}</strong>, đơn hàng của bạn tại <strong>${storeName}</strong> đã được ghi nhận.</p>
+          <div style="background:#FBF5EB;border:1px solid #EEDFC6;border-radius:12px;padding:16px;line-height:1.8">
+            <div>Mã đơn: <strong>${orderCode}</strong></div>
+            <div>Tổng thanh toán: <strong>${amount} ₫</strong></div>
+            <div>Phương thức: <strong>${paymentMethod}</strong></div>
+          </div>
+          <div style="text-align:center;margin-top:22px">
+            <a href="${trackingUrl}" style="display:inline-block;background:#C59B58;color:#FFFFFF;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px">Theo dõi đơn hàng</a>
+          </div>
+          <p style="font-size:12px;color:#7D715E;line-height:1.5;margin-top:22px">Khi tra cứu trên thiết bị khác, hãy nhập số điện thoại đã dùng để đặt hàng. Không chia sẻ thông tin xác minh với người khác.</p>
+        </div>
+      </div>`;
+
+    await this.sendMail(
+      input.email,
+      subject,
+      html,
+      `Đơn hàng ${input.publicOrderCode} đã được ghi nhận. Tổng thanh toán: ${amount} ₫. Theo dõi tại: ${trackingUrl}`,
+    );
+  }
+
   /**
    * Gửi mã OTP xác thực đăng ký tài khoản
    */
@@ -198,5 +244,18 @@ export class MailService {
     console.log(`Gửi tới: ${to}`);
     console.log(`Nội dung: ${textFallback}`);
     console.log('======================================================\n');
+  }
+
+  private escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (character) => {
+      const entities: Record<string, string> = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      };
+      return entities[character];
+    });
   }
 }

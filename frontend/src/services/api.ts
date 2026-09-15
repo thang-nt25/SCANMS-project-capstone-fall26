@@ -64,6 +64,15 @@ function determineTargetRole(url?: string): 'COLLABORATOR' | 'SHOP_MANAGER' | 'S
     return 'COLLABORATOR';
   }
 
+  // Các endpoint referral link có phân quyền riêng. Route chứa storeId là của
+  // Shop; phải nhận diện trước điều kiện `/referral-links` chung dành cho KOL.
+  if (/\/stores\/[^/]+\/referral-links(?:\/|\?|$)/.test(reqUrl)) {
+    return 'SHOP_MANAGER';
+  }
+  if (reqUrl.includes('/admin/referral-links') || currentPath.includes('/admin')) {
+    return 'SYSTEM_ADMIN';
+  }
+
 
 
   if (

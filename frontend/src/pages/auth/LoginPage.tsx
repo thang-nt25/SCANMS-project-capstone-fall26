@@ -169,7 +169,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-10">
 
-      <div className="max-w-7xl mx-auto w-full mb-4 flex flex-wrap justify-between items-center gap-3 text-xs">
+      <div className="max-w-[1520px] mx-auto w-full mb-4 flex flex-wrap justify-between items-center gap-3 text-xs">
         <Link
           to="/marketplace"
           id="btn-back-to-marketplace"
@@ -184,7 +184,7 @@ export default function LoginPage() {
         </span>
       </div>
 
-      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
+      <div className="max-w-[1520px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
 
         <div className="lg:col-span-7 bg-[#F3EFE6] border border-[#EAE4D7] rounded-3xl p-7 sm:p-10 flex flex-col justify-between gap-6 text-left relative overflow-hidden shadow-xs">
 

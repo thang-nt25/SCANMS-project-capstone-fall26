@@ -8,6 +8,9 @@ import {
   Min,
   IsBoolean,
   IsEnum,
+  IsEmail,
+  MaxLength,
+  IsUUID,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -28,7 +31,7 @@ export class OrderItemInputDto {
     example: 'uuid-variant-id',
   })
   @IsOptional()
-  @IsString()
+  @IsUUID('all', { message: 'variantId phải là UUID hợp lệ' })
   variantId?: string;
 
   @ApiProperty({ description: 'Số lượng mua', example: 1, minimum: 1 })
@@ -71,6 +74,20 @@ export class CreateOrderDto {
   @IsString()
   @IsNotEmpty()
   customerPhone: string;
+
+  @ApiPropertyOptional({
+    description: 'Email nhận xác nhận đơn hàng và đường dẫn tra cứu',
+    example: 'khachhang@gmail.com',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim()
+      ? value.trim().toLowerCase()
+      : undefined,
+  )
+  @IsEmail({}, { message: 'Email nhận thông tin đơn hàng không hợp lệ' })
+  @MaxLength(254)
+  customerEmail?: string;
 
   @ApiProperty({
     description: 'Địa chỉ nhận hàng chi tiết',
