@@ -3,17 +3,14 @@ import { Link } from 'react-router-dom';
 import {
   Search,
   Store,
-  CheckCircle2,
   ShieldCheck,
   Truck,
-  Sparkles,
   ArrowRight,
   X,
   ShoppingBag,
   ShoppingCart,
   Play,
   Star,
-  Tag,
   ChevronDown,
   Phone,
   Package,
@@ -22,6 +19,12 @@ import {
   Shield,
   Clock,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
+  Zap,
+  Sparkles,
+  Copy,
 } from 'lucide-react';
 import api from '../../services/api';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
@@ -42,6 +45,7 @@ export default function MarketplacePage() {
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const [activeVideo, setActiveVideo] = useState<ReviewVideo | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [activeCheckoutProduct, setActiveCheckoutProduct] = useState<{
@@ -55,6 +59,7 @@ export default function MarketplacePage() {
   const [trackingLoading, setTrackingLoading] = useState(false);
 
   const roleDropdownRef = useRef<HTMLDivElement>(null);
+  const storeDropdownRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<HTMLElement>(null);
   const trackingRef = useRef<HTMLElement>(null);
 
@@ -79,6 +84,10 @@ export default function MarketplacePage() {
             price: Number(dbP.price || 420000),
             kolDiscountPrice: Math.round(Number(dbP.price || 420000) * 0.9),
             image: dbP.imageUrl || '/reference/assets/serum-hero-optimized.jpg',
+            storeId: dbP.store?.id,
+            sku: dbP.sku,
+            stockQuantity: Number(dbP.stockQuantity || 0),
+            variants: Array.isArray(dbP.variants) ? dbP.variants : [],
             kol: {
               name: 'Trần Văn Nhật',
               handle: '@nhatbeauty',
@@ -112,6 +121,12 @@ export default function MarketplacePage() {
         !roleDropdownRef.current.contains(e.target as Node)
       ) {
         setIsRoleDropdownOpen(false);
+      }
+      if (
+        storeDropdownRef.current &&
+        !storeDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsStoreDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -191,17 +206,23 @@ export default function MarketplacePage() {
   };
 
   const handleOpenDirectCheckout = (product: Product) => {
+    if (!product.storeId) {
+      toast.error('Sản phẩm mẫu này chưa được liên kết với gian hàng thật nên chưa thể đặt hàng.');
+      return;
+    }
     setActiveCheckoutProduct({
       product: {
         id: product.id,
         title: product.name,
+        sku: product.sku,
         price: product.price,
         originalPrice: product.origPrice,
         imageUrl: product.image,
-        stockQuantity: 99,
+        stockQuantity: product.stockQuantity || 0,
+        variants: product.variants,
       },
       store: {
-        id: 'store-1',
+        id: product.storeId,
         name: product.brand,
       },
       couponCode: product.kol?.coupon || '',
@@ -241,11 +262,135 @@ export default function MarketplacePage() {
     }, 600);
   };
 
-  const spotlightProduct = items[0] || marketplaceProducts[0];
-  const spotlightCreator = marketplaceKOLs[0];
+  const [currentSpotlightIndex, setCurrentSpotlightIndex] = useState(0);
+  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
+  const [countdown, setCountdown] = useState({ hours: 2, minutes: 45, seconds: 18 });
+  const [isVoucherSaved, setIsVoucherSaved] = useState(false);
+
+  const thumbnailContainerRef = useRef<HTMLDivElement>(null);
+  const sliderTrackRef = useRef<HTMLDivElement>(null);
+  const [isScrubbingSlider, setIsScrubbingSlider] = useState(false);
+
+  useEffect(() => {
+    const container = thumbnailContainerRef.current;
+    if (container) {
+      const activeThumb = container.children[currentSpotlightIndex] as HTMLElement;
+      if (activeThumb) {
+        const targetScroll =
+          activeThumb.offsetLeft - (container.clientWidth - activeThumb.clientWidth) / 2;
+        container.scrollTo({
+          left: Math.max(0, targetScroll),
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [currentSpotlightIndex]);
+
+  const handleSliderScrub = (clientX: number) => {
+    if (!sliderTrackRef.current) return;
+    const rect = sliderTrackRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const targetIdx = Math.min(
+      spotlightList.length - 1,
+      Math.floor(ratio * spotlightList.length)
+    );
+    setCurrentSpotlightIndex(targetIdx);
+  };
+
+  const REVIEW_QUOTES = useMemo(
+    () => [
+      'Chất serum thẩm thấu cực nhanh, da sáng đều màu và mờ thâm mụn chỉ sau 10 ngày trải nghiệm!',
+      'Bảo vệ da quang phổ rộng SPF50+, nâng tông nhẹ tự nhiên và không hề nhờn rít hay vệt trắng.',
+      'Chiên nướng chuẩn vị giòn rụm không cần dầu, dung tích 6.5L nướng nguyên con gà cực tiện lợi.',
+      'Giữ nhiệt nóng lạnh suốt 24h, chất liệu Inox 316 chuẩn y tế chống gỉ sét và cực kỳ an toàn.',
+      'Gõ êm tay chuẩn cơ học, pin trâu dùng 2 tuần và led RGB đổi màu cực chill khi làm việc.',
+    ],
+    []
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
+        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        return { hours: 3, minutes: 0, seconds: 0 };
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const spotlightList = useMemo(() => {
+    const pool = items.length > 0 ? items : marketplaceProducts;
+    return pool.slice(0, 5).map((p, idx) => {
+      const creator = p.kol
+        ? {
+            name: p.kol.name,
+            tier: p.kol.tier || 'KOL Vàng',
+            avatarImg:
+              marketplaceKOLs[idx % marketplaceKOLs.length]?.avatarImg ||
+              '/reference/assets/creator-nhat.jpg',
+            coupon: p.kol.coupon,
+          }
+        : {
+            name: marketplaceKOLs[idx % marketplaceKOLs.length]?.name || 'Trần Văn Nhật',
+            tier: marketplaceKOLs[idx % marketplaceKOLs.length]?.tier || 'KOL Vàng',
+            avatarImg:
+              marketplaceKOLs[idx % marketplaceKOLs.length]?.avatarImg ||
+              '/reference/assets/creator-nhat.jpg',
+            coupon: 'SCANMSVIP10',
+          };
+
+      const discountPercent =
+        p.origPrice && p.kolDiscountPrice
+          ? Math.round(((p.origPrice - p.kolDiscountPrice) / p.origPrice) * 100)
+          : 20;
+
+      const soldRatios = [88, 92, 74, 82, 95];
+      const caps = [180, 200, 160, 220, 150];
+      const soldRatio = soldRatios[idx % soldRatios.length];
+      const totalCap = caps[idx % caps.length];
+      const soldCount = Math.round((soldRatio / 100) * totalCap);
+
+      const dealBadges = [
+        '⚡ FLASH SALE GIỜ VÀNG',
+        '🔥 TOP 1 CHỐNG NẮNG HÈ',
+        '💎 GIA DỤNG THÔNG MINH',
+        '⭐ TOP 1 XU HƯỚNG BẮC ÂU',
+        '🚀 TECH DEAL CÔNG NGHỆ',
+      ];
+
+      return {
+        product: p,
+        creator,
+        discountPercent,
+        soldRatio,
+        soldCount,
+        totalCap,
+        dealBadge: dealBadges[idx % dealBadges.length],
+        reviewQuote: REVIEW_QUOTES[idx % REVIEW_QUOTES.length],
+      };
+    });
+  }, [items, REVIEW_QUOTES]);
+
+  useEffect(() => {
+    if (isCarouselHovered || spotlightList.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSpotlightIndex((prev) => (prev + 1) % spotlightList.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isCarouselHovered, spotlightList.length]);
+
+  const activeSpotlight = spotlightList[currentSpotlightIndex] || spotlightList[0];
+
+  const handleSaveVoucher = () => {
+    setIsVoucherSaved(true);
+    toast.success('🎉 Đã lưu mã voucher SCANMS50K (-50.000₫) vào ví của bạn!');
+  };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F]">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F] overflow-x-clip">
 
       <aside className="bg-[#F3EFE6] text-[#7A561B] text-[11.5px] font-medium py-2 px-4 border-b border-[#EEDFC6]">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
@@ -400,7 +545,7 @@ export default function MarketplacePage() {
                       onClick={() => setIsRoleDropdownOpen(false)}
                       className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-[#231D15] text-[#EEDFC6] flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
                         <Shield className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
@@ -432,16 +577,19 @@ export default function MarketplacePage() {
           </div>
         </div>
 
-        <div className="bg-[#F3EFE6]/60 border-t border-[#EAE4D7] px-4 sm:px-6 py-2 overflow-x-auto">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 min-w-max">
-            <div className="flex items-center gap-1.5 text-xs font-bold">
+        <div className="bg-[#F3EFE6]/60 border-t border-[#EAE4D7] px-4 sm:px-6 py-2 relative z-30">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div
+              className="flex items-center gap-1.5 text-xs font-bold overflow-x-auto py-1 flex-1 [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
               <button
                 type="button"
                 onClick={() => setSelectedCategory('all')}
-                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full transition cursor-pointer shrink-0 ${
                   selectedCategory === 'all'
                     ? 'bg-[#C59B58] text-white shadow-xs'
-                    : 'bg-white text-[#7D715E] hover:text-[#1A1612] border border-[#EAE4D7]'
+                    : 'bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58]/40'
                 }`}
               >
                 Tất cả sản phẩm ({items.length})
@@ -449,10 +597,10 @@ export default function MarketplacePage() {
               <button
                 type="button"
                 onClick={() => setSelectedCategory('skincare')}
-                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full transition cursor-pointer shrink-0 ${
                   selectedCategory === 'skincare'
                     ? 'bg-[#C59B58] text-white shadow-xs'
-                    : 'bg-white text-[#7D715E] hover:text-[#1A1612] border border-[#EAE4D7]'
+                    : 'bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58]/40'
                 }`}
               >
                 Chăm sóc da & Serum
@@ -460,10 +608,10 @@ export default function MarketplacePage() {
               <button
                 type="button"
                 onClick={() => setSelectedCategory('home')}
-                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full transition cursor-pointer shrink-0 ${
                   selectedCategory === 'home'
                     ? 'bg-[#C59B58] text-white shadow-xs'
-                    : 'bg-white text-[#7D715E] hover:text-[#1A1612] border border-[#EAE4D7]'
+                    : 'bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58]/40'
                 }`}
               >
                 Gia dụng & Đời sống
@@ -471,196 +619,371 @@ export default function MarketplacePage() {
               <button
                 type="button"
                 onClick={() => setSelectedCategory('tech')}
-                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full transition cursor-pointer shrink-0 ${
                   selectedCategory === 'tech'
                     ? 'bg-[#C59B58] text-white shadow-xs'
-                    : 'bg-white text-[#7D715E] hover:text-[#1A1612] border border-[#EAE4D7]'
+                    : 'bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58]/40'
                 }`}
               >
                 Công nghệ & Phụ kiện
               </button>
             </div>
 
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-[#7D715E] font-bold flex items-center gap-1">
+            {/* Custom Warm Sand Gold Store Dropdown (Replaces native select to eliminate dark/black OS popup) */}
+            <div ref={storeDropdownRef} className="relative flex items-center gap-2 text-xs shrink-0">
+              <span className="text-[#7D715E] font-bold flex items-center gap-1 shrink-0">
                 <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
                 Gian hàng:
               </span>
-              <select
-                value={selectedStore}
-                onChange={(e) => setSelectedStore(e.target.value)}
-                className="bg-white border border-[#EAE4D7] rounded-xl px-3 py-1 text-xs font-bold text-[#1A1612] outline-none cursor-pointer"
+
+              <button
+                type="button"
+                onClick={() => setIsStoreDropdownOpen((prev) => !prev)}
+                className="bg-white hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58] rounded-xl px-3 py-1.5 text-xs font-bold text-[#1A1612] flex items-center gap-2 transition cursor-pointer shadow-2xs"
               >
-                <option value="all">Tất cả gian hàng ({availableStores.length})</option>
-                {availableStores.map((st) => (
-                  <option key={st} value={st}>
-                    {st}
-                  </option>
-                ))}
-              </select>
+                <span className="truncate max-w-[150px]">
+                  {selectedStore === 'all'
+                    ? `Tất cả gian hàng (${availableStores.length})`
+                    : selectedStore}
+                </span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-[#B88E4F] transition-transform duration-200 ${
+                    isStoreDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {isStoreDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white border border-[#EEDFC6] rounded-2xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-1.5 text-[10.5px] font-black uppercase text-[#8C6226] tracking-wider border-b border-[#EAE4D7] mb-1 bg-[#FAF8F5]/80">
+                    Chọn gian hàng đối tác
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedStore('all');
+                      setIsStoreDropdownOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between transition cursor-pointer ${
+                      selectedStore === 'all'
+                        ? 'bg-[#FBF5EB] text-[#B88E4F] font-black border-l-2 border-[#C59B58]'
+                        : 'text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F]'
+                    }`}
+                  >
+                    <span>Tất cả gian hàng ({availableStores.length})</span>
+                    {selectedStore === 'all' && (
+                      <Check className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                    )}
+                  </button>
+
+                  {availableStores.map((st) => {
+                    const isSelected = selectedStore === st;
+                    return (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => {
+                          setSelectedStore(st);
+                          setIsStoreDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#FBF5EB] text-[#B88E4F] font-black border-l-2 border-[#C59B58]'
+                            : 'text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F]'
+                        }`}
+                      >
+                        <span className="truncate">{st}</span>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
 
-      <section className="bg-gradient-to-b from-[#F3EFE6] via-[#FAF8F5] to-[#FAF8F5] border-b border-[#EAE4D7] py-10 sm:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <section className="relative bg-gradient-to-b from-[#F3EFE6] via-[#FAF8F5] to-[#FAF8F5] border-b border-[#EAE4D7] py-8 sm:py-12 overflow-hidden">
+        {/* Subtle Luxury Golden Ambient Glow Orbs */}
+        <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-[#C59B58]/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 -right-20 w-80 h-80 rounded-full bg-[#B88E4F]/10 blur-3xl pointer-events-none" />
 
-            <div className="lg:col-span-6 flex flex-col gap-5 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold w-max shadow-2xs">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>MUA SẮM CÙNG CREATOR · BẢO HỘ CHÍNH HÃNG</span>
-              </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#1A1612] leading-[1.15] m-0">
-                Chọn món bạn thích.<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#9A7032]">
-                  Ưu đãi từ Creator.
-                </span>
-              </h1>
+          {/* MAIN STAGE: Left Wing Campaign Hub & Right Wing Shopee Showcase */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
 
-              <p className="text-xs sm:text-sm text-[#7D715E] leading-relaxed m-0 max-w-xl">
-                Khám phá sản phẩm qua review chân thực và áp dụng mã ưu đãi độc quyền từ Creator yêu thích để nhận mức giá tốt nhất cùng bảo hộ đổi trả 14 ngày & đồng kiểm khi nhận từ sàn SCANMS.
-              </p>
+            {/* LEFT WING: Flagship Campaign, Interactive Voucher Ticket & Trust Props (5 cols) */}
+            <div className="lg:col-span-5 flex flex-col justify-between gap-5 text-left bg-gradient-to-br from-white via-white to-[#FBF5EB] border-2 border-[#EEDFC6] rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 translate-x-8 -translate-y-8 w-40 h-40 bg-[#C59B58]/10 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    catalogRef.current?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#C59B58] text-white font-bold text-xs sm:text-sm hover:bg-[#B88E4F] transition cursor-pointer shadow-sm hover:shadow"
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Khám phá sản phẩm</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsGuideOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white border border-[#EAE4D7] text-[#1A1612] font-bold text-xs sm:text-sm hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
-                >
-                  <ShieldCheck className="w-4 h-4 text-[#B88E4F]" />
-                  <span>Chính sách an tâm</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
-                <div className="p-3 rounded-xl bg-white border border-[#EAE4D7] flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <strong className="block text-xs font-bold text-[#1A1612]">100% Chính hãng</strong>
-                    <span className="text-[10.5px] text-[#7D715E] block">Kiểm định nguồn gốc</span>
-                  </div>
+              <div className="flex flex-col gap-4 relative z-10">
+                {/* Brand Pill */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#8C6226] text-[11px] font-black w-max shadow-2xs">
+                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>SCANMS MALL · 100% CHÍNH HÃNG</span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-[#EAE4D7] flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-                    <Truck className="w-4 h-4" />
+                {/* Big Title */}
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#1A1612] leading-[1.2] m-0">
+                  Đại Hội Săn Deal.<br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#92400E]">
+                    Ưu Đãi Độc Quyền Cùng Top Creator.
+                  </span>
+                </h1>
+
+                <p className="text-xs sm:text-sm text-[#7D715E] leading-relaxed m-0">
+                  Khám phá hàng ngàn sản phẩm uy tín từ các thương hiệu chính hãng. Nhập mã voucher từ Creator để được giảm giá trực tiếp, đồng kiểm tận tay và đổi trả bảo hộ 14 ngày.
+                </p>
+
+                {/* Interactive Shopee-Style Voucher Ticket */}
+                <div className="rounded-2xl border-2 border-dashed border-[#C59B58] bg-[#FBF5EB] p-3.5 relative overflow-hidden flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#C59B58] text-white flex flex-col items-center justify-center shrink-0 font-black shadow-xs">
+                      <span className="text-[10px] leading-none">GIẢM</span>
+                      <span className="text-sm font-black leading-tight">50K</span>
+                    </div>
+                    <div className="min-w-0">
+                      <strong className="block text-xs font-black text-[#1A1612] truncate">
+                        Voucher Toàn Sàn SCANMS50K
+                      </strong>
+                      <span className="text-[11px] text-[#7D715E] block truncate">
+                        Đơn từ 250k khi mua qua link Creator
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <strong className="block text-xs font-bold text-[#1A1612]">Bảo hộ 14 ngày</strong>
-                    <span className="text-[10.5px] text-[#7D715E] block">Đồng kiểm khi nhận</span>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveVoucher}
+                    className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shadow-xs ${
+                      isVoucherSaved
+                        ? 'bg-[#FBF5EB] text-[#059669] border border-[#059669]/40 font-black'
+                        : 'bg-[#C59B58] text-white hover:bg-[#B88E4F] active:scale-95'
+                    }`}
+                  >
+                    {isVoucherSaved ? '✓ Đã lưu' : 'Lưu mã'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Bottom Actions & Trust Guarantees */}
+              <div className="flex flex-col gap-3 relative z-10 pt-2 border-t border-[#EAE4D7]">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => catalogRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                    className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-black transition cursor-pointer shadow-sm active:scale-98"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Lướt Kho Sản Phẩm</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsGuideOpen(true)}
+                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl bg-white border border-[#EAE4D7] hover:bg-[#F3EFE6] text-[#1A1612] text-xs font-bold transition cursor-pointer shadow-2xs"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-[#B88E4F]" />
+                    <span>An tâm 100%</span>
+                  </button>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-[#EAE4D7] flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-                    <Tag className="w-4 h-4" />
+                {/* 3 Micro Guarantees */}
+                <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                  <div className="bg-white/80 p-2 rounded-xl border border-[#EAE4D7]">
+                    <strong className="block text-[11px] font-black text-[#1A1612]">Chính Hãng</strong>
+                    <span className="text-[10px] text-[#7D715E] block">Kiểm định 100%</span>
                   </div>
-                  <div className="text-left">
-                    <strong className="block text-xs font-bold text-[#1A1612]">Ưu đãi Creator</strong>
-                    <span className="text-[10.5px] text-[#7D715E] block">Giảm trực tiếp vào đơn</span>
+                  <div className="bg-white/80 p-2 rounded-xl border border-[#EAE4D7]">
+                    <strong className="block text-[11px] font-black text-[#1A1612]">Đổi Trả 14N</strong>
+                    <span className="text-[10px] text-[#7D715E] block">Đồng kiểm tận tay</span>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-xl border border-[#EAE4D7]">
+                    <strong className="block text-[11px] font-black text-[#1A1612]">Voucher KOL</strong>
+                    <span className="text-[10px] text-[#7D715E] block">Tự động giảm giá</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-6">
-              <div className="bg-white border-2 border-[#EEDFC6] rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden text-left">
-                <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-                  <span className="px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black">
-                    -20% GIẢM
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-xs font-black">
-                    ⭐ Spotlight
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center">
-                  <div className="sm:col-span-5 relative group overflow-hidden rounded-2xl bg-[#FAF8F5]">
-                    <img
-                      src={spotlightProduct.image}
-                      alt={spotlightProduct.name}
-                      className="w-full aspect-square object-cover rounded-2xl transition-transform duration-300 group-hover:scale-105"
-                      loading="eager"
-                    />
+            {/* RIGHT WING: Shopee-Style Flagship Showcase & Gallery Rail (7 cols) */}
+            <div className="lg:col-span-7 flex flex-col">
+              <div
+                onMouseEnter={() => setIsCarouselHovered(true)}
+                onMouseLeave={() => setIsCarouselHovered(false)}
+                className="bg-white border-2 border-[#EEDFC6] rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden text-left flex flex-col justify-between gap-4 h-full group"
+              >
+                {/* Stage Header: Flash Sale Header + Countdown + Nav Controls */}
+                <div className="flex items-center justify-between gap-3 flex-wrap border-b border-[#EAE4D7] pb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-[#B88E4F] to-[#C59B58] text-white text-xs font-black shadow-xs">
+                      <Zap className="w-3.5 h-3.5 fill-white text-white" />
+                      <span>{activeSpotlight.dealBadge}</span>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black">
+                      -{activeSpotlight.discountPercent}% GIẢM
+                    </span>
                   </div>
 
-                  <div className="sm:col-span-7 flex flex-col gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#7D715E] flex items-center gap-1">
-                        <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
-                        {spotlightProduct.brand}
-                      </span>
-                      <span className="text-xs text-[#EAE4D7]">|</span>
-                      <span className="text-xs font-bold text-[#B88E4F] flex items-center gap-1">
+                  {/* Countdown Timer */}
+                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-2.5 py-1 text-xs font-black text-[#1A1612]">
+                    <Clock className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    <span className="text-[10.5px] text-[#7D715E] font-bold">KẾT THÚC TRONG</span>
+                    <span className="bg-[#F3EFE6] text-[#7A561B] border border-[#EEDFC6] px-1.5 py-0.5 rounded text-[11px] font-mono font-bold shadow-2xs">
+                      {String(countdown.hours).padStart(2, '0')}
+                    </span>
+                    <span className="text-[#B88E4F] font-bold">:</span>
+                    <span className="bg-[#F3EFE6] text-[#7A561B] border border-[#EEDFC6] px-1.5 py-0.5 rounded text-[11px] font-mono font-bold shadow-2xs">
+                      {String(countdown.minutes).padStart(2, '0')}
+                    </span>
+                    <span className="text-[#B88E4F] font-bold">:</span>
+                    <span className="bg-[#F3EFE6] text-[#7A561B] border border-[#EEDFC6] px-1.5 py-0.5 rounded text-[11px] font-mono font-bold shadow-2xs">
+                      {String(countdown.seconds).padStart(2, '0')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Hero Product Spotlight Card */}
+                <div
+                  key={activeSpotlight.product.id}
+                  className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center animate-in fade-in zoom-in-95 duration-200"
+                >
+                  {/* Left Column: Image with badges */}
+                  <div className="sm:col-span-5 relative group/img overflow-hidden rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] aspect-square flex items-center justify-center shadow-inner">
+                    <img
+                      src={activeSpotlight.product.image}
+                      alt={activeSpotlight.product.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
+                      loading="eager"
+                    />
+                    {/* Official Store Badge */}
+                    <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-xs border border-[#EAE4D7] px-2 py-0.5 rounded-lg flex items-center gap-1 text-[11px] font-bold text-[#1A1612] shadow-2xs">
+                      <Store className="w-3 h-3 text-[#B88E4F]" />
+                      <span className="truncate max-w-[130px]">{activeSpotlight.product.brand}</span>
+                    </div>
+
+                    {/* Verified Mall Tag */}
+                    <div className="absolute bottom-2.5 left-2.5 bg-white/95 backdrop-blur-xs border border-[#EEDFC6] text-[#1A1612] px-2.5 py-0.5 rounded-full flex items-center gap-1.5 text-[10px] font-black shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58] animate-ping" />
+                      <span>Đang mở bán Flash Deal</span>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Info, Review Quote, Price, Flame progress, Buttons */}
+                  <div className="sm:col-span-7 flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-bold text-[#B88E4F] flex items-center gap-1">
                         <Star className="w-3.5 h-3.5 fill-[#B88E4F]" />
-                        {spotlightProduct.rating} ({spotlightProduct.sold} đã bán)
+                        {activeSpotlight.product.rating}
+                      </span>
+                      <span className="text-[#EAE4D7]">|</span>
+                      <span className="text-[#7D715E] font-medium">
+                        {activeSpotlight.product.sold || `${activeSpotlight.soldCount}`} đã bán
+                      </span>
+                      <span className="text-[#EAE4D7]">|</span>
+                      <span className="text-[#7D715E] font-medium truncate">
+                        {activeSpotlight.product.categoryLabel}
                       </span>
                     </div>
 
-                    <h3 className="text-base sm:text-lg font-black text-[#1A1612] leading-snug m-0">
-                      {spotlightProduct.name}
+                    <h3 className="text-base sm:text-lg font-black text-[#1A1612] leading-snug m-0 line-clamp-2">
+                      {activeSpotlight.product.name}
                     </h3>
 
-                    <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center gap-3">
-                      <img
-                        src={spotlightCreator.avatarImg}
-                        alt={spotlightCreator.name}
-                        className="w-10 h-10 rounded-full object-cover border border-[#C59B58] shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <strong className="text-xs font-black text-[#1A1612]">
-                            {spotlightCreator.name}
-                          </strong>
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-[#C59B58] text-white">
-                            {spotlightCreator.tier}
-                          </span>
+                    {/* Creator Endorsement with Review Quote */}
+                    <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <img
+                            src={activeSpotlight.creator.avatarImg}
+                            alt={activeSpotlight.creator.name}
+                            className="w-8 h-8 rounded-full object-cover border-2 border-[#C59B58] shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <strong className="text-xs font-black text-[#1A1612] truncate">
+                                {activeSpotlight.creator.name}
+                              </strong>
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-[#C59B58] text-white shrink-0">
+                                {activeSpotlight.creator.tier}
+                              </span>
+                            </div>
+                            <span className="text-[10.5px] text-[#7D715E] block truncate">
+                              Reviewer chính hãng
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-[11px] font-bold text-[#B88E4F] block">
-                          Mã ưu đãi: {spotlightProduct.kol.coupon} (-10%)
+
+                        {/* Copy Code button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(activeSpotlight.creator.coupon);
+                            toast.success(`Đã sao chép mã voucher ${activeSpotlight.creator.coupon}!`);
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] font-bold text-[#B88E4F] shrink-0 transition cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>{activeSpotlight.creator.coupon}</span>
+                        </button>
+                      </div>
+
+                      {/* Review quote */}
+                      <p className="text-[11.5px] text-[#7D715E] italic m-0 line-clamp-2 border-t border-[#EEDFC6]/60 pt-1.5">
+                        "{activeSpotlight.reviewQuote}"
+                      </p>
+                    </div>
+
+                    {/* Price and Savings */}
+                    <div className="flex items-baseline gap-2.5 pt-0.5 flex-wrap">
+                      <span className="text-xs text-[#7D715E] line-through">
+                        {formatMoney(activeSpotlight.product.origPrice)}
+                      </span>
+                      <strong className="text-2xl font-black text-[#1A1612]">
+                        {formatMoney(activeSpotlight.product.kolDiscountPrice)}
+                      </strong>
+                      <span className="text-[11px] font-extrabold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
+                        Tiết kiệm {formatMoney(activeSpotlight.product.origPrice - activeSpotlight.product.kolDiscountPrice)}
+                      </span>
+                    </div>
+
+                    {/* Shopee Flame Flash Sale Progress Bar */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex justify-between items-center text-[11px] font-bold">
+                        <span className="text-[#B88E4F] flex items-center gap-1">
+                          <Flame className="w-3.5 h-3.5 fill-[#C59B58] text-[#C59B58]" />
+                          ĐÃ BÁN {activeSpotlight.soldCount}/{activeSpotlight.totalCap}
                         </span>
+                        <span className="text-[#7D715E]">{activeSpotlight.soldRatio}%</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-[#F3EFE6] rounded-full overflow-hidden border border-[#EAE4D7] relative">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#C59B58] to-[#B88E4F] rounded-full transition-all duration-500 relative"
+                          style={{ width: `${activeSpotlight.soldRatio}%` }}
+                        >
+                          <div className="absolute inset-0 bg-white/25 animate-pulse" />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-baseline gap-2.5 pt-1">
-                      <span className="text-xs text-[#7D715E] line-through">
-                        {formatMoney(spotlightProduct.origPrice)}
-                      </span>
-                      <strong className="text-2xl font-black text-[#1A1612]">
-                        {formatMoney(spotlightProduct.kolDiscountPrice)}
-                      </strong>
-                    </div>
-
+                    {/* CTA Buttons */}
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => handleAddToCart(spotlightProduct)}
-                        className="py-2.5 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        onClick={() => handleAddToCart(activeSpotlight.product)}
+                        className="py-2.5 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
                       >
                         <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
                         <span>Thêm giỏ</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleOpenDirectCheckout(spotlightProduct)}
-                        className="py-2.5 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-black hover:bg-[#B88E4F] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        onClick={() => handleOpenDirectCheckout(activeSpotlight.product)}
+                        className="py-2.5 px-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
                       >
                         <span>Mua ngay</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -668,6 +991,132 @@ export default function MarketplacePage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Bottom Rail: Shopee Flash Sale Mini-Card Gallery with Custom Slider Bar */}
+                <div className="pt-3 border-t border-[#EAE4D7] space-y-2.5">
+                  {/* Thumbnail cards row (completely hides native Windows scrollbar) */}
+                  <div
+                    ref={thumbnailContainerRef}
+                    className="flex items-center gap-2 overflow-x-auto py-1 scroll-smooth select-none [&::-webkit-scrollbar]:hidden"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {spotlightList.map((item, idx) => {
+                      const isActive = idx === currentSpotlightIndex;
+                      return (
+                        <button
+                          key={item.product.id}
+                          type="button"
+                          onClick={() => setCurrentSpotlightIndex(idx)}
+                          className={`flex items-center gap-2.5 p-2 rounded-xl border text-left transition-all duration-200 cursor-pointer shrink-0 relative overflow-hidden group ${
+                            isActive
+                              ? 'bg-[#FBF5EB] border-[#C59B58] shadow-xs ring-2 ring-[#C59B58]/30 scale-[1.02]'
+                              : 'bg-white border-[#EAE4D7] hover:border-[#C59B58]/60 hover:bg-[#FAF8F5] opacity-80 hover:opacity-100'
+                          }`}
+                        >
+                          <img
+                            src={item.product.image}
+                            alt={item.product.name}
+                            className="w-9 h-9 rounded-lg object-cover shrink-0 border border-[#EAE4D7]"
+                          />
+                          <div className="hidden sm:block min-w-0 max-w-[105px]">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] font-black text-[#1A1612]">
+                                {formatMoney(item.product.kolDiscountPrice)}
+                              </span>
+                            </div>
+                            <span className="block text-[10px] text-[#7D715E] truncate">
+                              {item.product.name}
+                            </span>
+                          </div>
+
+                          {/* Active auto-rotate indicator bar */}
+                          {isActive && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C59B58]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom Shopee-Style Drag / Scrub Slider Bar & Controls */}
+                  <div className="flex items-center justify-between gap-3 pt-1 border-t border-[#F3EFE6]">
+                    {/* Left: Indicator label */}
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#7D715E]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58] animate-pulse" />
+                      <span className="hidden xs:inline">Kéo hoặc bấm thanh trượt để xem {spotlightList.length} deal</span>
+                      <span className="xs:hidden">Thanh trượt deal</span>
+                    </div>
+
+                    {/* Center: Custom Shopee Draggable Track & Gold Thumb */}
+                    <div className="flex items-center gap-2 flex-1 max-w-[200px] sm:max-w-[260px] mx-auto">
+                      <div
+                        ref={sliderTrackRef}
+                        onPointerDown={(e) => {
+                          e.currentTarget.setPointerCapture(e.pointerId);
+                          setIsScrubbingSlider(true);
+                          handleSliderScrub(e.clientX);
+                        }}
+                        onPointerMove={(e) => {
+                          if (isScrubbingSlider) {
+                            handleSliderScrub(e.clientX);
+                          }
+                        }}
+                        onPointerUp={(e) => {
+                          if (isScrubbingSlider) {
+                            try {
+                              e.currentTarget.releasePointerCapture(e.pointerId);
+                            } catch {}
+                            setIsScrubbingSlider(false);
+                          }
+                        }}
+                        className="w-full h-2 bg-[#EAE4D7] hover:bg-[#DDD5C5] rounded-full relative cursor-pointer select-none overflow-hidden transition-colors"
+                        title="Kéo hoặc bấm để chuyển deal sản phẩm"
+                      >
+                        <div
+                          className="h-full bg-gradient-to-r from-[#C59B58] via-[#D8AD6A] to-[#B88E4F] rounded-full shadow-xs transition-all ease-out"
+                          style={{
+                            width: `${100 / spotlightList.length}%`,
+                            transform: `translateX(${currentSpotlightIndex * 100}%)`,
+                            transitionDuration: isScrubbingSlider ? '75ms' : '300ms',
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Right: Counter & Quick Arrow Buttons */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[11px] font-mono font-bold text-[#1A1612] bg-[#F3EFE6] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
+                        <span className="text-[#C59B58]">{currentSpotlightIndex + 1}</span>
+                        <span className="text-[#7D715E]">/{spotlightList.length}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentSpotlightIndex(
+                            (prev) => (prev - 1 + spotlightList.length) % spotlightList.length
+                          )
+                        }
+                        className="w-6 h-6 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#1A1612] flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
+                        title="Sản phẩm trước"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentSpotlightIndex(
+                            (prev) => (prev + 1) % spotlightList.length
+                          )
+                        }
+                        className="w-6 h-6 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#1A1612] flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
+                        title="Sản phẩm tiếp theo"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -1274,7 +1723,7 @@ export default function MarketplacePage() {
           store={activeCheckoutProduct.store}
           initialCouponCode={activeCheckoutProduct.couponCode}
           onOrderPlaced={(order) => {
-            toast.success(`Đặt hàng thành công! Mã đơn: ${order?.publicOrderCode || order?.orderId || 'IN23931'}`);
+            toast.success(`Đặt hàng thành công! Mã đơn: ${order?.publicOrderCode || order?.orderId}`);
           }}
         />
       )}

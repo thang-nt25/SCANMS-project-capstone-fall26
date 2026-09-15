@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Link2,
   Store,
@@ -15,6 +15,7 @@ import api from '../../services/api';
 import { toast } from '../../utils/toast';
 
 export default function StoreReferralLinksPage() {
+  const initStartedRef = useRef(false);
   const [links, setLinks] = useState<ReferralLinkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -36,6 +37,9 @@ export default function StoreReferralLinksPage() {
 
 
   useEffect(() => {
+    if (initStartedRef.current) return;
+    initStartedRef.current = true;
+
     async function initStore() {
       try {
         const res: any = await api.get('/auth/me');

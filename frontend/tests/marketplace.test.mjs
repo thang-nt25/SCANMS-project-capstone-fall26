@@ -68,3 +68,31 @@ test('FR16 reference UI submits checkout to backend and never fabricates success
   assert.doesNotMatch(checkout, /trackingNum/);
   assert.doesNotMatch(checkout, /localStorage\.setItem/);
 });
+
+test('FR16 React checkout only submits a backend-validated coupon and reads unwrapped API data', () => {
+  const source = readFileSync(
+    new URL('../src/components/checkout/GuestCheckoutModal.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /couponCode: appliedCoupon\?\.code \|\| undefined/);
+  assert.doesNotMatch(source, /couponCode: appliedCoupon \? appliedCoupon\.code : couponCode\.trim\(\)/);
+  assert.match(source, /const resData = res as any/);
+  assert.match(source, /err\?\.response\?\.status === 429/);
+});
+
+test('store-scoped referral links select the Shop token before the generic KOL rule', () => {
+  const source = readFileSync(new URL('../src/services/api.ts', import.meta.url), 'utf8');
+  const shopRule = source.indexOf("return 'SHOP_MANAGER';", source.indexOf('/\\/stores\\/'));
+  const genericReferralRule = source.indexOf("reqUrl.includes('/referral-links')");
+  assert(shopRule >= 0, 'missing store-scoped referral-link role rule');
+  assert(genericReferralRule >= 0, 'missing generic referral-link role rule');
+  assert(shopRule < genericReferralRule, 'Shop rule must run before generic KOL rule');
+});
+
+test('Marketplace preserves the backend store relationship when opening checkout', () => {
+  const source = readFileSync(new URL('../src/pages/public/MarketplacePage.tsx', import.meta.url), 'utf8');
+  assert.match(source, /storeId: dbP\.store\?\.id/);
+  assert.match(source, /id: product\.storeId/);
+  assert.doesNotMatch(source, /id: 'store-1'/);
+  assert.match(source, /stockQuantity: product\.stockQuantity \|\| 0/);
+});

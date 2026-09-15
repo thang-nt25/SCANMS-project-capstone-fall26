@@ -138,9 +138,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
       setOrderSuccess(null);
       setErrorMessage(null);
-      if (initialCouponCode) {
-        setCouponCode(initialCouponCode);
-      }
+      setAppliedCoupon(null);
+      setCouponMessage(null);
+      setCouponCode(initialCouponCode);
     }
   }, [isOpen, initialQuantity, product.stockQuantity, product.variants, initialCouponCode]);
 
@@ -193,7 +193,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         ],
       });
 
-      const data = res.data;
+      const data = res as any;
       if (data && (data.discountAmount !== undefined || data.appliedDiscountAmount !== undefined)) {
         const discount = Number(data.discountAmount || data.appliedDiscountAmount || 0);
         setAppliedCoupon({
@@ -273,7 +273,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         shippingAddress: trimmedAddress,
         orderNotes: orderNotes.trim() || undefined,
         paymentMethod,
-        couponCode: appliedCoupon ? appliedCoupon.code : couponCode.trim() || undefined,
+        // Chỉ gửi coupon đã được backend xác thực thành công.
+        couponCode: appliedCoupon?.code || undefined,
         idempotencyKey,
         items: [
           {
@@ -286,7 +287,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
 
       const res = await api.post('/orders', payload);
-      const resData = res.data;
+      const resData = res as any;
 
       const orderResult = {
         orderId: resData.orderId || resData.order?.id,
@@ -303,9 +304,14 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         onOrderPlaced(orderResult);
       }
     } catch (err: any) {
+      const rawMessage = err?.response?.data?.message || err?.message;
       const serverMsg =
-        err?.response?.data?.message ||
-        'Không thể hoàn tất đặt hàng lúc này. Vui lòng kiểm tra lại thông tin và thử lại.';
+        err?.response?.status === 429
+          ? rawMessage || 'Bạn thao tác quá nhiều lần. Vui lòng chờ 5 phút rồi thử lại.'
+          : Array.isArray(rawMessage)
+            ? rawMessage.join(' ')
+            : rawMessage ||
+              'Không thể hoàn tất đặt hàng lúc này. Vui lòng kiểm tra lại thông tin và thử lại.';
       setErrorMessage(serverMsg);
     } finally {
       setIsSubmitting(false);
