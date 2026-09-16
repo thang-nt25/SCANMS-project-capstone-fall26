@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 
@@ -138,20 +138,20 @@ function AppRoutes() {
             <Route path="collaborator/dashboard" element={<HomePage />} />
             <Route path="collaborator/analytics" element={<RealtimeAnalyticsPage />} />
             <Route path="collaborator/leaderboard" element={<LeaderboardPage />} />
-            <Route path="collaborator/links" element={<ReferralLinksPage />} />
+            <Route path="collaborator/links" element={<Navigate to="/collaborator/referral-links" replace />} />
             <Route path="collaborator/referral-links" element={<ReferralLinksPage />} />
-            <Route path="kol/referral-links" element={<ReferralLinksPage />} />
+            <Route path="kol/referral-links" element={<Navigate to="/collaborator/referral-links" replace />} />
             <Route path="collaborator/coupons" element={<KolCouponsPage />} />
-            <Route path="kol/coupons" element={<KolCouponsPage />} />
+            <Route path="kol/coupons" element={<Navigate to="/collaborator/coupons" replace />} />
             <Route path="collaborator/bonus-progress" element={<KolBonusProgressPage />} />
-            <Route path="kol/bonus-progress" element={<KolBonusProgressPage />} />
+            <Route path="kol/bonus-progress" element={<Navigate to="/collaborator/bonus-progress" replace />} />
             <Route path="collaborator/social-channels" element={<SocialChannelsPage />} />
             <Route path="collaborator/media-hub" element={<MediaHubBrowserPage />} />
-            <Route path="collaborator/samples" element={<SampleRequestsPage />} />
+            <Route path="collaborator/samples" element={<Navigate to="/collaborator/sample-requests" replace />} />
+            <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
             <Route path="collaborator/tiers" element={<KolTierStatusPage />} />
             <Route path="collaborator/kyc" element={<KycSubmissionPage />} />
             <Route path="collaborator/wallet" element={<WalletPage />} />
-            <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
             <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
             <Route path="collaborator/stats" element={<RealtimeAnalyticsPage />} />
           </Route>
