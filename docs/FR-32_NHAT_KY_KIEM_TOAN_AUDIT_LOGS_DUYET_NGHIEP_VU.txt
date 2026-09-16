@@ -1,0 +1,105 @@
+================================================================================
+TÀI LIỆU ĐẶC TẢ NGHIỆP VỤ & HƯỚNG DẪN KIỂM ĐỊNH TÍNH NĂNG
+TÍNH NĂNG: FR-32 — NHẬT KÝ KIỂM TOÁN TOÀN DIỆN & GIÁM SÁT AN NINH (AUDIT TRAIL)
+HỆ THỐNG QUẢN TRỊ MẠNG LƯỚI BÁN HÀNG TIẾP THỊ LIÊN KẾT (SCANMS - FA26SE032)
+================================================================================
+
+1. TỔNG QUAN NGHIỆP VỤ (BUSINESS OVERVIEW):
+- Mã yêu cầu chức năng (SRS ID): FR-32 (Comprehensive Audit Logs & Security Trail).
+- Phân hệ phụ trách: An ninh hệ thống (Security & Compliance) & Quản trị Sàn (Admin Subsystem).
+- Người thực hiện: Nguyễn Phú Quý (Branch: quy) — Trưởng nhóm: Nguyễn Thành Thắng.
+- Mục đích:
+  + Ghi nhận toàn diện, bất biến và minh bạch 100% các thao tác nhạy cảm phát sinh trong hệ thống SCANMS:
+    * Xác thực & Phân quyền (AUTH): Đăng ký, Đăng nhập, Đổi mật khẩu, Duyệt/Từ chối KYC, Khóa/Mở tài khoản.
+    * Tài chính & Ví tiền (FINANCIAL): Yêu cầu rút tiền, Duyệt/Từ chối chi trả hoa hồng, Cấu hình chính sách thưởng doanh số, Đóng băng hoa hồng ví chờ.
+    * Sản phẩm & Nội dung (PRODUCT): Tạo/Cập nhật/Xóa mềm sản phẩm, Kiểm duyệt video review của KOL.
+    * Chiến dịch & Hàng mẫu (SAMPLE_CAMPAIGN): Tạo chiến dịch, Gửi thiệp mời qua chat, Chấp nhận/Từ chối mời, Duyệt gửi mẫu thử kèm mã vận đơn.
+    * An ninh & AI Gian lận (AI_SECURITY): Cảnh báo lưu lượng ảo, Áp dụng phán quyết chống gian lận, Bác bỏ cảnh báo an toàn.
+  + Cung cấp công cụ tra cứu, tìm kiếm, phân trang và xuất báo cáo CSV chuẩn quốc tế phục vụ công tác thanh tra, đối soát độc lập.
+  + Bảo vệ bằng RBAC chặt chẽ (SYSTEM_ADMIN, SYSTEM_MANAGER, SHOP_MANAGER).
+
+--------------------------------------------------------------------------------
+2. DANH MỤC PHÂN LOẠI HÀNH ĐỘNG & MỨC ĐỘ NGHIÊM TRỌNG (SEVERITY MATRIX):
+Hệ thống chuẩn hóa 3 cấp độ rủi ro (Severity) và 7 nhóm nghiệp vụ (Category):
+
+a. Cấp độ rủi ro (Severity):
+   - INFO (Xanh dương): Các thao tác nghiệp vụ thông thường (Đăng nhập, Tạo link, Gửi mẫu, v.v.).
+   - WARN (Vàng cam): Các thao tác thay đổi cấu hình hoặc từ chối (Đổi mật khẩu, Từ chối KYC, Sửa chính sách thưởng, Xóa mềm sản phẩm).
+   - CRITICAL (Đỏ hồng): Các thao tác an ninh nghiêm trọng (Đóng băng hoa hồng, Khóa tài khoản, Cảnh báo gian lận AI Sentinel).
+
+b. Bảng danh mục hành động chuẩn hóa:
+   | Action Code | Tên Nghiệp Vụ Vi | Phân Loại | Severity |
+   | :--- | :--- | :--- | :--- |
+   | USER_REGISTER | Đăng ký tài khoản | AUTH | INFO |
+   | USER_LOGIN | Đăng nhập hệ thống | AUTH | INFO |
+   | PASSWORD_CHANGED | Đổi mật khẩu | AUTH | WARN |
+   | KYC_APPROVED | Duyệt hồ sơ KYC | AUTH | INFO |
+   | KYC_REJECTED | Từ chối hồ sơ KYC | AUTH | WARN |
+   | USER_STATUS_UPDATED | Khóa / Mở tài khoản | AUTH | CRITICAL |
+   | PAYOUT_REQUESTED | Yêu cầu rút tiền | FINANCIAL | INFO |
+   | PAYOUT_APPROVED | Duyệt lệnh rút tiền | FINANCIAL | WARN |
+   | PAYOUT_REJECTED | Từ chối rút tiền | FINANCIAL | WARN |
+   | COMMISSION_RULE_CREATED | Tạo chính sách thưởng | FINANCIAL | INFO |
+   | COMMISSION_RULE_UPDATED | Sửa chính sách thưởng | FINANCIAL | WARN |
+   | COMMISSION_FROZEN | Đóng băng hoa hồng | FINANCIAL | CRITICAL |
+   | PRODUCT_CREATED | Tạo sản phẩm mới | PRODUCT | INFO |
+   | PRODUCT_UPDATED | Cập nhật sản phẩm | PRODUCT | INFO |
+   | PRODUCT_DELETED | Xóa sản phẩm (Soft Delete) | PRODUCT | WARN |
+   | MEDIA_REVIEWED | Kiểm duyệt video review | PRODUCT | INFO |
+   | SAMPLE_REQUEST_CREATED | Gửi yêu cầu mẫu thử | SAMPLE_CAMPAIGN | INFO |
+   | SAMPLE_REQUEST_APPROVED | Duyệt gửi hàng mẫu | SAMPLE_CAMPAIGN | INFO |
+   | SAMPLE_REQUEST_REJECTED | Từ chối gửi mẫu thử | SAMPLE_CAMPAIGN | WARN |
+   | CAMPAIGN_CREATED | Tạo chiến dịch mới | SAMPLE_CAMPAIGN | INFO |
+   | CAMPAIGN_INVITE_SENT | Gửi thiệp mời chiến dịch | SAMPLE_CAMPAIGN | INFO |
+   | CAMPAIGN_INVITE_ACCEPTED | Chấp nhận lời mời chiến dịch | SAMPLE_CAMPAIGN | INFO |
+   | CAMPAIGN_INVITE_REJECTED | Từ chối lời mời chiến dịch | SAMPLE_CAMPAIGN | INFO |
+   | AI_FRAUD_FLAGGED | Cảnh báo gian lận AI | AI_SECURITY | CRITICAL |
+   | AI_FRAUD_ACTION_APPLIED | Xử lý vi phạm gian lận | AI_SECURITY | CRITICAL |
+   | FRAUD_ALERT_DISMISSED | Bác bỏ cảnh báo gian lận | AI_SECURITY | INFO |
+   | CREATE_REFERRAL_LINK | Tạo link tiếp thị | SYSTEM | INFO |
+   | ADMIN_VIEW_TRACKING_EVENTS | Xem log tracking kỹ thuật | SYSTEM | WARN |
+
+--------------------------------------------------------------------------------
+3. DANH SÁCH RESTful API ENDPOINTS:
+- GET  /api/audit-logs         : Tra cứu danh sách nhật ký kiểm toán (phân trang, lọc action, category, timeframe, keyword).
+- GET  /api/audit-logs/stats   : Thống kê tổng quan KPI (tổng sự kiện, sự kiện trong ngày, tỷ lệ nhóm nghiệp vụ).
+- GET  /api/audit-logs/actions : Lấy danh mục các action codes và metadata phân loại có sẵn.
+- GET  /api/audit-logs/export  : Xuất toàn bộ dữ liệu kiểm toán ra file CSV (chuẩn UTF-8 BOM cho Excel).
+- GET  /api/audit-logs/:id     : Lấy chi tiết 1 bản ghi kiểm toán kèm JSON payload Before/After.
+
+--------------------------------------------------------------------------------
+4. GIAO DIỆN NGƯỜI DÙNG (FRONTEND UI):
+- Đường dẫn: `/admin/audit-logs` và `/merchant/audit-logs`.
+- Ngôn ngữ thiết kế: Pure Tailwind CSS, phong cách Vàng Be hoàng kim (Warm Sand `#F3EFE6`, Sand Gold `#C59B58`, Ink `#1A1612`).
+- Thành phần giao diện:
+  + 4 Thẻ KPI: Tổng sự kiện đã ghi, Thao tác tài chính, An ninh & AI gian lận, Xác thực & Quản trị.
+  + Bộ lọc đa tiêu chí: Lọc theo 7 danh mục nghiệp vụ, 3 mức độ rủi ro (Critical/Warning/Info), 4 khung thời gian (24h/7d/30d/All).
+  + Ô tìm kiếm Realtime: Tìm kiếm đa trường (Action, IP, Email, Tên người thao tác).
+  + Bảng nhật ký tương tác: Avatar người thực hiện, Pill badge phân loại màu sắc, IP address, Nút [Chi tiết].
+  + Modal Inspector: Xem chi tiết bản ghi, sao chép Event ID bất biến và định dạng JSON Payload 1-chạm.
+  + Nút Xuất Báo Cáo CSV: Tải file `scanms_audit_trail_[date].csv` tức thì.
+
+--------------------------------------------------------------------------------
+5. KẾT QUẢ KIỂM THỬ E2E (E2E TEST VERIFICATION):
+- File test: `backend/test/fr32-audit-logs.e2e-spec.ts`
+- Số kịch bản kiểm thử: 16/16 test scenarios PASSED (100%).
+  + TC01: Truy vấn danh sách audit logs trả về HTTP 200 kèm cấu trúc phân trang.
+  + TC02: Lọc danh sách theo Category nghiệp vụ (AUTH, FINANCIAL, AI_SECURITY, v.v.).
+  + TC03: Lọc theo khung thời gian startDate / endDate.
+  + TC04: Tìm kiếm theo từ khóa keyword (IP, Action, Email).
+  + TC05: Thống kê KPI Audit Stats trả về đúng cấu trúc và các bộ đếm.
+  + TC06: Lấy danh mục Available Actions trả về đầy đủ metadata và severity.
+  + TC07: Xem chi tiết 1 bản ghi Audit Log theo UUID hợp lệ.
+  + TC08: Xử lý lỗi 404 Not Found khi truy vấn ID không tồn tại.
+  + TC09: Xuất file kiểm toán CSV thành công với Content-Type `text/csv`.
+  + TC10: Quyền hạn SYSTEM_ADMIN truy cập toàn quyền.
+  + TC11: Quyền hạn SHOP_MANAGER truy cập thành công.
+  + TC12: Chặn truy cập 401 Unauthorized khi không có Bearer token.
+  + TC13: Chặn truy cập 403 Forbidden đối với vai trò COLLABORATOR.
+  + TC14: Dữ liệu User (FullName, Email, Role) được JOIN chính xác từ CSDL.
+  + TC15: Helper `recordAuditLog()` ghi nhận fail-safe không làm đứt gãy luồng chính.
+  + TC16: Độ trễ phản hồi API truy vấn kiểm toán dưới 1000ms.
+
+================================================================================
+(Tài liệu phê duyệt chính thức tính năng FR-32 SCANMS — Lưu trữ tại docs/)
+================================================================================

@@ -32,6 +32,7 @@ import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { SamplesModule } from './modules/samples/samples.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 
 import { validateEnv } from './core/config/env.validation';
@@ -87,6 +88,7 @@ import { validateEnv } from './core/config/env.validation';
     CampaignsModule,
     DashboardModule,
     AiModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy],
