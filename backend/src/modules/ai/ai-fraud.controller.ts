@@ -30,7 +30,7 @@ import { UserRole } from '@prisma/client';
 
 @ApiTags('AI - Fraud Sentinel & Anomaly Detection (FR-31)')
 @ApiBearerAuth()
-@Controller('api/ai/fraud')
+@Controller('ai/fraud')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AiFraudController {
   constructor(private readonly aiFraudService: AiFraudService) {}

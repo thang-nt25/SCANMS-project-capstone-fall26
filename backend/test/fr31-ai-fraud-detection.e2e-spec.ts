@@ -27,6 +27,7 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     await app.init();
 
