@@ -1,0 +1,85 @@
+================================================================================
+TÀI LIỆU ĐẶC TẢ NGHIỆP VỤ & HƯỚNG DẪN KIỂM ĐỊNH TÍNH NĂNG
+TÍNH NĂNG: FR-31 — AI PHÁT HIỆN GIAN LẬN & CLICK ẢO (AI FRAUD SENTINEL)
+HỆ THỐNG QUẢN TRỊ MẠNG LƯỚI BÁN HÀNG TIẾP THỊ LIÊN KẾT (SCANMS - FA26SE032)
+================================================================================
+
+1. TỔNG QUAN NGHIỆP VỤ (BUSINESS OVERVIEW):
+- Mã yêu cầu chức năng (SRS ID): FR-31 (AI Traffic Sentinel & Anomaly Detection).
+- Phân hệ phụ trách: Trí tuệ nhân tạo (AI Module) & Bảo mật lưu lượng mạng lưới Affiliate.
+- Người thực hiện: Nguyễn Phú Quý (Branch: quy) — Trưởng nhóm: Nguyễn Thành Thắng.
+- Mục đích: 
+  + Tự động giám sát, phát hiện và ngăn chặn các hành vi gian lận lưu lượng (Fraud Traffic), click spam từ bot tự động, zombie traffic (hàng ngàn lượt click nhưng không phát sinh đơn hàng).
+  + Ngăn chặn hiện tượng tự mua hàng qua link của chính mình (Self-referral) hoặc Flash Conversion (đơn hàng tạo tức thì dưới 2 giây bằng tool tự động).
+  + Chấm điểm nguy cơ rủi ro (Risk Score 0 - 100) và đưa ra giải trình lý do minh bạch bằng ngôn ngữ tự nhiên (AI Explainable Reasoning).
+  + Cung cấp các hành động phòng vệ 1-chạm (Actionable Defense): Đóng băng hoa hồng ví chờ (Freeze Commission), Tạm ngưng Link tiếp thị (Pause Link), hoặc Bác bỏ cảnh báo (Dismiss/Safe).
+
+--------------------------------------------------------------------------------
+2. NGUYÊN LÝ THUẬT TOÁN ĐA CHIỀU (MULTI-DIMENSIONAL HEURISTIC ANOMALY ENGINE):
+Hệ thống KHÔNG CẦN train model Machine Learning nặng nề (tránh tốn GPU, tránh overfit khi demo), mà sử dụng Động cơ Heuristic Anomaly Scoring chuẩn quốc tế (tương tự Impact, CJ Affiliate):
+
+a. Tiêu chí 1: Zombie Traffic (Lưu lượng ảo không chuyển đổi):
+   - Nếu tổng lượt Click >= 300 mà Số đơn hàng = 0: +45 điểm rủi ro.
+   - Nếu tổng lượt Click >= 150 mà Tỷ lệ chuyển đổi (CR) < 0.3%: +25 điểm rủi ro.
+
+b. Tiêu chí 2: IP Clustering & Bot Spam (Tập trung IP / Subnet):
+   - Nếu xuất hiện >= 8 lượt click xuất phát từ cùng một địa chỉ IP hoặc dải mạng bot proxy: +35 điểm rủi ro.
+   - Gắn nhãn vi phạm: CLICK_BURST_BOT, IP_CLUSTER.
+
+c. Tiêu chí 3: Conversion Spike (Đột biến chốt đơn siêu thực):
+   - Nếu số đơn >= 5 và Tỷ lệ chuyển đổi (CR) > 70%: +30 điểm rủi ro (bất thường so với thương mại điện tử tự nhiên).
+
+d. Tiêu chí 4: Rate Limit Violations (Vi phạm tần suất):
+   - Các lượt click kích hoạt cờ RATE_LIMIT_BURST từ Redis: +25 điểm rủi ro.
+
+e. Tiêu chí 5: Self-Referral / High-Value Commission Concentration:
+   - Hoa hồng ví chờ > 5.000.000 VNĐ tập trung vào số ít đơn hàng: +15 điểm rủi ro.
+
+f. Bảng thang điểm nguy cơ (AI Risk Score 0 - 100):
+   - 0 - 39: CLEAN (Lưu lượng tự nhiên, an toàn 100%).
+   - 40 - 69: LOW_RISK (Biến động nhẹ, đưa vào danh sách theo dõi).
+   - 70 - 84: SUSPICIOUS (Nghi vấn gian lận cao, khuyến nghị tạm ngưng link).
+   - 85 - 100: FRAUD_CRITICAL (Gian lận rõ rệt, kích hoạt gợi ý Đóng băng hoa hồng ví chờ).
+
+--------------------------------------------------------------------------------
+3. DANH SÁCH RESTful API ENDPOINTS:
+- GET  /api/ai/fraud/scan                      : Quét toàn sàn hoặc theo Shop/KOL.
+- GET  /api/ai/fraud/incidents                 : Lấy danh sách các sự vụ nghi vấn.
+- GET  /api/ai/fraud/incidents/:id             : Lấy chi tiết bằng chứng và lý do AI của sự vụ.
+- GET  /api/ai/fraud/kol/:collaboratorId/analysis : Báo cáo phân tích chuyên sâu 1 creator.
+- POST /api/ai/fraud/incidents/:id/action      : Thực hiện phán quyết (FREEZE_COMMISSION, PAUSE_LINK, DISMISS).
+
+--------------------------------------------------------------------------------
+4. GIAO DIỆN NGƯỜI DÙNG (FRONTEND UI):
+- Đường dẫn: `/merchant/fraud-sentinel` và `/merchant/ai-fraud`.
+- Thiết kế: Chuẩn nhận diện Vàng Be hoàng kim (Warm Sand, Sand Gold, Pure Tailwind CSS).
+- Các khối chức năng chính:
+  + Thẻ đo chỉ số Radar: Lưu lượng đã quét, Số cảnh báo nguy cơ, Ngân sách hoa hồng được bảo vệ (VND), Tỷ lệ traffic sạch (%).
+  + Bộ lọc sự vụ: Tất cả, Nguy cơ cao (Critical), Nghi vấn (Suspicious), Theo dõi (Low Risk), Đã đóng băng (Frozen).
+  + Bảng tương tác: Mã sự vụ, KOL & Cấp bậc, Link tiếp thị, Chỉ số Traffic & CR, Nhãn bất thường, Điểm rủi ro (Gauge bar).
+  + Modal chi tiết: Báo cáo AI Reasoning, Bảng bóc tách bằng chứng chi tiết, Form nhập ghi chú và các nút thao tác nhanh.
+
+--------------------------------------------------------------------------------
+5. KẾT QUẢ KIỂM THỬ E2E (E2E TEST VERIFICATION):
+- File test: `backend/test/fr31-ai-fraud-detection.e2e-spec.ts`
+- Số kịch bản kiểm thử: 16/16 test scenarios PASSED (100%).
+  + TC01: Scan summary cấu trúc chuẩn xác 200 OK.
+  + TC02: Validate số nguyên/thực không âm cho clicks và saved amount.
+  + TC03: Bounded riskScore [0 - 100].
+  + TC04: Enums chuẩn xác (CLEAN, LOW_RISK, SUSPICIOUS, FRAUD_CRITICAL).
+  + TC05: Báo cáo AI Reasoning bằng ngôn ngữ tự nhiên.
+  + TC06: Filter minRiskScore.
+  + TC07: Timeframe filters (24h, 7d).
+  + TC08: Incidents list sorted descending.
+  + TC09: Incident detail by ID.
+  + TC10: 404 Not Found handling.
+  + TC11: Deep KOL analysis report.
+  + TC12: Action FREEZE_COMMISSION updates status to FROZEN and link to PAUSED.
+  + TC13: Action DISMISS restores status to DISMISSED and link to ACTIVE.
+  + TC14: System Admin RBAC authorization.
+  + TC15: 401 Unauthorized without token.
+  + TC16: Latency test (< 2000ms).
+
+================================================================================
+(Tài liệu phê duyệt chính thức tính năng FR-31 SCANMS — Lưu trữ tại docs/)
+================================================================================
