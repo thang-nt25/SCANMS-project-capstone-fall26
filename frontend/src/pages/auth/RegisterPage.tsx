@@ -94,12 +94,19 @@ export default function RegisterPage() {
     try {
       const res: any = await authService.sendOtp(email);
       setRegisteredEmail(email);
-      if (res?.data?.mockOtp) {
-        setMockOtpHint(res.data.mockOtp);
+      const otpCode = res?.data?.debugOtp || res?.data?.mockOtp;
+      if (otpCode) {
+        setMockOtpHint(otpCode);
       }
       setShowOtpModal(true);
     } catch (err: any) {
-      setError(err.message || 'Không thể gửi mã xác thực OTP. Vui lòng kiểm tra lại email.');
+      console.error('Send OTP error:', err);
+      const errorMsg =
+        err?.response?.data?.message ||
+        (err?.code === 'ERR_NETWORK' || err?.message?.includes('Network Error')
+          ? 'Không thể kết nối đến máy chủ Backend (cổng 3000). Vui lòng đảm bảo backend đang chạy trên http://localhost:3000.'
+          : err?.message || 'Không thể gửi mã xác thực OTP. Vui lòng kiểm tra lại email.');
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -121,13 +128,22 @@ export default function RegisterPage() {
         phoneNumber: phone,
         storeName: role === 'shop' ? shopName : undefined,
         role: apiRole,
-        otp,
+        otp: otp.trim(),
       });
 
-      toast.success('Kích hoạt tài khoản SCANMS thành công! Bạn có thể đăng nhập ngay.');
+      toast.success(
+        role === 'shop'
+          ? `Kích hoạt tài khoản Gian hàng "${shopName}" thành công! Vui lòng đăng nhập.`
+          : 'Kích hoạt tài khoản CTV / KOL thành công! Vui lòng đăng nhập.'
+      );
       navigate('/login');
     } catch (err: any) {
-      setError(err.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
+      const errorMsg =
+        err?.response?.data?.message ||
+        (err?.code === 'ERR_NETWORK' || err?.message?.includes('Network Error')
+          ? 'Không thể kết nối đến máy chủ Backend (cổng 3000).'
+          : err?.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -316,6 +332,22 @@ export default function RegisterPage() {
                   <span>Khách Mua</span>
                 </button>
               </div>
+
+              {role === 'kol' && (
+                <p className="text-[11px] text-[#7D715E] bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7] mt-2 mb-0">
+                  🌟 <strong>Nhà sáng tạo / KOL:</strong> Đăng ký tài khoản nhận link tiếp thị, tạo mã QR, xin mẫu trải nghiệm và hưởng hoa hồng bậc thang tới 30%.
+                </p>
+              )}
+              {role === 'shop' && (
+                <p className="text-[11px] text-[#7D715E] bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7] mt-2 mb-0">
+                  🏪 <strong>Chủ Gian Hàng:</strong> Hệ thống tự động tạo Store cho bạn, cấp quyền đăng bán sản phẩm và cài đặt hoa hồng cho mạng lưới KOL.
+                </p>
+              )}
+              {role === 'customer' && (
+                <p className="text-[11px] text-[#7D715E] bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7] mt-2 mb-0">
+                  🛍️ <strong>Khách Mua Hàng:</strong> Bạn có thể mua hàng 1-chạm không cần tài khoản tại sàn, hoặc tạo tài khoản để quản lý đơn thuận tiện.
+                </p>
+              )}
             </div>
 
             {error && (
@@ -550,14 +582,21 @@ export default function RegisterPage() {
         maxWidth="sm"
       >
         <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
-          {mockOtpHint && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs">
-              Mã OTP Demo thử nghiệm:{' '}
-              <strong className="text-sm font-mono tracking-widest text-amber-900 block mt-0.5">
-                {mockOtpHint}
-              </strong>
+          <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-amber-900 text-xs flex flex-col gap-1.5">
+            {mockOtpHint ? (
+              <div>
+                <span>Mã OTP xác thực (Dev Mode):</span>{' '}
+                <strong className="text-base font-mono font-bold tracking-widest text-amber-950 inline-block ml-1">
+                  {mockOtpHint}
+                </strong>
+              </div>
+            ) : (
+              <div>Mã xác thực 6 chữ số đã được gửi tới email của bạn.</div>
+            )}
+            <div className="text-[11px] text-amber-800/85 pt-1 border-t border-amber-200/60">
+              💡 <em>Kiểm thử nhanh: Bạn có thể nhập mã master <strong>123456</strong> để kích hoạt ngay.</em>
             </div>
-          )}
+          </div>
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1.5">Nhập mã OTP</label>

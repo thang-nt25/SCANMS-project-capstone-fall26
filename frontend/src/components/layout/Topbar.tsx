@@ -23,31 +23,25 @@ export function Topbar({
   const isShop = role === 'SHOP_MANAGER';
   const isAdmin = role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER';
 
-  let userProfile = {
-    avatar: currentUser?.fullName?.charAt(0) || 'T',
-    name: currentUser?.fullName || 'Nguyễn Thành Thắng',
-    sub: 'KOL Hạng Vàng',
-    avatarBg: '#FEF3C7',
-    avatarColor: '#92400E',
-  };
+  const displayName =
+    currentUser?.fullName ||
+    (isShop ? 'Chủ gian hàng' : isAdmin ? 'Quản trị viên' : 'Cộng tác viên');
 
-  if (isShop) {
-    userProfile = {
-      avatar: 'S',
-      name: currentUser?.fullName || 'Sora Skin Official',
-      sub: 'Chủ gian hàng',
-      avatarBg: '#FEF3C7',
-      avatarColor: '#B45309',
-    };
-  } else if (isAdmin) {
-    userProfile = {
-      avatar: 'QT',
-      name: currentUser?.fullName || 'Nguyễn Quản Trị',
-      sub: 'Quản trị viên Hệ thống',
-      avatarBg: '#0F172A',
-      avatarColor: '#F59E0B',
-    };
-  }
+  const displaySub = isShop
+    ? currentUser?.stores?.[0]?.name || 'Chủ gian hàng'
+    : isAdmin
+    ? 'Quản trị viên Hệ thống'
+    : currentUser?.collaboratorProfile?.tier?.name
+    ? `KOL Hạng ${currentUser.collaboratorProfile.tier.name}`
+    : 'Cộng tác viên SCANMS';
+
+  const userProfile = {
+    avatar: currentUser?.fullName?.charAt(0).toUpperCase() || (isShop ? 'S' : isAdmin ? 'A' : 'K'),
+    name: displayName,
+    sub: displaySub,
+    avatarBg: isAdmin ? '#0F172A' : '#FEF3C7',
+    avatarColor: isAdmin ? '#F59E0B' : isShop ? '#B45309' : '#92400E',
+  };
 
   const getPageTitle = () => {
     if (pathname === '/' || pathname === '/collaborator/dashboard') {

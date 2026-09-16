@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import api from '../../services/api';
 
 type Member = {
@@ -21,7 +21,7 @@ export default function StoreCollaboratorsPage() {
   const [storeId, setStoreId] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
   const [storeName, setStoreName] = useState('Cửa hàng');
-  const [email, setEmail] = useState('demo@scanms.vn');
+  const [email, setEmail] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

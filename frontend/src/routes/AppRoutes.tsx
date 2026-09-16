@@ -42,7 +42,6 @@ const SocialChannelsPage = lazy(() => import('../pages/collaborator/SocialChanne
 const KycSubmissionPage = lazy(() => import('../pages/collaborator/KycSubmissionPage'));
 const WalletPage = lazy(() => import('../pages/collaborator/WalletPage'));
 const MediaHubBrowserPage = lazy(() => import('../pages/collaborator/MediaHubBrowserPage'));
-const SamplesPage = lazy(() => import('../pages/collaborator/SamplesPage'));
 
 
 const OrderTrackingPage = lazy(() => import('../pages/public/OrderTrackingPage'));
@@ -148,7 +147,7 @@ function AppRoutes() {
             <Route path="kol/bonus-progress" element={<KolBonusProgressPage />} />
             <Route path="collaborator/social-channels" element={<SocialChannelsPage />} />
             <Route path="collaborator/media-hub" element={<MediaHubBrowserPage />} />
-            <Route path="collaborator/samples" element={<SamplesPage />} />
+            <Route path="collaborator/samples" element={<SampleRequestsPage />} />
             <Route path="collaborator/tiers" element={<KolTierStatusPage />} />
             <Route path="collaborator/kyc" element={<KycSubmissionPage />} />
             <Route path="collaborator/wallet" element={<WalletPage />} />
