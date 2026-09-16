@@ -66,6 +66,12 @@ const LeaderboardPage = lazy(() => import('../pages/dashboard/LeaderboardPage'))
 // AI KOL Smart Recommendation & Matching Engine (Quý - FR-30)
 const KolRecommendationPage = lazy(() => import('../pages/merchant/KolRecommendationPage'));
 
+// AI Anti-Fraud Sentinel & Traffic Defense (Quý - FR-31)
+const AiFraudSentinelPage = lazy(() => import('../pages/merchant/AiFraudSentinelPage'));
+
+// Audit Logs & Security Trail (Quý - FR-32)
+const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
+
 // Admin Pages (FR-12)
 const AdminCouponsPage = lazy(() => import('../pages/admin/AdminCouponsPage'));
 import { RouteContent } from './RouteContent';
@@ -129,9 +135,12 @@ function AppRoutes() {
             <Route path="merchant/sample-requests" element={<ShopSampleRequestsPage />} />
             <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
             <Route path="merchant/kol-recommendations" element={<KolRecommendationPage />} />
+            <Route path="merchant/fraud-sentinel" element={<AiFraudSentinelPage />} />
+            <Route path="merchant/ai-fraud" element={<AiFraudSentinelPage />} />
             <Route path="merchant/analytics" element={<RealtimeAnalyticsPage />} />
             <Route path="merchant/stats" element={<RealtimeAnalyticsPage />} />
             <Route path="merchant/leaderboard" element={<LeaderboardPage />} />
+            <Route path="merchant/audit-logs" element={<AuditLogsPage />} />
           </Route>
 
 
@@ -165,6 +174,8 @@ function AppRoutes() {
             <Route path="admin/users" element={<KycApprovalPage />} />
             <Route path="admin/referral-links" element={<AdminReferralLinksPage />} />
             <Route path="admin/coupons" element={<AdminCouponsPage />} />
+            <Route path="admin/audit-logs" element={<AuditLogsPage />} />
+            <Route path="admin/audit" element={<AuditLogsPage />} />
           </Route>
 
 
