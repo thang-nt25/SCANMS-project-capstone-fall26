@@ -2731,4 +2731,201 @@ export class OrdersService {
         HttpStatus.TOO_MANY_REQUESTS,
       );
   }
+
+  /**
+   * FR-16/FR-20: Lấy danh sách đơn hàng thực tế của Gian Hàng (Merchant Orders)
+   */
+  async getMyStoreOrders(
+    userId: string,
+    userRole: string,
+    query: {
+      status?: OrderStatus;
+      search?: string;
+      page?: number | string;
+      limit?: number | string;
+      storeId?: string;
+    },
+  ) {
+    let targetStoreId = query.storeId;
+    if (!targetStoreId) {
+      if (userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER) {
+        // Admin xem toàn bộ hoặc storeId truyền vào
+      } else {
+        const userStore = await this.prisma.store.findFirst({
+          where: { ownerId: userId, isDeleted: false },
+        });
+        if (!userStore) {
+          return {
+            items: [],
+            pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
+          };
+        }
+        targetStoreId = userStore.id;
+      }
+    }
+
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.OrderWhereInput = {};
+    if (targetStoreId) {
+      where.storeId = targetStoreId;
+    }
+    if (query.status) {
+      where.status = query.status;
+    }
+    if (query.search?.trim()) {
+      const search = query.search.trim();
+      where.OR = [
+        { externalOrderSn: { contains: search, mode: 'insensitive' } },
+        { customerPhone: { contains: search } },
+        { customerName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, orders] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          store: {
+            select: { id: true, name: true, slug: true, logoUrl: true },
+          },
+          attributedCollaborator: {
+            select: { id: true, fullName: true, email: true },
+          },
+          orderItems: {
+            include: {
+              product: {
+                select: { id: true, title: true, sku: true, imageUrl: true },
+              },
+            },
+          },
+          coupon: {
+            select: { id: true, displayCode: true, discountType: true, discountValue: true },
+          },
+          commissions: {
+            select: { id: true, commissionAmount: true, status: true },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      items: orders.map((order) => {
+        const raw = (order.rawPayload as Record<string, any>) || {};
+        return {
+          id: order.id,
+          externalOrderSn: order.externalOrderSn,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          completedAt: order.completedAt,
+          status: order.status,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          customerEmail: order.customerEmail,
+          shippingAddress: order.shippingAddress,
+          subtotalAmount: Number(order.subtotalAmount),
+          discountAmount: Number(order.discountAmount),
+          shippingFee: Number(order.shippingFee),
+          finalAmount: Number(order.finalAmount),
+          paymentMethod: raw.paymentMethod || 'COD',
+          paymentStatus: raw.paymentStatus || 'UNPAID',
+          trackingNumber: raw.trackingNumber || null,
+          carrierName: raw.carrierName || null,
+          store: order.store,
+          attributedCollaborator: order.attributedCollaborator,
+          couponCode: order.couponCodeSnapshot || order.coupon?.displayCode || null,
+          totalCommission: order.commissions.reduce(
+            (sum, c) => sum + Number(c.commissionAmount || 0),
+            0,
+          ),
+          items: order.orderItems.map((item) => ({
+            productId: item.productId,
+            title: item.product?.title || 'Sản phẩm',
+            sku: item.product?.sku || '',
+            imageUrl: item.product?.imageUrl || '',
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            appliedCommissionRate: Number(item.appliedCommissionRate || 0),
+            calculatedCommissionAmount: Number(item.calculatedCommissionAmount || 0),
+          })),
+        };
+      }),
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Cập nhật trạng thái giao hàng & mã vận đơn bưu cục của Shop
+   */
+  async updateOrderFulfillment(
+    orderId: string,
+    userId: string,
+    userRole: string,
+    dto: {
+      status: OrderStatus;
+      trackingNumber?: string;
+      carrierName?: string;
+      note?: string;
+    },
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { store: true, commissions: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng cần cập nhật');
+    }
+
+    if (
+      userRole !== UserRole.SYSTEM_ADMIN &&
+      userRole !== UserRole.SYSTEM_MANAGER &&
+      order.store.ownerId !== userId
+    ) {
+      throw new ForbiddenException('Bạn không có quyền cập nhật đơn hàng của gian hàng này');
+    }
+
+    const currentRaw = (order.rawPayload as Record<string, any>) || {};
+    const updatedRaw = {
+      ...currentRaw,
+      trackingNumber: dto.trackingNumber || currentRaw.trackingNumber,
+      carrierName: dto.carrierName || currentRaw.carrierName || 'GHTK Express',
+      fulfillmentNote: dto.note || currentRaw.fulfillmentNote,
+      fulfillmentUpdatedAt: new Date().toISOString(),
+    };
+
+    const updateData: Prisma.OrderUpdateInput = {
+      status: dto.status,
+      rawPayload: updatedRaw,
+      sourceUpdatedAt: new Date(),
+    };
+
+    if (dto.status === OrderStatus.DELIVERED && !order.completedAt) {
+      updateData.completedAt = new Date();
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: updateData,
+    });
+
+    return {
+      success: true,
+      message: `Đã cập nhật trạng thái đơn hàng ${order.externalOrderSn} sang ${dto.status}`,
+      orderId: updated.id,
+      status: updated.status,
+      trackingNumber: updatedRaw.trackingNumber,
+      carrierName: updatedRaw.carrierName,
+    };
+  }
 }

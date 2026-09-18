@@ -39,6 +39,14 @@ export class StoresController {
     return this.storesService.updateMyStore(ownerId, dto);
   }
 
+  @Get('marketplace')
+  @ApiOperation({
+    summary: 'Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối',
+  })
+  async getMarketplaceStores() {
+    return this.storesService.getMarketplaceStores();
+  }
+
   @Get('public/:slug')
   @ApiOperation({ summary: 'Lấy thông tin công khai của cửa hàng theo Slug' })
   async getStoreBySlug(@Param('slug') slug: string) {

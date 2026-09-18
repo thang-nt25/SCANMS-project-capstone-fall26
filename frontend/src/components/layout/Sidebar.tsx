@@ -26,6 +26,73 @@ export function Sidebar({ currentUser, onOpenRoleSwitcher, onLogout }: SidebarPr
     if (path === '/' || path === '/collaborator/dashboard') {
       return currentPath === '/' || currentPath === '/collaborator/dashboard';
     }
+
+    if (path === '/collaborator/marketing') {
+      return (
+        currentPath.startsWith('/collaborator/marketing') ||
+        currentPath.startsWith('/collaborator/referral-links') ||
+        currentPath.startsWith('/collaborator/links') ||
+        currentPath.startsWith('/collaborator/media-hub') ||
+        currentPath.startsWith('/collaborator/coupons')
+      );
+    }
+
+    if (path === '/collaborator/collaboration') {
+      return (
+        currentPath.startsWith('/collaborator/collaboration') ||
+        currentPath.startsWith('/collaborator/sample-requests') ||
+        currentPath.startsWith('/collaborator/samples') ||
+        currentPath.startsWith('/collaborator/messages') ||
+        currentPath.startsWith('/collaborator/campaigns') ||
+        currentPath === '/chat'
+      );
+    }
+
+    if (path === '/collaborator/profile') {
+      return (
+        currentPath.startsWith('/collaborator/profile') ||
+        currentPath.startsWith('/collaborator/kyc') ||
+        currentPath.startsWith('/collaborator/social-channels') ||
+        currentPath.startsWith('/collaborator/tiers') ||
+        currentPath.startsWith('/collaborator/bonus-progress')
+      );
+    }
+
+    if (path === '/merchant/kol-hub') {
+      return (
+        currentPath.startsWith('/merchant/kol-hub') ||
+        currentPath.startsWith('/merchant/sample-requests') ||
+        currentPath.startsWith('/merchant/kol-recommendations') ||
+        currentPath.startsWith('/merchant/collaborators') ||
+        currentPath.startsWith('/merchant/messages')
+      );
+    }
+
+    if (path === '/merchant/promotions') {
+      return (
+        currentPath.startsWith('/merchant/promotions') ||
+        currentPath.startsWith('/merchant/coupons') ||
+        currentPath.startsWith('/merchant/commission-rules') ||
+        currentPath.startsWith('/merchant/referral-links')
+      );
+    }
+
+    if (path === '/admin/affiliate-oversight') {
+      return (
+        currentPath.startsWith('/admin/affiliate-oversight') ||
+        currentPath.startsWith('/admin/referral-links') ||
+        currentPath.startsWith('/admin/coupons')
+      );
+    }
+
+    if (path === '/admin/analytics') {
+      return (
+        currentPath.startsWith('/admin/analytics') ||
+        currentPath.startsWith('/admin/leaderboard') ||
+        currentPath.startsWith('/admin/kol-recommendations')
+      );
+    }
+
     return currentPath === path || currentPath.startsWith(`${path}/`);
   };
 

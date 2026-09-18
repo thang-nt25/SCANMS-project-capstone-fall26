@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Query,
@@ -60,6 +61,10 @@ import {
   MAX_REVIEW_UPLOAD_BYTES,
 } from './review-media.service';
 import { UploadReviewMediaDto } from './dto/upload-review-media.dto';
+import {
+  UpdateOrderFulfillmentDto,
+  QueryStoreOrdersDto,
+} from './dto/fulfillment-order.dto';
 
 function readCookie(req: Request, names: string[]): string | undefined {
   const cookies: unknown = req.cookies;
@@ -256,6 +261,39 @@ export class OrdersController {
       'X-Content-Type-Options': 'nosniff',
     });
     response.send(buffer);
+  }
+
+  @Get('my-store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Lấy danh sách đơn hàng thực tế của Gian hàng (Fulfillment & Tracking)',
+    description:
+      'Trả về danh sách đơn hàng thực tế từ database kèm sản phẩm, người mua, hoa hồng KOL, mã vận đơn bưu cục',
+  })
+  @ApiResponse({ status: 200, description: 'Lấy danh sách đơn hàng thành công' })
+  async getMyStoreOrders(
+    @CurrentUser() manager: OrderManagerIdentity,
+    @Query() query: QueryStoreOrdersDto,
+  ) {
+    return this.ordersService.getMyStoreOrders(manager.id, manager.role, query);
+  }
+
+  @Patch(':id/fulfillment')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Cập nhật trạng thái giao hàng & mã vận đơn bưu cục cho đơn hàng',
+  })
+  @ApiResponse({ status: 200, description: 'Cập nhật trạng thái đơn hàng thành công' })
+  async updateOrderFulfillment(
+    @CurrentUser() manager: OrderManagerIdentity,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateOrderFulfillmentDto,
+  ) {
+    return this.ordersService.updateOrderFulfillment(id, manager.id, manager.role, dto);
   }
 
   @Get('track')

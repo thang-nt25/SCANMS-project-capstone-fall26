@@ -43,6 +43,31 @@ export class ChatService {
       );
     }
 
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!UUID_REGEX.test(storeId) || !UUID_REGEX.test(collaboratorId)) {
+      throw new BadRequestException('ID cửa hàng hoặc đối tác không đúng định dạng UUID');
+    }
+
+    // Đảm bảo quan hệ đối tác StoreCollaborator được ghi nhận
+    try {
+      await this.prisma.storeCollaborator.upsert({
+        where: {
+          storeId_collaboratorId: {
+            storeId,
+            collaboratorId,
+          },
+        },
+        update: {},
+        create: {
+          storeId,
+          collaboratorId,
+          status: 'APPROVED',
+        },
+      });
+    } catch (e) {
+      // Ignored if relation already exists or schema differs
+    }
+
     const existing = await this.prisma.conversation.findFirst({
       where: { storeId, collaboratorId },
       include: {
@@ -107,6 +132,11 @@ export class ChatService {
   }
 
   async getConversationById(conversationId: string, userId: string) {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!conversationId || !UUID_REGEX.test(conversationId)) {
+      throw new BadRequestException('Mã hội thoại không đúng định dạng UUID');
+    }
+
     const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
@@ -206,7 +236,7 @@ export class ChatService {
   // ---- Shop tìm kiếm KOL/CTV để bắt đầu chat ----
   async searchCollaborators(q?: string) {
     const trimmed = (q || '').trim();
-    return this.prisma.user.findMany({
+    const list = await this.prisma.user.findMany({
       where: {
         role: 'COLLABORATOR',
         isActive: true,
@@ -221,9 +251,39 @@ export class ChatService {
             }
           : {}),
       },
-      select: { id: true, fullName: true, email: true },
-      take: 20,
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phoneNumber: true,
+        collaboratorProfile: {
+          select: {
+            avatarUrl: true,
+            tier: true,
+            kycStatus: true,
+            totalFollowers: true,
+            totalOrdersReferred: true,
+            totalEarnedCommission: true,
+          },
+        },
+        socialChannels: {
+          select: {
+            id: true,
+            platformName: true,
+            channelName: true,
+            channelUrl: true,
+            followerCount: true,
+            isPrimary: true,
+          },
+        },
+      },
+      take: 50,
     });
+
+    return list.map((u) => ({
+      ...u,
+      avatarUrl: u.collaboratorProfile?.avatarUrl || null,
+    }));
   }
 
   // ---- KOL tìm kiếm Shop để bắt đầu chat ----

@@ -77,16 +77,16 @@ export class ChatController {
   // Shop tìm kiếm KOL/CTV để bắt đầu chat
   @Get('search-collaborators')
   @ApiOperation({ summary: 'Shop tìm KOL/CTV theo tên hoặc email' })
-  @ApiQuery({ name: 'q', required: true, type: String })
-  searchCollaborators(@Query('q') q: string) {
+  @ApiQuery({ name: 'q', required: false, type: String })
+  searchCollaborators(@Query('q') q?: string) {
     return this.chatService.searchCollaborators(q);
   }
 
   // KOL tìm kiếm Shop để bắt đầu chat
   @Get('search-stores')
   @ApiOperation({ summary: 'KOL tìm Shop theo tên' })
-  @ApiQuery({ name: 'q', required: true, type: String })
-  searchStores(@Query('q') q: string) {
+  @ApiQuery({ name: 'q', required: false, type: String })
+  searchStores(@Query('q') q?: string) {
     return this.chatService.searchStores(q);
   }
 }
