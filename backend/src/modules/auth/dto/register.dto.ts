@@ -67,4 +67,20 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   storeName?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+    description: 'Ảnh đại diện của KOL / KOC (Bắt buộc khi đăng ký COLLABORATOR)',
+  })
+  @IsOptional()
+  @IsString({ message: 'Ảnh đại diện không hợp lệ' })
+  avatarUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400',
+    description: 'Logo đại diện gian hàng (Bắt buộc khi đăng ký SHOP_MANAGER)',
+  })
+  @IsOptional()
+  @IsString({ message: 'Logo gian hàng không hợp lệ' })
+  logoUrl?: string;
 }

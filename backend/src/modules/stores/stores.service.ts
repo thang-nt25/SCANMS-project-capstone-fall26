@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -77,6 +78,10 @@ export class StoresService {
       throw new NotFoundException('Không tìm thấy cửa hàng của bạn');
     }
 
+    if (dto.logoUrl !== undefined && !dto.logoUrl?.trim()) {
+      throw new BadRequestException('Logo gian hàng không được để trống');
+    }
+
     const updated = await this.prisma.store.update({
       where: { id: store.id },
       data: {
@@ -130,5 +135,49 @@ export class StoresService {
     }
 
     return store;
+  }
+
+  /**
+   * Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối
+   */
+  async getMarketplaceStores() {
+    const stores = await this.prisma.store.findMany({
+      where: { isDeleted: false, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        description: true,
+        websiteUrl: true,
+        defaultCommissionRate: true,
+        isVerified: true,
+        policyShipping: true,
+        policyReturn: true,
+        createdAt: true,
+        _count: {
+          select: {
+            products: { where: { isDeleted: false, isActive: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return stores.map((st) => ({
+      ...st,
+      totalProducts: st._count.products,
+      category: st.name.toLowerCase().includes('tech')
+        ? 'Công nghệ & Phụ kiện'
+        : st.name.toLowerCase().includes('green')
+        ? 'Thực phẩm & Sức khỏe'
+        : 'Mỹ phẩm & Chăm sóc da',
+      commissionRange: `${Number(st.defaultCommissionRate)}% - ${Math.min(
+        35,
+        Number(st.defaultCommissionRate) + 5,
+      )}%`,
+      rating: 4.9,
+      location: 'TP.HCM & Hà Nội',
+    }));
   }
 }

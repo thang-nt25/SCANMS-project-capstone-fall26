@@ -7,19 +7,20 @@ export const CloudinaryProvider = {
   provide: CLOUDINARY,
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => {
-    // Chỉ đọc từ file .env, tuyệt đối không hardcode secret vào source code
-    const cloudinaryUrl = configService.get<string>('CLOUDINARY_URL');
-    if (cloudinaryUrl) {
-      return cloudinary.config({
-        cloudinary_url: cloudinaryUrl,
-        secure: true,
-      });
-    }
+    const cloudName =
+      configService.get<string>('CLOUDINARY_CLOUD_NAME') ||
+      process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey =
+      configService.get<string>('CLOUDINARY_API_KEY') ||
+      process.env.CLOUDINARY_API_KEY;
+    const apiSecret =
+      configService.get<string>('CLOUDINARY_API_SECRET') ||
+      process.env.CLOUDINARY_API_SECRET;
 
     return cloudinary.config({
-      cloud_name: configService.get<string>('CLOUDINARY_CLOUD_NAME'),
-      api_key: configService.get<string>('CLOUDINARY_API_KEY'),
-      api_secret: configService.get<string>('CLOUDINARY_API_SECRET'),
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
       secure: true,
     });
   },

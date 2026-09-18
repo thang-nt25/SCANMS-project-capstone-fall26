@@ -14,7 +14,22 @@ export default function MainLayout() {
 
   useEffect(() => {
     const user = authService.getCurrentUser();
-    setCurrentUser(user);
+    if (user) {
+      setCurrentUser(user);
+    }
+    const token = localStorage.getItem('token');
+    if (token) {
+      authService
+        .getMe()
+        .then((freshUser) => {
+          if (freshUser && freshUser.id) {
+            setCurrentUser(freshUser);
+          }
+        })
+        .catch(() => {
+          // Token expired or invalid
+        });
+    }
   }, [location.pathname]);
 
   const toggleTheme = () => {
