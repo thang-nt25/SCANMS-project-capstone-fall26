@@ -1,23 +1,18 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
-
 import MainLayout from '../components/layout/MainLayout';
 const DashboardDispatcher = lazy(() => import('../pages/DashboardDispatcher'));
 const HomePage = lazy(() => import('../pages/HomePage'));
 
-
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
-
 
 const ProductDetailPage = lazy(() => import('../pages/ProductDetailPage'));
 const RedirectHandlerPage = lazy(() => import('../pages/RedirectHandlerPage'));
 
-
 const UiReferencePage = lazy(() => import('../pages/UiReferencePage'));
 const MarketplacePage = lazy(() => import('../pages/public/MarketplacePage'));
-
 
 const ProductManagementPage = lazy(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazy(() => import('../pages/merchant/ShopDashboardPage'));
@@ -41,6 +36,12 @@ const ShopPromotionsHubPage = lazy(() => import('../pages/merchant/ShopPromotion
 const AdminOversightHubPage = lazy(() => import('../pages/admin/AdminOversightHubPage'));
 const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHubPage'));
 
+// AI Anti-Fraud Sentinel & Traffic Defense (Quý - FR-31)
+const AiFraudSentinelPage = lazy(() => import('../pages/merchant/AiFraudSentinelPage'));
+
+// Audit Logs & Security Trail (Quý - FR-32)
+const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
+
 import { RouteContent } from './RouteContent';
 
 function AppRoutes() {
@@ -48,9 +49,6 @@ function AppRoutes() {
     <Router>
       <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>
       <Routes>
-
-
-
         <Route path="/" element={<MarketplacePage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/store" element={<MarketplacePage />} />
@@ -62,27 +60,19 @@ function AppRoutes() {
         <Route path="/app" element={<UiReferencePage />} />
         <Route path="/app/:screenId" element={<UiReferencePage />} />
 
-
         <Route path="/tracking" element={<OrderTrackingPage />} />
         <Route path="/order-tracking" element={<OrderTrackingPage />} />
-
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-
         <Route path="/r/:shortCode" element={<RedirectHandlerPage />} />
 
-
         <Route path="/products/:slug" element={<ProductDetailPage />} />
-
-
-
 
         <Route element={<MainLayout />}>
           <Route path="/portal" element={<DashboardDispatcher />} />
           <Route path="/dashboard" element={<DashboardDispatcher />} />
-
 
           <Route element={<RouteContent />}>
             <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
@@ -96,6 +86,9 @@ function AppRoutes() {
             {/* Merchant Consolidated Hubs */}
             <Route path="merchant/kol-hub" element={<ShopKolHubPage />} />
             <Route path="merchant/promotions" element={<ShopPromotionsHubPage />} />
+            <Route path="merchant/fraud-sentinel" element={<AiFraudSentinelPage />} />
+            <Route path="merchant/ai-fraud" element={<AiFraudSentinelPage />} />
+            <Route path="merchant/audit-logs" element={<AuditLogsPage />} />
 
             {/* Merchant Backward Compatibility Redirects */}
             <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=commission-rules" replace />} />
@@ -117,7 +110,6 @@ function AppRoutes() {
             <Route path="merchant/stats" element={<RealtimeAnalyticsPage />} />
             <Route path="merchant/leaderboard" element={<LeaderboardPage />} />
           </Route>
-
 
           <Route element={<RouteContent />}>
             <Route path="collaborator/dashboard" element={<HomePage />} />
@@ -149,17 +141,18 @@ function AppRoutes() {
             <Route path="collaborator/stats" element={<RealtimeAnalyticsPage />} />
           </Route>
 
-
           <Route element={<RouteContent />}>
             <Route path="admin/analytics" element={<AdminAnalyticsHubPage />} />
             <Route path="admin/affiliate-oversight" element={<AdminOversightHubPage />} />
             <Route path="admin/users" element={<KycApprovalPage />} />
+            <Route path="admin/audit-logs" element={<AuditLogsPage />} />
+            <Route path="admin/audit" element={<AuditLogsPage />} />
+            <Route path="admin/fraud-sentinel" element={<AiFraudSentinelPage />} />
             <Route path="admin/leaderboard" element={<Navigate to="/admin/analytics?tab=leaderboard" replace />} />
             <Route path="admin/kol-recommendations" element={<Navigate to="/admin/analytics?tab=ai-matching" replace />} />
             <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
             <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />
           </Route>
-
 
           <Route path="analytics" element={<RealtimeAnalyticsPage />} />
           <Route path="leaderboard" element={<LeaderboardPage />} />
