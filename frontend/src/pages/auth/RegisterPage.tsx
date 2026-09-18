@@ -18,11 +18,35 @@ import {
   KeyRound,
   ArrowRight,
   ArrowLeft,
+  Camera,
+  Check,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
+import { uploadService } from '../../services/upload.service';
 import { triggerGoogleSignIn } from '../../utils/googleAuth';
 import { Modal } from '../../components/ui/Modal';
 import { toast } from '../../utils/toast';
+
+const KOL_AVATAR_PRESETS = [
+  { id: 'kol-1', label: 'Thanh lịch', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584512/scanms/avatars/kol-avatar-thang.jpg' },
+  { id: 'kol-2', label: 'Tươi tắn', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584513/scanms/avatars/kol-avatar-ha.jpg' },
+  { id: 'kol-3', label: 'Trẻ trung', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584515/scanms/avatars/kol-avatar-nhat.jpg' },
+  { id: 'kol-4', label: 'Hiện đại', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584517/scanms/avatars/kol-avatar-nam.jpg' },
+  { id: 'kol-5', label: 'Đẹp xinh', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584518/scanms/avatars/kol-avatar-depxinh.jpg' },
+  { id: 'kol-6', label: 'Năng động', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584519/scanms/avatars/kol-avatar-nghia.jpg' },
+];
+
+const SHOP_LOGO_PRESETS = [
+  { id: 'shop-1', label: 'Sora Skin', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584519/scanms/logos/shop-sora-skin.jpg' },
+  { id: 'shop-2', label: 'Tech Store', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584520/scanms/logos/shop-techstore.jpg' },
+  { id: 'shop-3', label: 'Mỹ Phẩm Xanh', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584525/scanms/logos/shop-my-pham-xanh.jpg' },
+  { id: 'shop-4', label: 'Store A Flagship', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584523/scanms/logos/shop-store-a.jpg' },
+  { id: 'shop-5', label: 'Store B Concept', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584524/scanms/logos/shop-store-b.jpg' },
+  { id: 'shop-6', label: 'Official Flagship', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584522/scanms/logos/shop-flagship.jpg' },
+];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -44,8 +68,39 @@ export default function RegisterPage() {
   const [mockOtpHint, setMockOtpHint] = useState<string | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
 
+  const [avatarUrl, setAvatarUrl] = useState(KOL_AVATAR_PRESETS[0].url);
+  const [logoUrl, setLogoUrl] = useState(SHOP_LOGO_PRESETS[0].url);
+
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'avatar' | 'logo') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    setUploadingImage(true);
+    try {
+      const secureUrl = await uploadService.uploadImage(
+        file,
+        target === 'avatar' ? 'scanms/avatars' : 'scanms/logos'
+      );
+      if (target === 'avatar') {
+        setAvatarUrl(secureUrl);
+        toast.success('Đã tải ảnh đại diện KOL lên Cloudinary thành công!');
+      } else {
+        setLogoUrl(secureUrl);
+        toast.success('Đã tải logo gian hàng lên Cloudinary thành công!');
+      }
+    } catch (err: any) {
+      console.error('Lỗi tải ảnh lên Cloudinary:', err);
+      setError(err?.response?.data?.message || err?.message || 'Không thể tải ảnh lên Cloudinary');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
 
   const getPasswordStrength = (pass: string) => {
     if (!pass) return { score: 0, label: 'Chưa nhập', color: 'bg-slate-200' };
@@ -82,6 +137,16 @@ export default function RegisterPage() {
 
     if (password.length < 8) {
       setError('Mật khẩu cần tối thiểu 8 ký tự.');
+      return;
+    }
+
+    if (role === 'kol' && !avatarUrl.trim()) {
+      setError('Vui lòng chọn hoặc tải lên ảnh đại diện cho tài khoản KOL / CTV (Bắt buộc).');
+      return;
+    }
+
+    if (role === 'shop' && !logoUrl.trim()) {
+      setError('Vui lòng chọn hoặc tải lên logo đại diện cho Gian hàng (Bắt buộc).');
       return;
     }
 
@@ -129,6 +194,8 @@ export default function RegisterPage() {
         storeName: role === 'shop' ? shopName : undefined,
         role: apiRole,
         otp: otp.trim(),
+        avatarUrl: role === 'kol' ? avatarUrl.trim() : undefined,
+        logoUrl: role === 'shop' ? logoUrl.trim() : undefined,
       });
 
       toast.success(
@@ -420,17 +487,170 @@ export default function RegisterPage() {
                 </div>
               )}
 
+              {role === 'kol' && (
+                <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span>Ảnh đại diện KOL / KOC <strong className="text-rose-600">* (Bắt buộc)</strong></span>
+                    </label>
+                    <span className="text-[10px] text-[#7D715E] bg-white px-2 py-0.5 rounded-full border border-[#EAE4D7]">
+                      Dùng trên Bảng xếp hạng &amp; Video
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-14 h-14 rounded-full overflow-hidden ring-2 ring-[#C59B58] ring-offset-2 shrink-0 bg-[#F3EFE6] flex items-center justify-center shadow-xs">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="KOL Avatar Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-6 h-6 text-[#7D715E]" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {KOL_AVATAR_PRESETS.map((p) => {
+                          const isSelected = avatarUrl === p.url;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setAvatarUrl(p.url)}
+                              className={`relative group p-0.5 rounded-full border-2 transition cursor-pointer ${
+                                isSelected ? 'border-[#C59B58] scale-105 shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
+                              }`}
+                              title={p.label}
+                            >
+                              <img src={p.url} alt={p.label} className="w-6 h-6 rounded-full object-cover" />
+                              {isSelected && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#059669] text-white flex items-center justify-center">
+                                  <Check className="w-2 h-2" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="url"
+                          value={avatarUrl}
+                          onChange={(e) => setAvatarUrl(e.target.value)}
+                          placeholder="Hoặc dán URL ảnh trực tiếp..."
+                          required
+                          className="flex-1 bg-white border border-[#EAE4D7] rounded-lg px-2.5 py-1 text-xs text-[#1A1612] focus:border-[#C59B58] outline-none transition"
+                        />
+                        <label className="cursor-pointer px-2.5 py-1 bg-white border border-[#EAE4D7] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold rounded-lg flex items-center gap-1 shrink-0 transition">
+                          {uploadingImage ? (
+                            <Loader2 className="w-3 h-3 text-[#B88E4F] animate-spin" />
+                          ) : (
+                            <Upload className="w-3 h-3 text-[#B88E4F]" />
+                          )}
+                          <span>{uploadingImage ? 'Đang tải...' : 'Tải ảnh (PNG/JPG)'}</span>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                            disabled={uploadingImage}
+                            onChange={(e) => handleFileUpload(e, 'avatar')}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {role === 'shop' && (
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Tên Gian Hàng / Doanh Nghiệp</label>
-                  <input
-                    type="text"
-                    value={shopName}
-                    onChange={(e) => setShopName(e.target.value)}
-                    placeholder="Sora Skin Official"
-                    required
-                    className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
-                  />
+                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
+                    Tên Gian Hàng / Thương Hiệu <strong className="text-rose-600">*</strong>
+                  </label>
+                  <div className="relative flex items-center">
+                    <Store className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={shopName}
+                      onChange={(e) => setShopName(e.target.value)}
+                      placeholder="Ví dụ: Sora Skin Official"
+                      required
+                      className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {role === 'shop' && (
+                <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span>Logo đại diện Gian Hàng <strong className="text-rose-600">* (Bắt buộc)</strong></span>
+                    </label>
+                    <span className="text-[10px] text-[#7D715E] bg-white px-2 py-0.5 rounded-full border border-[#EAE4D7]">
+                      Hiển thị toàn sàn &amp; chiến dịch
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-[#C59B58] ring-offset-2 shrink-0 bg-[#F3EFE6] flex items-center justify-center shadow-xs">
+                      {logoUrl ? (
+                        <img src={logoUrl} alt="Shop Logo Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <Store className="w-6 h-6 text-[#7D715E]" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {SHOP_LOGO_PRESETS.map((p) => {
+                          const isSelected = logoUrl === p.url;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setLogoUrl(p.url)}
+                              className={`relative group p-0.5 rounded-lg border-2 transition cursor-pointer ${
+                                isSelected ? 'border-[#C59B58] scale-105 shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
+                              }`}
+                              title={p.label}
+                            >
+                              <img src={p.url} alt={p.label} className="w-6 h-6 rounded-md object-cover" />
+                              {isSelected && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#059669] text-white flex items-center justify-center">
+                                  <Check className="w-2 h-2" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="url"
+                          value={logoUrl}
+                          onChange={(e) => setLogoUrl(e.target.value)}
+                          placeholder="Hoặc dán URL logo trực tiếp..."
+                          required
+                          className="flex-1 bg-white border border-[#EAE4D7] rounded-lg px-2.5 py-1 text-xs text-[#1A1612] focus:border-[#C59B58] outline-none transition"
+                        />
+                        <label className="cursor-pointer px-2.5 py-1 bg-white border border-[#EAE4D7] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold rounded-lg flex items-center gap-1 shrink-0 transition">
+                          {uploadingImage ? (
+                            <Loader2 className="w-3 h-3 text-[#B88E4F] animate-spin" />
+                          ) : (
+                            <Upload className="w-3 h-3 text-[#B88E4F]" />
+                          )}
+                          <span>{uploadingImage ? 'Đang tải...' : 'Tải logo (PNG/JPG)'}</span>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                            disabled={uploadingImage}
+                            onChange={(e) => handleFileUpload(e, 'logo')}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

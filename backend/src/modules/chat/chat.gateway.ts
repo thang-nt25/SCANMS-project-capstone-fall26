@@ -110,6 +110,11 @@ export class ChatGateway
     @MessageBody() data: { conversationId: string },
   ) {
     const userId = client.data.userId;
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!data?.conversationId || !UUID_REGEX.test(data.conversationId)) {
+      client.emit('chat_warning', { message: 'Mã hội thoại không hợp lệ' });
+      return;
+    }
     try {
       await this.chatService.getConversationById(data.conversationId, userId);
       client.join(`conv:${data.conversationId}`);
@@ -117,7 +122,7 @@ export class ChatGateway
         conversationId: data.conversationId,
       });
     } catch (err: any) {
-      client.emit('error', { message: err.message });
+      client.emit('chat_warning', { message: err.message });
     }
   }
 

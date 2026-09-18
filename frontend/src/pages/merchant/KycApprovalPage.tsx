@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
   Download,
-  Users,
   Sparkles,
   Store,
   CreditCard,
   Search,
   CheckCircle2,
-  LockOpen,
   Eye,
+  RefreshCw,
 } from 'lucide-react';
 import { kycService, type KycProfile } from '../../services/kyc.service';
 import { Button } from '../../components/ui/Button';

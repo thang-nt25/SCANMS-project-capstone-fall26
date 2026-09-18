@@ -24,6 +24,8 @@ export const authService = {
     role?: string;
     storeName?: string;
     phoneNumber?: string;
+    avatarUrl?: string;
+    logoUrl?: string;
   }) {
     return api.post('/auth/register', data);
   },

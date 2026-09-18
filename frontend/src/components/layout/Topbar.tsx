@@ -46,24 +46,34 @@ export function Topbar({
   const getPageTitle = () => {
     if (pathname === '/' || pathname === '/collaborator/dashboard') {
       if (isShop) return 'Tổng quan Shop';
-      if (isAdmin) return 'Quản trị User & Duyệt KYC';
-      return 'Tổng quan KOL / CTV';
+      if (isAdmin) return 'Giám sát Toàn Sàn';
+      return 'Tổng quan & Doanh số';
     }
+    if (pathname.includes('/collaborator/marketing') || pathname.includes('/collaborator/referral-links') || pathname.includes('/collaborator/media-hub')) {
+      return 'Trung tâm Tiếp thị';
+    }
+    if (pathname.includes('/collaborator/collaboration') || pathname.includes('/collaborator/sample-requests') || pathname.includes('/collaborator/messages')) {
+      return 'Hợp tác & Liên hệ Shop';
+    }
+    if (pathname.includes('/collaborator/profile') || pathname.includes('/collaborator/kyc') || pathname.includes('/collaborator/tiers')) {
+      return 'Hồ sơ & Cấp bậc KOL';
+    }
+    if (pathname.includes('/collaborator/wallet')) return 'Ví Hoa Hồng & Rút Tiền';
+
     if (pathname.includes('/merchant/dashboard')) return 'Tổng quan Gian Hàng';
-    if (pathname.includes('/merchant/products')) return 'Danh mục Sản phẩm & Giá';
+    if (pathname.includes('/merchant/products')) return 'Danh mục Sản phẩm & Kho';
     if (pathname.includes('/merchant/orders')) return 'Quản lý Đơn hàng Sàn';
-    if (pathname.includes('/merchant/campaigns')) return 'Chiến dịch Thưởng Doanh số';
+    if (pathname.includes('/merchant/kol-hub')) return 'Mạng lưới KOL & Hợp tác';
+    if (pathname.includes('/merchant/promotions')) return 'Khuyến mãi & Hoa hồng';
+    if (pathname.includes('/merchant/payouts')) return 'Duyệt Chi trả Hoa hồng';
     if (pathname.includes('/merchant/settings')) return 'Cài đặt Gian hàng';
-    if (pathname.includes('/merchant/kyc-approval') || pathname.includes('/admin/users')) {
+
+    if (pathname.includes('/admin/analytics')) return 'Giám sát Toàn sàn';
+    if (pathname.includes('/admin/affiliate-oversight')) return 'Tiếp thị & Dòng tiền Sàn';
+    if (pathname.includes('/admin/users') || pathname.includes('/merchant/kyc-approval')) {
       return 'Quản trị Người dùng & Duyệt KYC';
     }
-    if (pathname.includes('/collaborator/links')) return 'Link và QR Tiếp thị';
-    if (pathname.includes('/collaborator/social-channels')) return 'Quản lý Kênh Mạng Xã Hội';
-    if (pathname.includes('/collaborator/media-hub')) return 'Kho Nội Dung Media Hub';
-    if (pathname.includes('/collaborator/samples')) return 'Hàng mẫu Dùng thử';
-    if (pathname.includes('/collaborator/tiers')) return 'Bảng Vinh Danh & Cấp Bậc KOL';
-    if (pathname.includes('/collaborator/kyc')) return 'Xác minh Định danh KYC';
-    if (pathname.includes('/collaborator/wallet')) return 'Ví Hoa Hồng & Rút Tiền';
+
     return 'Hệ thống Quản Trị SCANMS';
   };
 

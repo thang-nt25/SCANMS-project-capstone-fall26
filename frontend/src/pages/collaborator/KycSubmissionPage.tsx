@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
+  ShieldAlert,
   Clock,
   CreditCard,
   QrCode,
@@ -108,7 +109,6 @@ export default function KycSubmissionPage() {
   const isVerified = rawStatus === 'VERIFIED';
   const isRejected = rawStatus === 'REJECTED';
   const isPending = rawStatus === 'UNVERIFIED' && hasSubmitted;
-  const isNotSubmitted = rawStatus === 'UNVERIFIED' && !hasSubmitted;
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto text-left">

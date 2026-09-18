@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   v2 as cloudinary,
   UploadApiResponse,
@@ -19,7 +20,28 @@ export interface CloudinaryUploadResult {
 }
 
 @Injectable()
-export class CloudinaryService {
+export class CloudinaryService implements OnModuleInit {
+  constructor(private readonly configService: ConfigService) {}
+
+  onModuleInit() {
+    const cloudName =
+      this.configService.get<string>('CLOUDINARY_CLOUD_NAME') ||
+      process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey =
+      this.configService.get<string>('CLOUDINARY_API_KEY') ||
+      process.env.CLOUDINARY_API_KEY;
+    const apiSecret =
+      this.configService.get<string>('CLOUDINARY_API_SECRET') ||
+      process.env.CLOUDINARY_API_SECRET;
+
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    });
+  }
+
   /**
    * Tải ảnh lên Cloudinary (hỗ trợ JPG, PNG, WEBP, GIF, SVG)
    */

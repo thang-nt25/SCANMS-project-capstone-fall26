@@ -68,25 +68,34 @@ export class ProductsService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    if (query.storeId && !UUID_REGEX.test(query.storeId)) {
+      return {
+        data: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      };
+    }
+
     const where: any = {
       isDeleted: false,
     };
 
-    if (viewer?.role === UserRole.SHOP_MANAGER) {
+    if (query.storeId) {
+      where.storeId = query.storeId;
+      where.isActive = true;
+      where.store = { isDeleted: false, isActive: true };
+    } else if (viewer?.role === UserRole.SHOP_MANAGER) {
       where.store = { ownerId: viewer.id, isDeleted: false };
     } else if (viewer?.role === UserRole.COLLABORATOR) {
       where.isActive = true;
       where.store = {
         isDeleted: false,
         isActive: true,
-        storeCollaborators: {
-          some: { collaboratorId: viewer.id, status: 'APPROVED' },
-        },
       };
-    }
-
-    if (query.storeId) {
-      where.storeId = query.storeId;
     }
 
     if (query.category) {

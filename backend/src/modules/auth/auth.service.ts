@@ -133,6 +133,13 @@ export class AuthService {
 
     // Nếu là KOL / Collaborator: Tạo Profile và Ví tiền mặc định
     if (role === UserRole.COLLABORATOR) {
+      const avatarUrl = dto.avatarUrl?.trim();
+      if (!avatarUrl) {
+        throw new BadRequestException(
+          'Ảnh đại diện cho Nhà sáng tạo (KOL/KOC) là bắt buộc khi đăng ký',
+        );
+      }
+
       const bronzeTier = await this.prisma.collaboratorTier.findFirst({
         where: { name: 'Đồng' },
       });
@@ -141,6 +148,7 @@ export class AuthService {
         data: {
           userId: user.id,
           tierId: bronzeTier?.id || null,
+          avatarUrl,
           bankName: '',
           bankAccountNumber: '',
           bankAccountName: user.fullName,
@@ -158,6 +166,13 @@ export class AuthService {
 
     // Nếu là Shop: Tạo Cửa hàng mặc định
     if (role === UserRole.SHOP_MANAGER) {
+      const logoUrl = dto.logoUrl?.trim();
+      if (!logoUrl) {
+        throw new BadRequestException(
+          'Ảnh logo đại diện cho Cửa hàng (Shop) là bắt buộc khi đăng ký',
+        );
+      }
+
       const storeName = dto.storeName?.trim() || `${user.fullName} Store`;
       const slug =
         storeName
@@ -172,6 +187,7 @@ export class AuthService {
           ownerId: user.id,
           name: storeName,
           slug,
+          logoUrl,
           defaultCommissionRate: 10.0,
           attributionWindowDays: 30,
           minPayoutAmount: 200000.0,
@@ -357,10 +373,15 @@ export class AuthService {
           where: { name: 'Đồng' },
         });
 
+        const avatarUrl =
+          payload.picture ||
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80';
+
         await this.prisma.collaboratorProfile.create({
           data: {
             userId: createdUser.id,
             tierId: bronzeTier?.id || null,
+            avatarUrl,
             bankName: '',
             bankAccountNumber: '',
             bankAccountName: createdUser.fullName,
@@ -386,11 +407,16 @@ export class AuthService {
           '-' +
           Date.now().toString().slice(-4);
 
+        const logoUrl =
+          payload.picture ||
+          'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&auto=format&fit=crop&q=80';
+
         await this.prisma.store.create({
           data: {
             ownerId: createdUser.id,
             name: storeName,
             slug,
+            logoUrl,
             defaultCommissionRate: 10.0,
             attributionWindowDays: 30,
             minPayoutAmount: 200000.0,

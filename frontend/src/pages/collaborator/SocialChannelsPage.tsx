@@ -3,7 +3,6 @@ import {
   Share2,
   Users,
   Star,
-  Wallet,
   Search,
   Plus,
   RotateCcw,
@@ -16,15 +15,10 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { socialService, type SocialChannel } from '../../services/social.service';
-import { authService } from '../../services/auth.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 
 export default function SocialChannelsPage() {
-  const currentUser = authService.getCurrentUser();
-  const isThang = currentUser?.fullName?.includes('Thắng') || currentUser?.email === 'kol1@scanms.vn';
-  const ownerName = isThang ? 'Thắng' : 'Nhật';
-  const ownerHandle = isThang ? 'thang' : 'nhat';
 
   const [channels, setChannels] = useState<SocialChannel[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -349,8 +343,9 @@ export default function SocialChannelsPage() {
                   </button>
                 )}
               </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </div>
 
       {showModal && (
