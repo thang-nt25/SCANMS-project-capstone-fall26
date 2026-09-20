@@ -167,8 +167,8 @@ export default function OrderTrackingPage() {
       setOrders([]);
       setErrorMessage(
         err?.response?.data?.message ||
-          err?.message ||
-          "Không tìm thấy thông tin đơn hàng nào phù hợp với từ khóa này.",
+        err?.message ||
+        "Không tìm thấy thông tin đơn hàng nào phù hợp với từ khóa này.",
       );
     } finally {
       if (sequence === searchSequence.current) setLoading(false);
@@ -509,11 +509,10 @@ export default function OrderTrackingPage() {
                       className="flex flex-col items-center text-center gap-1.5 relative z-10"
                     >
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition ${
-                          st.done
+                        className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition ${st.done
                             ? "bg-[#B88E4F] text-white shadow-xs"
                             : "bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]"
-                        }`}
+                          }`}
                       >
                         {st.done ? (
                           <CheckCircle2 className="w-5 h-5" />

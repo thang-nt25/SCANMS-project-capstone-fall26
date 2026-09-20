@@ -37,6 +37,7 @@ export default function MarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<string>('newest');
+  const [_categories, setCategories] = useState<any[]>([]);
 
   // Cart & Gateways
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
@@ -62,6 +63,24 @@ export default function MarketplacePage() {
   const catalogRef = useRef<HTMLElement>(null);
   const trackingRef = useRef<HTMLElement>(null);
 
+  // Fetch real categories on mount
+  useEffect(() => {
+    let mounted = true;
+
+    api.get('/public/products/categories')
+      .then((res) => {
+        if (!mounted) return;
+        const payload = res.data?.data !== undefined ? res.data.data : res.data;
+        if (Array.isArray(payload)) {
+          setCategories(payload);
+        }
+      })
+      .catch(() => { });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Fetch real products from backend database
   useEffect(() => {
@@ -496,7 +515,7 @@ export default function MarketplacePage() {
 
         <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
-            
+
             {/* Pill Tag */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-bold text-[#8C6226] mb-5 shadow-2xs">
               <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -679,7 +698,7 @@ export default function MarketplacePage() {
 
       {/* MAIN CATALOG - SHOPEE STYLE CLEAN FULL-WIDTH SHOWCASE */}
       <section ref={catalogRef} id="catalog-section" className="py-12 px-4 sm:px-6 lg:px-8 max-w-[1520px] mx-auto w-full text-left">
-        
+
         {/* Catalog Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-[#EAE4D7]">
           <div>
@@ -755,117 +774,117 @@ export default function MarketplacePage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5">
             {items.map((p) => {
-                  const productDetailUrl = `/products/${p.sku || p.id}`;
-                  return (
-                    <div
-                      key={p.id}
-                      className="bg-white border border-[#EAE4D7] rounded-3xl overflow-hidden shadow-2xs hover:shadow-md hover:border-[#C59B58]/80 transition duration-200 flex flex-col justify-between group text-left"
+              const productDetailUrl = `/products/${p.sku || p.id}`;
+              return (
+                <div
+                  key={p.id}
+                  className="bg-white border border-[#EAE4D7] rounded-3xl overflow-hidden shadow-2xs hover:shadow-md hover:border-[#C59B58]/80 transition duration-200 flex flex-col justify-between group text-left"
+                >
+                  <div>
+                    {/* Clickable Image -> Product Details */}
+                    <Link
+                      to={productDetailUrl}
+                      className="block relative aspect-square bg-[#FAF8F5] overflow-hidden group-hover:opacity-95 transition cursor-pointer"
+                      title="Xem chi tiết sản phẩm"
                     >
-                      <div>
-                        {/* Clickable Image -> Product Details */}
-                        <Link
-                          to={productDetailUrl}
-                          className="block relative aspect-square bg-[#FAF8F5] overflow-hidden group-hover:opacity-95 transition cursor-pointer"
-                          title="Xem chi tiết sản phẩm"
-                        >
-                          <img
-                            src={p.image}
-                            alt={p.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/reference/assets/serum-hero-optimized.jpg';
-                            }}
-                          />
-                          {p.badge && (
-                            <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-[#C59B58] text-white text-[10px] font-black shadow-xs">
-                              {p.badge}
-                            </span>
-                          )}
-                          {p.origPrice > p.price && (
-                            <span className="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[10px] font-black border border-rose-200">
-                              -{Math.round(((p.origPrice - p.price) / p.origPrice) * 100)}%
-                            </span>
-                          )}
-                        </Link>
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/reference/assets/serum-hero-optimized.jpg';
+                        }}
+                      />
+                      {p.badge && (
+                        <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-[#C59B58] text-white text-[10px] font-black shadow-xs">
+                          {p.badge}
+                        </span>
+                      )}
+                      {p.origPrice > p.price && (
+                        <span className="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[10px] font-black border border-rose-200">
+                          -{Math.round(((p.origPrice - p.price) / p.origPrice) * 100)}%
+                        </span>
+                      )}
+                    </Link>
 
-                        <div className="p-4 sm:p-5 flex flex-col gap-2.5 text-left">
-                          <div className="flex items-center justify-between text-[11px] text-[#7D715E]">
-                            <span className="font-bold flex items-center gap-1 truncate max-w-[170px]">
-                              <Store className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                              {p.brand}
-                            </span>
-                            <span className="font-bold text-[#B88E4F] shrink-0">
-                              {p.sold}
-                            </span>
-                          </div>
-
-                          {/* Clickable Title -> Product Details */}
-                          <Link
-                            to={productDetailUrl}
-                            className="text-xs sm:text-sm font-black text-[#1A1612] leading-snug line-clamp-2 m-0 hover:text-[#B88E4F] transition"
-                            title="Xem chi tiết sản phẩm"
-                          >
-                            {p.name}
-                          </Link>
-
-                          {/* Affiliate Commission Badge */}
-                          {p.commissionRate ? (
-                            <div className="p-2 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between text-[10.5px]">
-                              <span className="text-[#8C6226] font-bold truncate">
-                                Hoa hồng CTV: {p.commissionRate}%
-                              </span>
-                              {p.commissionAmount && (
-                                <span className="font-black text-[#B88E4F] shrink-0">
-                                  ~{formatMoney(p.commissionAmount)}
-                                </span>
-                              )}
-                            </div>
-                          ) : null}
-
-                          <div className="flex items-baseline gap-2 pt-1">
-                            {p.origPrice > p.price && (
-                              <span className="text-xs text-[#7D715E] line-through">
-                                {formatMoney(p.origPrice)}
-                              </span>
-                            )}
-                            <strong className="text-base sm:text-lg font-black text-[#1A1612]">
-                              {formatMoney(p.price)}
-                            </strong>
-                          </div>
-                        </div>
+                    <div className="p-4 sm:p-5 flex flex-col gap-2.5 text-left">
+                      <div className="flex items-center justify-between text-[11px] text-[#7D715E]">
+                        <span className="font-bold flex items-center gap-1 truncate max-w-[170px]">
+                          <Store className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                          {p.brand}
+                        </span>
+                        <span className="font-bold text-[#B88E4F] shrink-0">
+                          {p.sold}
+                        </span>
                       </div>
 
-                      {/* Actions: "Thêm giỏ", "Chi tiết" & "Mua ngay" */}
-                      <div className="p-4 sm:p-5 pt-0 grid grid-cols-[auto_1fr_1fr] gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleAddToCart(p)}
-                          className="py-2.5 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                          title="Thêm vào giỏ hàng"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5 text-[#B88E4F]" />
-                        </button>
-                        <Link
-                          to={productDetailUrl}
-                          className="py-2.5 px-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center text-center"
-                        >
-                          <span>Chi tiết</span>
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDirectCheckout(p)}
-                          className="py-2.5 px-2.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white text-xs font-black hover:opacity-95 transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                        >
-                          <span>Mua ngay</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
+                      {/* Clickable Title -> Product Details */}
+                      <Link
+                        to={productDetailUrl}
+                        className="text-xs sm:text-sm font-black text-[#1A1612] leading-snug line-clamp-2 m-0 hover:text-[#B88E4F] transition"
+                        title="Xem chi tiết sản phẩm"
+                      >
+                        {p.name}
+                      </Link>
+
+                      {/* Affiliate Commission Badge */}
+                      {p.commissionRate ? (
+                        <div className="p-2 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between text-[10.5px]">
+                          <span className="text-[#8C6226] font-bold truncate">
+                            Hoa hồng CTV: {p.commissionRate}%
+                          </span>
+                          {p.commissionAmount && (
+                            <span className="font-black text-[#B88E4F] shrink-0">
+                              ~{formatMoney(p.commissionAmount)}
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
+
+                      <div className="flex items-baseline gap-2 pt-1">
+                        {p.origPrice > p.price && (
+                          <span className="text-xs text-[#7D715E] line-through">
+                            {formatMoney(p.origPrice)}
+                          </span>
+                        )}
+                        <strong className="text-base sm:text-lg font-black text-[#1A1612]">
+                          {formatMoney(p.price)}
+                        </strong>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+
+                  {/* Actions: "Thêm giỏ", "Chi tiết" & "Mua ngay" */}
+                  <div className="p-4 sm:p-5 pt-0 grid grid-cols-[auto_1fr_1fr] gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleAddToCart(p)}
+                      className="py-2.5 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                      title="Thêm vào giỏ hàng"
+                    >
+                      <ShoppingCart className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    </button>
+                    <Link
+                      to={productDetailUrl}
+                      className="py-2.5 px-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center text-center"
+                    >
+                      <span>Chi tiết</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDirectCheckout(p)}
+                      className="py-2.5 px-2.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white text-xs font-black hover:opacity-95 transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      <span>Mua ngay</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Big Bottom Action to Search & Detailed Filters */}
         <div className="mt-14 text-center">
@@ -1446,3 +1465,4 @@ export default function MarketplacePage() {
     </div>
   );
 }
+
