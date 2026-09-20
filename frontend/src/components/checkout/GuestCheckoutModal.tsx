@@ -128,6 +128,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (isOpen) {
 
       const newKey =
@@ -424,15 +434,18 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="guest-checkout-title"
+      onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      <div className="bg-[#FFFFFF] rounded-3xl max-w-4xl lg:max-w-5xl xl:max-w-6xl w-full p-5 sm:p-7 lg:p-8 border border-[#EAE4D7] shadow-2xl relative max-h-[92vh] overflow-y-auto font-sans">
-
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#FFFFFF] rounded-3xl max-w-4xl lg:max-w-5xl xl:max-w-6xl w-full p-5 sm:p-7 lg:p-8 border border-[#EAE4D7] shadow-2xl relative max-h-[92vh] overflow-y-auto font-sans"
+      >
         <button
           type="button"
           onClick={onClose}
           aria-label="Đóng cửa sổ"
-          className="absolute top-4 right-4 sm:top-5 sm:right-5 text-[#7D715E] hover:text-[#1A1612] p-2 rounded-full hover:bg-[#F3EFE6] transition-colors cursor-pointer z-20"
+          className="sticky top-0 float-right -mr-2 -mt-2 sm:-mr-3 sm:-mt-3 text-[#7D715E] hover:text-[#1A1612] p-2 rounded-full hover:bg-[#F3EFE6] transition-colors cursor-pointer z-30 bg-white/90 backdrop-blur-xs border border-[#EAE4D7] shadow-xs"
         >
           <X className="w-5 h-5" />
         </button>
@@ -1046,6 +1059,14 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         <span>XÁC NHẬN ĐẶT HÀNG — {finalTotal.toLocaleString('vi-VN')} ₫</span>
                       </>
                     )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-2.5 text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Hủy bỏ và tiếp tục xem sản phẩm
                   </button>
 
                   <div className="text-center text-[11px] text-[#7D715E] flex items-center justify-center gap-1.5 pt-1">

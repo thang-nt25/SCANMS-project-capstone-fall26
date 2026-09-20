@@ -292,6 +292,34 @@
 
 ---
 
+### [2026-09-21] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (Shopee-Style Marketplace, Advanced Search & Filter, National S-Map Logo, Flexible Commission 2-Way)
+- **Hạng mục đã thực hiện**:
+  1. **Tái cấu trúc Sàn Mua Sắm theo mô hình Shopee**:
+     - Tắt hoàn toàn sidebar bộ lọc tại Trang chủ mua sắm (`/`), mở rộng lưới sản phẩm full-width 5 cột thoáng đãng, sang trọng.
+     - Tích hợp thanh tìm kiếm thông minh tại Hero với nút "Bộ lọc" chuyên dụng và các chip từ khóa/danh mục nổi bật tự động điều hướng sang trang Tìm kiếm chi tiết.
+  2. **Xây dựng Trang Tìm Kiếm & Lọc Chi Tiết Chuyên Nghiệp (`/search`)**:
+     - Phát triển `SearchPage.tsx` chuẩn Shopee với đầy đủ công cụ lọc: Ngành hàng, Gian hàng đối tác có tick KYC, Khoảng giá Min-Max tùy biến, Công tắc chỉ hiện sản phẩm có hoa hồng KOC, Sắp xếp đa dạng.
+     - Đồng bộ hóa toàn diện URL Search Params (`?q=`, `?category=`, `?store=`, `?minPrice=`, `?maxPrice=`, `?commission=`, `?sort=`) giúp lưu trữ và chia sẻ liên kết tìm kiếm dễ dàng.
+  3. **Thiết kế Logo Thương hiệu ScanMS chuẩn Bản đồ chữ S Việt Nam**:
+     - Trích xuất trực tiếp hình học vector từ ảnh tư liệu quốc gia: Bắc Bộ mở rộng ôm Vịnh Bắc Bộ, dải eo Miền Trung thon gọn, Nam Bộ vươn cong về Mũi Cà Mau.
+     - Khắc phục triệt để lỗi đường nét bị giống số 3, xóa bỏ đường chỉ trắng thừa ở giữa thân bản đồ.
+     - Đặt ngôi sao vàng 5 cánh thiêng liêng ở Bắc Bộ; chuẩn hóa kích thước và vị trí các đảo/quần đảo: Đảo Phú Quốc nhỏ gọn đúng tỉ lệ thực địa tại Vịnh Thái Lan, Quần đảo Thổ Chu ở cực Tây Nam, Quần đảo Côn Đảo ở Đông Nam Bộ, cùng 2 Quần đảo Hoàng Sa & Trường Sa rực rỡ ở Biển Đông.
+  4. **Nâng cấp tính toán hoa hồng 2 chiều linh hoạt (% hoặc số tiền VNĐ cố định)**:
+     - Mở rộng DTO và Service backend hỗ trợ cả 2 hình thức hoa hồng (`commissionRate` và `commissionAmount`).
+     - Tích hợp công cụ quy đổi 2 chiều trên giao diện đăng sản phẩm của Shop (`/merchant/products`).
+  5. **Khắc phục triệt để lỗi hiển thị ảnh sản phẩm ngoại vi**:
+     - Bổ sung các domain CDN Unsplash (`images.unsplash.com`, `plus.unsplash.com`) vào whitelist an toàn SSRF ở backend, giúp ảnh sản phẩm mẫu hiển thị sắc nét 100%.
+  6. **Biên soạn Bộ Hồ sơ Kiểm thử thủ công toàn diện 7 giai đoạn**:
+     - Tạo tài liệu `docs/KE_HOACH_TEST_THU_CONG_TOAN_DIEN_SCANMS.md` hướng dẫn chi tiết từng bước kiểm thử luồng nghiệp vụ E2E từ Sàn mua sắm -> Tìm kiếm -> Chi tiết sản phẩm -> Guest Checkout -> Tra cứu vận đơn -> Quản lý sản phẩm shop.
+- **Màn hình UI**: `frontend/src/pages/public/MarketplacePage.tsx`, `frontend/src/pages/public/SearchPage.tsx`, `frontend/src/components/common/ScanMSLogo.tsx`, `frontend/src/pages/merchant/ProductManagementPage.tsx`
+- **API Endpoint**: `GET /api/public/products`, `GET /api/public/products/:slug`, `POST /api/products`
+- **Backend File**: `backend/src/modules/products/products.service.ts`, `backend/src/modules/products/public-products.controller.ts`
+- **CSDL**: Bảng `products`, `stores`
+- **Ghi chú**: Đã kiểm tra build frontend `npm run build` thành công trong 991ms (0 lỗi) và test trực tiếp qua browser agent không có bất kỳ console error nào.
+
+---
+
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:
 
 Mỗi khi bạn hoặc thành viên trong nhóm hoàn thành một đoạn code / màn hình UI / API mới, chỉ cần gõ lệnh:

@@ -42,6 +42,9 @@ export class ProductsService {
     'supabase.co',
     'storage.googleapis.com',
     'amazonaws.com',
+    'unsplash.com',
+    'images.unsplash.com',
+    'plus.unsplash.com',
   ];
 
   constructor(
@@ -127,6 +130,10 @@ export class ProductsService {
               defaultCommissionRate: true,
             },
           },
+          mediaAssets: {
+            where: { isDeleted: false, assetType: 'IMAGE' },
+            select: { id: true, urlOrContent: true },
+          },
           _count: {
             select: { mediaAssets: { where: { isDeleted: false } } },
           },
@@ -199,23 +206,83 @@ export class ProductsService {
   }
 
   /**
-   * Marketplace công khai cho khách xem danh sách sản phẩm an toàn
+   * Marketplace công khai cho khách xem danh sách sản phẩm an toàn với bộ lọc thực tế
    */
-  async findPublicMarketplace(search = '', page = 1, limit = 24) {
+  async findPublicMarketplace(
+    queryOrSearch?:
+      | string
+      | {
+          search?: string;
+          category?: string;
+          storeId?: string;
+          minPrice?: number;
+          maxPrice?: number;
+          sortBy?: string;
+          page?: number;
+          limit?: number;
+        },
+    pageArg = 1,
+    limitArg = 24,
+  ) {
+    let search = '';
+    let category: string | undefined;
+    let storeId: string | undefined;
+    let minPrice: number | undefined;
+    let maxPrice: number | undefined;
+    let sortBy = 'newest';
+    let page = pageArg;
+    let limit = limitArg;
+
+    if (typeof queryOrSearch === 'object' && queryOrSearch !== null) {
+      search = queryOrSearch.search || '';
+      category = queryOrSearch.category;
+      storeId = queryOrSearch.storeId;
+      minPrice = queryOrSearch.minPrice;
+      maxPrice = queryOrSearch.maxPrice;
+      sortBy = queryOrSearch.sortBy || 'newest';
+      page = queryOrSearch.page || 1;
+      limit = queryOrSearch.limit || 24;
+    } else if (typeof queryOrSearch === 'string') {
+      search = queryOrSearch;
+    }
+
     const safePage = Math.max(1, Number(page) || 1);
     const safeLimit = Math.min(48, Math.max(1, Number(limit) || 24));
+
     const where: any = {
       isDeleted: false,
       isActive: true,
       store: { isDeleted: false, isActive: true, owner: { isActive: true } },
     };
 
-    if (search.trim()) {
+    if (search?.trim()) {
       where.OR = [
         { title: { contains: search.trim(), mode: 'insensitive' } },
         { sku: { contains: search.trim(), mode: 'insensitive' } },
         { categoryName: { contains: search.trim(), mode: 'insensitive' } },
+        { store: { name: { contains: search.trim(), mode: 'insensitive' } } },
       ];
+    }
+
+    if (category && category !== 'all') {
+      where.categoryName = { equals: category.trim(), mode: 'insensitive' };
+    }
+
+    if (storeId && storeId !== 'all') {
+      where.storeId = storeId.trim();
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined && !isNaN(minPrice)) where.price.gte = minPrice;
+      if (maxPrice !== undefined && !isNaN(maxPrice)) where.price.lte = maxPrice;
+    }
+
+    let orderBy: any = { createdAt: 'desc' };
+    if (sortBy === 'price_asc') {
+      orderBy = { price: 'asc' };
+    } else if (sortBy === 'price_desc') {
+      orderBy = { price: 'desc' };
     }
 
     const [total, items] = await this.prisma.$transaction([
@@ -224,15 +291,17 @@ export class ProductsService {
         where,
         skip: (safePage - 1) * safeLimit,
         take: safeLimit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         select: {
           id: true,
           sku: true,
           title: true,
+          description: true,
           categoryName: true,
           imageUrl: true,
           price: true,
           originalPrice: true,
+          customCommissionRate: true,
           stockQuantity: true,
           variants: {
             where: { isActive: true },
@@ -255,6 +324,14 @@ export class ProductsService {
               isVerified: true,
             },
           },
+          mediaAssets: {
+            where: { assetType: 'IMAGE' },
+            take: 4,
+            select: {
+              id: true,
+              urlOrContent: true,
+            },
+          },
         },
       }),
     ]);
@@ -268,6 +345,65 @@ export class ProductsService {
         totalPages: Math.ceil(total / safeLimit),
       },
     };
+  }
+
+  /**
+   * Lấy danh sách danh mục sản phẩm thực tế trên Marketplace
+   */
+  async getPublicCategories() {
+    const products = await this.prisma.product.findMany({
+      where: {
+        isDeleted: false,
+        isActive: true,
+        categoryName: { not: null },
+        store: { isDeleted: false, isActive: true, owner: { isActive: true } },
+      },
+      select: { categoryName: true },
+    });
+
+    const countsMap = new Map<string, number>();
+    products.forEach((p) => {
+      const cat = p.categoryName?.trim();
+      if (cat) {
+        countsMap.set(cat, (countsMap.get(cat) || 0) + 1);
+      }
+    });
+
+    return Array.from(countsMap.entries()).map(([name, count]) => ({
+      name,
+      count,
+    }));
+  }
+
+  /**
+   * Lấy danh sách các gian hàng đối tác đang có sản phẩm kinh doanh
+   */
+  async getPublicStores() {
+    return this.prisma.store.findMany({
+      where: {
+        isDeleted: false,
+        isActive: true,
+        owner: { isActive: true },
+        products: {
+          some: { isDeleted: false, isActive: true },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        isVerified: true,
+        _count: {
+          select: {
+            products: {
+              where: { isDeleted: false, isActive: true },
+            },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
   }
 
   /**
@@ -433,6 +569,23 @@ export class ProductsService {
       },
     });
 
+    if (dto.subImages && Array.isArray(dto.subImages) && dto.subImages.length > 0) {
+      for (const imgUrl of dto.subImages.slice(0, 4)) {
+        if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
+          await this.prisma.mediaAsset.create({
+            data: {
+              storeId: store.id,
+              productId: product.id,
+              assetType: 'IMAGE',
+              urlOrContent: imgUrl.trim(),
+              title: `${product.title} - Ảnh chi tiết`,
+              status: 'APPROVED',
+            },
+          });
+        }
+      }
+    }
+
     return {
       message: 'Tạo sản phẩm thành công!',
       product,
@@ -493,6 +646,30 @@ export class ProductsService {
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
     });
+
+    if (dto.subImages !== undefined && Array.isArray(dto.subImages)) {
+      await this.prisma.mediaAsset.deleteMany({
+        where: {
+          productId: id,
+          assetType: 'IMAGE',
+        },
+      });
+
+      for (const imgUrl of dto.subImages.slice(0, 4)) {
+        if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
+          await this.prisma.mediaAsset.create({
+            data: {
+              storeId: product.storeId,
+              productId: id,
+              assetType: 'IMAGE',
+              urlOrContent: imgUrl.trim(),
+              title: `${dto.title || product.title} - Ảnh chi tiết`,
+              status: 'APPROVED',
+            },
+          });
+        }
+      }
+    }
 
     await this.invalidateLandingCache(id);
 

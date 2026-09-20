@@ -167,8 +167,8 @@ export default function OrderTrackingPage() {
       setOrders([]);
       setErrorMessage(
         err?.response?.data?.message ||
-          err?.message ||
-          "Không tìm thấy thông tin đơn hàng nào phù hợp với từ khóa này.",
+        err?.message ||
+        "Không tìm thấy thông tin đơn hàng nào phù hợp với từ khóa này.",
       );
     } finally {
       if (sequence === searchSequence.current) setLoading(false);
@@ -509,11 +509,10 @@ export default function OrderTrackingPage() {
                       className="flex flex-col items-center text-center gap-1.5 relative z-10"
                     >
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition ${
-                          st.done
+                        className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition ${st.done
                             ? "bg-[#B88E4F] text-white shadow-xs"
                             : "bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]"
-                        }`}
+                          }`}
                       >
                         {st.done ? (
                           <CheckCircle2 className="w-5 h-5" />
@@ -559,18 +558,28 @@ export default function OrderTrackingPage() {
                           className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] flex flex-col gap-2.5"
                         >
                           <div className="flex items-center gap-3">
-                            <img
-                              src={
-                                item.imageUrl ||
-                                "/assets/serum-hero-optimized.jpg"
-                              }
-                              alt={item.productTitle}
-                              className="w-14 h-14 rounded-xl object-contain bg-white border border-[#EAE4D7] shrink-0"
-                            />
+                            <Link
+                              to={`/products/${item.sku || item.productId}`}
+                              className="w-14 h-14 rounded-xl overflow-hidden bg-white border border-[#EAE4D7] shrink-0 hover:border-[#C59B58] transition"
+                              title="Xem chi tiết sản phẩm"
+                            >
+                              <img
+                                src={
+                                  item.imageUrl ||
+                                  "/assets/serum-hero-optimized.jpg"
+                                }
+                                alt={item.productTitle}
+                                className="w-full h-full object-contain hover:scale-105 transition-transform"
+                              />
+                            </Link>
                             <div className="min-w-0 flex-1">
-                              <strong className="text-xs font-bold text-[#1A1612] block truncate">
+                              <Link
+                                to={`/products/${item.sku || item.productId}`}
+                                className="text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] hover:underline block truncate transition"
+                                title="Xem chi tiết sản phẩm"
+                              >
                                 {item.productTitle}
-                              </strong>
+                              </Link>
                               <span className="text-[11px] text-[#7D715E] font-mono">
                                 SKU: {item.sku} • Số lượng: x{item.quantity}
                               </span>
