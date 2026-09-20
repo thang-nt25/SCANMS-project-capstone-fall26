@@ -28,13 +28,39 @@ export class PublicProductsController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Marketplace công khai chỉ trả dữ liệu sản phẩm an toàn' })
+  @ApiOperation({ summary: 'Marketplace công khai chỉ trả dữ liệu sản phẩm an toàn với bộ lọc thực tế' })
   async getMarketplace(
     @Query('search') search = '',
+    @Query('category') category?: string,
+    @Query('storeId') storeId?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+    @Query('sortBy') sortBy?: string,
     @Query('page') page = '1',
     @Query('limit') limit = '24',
   ) {
-    return this.productsService.findPublicMarketplace(search, Number(page), Number(limit));
+    return this.productsService.findPublicMarketplace({
+      search,
+      category,
+      storeId,
+      minPrice: minPrice !== undefined && minPrice !== '' ? Number(minPrice) : undefined,
+      maxPrice: maxPrice !== undefined && maxPrice !== '' ? Number(maxPrice) : undefined,
+      sortBy,
+      page: Number(page) || 1,
+      limit: Number(limit) || 24,
+    });
+  }
+
+  @Get('categories')
+  @ApiOperation({ summary: 'Lấy danh sách các danh mục ngành hàng có sản phẩm thực tế' })
+  async getCategories() {
+    return this.productsService.getPublicCategories();
+  }
+
+  @Get('stores')
+  @ApiOperation({ summary: 'Lấy danh sách các gian hàng đối tác đang hoạt động trên sàn' })
+  async getStores() {
+    return this.productsService.getPublicStores();
   }
 
   @Get(':idOrSlug/landing')

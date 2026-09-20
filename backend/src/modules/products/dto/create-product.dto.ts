@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -57,6 +58,18 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @ApiPropertyOptional({
+    example: [
+      'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500',
+      'https://images.unsplash.com/photo-1556228722-d0b7194f837e?w=500',
+    ],
+    description: 'Danh sách tối đa 4 URL ảnh phụ chi tiết của sản phẩm',
+  })
+  @IsOptional()
+  @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
+  @IsString({ each: true, message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ' })
+  subImages?: string[];
 
   @ApiProperty({ example: 499000, description: 'Giá bán thực tế (VNĐ)' })
   @IsNumber({}, { message: 'Giá bán phải là một số' })

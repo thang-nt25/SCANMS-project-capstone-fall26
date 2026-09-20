@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsNumber,
   IsOptional,
@@ -49,6 +50,14 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Danh sách tối đa 4 URL ảnh phụ chi tiết của sản phẩm',
+  })
+  @IsOptional()
+  @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
+  @IsString({ each: true, message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ' })
+  subImages?: string[];
 
   @ApiPropertyOptional({
     example: 459000,
