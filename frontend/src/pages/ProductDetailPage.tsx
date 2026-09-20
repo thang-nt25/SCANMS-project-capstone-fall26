@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
+import { ScanMSLogo } from '../components/common/ScanMSLogo';
 
 
 const SCANMS_PLACEHOLDER =
@@ -597,10 +598,13 @@ export default function ProductDetailPage() {
     data;
   const activeVideo =
     videos && videos.length > 0 ? videos[activeVideoIndex] : null;
+  const validGallery = (images || []).filter((img) => Boolean(img && img.trim()));
   const gallery =
-    images && images.length > 0
-      ? images
-      : [product.imageUrl || SCANMS_PLACEHOLDER];
+    validGallery.length > 0
+      ? validGallery
+      : product.imageUrl
+        ? [product.imageUrl]
+        : [SCANMS_PLACEHOLDER];
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] font-sans pb-28 selection:bg-[#EEDFC6]">
@@ -613,14 +617,9 @@ export default function ProductDetailPage() {
             <Link
               to="/"
               className="flex items-center gap-2 group shrink-0"
-              title="Trang chủ sàn SCANMS"
+              title="Trang chủ sàn ScanMS"
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#C59B58] to-[#B88E4F] flex items-center justify-center font-extrabold text-white text-sm shadow-xs group-hover:scale-105 transition-transform">
-                S
-              </div>
-              <span className="font-extrabold text-base tracking-tight text-[#1A1612]">
-                SCAN<span className="text-[#C59B58]">MS</span>
-              </span>
+              <ScanMSLogo size="sm" showSubtitle={false} />
             </Link>
 
             <div className="h-4 w-px bg-[#EAE4D7] hidden sm:block mx-1" />

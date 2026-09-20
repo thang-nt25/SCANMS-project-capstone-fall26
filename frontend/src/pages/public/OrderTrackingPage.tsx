@@ -559,18 +559,28 @@ export default function OrderTrackingPage() {
                           className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] flex flex-col gap-2.5"
                         >
                           <div className="flex items-center gap-3">
-                            <img
-                              src={
-                                item.imageUrl ||
-                                "/assets/serum-hero-optimized.jpg"
-                              }
-                              alt={item.productTitle}
-                              className="w-14 h-14 rounded-xl object-contain bg-white border border-[#EAE4D7] shrink-0"
-                            />
+                            <Link
+                              to={`/products/${item.sku || item.productId}`}
+                              className="w-14 h-14 rounded-xl overflow-hidden bg-white border border-[#EAE4D7] shrink-0 hover:border-[#C59B58] transition"
+                              title="Xem chi tiết sản phẩm"
+                            >
+                              <img
+                                src={
+                                  item.imageUrl ||
+                                  "/assets/serum-hero-optimized.jpg"
+                                }
+                                alt={item.productTitle}
+                                className="w-full h-full object-contain hover:scale-105 transition-transform"
+                              />
+                            </Link>
                             <div className="min-w-0 flex-1">
-                              <strong className="text-xs font-bold text-[#1A1612] block truncate">
+                              <Link
+                                to={`/products/${item.sku || item.productId}`}
+                                className="text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] hover:underline block truncate transition"
+                                title="Xem chi tiết sản phẩm"
+                              >
                                 {item.productTitle}
-                              </strong>
+                              </Link>
                               <span className="text-[11px] text-[#7D715E] font-mono">
                                 SKU: {item.sku} • Số lượng: x{item.quantity}
                               </span>
