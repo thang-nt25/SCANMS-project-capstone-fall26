@@ -15,11 +15,25 @@ export interface KycProfile {
     name: string;
     extraBonusPercentage: number;
   };
+  socialLinksJson?: {
+    frontCardUrl?: string;
+    backCardUrl?: string;
+    [key: string]: any;
+  };
   user?: {
     id: string;
     fullName: string;
     email: string;
     phoneNumber?: string;
+    socialChannels?: Array<{
+      id: string;
+      platformName: string;
+      channelName: string;
+      channelUrl: string;
+      followerCount: number;
+      isPrimary: boolean;
+      status?: string;
+    }>;
   };
 }
 
@@ -36,6 +50,8 @@ export const kycService = {
     bankAccountNumber: string;
     bankAccountName: string;
     bio?: string;
+    frontCardUrl?: string;
+    backCardUrl?: string;
   }) {
     const res: any = await api.put('/kyc/submit', data);
     return res.data;

@@ -46,4 +46,20 @@ export class SubmitKycDto {
   @IsOptional()
   @IsString()
   bio?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://res.cloudinary.com/.../cccd_front.jpg',
+    description: 'Ảnh CCCD mặt trước',
+  })
+  @IsOptional()
+  @IsString()
+  frontCardUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://res.cloudinary.com/.../cccd_back.jpg',
+    description: 'Ảnh CCCD mặt sau',
+  })
+  @IsOptional()
+  @IsString()
+  backCardUrl?: string;
 }
