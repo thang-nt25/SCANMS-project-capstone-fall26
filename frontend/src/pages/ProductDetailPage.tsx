@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingBag,
   ShieldCheck,
   Truck,
   RotateCcw,
-  Store,
   CheckCircle2,
-  ArrowLeft,
   ArrowRight,
   Star,
   Play,
@@ -23,10 +21,13 @@ import {
   Lock,
   Subtitles,
   Gauge,
+  MessageSquare,
 } from 'lucide-react';
 import api from '../services/api';
 import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
-import { ScanMSLogo } from '../components/common/ScanMSLogo';
+import { PublicHeader } from '../components/layout/PublicHeader';
+import { authService } from '../services/auth.service';
+import { toast } from '../utils/toast';
 
 
 const SCANMS_PLACEHOLDER =
@@ -154,6 +155,35 @@ function trackAnalytics(eventName: string, payload?: Record<string, any>) {
 }
 
 export default function ProductDetailPage() {
+  const navigate = useNavigate();
+  const currentUser = authService.getCurrentUser();
+  const isKolUser = currentUser?.role === 'COLLABORATOR';
+
+  const handleContactShop = () => {
+    if (!currentUser) {
+      toast.info('Vui lòng đăng nhập tài khoản KOL để trao đổi hợp tác với gian hàng');
+      navigate(`/login?redirect=/products/${slug}`);
+      return;
+    }
+    if (!isKolUser) {
+      toast.info('Tính năng liên hệ shop trực tiếp dành riêng cho tài khoản KOL / Creator.');
+      return;
+    }
+    const storeId = data?.store?.id || 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
+    const firstImg = data?.images?.[0] || data?.product?.imageUrl || '';
+    const query = new URLSearchParams({
+      tab: 'messages',
+      storeId,
+      productId: data?.product?.id || '',
+      productTitle: data?.product?.title || '',
+      productImage: firstImg,
+      productPrice: String(data?.product?.price || 0),
+      productSku: data?.product?.sku || '',
+      commissionRate: '15',
+    });
+    navigate(`/collaborator/collaboration?${query.toString()}`);
+  };
+
   const { slug } = useParams<{ slug: string }>();
   const [analyticsConsent, setAnalyticsConsent] = useState<string | null>(() =>
     typeof window === 'undefined'
@@ -609,94 +639,7 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] font-sans pb-28 selection:bg-[#EEDFC6]">
 
-      <header className="bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] sticky top-0 z-30 shadow-xs">
-        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-
-          <div className="flex items-center gap-2.5 sm:gap-3">
-
-            <Link
-              to="/"
-              className="flex items-center gap-2 group shrink-0"
-              title="Trang chủ sàn ScanMS"
-            >
-              <ScanMSLogo size="sm" showSubtitle={false} />
-            </Link>
-
-            <div className="h-4 w-px bg-[#EAE4D7] hidden sm:block mx-1" />
-
-
-            <button
-              type="button"
-              onClick={() => {
-                if (window.history.length > 1) {
-                  window.history.back();
-                } else {
-                  window.location.assign('/#media');
-                }
-              }}
-              className="h-8 px-3 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#1A1612] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
-              title="Quay lại trang trước đó"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span>Quay lại</span>
-            </button>
-
-
-            <Link
-              to="/marketplace"
-              className="h-8 px-3 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#1A1612] text-xs font-semibold hidden sm:inline-flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
-              title="Xem danh mục tất cả sản phẩm toàn sàn"
-            >
-              <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span>Chợ Tiếp Thị</span>
-            </Link>
-          </div>
-
-
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-
-            <div className="hidden md:flex items-center gap-2 h-8 px-3.5 bg-[#FBF5EB] border border-[#EEDFC6] rounded-full text-xs shadow-2xs">
-              <span
-                className="w-2 h-2 rounded-full bg-[#059669] animate-pulse"
-                title="Đang mở bán chính hãng"
-              />
-              <span className="text-[#7D715E] font-medium">Gian hàng:</span>
-              <span className="font-bold text-[#1A1612] max-w-[170px] truncate">
-                {store.name}
-              </span>
-              {store.isVerified && (
-                <span title="Gian hàng chính hãng đã xác minh" aria-label="Gian hàng chính hãng đã xác minh">
-                  <BadgeCheck className="w-3.5 h-3.5 text-[#059669] shrink-0" />
-                </span>
-              )}
-            </div>
-
-
-            <Link
-              to="/login"
-              className="h-8 px-3 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#1A1612] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs"
-              title="Đăng nhập Cổng Quản Trị / Đối Tác Tiếp Thị"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span className="hidden sm:inline">Cổng Đối Tác</span>
-            </Link>
-
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsCheckoutOpen(true);
-                trackAnalytics('checkout_start', { productId: product.id });
-              }}
-              className="h-8 px-4 bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A67D3E] text-white text-xs font-extrabold rounded-full shadow-xs hover:shadow-md transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer border border-[#B88E4F]"
-              title="Mở biểu mẫu Đặt hàng nhanh Guest Checkout"
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Mua Ngay</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
 
       <main className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
@@ -770,7 +713,7 @@ export default function ProductDetailPage() {
             )}
 
 
-            <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-sm">
                   {store.name.charAt(0)}
@@ -785,11 +728,22 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
               </div>
-              <span className="text-[11px] font-semibold text-[#B88E4F] bg-[#FBF5EB] px-2.5 py-1 rounded-full border border-[#EEDFC6]">
-                {store.isVerified
-                  ? 'Gian Hàng Xác Minh'
-                  : 'Gian Hàng Đối Tác'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-[#B88E4F] bg-[#FBF5EB] px-2.5 py-1 rounded-full border border-[#EEDFC6]">
+                  {store.isVerified
+                    ? 'Gian Hàng Xác Minh'
+                    : 'Gian Hàng Đối Tác'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleContactShop}
+                  className="h-8 px-3 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#C59B58] text-[#B88E4F] hover:text-[#A67D3E] text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                  title="Liên hệ trao đổi mẫu thử & hoa hồng tiếp thị với Shop"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Liên hệ Shop</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -992,24 +946,36 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              <button
-                type="button"
-                disabled={!availability.inStock || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
-                onClick={() => {
-                  setIsCheckoutOpen(true);
-                  trackAnalytics('cta_click', { productId: product.id });
-                }}
-                className="w-full py-4 px-6 bg-[#C59B58] hover:bg-[#B88E4F] disabled:bg-[#EAE4D7] disabled:text-[#7D715E] disabled:cursor-not-allowed text-white font-extrabold text-base rounded-2xl shadow-md hover:shadow-lg shadow-[#C59B58]/20 flex items-center justify-center gap-2 active:scale-98 transition-all"
-              >
-                <ShoppingBag className="w-5 h-5" />
-                <span>
-                  {(!product.isActive || product.status === 'INACTIVE')
-                    ? 'TẠM NGỪNG KINH DOANH'
-                    : availability.inStock
-                    ? 'ĐẶT MUA NGAY — GIAO HÀNG TẬN NƠI'
-                    : 'TẠM HẾT HÀNG'}
-                </span>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  disabled={!availability.inStock || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
+                  onClick={() => {
+                    setIsCheckoutOpen(true);
+                    trackAnalytics('cta_click', { productId: product.id });
+                  }}
+                  className="flex-1 py-4 px-6 bg-[#C59B58] hover:bg-[#B88E4F] disabled:bg-[#EAE4D7] disabled:text-[#7D715E] disabled:cursor-not-allowed text-white font-extrabold text-base rounded-2xl shadow-md hover:shadow-lg shadow-[#C59B58]/20 flex items-center justify-center gap-2 active:scale-98 transition-all"
+                >
+                  <ShoppingBag className="w-5 h-5" />
+                  <span>
+                    {(!product.isActive || product.status === 'INACTIVE')
+                      ? 'TẠM NGỪNG KINH DOANH'
+                      : availability.inStock
+                      ? 'ĐẶT MUA NGAY — GIAO HÀNG TẬN NƠI'
+                      : 'TẠM HẾT HÀNG'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleContactShop}
+                  className="py-4 px-5 bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#B88E4F] hover:text-[#A67D3E] border-2 border-[#C59B58] font-bold text-sm rounded-2xl shadow-xs transition-all active:scale-98 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                  title="KOL / Creator liên hệ Shop để nhận mẫu thử & thỏa thuận hoa hồng"
+                >
+                  <MessageSquare className="w-4 h-4 text-[#B88E4F]" />
+                  <span>Liên hệ Shop (KOL)</span>
+                </button>
+              </div>
 
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5 pt-5 border-t border-[#EAE4D7] text-center text-[11px] text-[#7D715E]">
