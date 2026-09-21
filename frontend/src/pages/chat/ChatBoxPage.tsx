@@ -18,6 +18,8 @@ import {
   XCircle,
   AlertTriangle,
   Crown,
+  ShoppingBag,
+  ExternalLink,
 } from 'lucide-react';
 import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
@@ -95,7 +97,7 @@ const BANK_FRAUD_KEYWORDS = [
 
 function isBankAccountOrFraudText(text: string): boolean {
   if (!text) return false;
-  if (text.startsWith('{') && text.includes('CAMPAIGN_')) return false;
+  if (text.startsWith('{') && (text.includes('CAMPAIGN_') || text.includes('PRODUCT_INQUIRY'))) return false;
 
   const raw = text.toLowerCase().trim();
   const unaccented = removeAccents(raw).replace(/\s+/g, ' ').trim();
@@ -118,7 +120,7 @@ function isBankAccountOrFraudText(text: string): boolean {
 
 function isProfaneText(text: string): boolean {
   if (!text) return false;
-  if (text.startsWith('{') && text.includes('CAMPAIGN_')) return false;
+  if (text.startsWith('{') && (text.includes('CAMPAIGN_') || text.includes('PRODUCT_INQUIRY'))) return false;
 
   const raw = text.toLowerCase().trim();
   const unaccented = removeAccents(raw)
@@ -366,6 +368,109 @@ function CampaignCardBubble({
   );
 }
 
+export interface ProductInquiryCardData {
+  type: 'PRODUCT_INQUIRY';
+  productId: string;
+  productTitle: string;
+  productImage?: string;
+  productPrice?: number;
+  productSku?: string;
+  commissionRate?: number;
+  message?: string;
+}
+
+function tryParseProductInquiryCard(text: string): ProductInquiryCardData | null {
+  if (!text || !text.startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.type === 'PRODUCT_INQUIRY') {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function ProductInquiryCardBubble({
+  card,
+  isMine,
+}: {
+  card: ProductInquiryCardData;
+  isMine: boolean;
+}) {
+  return (
+    <div
+      className={`max-w-sm rounded-2xl border p-3.5 space-y-3 shadow-xs ${
+        isMine
+          ? 'bg-[#FAF8F5] border-[#EEDFC6] text-[#1A1612]'
+          : 'bg-white border-[#EAE4D7] text-[#1A1612]'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+          <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
+          <span>Trao đổi về Sản Phẩm</span>
+        </span>
+        {card.commissionRate && (
+          <span className="text-[11px] font-extrabold text-[#059669] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            Hoa hồng: {card.commissionRate}%
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-3">
+        {card.productImage ? (
+          <img
+            src={card.productImage}
+            alt={card.productTitle}
+            className="w-16 h-16 rounded-xl object-cover border border-[#EAE4D7] shrink-0 bg-[#F3EFE6]"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] font-bold text-xs shrink-0">
+            SCANMS
+          </div>
+        )}
+        <div className="min-w-0 flex-1 flex flex-col justify-between">
+          <div>
+            <h4 className="font-bold text-xs text-[#1A1612] line-clamp-2 leading-tight">
+              {card.productTitle}
+            </h4>
+            {card.productSku && (
+              <span className="text-[10px] text-[#7D715E] font-mono block mt-0.5">
+                SKU: {card.productSku}
+              </span>
+            )}
+          </div>
+          {typeof card.productPrice === 'number' && (
+            <div className="text-xs font-black text-[#B88E4F]">
+              {card.productPrice.toLocaleString('vi-VN')} ₫
+            </div>
+          )}
+        </div>
+      </div>
+
+      {card.message && (
+        <div className="p-2.5 bg-white/90 rounded-xl border border-[#EAE4D7] text-xs text-[#1A1612] whitespace-pre-wrap leading-relaxed">
+          {card.message}
+        </div>
+      )}
+
+      <div className="pt-1 flex items-center justify-between gap-2 border-t border-[#EAE4D7]/70">
+        <a
+          href={`/products/${card.productSku || card.productId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:text-[#A67D3E] hover:underline"
+        >
+          <span>Xem chi tiết trên Sàn</span>
+          <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
 
 
 
@@ -558,6 +663,15 @@ function formatConvTime(dateStr: string) {
 
 
 
+export interface ProductContextData {
+  id: string;
+  title: string;
+  image?: string;
+  price?: number;
+  sku?: string;
+  commissionRate?: number;
+}
+
 interface ChatBoxPageProps {
   embedded?: boolean;
   targetStoreId?: string;
@@ -569,6 +683,7 @@ interface ChatBoxPageProps {
   hideSidebar?: boolean;
   hideHeaderInChat?: boolean;
   className?: string;
+  initialProductContext?: ProductContextData;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -594,6 +709,7 @@ export default function ChatBoxPage({
   hideSidebar = false,
   hideHeaderInChat = false,
   className = '',
+  initialProductContext,
 }: ChatBoxPageProps = {}) {
   const currentUser = (() => {
     try {
@@ -607,6 +723,15 @@ export default function ChatBoxPage({
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  const [pinnedProduct, setPinnedProduct] = useState<ProductContextData | null>(
+    initialProductContext || null
+  );
+
+  useEffect(() => {
+    if (initialProductContext) {
+      setPinnedProduct(initialProductContext);
+    }
+  }, [initialProductContext]);
   const [isConnected, setIsConnected] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [isLoadingMsgs, setIsLoadingMsgs] = useState(false);
@@ -840,7 +965,6 @@ export default function ChatBoxPage({
     const trimmed = inputText.trim();
     if (!trimmed || !activeConvId || isSending) return;
 
-
     if (isBankAccountOrFraudText(trimmed)) {
       showErrorToast(
         '⚠️ Tin nhắn bị chặn: Không được phép gửi số tài khoản ngân hàng (STK) hoặc yêu cầu chuyển tiền ngoài hệ thống nhằm phòng chống lừa đảo!'
@@ -855,17 +979,32 @@ export default function ChatBoxPage({
       return;
     }
 
+    let messageToSend = trimmed;
+    if (pinnedProduct) {
+      messageToSend = JSON.stringify({
+        type: 'PRODUCT_INQUIRY',
+        productId: pinnedProduct.id,
+        productTitle: pinnedProduct.title,
+        productImage: pinnedProduct.image,
+        productPrice: pinnedProduct.price,
+        productSku: pinnedProduct.sku,
+        commissionRate: pinnedProduct.commissionRate,
+        message: trimmed,
+      });
+      setPinnedProduct(null);
+    }
+
     const socket = getChatSocket();
     setIsSending(true);
     socket.emit('send_message', {
       conversationId: activeConvId,
-      messageText: trimmed,
+      messageText: messageToSend,
     });
     setInputText('');
     setIsSending(false);
 
     socket.emit('typing', { conversationId: activeConvId, isTyping: false });
-  }, [inputText, activeConvId, isSending]);
+  }, [inputText, activeConvId, isSending, pinnedProduct]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1011,7 +1150,15 @@ export default function ChatBoxPage({
                       className={`text-xs truncate ${unread ? 'font-bold text-stone-900' : 'text-stone-500'
                         }`}
                     >
-                      {lastMsg ? lastMsg.messageText : 'Bắt đầu cuộc trò chuyện...'}
+                      {lastMsg
+                        ? lastMsg.messageText.startsWith('{')
+                          ? lastMsg.messageText.includes('PRODUCT_INQUIRY')
+                            ? '🛍️ [Trao đổi về sản phẩm]'
+                            : lastMsg.messageText.includes('CAMPAIGN_')
+                            ? '👑 [Chiến dịch hợp tác VIP]'
+                            : '💬 [Tin nhắn đính kèm]'
+                          : lastMsg.messageText
+                        : 'Bắt đầu cuộc trò chuyện...'}
                     </span>
                     {unread && (
                       <span className="w-2 h-2 rounded-full bg-amber-600 flex-shrink-0" />
@@ -1146,6 +1293,11 @@ export default function ChatBoxPage({
                         )}
 
                         {(() => {
+                          const inquiryCard = tryParseProductInquiryCard(msg.messageText);
+                          if (inquiryCard) {
+                            return <ProductInquiryCardBubble card={inquiryCard} isMine={isMine} />;
+                          }
+
                           const card = tryParseCampaignCard(msg.messageText);
                           if (card) {
                             return <CampaignCardBubble card={card} isMine={isMine} />;
@@ -1209,57 +1361,139 @@ export default function ChatBoxPage({
             </div>
 
 
-            <div className="p-4 bg-white border-t border-stone-200 flex items-center gap-2.5 shadow-xs">
-              <button
-                className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-xl transition-colors"
-                id="chat-attach-btn"
-                title="Đính kèm ảnh"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip className="w-5 h-5" />
-              </button>
-              {isShop && (
-                <button
-                  id="btn-composer-vip-invite"
-                  className="p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
-                  title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
-                  onClick={() => setShowVipModal(true)}
-                >
-                  <Crown className="w-5 h-5" />
-                </button>
+            <div className="bg-white border-t border-stone-200 shadow-xs">
+              {/* PINNED PRODUCT INQUIRY BANNER */}
+              {pinnedProduct && (
+                <div className="mx-4 mt-3 p-3 bg-gradient-to-r from-[#FBF5EB] to-[#FAF8F5] border border-[#EEDFC6] rounded-2xl shadow-2xs">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {pinnedProduct.image ? (
+                        <img
+                          src={pinnedProduct.image}
+                          alt={pinnedProduct.title}
+                          className="w-12 h-12 rounded-xl object-cover border border-[#EAE4D7] shrink-0 bg-white"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] font-bold text-xs shrink-0">
+                          <ShoppingBag className="w-5 h-5" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-[#B88E4F] bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                            Đang đính kèm sản phẩm
+                          </span>
+                          {pinnedProduct.commissionRate && (
+                            <span className="text-[10.5px] font-extrabold text-[#059669]">
+                              Hoa hồng: {pinnedProduct.commissionRate}%
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="font-bold text-xs text-[#1A1612] truncate mt-0.5">
+                          {pinnedProduct.title}
+                        </h4>
+                        {typeof pinnedProduct.price === 'number' && (
+                          <div className="text-xs font-black text-[#B88E4F]">
+                            {pinnedProduct.price.toLocaleString('vi-VN')} ₫
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPinnedProduct(null)}
+                      className="p-1 text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] rounded-lg transition-colors cursor-pointer"
+                      title="Bỏ đính kèm sản phẩm này"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Quick question chips */}
+                  <div className="mt-2.5 pt-2 border-t border-[#EEDFC6]/60 flex flex-wrap gap-1.5 items-center">
+                    <span className="text-[10.5px] font-bold text-[#7D715E] flex items-center gap-1 mr-1">
+                      <Sparkles className="w-3 h-3 text-[#B88E4F]" /> Gợi ý nhanh:
+                    </span>
+                    {[
+                      {
+                        label: '📦 Xin mẫu thử (Sample)',
+                        text: 'Chào Shop, mình quan tâm đến sản phẩm này và muốn đăng ký xin hàng mẫu trải nghiệm để quay video review/livestream.',
+                      },
+                      {
+                        label: '💰 Thỏa thuận hoa hồng',
+                        text: 'Chào Shop, mình muốn trao đổi thêm về chính sách hoa hồng thưởng thêm cho dòng sản phẩm này nếu đạt KPI doanh số.',
+                      },
+                      {
+                        label: '🔍 Kiểm tra tồn kho',
+                        text: 'Chào Shop, sản phẩm này hiện tại kho còn sẵn số lượng bao nhiêu để mình lên kế hoạch gắn link video ạ?',
+                      },
+                    ].map((chip, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setInputText(chip.text)}
+                        className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F3EFE6] border border-[#EAE4D7] hover:border-[#C59B58] text-[#1A1612] text-[11px] font-medium transition-all shadow-2xs cursor-pointer active:scale-95"
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="chat-file-input"
-                onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (file) console.log('File:', file.name);
-                }}
-              />
-              <textarea
-                id="chat-message-input"
-                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white resize-none max-h-24 transition-all"
-                placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)"
-                value={inputText}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                rows={1}
-              />
-              <button
-                id="chat-send-btn"
-                className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${inputText.trim() && !isSending
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
-                    : 'bg-stone-100 text-stone-300 cursor-not-allowed'
-                  }`}
-                onClick={sendMessage}
-                disabled={!inputText.trim() || isSending}
-                title="Gửi tin nhắn"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+
+              <div className="p-4 flex items-center gap-2.5">
+                <button
+                  className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-xl transition-colors"
+                  id="chat-attach-btn"
+                  title="Đính kèm ảnh"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+                {isShop && (
+                  <button
+                    id="btn-composer-vip-invite"
+                    className="p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                    title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
+                    onClick={() => setShowVipModal(true)}
+                  >
+                    <Crown className="w-5 h-5" />
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  id="chat-file-input"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) console.log('File:', file.name);
+                  }}
+                />
+                <textarea
+                  id="chat-message-input"
+                  className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white resize-none max-h-24 transition-all"
+                  placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)"
+                  value={inputText}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                />
+                <button
+                  id="chat-send-btn"
+                  className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${inputText.trim() && !isSending
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-300 cursor-not-allowed'
+                    }`}
+                  onClick={sendMessage}
+                  disabled={!inputText.trim() || isSending}
+                  title="Gửi tin nhắn"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </>
         )}
