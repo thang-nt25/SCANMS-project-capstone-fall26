@@ -362,15 +362,15 @@ export default function LoginPage() {
                 <span>{successNotice}</span>
               </div>
             )}
-
-            <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[11px] font-extrabold text-[#B88E4F] uppercase tracking-wider flex items-center gap-1">
+            {/* TÀI KHOẢN MẪU TEST DÀNH CHO DEV / TESTER */}
+            <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-3.5 space-y-2.5">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-black text-[#B88E4F] uppercase tracking-wider flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5 text-[#B88E4F] fill-current" />
-                  Tài khoản mẫu thử nghiệm (Tuỳ chọn)
+                  Tài khoản mẫu kiểm thử nhanh
                 </span>
-                <span className="text-[10px] text-[#7D715E] font-medium">
-                  Mật khẩu chung: <code className="font-bold text-[#1A1612]">Password@123</code>
+                <span className="text-[10.5px] text-[#7D715E] font-medium">
+                  Pass: <code className="font-bold text-[#1A1612]">Password@123</code>
                 </span>
               </div>
 
@@ -381,17 +381,19 @@ export default function LoginPage() {
                     <div
                       key={acc.email}
                       onClick={() => handleQuickLogin(acc.role, acc.email, acc.password, false)}
-                      className={`p-2 rounded-lg border text-left cursor-pointer transition flex items-center justify-between gap-1.5 ${
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-1.5 ${
                         isSelected
-                          ? 'bg-[#FBF5EB] border-[#B88E4F] ring-1 ring-[#B88E4F]/40'
-                          : 'bg-white border-[#EAE4D7] hover:bg-[#F3EFE6]'
+                          ? 'bg-[#FBF5EB] border-[#B88E4F] ring-1 ring-[#B88E4F]/50 shadow-2xs'
+                          : 'bg-white border-[#EAE4D7] hover:bg-[#F3EFE6] hover:border-[#C59B58]'
                       }`}
                     >
                       <div className="min-w-0 flex-1">
-                        <strong className="text-xs font-bold text-[#1A1612] truncate block">
-                          {acc.name}
-                        </strong>
-                        <span className="text-[10px] text-[#7D715E] truncate block">
+                        <div className="flex items-center gap-1">
+                          <strong className="text-xs font-bold text-[#1A1612] truncate block">
+                            {acc.name}
+                          </strong>
+                        </div>
+                        <span className="text-[10px] text-[#7D715E] truncate block mt-0.5">
                           {acc.email}
                         </span>
                       </div>
@@ -401,8 +403,8 @@ export default function LoginPage() {
                           e.stopPropagation();
                           handleQuickLogin(acc.role, acc.email, acc.password, true);
                         }}
-                        className="px-2 py-0.5 bg-[#B88E4F] hover:bg-[#9E7933] text-white rounded text-[10px] font-bold shrink-0 cursor-pointer shadow-2xs"
-                        title="Đăng nhập ngay"
+                        className="px-2 py-1 bg-[#B88E4F] hover:bg-[#9E7933] text-white rounded-lg text-[10px] font-extrabold shrink-0 cursor-pointer shadow-2xs transition active:scale-95"
+                        title="Đăng nhập ngay vào tài khoản này"
                       >
                         Vào
                       </button>

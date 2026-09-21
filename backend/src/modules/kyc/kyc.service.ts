@@ -25,6 +25,7 @@ export class KycService {
             email: true,
             fullName: true,
             phoneNumber: true,
+            socialChannels: true,
           },
         },
         tier: true,
@@ -50,6 +51,13 @@ export class KycService {
       throw new NotFoundException('Không tìm thấy hồ sơ cộng tác viên');
     }
 
+    const existingMeta = (profile.socialLinksJson as any) || {};
+    const updatedMeta = {
+      ...existingMeta,
+      ...(dto.frontCardUrl ? { frontCardUrl: dto.frontCardUrl } : {}),
+      ...(dto.backCardUrl ? { backCardUrl: dto.backCardUrl } : {}),
+    };
+
     const updated = await this.prisma.collaboratorProfile.update({
       where: { userId },
       data: {
@@ -59,6 +67,7 @@ export class KycService {
         bankAccountNumber: dto.bankAccountNumber.trim(),
         bankAccountName: dto.bankAccountName.trim().toUpperCase(),
         bio: dto.bio?.trim(),
+        socialLinksJson: updatedMeta,
         kycStatus: KycStatus.UNVERIFIED, // Đưa về trạng thái chờ duyệt
       },
     });
@@ -86,6 +95,7 @@ export class KycService {
             fullName: true,
             phoneNumber: true,
             createdAt: true,
+            socialChannels: true,
           },
         },
         tier: true,

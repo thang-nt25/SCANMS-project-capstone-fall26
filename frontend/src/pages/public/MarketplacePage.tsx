@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -33,11 +34,62 @@ import { toast } from '../../utils/toast';
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<string>('newest');
-  const [_categories, setCategories] = useState<any[]>([]);
+
+  // Fetch real categories with TanStack Query
+  const { data: _categories = [] } = useQuery({
+    queryKey: ['marketplace-categories'],
+    queryFn: async () => {
+      const res: any = await api.get('/public/products/categories');
+      const payload = res?.data !== undefined ? (res.data?.data !== undefined ? res.data.data : res.data) : res;
+      return Array.isArray(payload) ? payload : [];
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Fetch real products with TanStack Query (Zero reload flicker, instant cache hit)
+  const { data: items = [], isLoading: loading } = useQuery<Product[]>({
+    queryKey: ['marketplace-products', sortBy],
+    queryFn: async () => {
+      const res: any = await api.get('/public/products', { params: { limit: 48, sortBy } });
+      const payload = res?.data !== undefined ? (res.data?.data !== undefined ? res.data.data : res.data) : res;
+      const apiItems = Array.isArray(payload) ? payload : (payload?.items || []);
+
+      return apiItems.map((dbP: any) => {
+        const rawPrice = Number(dbP.price || 0);
+        const rawOrigPrice = dbP.originalPrice ? Number(dbP.originalPrice) : 0;
+        const commRate = dbP.customCommissionRate
+          ? Number(dbP.customCommissionRate)
+          : (dbP.store?.defaultCommissionRate ? Number(dbP.store.defaultCommissionRate) : undefined);
+        const commAmt = commRate ? Math.round(rawPrice * (commRate / 100)) : undefined;
+        const img = dbP.imageUrl || (dbP.mediaAssets?.[0]?.urlOrContent) || '/reference/assets/serum-hero-optimized.jpg';
+
+        return {
+          id: dbP.id,
+          name: dbP.title || dbP.name,
+          brand: dbP.store?.name || 'Gian hàng đối tác',
+          storeId: dbP.store?.id || dbP.storeId,
+          sku: dbP.sku,
+          category: dbP.categoryName || 'Sản phẩm',
+          categoryLabel: dbP.categoryName || 'Sản phẩm',
+          rating: 5.0,
+          reviews: 0,
+          sold: 'Chính hãng',
+          origPrice: rawOrigPrice,
+          price: rawPrice,
+          kolDiscountPrice: Math.round(rawPrice * 0.9),
+          image: img,
+          stockQuantity: Number(dbP.stockQuantity || 0),
+          variants: Array.isArray(dbP.variants) ? dbP.variants : [],
+          commissionRate: commRate,
+          commissionAmount: commAmt,
+          badge: Number(dbP.stockQuantity || 0) > 0 ? 'Sẵn hàng' : 'Hết hàng',
+        };
+      });
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
   // Cart & Gateways
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
@@ -63,81 +115,7 @@ export default function MarketplacePage() {
   const catalogRef = useRef<HTMLElement>(null);
   const trackingRef = useRef<HTMLElement>(null);
 
-  // Fetch real categories on mount
-  useEffect(() => {
-    let mounted = true;
 
-    api.get('/public/products/categories')
-      .then((res) => {
-        if (!mounted) return;
-        const payload = res.data?.data !== undefined ? res.data.data : res.data;
-        if (Array.isArray(payload)) {
-          setCategories(payload);
-        }
-      })
-      .catch(() => { });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Fetch real products from backend database
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-
-    api.get('/public/products', { params: { limit: 48, sortBy } })
-      .then((res) => {
-        if (!mounted) return;
-        const payload = res.data?.data !== undefined ? res.data.data : res.data;
-        const apiItems = Array.isArray(payload) ? payload : (payload?.items || []);
-
-        const mapped: Product[] = apiItems.map((dbP: any) => {
-          const rawPrice = Number(dbP.price || 0);
-          const rawOrigPrice = dbP.originalPrice ? Number(dbP.originalPrice) : 0;
-          const commRate = dbP.customCommissionRate
-            ? Number(dbP.customCommissionRate)
-            : (dbP.store?.defaultCommissionRate ? Number(dbP.store.defaultCommissionRate) : undefined);
-          const commAmt = commRate ? Math.round(rawPrice * (commRate / 100)) : undefined;
-          const img = dbP.imageUrl || (dbP.mediaAssets?.[0]?.urlOrContent) || '/reference/assets/serum-hero-optimized.jpg';
-
-          return {
-            id: dbP.id,
-            name: dbP.title || dbP.name,
-            brand: dbP.store?.name || 'Gian hàng đối tác',
-            storeId: dbP.store?.id || dbP.storeId,
-            sku: dbP.sku,
-            category: dbP.categoryName || 'Sản phẩm',
-            categoryLabel: dbP.categoryName || 'Sản phẩm',
-            rating: 5.0,
-            reviews: 0,
-            sold: 'Chính hãng',
-            origPrice: rawOrigPrice,
-            price: rawPrice,
-            kolDiscountPrice: Math.round(rawPrice * 0.9),
-            image: img,
-            stockQuantity: Number(dbP.stockQuantity || 0),
-            variants: Array.isArray(dbP.variants) ? dbP.variants : [],
-            commissionRate: commRate,
-            commissionAmount: commAmt,
-            badge: Number(dbP.stockQuantity || 0) > 0 ? 'Sẵn hàng' : 'Hết hàng',
-          };
-        });
-        setItems(mapped);
-      })
-      .catch((err) => {
-        console.error('Error fetching public products:', err);
-        if (mounted) setItems([]);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [sortBy]);
 
   // Click outside to close dropdowns
   useEffect(() => {

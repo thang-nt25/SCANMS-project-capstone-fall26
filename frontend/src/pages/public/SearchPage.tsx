@@ -1,14 +1,10 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  Search,
   Store,
-  ArrowLeft,
   X,
   ShoppingBag,
   ShoppingCart,
-  TrendingUp,
-  User,
   RotateCcw,
   SlidersHorizontal,
   Check,
@@ -18,10 +14,12 @@ import {
   Coins,
   Sparkles,
   Package,
+  MessageSquare,
 } from 'lucide-react';
 import api from '../../services/api';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
-import { ScanMSLogo } from '../../components/common/ScanMSLogo';
+import { PublicHeader } from '../../components/layout/PublicHeader';
+import { authService } from '../../services/auth.service';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
@@ -64,10 +62,9 @@ export default function SearchPage() {
   const [sortBy, setSortBy] = useState<string>(searchParams.get('sort') || 'newest');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // Cart & Gateways
+  // Cart & Modals
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
 
   // Checkout modal
@@ -78,7 +75,24 @@ export default function SearchPage() {
     quantity?: number;
   } | null>(null);
 
-  const roleDropdownRef = useRef<HTMLDivElement>(null);
+  const currentUser = authService.getCurrentUser();
+  const isKolUser = currentUser?.role === 'COLLABORATOR';
+
+  const handleContactShopFromCard = (product: Product) => {
+    if (!currentUser) {
+      toast.info('Vui lòng đăng nhập tài khoản KOL để trao đổi hợp tác cùng Shop');
+      navigate(`/login?redirect=/products/${product.sku || product.id}`);
+      return;
+    }
+    if (!isKolUser) {
+      toast.info('Tính năng liên hệ shop trực tiếp dành riêng cho tài khoản KOL/Creator.');
+      return;
+    }
+    const storeId = product.storeId || 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
+    navigate(
+      `/collaborator/collaboration?tab=messages&storeId=${storeId}&productId=${product.id}&productTitle=${encodeURIComponent(product.name)}&productImage=${encodeURIComponent(product.image)}&productPrice=${product.price}&productSku=${product.sku || ''}&commissionRate=${product.commissionRate || 15}`
+    );
+  };
 
   // Sync state when URL params change
   useEffect(() => {
@@ -189,11 +203,6 @@ export default function SearchPage() {
     };
   }, []);
 
-  // Handle Search Submission
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateUrlParams({ q: searchInput.trim() || null });
-  };
 
   // Filter and Sort Logic
   const filteredProducts = useMemo(() => {
@@ -574,149 +583,16 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F] overflow-x-clip">
 
-      {/* Main Header with Search Box */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-xs">
-        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
-          
-          {/* Logo ScanMS */}
-          <Link to="/" className="shrink-0 transition-opacity hover:opacity-90">
-            <ScanMSLogo size="md" />
-          </Link>
-
-          {/* Search Bar on Header (Shopee Style Search Header) */}
-          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-xl hidden md:flex items-center">
-            <div className="w-full flex items-center bg-[#FAF8F5] border border-[#EAE4D7] rounded-full px-3.5 py-1.5 focus-within:border-[#C59B58] transition shadow-2xs">
-              <Search className="w-4 h-4 text-[#B88E4F] shrink-0 mr-2" />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Tìm tên sản phẩm, thương hiệu gian hàng, danh mục..."
-                className="w-full bg-transparent text-xs sm:text-sm font-medium text-[#1A1612] placeholder-[#7D715E] outline-none"
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchInput('');
-                    updateUrlParams({ q: null });
-                  }}
-                  className="p-1 text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <button
-                type="submit"
-                className="ml-2 px-4 py-1.5 rounded-full bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs shrink-0 cursor-pointer"
-              >
-                Tìm
-              </button>
-            </div>
-          </form>
-
-          {/* Right Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => setIsLiveModalOpen(true)}
-              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#1A1612] bg-[#FDF2F2] border border-[#FECDD3] hover:border-[#F43F5E] transition cursor-pointer"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E11D48] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#E11D48]" />
-              </span>
-              <span className="text-[#9F1239] font-black text-[11px]">LIVE KOC</span>
-            </button>
-
-            <Link
-              to="/"
-              className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition hidden sm:inline-flex items-center gap-1"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span>Về trang chủ</span>
-            </Link>
-
-            {/* Cart Button */}
-            <button
-              type="button"
-              onClick={() => setIsCartOpen(true)}
-              className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
-            >
-              <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
-              <span className="hidden sm:inline">Giỏ</span>
-              {cart.length > 0 && (
-                <span className="w-4 h-4 rounded-full bg-[#C59B58] text-white text-[10px] font-black flex items-center justify-center">
-                  {cart.reduce((s, i) => s + i.quantity, 0)}
-                </span>
-              )}
-            </button>
-
-            {/* Partner Dropdown */}
-            <div className="relative" ref={roleDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition cursor-pointer shadow-2xs"
-              >
-                <User className="w-4 h-4 text-[#B88E4F]" />
-                <span className="hidden sm:inline">Đối tác</span>
-              </button>
-
-              {isRoleDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 flex flex-col gap-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="p-1 border-b border-[#EAE4D7] text-left">
-                    <strong className="block text-xs font-black text-[#1A1612]">Cổng Đối Tác</strong>
-                  </div>
-                  <Link
-                    to="/collaborator/dashboard"
-                    onClick={() => setIsRoleDropdownOpen(false)}
-                    className="p-2 rounded-xl hover:bg-[#FBF5EB] text-left text-xs font-bold text-[#1A1612] flex items-center gap-2"
-                  >
-                    <TrendingUp className="w-4 h-4 text-[#B88E4F]" />
-                    <span>Cộng Tác Viên / KOL</span>
-                  </Link>
-                  <Link
-                    to="/merchant/dashboard"
-                    onClick={() => setIsRoleDropdownOpen(false)}
-                    className="p-2 rounded-xl hover:bg-[#FBF5EB] text-left text-xs font-bold text-[#1A1612] flex items-center gap-2"
-                  >
-                    <Store className="w-4 h-4 text-[#B88E4F]" />
-                    <span>Chủ Gian Hàng</span>
-                  </Link>
-                  <Link
-                    to="/login"
-                    onClick={() => setIsRoleDropdownOpen(false)}
-                    className="text-center py-2 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
-                  >
-                    Đăng nhập
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Search Bar in Header */}
-        <form onSubmit={handleSearchSubmit} className="px-4 pb-3 md:hidden flex items-center">
-          <div className="w-full flex items-center bg-[#FAF8F5] border border-[#EAE4D7] rounded-full px-3 py-1.5">
-            <Search className="w-4 h-4 text-[#B88E4F] mr-2 shrink-0" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm kiếm sản phẩm, gian hàng..."
-              className="w-full bg-transparent text-xs font-medium text-[#1A1612] outline-none"
-            />
-            <button
-              type="submit"
-              className="ml-2 px-3 py-1 rounded-full bg-[#C59B58] text-white text-xs font-bold shrink-0"
-            >
-              Tìm
-            </button>
-          </div>
-        </form>
-      </header>
+      {/* Unified Public Header */}
+      <PublicHeader
+        cartCount={cart.reduce((s, i) => s + i.quantity, 0)}
+        onOpenCart={() => setIsCartOpen(true)}
+        defaultSearchQuery={searchInput}
+        onSearchSubmit={(q) => {
+          setSearchInput(q);
+          updateUrlParams({ q: q || null });
+        }}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 text-left">
@@ -1040,46 +916,60 @@ export default function SearchPage() {
                       </div>
 
                       {/* Card Bottom Actions */}
-                      <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0 grid grid-cols-[auto_1fr_1fr] gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleAddToCart(p)}
-                          className="py-2.5 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                          title="Thêm vào giỏ hàng"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5 text-[#B88E4F]" />
-                        </button>
-                        <Link
-                          to={productDetailUrl}
-                          className="py-2.5 px-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center text-center"
-                        >
-                          Chi tiết
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveCheckoutProduct({
-                              product: {
-                                id: p.id,
-                                sku: p.sku,
-                                title: p.name,
-                                price: p.price,
-                                originalPrice: p.origPrice,
-                                imageUrl: p.image,
-                                stockQuantity: p.stockQuantity || 0,
-                                variants: p.variants,
-                              },
-                              store: {
-                                id: p.storeId || 'store-default',
-                                name: p.brand,
-                              },
-                              couponCode: p.kol?.coupon || '',
-                            });
-                          }}
-                          className="py-2.5 px-2.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white text-xs font-black hover:opacity-95 transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                        >
-                          Mua ngay
-                        </button>
+                      <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0 flex flex-col gap-1.5">
+                        <div className="grid grid-cols-[auto_1fr_1fr] gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(p)}
+                            className="py-2.5 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                            title="Thêm vào giỏ hàng"
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5 text-[#B88E4F]" />
+                          </button>
+                          <Link
+                            to={productDetailUrl}
+                            className="py-2.5 px-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center text-center"
+                          >
+                            Chi tiết
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveCheckoutProduct({
+                                product: {
+                                  id: p.id,
+                                  sku: p.sku,
+                                  title: p.name,
+                                  price: p.price,
+                                  originalPrice: p.origPrice,
+                                  imageUrl: p.image,
+                                  stockQuantity: p.stockQuantity || 0,
+                                  variants: p.variants,
+                                },
+                                store: {
+                                  id: p.storeId || 'store-default',
+                                  name: p.brand,
+                                },
+                                couponCode: p.kol?.coupon || '',
+                              });
+                            }}
+                            className="py-2.5 px-2.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white text-xs font-black hover:opacity-95 transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                          >
+                            Mua ngay
+                          </button>
+                        </div>
+
+                        {isKolUser && (
+                          <button
+                            type="button"
+                            onClick={() => handleContactShopFromCard(p)}
+                            className="w-full py-2 px-3 rounded-xl bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] text-xs font-bold text-[#8C6226] flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs active:scale-98"
+                            title="Nhắn tin trực tiếp với Shop về mẫu thử và chính sách hoa hồng cho sản phẩm này"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
+                            <span>Liên hệ Shop</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
