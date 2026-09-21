@@ -1,26 +1,25 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogIn, LogOut, RefreshCw, Store, ExternalLink, ChevronRight } from 'lucide-react';
+import { LogIn, LogOut, Store, ExternalLink } from 'lucide-react';
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
 import type { UserProfile } from '../../services/auth.service';
 
 export interface SidebarProps {
   currentUser: UserProfile | null;
-  onOpenRoleSwitcher: () => void;
   onLogout: () => void;
 }
 
-export function Sidebar({ currentUser, onOpenRoleSwitcher, onLogout }: SidebarProps) {
+export function Sidebar({ currentUser, onLogout }: SidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
 
   const role = currentUser?.role || 'COLLABORATOR';
   const navConfig = NAVIGATION_BY_ROLE[role] || NAVIGATION_BY_ROLE.COLLABORATOR;
   const roleLabel = {
-    COLLABORATOR: 'Cộng tác viên / KOL',
-    SHOP_MANAGER: 'Chủ gian hàng',
-    SYSTEM_MANAGER: 'Vận hành hệ thống',
-    SYSTEM_ADMIN: 'Quản trị hệ thống',
-  }[role] || 'Người dùng';
+    COLLABORATOR: 'KOL / KOC Đối Tác',
+    SHOP_MANAGER: 'Chủ Gian Hàng',
+    SYSTEM_MANAGER: 'Vận Hành Hệ Thống',
+    SYSTEM_ADMIN: 'Ban Quản Trị',
+  }[role] || 'Người Dùng';
 
   const isLinkActive = (path: string) => {
     if (path === '/' || path === '/collaborator/dashboard') {
@@ -171,41 +170,36 @@ export function Sidebar({ currentUser, onOpenRoleSwitcher, onLogout }: SidebarPr
         })}
       </nav>
 
-      <div className="p-3 border-t border-[#EAE4D7] flex flex-col gap-1.5 bg-[#EAE4D7]/30">
-        <button
-          type="button"
-          onClick={onOpenRoleSwitcher}
-          aria-label={`Chuyển vai trò. Vai trò hiện tại: ${roleLabel}`}
-          title="Chọn không gian làm việc khác"
-          className="group flex w-full items-center gap-2.5 rounded-xl border border-[#E4D3B7] bg-white px-2.5 py-2 text-left shadow-[0_2px_8px_rgba(91,65,28,0.06)] transition-all duration-200 hover:-translate-y-px hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:shadow-[0_5px_14px_rgba(91,65,28,0.10)] active:translate-y-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-offset-2"
-        >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F] ring-1 ring-[#EEDFC6] transition-colors group-hover:bg-[#C59B58] group-hover:text-white">
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-xs font-extrabold leading-tight text-[#1A1612]">
-              Chuyển vai trò
-            </span>
-            <span className="mt-0.5 block truncate text-[10px] font-medium leading-tight text-[#7D715E]">
-              Hiện tại: {roleLabel}
-            </span>
-          </span>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#A49B8B] transition-transform group-hover:translate-x-0.5 group-hover:text-[#B88E4F]" aria-hidden="true" />
-        </button>
-
+      <div className="p-3 border-t border-[#EAE4D7] flex flex-col gap-2 bg-[#FBF5EB]/50">
         {currentUser ? (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-50 transition cursor-pointer text-left"
-          >
-            <LogOut className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-            <span>Đăng xuất</span>
-          </button>
+          <>
+            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-[#EAE4D7] shadow-2xs">
+              <span className="w-8 h-8 rounded-lg bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#E4D3B7]">
+                {currentUser.fullName?.[0]?.toUpperCase() || 'U'}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-[#1A1612] truncate">
+                  {currentUser.fullName || currentUser.email}
+                </div>
+                <div className="text-[10px] font-semibold text-[#B88E4F] truncate">
+                  {roleLabel}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50/70 border border-rose-200/80 hover:bg-rose-100 hover:text-rose-800 transition cursor-pointer text-center w-full shadow-2xs active:scale-98"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+              <span>Đăng xuất an toàn</span>
+            </button>
+          </>
         ) : (
           <Link
             to="/login"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#C59B58] text-white hover:bg-[#B88E4F] transition cursor-pointer text-left"
+            className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-[#C59B58] text-white hover:bg-[#B88E4F] transition cursor-pointer text-center w-full shadow-2xs"
           >
             <LogIn className="w-3.5 h-3.5 shrink-0" />
             <span>Đăng nhập</span>

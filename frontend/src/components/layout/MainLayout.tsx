@@ -3,14 +3,12 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import { RoleSwitcherModal } from './RoleSwitcherModal';
 
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [showRoleModal, setShowRoleModal] = useState(false);
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -50,8 +48,6 @@ export default function MainLayout() {
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
 
-
-
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   if (isAuth || isIframe) {
@@ -66,7 +62,6 @@ export default function MainLayout() {
     <div className="h-screen w-screen overflow-hidden flex bg-[#FAF8F5] text-[#1A1612]">
       <Sidebar
         currentUser={currentUser}
-        onOpenRoleSwitcher={() => setShowRoleModal(true)}
         onLogout={handleLogout}
       />
 
@@ -75,7 +70,7 @@ export default function MainLayout() {
           currentUser={currentUser}
           theme={theme}
           onToggleTheme={toggleTheme}
-          onOpenRoleSwitcher={() => setShowRoleModal(true)}
+          onLogout={handleLogout}
         />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-[#FAF8F5]">
@@ -84,13 +79,6 @@ export default function MainLayout() {
           </div>
         </main>
       </div>
-
-      <RoleSwitcherModal
-        isOpen={showRoleModal}
-        onClose={() => setShowRoleModal(false)}
-        currentUser={currentUser}
-        onUserChanged={(user) => setCurrentUser(user)}
-      />
     </div>
   );
 }

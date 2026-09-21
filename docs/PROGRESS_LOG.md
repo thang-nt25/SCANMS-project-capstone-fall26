@@ -320,6 +320,36 @@
 
 ---
 
+### [2026-09-21] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (Role Hardening, Enterprise KYC Dual-Flow, Direct Shop Inquiry, Collab Workspace UX & TanStack Query Client Caching)
+- **Hạng mục đã thực hiện**:
+  1. **Bảo mật phân quyền vai trò & Phiên đăng nhập (FR-01, FR-02, FR-04)**:
+     - Gỡ bỏ hoàn toàn nút chuyển đổi vai trò nhanh `RoleSwitcherModal.tsx` khỏi MainLayout, Topbar và Sidebar để bảo đảm tính toàn vẹn phiên làm việc của người dùng.
+     - Thiết lập quy trình đăng nhập / đăng xuất rõ ràng, đồng bộ thông tin role thực tế trên giao diện quản trị.
+     - Giữ khay tài khoản demo mẫu độc quyền tại trang Đăng nhập (`LoginPage.tsx`) hỗ trợ việc kiểm thử tiện lợi mà không gây loãng trải nghiệm dashboard.
+  2. **Chuẩn hóa luồng Định danh điện tử KYC cá nhân & pháp nhân (FR-05 & FR-06)**:
+     - Backend: Nâng cấp DTO `submit-kyc.dto.ts` và `kyc.service.ts` kiểm tra chặt chẽ ảnh CCCD 2 mặt, số CCCD, Mã số thuế TNCN (dành cho KOL khấu trừ thuế hợp pháp) và Giấy phép kinh doanh (dành cho Doanh nghiệp/Shop).
+     - Frontend: Nâng cấp `KycSubmissionPage.tsx` giao diện 2 luồng nộp hồ sơ chuẩn chỉ, hộp cảnh báo thuế và điều khoản bảo mật; nâng cấp `KycApprovalPage.tsx` xét duyệt hồ sơ với TanStack Query.
+  3. **Tích hợp Header công khai chuẩn SCANMS & Nút Liên Hệ Shop trực tiếp (FR-07)**:
+     - Xây dựng component `PublicHeader.tsx` đồng bộ nhận diện thương hiệu Vàng Be Warm Sand trên toàn sàn.
+     - Bổ sung nút "Liên hệ Shop" dành riêng cho KOL tại `MarketplacePage.tsx`, `ProductDetailPage.tsx`, `SearchPage.tsx`, `OrderTrackingPage.tsx`, tự động truyền ID, tên sản phẩm, ảnh, đơn giá và tỷ lệ hoa hồng sang hộp thoại chat với Shop.
+  4. **Tối ưu Không Gian Hợp Tác ShopCollaborationPage & Chatbox Đối Tác (FR-07, FR-08)**:
+     - Xóa bỏ triệt để chuỗi JSON thô trong danh sách hội thoại, thay bằng icon trạng thái tinh tế.
+     - Cố định chiều rộng cột danh sách gian hàng, loại bỏ thanh cuộn ngang gây mất thẩm mỹ ở bộ lọc.
+     - Cân đối vừa vặn 100% cả 4 sub-tabs (`Tin Nhắn & Deal`, `Kho Sản Phẩm`, `Hàng Mẫu 4 Bước`, `Creator Toolkit`).
+     - Tinh chỉnh `ChatBoxPage.tsx` format hiển thị thẻ trao đổi sản phẩm đẹp mắt, chuyên nghiệp.
+  5. **Tích hợp TanStack Query & Client Memory Cache tối ưu trải nghiệm (Stale-While-Revalidate)**:
+     - Cài đặt thư viện chuẩn doanh nghiệp `@tanstack/react-query` v5, khởi tạo `queryClient.ts` và bọc `QueryClientProvider` tại `App.tsx`.
+     - Tích hợp bộ nhớ đệm an toàn `apiCache.ts` vào interceptor Axios giúp tải trang $0\text{ms}$.
+     - Chuyển đổi `MarketplacePage.tsx` và `KycApprovalPage.tsx` sang `useQuery` và `useMutation`, giải quyết triệt để hiện tượng nháy loading spinner khi chuyển trang.
+- **Màn hình UI**: `frontend/src/pages/collaborator/ShopCollaborationPage.tsx`, `frontend/src/pages/public/MarketplacePage.tsx`, `frontend/src/pages/merchant/KycApprovalPage.tsx`, `frontend/src/pages/collaborator/KycSubmissionPage.tsx`, `frontend/src/components/layout/PublicHeader.tsx`
+- **API Endpoint**: `POST /api/kyc/submit`, `GET /api/kyc/pending`, `PATCH /api/kyc/review/:id`, `GET /api/public/products`, `GET /api/chat/conversations`
+- **Backend File**: `backend/src/modules/kyc/kyc.service.ts`, `backend/src/modules/kyc/dto/submit-kyc.dto.ts`
+- **CSDL**: Bảng `kyc_profiles`, `users`, `stores`, `products`
+- **Ghi chú**: Đã kiểm tra `npm run build` thành công trong 1.71s (0 lỗi), sẵn sàng deploy mượt mà trên Vercel.
+
+---
+
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:
 
 Mỗi khi bạn hoặc thành viên trong nhóm hoàn thành một đoạn code / màn hình UI / API mới, chỉ cần gõ lệnh:

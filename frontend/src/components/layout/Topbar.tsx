@@ -1,23 +1,37 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, Bell, ChevronDown, Store } from 'lucide-react';
-import type { UserProfile } from '../../services/auth.service';
+import { Sun, Moon, Bell, ChevronDown, Store, LogOut, Settings } from 'lucide-react';
+import { authService, type UserProfile } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
-  onOpenRoleSwitcher: () => void;
+  onLogout?: () => void;
 }
 
 export function Topbar({
   currentUser,
   theme,
   onToggleTheme,
-  onOpenRoleSwitcher,
+  onLogout,
 }: TopbarProps) {
   const location = useLocation();
   const pathname = location.pathname;
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const role = currentUser?.role || 'COLLABORATOR';
   const isShop = role === 'SHOP_MANAGER';
@@ -33,15 +47,28 @@ export function Topbar({
     ? 'Quản trị viên Hệ thống'
     : currentUser?.collaboratorProfile?.tier?.name
     ? `KOL Hạng ${currentUser.collaboratorProfile.tier.name}`
-    : 'Cộng tác viên SCANMS';
+    : 'KOL / KOC Đối Tác';
 
   const userProfile = {
     avatar: currentUser?.fullName?.charAt(0).toUpperCase() || (isShop ? 'S' : isAdmin ? 'A' : 'K'),
     name: displayName,
     sub: displaySub,
-    avatarBg: isAdmin ? '#0F172A' : '#FEF3C7',
-    avatarColor: isAdmin ? '#F59E0B' : isShop ? '#B45309' : '#92400E',
   };
+
+  const handleLogoutClick = () => {
+    setIsMenuOpen(false);
+    if (onLogout) {
+      onLogout();
+    } else {
+      authService.logout();
+    }
+  };
+
+  const profilePath = isShop
+    ? '/merchant/settings'
+    : isAdmin
+    ? '/admin/users'
+    : '/collaborator/profile';
 
   const getPageTitle = () => {
     if (pathname === '/' || pathname === '/collaborator/dashboard') {
@@ -120,25 +147,73 @@ export function Topbar({
           <span className="w-2 h-2 rounded-full bg-[#B88E4F] absolute top-1.5 right-1.5"></span>
         </button>
 
-        <div
-          onClick={onOpenRoleSwitcher}
-          title="Bấm để chuyển đổi nhanh vai trò"
-          className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#F3EFE6] border border-[#EAE4D7] hover:bg-[#EAE4D7] transition cursor-pointer shadow-2xs"
-        >
-          <span
-            className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-[#EEDFC6] text-[#B88E4F]"
+        <div className="relative" ref={menuRef}>
+          <div
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#F3EFE6] border border-[#EAE4D7] hover:bg-[#EAE4D7] transition cursor-pointer shadow-2xs"
           >
-            {userProfile.avatar}
-          </span>
-          <div className="text-left hidden md:block">
-            <strong className="block text-xs font-bold text-[#1A1612] leading-none">
-              {userProfile.name}
-            </strong>
-            <small className="text-[11px] font-semibold text-[#B88E4F] leading-tight block mt-0.5">
-              {userProfile.sub}
-            </small>
+            <span
+              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-[#EEDFC6] text-[#B88E4F]"
+            >
+              {userProfile.avatar}
+            </span>
+            <div className="text-left hidden md:block">
+              <strong className="block text-xs font-bold text-[#1A1612] leading-none">
+                {userProfile.name}
+              </strong>
+              <small className="text-[11px] font-semibold text-[#B88E4F] leading-tight block mt-0.5">
+                {userProfile.sub}
+              </small>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-[#A49B8B] transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
           </div>
-          <ChevronDown className="w-3.5 h-3.5 text-[#A49B8B]" />
+
+          {isMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+              <div className="p-2.5 border-b border-[#EAE4D7]">
+                <div className="text-xs font-bold text-[#1A1612] truncate">
+                  {currentUser?.fullName || displayName}
+                </div>
+                <div className="text-[11px] text-[#7D715E] truncate mt-0.5">
+                  {currentUser?.email || 'N/A'}
+                </div>
+                <div className="mt-1.5 inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                  {displaySub}
+                </div>
+              </div>
+
+              <div className="py-1 flex flex-col gap-0.5">
+                <Link
+                  to={profilePath}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                >
+                  <Settings className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Cài đặt & Hồ sơ</span>
+                </Link>
+
+                <Link
+                  to="/marketplace"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                >
+                  <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Sàn mua sắm công khai</span>
+                </Link>
+              </div>
+
+              <div className="pt-1 border-t border-[#EAE4D7]">
+                <button
+                  type="button"
+                  onClick={handleLogoutClick}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-xl transition w-full text-left cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Đăng xuất an toàn</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
