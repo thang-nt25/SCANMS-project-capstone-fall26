@@ -108,7 +108,11 @@ export function triggerGoogleSignIn(
           `Google Sign-In prompt chưa được cấp phép hiển thị trên http://localhost:5173 (${reason}). Bạn có thể click nút 'Tiếp tục với Google (Môi trường Dev)' để kiểm thử ngay!`
         );
       } else if (notification.isSkippedMoment()) {
-        console.warn('Google prompt bị bỏ qua:', notification.getSkippedReason?.());
+        const reason = notification.getSkippedReason?.();
+        console.warn('Google prompt bị bỏ qua:', reason);
+        onError?.(
+          `Google Sign-In bị chặn hoặc bị bỏ qua (${reason || 'chưa cấp phép origin localhost:5173'}). Bạn có thể thêm http://localhost:5173 vào Google Cloud Console hoặc dùng nút Dev Bypass.`
+        );
       }
     });
   } catch (err: any) {
