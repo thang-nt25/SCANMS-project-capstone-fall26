@@ -585,7 +585,7 @@ export default function KycApprovalPage() {
           isOpen={true}
           onClose={() => setInspectProfile(null)}
           title={`Hồ sơ thẩm định KOL: ${inspectProfile.fullName}`}
-          size="lg"
+          maxWidth="lg"
         >
           <div className="space-y-5 text-left text-xs">
             {/* 1. Kênh sáng tạo & Bằng chứng */}
@@ -720,7 +720,7 @@ export default function KycApprovalPage() {
           isOpen={true}
           onClose={() => setInspectStore(null)}
           title={`Thẩm định Gian Hàng: ${inspectStore.name}`}
-          size="lg"
+          maxWidth="lg"
         >
           <div className="space-y-5 text-left text-xs">
             {/* 1. Pháp nhân & Kho hàng (Nghị định 85) */}

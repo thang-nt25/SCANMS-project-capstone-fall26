@@ -63,6 +63,7 @@ export default function CustomerPortalPage() {
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
   const [profileData, setProfileData] = useState<CustomerProfileResponse | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Tab 1: Orders State
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
@@ -134,9 +135,22 @@ export default function CustomerPortalPage() {
 
   // Load Vietnam Administrative Divisions
   useEffect(() => {
-    loadShippingAddresses().then((res) => {
-      setProvinces(res.provinces || []);
-    });
+    const controller = new AbortController();
+    loadShippingAddresses(controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setProvinces(data || []);
+        }
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          console.error('Không tải được danh mục địa chỉ:', err);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   const setTab = (tab: CustomerTab) => {
@@ -374,8 +388,8 @@ export default function CustomerPortalPage() {
     });
   };
 
-  const selectedProvince = provinces.find((p) => p.code === addressForm.provinceCode);
-  const selectedDistrict = selectedProvince?.districts.find((d) => d.code === addressForm.districtCode);
+  const selectedProvince = provinces.find((p) => String(p.code) === String(addressForm.provinceCode));
+  const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(addressForm.districtCode));
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612]">
@@ -1103,10 +1117,10 @@ export default function CustomerPortalPage() {
 
                     <button
                       type="submit"
-                      disabled={updatingProfile}
+                      disabled={updatingProfile || profileLoading}
                       className="mt-2 py-2.5 rounded-xl bg-[#B88E4F] hover:bg-[#8C6226] text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
                     >
-                      {updatingProfile && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {(updatingProfile || profileLoading) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       <span>Lưu thay đổi</span>
                     </button>
                   </form>
@@ -1430,7 +1444,7 @@ export default function CustomerPortalPage() {
                   value={addressForm.provinceCode}
                   onChange={(e) => {
                     const code = e.target.value;
-                    const p = provinces.find((item) => item.code === code);
+                    const p = provinces.find((item) => String(item.code) === String(code));
                     setAddressForm({
                       ...addressForm,
                       provinceCode: code,
@@ -1463,7 +1477,7 @@ export default function CustomerPortalPage() {
                     value={addressForm.districtCode}
                     onChange={(e) => {
                       const code = e.target.value;
-                      const d = selectedProvince?.districts.find((item) => item.code === code);
+                      const d = selectedProvince?.districts.find((item) => String(item.code) === String(code));
                       setAddressForm({
                         ...addressForm,
                         districtCode: code,
@@ -1494,7 +1508,7 @@ export default function CustomerPortalPage() {
                     value={addressForm.wardCode}
                     onChange={(e) => {
                       const code = e.target.value;
-                      const w = selectedDistrict?.wards.find((item) => item.code === code);
+                      const w = selectedDistrict?.wards.find((item) => String(item.code) === String(code));
                       setAddressForm({
                         ...addressForm,
                         wardCode: code,

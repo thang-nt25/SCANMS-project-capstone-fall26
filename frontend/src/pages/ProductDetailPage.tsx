@@ -56,6 +56,7 @@ interface LandingProduct {
   isActive: boolean;
   canPurchase: boolean;
   status?: string;
+  stockQuantity?: number;
   variants?: ProductVariantItem[];
 }
 
@@ -284,7 +285,7 @@ function resolveProductVariants(product: LandingProduct): ProductVariantItem[] {
       sku: `${product.sku}-STD`,
       name: 'Phiên bản Tiêu chuẩn',
       price: basePrice,
-      stockQuantity: product.stockQuantity || 50,
+      stockQuantity: product.stockQuantity ?? 50,
       isActive: true,
     },
     {
