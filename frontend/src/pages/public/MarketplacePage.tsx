@@ -24,8 +24,14 @@ import {
   Radio,
   BadgeCheck,
   Calendar,
+  Heart,
+  Settings,
+  LogOut,
+  MapPin,
 } from 'lucide-react';
 import api from '../../services/api';
+import { authService, type UserProfile } from '../../services/auth.service';
+import { customerService } from '../../services/customer.service';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
@@ -116,6 +122,54 @@ export default function MarketplacePage() {
   const trackingRef = useRef<HTMLElement>(null);
 
 
+
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+
+  // Load user profile & customer wishlist
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    setCurrentUser(user);
+    if (user?.role === 'CUSTOMER') {
+      customerService
+        .getWishlist()
+        .then((items) => {
+          if (Array.isArray(items)) {
+            setWishlistIds(new Set(items.map((it) => it.product?.id).filter(Boolean) as string[]));
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const handleToggleWishlist = async (productId: string) => {
+    if (!currentUser) {
+      toast.error('Vui lòng đăng nhập để thêm sản phẩm vào danh sách yêu thích!');
+      navigate('/login?role=CUSTOMER');
+      return;
+    }
+    if (currentUser.role !== 'CUSTOMER') {
+      toast.error('Chức năng Yêu thích sản phẩm dành cho tài khoản Khách hàng mua sắm.');
+      return;
+    }
+
+    try {
+      const res = await customerService.toggleWishlist(productId);
+      setWishlistIds((prev) => {
+        const next = new Set(prev);
+        if (res.wishlisted) {
+          next.add(productId);
+          toast.success('Đã lưu vào danh sách yêu thích!');
+        } else {
+          next.delete(productId);
+          toast.info('Đã bỏ lưu sản phẩm');
+        }
+        return next;
+      });
+    } catch {
+      toast.error('Không thể cập nhật danh sách yêu thích. Vui lòng thử lại.');
+    }
+  };
 
   // Click outside to close dropdowns
   useEffect(() => {
@@ -395,92 +449,215 @@ export default function MarketplacePage() {
               )}
             </button>
 
-            {/* Partner Gateways Dropdown */}
-            <div className="relative" ref={roleDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition cursor-pointer shadow-2xs"
-              >
-                <User className="w-4 h-4 text-[#B88E4F]" />
-                <span>Cổng đối tác</span>
-                <ChevronRight className="w-3.5 h-3.5 text-[#7D715E] rotate-90" />
-              </button>
-
-              {isRoleDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 flex flex-col gap-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="p-2 border-b border-[#EAE4D7] text-left">
-                    <strong className="block text-xs font-black text-[#1A1612]">
-                      Cổng đăng nhập đối tác
+            {/* User Account / Partner Gateways */}
+            {currentUser ? (
+              <div className="relative" ref={roleDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                  className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full bg-[#F3EFE6] border border-[#EAE4D7] hover:bg-[#EAE4D7] transition cursor-pointer shadow-2xs"
+                  title="Thông tin tài khoản"
+                >
+                  <span className="w-7 h-7 rounded-full bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#E4D3B7]">
+                    {currentUser.fullName?.[0]?.toUpperCase() || 'U'}
+                  </span>
+                  <div className="text-left hidden md:block max-w-[130px]">
+                    <strong className="block text-xs font-bold text-[#1A1612] truncate leading-none">
+                      {currentUser.fullName || currentUser.email}
                     </strong>
-                    <small className="text-[11px] text-[#7D715E] block mt-0.5">
-                      Truy cập không gian làm việc chuyên biệt theo vai trò
-                    </small>
+                    <span className="block text-[10px] font-semibold text-[#B88E4F] truncate leading-tight mt-0.5">
+                      {currentUser.role === 'CUSTOMER'
+                        ? '🛍️ Khách Mua Hàng'
+                        : currentUser.role === 'COLLABORATOR'
+                        ? '⭐ KOL / KOC'
+                        : currentUser.role === 'SHOP_MANAGER'
+                        ? '🏪 Gian Hàng'
+                        : '🛡️ Quản Trị'}
+                    </span>
                   </div>
+                  <ChevronRight
+                    className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-150 ${
+                      isRoleDropdownOpen ? '-rotate-90 text-[#B88E4F]' : 'rotate-90'
+                    }`}
+                  />
+                </button>
 
-                  <div className="flex flex-col gap-1">
-                    <Link
-                      to="/collaborator/dashboard"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                        <TrendingUp className="w-4 h-4" />
+                {isRoleDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 flex flex-col gap-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+                    <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-full bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#E4D3B7]">
+                          {currentUser.fullName?.[0]?.toUpperCase() || 'U'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <strong className="block text-xs font-bold text-[#1A1612] truncate">
+                            {currentUser.fullName || 'Tài khoản SCANMS'}
+                          </strong>
+                          <span className="block text-[11px] text-[#7D715E] truncate">
+                            {currentUser.email}
+                          </span>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <span className="block text-xs font-bold text-[#1A1612]">Cộng Tác Viên / KOL</span>
-                        <small className="text-[10px] text-[#7D715E] block truncate">Lấy link tiếp thị & rút hoa hồng</small>
-                      </div>
-                    </Link>
+                    </div>
 
-                    <Link
-                      to="/merchant/dashboard"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[#F5E7CC] text-[#7A561B] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                        <Store className="w-4 h-4" />
+                    {currentUser.role === 'CUSTOMER' ? (
+                      <div className="flex flex-col gap-1 py-1">
+                        <Link
+                          to="/customer/orders"
+                          onClick={() => setIsRoleDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                        >
+                          <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
+                          <span>Đơn mua của tôi</span>
+                        </Link>
+                        <Link
+                          to="/customer/addresses"
+                          onClick={() => setIsRoleDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                        >
+                          <MapPin className="w-4 h-4 text-[#B88E4F]" />
+                          <span>Sổ địa chỉ nhận hàng</span>
+                        </Link>
+                        <Link
+                          to="/customer/wishlist"
+                          onClick={() => setIsRoleDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                        >
+                          <Heart className="w-4 h-4 text-[#B88E4F]" />
+                          <span>Sản phẩm yêu thích ({wishlistIds.size})</span>
+                        </Link>
+                        <Link
+                          to="/customer/profile"
+                          onClick={() => setIsRoleDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                        >
+                          <Settings className="w-4 h-4 text-[#7D715E]" />
+                          <span>Hồ sơ & Đổi mật khẩu</span>
+                        </Link>
                       </div>
-                      <div className="min-w-0">
-                        <span className="block text-xs font-bold text-[#1A1612]">Chủ Gian Hàng (Shop)</span>
-                        <small className="text-[10px] text-[#7D715E] block truncate">Quản lý sản phẩm & đối soát</small>
+                    ) : (
+                      <div className="flex flex-col gap-1 py-1">
+                        <Link
+                          to={
+                            currentUser.role === 'SHOP_MANAGER'
+                              ? '/merchant/dashboard'
+                              : currentUser.role === 'COLLABORATOR'
+                              ? '/collaborator/dashboard'
+                              : '/admin/users'
+                          }
+                          onClick={() => setIsRoleDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl bg-[#FBF5EB] hover:bg-[#F5E7CC] text-[#8C6226] transition"
+                        >
+                          <Store className="w-4 h-4 text-[#B88E4F]" />
+                          <span>Vào không gian làm việc ↗</span>
+                        </Link>
                       </div>
-                    </Link>
+                    )}
 
-                    <Link
-                      to="/admin/users"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                        <Shield className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="block text-xs font-bold text-[#1A1612]">Quản Trị Hệ Thống</span>
-                        <small className="text-[10px] text-[#7D715E] block truncate">Duyệt KYC, an ninh & cấu hình</small>
-                      </div>
-                    </Link>
+                    <div className="pt-2 border-t border-[#EAE4D7]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRoleDropdownOpen(false);
+                          authService.logout();
+                          setCurrentUser(null);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-xl transition w-full text-left cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4 text-rose-600" />
+                        <span>Đăng xuất tài khoản</span>
+                      </button>
+                    </div>
                   </div>
+                )}
+              </div>
+            ) : (
+              <div className="relative" ref={roleDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition cursor-pointer shadow-2xs"
+                >
+                  <User className="w-4 h-4 text-[#B88E4F]" />
+                  <span>Cổng đối tác</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-[#7D715E] rotate-90" />
+                </button>
 
-                  <div className="pt-2 border-t border-[#EAE4D7] grid grid-cols-2 gap-2">
-                    <Link
-                      to="/login"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
-                    >
-                      Đăng nhập
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
-                    >
-                      Đăng ký
-                    </Link>
+                {isRoleDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 flex flex-col gap-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-2 border-b border-[#EAE4D7] text-left">
+                      <strong className="block text-xs font-black text-[#1A1612]">
+                        Cổng đăng nhập đối tác
+                      </strong>
+                      <small className="text-[11px] text-[#7D715E] block mt-0.5">
+                        Truy cập không gian làm việc chuyên biệt theo vai trò
+                      </small>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <Link
+                        to="/collaborator/dashboard"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <TrendingUp className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-[#1A1612]">Cộng Tác Viên / KOL</span>
+                          <small className="text-[10px] text-[#7D715E] block truncate">Lấy link tiếp thị & rút hoa hồng</small>
+                        </div>
+                      </Link>
+
+                      <Link
+                        to="/merchant/dashboard"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-[#F5E7CC] text-[#7A561B] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <Store className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-[#1A1612]">Chủ Gian Hàng (Shop)</span>
+                          <small className="text-[10px] text-[#7D715E] block truncate">Quản lý sản phẩm & đối soát</small>
+                        </div>
+                      </Link>
+
+                      <Link
+                        to="/admin/users"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <Shield className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-[#1A1612]">Quản Trị Hệ Thống</span>
+                          <small className="text-[10px] text-[#7D715E] block truncate">Duyệt KYC, an ninh & cấu hình</small>
+                        </div>
+                      </Link>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#EAE4D7] grid grid-cols-2 gap-2">
+                      <Link
+                        to="/login"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
+                      >
+                        Đăng nhập
+                      </Link>
+                      <Link
+                        to="/register"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
+                      >
+                        Đăng ký
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -573,104 +750,7 @@ export default function MarketplacePage() {
                 </button>
               ))}
             </div>
-
           </div>
-
-          {/* 3 Core Value Pillars */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mt-14 pt-8 border-t border-[#EAE4D7]">
-            <div className="bg-white/80 backdrop-blur-xs border border-[#EAE4D7] rounded-2xl p-5 shadow-2xs flex items-start gap-3.5 text-left hover:border-[#C59B58] transition">
-              <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-6 h-6 text-[#B88E4F]" />
-              </div>
-              <div>
-                <strong className="block text-sm font-black text-[#1A1612]">Gian Hàng Kiểm Định 100% KYC</strong>
-                <p className="text-xs text-[#7D715E] leading-relaxed mt-1 m-0">
-                  Mọi gian hàng đối tác đều được định danh pháp nhân minh bạch, bảo đảm nguồn gốc sản phẩm chính hãng.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-xs border border-[#EAE4D7] rounded-2xl p-5 shadow-2xs flex items-start gap-3.5 text-left hover:border-[#C59B58] transition">
-              <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                <TrendingUp className="w-6 h-6 text-[#B88E4F]" />
-              </div>
-              <div>
-                <strong className="block text-sm font-black text-[#1A1612]">Tiếp Thị & Hoa Hồng Minh Bạch</strong>
-                <p className="text-xs text-[#7D715E] leading-relaxed mt-1 m-0">
-                  Cộng tác viên và KOL tiếp thị sản phẩm thực, nhận hoa hồng trực tiếp từ nhà bán hàng mà không qua trung gian phức tạp.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-xs border border-[#EAE4D7] rounded-2xl p-5 shadow-2xs flex items-start gap-3.5 text-left hover:border-[#C59B58] transition">
-              <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                <Package className="w-6 h-6 text-[#B88E4F]" />
-              </div>
-              <div>
-                <strong className="block text-sm font-black text-[#1A1612]">Đồng Kiểm & Đổi Trả 14 Ngày</strong>
-                <p className="text-xs text-[#7D715E] leading-relaxed mt-1 m-0">
-                  Khách hàng vãng lai được đồng kiểm sản phẩm trước khi thanh toán, bảo vệ quyền lợi người tiêu dùng tối đa.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* HORIZONTAL CATEGORY SHOWCASE BAR (Shopee Style) */}
-          <div className="mt-10 pt-6 border-t border-[#EAE4D7]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#B88E4F]" />
-                <strong className="text-sm font-black text-[#1A1612]">Danh Mục Mua Sắm Nổi Bật</strong>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate('/search')}
-                className="text-xs font-bold text-[#8C6226] hover:text-[#B88E4F] flex items-center gap-1 transition cursor-pointer"
-              >
-                <span>Xem tất cả danh mục & lọc</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-              {[
-                { name: 'Mỹ phẩm & Chăm sóc da', icon: '✨', count: '100% Chính hãng', desc: 'Serum, kem dưỡng, phục hồi da' },
-                { name: 'Sức khỏe & Thảo mộc', icon: '🌿', count: 'Thảo mộc tự nhiên', desc: 'Trà thảo mộc, hạt dinh dưỡng' },
-                { name: 'Công nghệ & Phụ kiện', icon: '⚡', count: 'Bảo hành chính hãng', desc: 'Tai nghe Bluetooth, bàn phím' },
-                { name: 'Gia dụng & Tiện ích', icon: '🏠', count: 'Đồng kiểm tận tay', desc: 'Thiết bị chăm sóc gia đình' },
-                { name: 'Tất cả danh mục & Bộ lọc', icon: '🔍', count: 'Tìm kiếm nâng cao', desc: 'Mở bộ lọc chi tiết Shopee-style' },
-              ].map((cat, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    if (cat.name.includes('Tất cả')) {
-                      navigate('/search');
-                    } else {
-                      navigate(`/search?category=${encodeURIComponent(cat.name)}`);
-                    }
-                  }}
-                  className="bg-white/90 backdrop-blur-xs border border-[#EAE4D7] hover:border-[#C59B58] rounded-2xl p-3.5 text-left transition hover:shadow-md group cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl group-hover:scale-110 transition-transform">{cat.icon}</span>
-                    <span className="text-[10px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
-                      {cat.count}
-                    </span>
-                  </div>
-                  <div>
-                    <strong className="block text-xs font-bold text-[#1A1612] group-hover:text-[#B88E4F] transition">
-                      {cat.name}
-                    </strong>
-                    <small className="text-[10.5px] text-[#7D715E] block mt-0.5 line-clamp-1">
-                      {cat.desc}
-                    </small>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
         </div>
       </section>
 
@@ -780,10 +860,26 @@ export default function MarketplacePage() {
                         </span>
                       )}
                       {p.origPrice > p.price && (
-                        <span className="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[10px] font-black border border-rose-200">
+                        <span className="absolute top-3 right-11 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[10px] font-black border border-rose-200">
                           -{Math.round(((p.origPrice - p.price) / p.origPrice) * 100)}%
                         </span>
                       )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleToggleWishlist(p.id);
+                        }}
+                        className={`absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center transition shadow-2xs z-10 cursor-pointer ${
+                          wishlistIds.has(p.id)
+                            ? 'bg-rose-500 text-white'
+                            : 'bg-white/85 hover:bg-white text-[#7D715E] hover:text-rose-500 backdrop-blur-xs'
+                        }`}
+                        title={wishlistIds.has(p.id) ? 'Bỏ lưu sản phẩm' : 'Lưu vào danh sách yêu thích'}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${wishlistIds.has(p.id) ? 'fill-current text-white' : ''}`} />
+                      </button>
                     </Link>
 
                     <div className="p-4 sm:p-5 flex flex-col gap-2.5 text-left">

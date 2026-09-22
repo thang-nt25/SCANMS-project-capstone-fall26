@@ -348,6 +348,34 @@
 - **CSDL**: Bảng `kyc_profiles`, `users`, `stores`, `products`
 - **Ghi chú**: Đã kiểm tra `npm run build` thành công trong 1.71s (0 lỗi), sẵn sàng deploy mượt mà trên Vercel.
 
+### [2026-09-22] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (100% Customer Ecosystem, Google Auth Bugfix, Two-Tier Partner Upgrade KYC, Multi-Role Workspace Switcher & Product Variants System)
+- **Hạng mục đã thực hiện**:
+  1. **Khắc phục lỗi Google Auth & FedCM 403 (FR-01, FR-02)**:
+     - Sửa lỗi `403 Forbidden` trên `accounts.google.com/gsi/status` và FedCM `AbortError: signal is aborted without reason`.
+     - Sử dụng `renderGoogleButton` chính thống với Explicit User Gesture, bổ sung nút "Đăng nhập nhanh Google (Dev Bypass)" cho môi trường localhost/staging.
+  2. **Chuẩn hóa đăng ký nền tảng Khách Mua Hàng (Customer-First Registration)**:
+     - Chuyển toàn bộ form đăng ký (`RegisterPage.tsx`) về 100% tài khoản `CUSTOMER`. Lược bỏ các trường phức tạp của KOL/Shop, hỗ trợ mua sắm và quản trị cá nhân tức thì.
+  3. **Xây dựng Hệ sinh thái Cổng Khách Hàng (Customer Portal - `/customer/orders`)**:
+     - Quản lý đơn mua phân loại 6 trạng thái, hỗ trợ Hủy đơn hàng trực tiếp (`PENDING`).
+     - Sổ địa chỉ nhận hàng lưu nhiều địa chỉ, hỗ trợ bộ chọn 3 cấp Tỉnh/Quận/Phường chuẩn Việt Nam.
+     - Danh sách yêu thích (Wishlist) và hồ sơ cá nhân bảo mật.
+  4. **Quy trình Nộp đơn & Thẩm duyệt Nâng cấp Đối tác (Two-Tier Compliance KYC - Nghị định 85/2021/NĐ-CP)**:
+     - Tạo tab `PartnerUpgradeTab.tsx` với 2 luồng nộp đơn: Nâng cấp Creator KOL (kênh TikTok, Facebook, follower insight, CCCD, STK ngân hàng) và Nâng cấp Gian Hàng Đối Tác (GPKD, MST, địa chỉ kho lấy hàng).
+     - Backend API: `POST /api/kyc/upgrade/kol`, `POST /api/kyc/upgrade/shop`, `GET /api/kyc/upgrade/my-status`, `GET /api/kyc/admin/applications`, `PATCH /api/kyc/admin/kol/:id/review`, `PATCH /api/kyc/admin/shop/:id/review`.
+     - Nâng cấp `KycApprovalPage.tsx` xem và thẩm duyệt hồ sơ với TanStack Query.
+  5. **Bộ chuyển đổi vai trò (Workspace Switcher) đa không gian làm việc**:
+     - Tạo component `WorkspaceSwitcher.tsx` tông màu Gold & Sand, tích hợp tại PublicHeader và Sidebar.
+     - Cho phép người dùng chuyển đổi 1-click giữa Khách Mua ⇄ Creator KOL ⇄ Gian Hàng mà không mất lịch sử đơn mua, địa chỉ hay tài khoản khách hàng ban đầu.
+  6. **Hệ thống phân loại biến thể sản phẩm (Product Variants System)**:
+     - Xây dựng thuật toán `resolveProductVariants` tại `ProductDetailPage.tsx` hỗ trợ đầy đủ Size quần áo (S/M/L/XL), Dung tích mỹ phẩm (30ml/50ml/100ml), Đường kính chảo gia dụng (20cm/24cm/28cm).
+     - Cập nhật giá bán, SKU, tồn kho thời gian thực; vô hiệu hóa biến thể hết hàng; đồng bộ `variantId` vào modal `GuestCheckoutModal` và đơn hàng PostgreSQL.
+- **Màn hình UI**: `frontend/src/pages/customer/CustomerPortalPage.tsx`, `frontend/src/pages/customer/PartnerUpgradeTab.tsx`, `frontend/src/components/common/WorkspaceSwitcher.tsx`, `frontend/src/pages/ProductDetailPage.tsx`, `frontend/src/components/checkout/GuestCheckoutModal.tsx`, `frontend/src/pages/auth/RegisterPage.tsx`, `frontend/src/pages/auth/LoginPage.tsx`, `frontend/src/pages/merchant/KycApprovalPage.tsx`
+- **API Endpoint**: `POST /api/auth/google`, `POST /api/kyc/upgrade/kol`, `POST /api/kyc/upgrade/shop`, `GET /api/kyc/upgrade/my-status`, `GET /api/customer/orders`, `POST /api/customer/addresses`, `POST /api/customer/wishlist/:productId/toggle`, `POST /api/orders`
+- **Backend File**: `backend/src/modules/customer/`, `backend/src/modules/kyc/kyc.service.ts`, `backend/src/modules/kyc/kyc.controller.ts`, `backend/src/modules/auth/auth.service.ts`, `backend/src/modules/orders/orders.service.ts`
+- **CSDL**: Bảng `users`, `customer_addresses`, `customer_wishlists`, `orders`, `order_items`, `collaborator_profiles`, `stores`, `product_variants`
+- **Ghi chú**: TypeScript biên dịch 0 lỗi cả Frontend và Backend, `npm run build` thành công 100%, commit và push sạch sẽ lên nhánh `thang`.
+
 ---
 
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:

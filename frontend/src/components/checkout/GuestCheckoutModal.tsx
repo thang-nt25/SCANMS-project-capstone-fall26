@@ -14,8 +14,11 @@ import {
   Loader2,
   Store as StoreIcon,
   Package,
+  MapPin,
 } from 'lucide-react';
 import api from '../../services/api';
+import { authService, type UserProfile } from '../../services/auth.service';
+import { customerService, type CustomerAddress } from '../../services/customer.service';
 import {
   loadShippingAddresses,
   type ShippingProvince,
@@ -56,6 +59,7 @@ interface GuestCheckoutModalProps {
   store: CheckoutStoreInfo;
   initialQuantity?: number;
   initialCouponCode?: string;
+  initialVariantId?: string;
   onOrderPlaced?: (orderData: any) => void;
 }
 
@@ -66,8 +70,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   store,
   initialQuantity = 1,
   initialCouponCode = '',
+  initialVariantId,
   onOrderPlaced,
 }) => {
+
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string>('');
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -137,8 +146,33 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Load user and pre-fill on modal open
   useEffect(() => {
     if (isOpen) {
+      const user = authService.getCurrentUser();
+      setCurrentUser(user);
+
+      if (user) {
+        setCustomerName(user.fullName || '');
+        setCustomerEmail(user.email || '');
+        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
+
+        // Fetch customer's address book if customer role
+        if (user.role === 'CUSTOMER') {
+          customerService.getAddresses().then((addrs) => {
+            if (Array.isArray(addrs) && addrs.length > 0) {
+              setCustomerAddresses(addrs);
+              const def = addrs.find((a) => a.isDefault) || addrs[0];
+              if (def) {
+                setSelectedSavedAddressId(def.id);
+                setShippingAddress(def.detailAddress);
+                if (def.fullName) setCustomerName(def.fullName);
+                if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+              }
+            }
+          }).catch(() => {});
+        }
+      }
 
       const newKey =
         typeof crypto !== 'undefined' && crypto.randomUUID
@@ -146,8 +180,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
           : `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       setIdempotencyKey(newKey);
 
-
-      if (product.variants && product.variants.length > 0) {
+      if (initialVariantId && product.variants?.some((v) => v.id === initialVariantId)) {
+        const found = product.variants.find((v) => v.id === initialVariantId);
+        setSelectedVariantId(initialVariantId);
+        setQuantity(Math.max(1, Math.min(initialQuantity, found?.stockQuantity || 1)));
+      } else if (product.variants && product.variants.length > 0) {
         const available =
           product.variants.find((v) => v.stockQuantity > 0) ||
           product.variants[0];
@@ -165,12 +202,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       setAppliedCoupon(null);
       setCouponMessage(null);
       setCouponCode(initialCouponCode);
-      setProvinceCode('');
-      setDistrictCode('');
-      setWardCode('');
       setAddressError(null);
     }
-  }, [isOpen, initialQuantity, product.stockQuantity, product.variants, initialCouponCode]);
+  }, [isOpen, initialQuantity, product.stockQuantity, product.variants, initialCouponCode, initialVariantId]);
 
   useEffect(() => {
     if (!isOpen || shippingProvinces.length) return;
@@ -193,6 +227,41 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
     return () => controller.abort();
   }, [isOpen, shippingProvinces.length, addressReload]);
+
+  const handleSelectSavedAddress = (addressId: string) => {
+    setSelectedSavedAddressId(addressId);
+    const addr = customerAddresses.find((a) => a.id === addressId);
+    if (!addr) return;
+
+    setShippingAddress(addr.detailAddress);
+    if (addr.fullName) setCustomerName(addr.fullName);
+    if (addr.phoneNumber) setCustomerPhone(addr.phoneNumber);
+
+    if (shippingProvinces.length > 0) {
+      const prov = shippingProvinces.find(
+        (p) => String(p.code) === String(addr.provinceCode) || (addr.provinceName && p.name.toLowerCase().includes(addr.provinceName.toLowerCase()))
+      );
+      if (prov) {
+        setProvinceCode(String(prov.code));
+        const dist = prov.districts.find(
+          (d) => String(d.code) === String(addr.districtCode) || (addr.districtName && d.name.toLowerCase().includes(addr.districtName.toLowerCase()))
+        );
+        if (dist) {
+          setDistrictCode(String(dist.code));
+          const ward = dist.wards.find(
+            (w) => String(w.code) === String(addr.wardCode) || (addr.wardName && w.name.toLowerCase().includes(addr.wardName.toLowerCase()))
+          );
+          if (ward) setWardCode(String(ward.code));
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (selectedSavedAddressId && shippingProvinces.length > 0) {
+      handleSelectSavedAddress(selectedSavedAddressId);
+    }
+  }, [shippingProvinces.length, selectedSavedAddressId]);
 
   if (!isOpen) return null;
 
@@ -348,6 +417,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     try {
       const payload = {
         storeId: store.id,
+        customerId: currentUser?.id || undefined,
         customerName: trimmedName,
         customerPhone: customerPhone.trim(),
         customerEmail: customerEmail.trim().toLowerCase() || undefined,
@@ -583,6 +653,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
 
             <div className="flex flex-col gap-2">
+              {currentUser?.role === 'CUSTOMER' && (
+                <Link
+                  to="/customer/orders"
+                  onClick={onClose}
+                  className="w-full py-3 bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:opacity-95 text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Xem trong Đơn Mua Của Bạn (Quản lý & Hủy đơn)</span>
+                </Link>
+              )}
               <Link
                 to={`/tracking?sn=${encodeURIComponent(orderSuccess.publicOrderCode)}`}
                 className="w-full py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
@@ -713,6 +793,37 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[11px] font-black flex items-center justify-center">2</span>
                       <h3 className="text-xs sm:text-sm font-black text-[#1A1612]">Địa Chỉ Nhận Hàng</h3>
                     </div>
+
+                    {customerAddresses.length > 0 && (
+                      <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-[#8C6226] flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-[#C59B58]" />
+                            Sổ địa chỉ đã lưu ({customerAddresses.length} địa chỉ)
+                          </span>
+                          <Link
+                            to="/customer/addresses"
+                            target="_blank"
+                            className="text-[10px] font-bold text-[#B88E4F] hover:underline"
+                          >
+                            Quản lý sổ địa chỉ ↗
+                          </Link>
+                        </div>
+                        <select
+                          value={selectedSavedAddressId}
+                          onChange={(e) => handleSelectSavedAddress(e.target.value)}
+                          className="w-full text-xs bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-[#1A1612] font-medium outline-hidden focus:border-[#C59B58]"
+                        >
+                          <option value="">-- Chọn từ sổ địa chỉ đã lưu --</option>
+                          {customerAddresses.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.isDefault ? '⭐ [Mặc định] ' : ''}
+                              {a.fullName} - {a.phoneNumber} ({a.detailAddress}, {a.wardName}, {a.districtName}, {a.provinceName})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     {addressError && (
                       <div
