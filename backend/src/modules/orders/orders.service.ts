@@ -1540,6 +1540,7 @@ export class OrdersService {
           customerName,
           customerPhone,
           customerEmail,
+          customerId: dto.customerId || null,
           shippingAddress,
           subtotalAmount,
           discountAmount: appliedDiscountAmount,
