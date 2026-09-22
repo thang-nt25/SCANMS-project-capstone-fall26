@@ -18,14 +18,14 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
-import { triggerGoogleSignIn } from '../../utils/googleAuth';
+import { triggerGoogleSignIn, devBypassGoogleSignIn } from '../../utils/googleAuth';
 import { toast } from '../../utils/toast';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [role, setRole] = useState<'kol' | 'shop' | 'admin'>('kol');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'customer' | 'kol' | 'shop' | 'admin'>('customer');
+  const [email, setEmail] = useState('customer@scanms.vn');
+  const [password, setPassword] = useState('Password@123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -33,6 +33,13 @@ export default function LoginPage() {
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   const DEMO_ACCOUNTS = [
+    {
+      role: 'customer' as const,
+      name: 'Nguyễn Văn Mua',
+      title: 'Khách Hàng Thân Thiết',
+      email: 'customer@scanms.vn',
+      password: 'Password@123',
+    },
     {
       role: 'kol' as const,
       name: 'Nguyễn Thành Thắng',
@@ -63,12 +70,17 @@ export default function LoginPage() {
     },
   ];
 
-  const handleRoleChange = (selectedRole: 'kol' | 'shop' | 'admin') => {
+  const handleRoleChange = (selectedRole: 'customer' | 'kol' | 'shop' | 'admin') => {
     setRole(selectedRole);
+    const matched = DEMO_ACCOUNTS.find((a) => a.role === selectedRole);
+    if (matched) {
+      setEmail(matched.email);
+      setPassword(matched.password);
+    }
   };
 
   const handleQuickLogin = async (
-    targetRole: 'kol' | 'shop' | 'admin',
+    targetRole: 'customer' | 'kol' | 'shop' | 'admin',
     targetEmail: string,
     targetPass: string = 'Password@123',
     autoSubmit: boolean = false
@@ -91,6 +103,8 @@ export default function LoginPage() {
             navigate('/merchant/dashboard');
           } else if (user?.role === 'SYSTEM_ADMIN' || user?.role === 'SYSTEM_MANAGER') {
             navigate('/admin/analytics');
+          } else if (user?.role === 'CUSTOMER') {
+            navigate('/customer/orders');
           } else {
             navigate('/collaborator/dashboard');
           }
@@ -125,6 +139,8 @@ export default function LoginPage() {
           navigate('/merchant/dashboard');
         } else if (user?.role === 'SYSTEM_ADMIN' || user?.role === 'SYSTEM_MANAGER') {
           navigate('/admin/analytics');
+        } else if (user?.role === 'CUSTOMER') {
+          navigate('/customer/orders');
         } else {
           navigate('/collaborator/dashboard');
         }
@@ -141,29 +157,46 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = (useDevBypass: boolean = false) => {
     setError(null);
     setLoading(true);
-    triggerGoogleSignIn(
-      async (idToken: string) => {
-        try {
-          const apiRole =
-            role === 'kol' ? 'COLLABORATOR' : role === 'shop' ? 'SHOP_MANAGER' : 'SYSTEM_ADMIN';
-          const res: any = await authService.googleLogin(idToken, apiRole);
-          const user = res?.data?.user || res?.user;
-          if (user?.role === 'SHOP_MANAGER') {
-            navigate('/merchant/dashboard');
-          } else if (user?.role === 'SYSTEM_ADMIN' || user?.role === 'SYSTEM_MANAGER') {
-            navigate('/admin/analytics');
-          } else {
-            navigate('/collaborator/dashboard');
-          }
-        } catch (err: any) {
-          setError(err.message || 'Đăng nhập Google thất bại');
-        } finally {
-          setLoading(false);
+
+    const onTokenSuccess = async (idToken: string) => {
+      try {
+        const apiRole =
+          role === 'kol'
+            ? 'COLLABORATOR'
+            : role === 'shop'
+            ? 'SHOP_MANAGER'
+            : role === 'customer'
+            ? 'CUSTOMER'
+            : 'SYSTEM_ADMIN';
+        const res: any = await authService.googleLogin(idToken, apiRole);
+        const user = res?.data?.user || res?.user;
+        toast.success(`Đăng nhập Google thành công! Chào mừng ${user?.fullName || user?.email}`);
+        if (user?.role === 'SHOP_MANAGER') {
+          navigate('/merchant/dashboard');
+        } else if (user?.role === 'SYSTEM_ADMIN' || user?.role === 'SYSTEM_MANAGER') {
+          navigate('/admin/analytics');
+        } else if (user?.role === 'CUSTOMER') {
+          navigate('/customer/orders');
+        } else {
+          navigate('/collaborator/dashboard');
         }
-      },
+      } catch (err: any) {
+        setError(err.message || 'Đăng nhập Google thất bại');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (useDevBypass) {
+      devBypassGoogleSignIn(onTokenSuccess, email || 'customer@scanms.vn');
+      return;
+    }
+
+    triggerGoogleSignIn(
+      onTokenSuccess,
       (errorMsg: string) => {
         setError(errorMsg);
         setLoading(false);
@@ -275,7 +308,7 @@ export default function LoginPage() {
             <div className="grid grid-cols-3 gap-3 pt-2">
               <div className="bg-white p-3 rounded-xl border border-[#EAE4D7] text-center shadow-2xs">
                 <strong className="text-xs sm:text-sm font-extrabold text-[#1A1612] block">Đa Nền Tảng</strong>
-                <span className="text-[11px] text-[#7D715E]">TikTok, Shopee, Web</span>
+                <span className="text-[11px] text-[#7D715E]">Website & Mạng xã hội</span>
               </div>
               <div className="bg-white p-3 rounded-xl border border-[#EAE4D7] text-center shadow-2xs">
                 <strong className="text-xs sm:text-sm font-extrabold text-[#1A1612] block">Đối Soát 100%</strong>
@@ -310,7 +343,19 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => handleRoleChange('customer')}
+                  className={`flex items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    role === 'customer'
+                      ? 'bg-white text-[#B88E4F] shadow-xs'
+                      : 'text-[#7D715E] hover:text-[#1A1612]'
+                  }`}
+                >
+                  <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Khách Mua</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleRoleChange('kol')}
@@ -345,15 +390,29 @@ export default function LoginPage() {
                   }`}
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Quản trị Sàn</span>
+                  <span>Quản trị</span>
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>{error}</span>
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{error}</span>
+                </div>
+                {(error.toLowerCase().includes('google') || error.toLowerCase().includes('origin') || error.toLowerCase().includes('403')) && (
+                  <div className="mt-1 pt-2 border-t border-rose-200/60 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-[#7D715E]">Lỗi Google Cloud chưa duyệt domain localhost?</span>
+                    <button
+                      type="button"
+                      onClick={() => handleGoogleLogin(true)}
+                      className="px-2.5 py-1 bg-[#B88E4F] hover:bg-[#9E7933] text-white rounded-lg text-[10px] font-bold cursor-pointer transition shadow-2xs shrink-0"
+                    >
+                      Đăng nhập Google (Dev Bypass)
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             {successNotice && (
@@ -500,7 +559,7 @@ export default function LoginPage() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={handleGoogleLogin}
+                  onClick={() => handleGoogleLogin(false)}
                   className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] transition cursor-pointer shadow-2xs"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24">

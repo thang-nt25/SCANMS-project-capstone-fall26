@@ -15,6 +15,7 @@ enum UserRole {
   SYSTEM_MANAGER
   SHOP_MANAGER
   COLLABORATOR
+  CUSTOMER
 }
 
 enum KycStatus {
@@ -218,6 +219,9 @@ model User {
   createdPayoutBatches      PayoutBatch[]               @relation("PayoutBatchCreator")
   submittedMediaAssets      MediaAsset[]                @relation("CollaboratorMediaAssets")
   reviewedMediaAssets       MediaAsset[]                @relation("ReviewerMediaAssets")
+  customerAddresses         CustomerAddress[]
+  customerWishlists         CustomerWishlist[]
+  customerOrders            Order[]                     @relation("CustomerOrders")
 
   @@map("users")
 }
@@ -376,6 +380,7 @@ model Product {
   campaignProducts      CampaignProduct[]
   couponProducts        CouponProduct[]
   variants              ProductVariant[]
+  customerWishlists     CustomerWishlist[]
 
   @@index([storeId], map: "idx_fk_products_store")
   @@map("products")
@@ -860,6 +865,7 @@ model Order {
   customerName              String?             @map("customer_name") @db.VarChar(150)
   customerPhone             String?             @map("customer_phone") @db.VarChar(20)
   customerEmail             String?             @map("customer_email") @db.VarChar(254)
+  customerId                String?             @map("customer_id") @db.Uuid
   shippingAddress           String?             @map("shipping_address")
   subtotalAmount            Decimal             @map("subtotal_amount") @db.Decimal(15, 2)
   discountAmount            Decimal             @default(0.00) @map("discount_amount") @db.Decimal(15, 2)
@@ -873,6 +879,7 @@ model Order {
 
   // Relations
   store                  Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer               User?                   @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   attributedCollaborator User?                   @relation("AttributedCollaboratorOrders", fields: [attributedCollaboratorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   referralLink           ReferralLink?           @relation(fields: [referralLinkId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   coupon                 Coupon?                 @relation(fields: [couponId], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -886,6 +893,7 @@ model Order {
 
   @@unique([storeId, sourcePlatform, externalOrderSn], map: "idx_unique_store_platform_external_order")
   @@index([storeId], map: "idx_fk_orders_store")
+  @@index([customerId], map: "idx_fk_orders_customer")
   @@index([attributedCollaboratorId], map: "idx_fk_orders_collab")
   @@index([referralLinkId], map: "idx_fk_orders_referral_link")
   @@index([couponId], map: "idx_fk_orders_coupon")
@@ -1207,3 +1215,43 @@ model PaymentTransaction {
   @@index([orderId], map: "idx_fk_payment_transactions_order")
   @@map("payment_transactions")
 }
+
+model CustomerAddress {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  fullName      String   @map("full_name") @db.VarChar(150)
+  phoneNumber   String   @map("phone_number") @db.VarChar(20)
+  provinceCode  String?  @map("province_code") @db.VarChar(50)
+  provinceName  String   @map("province_name") @db.VarChar(100)
+  districtCode  String?  @map("district_code") @db.VarChar(50)
+  districtName  String   @map("district_name") @db.VarChar(100)
+  wardCode      String?  @map("ward_code") @db.VarChar(50)
+  wardName      String   @map("ward_name") @db.VarChar(100)
+  detailAddress String   @map("detail_address") @db.VarChar(255)
+  isDefault     Boolean  @default(false) @map("is_default")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "idx_fk_customer_addresses_user")
+  @@map("customer_addresses")
+}
+
+model CustomerWishlist {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, productId], map: "idx_unique_customer_wishlist")
+  @@index([userId], map: "idx_fk_customer_wishlist_user")
+  @@index([productId], map: "idx_fk_customer_wishlist_product")
+  @@map("customer_wishlists")
+}
+

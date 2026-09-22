@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { LogIn, LogOut, Store, ExternalLink } from 'lucide-react';
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
 import type { UserProfile } from '../../services/auth.service';
+import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface SidebarProps {
   currentUser: UserProfile | null;
@@ -15,6 +16,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
   const role = currentUser?.role || 'COLLABORATOR';
   const navConfig = NAVIGATION_BY_ROLE[role] || NAVIGATION_BY_ROLE.COLLABORATOR;
   const roleLabel = {
+    CUSTOMER: 'Khách Mua Hàng',
     COLLABORATOR: 'KOL / KOC Đối Tác',
     SHOP_MANAGER: 'Chủ Gian Hàng',
     SYSTEM_MANAGER: 'Vận Hành Hệ Thống',
@@ -173,6 +175,9 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       <div className="p-3 border-t border-[#EAE4D7] flex flex-col gap-2 bg-[#FBF5EB]/50">
         {currentUser ? (
           <>
+            {/* Workspace Switcher */}
+            <WorkspaceSwitcher variant="sidebar" />
+
             <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-[#EAE4D7] shadow-2xs">
               <span className="w-8 h-8 rounded-lg bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#E4D3B7]">
                 {currentUser.fullName?.[0]?.toUpperCase() || 'U'}

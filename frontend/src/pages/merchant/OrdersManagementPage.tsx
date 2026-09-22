@@ -920,7 +920,7 @@ export default function OrdersManagementPage({
                   <option value="GHTK">Giao Hàng Tiết Kiệm (GHTK)</option>
                   <option value="GHN">Giao Hàng Nhanh (GHN)</option>
                   <option value="Viettel Post">Viettel Post</option>
-                  <option value="Shopee Xpress">Shopee Xpress</option>
+                  <option value="SCANMS Express">SCANMS Express (Tiêu chuẩn)</option>
                   <option value="J&T Express">J&T Express</option>
                   <option value="Hỏa Tốc / Grab">Hỏa Tốc / GrabExpress</option>
                   <option value="Khác">Khác</option>

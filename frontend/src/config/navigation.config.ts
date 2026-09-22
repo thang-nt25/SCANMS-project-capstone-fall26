@@ -13,6 +13,9 @@ import {
   Users,
   Tag,
   Sparkles,
+  MapPin,
+  Heart,
+  User,
   type LucideProps,
 } from 'lucide-react';
 
@@ -31,6 +34,16 @@ export interface RoleNavigationGroup {
 }
 
 export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
+  CUSTOMER: {
+    title: 'TÀI KHOẢN KHÁCH HÀNG',
+    subTitle: 'Khách Mua Sắm',
+    items: [
+      { path: '/customer/orders', label: 'Đơn mua của tôi', icon: ShoppingBag },
+      { path: '/customer/profile', label: 'Hồ sơ & Bảo mật', icon: User },
+      { path: '/customer/addresses', label: 'Sổ địa chỉ nhận hàng', icon: MapPin },
+      { path: '/customer/wishlist', label: 'Sản phẩm yêu thích', icon: Heart },
+    ],
+  },
   COLLABORATOR: {
     title: 'KHÔNG GIAN KOL / CTV',
     subTitle: 'KOL / CTV Tiếp Thị',

@@ -4,11 +4,19 @@ export interface UserProfile {
   id: string;
   email: string;
   fullName: string;
-  role: 'SYSTEM_ADMIN' | 'SYSTEM_MANAGER' | 'SHOP_MANAGER' | 'COLLABORATOR';
+  role: 'SYSTEM_ADMIN' | 'SYSTEM_MANAGER' | 'SHOP_MANAGER' | 'COLLABORATOR' | 'CUSTOMER';
   phoneNumber?: string;
   stores?: any[];
   collaboratorProfile?: any;
   wallet?: any;
+}
+
+export interface AvailableWorkspace {
+  key: 'customer' | 'kol' | 'shop' | 'admin';
+  label: string;
+  badge: string;
+  route: string;
+  description: string;
 }
 
 export const authService = {
@@ -43,8 +51,11 @@ export const authService = {
             ? 'shop'
             : user.role === 'SYSTEM_ADMIN' || user.role === 'SYSTEM_MANAGER'
             ? 'admin'
+            : user.role === 'CUSTOMER'
+            ? 'customer'
             : 'kol';
         localStorage.setItem('scanms-current-role', uiRole);
+        localStorage.setItem('scanms-active-workspace', uiRole);
         if (user.stores?.[0]?.id) {
           localStorage.setItem('current_store_id', user.stores[0].id);
         } else {
@@ -68,8 +79,11 @@ export const authService = {
             ? 'shop'
             : user.role === 'SYSTEM_ADMIN' || user.role === 'SYSTEM_MANAGER'
             ? 'admin'
+            : user.role === 'CUSTOMER'
+            ? 'customer'
             : 'kol';
         localStorage.setItem('scanms-current-role', uiRole);
+        localStorage.setItem('scanms-active-workspace', uiRole);
         if (user.stores?.[0]?.id) {
           localStorage.setItem('current_store_id', user.stores[0].id);
         } else {
@@ -96,6 +110,7 @@ export const authService = {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('scanms-current-role');
+    localStorage.removeItem('scanms-active-workspace');
     localStorage.removeItem('current_store_id');
     window.location.href = '/login';
   },
@@ -107,6 +122,106 @@ export const authService = {
       return JSON.parse(raw);
     } catch {
       return null;
+    }
+  },
+
+  /**
+   * Tính danh sách không gian làm việc (Workspaces) người dùng có quyền truy cập
+   * Khách hàng sau khi nâng cấp lên KOL hoặc Shop Manager KHÔNG BAO GIỜ mất quyền Khách Hàng!
+   */
+  getUserAvailableWorkspaces(user?: UserProfile | null): AvailableWorkspace[] {
+    const u = user || this.getCurrentUser();
+    if (!u) return [];
+
+    const workspaces: AvailableWorkspace[] = [
+      {
+        key: 'customer',
+        label: 'Khách Hàng',
+        badge: 'Mua Sắm',
+        route: '/customer/orders',
+        description: 'Xem đơn mua, địa chỉ nhận hàng, lịch sử đặt hàng cá nhân',
+      },
+    ];
+
+    const isKol =
+      u.role === 'COLLABORATOR' ||
+      Boolean(u.collaboratorProfile) ||
+      u.role === 'SYSTEM_ADMIN' ||
+      u.role === 'SYSTEM_MANAGER';
+
+    const isShop =
+      u.role === 'SHOP_MANAGER' ||
+      Boolean(u.stores && u.stores.length > 0) ||
+      u.role === 'SYSTEM_ADMIN' ||
+      u.role === 'SYSTEM_MANAGER';
+
+    const isAdmin = u.role === 'SYSTEM_ADMIN' || u.role === 'SYSTEM_MANAGER';
+
+    if (isKol) {
+      workspaces.push({
+        key: 'kol',
+        label: 'KOL Tiếp Thị',
+        badge: 'Affiliate',
+        route: '/collaborator/dashboard',
+        description: 'Tạo link tiếp thị, xem hoa hồng, chiến dịch & đối soát',
+      });
+    }
+
+    if (isShop) {
+      workspaces.push({
+        key: 'shop',
+        label: 'Chủ Gian Hàng',
+        badge: 'Merchant',
+        route: '/merchant/dashboard',
+        description: 'Quản lý sản phẩm, tồn kho, đơn hàng shop & chiến dịch affiliate',
+      });
+    }
+
+    if (isAdmin) {
+      workspaces.push({
+        key: 'admin',
+        label: 'Quản Trị Viên',
+        badge: 'Admin',
+        route: '/admin/analytics',
+        description: 'Phê duyệt KYC, duyệt gian hàng, kiểm duyệt nội dung & đối soát',
+      });
+    }
+
+    return workspaces;
+  },
+
+  getActiveWorkspace(): 'customer' | 'kol' | 'shop' | 'admin' {
+    const stored = localStorage.getItem('scanms-active-workspace') as any;
+    if (stored && ['customer', 'kol', 'shop', 'admin'].includes(stored)) {
+      return stored;
+    }
+    const user = this.getCurrentUser();
+    if (!user) return 'customer';
+
+    if (user.role === 'SHOP_MANAGER') return 'shop';
+    if (user.role === 'SYSTEM_ADMIN' || user.role === 'SYSTEM_MANAGER') return 'admin';
+    if (user.role === 'COLLABORATOR') return 'kol';
+    return 'customer';
+  },
+
+  switchWorkspace(target: 'customer' | 'kol' | 'shop' | 'admin', navigate?: (path: string) => void) {
+    localStorage.setItem('scanms-active-workspace', target);
+    localStorage.setItem('scanms-current-role', target);
+    window.dispatchEvent(new CustomEvent('scanms_workspace_changed', { detail: { workspace: target } }));
+
+    const targetRoute =
+      target === 'shop'
+        ? '/merchant/dashboard'
+        : target === 'admin'
+        ? '/admin/analytics'
+        : target === 'kol'
+        ? '/collaborator/dashboard'
+        : '/customer/orders';
+
+    if (navigate) {
+      navigate(targetRoute);
+    } else {
+      window.location.href = targetRoute;
     }
   },
 };

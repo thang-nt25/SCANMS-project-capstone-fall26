@@ -2,11 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Sparkles,
-  Store,
-  User,
   ShoppingBag,
   Percent,
-  Lightbulb,
   ShieldCheck,
   AlertCircle,
   Mail,
@@ -16,47 +13,21 @@ import {
   EyeOff,
   UserPlus,
   KeyRound,
-  ArrowRight,
   ArrowLeft,
-  Camera,
-  Check,
-  Upload,
-  Image as ImageIcon,
-  Loader2,
+  Truck,
+  RotateCcw,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
-import { uploadService } from '../../services/upload.service';
-import { triggerGoogleSignIn } from '../../utils/googleAuth';
+import { triggerGoogleSignIn, devBypassGoogleSignIn } from '../../utils/googleAuth';
 import { Modal } from '../../components/ui/Modal';
 import { toast } from '../../utils/toast';
-
-const KOL_AVATAR_PRESETS = [
-  { id: 'kol-1', label: 'Thanh lịch', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584512/scanms/avatars/kol-avatar-thang.jpg' },
-  { id: 'kol-2', label: 'Tươi tắn', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584513/scanms/avatars/kol-avatar-ha.jpg' },
-  { id: 'kol-3', label: 'Trẻ trung', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584515/scanms/avatars/kol-avatar-nhat.jpg' },
-  { id: 'kol-4', label: 'Hiện đại', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584517/scanms/avatars/kol-avatar-nam.jpg' },
-  { id: 'kol-5', label: 'Đẹp xinh', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584518/scanms/avatars/kol-avatar-depxinh.jpg' },
-  { id: 'kol-6', label: 'Năng động', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584519/scanms/avatars/kol-avatar-nghia.jpg' },
-];
-
-const SHOP_LOGO_PRESETS = [
-  { id: 'shop-1', label: 'Sora Skin', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584519/scanms/logos/shop-sora-skin.jpg' },
-  { id: 'shop-2', label: 'Tech Store', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584520/scanms/logos/shop-techstore.jpg' },
-  { id: 'shop-3', label: 'Mỹ Phẩm Xanh', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584525/scanms/logos/shop-my-pham-xanh.jpg' },
-  { id: 'shop-4', label: 'Store A Flagship', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584523/scanms/logos/shop-store-a.jpg' },
-  { id: 'shop-5', label: 'Store B Concept', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584524/scanms/logos/shop-store-b.jpg' },
-  { id: 'shop-6', label: 'Official Flagship', url: 'https://res.cloudinary.com/uwha9nbe/image/upload/v1789584522/scanms/logos/shop-flagship.jpg' },
-];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
 
-  const [role, setRole] = useState<'kol' | 'shop' | 'customer'>('kol');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [handle, setHandle] = useState('');
-  const [shopName, setShopName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(true);
@@ -68,39 +39,8 @@ export default function RegisterPage() {
   const [mockOtpHint, setMockOtpHint] = useState<string | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
 
-  const [avatarUrl, setAvatarUrl] = useState(KOL_AVATAR_PRESETS[0].url);
-  const [logoUrl, setLogoUrl] = useState(SHOP_LOGO_PRESETS[0].url);
-
   const [loading, setLoading] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'avatar' | 'logo') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setError(null);
-    setUploadingImage(true);
-    try {
-      const secureUrl = await uploadService.uploadImage(
-        file,
-        target === 'avatar' ? 'scanms/avatars' : 'scanms/logos'
-      );
-      if (target === 'avatar') {
-        setAvatarUrl(secureUrl);
-        toast.success('Đã tải ảnh đại diện KOL lên Cloudinary thành công!');
-      } else {
-        setLogoUrl(secureUrl);
-        toast.success('Đã tải logo gian hàng lên Cloudinary thành công!');
-      }
-    } catch (err: any) {
-      console.error('Lỗi tải ảnh lên Cloudinary:', err);
-      setError(err?.response?.data?.message || err?.message || 'Không thể tải ảnh lên Cloudinary');
-    } finally {
-      setUploadingImage(false);
-      e.target.value = '';
-    }
-  };
 
   const getPasswordStrength = (pass: string) => {
     if (!pass) return { score: 0, label: 'Chưa nhập', color: 'bg-slate-200' };
@@ -140,16 +80,6 @@ export default function RegisterPage() {
       return;
     }
 
-    if (role === 'kol' && !avatarUrl.trim()) {
-      setError('Vui lòng chọn hoặc tải lên ảnh đại diện cho tài khoản KOL / CTV (Bắt buộc).');
-      return;
-    }
-
-    if (role === 'shop' && !logoUrl.trim()) {
-      setError('Vui lòng chọn hoặc tải lên logo đại diện cho Gian hàng (Bắt buộc).');
-      return;
-    }
-
     if (!agreeTerms) {
       setError('Vui lòng đồng ý với điều khoản sử dụng của SCANMS.');
       return;
@@ -169,7 +99,7 @@ export default function RegisterPage() {
       const errorMsg =
         err?.response?.data?.message ||
         (err?.code === 'ERR_NETWORK' || err?.message?.includes('Network Error')
-          ? 'Không thể kết nối đến máy chủ Backend (cổng 3000). Vui lòng đảm bảo backend đang chạy trên http://localhost:3000.'
+          ? 'Không thể kết nối đến máy chủ Backend (cổng 3000).'
           : err?.message || 'Không thể gửi mã xác thực OTP. Vui lòng kiểm tra lại email.');
       setError(errorMsg);
     } finally {
@@ -183,27 +113,24 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const apiRole =
-        role === 'kol' ? 'COLLABORATOR' : role === 'shop' ? 'SHOP_MANAGER' : 'COLLABORATOR';
-
       await authService.register({
         email: registeredEmail,
         password,
         fullName,
-        phoneNumber: phone,
-        storeName: role === 'shop' ? shopName : undefined,
-        role: apiRole,
+        phoneNumber: phone || undefined,
+        role: 'CUSTOMER',
         otp: otp.trim(),
-        avatarUrl: role === 'kol' ? avatarUrl.trim() : undefined,
-        logoUrl: role === 'shop' ? logoUrl.trim() : undefined,
       });
 
-      toast.success(
-        role === 'shop'
-          ? `Kích hoạt tài khoản Gian hàng "${shopName}" thành công! Vui lòng đăng nhập.`
-          : 'Kích hoạt tài khoản CTV / KOL thành công! Vui lòng đăng nhập.'
-      );
-      navigate('/login');
+      toast.success('Đăng ký tài khoản Khách Hàng thành công! Đang tự động đăng nhập...');
+
+      // Tự động đăng nhập luôn để khách không phải gõ lại
+      try {
+        await authService.login(registeredEmail, password);
+        navigate('/customer/orders');
+      } catch {
+        navigate('/login');
+      }
     } catch (err: any) {
       const errorMsg =
         err?.response?.data?.message ||
@@ -216,24 +143,29 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleRegister = () => {
+  const handleGoogleRegister = (useDevBypass: boolean = false) => {
     setError(null);
     setLoading(true);
-    triggerGoogleSignIn(
-      async (idToken: string) => {
-        try {
-          const apiRole =
-            role === 'kol' ? 'COLLABORATOR' : role === 'shop' ? 'SHOP_MANAGER' : 'COLLABORATOR';
 
-          await authService.googleLogin(idToken, apiRole, role === 'shop' ? shopName : undefined);
-          toast.success('Đăng ký & xác thực tài khoản Google thành công!');
-          navigate('/');
-        } catch (err: any) {
-          setError(err.message || 'Đăng ký qua Google thất bại');
-        } finally {
-          setLoading(false);
-        }
-      },
+    const onTokenSuccess = async (idToken: string) => {
+      try {
+        await authService.googleLogin(idToken, 'CUSTOMER');
+        toast.success('Đăng ký & xác thực tài khoản Google thành công!');
+        navigate('/customer/orders');
+      } catch (err: any) {
+        setError(err.message || 'Đăng ký qua Google thất bại');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (useDevBypass) {
+      devBypassGoogleSignIn(onTokenSuccess, 'customer.new@scanms.vn');
+      return;
+    }
+
+    triggerGoogleSignIn(
+      onTokenSuccess,
       (errorMsg: string) => {
         setError(errorMsg);
         setLoading(false);
@@ -243,8 +175,8 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-10">
-
-      <div className="max-w-[1520px] mx-auto w-full mb-4 flex flex-wrap justify-between items-center gap-3 text-xs">
+      {/* Top Breadcrumb */}
+      <div className="max-w-[1400px] mx-auto w-full mb-5 flex flex-wrap justify-between items-center gap-3 text-xs">
         <Link
           to="/marketplace"
           id="btn-back-to-marketplace-register"
@@ -254,15 +186,17 @@ export default function RegisterPage() {
           <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
           <span>Quay về Sàn Mua Sắm Chính (SCANMS Marketplace)</span>
         </Link>
-        <span className="text-[#7D715E] hidden sm:inline font-semibold">
-          Cổng Đăng Ký Đối Tác Hệ Thống SCANMS
-        </span>
+        <div className="flex items-center gap-2 text-[#7D715E] font-medium">
+          <span>Đã có tài khoản?</span>
+          <Link to="/login" className="font-bold text-[#B88E4F] hover:underline">
+            Đăng nhập ngay ↗
+          </Link>
+        </div>
       </div>
 
-      <div className="max-w-[1520px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-
+      <div className="max-w-[1400px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        {/* Left: Branding & Opportunity Showcase */}
         <div className="lg:col-span-6 bg-[#F3EFE6] border border-[#EAE4D7] rounded-3xl p-7 sm:p-10 flex flex-col gap-6 text-left relative overflow-hidden shadow-xs">
-
           <div
             className="absolute inset-0 pointer-events-none opacity-35"
             style={{
@@ -274,8 +208,7 @@ export default function RegisterPage() {
           />
 
           <div className="relative z-10 flex flex-col gap-5">
-
-            <Link to="/login" className="flex items-center gap-3 no-underline w-fit">
+            <Link to="/marketplace" className="flex items-center gap-3 no-underline w-fit">
               <div className="w-11 h-11 rounded-xl bg-[#B88E4F] text-white flex items-center justify-center shadow-xs">
                 <Sparkles className="w-6 h-6 text-amber-100" />
               </div>
@@ -284,34 +217,44 @@ export default function RegisterPage() {
                   SCANMS
                 </strong>
                 <span className="text-[11px] font-bold text-[#B88E4F] uppercase tracking-wider block">
-                  HỆ THỐNG QUẢN LÝ MẠNG LƯỚI CTV &amp; TIẾP THỊ
+                  HỆ SINH THÁI THƯƠNG MẠI ĐIỆN TỬ &amp; TIẾP THỊ
                 </span>
               </div>
             </Link>
 
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold w-fit">
-              <span className="w-2 h-2 rounded-full bg-[#B88E4F]" />
-              <span>Gia nhập đội ngũ CTV bán hàng &amp; Tiếp thị liên kết 2026</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold w-fit">
+              <span className="w-2 h-2 rounded-full bg-[#B88E4F] animate-pulse" />
+              <span>Đăng Ký Tài Khoản Mua Sắm &amp; Mở Rộng Cơ Hội Hợp Tác</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1A1612] tracking-tight leading-tight m-0">
-              Khởi đầu sự nghiệp <br />
-              <span className="text-[#B88E4F]">CTV bán hàng &amp; Affiliate.</span>
+              Gia nhập SCANMS. <br />
+              <span className="text-[#B88E4F]">Mua Sắm An Tâm &amp; Nâng Cấp Linh Hoạt.</span>
             </h1>
 
             <p className="text-sm sm:text-base text-[#7D715E] leading-relaxed max-w-xl m-0">
-              Đăng ký chỉ 1 phút. Nhận ngay kho sản phẩm hoa hồng cao, công cụ tạo link &amp; QR
-              tiếp thị tự động và chính sách chi trả hoa hồng tự động 24/7.
+              Đăng ký tài khoản Khách Hàng chỉ trong 30 giây để tận hưởng chính sách đồng kiểm tận tay.
+              Bạn có thể dễ dàng nộp đơn xin nâng cấp lên <strong>KOL Tiếp Thị</strong> hoặc <strong>Mở Gian Hàng</strong> bất kỳ lúc nào!
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
               <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                  <ShoppingBag className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <strong className="text-xs font-bold text-[#1A1612] block">Kho hàng mở</strong>
-                  <span className="text-[11px] text-[#7D715E]">500+ sản phẩm mẫu sẵn có</span>
+                  <strong className="text-xs font-bold text-[#1A1612] block">100% Chính Hãng</strong>
+                  <span className="text-[11px] text-[#7D715E]">Kiểm định nguồn hàng KYC</span>
+                </div>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-4 h-4" />
+                </div>
+                <div>
+                  <strong className="text-xs font-bold text-[#1A1612] block">Đồng Kiểm 14 Ngày</strong>
+                  <span className="text-[11px] text-[#7D715E]">Đổi trả miễn phí tận nơi</span>
                 </div>
               </div>
 
@@ -320,101 +263,38 @@ export default function RegisterPage() {
                   <Percent className="w-4 h-4" />
                 </div>
                 <div>
-                  <strong className="text-xs font-bold text-[#1A1612] block">Hoa hồng linh hoạt</strong>
-                  <span className="text-[11px] text-[#7D715E]">Thưởng bậc thang đến 30%</span>
+                  <strong className="text-xs font-bold text-[#1A1612] block">Cơ Hội Kiếm Thu Nhập</strong>
+                  <span className="text-[11px] text-[#7D715E]">Nâng cấp làm KOL nhận hoa hồng</span>
                 </div>
               </div>
 
               <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                  <Lightbulb className="w-4 h-4" />
+                  <Truck className="w-4 h-4" />
                 </div>
                 <div>
-                  <strong className="text-xs font-bold text-[#1A1612] block">Công cụ thông minh</strong>
-                  <span className="text-[11px] text-[#7D715E]">Dynamic QR &amp; Smart Link</span>
-                </div>
-              </div>
-
-              <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="text-xs font-bold text-[#1A1612] block">Chi trả 24/7</strong>
-                  <span className="text-[11px] text-[#7D715E]">Rút tiền VietQR tự động</span>
+                  <strong className="text-xs font-bold text-[#1A1612] block">Mở Gian Hàng Bán Lẻ</strong>
+                  <span className="text-[11px] text-[#7D715E]">Tiếp cận mạng lưới Creator</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Right: Registration Form (Customer-First) */}
         <div className="lg:col-span-6 w-full">
           <div className="bg-white rounded-3xl border border-[#EAE4D7] shadow-lg p-6 sm:p-8 flex flex-col gap-5 text-left">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">Tạo tài khoản mới</h2>
-              <p className="text-xs sm:text-sm text-[#7D715E] mt-1.5 m-0">
-                Chọn vai trò của bạn và hoàn tất biểu mẫu đăng ký.
-              </p>
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider block mb-2">
-                BẠN THAM GIA VỚI VAI TRÒ
-              </label>
-              <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setRole('kol')}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    role === 'kol'
-                      ? 'bg-white text-[#B88E4F] shadow-xs'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>KOL / CTV</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('shop')}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    role === 'shop'
-                      ? 'bg-white text-[#B88E4F] shadow-xs'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <Store className="w-3.5 h-3.5" />
-                  <span>Chủ Shop</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('customer')}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    role === 'customer'
-                      ? 'bg-white text-[#B88E4F] shadow-xs'
-                      : 'text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Khách Mua</span>
-                </button>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8C6226] mb-2">
+                <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
+                <span>ĐĂNG KÝ TÀI KHOẢN KHÁCH HÀNG</span>
               </div>
-
-              {role === 'kol' && (
-                <p className="text-[11px] text-[#7D715E] bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7] mt-2 mb-0">
-                  🌟 <strong>Nhà sáng tạo / KOL:</strong> Đăng ký tài khoản nhận link tiếp thị, tạo mã QR, xin mẫu trải nghiệm và hưởng hoa hồng bậc thang tới 30%.
-                </p>
-              )}
-              {role === 'shop' && (
-                <p className="text-[11px] text-[#7D715E] bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7] mt-2 mb-0">
-                  🏪 <strong>Chủ Gian Hàng:</strong> Hệ thống tự động tạo Store cho bạn, cấp quyền đăng bán sản phẩm và cài đặt hoa hồng cho mạng lưới KOL.
-                </p>
-              )}
-              {role === 'customer' && (
-                <p className="text-[11px] text-[#7D715E] bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7] mt-2 mb-0">
-                  🛍️ <strong>Khách Mua Hàng:</strong> Bạn có thể mua hàng 1-chạm không cần tài khoản tại sàn, hoặc tạo tài khoản để quản lý đơn thuận tiện.
-                </p>
-              )}
+              <h2 className="text-2xl sm:text-3xl font-black text-[#1A1612] tracking-tight m-0">
+                Tạo Tài Khoản Mua Sắm
+              </h2>
+              <p className="text-xs sm:text-sm text-[#7D715E] mt-1.5 m-0">
+                Chỉ mất 30 giây để bắt đầu. Bạn có thể gửi đơn xin nâng cấp lên KOL hoặc Mở Shop bất kỳ lúc nào sau khi đăng ký.
+              </p>
             </div>
 
             {error && (
@@ -424,17 +304,82 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {/* Google Fast Sign-Up Button */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => handleGoogleRegister(false)}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-[#EAE4D7] hover:bg-[#FAF8F5] text-[#1A1612] font-bold text-xs rounded-xl shadow-2xs hover:shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span>Đăng ký nhanh với Google</span>
+              </button>
+
+              {/* Dev Bypass Button for Localhost Verification */}
+              <button
+                type="button"
+                onClick={() => handleGoogleRegister(true)}
+                className="text-[11px] text-[#B88E4F] hover:underline font-semibold text-center cursor-pointer py-1"
+                title="Sử dụng nếu Google One Tap bị lỗi 403 do tên miền localhost chưa khai báo trên Google Cloud"
+              >
+                ⚡ Hoặc thử nghiệm nhanh với Google (Chế độ Dev Test)
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-[#EAE4D7]" />
+              <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
+                HOẶC ĐIỀN THÔNG TIN
+              </span>
+              <div className="flex-1 h-px bg-[#EAE4D7]" />
+            </div>
+
+            {/* Main Customer Register Form */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
+                  Họ và tên <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Ví dụ: Hoàng Minh Tuấn"
+                  required
+                  className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Họ và tên</label>
+                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
+                    Địa chỉ Email <span className="text-rose-600">*</span>
+                  </label>
                   <div className="relative flex items-center">
-                    <User className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
+                    <Mail className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
                     <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Nguyễn Văn A"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="ban@gmail.com"
                       required
                       className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
                     />
@@ -442,227 +387,34 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Số điện thoại</label>
+                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
+                    Số điện thoại nhận hàng
+                  </label>
                   <div className="relative flex items-center">
                     <Phone className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="0912345678"
-                      required
-                      className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
+                      placeholder="0912 345 678"
+                      className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition font-mono"
                     />
                   </div>
                 </div>
               </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Email xác thực</label>
-                <div className="relative flex items-center">
-                  <Mail className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ban@example.com"
-                    required
-                    className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
-                  />
-                </div>
-              </div>
-
-              {role === 'kol' && (
-                <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                    Kênh TikTok / Facebook Handle (Tùy chọn)
-                  </label>
-                  <input
-                    type="text"
-                    value={handle}
-                    onChange={(e) => setHandle(e.target.value)}
-                    placeholder="@username_kol"
-                    className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
-                  />
-                </div>
-              )}
-
-              {role === 'kol' && (
-                <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
-                      <Camera className="w-3.5 h-3.5 text-[#B88E4F]" />
-                      <span>Ảnh đại diện KOL / KOC <strong className="text-rose-600">* (Bắt buộc)</strong></span>
-                    </label>
-                    <span className="text-[10px] text-[#7D715E] bg-white px-2 py-0.5 rounded-full border border-[#EAE4D7]">
-                      Dùng trên Bảng xếp hạng &amp; Video
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-14 h-14 rounded-full overflow-hidden ring-2 ring-[#C59B58] ring-offset-2 shrink-0 bg-[#F3EFE6] flex items-center justify-center shadow-xs">
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt="KOL Avatar Preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-6 h-6 text-[#7D715E]" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {KOL_AVATAR_PRESETS.map((p) => {
-                          const isSelected = avatarUrl === p.url;
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() => setAvatarUrl(p.url)}
-                              className={`relative group p-0.5 rounded-full border-2 transition cursor-pointer ${
-                                isSelected ? 'border-[#C59B58] scale-105 shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
-                              }`}
-                              title={p.label}
-                            >
-                              <img src={p.url} alt={p.label} className="w-6 h-6 rounded-full object-cover" />
-                              {isSelected && (
-                                <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#059669] text-white flex items-center justify-center">
-                                  <Check className="w-2 h-2" />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="url"
-                          value={avatarUrl}
-                          onChange={(e) => setAvatarUrl(e.target.value)}
-                          placeholder="Hoặc dán URL ảnh trực tiếp..."
-                          required
-                          className="flex-1 bg-white border border-[#EAE4D7] rounded-lg px-2.5 py-1 text-xs text-[#1A1612] focus:border-[#C59B58] outline-none transition"
-                        />
-                        <label className="cursor-pointer px-2.5 py-1 bg-white border border-[#EAE4D7] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold rounded-lg flex items-center gap-1 shrink-0 transition">
-                          {uploadingImage ? (
-                            <Loader2 className="w-3 h-3 text-[#B88E4F] animate-spin" />
-                          ) : (
-                            <Upload className="w-3 h-3 text-[#B88E4F]" />
-                          )}
-                          <span>{uploadingImage ? 'Đang tải...' : 'Tải ảnh (PNG/JPG)'}</span>
-                          <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/jpg,image/webp"
-                            disabled={uploadingImage}
-                            onChange={(e) => handleFileUpload(e, 'avatar')}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {role === 'shop' && (
-                <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                    Tên Gian Hàng / Thương Hiệu <strong className="text-rose-600">*</strong>
-                  </label>
-                  <div className="relative flex items-center">
-                    <Store className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={shopName}
-                      onChange={(e) => setShopName(e.target.value)}
-                      placeholder="Ví dụ: Sora Skin Official"
-                      required
-                      className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {role === 'shop' && (
-                <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
-                      <ImageIcon className="w-3.5 h-3.5 text-[#B88E4F]" />
-                      <span>Logo đại diện Gian Hàng <strong className="text-rose-600">* (Bắt buộc)</strong></span>
-                    </label>
-                    <span className="text-[10px] text-[#7D715E] bg-white px-2 py-0.5 rounded-full border border-[#EAE4D7]">
-                      Hiển thị toàn sàn &amp; chiến dịch
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-[#C59B58] ring-offset-2 shrink-0 bg-[#F3EFE6] flex items-center justify-center shadow-xs">
-                      {logoUrl ? (
-                        <img src={logoUrl} alt="Shop Logo Preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <Store className="w-6 h-6 text-[#7D715E]" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {SHOP_LOGO_PRESETS.map((p) => {
-                          const isSelected = logoUrl === p.url;
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() => setLogoUrl(p.url)}
-                              className={`relative group p-0.5 rounded-lg border-2 transition cursor-pointer ${
-                                isSelected ? 'border-[#C59B58] scale-105 shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
-                              }`}
-                              title={p.label}
-                            >
-                              <img src={p.url} alt={p.label} className="w-6 h-6 rounded-md object-cover" />
-                              {isSelected && (
-                                <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#059669] text-white flex items-center justify-center">
-                                  <Check className="w-2 h-2" />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="url"
-                          value={logoUrl}
-                          onChange={(e) => setLogoUrl(e.target.value)}
-                          placeholder="Hoặc dán URL logo trực tiếp..."
-                          required
-                          className="flex-1 bg-white border border-[#EAE4D7] rounded-lg px-2.5 py-1 text-xs text-[#1A1612] focus:border-[#C59B58] outline-none transition"
-                        />
-                        <label className="cursor-pointer px-2.5 py-1 bg-white border border-[#EAE4D7] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold rounded-lg flex items-center gap-1 shrink-0 transition">
-                          {uploadingImage ? (
-                            <Loader2 className="w-3 h-3 text-[#B88E4F] animate-spin" />
-                          ) : (
-                            <Upload className="w-3 h-3 text-[#B88E4F]" />
-                          )}
-                          <span>{uploadingImage ? 'Đang tải...' : 'Tải logo (PNG/JPG)'}</span>
-                          <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/jpg,image/webp"
-                            disabled={uploadingImage}
-                            onChange={(e) => handleFileUpload(e, 'logo')}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Mật khẩu</label>
+                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
+                    Mật khẩu <span className="text-rose-600">*</span>
+                  </label>
                   <div className="relative flex items-center">
                     <Lock className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Tối thiểu 8 ký tự"
                       required
                       className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-10 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
                     />
@@ -677,13 +429,16 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Xác nhận mật khẩu</label>
+                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
+                    Xác nhận mật khẩu <span className="text-rose-600">*</span>
+                  </label>
                   <div className="relative flex items-center">
                     <Lock className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
                     <input
                       type={showConfirm ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Nhập lại mật khẩu"
                       required
                       className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-10 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
                     />
@@ -699,145 +454,103 @@ export default function RegisterPage() {
               </div>
 
               {password && (
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between items-center text-[11px] font-semibold text-[#7D715E]">
-                    <span>Độ mạnh mật khẩu:</span>
-                    <span className="font-bold text-[#1A1612]">{passStrength.label}</span>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden flex gap-1">
+                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 1 ? passStrength.color : 'bg-slate-200'}`} />
+                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 2 ? passStrength.color : 'bg-slate-200'}`} />
+                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 3 ? passStrength.color : 'bg-slate-200'}`} />
+                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 4 ? passStrength.color : 'bg-slate-200'}`} />
                   </div>
-                  <div className="h-1.5 w-full bg-[#F3EFE6] rounded-full overflow-hidden flex gap-1">
-                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 1 ? passStrength.color : 'bg-[#EAE4D7]'}`} />
-                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 2 ? passStrength.color : 'bg-[#EAE4D7]'}`} />
-                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 3 ? passStrength.color : 'bg-[#EAE4D7]'}`} />
-                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 4 ? passStrength.color : 'bg-[#EAE4D7]'}`} />
-                  </div>
+                  <span className="text-[11px] font-bold text-[#7D715E] shrink-0">
+                    Độ mạnh: {passStrength.label}
+                  </span>
                 </div>
               )}
 
-              <div className="flex items-start gap-2 pt-1">
+              {/* Agreement */}
+              <label className="flex items-start gap-2.5 text-xs text-[#7D715E] cursor-pointer select-none mt-1">
                 <input
-                  id="agree-checkbox"
                   type="checkbox"
                   checked={agreeTerms}
                   onChange={(e) => setAgreeTerms(e.target.checked)}
-                  className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer mt-0.5"
+                  className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] mt-0.5"
                 />
-                <label htmlFor="agree-checkbox" className="text-xs text-[#7D715E] cursor-pointer select-none">
-                  Tôi đồng ý với <span className="font-bold text-[#C59B58]">Điều khoản sử dụng</span> &amp;{' '}
-                  <span className="font-bold text-[#C59B58]">Chính sách bảo mật</span> của SCANMS.
-                </label>
-              </div>
+                <span>
+                  Tôi đồng ý với{' '}
+                  <Link to="#" className="font-bold text-[#B88E4F] hover:underline">
+                    Điều khoản sử dụng
+                  </Link>{' '}
+                  và{' '}
+                  <Link to="#" className="font-bold text-[#B88E4F] hover:underline">
+                    Chính sách bảo mật
+                  </Link>{' '}
+                  của sàn thương mại điện tử SCANMS.
+                </span>
+              </label>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-extrabold rounded-xl text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-xs disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white font-extrabold text-sm hover:opacity-95 transition shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50 mt-1"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{loading ? 'Đang gửi mã OTP...' : 'Đăng ký tài khoản KOL / CTV'}</span>
+                <span>{loading ? 'Đang xử lý...' : 'Đăng Ký Tài Khoản Khách Hàng'}</span>
               </button>
-
-              <div className="relative flex items-center justify-center my-1">
-                <div className="border-t border-[#EAE4D7] w-full" />
-                <span className="bg-white px-3 text-[11px] font-bold text-[#7D715E] uppercase tracking-wider absolute">
-                  Hoặc đăng ký với Google
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleGoogleRegister}
-                className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] transition cursor-pointer shadow-2xs"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.37 7.32 24 12 24z" />
-                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z" />
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.32 0 3.25 2.63 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                </svg>
-                <span>Đăng ký nhanh qua Google</span>
-              </button>
-
-              <div className="text-center text-xs text-[#7D715E] mt-2 flex flex-col gap-2.5">
-                <div>
-                  Đã có tài khoản?{' '}
-                  <Link to="/login" className="font-bold text-[#C59B58] hover:underline">
-                    Đăng nhập ngay →
-                  </Link>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between gap-3 text-left">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#C59B58] text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      <ShoppingBag className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <strong className="text-xs font-bold text-[#1A1612] block truncate">
-                        Khách mua hàng trực tiếp
-                      </strong>
-                      <span className="text-[11px] text-[#7D715E] block truncate">
-                        Không cần tài khoản đối tác để mua sắm
-                      </span>
-                    </div>
-                  </div>
-                  <Link
-                    to="/marketplace"
-                    id="btn-goto-shopping-marketplace-register"
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] hover:text-[#92400E] shadow-2xs transition cursor-pointer"
-                  >
-                    <span>Vào mua sắm</span>
-                    <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
-                  </Link>
-                </div>
-              </div>
             </form>
+
+            <div className="pt-3 border-t border-[#EAE4D7] text-center text-xs text-[#7D715E]">
+              Bạn muốn tham gia tiếp thị hoặc bán hàng?{' '}
+              <span className="block mt-1 text-[11px] text-[#8C6226]">
+                💡 Đăng ký tài khoản Khách Hàng trước, sau đó nộp hồ sơ xin nâng cấp lên <strong>KOL</strong> hoặc <strong>Mở Shop</strong> với 1 biểu mẫu xác thực đơn giản!
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* OTP Verification Modal */}
       <Modal
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
-        title="Xác Thực Mã OTP Email"
-        subtitle={`Mã xác thực gồm 6 chữ số đã được gửi tới email ${registeredEmail}`}
-        icon={<KeyRound className="w-5 h-5 text-amber-600" />}
-        maxWidth="sm"
+        title="Xác thực mã OTP đăng ký"
       >
-        <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
-          <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-amber-900 text-xs flex flex-col gap-1.5">
-            {mockOtpHint ? (
-              <div>
-                <span>Mã OTP xác thực (Dev Mode):</span>{' '}
-                <strong className="text-base font-mono font-bold tracking-widest text-amber-950 inline-block ml-1">
-                  {mockOtpHint}
-                </strong>
-              </div>
-            ) : (
-              <div>Mã xác thực 6 chữ số đã được gửi tới email của bạn.</div>
-            )}
-            <div className="text-[11px] text-amber-800/85 pt-1 border-t border-amber-200/60">
-              💡 <em>Kiểm thử nhanh: Bạn có thể nhập mã master <strong>123456</strong> để kích hoạt ngay.</em>
+        <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 text-left">
+          <p className="text-xs text-[#7D715E] leading-relaxed">
+            Mã OTP 6 chữ số đã được gửi đến email{' '}
+            <strong className="text-[#1A1612] font-semibold">{registeredEmail}</strong>.
+            Vui lòng kiểm tra hộp thư đến hoặc thư mục Spam.
+          </p>
+
+          {mockOtpHint && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-mono">
+              <span className="font-bold">Mã OTP (Môi trường Dev / Demo): </span>
+              <strong className="text-sm text-amber-900 tracking-widest">{mockOtpHint}</strong>
+              <div className="text-[10px] text-amber-700 mt-1">Hoặc nhập mã test mặc định: <strong>123456</strong></div>
             </div>
-          </div>
+          )}
 
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1.5">Nhập mã OTP</label>
-            <input
-              type="text"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              placeholder="123456"
-              required
-              className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-4 py-2.5 text-center text-xl tracking-widest font-mono font-bold text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none"
-            />
+            <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Mã OTP (6 số)</label>
+            <div className="relative flex items-center">
+              <KeyRound className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
+              <input
+                type="text"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                placeholder="123456"
+                required
+                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-3 text-base text-[#1A1612] font-mono tracking-widest text-center focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
+              />
+            </div>
           </div>
 
           <button
             type="submit"
-            disabled={loading || otp.length < 4}
-            className="w-full py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
+            disabled={loading || otp.length < 6}
+            className="w-full py-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-xs transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
-            <span>{loading ? 'Đang xác thực...' : 'Xác thực & Kích hoạt'}</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>{loading ? 'Đang xác thực...' : 'Xác nhận & Hoàn tất đăng ký'}</span>
           </button>
         </form>
       </Modal>
