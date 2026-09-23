@@ -178,12 +178,15 @@ export const authService = {
     }
 
     if (isAdmin) {
+      const isSuperAdmin = u.role === 'SYSTEM_ADMIN';
       workspaces.push({
         key: 'admin',
-        label: 'Quản Trị Viên',
-        badge: 'Admin',
-        route: '/admin/analytics',
-        description: 'Phê duyệt KYC, duyệt gian hàng, kiểm duyệt nội dung & đối soát',
+        label: isSuperAdmin ? 'Ban Quản Trị Tối Cao' : 'Vận Hành & Tuân Thủ',
+        badge: isSuperAdmin ? 'SuperAdmin' : 'Operations',
+        route: isSuperAdmin ? '/admin/analytics' : '/admin/users',
+        description: isSuperAdmin
+          ? 'Quản trị dòng tiền toàn sàn, chính sách, phân quyền & nhật ký kiểm toán'
+          : 'Thẩm định hồ sơ KYC, kiểm duyệt sản phẩm & AI giám sát gian lận',
       });
     }
 
@@ -209,11 +212,14 @@ export const authService = {
     localStorage.setItem('scanms-current-role', target);
     window.dispatchEvent(new CustomEvent('scanms_workspace_changed', { detail: { workspace: target } }));
 
+    const user = this.getCurrentUser();
+    const isSuperAdmin = user?.role === 'SYSTEM_ADMIN';
+
     const targetRoute =
       target === 'shop'
         ? '/merchant/dashboard'
         : target === 'admin'
-        ? '/admin/analytics'
+        ? (isSuperAdmin ? '/admin/analytics' : '/admin/users')
         : target === 'kol'
         ? '/collaborator/dashboard'
         : '/customer/orders';
