@@ -17,13 +17,13 @@ import {
   Shield,
   Clock,
   ChevronRight,
-  Zap,
   Sparkles,
   SlidersHorizontal,
   Phone,
   Radio,
   BadgeCheck,
   Calendar,
+  ZoomIn,
 } from 'lucide-react';
 import api from '../../services/api';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
@@ -32,21 +32,46 @@ import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
 
+const MARKETPLACE_BANNERS = [
+  {
+    image: '/assets/marketplace/scanms-marketplace-banner.png',
+    eyebrow: 'Sàn đa gian hàng SCANMS',
+    title: 'Một điểm đến, nhiều gian hàng chính hãng',
+    description: 'Khám phá sản phẩm đa ngành từ các đối tác đã xác minh KYC trên cùng một nền tảng.',
+    primaryLabel: 'Mua sắm ngay',
+    secondaryLabel: 'Xem tất cả danh mục',
+    href: '/search',
+    secondaryHref: '/search',
+    action: 'link' as const,
+  },
+  {
+    image: '/assets/marketplace/scanms-affiliate-banner.png',
+    eyebrow: 'Affiliate Marketplace',
+    title: 'Chọn sản phẩm hợp tệp người xem của bạn',
+    description: 'So sánh sản phẩm, mức hoa hồng và gian hàng trước khi bắt đầu tạo nội dung.',
+    primaryLabel: 'Khám phá kho affiliate',
+    secondaryLabel: 'Đăng ký làm KOC',
+    href: '/search?commission=true',
+    secondaryHref: '/register',
+    action: 'link' as const,
+  },
+  {
+    image: '/assets/marketplace/scanms-live-banner.png',
+    eyebrow: 'SCANMS Live Commerce',
+    title: 'Biến mỗi phiên Live thành một cửa hàng trực tiếp',
+    description: 'Kết nối Creator, sản phẩm và người mua trong trải nghiệm mua sắm giàu tương tác.',
+    primaryLabel: 'Khám phá KOC Live',
+    secondaryLabel: 'Xem sản phẩm nổi bật',
+    href: '#live',
+    secondaryHref: '/search',
+    action: 'live' as const,
+  },
+] as const;
+
 export default function MarketplacePage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<string>('newest');
-
-  // Fetch real categories with TanStack Query
-  const { data: _categories = [] } = useQuery({
-    queryKey: ['marketplace-categories'],
-    queryFn: async () => {
-      const res: any = await api.get('/public/products/categories');
-      const payload = res?.data !== undefined ? (res.data?.data !== undefined ? res.data.data : res.data) : res;
-      return Array.isArray(payload) ? payload : [];
-    },
-    staleTime: 1000 * 60 * 10,
-  });
 
   // Fetch real products with TanStack Query (Zero reload flicker, instant cache hit)
   const { data: items = [], isLoading: loading } = useQuery<Product[]>({
@@ -84,7 +109,7 @@ export default function MarketplacePage() {
           variants: Array.isArray(dbP.variants) ? dbP.variants : [],
           commissionRate: commRate,
           commissionAmount: commAmt,
-          badge: Number(dbP.stockQuantity || 0) > 0 ? 'Sẵn hàng' : 'Hết hàng',
+          badge: (commRate && commRate > 0) ? `Hoa hồng ${commRate}%` : (Number(dbP.stockQuantity || 0) > 0 ? 'Sẵn hàng' : 'Hết hàng'),
         };
       });
     },
@@ -97,6 +122,44 @@ export default function MarketplacePage() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
+  const [activeBanner, setActiveBanner] = useState(0);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
+  const [zoomProduct, setZoomProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoomProduct(null);
+    };
+    if (zoomProduct) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomProduct]);
+
+  // Sticky compact header state on scroll
+  const [isScrolled, setIsScrolled] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(144);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current && window.scrollY <= 40) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+    return () => window.removeEventListener('resize', updateHeaderHeight);
+  }, []);
 
   // Checkout modal
   const [activeCheckoutProduct, setActiveCheckoutProduct] = useState<{
@@ -140,6 +203,14 @@ export default function MarketplacePage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isGuideOpen, isCartOpen, isRoleDropdownOpen]);
+
+  useEffect(() => {
+    if (isBannerPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(() => {
+      setActiveBanner((current) => (current + 1) % MARKETPLACE_BANNERS.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [isBannerPaused]);
 
   const totalCartCount = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -279,394 +350,395 @@ export default function MarketplacePage() {
 
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F] overflow-x-clip">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F]">
 
-      {/* Top Banner Bar */}
-      <aside className="bg-[#F3EFE6] text-[#7A561B] text-[11.5px] font-medium py-2 px-4 border-b border-[#EEDFC6]">
-        <div className="max-w-[1520px] mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#C59B58] animate-ping"></span>
-            <span className="font-bold text-[#1A1612]">ScanMS COMMERCE:</span>
-            <span className="text-[#7D715E]">Sàn Tiếp Thị Liên Kết Đa Gian Hàng · 100% Đối Tác KYC · Đồng Kiểm 14 Ngày</span>
-          </div>
-          <div className="hidden sm:flex items-center gap-5 text-xs text-[#7A561B]">
-            <button
-              type="button"
-              onClick={() => setIsGuideOpen(true)}
-              className="hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer font-semibold"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#C59B58]" />
-              Chính sách an tâm
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                trackingRef.current?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer font-semibold"
-            >
-              <Truck className="w-3.5 h-3.5 text-[#C59B58]" />
-              Tra cứu đơn
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Navigation Header (Search bar removed to eliminate duplication!) */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-xs">
-        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
-
-          {/* New ScanMS Bespoke Brand Logo */}
-          <Link to="/" className="shrink-0 transition-opacity hover:opacity-90">
-            <ScanMSLogo size="md" />
-          </Link>
-
-          {/* Center Navigation & KOC Live Commerce Gateway */}
-          <nav className="hidden lg:flex items-center gap-1.5 xl:gap-2">
-            {/* Live KOC Button with pulsing indicator */}
-            <button
-              type="button"
-              onClick={() => setIsLiveModalOpen(true)}
-              className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-[#1A1612] bg-gradient-to-r from-[#FFF1F2] to-[#FEF3C7] border border-[#FECDD3] hover:border-[#F43F5E] shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-              title="Khám phá các phiên Livestream KOC tiếp thị sản phẩm"
-            >
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E11D48] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#E11D48]" />
-              </span>
-              <span className="text-[#9F1239] font-black uppercase tracking-wider text-[11px]">Live KOC</span>
-              <span className="px-1.5 py-0.5 rounded bg-[#E11D48] text-white text-[9px] font-black tracking-wide uppercase">HOT</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                catalogRef.current?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="px-3.5 py-1.5 rounded-full text-xs font-bold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span>Gian Hàng Đối Tác</span>
-            </button>
-
-            <Link
-              to="/search?commission=true"
-              className="px-3.5 py-1.5 rounded-full text-xs font-bold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span>Săn Deal KOC</span>
-            </Link>
-
-            <Link
-              to="/leaderboard"
-              className="px-3.5 py-1.5 rounded-full text-xs font-bold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition flex items-center gap-1.5"
-            >
-              <TrendingUp className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span>BXH Doanh Số</span>
-            </Link>
-          </nav>
-
-          {/* Header Action Buttons */}
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
-            <button
-              type="button"
-              onClick={() => {
-                trackingRef.current?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
-            >
-              <Package className="w-4 h-4 text-[#B88E4F]" />
-              <span>Tra cứu đơn</span>
-            </button>
-
-            {/* Cart Button */}
-            <button
-              type="button"
-              onClick={() => setIsCartOpen(true)}
-              className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
-              title="Giỏ hàng của bạn"
-            >
-              <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
-              <span className="hidden sm:inline">Giỏ hàng</span>
-              {totalCartCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[10px] font-black flex items-center justify-center -mr-1">
-                  {totalCartCount}
-                </span>
-              )}
-            </button>
-
-            {/* Partner Gateways Dropdown */}
-            <div className="relative" ref={roleDropdownRef}>
+      {/* Fixed Sticky Top Header Container */}
+      <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300">
+        {/* Top Banner Bar - Slides up/collapses when scrolled */}
+        <aside
+          className={`bg-[#F3EFE6] text-[#7A561B] text-[11.5px] font-medium px-4 border-b border-[#EEDFC6] transition-all duration-300 ease-in-out overflow-hidden ${
+            isScrolled ? 'max-h-0 py-0 opacity-0 border-transparent pointer-events-none' : 'max-h-12 py-2 opacity-100'
+          }`}
+        >
+          <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#C59B58] animate-ping"></span>
+              <span className="font-bold text-[#1A1612]">ScanMS COMMERCE:</span>
+              <span className="text-[#7D715E]">Sàn Tiếp Thị Liên Kết Đa Gian Hàng · 100% Đối Tác KYC · Đồng Kiểm 14 Ngày</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-5 text-xs text-[#7A561B]">
               <button
                 type="button"
-                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition cursor-pointer shadow-2xs"
+                onClick={() => setIsGuideOpen(true)}
+                className="hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer font-semibold"
               >
-                <User className="w-4 h-4 text-[#B88E4F]" />
-                <span>Cổng đối tác</span>
-                <ChevronRight className="w-3.5 h-3.5 text-[#7D715E] rotate-90" />
+                <ShieldCheck className="w-3.5 h-3.5 text-[#C59B58]" />
+                Chính sách an tâm
               </button>
-
-              {isRoleDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 flex flex-col gap-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="p-2 border-b border-[#EAE4D7] text-left">
-                    <strong className="block text-xs font-black text-[#1A1612]">
-                      Cổng đăng nhập đối tác
-                    </strong>
-                    <small className="text-[11px] text-[#7D715E] block mt-0.5">
-                      Truy cập không gian làm việc chuyên biệt theo vai trò
-                    </small>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <Link
-                      to="/collaborator/dashboard"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                        <TrendingUp className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="block text-xs font-bold text-[#1A1612]">Cộng Tác Viên / KOL</span>
-                        <small className="text-[10px] text-[#7D715E] block truncate">Lấy link tiếp thị & rút hoa hồng</small>
-                      </div>
-                    </Link>
-
-                    <Link
-                      to="/merchant/dashboard"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[#F5E7CC] text-[#7A561B] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                        <Store className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="block text-xs font-bold text-[#1A1612]">Chủ Gian Hàng (Shop)</span>
-                        <small className="text-[10px] text-[#7D715E] block truncate">Quản lý sản phẩm & đối soát</small>
-                      </div>
-                    </Link>
-
-                    <Link
-                      to="/admin/users"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                        <Shield className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="block text-xs font-bold text-[#1A1612]">Quản Trị Hệ Thống</span>
-                        <small className="text-[10px] text-[#7D715E] block truncate">Duyệt KYC, an ninh & cấu hình</small>
-                      </div>
-                    </Link>
-                  </div>
-
-                  <div className="pt-2 border-t border-[#EAE4D7] grid grid-cols-2 gap-2">
-                    <Link
-                      to="/login"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
-                    >
-                      Đăng nhập
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setIsRoleDropdownOpen(false)}
-                      className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
-                    >
-                      Đăng ký
-                    </Link>
-                  </div>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  trackingRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer font-semibold"
+              >
+                <Truck className="w-3.5 h-3.5 text-[#C59B58]" />
+                Tra cứu đơn
+              </button>
             </div>
           </div>
-        </div>
-      </header>
+        </aside>
 
-      {/* BRAND HERO SHOWCASE WITH CURVY ELEGANT TYPOGRAPHY */}
-      <section className="relative bg-gradient-to-b from-[#F3EFE6] via-[#FAF8F5] to-[#FAF8F5] border-b border-[#EAE4D7] py-14 sm:py-20 overflow-hidden text-left">
-        {/* Soft Golden Ambient Glow */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#C59B58]/12 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 -right-24 w-96 h-96 rounded-full bg-[#B88E4F]/12 blur-3xl pointer-events-none" />
+        {/* Main marketplace header */}
+        <header
+          className={`bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] transition-all duration-300 ease-in-out ${
+            isScrolled ? 'shadow-md shadow-[#231D15]/5' : 'shadow-xs'
+          }`}
+        >
+          <div
+            className={`max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-[auto_1fr_auto] items-center gap-3 sm:gap-5 transition-all duration-300 ease-in-out ${
+              isScrolled ? 'py-1.5 sm:py-2' : 'py-3'
+            }`}
+          >
 
-        <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
+            {/* New ScanMS Bespoke Brand Logo */}
+            <Link to="/" className="shrink-0 transition-opacity hover:opacity-90">
+              <div className={`transition-all duration-300 ease-in-out ${isScrolled ? 'scale-90 origin-left' : 'scale-100'}`}>
+                <ScanMSLogo size={isScrolled ? 'sm' : 'md'} />
+              </div>
+            </Link>
 
-            {/* Pill Tag */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-bold text-[#8C6226] mb-5 shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span className="font-outfit uppercase tracking-wider">ScanMS • Sàn Tiếp Thị Đa Gian Hàng Chính Hãng</span>
-            </div>
-
-            {/* Curvy Display Headline with Playfair Display (font-display) */}
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#1A1612] leading-[1.18] m-0 mb-5">
-              Kết Nối{' '}
-              <span className="italic font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#8C6226]">
-                Hàng Trăm Gian Hàng
-              </span>{' '}
-              Cùng Mạng Lưới KOC Uy Tín
-            </h1>
-
-            {/* Description */}
-            <p className="text-sm sm:text-base text-[#7D715E] max-w-2xl leading-relaxed m-0 mb-8 font-sans">
-              Khám phá hệ sinh thái sản phẩm chính hãng với bảo chứng nguồn gốc 100% qua quy trình kiểm định KYC pháp nhân. Mua sắm an tâm với chính sách đồng kiểm tận tay và bảo hộ đổi trả 14 ngày.
-            </p>
-
-            {/* Central Smart Search Bar (Shopee Style: searches and routes to /search) */}
-            <form onSubmit={handleSearchSubmit} className="w-full max-w-2xl bg-white border-2 border-[#EEDFC6] rounded-2xl p-2 shadow-lg shadow-[#C59B58]/10 mb-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 transition hover:border-[#C59B58]">
-              <div className="flex-1 flex items-center px-3.5 gap-3">
-                <Search className="w-5 h-5 text-[#B88E4F] shrink-0" />
+            {/* Header search */}
+            <form
+              onSubmit={handleSearchSubmit}
+              className={`hidden md:flex min-w-0 w-full max-w-2xl justify-self-center items-center gap-2 rounded-2xl border border-[#EEDFC6] bg-white shadow-sm shadow-[#C59B58]/10 transition-all duration-300 ease-in-out focus-within:border-[#C59B58] ${
+                isScrolled ? 'p-1' : 'p-1.5'
+              }`}
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5">
+                <Search className="h-4 w-4 shrink-0 text-[#B88E4F]" />
                 <input
-                  type="text"
+                  type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm sản phẩm, thương hiệu gian hàng, danh mục..."
-                  className="w-full text-xs sm:text-sm font-medium text-[#1A1612] placeholder-[#8C7D6B] outline-none bg-transparent"
+                  placeholder="Tìm sản phẩm, thương hiệu, gian hàng..."
+                  aria-label="Tìm sản phẩm, thương hiệu hoặc gian hàng"
+                  className="min-w-0 w-full bg-transparent text-xs font-medium text-[#1A1612] placeholder:text-[#8C7D6B] outline-none"
                 />
                 {search && (
                   <button
                     type="button"
                     onClick={() => setSearch('')}
-                    className="text-[#7D715E] hover:text-[#1A1612] p-1 cursor-pointer"
+                    className="shrink-0 rounded-lg p-1 text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] cursor-pointer"
+                    aria-label="Xóa nội dung tìm kiếm"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => navigate('/search')}
-                  className="px-3.5 py-3 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#8C6226] text-xs font-bold transition cursor-pointer shrink-0 flex items-center justify-center gap-1.5"
-                  title="Mở trang tìm kiếm chi tiết & bộ lọc"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span className="hidden sm:inline">Bộ lọc</span>
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:opacity-95 text-white text-xs sm:text-sm font-black transition shadow-sm cursor-pointer shrink-0 flex items-center justify-center gap-2 active:scale-95"
-                >
-                  <span>Tìm kiếm</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </form>
-
-            {/* Trending Suggestion Chips */}
-            <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-              <span className="text-[#7D715E] font-medium flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5 text-[#B88E4F]" />
-                Từ khóa nổi bật:
-              </span>
-              {['Serum', 'Dưỡng ẩm', 'Chống nắng', 'Tai nghe', 'Bàn phím cơ', 'Trà thảo mộc'].map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
-                  className="px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58] hover:text-[#B88E4F] transition text-[11px] font-semibold cursor-pointer shadow-2xs"
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-
-          </div>
-
-          {/* 3 Core Value Pillars */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mt-14 pt-8 border-t border-[#EAE4D7]">
-            <div className="bg-white/80 backdrop-blur-xs border border-[#EAE4D7] rounded-2xl p-5 shadow-2xs flex items-start gap-3.5 text-left hover:border-[#C59B58] transition">
-              <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-6 h-6 text-[#B88E4F]" />
-              </div>
-              <div>
-                <strong className="block text-sm font-black text-[#1A1612]">Gian Hàng Kiểm Định 100% KYC</strong>
-                <p className="text-xs text-[#7D715E] leading-relaxed mt-1 m-0">
-                  Mọi gian hàng đối tác đều được định danh pháp nhân minh bạch, bảo đảm nguồn gốc sản phẩm chính hãng.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-xs border border-[#EAE4D7] rounded-2xl p-5 shadow-2xs flex items-start gap-3.5 text-left hover:border-[#C59B58] transition">
-              <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                <TrendingUp className="w-6 h-6 text-[#B88E4F]" />
-              </div>
-              <div>
-                <strong className="block text-sm font-black text-[#1A1612]">Tiếp Thị & Hoa Hồng Minh Bạch</strong>
-                <p className="text-xs text-[#7D715E] leading-relaxed mt-1 m-0">
-                  Cộng tác viên và KOL tiếp thị sản phẩm thực, nhận hoa hồng trực tiếp từ nhà bán hàng mà không qua trung gian phức tạp.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-xs border border-[#EAE4D7] rounded-2xl p-5 shadow-2xs flex items-start gap-3.5 text-left hover:border-[#C59B58] transition">
-              <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                <Package className="w-6 h-6 text-[#B88E4F]" />
-              </div>
-              <div>
-                <strong className="block text-sm font-black text-[#1A1612]">Đồng Kiểm & Đổi Trả 14 Ngày</strong>
-                <p className="text-xs text-[#7D715E] leading-relaxed mt-1 m-0">
-                  Khách hàng vãng lai được đồng kiểm sản phẩm trước khi thanh toán, bảo vệ quyền lợi người tiêu dùng tối đa.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* HORIZONTAL CATEGORY SHOWCASE BAR (Shopee Style) */}
-          <div className="mt-10 pt-6 border-t border-[#EAE4D7]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#B88E4F]" />
-                <strong className="text-sm font-black text-[#1A1612]">Danh Mục Mua Sắm Nổi Bật</strong>
               </div>
               <button
                 type="button"
                 onClick={() => navigate('/search')}
-                className="text-xs font-bold text-[#8C6226] hover:text-[#B88E4F] flex items-center gap-1 transition cursor-pointer"
+                className={`hidden xl:inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#8C6226] transition hover:bg-[#F3EFE6] cursor-pointer active:scale-[0.98] ${
+                  isScrolled ? 'px-2.5 py-1.5' : 'px-3 py-2'
+                }`}
+                title="Mở bộ lọc tìm kiếm"
               >
-                <span>Xem tất cả danh mục & lọc</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                <SlidersHorizontal className="h-3.5 w-3.5 text-[#B88E4F]" />
+                <span>Bộ lọc</span>
               </button>
+              <button
+                type="submit"
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#C59B58] text-xs font-bold text-white transition hover:bg-[#B88E4F] cursor-pointer active:scale-[0.98] ${
+                  isScrolled ? 'px-3.5 py-1.5' : 'px-4 py-2'
+                }`}
+              >
+                <span>Tìm kiếm</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </form>
+
+            {/* Header Action Buttons */}
+            <div className="flex items-center gap-2.5 sm:gap-3.5">
+              {/* Cart Button */}
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
+                title="Giỏ hàng của bạn"
+              >
+                <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
+                <span className="hidden sm:inline">Giỏ hàng</span>
+                {totalCartCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[10px] font-black flex items-center justify-center -mr-1">
+                    {totalCartCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Partner Gateways Dropdown */}
+              <div className="relative" ref={roleDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition cursor-pointer shadow-2xs"
+                >
+                  <User className="w-4 h-4 text-[#B88E4F]" />
+                  <span className="hidden sm:inline">Cổng đối tác</span>
+                  <ChevronRight className="hidden sm:block w-3.5 h-3.5 text-[#7D715E] rotate-90" />
+                </button>
+
+                {isRoleDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 flex flex-col gap-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-2 border-b border-[#EAE4D7] text-left">
+                      <strong className="block text-xs font-black text-[#1A1612]">
+                        Cổng đăng nhập đối tác
+                      </strong>
+                      <small className="text-[11px] text-[#7D715E] block mt-0.5">
+                        Truy cập không gian làm việc chuyên biệt theo vai trò
+                      </small>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <Link
+                        to="/collaborator/dashboard"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <TrendingUp className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-[#1A1612]">Cộng Tác Viên / KOL</span>
+                          <small className="text-[10px] text-[#7D715E] block truncate">Lấy link tiếp thị & rút hoa hồng</small>
+                        </div>
+                      </Link>
+
+                      <Link
+                        to="/merchant/dashboard"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-[#F5E7CC] text-[#7A561B] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <Store className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-[#1A1612]">Chủ Gian Hàng (Shop)</span>
+                          <small className="text-[10px] text-[#7D715E] block truncate">Quản lý sản phẩm & đối soát</small>
+                        </div>
+                      </Link>
+
+                      <Link
+                        to="/admin/users"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <Shield className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-[#1A1612]">Quản Trị Hệ Thống</span>
+                          <small className="text-[10px] text-[#7D715E] block truncate">Duyệt KYC, an ninh & cấu hình</small>
+                        </div>
+                      </Link>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#EAE4D7] grid grid-cols-2 gap-2">
+                      <Link
+                        to="/login"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
+                      >
+                        Đăng nhập
+                      </Link>
+                      <Link
+                        to="/register"
+                        onClick={() => setIsRoleDropdownOpen(false)}
+                        className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
+                      >
+                        Đăng ký
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-              {[
-                { name: 'Mỹ phẩm & Chăm sóc da', icon: '✨', count: '100% Chính hãng', desc: 'Serum, kem dưỡng, phục hồi da' },
-                { name: 'Sức khỏe & Thảo mộc', icon: '🌿', count: 'Thảo mộc tự nhiên', desc: 'Trà thảo mộc, hạt dinh dưỡng' },
-                { name: 'Công nghệ & Phụ kiện', icon: '⚡', count: 'Bảo hành chính hãng', desc: 'Tai nghe Bluetooth, bàn phím' },
-                { name: 'Gia dụng & Tiện ích', icon: '🏠', count: 'Đồng kiểm tận tay', desc: 'Thiết bị chăm sóc gia đình' },
-                { name: 'Tất cả danh mục & Bộ lọc', icon: '🔍', count: 'Tìm kiếm nâng cao', desc: 'Mở bộ lọc chi tiết Shopee-style' },
-              ].map((cat, idx) => (
+            {/* Mobile search keeps the same position inside the header */}
+            <form
+              onSubmit={handleSearchSubmit}
+              className={`col-span-3 flex md:hidden min-w-0 items-center gap-2 rounded-xl border border-[#EEDFC6] bg-white shadow-sm transition-all duration-300 ease-in-out ${
+                isScrolled ? 'p-1' : 'p-1.5'
+              }`}
+            >
+              <Search className="ml-2 h-4 w-4 shrink-0 text-[#B88E4F]" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm sản phẩm, thương hiệu, gian hàng..."
+                aria-label="Tìm sản phẩm, thương hiệu hoặc gian hàng"
+                className="min-w-0 flex-1 bg-transparent text-xs font-medium text-[#1A1612] placeholder:text-[#8C7D6B] outline-none"
+              />
+              <button type="submit" className="rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-bold text-white cursor-pointer">
+                Tìm kiếm
+              </button>
+            </form>
+          </div>
+
+          {/* Balanced marketplace shortcuts - Collapses smoothly when scrolling */}
+          <nav
+            className={`border-t border-[#F3EFE6] bg-[#FFFEFC] transition-all duration-300 ease-in-out overflow-hidden ${
+              isScrolled ? 'max-h-0 opacity-0 border-transparent py-0 pointer-events-none' : 'max-h-12 opacity-100'
+            }`}
+            aria-label="Điều hướng nhanh Marketplace"
+          >
+            <div className="mx-auto grid max-w-[1040px] grid-cols-5 items-center px-2 sm:px-4">
+              {/* Live KOC Button with pulsing indicator */}
+              <button
+                type="button"
+                onClick={() => setIsLiveModalOpen(true)}
+                className="group flex min-w-0 items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-bold text-[#1A1612] transition-colors hover:bg-[#FBF5EB] cursor-pointer"
+                title="Khám phá các phiên Livestream KOC tiếp thị sản phẩm"
+              >
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E11D48] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#E11D48]" />
+                </span>
+                <span className="truncate text-[#9F1239] font-black uppercase tracking-wider text-[10px] sm:text-[11px]">Live KOC</span>
+                <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-[#E11D48] text-white text-[9px] font-black tracking-wide uppercase">HOT</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  catalogRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="flex min-w-0 items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-bold text-[#7D715E] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer"
+              >
+                <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
+                <span className="hidden sm:inline truncate">Gian Hàng Đối Tác</span>
+              </button>
+
+              <Link
+                to="/search?commission=true"
+                className="flex min-w-0 items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-bold text-[#7D715E] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                <span className="hidden sm:inline truncate">Săn Deal KOC</span>
+              </Link>
+
+              <Link
+                to="/leaderboard"
+                className="flex min-w-0 items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-bold text-[#7D715E] transition hover:bg-[#FBF5EB] hover:text-[#1A1612]"
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-[#B88E4F]" />
+                <span className="hidden sm:inline truncate">BXH Doanh Số</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  trackingRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="flex min-w-0 items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-bold text-[#7D715E] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer"
+              >
+                <Package className="w-4 h-4 text-[#B88E4F]" />
+                <span className="hidden sm:inline truncate">Tra cứu đơn</span>
+              </button>
+            </div>
+          </nav>
+        </header>
+      </div>
+
+      {/* Spacer to prevent layout shift beneath fixed top header */}
+      <div style={{ height: headerHeight }} className="shrink-0 transition-all duration-150" aria-hidden="true" />
+
+      {/* SCANMS Creator Commerce stage, built from real marketplace data */}
+      <section className="border-b border-[#EAE4D7] bg-[#F3EFE6] py-5 text-left sm:py-6">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
+          <div
+            className="group relative min-h-[360px] overflow-hidden rounded-[24px] border border-[#E4D3B7] bg-[#FAF8F5] shadow-[0_16px_44px_rgba(93,70,35,0.10)] sm:min-h-[430px]"
+            onMouseEnter={() => setIsBannerPaused(true)}
+            onMouseLeave={() => setIsBannerPaused(false)}
+            aria-roledescription="carousel"
+            aria-label="Chương trình nổi bật SCANMS"
+          >
+            {MARKETPLACE_BANNERS.map((slide, index) => (
+              <div
+                key={slide.image}
+                className={`absolute inset-0 transition-[opacity,transform] duration-700 ease-out ${
+                  index === activeBanner ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-4 opacity-0'
+                }`}
+                aria-hidden={index !== activeBanner}
+              >
+                <img src={slide.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,245,.98)_0%,rgba(250,248,245,.96)_34%,rgba(250,248,245,.72)_49%,rgba(250,248,245,0)_68%)]" />
+                <div className="relative z-10 flex min-h-[360px] max-w-[660px] flex-col justify-center px-6 py-9 sm:min-h-[430px] sm:px-10 lg:px-14">
+                  <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-[#EEDFC6] bg-white/80 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#8C6226] backdrop-blur-sm">
+                    {slide.action === 'live' ? <Radio className="h-3.5 w-3.5 text-[#E11D48]" /> : <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" />}
+                    {slide.eyebrow}
+                  </div>
+                  <h1 className="m-0 max-w-[570px] text-3xl font-black leading-[1.08] tracking-[-0.035em] text-[#1A1612] sm:text-4xl lg:text-[46px]">
+                    {slide.title}
+                  </h1>
+                  <p className="mb-6 mt-4 max-w-[500px] text-xs leading-6 text-[#5F5548] sm:text-sm">
+                    {slide.description}
+                  </p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {slide.action === 'live' ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsLiveModalOpen(true)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-5 py-3 text-xs font-black text-white transition hover:bg-[#B88E4F] active:scale-[0.98] cursor-pointer"
+                      >
+                        {slide.primaryLabel}<ArrowRight className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <Link
+                        to={slide.href}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-5 py-3 text-xs font-black text-white transition hover:bg-[#B88E4F] active:scale-[0.98]"
+                      >
+                        {slide.primaryLabel}<ArrowRight className="h-4 w-4" />
+                      </Link>
+                    )}
+                    <Link
+                      to={slide.secondaryHref}
+                      className="inline-flex items-center gap-2 rounded-xl border border-[#DCCBAE] bg-white/85 px-5 py-3 text-xs font-bold text-[#1A1612] backdrop-blur-sm transition hover:border-[#C59B58] hover:bg-white active:scale-[0.98]"
+                    >
+                      {slide.secondaryLabel}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setActiveBanner((current) => (current - 1 + MARKETPLACE_BANNERS.length) % MARKETPLACE_BANNERS.length)}
+              className="absolute left-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#EAE4D7] bg-white/90 text-[#1A1612] opacity-0 shadow-md backdrop-blur-sm transition hover:bg-white group-hover:opacity-100 sm:flex cursor-pointer"
+              aria-label="Banner trước"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveBanner((current) => (current + 1) % MARKETPLACE_BANNERS.length)}
+              className="absolute right-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#EAE4D7] bg-white/90 text-[#1A1612] opacity-0 shadow-md backdrop-blur-sm transition hover:bg-white group-hover:opacity-100 sm:flex cursor-pointer"
+              aria-label="Banner tiếp theo"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </button>
+
+            <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/80 px-3 py-2 shadow-sm backdrop-blur-md">
+              {MARKETPLACE_BANNERS.map((slide, index) => (
                 <button
-                  key={idx}
+                  key={slide.image}
                   type="button"
-                  onClick={() => {
-                    if (cat.name.includes('Tất cả')) {
-                      navigate('/search');
-                    } else {
-                      navigate(`/search?category=${encodeURIComponent(cat.name)}`);
-                    }
-                  }}
-                  className="bg-white/90 backdrop-blur-xs border border-[#EAE4D7] hover:border-[#C59B58] rounded-2xl p-3.5 text-left transition hover:shadow-md group cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl group-hover:scale-110 transition-transform">{cat.icon}</span>
-                    <span className="text-[10px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
-                      {cat.count}
-                    </span>
-                  </div>
-                  <div>
-                    <strong className="block text-xs font-bold text-[#1A1612] group-hover:text-[#B88E4F] transition">
-                      {cat.name}
-                    </strong>
-                    <small className="text-[10.5px] text-[#7D715E] block mt-0.5 line-clamp-1">
-                      {cat.desc}
-                    </small>
-                  </div>
-                </button>
+                  onClick={() => setActiveBanner(index)}
+                  className={`h-1.5 rounded-full transition-all cursor-pointer ${index === activeBanner ? 'w-7 bg-[#C59B58]' : 'w-1.5 bg-[#B9AD9A] hover:bg-[#8C7D6B]'}`}
+                  aria-label={`Mở banner ${index + 1}`}
+                  aria-current={index === activeBanner ? 'true' : undefined}
+                />
               ))}
             </div>
           </div>
@@ -674,67 +746,75 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      {/* MAIN CATALOG - SHOPEE STYLE CLEAN FULL-WIDTH SHOWCASE */}
-      <section ref={catalogRef} id="catalog-section" className="py-12 px-4 sm:px-6 lg:px-8 max-w-[1520px] mx-auto w-full text-left">
+      {/* Dense commerce catalog with SCANMS affiliate information */}
+      <section ref={catalogRef} id="catalog-section" className="w-full bg-[#F3EFE6] py-7 text-left lg:py-9">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
 
-        {/* Catalog Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-[#EAE4D7]">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-bold text-[#8C6226] mb-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span>GỢI Ý MUA SẮM HÔM NAY</span>
+        {/* Catalog navigation and controls */}
+        <div className="mb-4 border border-[#EAE4D7] bg-white shadow-[0_8px_24px_rgba(75,57,34,0.04)]">
+          <div className="flex min-h-[66px] flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5 sm:pt-0">
+            <div className="relative flex min-w-0 items-center gap-3 self-stretch pb-3 sm:pb-0">
+              <h2 className="m-0 whitespace-nowrap text-[17px] font-black tracking-[-0.025em] text-[#1A1612] sm:text-[19px]">
+                Dành riêng cho bạn
+              </h2>
+              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[#C59B58] sm:w-[174px]" aria-hidden="true" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#1A1612] m-0 font-display">
-              Sản Phẩm & Gian Hàng Chính Hãng
-            </h2>
-            <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-              {loading
-                ? 'Đang kết nối dữ liệu máy chủ...'
-                : `Đang hiển thị ${items.length} sản phẩm tuyển chọn từ các gian hàng đối tác đã xác minh 100% KYC`}
-            </p>
-          </div>
 
-          {/* Right Toolbar: Detailed Search & Filters Button + Sort */}
-          <div className="flex items-center gap-2.5">
-            <Link
-              to="/search"
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#FBF5EB] to-[#F3EFE6] border border-[#EEDFC6] text-xs font-bold text-[#8C6226] hover:border-[#C59B58] hover:text-[#1A1612] transition shadow-2xs cursor-pointer"
+            <div className="flex min-w-0 items-center gap-2 pb-3 sm:pb-0">
+              <span className="hidden text-[11px] font-semibold text-[#7D715E] lg:inline">Sắp xếp</span>
+              <div className="hidden items-center border border-[#EAE4D7] bg-[#FAF8F5] p-0.5 md:flex" aria-label="Sắp xếp sản phẩm">
+              {[
+                { value: 'newest', label: 'Mới nhất' },
+                { value: 'price_asc', label: 'Giá thấp' },
+                { value: 'price_desc', label: 'Giá cao' },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setSortBy(option.value)}
+                  className={`px-3.5 py-2 text-[11px] font-bold transition cursor-pointer ${
+                    sortBy === option.value
+                      ? 'bg-[#C59B58] text-white shadow-sm'
+                      : 'text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#8C6226]'
+                  }`}
+                  aria-pressed={sortBy === option.value}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="min-w-0 flex-1 border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-[11px] font-bold text-[#1A1612] outline-none transition focus:border-[#C59B58] md:hidden cursor-pointer"
+              aria-label="Sắp xếp sản phẩm"
             >
-              <SlidersHorizontal className="w-4 h-4 text-[#B88E4F]" />
-              <span>Mở Bộ Lọc Chi Tiết</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#B88E4F]" />
-            </Link>
+              <option value="newest">Mới nhất</option>
+              <option value="price_asc">Giá thấp đến cao</option>
+              <option value="price_desc">Giá cao đến thấp</option>
+            </select>
 
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="font-bold text-[#7D715E] hidden sm:inline">Sắp xếp:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs font-bold text-[#1A1612] outline-none focus:border-[#C59B58] transition cursor-pointer shadow-2xs"
-              >
-                <option value="newest">Mới nhất</option>
-                <option value="price_asc">Giá: Thấp đến cao</option>
-                <option value="price_desc">Giá: Cao đến thấp</option>
-              </select>
-            </div>
           </div>
+        </div>
         </div>
 
         {/* Product Cards Grid (Full-Width Responsive 2-5 Columns) */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className="bg-white border border-[#EAE4D7] rounded-3xl p-4 animate-pulse">
-                <div className="aspect-square bg-[#F3EFE6] rounded-2xl mb-3" />
+          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {[...Array(12)].map((_, i) => (
+              <div key={i} className="animate-pulse overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
+                <div className="aspect-square bg-[#F3EFE6]" />
+                <div className="p-3">
                 <div className="h-4 bg-[#F3EFE6] rounded w-3/4 mb-2" />
                 <div className="h-3 bg-[#F3EFE6] rounded w-1/2 mb-4" />
                 <div className="h-6 bg-[#F3EFE6] rounded w-1/3" />
+                </div>
               </div>
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-3xl border border-[#EAE4D7] p-8 shadow-2xs">
+          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-8 py-16 text-center">
             <ShoppingBag className="w-14 h-14 text-[#A49B8B] mx-auto mb-3" />
             <strong className="text-base font-black text-[#1A1612] block">
               Không có sản phẩm nào
@@ -750,57 +830,74 @@ export default function MarketplacePage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5">
+          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {items.map((p) => {
               const productDetailUrl = `/products/${p.sku || p.id}`;
               return (
                 <div
                   key={p.id}
-                  className="bg-white border border-[#EAE4D7] rounded-3xl overflow-hidden shadow-2xs hover:shadow-md hover:border-[#C59B58]/80 transition duration-200 flex flex-col justify-between group text-left"
+                  className="group flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border border-[#E2DACC] bg-white text-left transition duration-200 hover:-translate-y-0.5 hover:border-[#C59B58] hover:shadow-[0_8px_24px_rgba(93,70,35,0.10)]"
                 >
                   <div>
                     {/* Clickable Image -> Product Details */}
-                    <Link
-                      to={productDetailUrl}
-                      className="block relative aspect-square bg-[#FAF8F5] overflow-hidden group-hover:opacity-95 transition cursor-pointer"
-                      title="Xem chi tiết sản phẩm"
-                    >
-                      <img
-                        src={p.image}
-                        alt={p.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/reference/assets/serum-hero-optimized.jpg';
-                        }}
-                      />
-                      {p.badge && (
-                        <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-[#C59B58] text-white text-[10px] font-black shadow-xs">
-                          {p.badge}
-                        </span>
-                      )}
-                      {p.origPrice > p.price && (
-                        <span className="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[10px] font-black border border-rose-200">
-                          -{Math.round(((p.origPrice - p.price) / p.origPrice) * 100)}%
-                        </span>
-                      )}
-                    </Link>
+                    <div className="relative aspect-square overflow-hidden bg-[#FAF8F5] group/img">
+                      <Link
+                        to={productDetailUrl}
+                        className="block w-full h-full cursor-pointer"
+                        title="Xem chi tiết sản phẩm"
+                      >
+                        <img
+                          src={p.image}
+                          alt={p.name}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/reference/assets/serum-hero-optimized.jpg';
+                          }}
+                        />
+                        {p.badge && (
+                          <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-[9px] font-black shadow-xs z-10 ${(p.stockQuantity ?? 0) > 0 ? 'bg-[#C59B58] text-white' : 'bg-[#231D15] text-white'}`}>
+                            {p.badge}
+                          </span>
+                        )}
+                        {p.origPrice > p.price && (
+                          <span className="absolute top-0 right-0 px-2 py-0.5 rounded-bl-lg bg-[#FEEDE8] text-[#EE4D2D] text-[10px] sm:text-[11px] font-bold border-l border-b border-[#FADCD5] shadow-2xs z-10">
+                            -{Math.round(((p.origPrice - p.price) / p.origPrice) * 100)}%
+                          </span>
+                        )}
+                      </Link>
 
-                    <div className="p-4 sm:p-5 flex flex-col gap-2.5 text-left">
-                      <div className="flex items-center justify-between text-[11px] text-[#7D715E]">
-                        <span className="font-bold flex items-center gap-1 truncate max-w-[170px]">
-                          <Store className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                      {/* Quick Magnifying Glass Zoom Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setZoomProduct(p);
+                        }}
+                        className="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-white/85 hover:bg-white text-[#B88E4F] border border-[#EAE4D7] shadow-xs flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-90 cursor-pointer z-10"
+                        title="Phóng to ảnh sản phẩm"
+                        aria-label="Phóng to ảnh sản phẩm"
+                      >
+                        <ZoomIn className="w-3 h-3 text-[#B88E4F]" />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-2 p-3 text-left">
+                      <div className="flex min-w-0 items-center justify-between gap-1 text-[10px] text-[#7D715E]">
+                        <span className="flex min-w-0 items-center gap-1 truncate font-bold">
+                          <Store className="h-3 w-3 shrink-0 text-[#B88E4F]" />
                           {p.brand}
                         </span>
-                        <span className="font-bold text-[#B88E4F] shrink-0">
-                          {p.sold}
+                        <span className="shrink-0 font-bold text-[#B88E4F]">
+                          KYC
                         </span>
                       </div>
 
                       {/* Clickable Title -> Product Details */}
                       <Link
                         to={productDetailUrl}
-                        className="text-xs sm:text-sm font-black text-[#1A1612] leading-snug line-clamp-2 m-0 hover:text-[#B88E4F] transition"
+                        className="m-0 line-clamp-2 min-h-9 text-xs font-bold leading-[1.45] text-[#1A1612] transition hover:text-[#B88E4F]"
                         title="Xem chi tiết sản phẩm"
                       >
                         {p.name}
@@ -808,54 +905,50 @@ export default function MarketplacePage() {
 
                       {/* Affiliate Commission Badge */}
                       {p.commissionRate ? (
-                        <div className="p-2 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between text-[10.5px]">
-                          <span className="text-[#8C6226] font-bold truncate">
-                            Hoa hồng CTV: {p.commissionRate}%
+                        <div className="flex items-center justify-between gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1.5 text-[9px]">
+                          <span className="truncate font-bold text-[#8C6226]">
+                            Hoa hồng {p.commissionRate}%
                           </span>
                           {p.commissionAmount && (
-                            <span className="font-black text-[#B88E4F] shrink-0">
+                            <span className="shrink-0 font-black text-[#B88E4F]">
                               ~{formatMoney(p.commissionAmount)}
                             </span>
                           )}
                         </div>
                       ) : null}
 
-                      <div className="flex items-baseline gap-2 pt-1">
-                        {p.origPrice > p.price && (
-                          <span className="text-xs text-[#7D715E] line-through">
-                            {formatMoney(p.origPrice)}
-                          </span>
-                        )}
-                        <strong className="text-base sm:text-lg font-black text-[#1A1612]">
+                      <div className="pt-0.5">
+                        <strong className="block text-[15px] font-black text-[#B88E4F] sm:text-base">
                           {formatMoney(p.price)}
                         </strong>
+                        <div className="mt-0.5 flex items-center justify-between gap-1 text-[9px] text-[#7D715E]">
+                          {p.origPrice > p.price ? (
+                            <span className="truncate line-through">{formatMoney(p.origPrice)}</span>
+                          ) : <span />}
+                          <span className="shrink-0">Còn {p.stockQuantity || 0}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions: "Thêm giỏ", "Chi tiết" & "Mua ngay" */}
-                  <div className="p-4 sm:p-5 pt-0 grid grid-cols-[auto_1fr_1fr] gap-1.5">
+                  <div className="grid grid-cols-[38px_1fr] gap-1.5 px-3 pb-3">
                     <button
                       type="button"
                       onClick={() => handleAddToCart(p)}
-                      className="py-2.5 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                      disabled={(p.stockQuantity ?? 0) <= 0}
+                      className="flex items-center justify-center rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] py-2 text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer active:scale-[0.98]"
                       title="Thêm vào giỏ hàng"
                     >
                       <ShoppingCart className="w-3.5 h-3.5 text-[#B88E4F]" />
                     </button>
-                    <Link
-                      to={productDetailUrl}
-                      className="py-2.5 px-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition flex items-center justify-center text-center"
-                    >
-                      <span>Chi tiết</span>
-                    </Link>
                     <button
                       type="button"
                       onClick={() => handleOpenDirectCheckout(p)}
-                      className="py-2.5 px-2.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white text-xs font-black hover:opacity-95 transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                      disabled={(p.stockQuantity ?? 0) <= 0}
+                      className="flex items-center justify-center gap-1 rounded-lg bg-[#C59B58] px-2 py-2 text-[11px] font-black text-white transition hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:bg-[#A49B8B] cursor-pointer active:scale-[0.98]"
                     >
                       <span>Mua ngay</span>
-                      <ArrowRight className="w-3 h-3" />
+                      <ArrowRight className="h-3 w-3" />
                     </button>
                   </div>
                 </div>
@@ -864,74 +957,65 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Big Bottom Action to Search & Detailed Filters */}
-        <div className="mt-14 text-center">
+        {/* Continue browsing */}
+        <div className="mt-6 flex items-center gap-3 sm:gap-5">
+          <span className="h-px flex-1 bg-[#DDD4C5]" aria-hidden="true" />
           <Link
             to="/search"
-            className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-white border-2 border-[#EEDFC6] hover:border-[#C59B58] text-[#1A1612] font-black text-sm transition shadow-2xs hover:shadow-md hover:bg-[#FBF5EB] active:scale-95 cursor-pointer"
+            className="group inline-flex shrink-0 items-center gap-2 border border-[#C59B58] bg-white px-5 py-2.5 text-xs font-black text-[#8C6226] shadow-[0_4px_14px_rgba(93,70,35,0.06)] transition hover:bg-[#C59B58] hover:text-white active:translate-y-px sm:px-7"
           >
-            <SlidersHorizontal className="w-4 h-4 text-[#B88E4F]" />
-            <span>Mở trang tìm kiếm chi tiết & xem toàn bộ {items.length}+ sản phẩm</span>
-            <ArrowRight className="w-4 h-4 text-[#B88E4F]" />
+            <span>Xem tất cả sản phẩm</span>
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
+          <span className="h-px flex-1 bg-[#DDD4C5]" aria-hidden="true" />
+        </div>
         </div>
       </section>
 
       {/* Order Tracking Section */}
-      <section ref={trackingRef} id="tracking-section" className="py-12 px-4 sm:px-6 lg:px-8 bg-[#F3EFE6] border-t border-[#EAE4D7]">
-        <div className="max-w-5xl xl:max-w-6xl mx-auto text-left">
-          <div className="text-center max-w-2xl mx-auto mb-8">
-            <span className="text-xs font-bold text-[#B88E4F] uppercase tracking-wider font-outfit">
-              Tra cứu minh bạch
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#1A1612] mt-1 m-0 font-display">
-              Tra cứu hành trình đơn hàng
-            </h2>
-            <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-              Nhập Số điện thoại mua hàng hoặc Mã vận đơn để kiểm tra trạng thái và lịch trình vận chuyển thực tế.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2.5 mt-3">
-              <button
-                type="button"
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black text-[#1A1612] bg-white border border-[#EEDFC6] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>Quay lại Sàn mua sắm</span>
-              </button>
-              <Link
-                to="/tracking"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#8C6226] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] transition shadow-2xs cursor-pointer"
-              >
-                <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>Trang Tra cứu & Đánh giá 5 sao</span>
-                <ChevronRight className="w-3.5 h-3.5 text-[#B88E4F]" />
-              </Link>
+      <section ref={trackingRef} id="tracking-section" className="border-t border-[#EAE4D7] bg-[#F3EFE6] py-6">
+        <div className="mx-auto max-w-[1400px] px-4 text-left sm:px-6 lg:px-8">
+          <div className="border-y border-[#E2DACC] bg-white px-4 py-4 sm:px-5">
+            <div className="grid gap-4 lg:grid-cols-[260px_1fr] lg:items-center lg:gap-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]">
+                  <Truck className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="m-0 text-base font-black tracking-[-0.02em] text-[#1A1612]">
+                    Tra cứu đơn hàng
+                  </h2>
+                  <Link to="/tracking" className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold text-[#8C6226] transition hover:text-[#1A1612]">
+                    <span>Tra cứu nâng cao và đánh giá</span>
+                    <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+
+              <form onSubmit={handleTrackOrder} className="min-w-0">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex min-h-11 flex-1 items-center rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 focus-within:border-[#C59B58] focus-within:bg-white">
+                  <Phone className="mr-2 h-4 w-4 shrink-0 text-[#B88E4F]" />
+                  <input
+                    id="marketplace-tracking-query"
+                    type="text"
+                    value={trackQuery}
+                    onChange={(e) => setTrackQuery(e.target.value)}
+                    placeholder="Nhập số điện thoại hoặc mã vận đơn"
+                    className="w-full bg-transparent text-xs text-[#1A1612] outline-none placeholder:text-[#A49B8B] sm:text-sm"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={trackingLoading}
+                  className="min-h-11 shrink-0 rounded-lg bg-[#C59B58] px-6 text-xs font-black text-white transition hover:bg-[#B88E4F] disabled:cursor-wait disabled:opacity-60 cursor-pointer"
+                >
+                  {trackingLoading ? 'Đang tra cứu...' : 'Tra cứu đơn'}
+                </button>
+                </div>
+              </form>
             </div>
           </div>
-
-          <form
-            onSubmit={handleTrackOrder}
-            className="flex flex-col sm:flex-row gap-2 max-w-2xl mx-auto bg-white p-2 rounded-2xl border border-[#EEDFC6] shadow-sm"
-          >
-            <div className="flex-1 flex items-center px-3">
-              <Phone className="w-4 h-4 text-[#B88E4F] mr-2 shrink-0" />
-              <input
-                type="text"
-                value={trackQuery}
-                onChange={(e) => setTrackQuery(e.target.value)}
-                placeholder="Nhập số điện thoại (vd: 0912345678) hoặc mã vận đơn..."
-                className="w-full text-xs sm:text-sm outline-none text-[#1A1612] placeholder-[#A49B8B]"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={trackingLoading}
-              className="px-6 py-2.5 rounded-xl bg-[#C59B58] text-white text-xs sm:text-sm font-bold hover:bg-[#B88E4F] transition shadow-xs cursor-pointer shrink-0"
-            >
-              {trackingLoading ? 'Đang tra cứu...' : 'Tra cứu ngay'}
-            </button>
-          </form>
 
           {trackResult && (
             <div className="mt-8 bg-white border border-[#EAE4D7] rounded-3xl p-6 sm:p-8 shadow-sm animate-in fade-in duration-200">
@@ -993,22 +1077,22 @@ export default function MarketplacePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#F3EFE6] border-t border-[#EAE4D7] text-[#1A1612] py-12 px-4 sm:px-6 lg:px-8 mt-auto text-left">
-        <div className="max-w-[1520px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div>
+      <footer className="mt-auto border-t border-[#EAE4D7] bg-[#F3EFE6] px-4 py-9 text-left text-[#1A1612] sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.8fr_0.9fr_1fr] lg:gap-10">
+          <div className="max-w-sm">
             <div className="mb-3">
               <ScanMSLogo size="sm" />
             </div>
-            <p className="text-xs text-[#7D715E] leading-relaxed">
+            <p className="m-0 text-xs leading-relaxed text-[#7D715E]">
               Hệ thống sàn thương mại tiếp thị liên kết đa gian hàng, kết nối hàng nghìn Creator với các thương hiệu chính hãng hàng đầu.
             </p>
           </div>
 
           <div>
-            <strong className="text-[#1A1612] text-xs font-bold uppercase tracking-wider block mb-3">
-              Dành cho Người Mua
+            <strong className="mb-3 block text-[11px] font-black text-[#1A1612]">
+              Dành cho người mua
             </strong>
-            <ul className="space-y-2 text-xs text-[#7D715E] list-none p-0 m-0">
+            <ul className="m-0 list-none space-y-2 p-0 text-[11px] text-[#7D715E]">
               <li>
                 <button
                   type="button"
@@ -1027,24 +1111,24 @@ export default function MarketplacePage() {
                   Tra cứu tình trạng vận đơn
                 </button>
               </li>
-              <li>Quy chuẩn hàng chính hãng 100%</li>
-              <li>Quy trình giải quyết khiếu nại</li>
+              <li><span className="transition hover:text-[#B88E4F]">Quy chuẩn hàng chính hãng</span></li>
+              <li><span className="transition hover:text-[#B88E4F]">Giải quyết khiếu nại</span></li>
             </ul>
           </div>
 
           <div>
-            <strong className="text-[#1A1612] text-xs font-bold uppercase tracking-wider block mb-3">
-              Cổng Dành Cho Đối Tác
+            <strong className="mb-3 block text-[11px] font-black text-[#1A1612]">
+              Dành cho đối tác
             </strong>
-            <ul className="space-y-2 text-xs text-[#7D715E] list-none p-0 m-0">
+            <ul className="m-0 list-none space-y-2 p-0 text-[11px] text-[#7D715E]">
               <li>
                 <Link to="/collaborator/dashboard" className="hover:text-[#B88E4F] transition font-medium">
-                  Cộng Tác Viên & KOL Bán Hàng
+                  Cộng tác viên và KOL
                 </Link>
               </li>
               <li>
                 <Link to="/merchant/dashboard" className="hover:text-[#B88E4F] transition font-medium">
-                  Chủ Gian Hàng & Doanh Nghiệp
+                  Gian hàng và doanh nghiệp
                 </Link>
               </li>
               <li>
@@ -1054,33 +1138,33 @@ export default function MarketplacePage() {
               </li>
               <li>
                 <Link to="/register" className="hover:text-[#B88E4F] transition font-medium">
-                  Đăng ký mở gian hàng / CTV mới
+                  Đăng ký trở thành đối tác
                 </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <strong className="text-[#1A1612] text-xs font-bold uppercase tracking-wider block mb-3">
-              Chứng Nhận & Bảo Mật
+            <strong className="mb-3 block text-[11px] font-black text-[#1A1612]">
+              An toàn và bảo mật
             </strong>
-            <p className="text-xs text-[#7D715E] leading-relaxed mb-3">
-              ScanMS tuân thủ các tiêu chuẩn bảo mật dữ liệu cao nhất, bảo hộ thanh toán và giải quyết tranh chấp minh bạch.
+            <p className="mb-3 text-[11px] leading-relaxed text-[#7D715E]">
+              SCANMS bảo vệ dữ liệu tài khoản, thông tin đơn hàng và quy trình đối soát đối tác.
             </p>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[10px] font-bold text-[#8C6226]">
-                🔒 256-bit SSL
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#8C6226]">
+                <Shield className="h-3 w-3" /> 256-bit SSL
               </span>
-              <span className="px-2.5 py-1 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[10px] font-bold text-[#8C6226]">
-                🛡️ KYC Verified
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#8C6226]">
+                <BadgeCheck className="h-3 w-3" /> KYC Verified
               </span>
             </div>
           </div>
         </div>
 
-        <div className="max-w-[1520px] mx-auto border-t border-[#EAE4D7] mt-8 pt-6 flex flex-wrap items-center justify-between text-xs text-[#7D715E]">
-          <span>© 2026 ScanMS. All rights reserved. Nền tảng quản lý tiếp thị liên kết FA26SE032.</span>
-          <div className="flex items-center gap-4 text-[#7D715E]">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-3 border-t border-[#EAE4D7] pt-5 text-[10px] text-[#7D715E] sm:flex-row sm:items-center sm:justify-between">
+          <span>© 2026 SCANMS · Nền tảng thương mại tiếp thị liên kết FA26SE032</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[#7D715E]">
             <span className="hover:text-[#1A1612] cursor-pointer">Điều khoản dịch vụ</span>
             <span className="hover:text-[#1A1612] cursor-pointer">Chính sách bảo mật</span>
             <span className="hover:text-[#1A1612] cursor-pointer">Bảo vệ người tiêu dùng</span>
@@ -1434,6 +1518,135 @@ export default function MarketplacePage() {
                 >
                   Đăng ký làm KOC ngay
                 </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULL PRODUCT ZOOM MODAL */}
+      {zoomProduct && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setZoomProduct(null)}
+        >
+          <div
+            className="relative w-full max-w-4xl bg-white border border-[#EAE4D7] rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[92vh] animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => setZoomProduct(null)}
+              className="absolute top-3 right-3 z-20 w-9 h-9 rounded-full bg-white/95 hover:bg-white text-[#1A1612] border border-[#EAE4D7] shadow-md flex items-center justify-center transition cursor-pointer hover:scale-105"
+              aria-label="Đóng xem chi tiết"
+            >
+              <X className="w-5 h-5 text-[#7D715E]" />
+            </button>
+
+            {/* Left: Large High-Resolution Image Viewport */}
+            <div className="relative flex-1 bg-[#FAF8F5] flex items-center justify-center p-4 sm:p-8 min-h-[320px] md:min-h-[480px] overflow-hidden group">
+              <img
+                src={zoomProduct.image}
+                alt={zoomProduct.name}
+                className="max-h-[55vh] md:max-h-[75vh] w-auto max-w-full object-contain rounded-2xl shadow-sm transition-transform duration-300 hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/reference/assets/serum-hero-optimized.jpg';
+                }}
+              />
+              <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[11px] font-medium flex items-center gap-1.5 pointer-events-none">
+                <ZoomIn className="w-3.5 h-3.5 text-[#EEDFC6]" />
+                <span>Xem chi tiết độ phân giải cao</span>
+              </div>
+            </div>
+
+            {/* Right: Product Summary & Quick Actions */}
+            <div className="w-full md:w-80 lg:w-96 p-5 sm:p-6 flex flex-col justify-between border-t md:border-t-0 md:border-l border-[#EAE4D7] bg-white text-left">
+              <div className="space-y-4">
+                {/* Store badge */}
+                <div className="flex items-center gap-2 text-xs text-[#7D715E]">
+                  <Store className="w-4 h-4 text-[#B88E4F]" />
+                  <span className="font-bold text-[#1A1612]">{zoomProduct.brand}</span>
+                  <span className="px-1.5 py-0.5 rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-bold border border-[#EEDFC6]">
+                    KYC Verified
+                  </span>
+                </div>
+
+                {/* Title */}
+                <h3 className="text-base sm:text-lg font-black text-[#1A1612] leading-snug">
+                  {zoomProduct.name}
+                </h3>
+
+                {/* Category & SKU */}
+                <div className="flex flex-wrap gap-2 text-[11px] text-[#7D715E]">
+                  {zoomProduct.category && (
+                    <span className="px-2 py-0.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7]">
+                      {zoomProduct.category}
+                    </span>
+                  )}
+                  {zoomProduct.sku && (
+                    <span className="px-2 py-0.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
+                      SKU: {zoomProduct.sku}
+                    </span>
+                  )}
+                </div>
+
+                {/* Price block */}
+                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-black text-[#8C6226]">
+                      {formatMoney(zoomProduct.price)}
+                    </span>
+                    {zoomProduct.origPrice > zoomProduct.price && (
+                      <span className="text-xs text-[#7D715E] line-through">
+                        {formatMoney(zoomProduct.origPrice)}
+                      </span>
+                    )}
+                  </div>
+                  {(zoomProduct.commissionRate || 0) > 0 && (
+                    <p className="text-[11px] font-bold text-[#B88E4F] m-0">
+                      Hoa hồng CTV/KOL: {zoomProduct.commissionRate}% (~{formatMoney(zoomProduct.commissionAmount || Math.round((zoomProduct.price * (zoomProduct.commissionRate || 0)) / 100))})
+                    </p>
+                  )}
+                </div>
+
+                {/* Assurance notice */}
+                <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#7A561B] space-y-1">
+                  <p className="font-bold m-0 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    Cam kết chính hãng 100%
+                  </p>
+                  <p className="m-0 text-[#7D715E]">
+                    Đồng kiểm khi nhận hàng · Đổi trả trong 14 ngày nếu có lỗi từ nhà sản xuất.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 space-y-2">
+                <Link
+                  to={`/products/${zoomProduct.sku || zoomProduct.id}`}
+                  onClick={() => setZoomProduct(null)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold text-center flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                >
+                  <span>Xem trang chi tiết đầy đủ</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = zoomProduct;
+                    setZoomProduct(null);
+                    handleOpenDirectCheckout(p);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#1A1612] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Mua ngay sản phẩm này</span>
+                </button>
               </div>
             </div>
           </div>
