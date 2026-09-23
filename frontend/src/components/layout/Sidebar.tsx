@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LogIn, LogOut, Store, ExternalLink } from 'lucide-react';
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
-import type { UserProfile } from '../../services/auth.service';
+import { authService, type UserProfile } from '../../services/auth.service';
 import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface SidebarProps {
@@ -13,14 +14,37 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const role = currentUser?.role || 'COLLABORATOR';
+  const [activeWs, setActiveWs] = useState(() => authService.getActiveWorkspace());
+
+  useEffect(() => {
+    const handleWsChange = () => {
+      setActiveWs(authService.getActiveWorkspace());
+    };
+    window.addEventListener('scanms_workspace_changed', handleWsChange);
+    window.addEventListener('storage', handleWsChange);
+    return () => {
+      window.removeEventListener('scanms_workspace_changed', handleWsChange);
+      window.removeEventListener('storage', handleWsChange);
+    };
+  }, []);
+
+  const role = (() => {
+    if (activeWs === 'shop') return 'SHOP_MANAGER';
+    if (activeWs === 'kol') return 'COLLABORATOR';
+    if (activeWs === 'customer') return 'CUSTOMER';
+    if (activeWs === 'admin') {
+      return currentUser?.role === 'SYSTEM_MANAGER' ? 'SYSTEM_MANAGER' : 'SYSTEM_ADMIN';
+    }
+    return currentUser?.role || 'COLLABORATOR';
+  })();
+
   const navConfig = NAVIGATION_BY_ROLE[role] || NAVIGATION_BY_ROLE.COLLABORATOR;
   const roleLabel = {
     CUSTOMER: 'Khách Mua Hàng',
     COLLABORATOR: 'KOL / KOC Đối Tác',
     SHOP_MANAGER: 'Chủ Gian Hàng',
-    SYSTEM_MANAGER: 'Vận Hành Hệ Thống',
-    SYSTEM_ADMIN: 'Ban Quản Trị',
+    SYSTEM_MANAGER: 'Vận Hành & Tuân Thủ',
+    SYSTEM_ADMIN: 'Ban Quản Trị Tối Cao',
   }[role] || 'Người Dùng';
 
   const isLinkActive = (path: string) => {
@@ -91,6 +115,13 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         currentPath.startsWith('/admin/analytics') ||
         currentPath.startsWith('/admin/leaderboard') ||
         currentPath.startsWith('/admin/kol-recommendations')
+      );
+    }
+
+    if (path === '/admin/users') {
+      return (
+        currentPath.startsWith('/admin/users') ||
+        currentPath.startsWith('/merchant/kyc-approval')
       );
     }
 

@@ -251,6 +251,20 @@ export class AuthService {
       });
     }
 
+    // Tự động khởi tạo tài khoản mẫu System Manager nếu chưa có trong DB
+    if (!user && normalizedEmail === 'manager@scanms.vn') {
+      const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
+      user = await this.prisma.user.create({
+        data: {
+          email: 'manager@scanms.vn',
+          passwordHash: defaultPasswordHash,
+          role: UserRole.SYSTEM_MANAGER,
+          fullName: 'Lê Hồng Phúc (Vận Hành & Tuân Thủ)',
+          phoneNumber: '0901000002',
+        },
+      });
+    }
+
     if (!user) {
       return null;
     }
@@ -308,6 +322,25 @@ export class AuthService {
             wardName: 'Phường Linh Trung',
             detailAddress: 'Khu Công Nghệ Cao, Đường D1',
             isDefault: true,
+          },
+        });
+      }
+    }
+
+    // Tự động khởi tạo tài khoản mẫu System Manager nếu chưa có trong DB
+    if (normalizedEmail === 'manager@scanms.vn') {
+      const existingManager = await this.prisma.user.findUnique({
+        where: { email: 'manager@scanms.vn' },
+      });
+      if (!existingManager) {
+        const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
+        await this.prisma.user.create({
+          data: {
+            email: 'manager@scanms.vn',
+            passwordHash: defaultPasswordHash,
+            role: UserRole.SYSTEM_MANAGER,
+            fullName: 'Lê Hồng Phúc (Vận Hành & Tuân Thủ)',
+            phoneNumber: '0901000002',
           },
         });
       }
