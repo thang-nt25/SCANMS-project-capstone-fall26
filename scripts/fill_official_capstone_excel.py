@@ -262,55 +262,36 @@ def fill_official_capstone_excel():
             "mssv": "SE184527",
             "name": "Phan Xuân Thịnh",
             "tasks": [
-                "Phân hệ Ví điện tử CTV, quản lý số dư khả dụng, tạm giữ và đóng băng",
-                "Lịch sử giao dịch tài chính, biến động số dư và khấu trừ hoàn trả",
-                "Quy trình giải ngân hàng loạt Batch Payout xuất file VietQR Napas247 XLSX",
-                "Khấu trừ thuế TNCN 10% tự động theo quy định cho lệnh >= 2 triệu VNĐ"
+                "Giỏ hàng đồng bộ Database PostgreSQL, lưu trữ tập trung",
+                "Quy trình gửi yêu cầu Đổi trả 14 ngày (bắt buộc video mở hộp)",
+                "Ràng buộc đánh giá thật (Review Gate: đơn COMPLETED mới được review)",
+                "Trang chính sách gian hàng trước checkout & Chat Khách ⇄ Shop"
             ],
-            "w1": "✅ Thiết kế sơ đồ luồng tài chính và cấu trúc bảng ví tiền, giao dịch.",
-            "w2": "✅ Hoàn thành cấu hình API ví tiền, nạp rút và xem lịch sử giao dịch (FR-21, FR-22).",
-            "w3": "⭐ Hoàn thành cơ chế quyết toán hoa hồng sau 14 ngày Escrow, module khấu trừ thuế TNCN 10% và xuất file Batch Payout VietQR XLSX (FR-23, FR-24).",
+            "w1": "✅ Nghiên cứu cơ chế giỏ hàng đồng bộ đa thiết bị và quy định đổi trả E-commerce.",
+            "w2": "✅ Hoàn thành cấu hình Cổng Khách Hàng (Customer Portal) và sổ địa chỉ giao hàng.",
+            "w3": "⭐ Hoàn thành luồng Đổi trả 14 ngày phía Khách (đính kèm video), Ràng buộc đánh giá chỉ cho đơn COMPLETED, Giỏ hàng đồng bộ Database.",
             "w4_14": {
-                "w4": "⏳ Tích hợp cổng tra cứu mã giao dịch ngân hàng VietQR tự động.",
-                "w5": "⏳ Báo cáo tổng hợp số liệu thuế TNCN định kỳ gửi cơ quan thuế.",
-                "w6": "⏳ Kiểm thử tích hợp luồng rút tiền -> Duyệt lệnh -> Xuất file Batch Payout.",
-                "w7": "⏳ Kiểm thử an toàn số dư ví (chống race-condition, double spending).",
-                "w8": "⏳ Kiểm thử UAT tính năng rút tiền và kiểm tra sao kê tài chính.",
-                "w9": "⏳ Tối ưu hóa truy vấn bảng giao dịch và lịch sử biến động số dư.",
-                "w10": "⏳ Soạn thảo tài liệu quy trình đối soát và chi trả hoa hồng.",
-                "w11": "⏳ Viết phần Báo cáo Đồ án về Phân hệ Quản trị Tài chính & Chi trả.",
-                "w12": "⏳ Quay video demo quy trình đối soát và xuất file VietQR thanh toán.",
-                "w13": "⏳ Kiểm tra tính chính xác của sổ cái tài chính trước bảo vệ.",
-                "w14": "⏳ Trình bày slide phần Quản trị Tài chính & Đối soát hoa hồng trước Hội đồng."
-            }
-        },
-        {
-            "mssv": "SE172768",
-            "name": "Trần Văn Nhật",
-            "tasks": [
-                "Kho tài nguyên số tập trung Media Hub (banner, video review, copywriting)",
-                "Quản lý liên kết tài khoản Mạng xã hội KOL (TikTok, Facebook, YouTube, IG)",
-                "Hệ thống Chat trao đổi trực tiếp giữa KOL và Shop qua Socket.io realtime",
-                "Quy trình 4 bước gửi và phê duyệt sản phẩm dùng thử (Sample Request)"
-            ],
-            "w1": "✅ Thiết kế cấu trúc lưu trữ Media Hub và phân loại tài nguyên quảng bá.",
-            "w2": "✅ Hoàn thành FR-07 (Media Hub) và FR-08 (Kênh mạng xã hội KOL).",
-            "w3": "⭐ Hoàn thiện luồng liên hệ trực tiếp Shop trên Marketplace và chuẩn bị hạ tầng Socket.io cho đàm phán deal hoa hồng độc quyền.",
-            "w4_14": {
-                "w4": "⏳ Hoàn thiện UI/UX hộp chat realtime và tính năng đính kèm link sản phẩm.",
-                "w5": "⏳ Quy trình quản lý gửi hàng mẫu (Sample Product) và xác nhận đã nhận hàng.",
-                "w6": "⏳ Kiểm thử kết nối WebSocket đồng thời 500 người dùng chat realtime.",
-                "w7": "⏳ Kiểm tra phân quyền truy cập file Media Hub và bảo vệ bản quyền ảnh/video.",
-                "w8": "⏳ Kiểm thử UAT tính năng chat thương lượng giữa Shop và KOL.",
-                "w9": "⏳ Tối ưu hóa CDN tải ảnh/video trên Media Hub.",
-                "w10": "⏳ Soạn thảo hướng dẫn sử dụng Media Hub và Chat cho Shop & KOL.",
-                "w11": "⏳ Viết phần Báo cáo Đồ án về Kho Nội Dung Số & Hệ thống Giao tiếp.",
-                "w12": "⏳ Chuẩn bị kịch bản demo luồng chat đàm phán và gửi hàng mẫu.",
-                "w13": "⏳ Hoàn thiện toàn bộ tài liệu kiểm thử phân hệ Media & Chat.",
-                "w14": "⏳ Trình bày slide phần Media Hub & Chat Realtime trước Hội đồng."
+                "w4": "⏳ Hoàn thiện giao diện Chat trực tiếp Khách hàng ⇄ Chủ Shop từ trang chi tiết sản phẩm.",
+                "w5": "⏳ Tối ưu hóa trải nghiệm xem đơn hàng và tiến độ hoàn tiền trực quan.",
+                "w6": "⏳ Kiểm thử tích hợp E2E luồng: Thêm giỏ -> Đặt hàng -> Nhận hàng -> Đổi trả.",
+                "w7": "⏳ Kiểm thử an toàn thông tin giỏ hàng và dữ liệu địa chỉ khách hàng.",
+                "w8": "⏳ Kiểm thử UAT với người dùng thật về trải nghiệm mua sắm và gửi khiếu nại.",
+                "w9": "⏳ Tối ưu hóa truy vấn Database giỏ hàng và danh sách đơn mua của khách.",
+                "w10": "⏳ Soạn thảo tài liệu hướng dẫn mua sắm và quy trình khiếu nại đổi trả cho khách.",
+                "w11": "⏳ Viết phần Báo cáo Đồ án về Phân hệ Khách Hàng & Trải Nghiệm Mua Sắm.",
+                "w12": "⏳ Chuẩn bị kịch bản demo hành trình mua sắm, nhận hàng và đánh giá sản phẩm.",
+                "w13": "⏳ Hoàn thiện hồ sơ nghiệm thu kỹ thuật phân hệ Khách Hàng.",
+                "w14": "⏳ Trình bày slide phần Cổng Khách Hàng & Đổi Trả trước Hội đồng."
             }
         }
     ]
+
+    # Clear row 10 in Sheet 2
+    for c in range(1, 28):
+        cell_10 = ws2.cell(row=10, column=c)
+        cell_10.value = None
+        cell_10.fill = PatternFill(fill_type=None)
+        cell_10.border = Border()
 
     for idx, m in enumerate(members):
         row = 6 + idx

@@ -318,14 +318,6 @@ def create_progress_report():
             "GET /api/v1/wallets/my-balance\nGET /api/v1/wallets/transactions",
             "backend/src/modules/wallets/wallets.service.ts",
             "wallets, balance_histories", "COMPLETED 100%", "PR #44, #45"
-        ),
-        (
-            8, "Trần Văn Nhật", "nhat", "FR-07, FR-08", 
-            "Media Hub kho nội dung quảng bá & Liên kết tài khoản mạng xã hội KOL",
-            "frontend/src/pages/collaborator/MarketingToolkitPage.tsx\nfrontend/src/pages/collaborator/SocialChannelsPage.tsx",
-            "GET /api/v1/media-hub\nPOST /api/v1/social-channels/link",
-            "backend/src/modules/media/media.service.ts\nbackend/src/modules/social-channels/",
-            "media_assets, social_accounts", "COMPLETED 100%", "PR #42, #43"
         )
     ]
 
@@ -377,7 +369,7 @@ def create_progress_report():
         ws3[f"B{r}"] = val
         ws3[f"B{r}"].font = Font(name="Calibri", size=10, color=navy_dark if offset in [0, 4] else text_dark)
 
-    ws3['A12'] = "2. DANH SÁCH SINH VIÊN THỰC HIỆN ĐỒ ÁN"
+    ws3['A12'] = "2. DANH SÁCH SINH VIÊN THỰC HIỆN ĐỒ ÁN (NHÓM 4 THÀNH VIÊN CHÍNH THỨC)"
     ws3['A12'].font = Font(name="Calibri", size=11, bold=True, color=gold_brand)
 
     members_header = ["STT", "Họ và Tên", "MSSV", "Điện thoại", "Email FPT", "Vai trò trong Đồ án", "Phạm vi phân công chuyên trách"]
@@ -390,11 +382,10 @@ def create_progress_report():
         cell.border = border_header
 
     members_data = [
-        (1, "Nguyễn Thành Thắng", "SE184251", "0966823637", "Thangntse184251@fpt.edu.vn", "Trưởng nhóm (Leader)", "Kiến trúc tổng thể, Core IAM đa vai trò, Phân quyền RBAC, Quản lý Gian hàng & Sản phẩm, Escrow 14 ngày & Tích hợp sàn (FR-01 → FR-08, FR-17 → FR-20)."),
-        (2, "Nguyễn Đình Tuấn", "SE180104", "0787664860", "tuanndse182540@fpt.edu.vn", "Thành viên (Member)", "Động cơ Tracking Smart Link & Dynamic QR Code, Last-Click Cookie 30 ngày, Redis Rate Limit chống spam click, UI Marketplace & Search Zoom (FR-09 → FR-16)."),
-        (3, "Nguyễn Phú Quý", "SE180104", "0766824448", "Quynpse180104@fpt.edu.vn", "Thành viên (Member)", "Động cơ AI Fraud Sentinel phát hiện gian lận traffic, Hệ thống Audit Logs an ninh bất biến, Trợ lý AI gợi ý KOL phù hợp (FR-30, FR-31, FR-32)."),
-        (4, "Phan Xuân Thịnh", "SE184527", "0945645753", "thinhpxse184527@fpt.edu.vn", "Thành viên (Member)", "Ví điện tử CTV, Đối soát hoa hồng tự động, Quy trình Batch Payout xuất file VietQR Napas247 XLSX và Khấu trừ thuế TNCN 10% (FR-21 → FR-24)."),
-        (5, "Trần Văn Nhật", "SE172768", "0949997692", "NhatTVSE172768@fpt.efu.vn", "Thành viên (Member)", "Kho nội dung số tập trung Media Hub, Quản lý liên kết mạng xã hội KOL, Hệ thống Chat trao đổi KOL - Shop qua Socket.io realtime (FR-07, FR-08, FR-26).")
+        (1, "Nguyễn Thành Thắng", "SE184251", "0966823637", "Thangntse184251@fpt.edu.vn", "Trưởng nhóm (Leader)", "Kiến trúc hệ thống, Core IAM đa vai trò, Bảo mật Argon2id/JWT/OTP, Cơ chế Escrow 14 ngày, Cổng trọng tài phân xử tranh chấp & Thiết kế Design System Vàng Be."),
+        (2, "Nguyễn Đình Tuấn", "SE180104", "0787664860", "tuanndse182540@fpt.edu.vn", "Thành viên (Member)", "Tiếp thị liên kết KOL/KOC, Phân cấp hoa hồng 2 tầng (Open vs Exclusive), Quy trình cấp hàng mẫu 4 bước, Voucher phiên Livestream & Phê duyệt Shop Onboarding (KYC) / Sản phẩm."),
+        (3, "Nguyễn Phú Quý", "SE180104", "0766824448", "Quynpse180104@fpt.edu.vn", "Thành viên (Member)", "Phân hệ Chủ Gian Hàng (Merchant Operations), Quản lý tồn kho real-time & cảnh báo tồn <= 5, Shop chủ động hủy đơn & hoàn tiền, Bộ mô phỏng vận chuyển Shipping Simulator in phiếu A6 barcode, Tiếp nhận đổi trả phía Shop."),
+        (4, "Phan Xuân Thịnh", "SE184527", "0945645753", "thinhpxse184527@fpt.edu.vn", "Thành viên (Member)", "Cổng Khách Hàng (Customer Portal), Giỏ hàng đồng bộ Database PostgreSQL, Quy trình gửi yêu cầu Đổi trả 14 ngày kèm video mở hộp, Ràng buộc đánh giá thật Review Gate (đơn COMPLETED), Kênh chat tư vấn Khách ⇄ Shop.")
     ]
 
     for r_idx, m in enumerate(members_data, start=14):
