@@ -14,8 +14,12 @@ import {
   Settings,
   MessageSquare,
   Wallet,
+  ShoppingBag,
+  MapPin,
+  Heart,
 } from 'lucide-react';
 import { ScanMSLogo } from '../common/ScanMSLogo';
+import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 import { authService, type UserProfile } from '../../services/auth.service';
 
 export interface PublicHeaderProps {
@@ -89,17 +93,22 @@ export function PublicHeader({
   };
 
   const role = currentUser?.role;
+  const isCustomer = role === 'CUSTOMER';
   const isKol = role === 'COLLABORATOR';
   const isShop = role === 'SHOP_MANAGER';
   const isAdmin = role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER';
 
-  const workspacePath = isShop
+  const workspacePath = isCustomer
+    ? '/customer/orders'
+    : isShop
     ? '/merchant/dashboard'
     : isAdmin
     ? '/admin/users'
     : '/collaborator/dashboard';
 
-  const workspaceLabel = isShop
+  const workspaceLabel = isCustomer
+    ? 'Đơn Mua Của Tôi 🛍️'
+    : isShop
     ? 'Vào Quản Lý Shop ↗'
     : isAdmin
     ? 'Vào Ban Quản Trị ↗'
@@ -186,17 +195,8 @@ export function PublicHeader({
           {currentUser ? (
             /* Logged in User Profile & Workspace Link */
             <div className="flex items-center gap-2">
-              {/* Distinct Workspace CTA Button */}
-              <Link
-                to={workspacePath}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-98"
-                title={`Mở không gian làm việc dành cho ${isShop ? 'Chủ Shop' : isAdmin ? 'Quản trị' : 'KOL'}`}
-              >
-                {isKol && <Sparkles className="w-3.5 h-3.5" />}
-                {isShop && <Store className="w-3.5 h-3.5" />}
-                {isAdmin && <Shield className="w-3.5 h-3.5" />}
-                <span>{workspaceLabel}</span>
-              </Link>
+              {/* Workspace Switcher Component */}
+              <WorkspaceSwitcher variant="header" />
 
               {/* User Dropdown Pill */}
               <div className="relative" ref={userMenuRef}>
@@ -214,7 +214,7 @@ export function PublicHeader({
                       {currentUser.fullName || currentUser.email}
                     </strong>
                     <span className="block text-[10px] font-semibold text-[#B88E4F] truncate leading-tight mt-0.5">
-                      {isKol ? '⭐ KOL / KOC' : isShop ? `🏪 ${storeName}` : '🛡️ Quản Trị'}
+                      {isCustomer ? '🛍️ Khách Mua Hàng' : isKol ? '⭐ KOL / KOC' : isShop ? `🏪 ${storeName}` : '🛡️ Quản Trị'}
                     </span>
                   </div>
                   <ChevronDown className={`w-3.5 h-3.5 text-[#A49B8B] transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
@@ -243,7 +243,9 @@ export function PublicHeader({
                       <div className="mt-2 pt-2 border-t border-[#EAE4D7] flex items-center justify-between text-[11px]">
                         <span className="text-[#7D715E] font-medium">Vai trò:</span>
                         <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
-                          {isKol
+                          {isCustomer
+                            ? '🛍️ Khách Mua Sắm'
+                            : isKol
                             ? '⭐ KOL / KOC Đối Tác'
                             : isShop
                             ? `🏪 Chủ Shop (${storeName})`
@@ -254,16 +256,80 @@ export function PublicHeader({
 
                     {/* Navigation Options */}
                     <div className="space-y-1 py-1">
-                      <Link
-                        to={workspacePath}
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                      >
-                        {isKol && <Sparkles className="w-4 h-4 text-[#B88E4F]" />}
-                        {isShop && <Store className="w-4 h-4 text-[#B88E4F]" />}
-                        {isAdmin && <Shield className="w-4 h-4 text-[#B88E4F]" />}
-                        <span>{workspaceLabel}</span>
-                      </Link>
+                      {isCustomer && (
+                        <>
+                          <Link
+                            to="/customer/orders"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                          >
+                            <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
+                            <span>Đơn mua của tôi</span>
+                          </Link>
+                          <Link
+                            to="/customer/addresses"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                          >
+                            <MapPin className="w-4 h-4 text-[#B88E4F]" />
+                            <span>Sổ địa chỉ nhận hàng</span>
+                          </Link>
+                          <Link
+                            to="/customer/wishlist"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                          >
+                            <Heart className="w-4 h-4 text-[#B88E4F]" />
+                            <span>Sản phẩm yêu thích</span>
+                          </Link>
+                          <Link
+                            to="/customer/profile"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                          >
+                            <Settings className="w-4 h-4 text-[#7D715E]" />
+                            <span>Hồ sơ & Bảo mật</span>
+                          </Link>
+                        </>
+                      )}
+
+                      {!isCustomer && (
+                        <Link
+                          to={workspacePath}
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                        >
+                          {isKol && <Sparkles className="w-4 h-4 text-[#B88E4F]" />}
+                          {isShop && <Store className="w-4 h-4 text-[#B88E4F]" />}
+                          {isAdmin && <Shield className="w-4 h-4 text-[#B88E4F]" />}
+                          <span>{workspaceLabel}</span>
+                        </Link>
+                      )}
+
+                      {!isCustomer && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            authService.switchWorkspace('customer', navigate);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition text-left cursor-pointer"
+                        >
+                          <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
+                          <span>Đơn mua cá nhân (Cổng Khách Hàng)</span>
+                        </button>
+                      )}
+
+                      {isCustomer && (
+                        <Link
+                          to="/customer/orders?tab=upgrade"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] rounded-xl hover:bg-[#F3EFE6] border border-[#EEDFC6] transition mt-1"
+                        >
+                          <Sparkles className="w-4 h-4 text-[#B88E4F]" />
+                          <span>Nâng cấp Đối tác (KOL / Shop)</span>
+                        </Link>
+                      )}
 
                       {isKol && (
                         <>
@@ -307,14 +373,16 @@ export function PublicHeader({
                         </>
                       )}
 
-                      <Link
-                        to={isShop ? '/merchant/settings' : isAdmin ? '/admin/users' : '/collaborator/profile'}
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                      >
-                        <Settings className="w-4 h-4 text-[#7D715E]" />
-                        <span>Cài đặt & Hồ sơ tài khoản</span>
-                      </Link>
+                      {!isCustomer && (
+                        <Link
+                          to={isShop ? '/merchant/settings' : isAdmin ? '/admin/users' : '/collaborator/profile'}
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                        >
+                          <Settings className="w-4 h-4 text-[#7D715E]" />
+                          <span>Cài đặt & Hồ sơ tài khoản</span>
+                        </Link>
+                      )}
                     </div>
 
                     {/* Explicit Logout Button */}

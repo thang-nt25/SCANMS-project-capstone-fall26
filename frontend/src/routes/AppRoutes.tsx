@@ -24,6 +24,7 @@ const PayoutApprovalPage = lazy(() => import('../pages/merchant/PayoutApprovalPa
 
 const WalletPage = lazy(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazy(() => import('../pages/public/OrderTrackingPage'));
+const CustomerPortalPage = lazy(() => import('../pages/customer/CustomerPortalPage'));
 const ChatBoxPage = lazy(() => import('../pages/chat/ChatBoxPage'));
 const RealtimeAnalyticsPage = lazy(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 const LeaderboardPage = lazy(() => import('../pages/dashboard/LeaderboardPage'));
@@ -65,6 +66,17 @@ function AppRoutes() {
 
         <Route path="/tracking" element={<OrderTrackingPage />} />
         <Route path="/order-tracking" element={<OrderTrackingPage />} />
+
+        {/* Customer Portal & Buyer Center (Shopee/Lazada Style) */}
+        <Route path="/customer" element={<CustomerPortalPage />} />
+        <Route path="/customer/portal" element={<CustomerPortalPage />} />
+        <Route path="/customer/orders" element={<CustomerPortalPage />} />
+        <Route path="/customer/profile" element={<CustomerPortalPage />} />
+        <Route path="/customer/addresses" element={<CustomerPortalPage />} />
+        <Route path="/customer/wishlist" element={<CustomerPortalPage />} />
+        <Route path="/customer/upgrade" element={<CustomerPortalPage />} />
+        <Route path="/customer/upgrade/kol" element={<CustomerPortalPage />} />
+        <Route path="/customer/upgrade/shop" element={<CustomerPortalPage />} />
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

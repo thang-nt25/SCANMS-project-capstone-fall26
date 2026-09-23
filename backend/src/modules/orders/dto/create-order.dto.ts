@@ -89,6 +89,14 @@ export class CreateOrderDto {
   @MaxLength(254)
   customerEmail?: string;
 
+  @ApiPropertyOptional({
+    description: 'ID người dùng đã đăng nhập (Customer ID nếu có)',
+    example: 'uuid-user-id',
+  })
+  @IsOptional()
+  @IsUUID('all', { message: 'customerId phải là UUID hợp lệ' })
+  customerId?: string;
+
   @ApiProperty({
     description: 'Địa chỉ nhận hàng chi tiết',
     example: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',

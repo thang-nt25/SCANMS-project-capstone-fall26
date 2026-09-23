@@ -54,7 +54,7 @@ export class RegisterDto {
   @ApiPropertyOptional({
     enum: UserRole,
     default: UserRole.COLLABORATOR,
-    description: 'Vai trò tài khoản: COLLABORATOR hoặc SHOP_MANAGER',
+    description: 'Vai trò tài khoản: COLLABORATOR, SHOP_MANAGER, hoặc CUSTOMER',
   })
   @IsOptional()
   @IsEnum(UserRole, { message: 'Vai trò không hợp lệ' })
