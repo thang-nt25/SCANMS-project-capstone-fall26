@@ -17,7 +17,10 @@ export default function DashboardDispatcher() {
     return <ShopDashboardPage />;
   }
 
-  if (activeWs === 'admin' && (user.role === 'SYSTEM_ADMIN' || user.role === 'SYSTEM_MANAGER')) {
+  if (activeWs === 'admin') {
+    if (user.role === 'SYSTEM_ADMIN') {
+      return <Navigate to="/admin/analytics" replace />;
+    }
     return <KycApprovalPage />;
   }
 
@@ -33,7 +36,11 @@ export default function DashboardDispatcher() {
     return <ShopDashboardPage />;
   }
 
-  if (user.role === 'SYSTEM_ADMIN' || user.role === 'SYSTEM_MANAGER') {
+  if (user.role === 'SYSTEM_ADMIN') {
+    return <Navigate to="/admin/analytics" replace />;
+  }
+
+  if (user.role === 'SYSTEM_MANAGER') {
     return <KycApprovalPage />;
   }
 
