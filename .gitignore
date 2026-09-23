@@ -75,4 +75,29 @@ docs/templates_doc/
 skills-lock.json
 .gemini/
 
+# Temporary Docx & Python Runtimes
+.docx_deps/
+.docx_runtime*/
+docs/.docx_runtime*/
+**/.docx_runtime*/
+docs/*_render/
+docs/*.backup_*
+
+# Office / Word temp lock files
+~$*
+~$*.docx
+~$*.pptx
+~$*.xlsx
+
+# Local helper scripts & tools for document rendering
+tools/
+docs/audit_report.py
+docs/build_scanms_*.py
+docs/compare_outside_kol_section.py
+docs/edit_kol_link_section.py
+docs/inspect_doc_section.py
+docs/rasterize_report.py
+docs/render_scanms_report.py
+
+
 

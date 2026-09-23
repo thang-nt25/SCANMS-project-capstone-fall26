@@ -119,14 +119,11 @@ export function PublicHeader({
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
       <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-3 sm:gap-6">
-        {/* Left: Brand Logo & Marketplace Badge */}
+        {/* Left: Brand Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
             <ScanMSLogo size="sm" />
           </Link>
-          <span className="hidden xl:inline-block px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
-            Sàn TMĐT Tiếp Thị Liên Kết
-          </span>
         </div>
 
         {/* Center: Search Form */}
