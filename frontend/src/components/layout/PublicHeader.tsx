@@ -21,6 +21,7 @@ import {
 import { ScanMSLogo } from '../common/ScanMSLogo';
 import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 import { authService, type UserProfile } from '../../services/auth.service';
+import { useCart } from '../../context/CartContext';
 
 export interface PublicHeaderProps {
   cartCount?: number;
@@ -31,7 +32,7 @@ export interface PublicHeaderProps {
 }
 
 export function PublicHeader({
-  cartCount = 0,
+  cartCount,
   onOpenCart,
   onOpenTracking,
   defaultSearchQuery = '',
@@ -39,6 +40,10 @@ export function PublicHeader({
 }: PublicHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { totalCount, openCart } = useCart();
+
+  const effectiveCartCount = cartCount !== undefined ? cartCount : totalCount;
+  const handleCartClick = onOpenCart || openCart;
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
   const [searchQuery, setSearchQuery] = useState(defaultSearchQuery);
@@ -178,15 +183,15 @@ export function PublicHeader({
           {/* Quick Cart Button */}
           <button
             type="button"
-            onClick={onOpenCart}
+            onClick={handleCartClick}
             className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
-            title="Mở giỏ hàng"
+            title="Mở giỏ hàng sàn SCANMS"
           >
             <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
             <span className="hidden sm:inline">Giỏ hàng</span>
-            {cartCount > 0 && (
+            {effectiveCartCount > 0 && (
               <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[10px] font-black flex items-center justify-center -mr-1">
-                {cartCount}
+                {effectiveCartCount}
               </span>
             )}
           </button>

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   Sparkles,
   Store,
@@ -31,6 +31,23 @@ import { toast } from '../../utils/toast';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedRedirect = searchParams.get('redirect');
+  const returnTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\')
+    ? requestedRedirect
+    : null;
+  const registerUrl = returnTo ? `/register?redirect=${encodeURIComponent(returnTo)}` : '/register';
+  const navigateAfterLogin = (userRole?: string) => {
+    if (returnTo) {
+      navigate(returnTo);
+      return;
+    }
+    if (userRole === 'SHOP_MANAGER') navigate('/merchant/dashboard');
+    else if (userRole === 'SYSTEM_ADMIN') navigate('/admin/analytics');
+    else if (userRole === 'SYSTEM_MANAGER') navigate('/admin/users');
+    else if (userRole === 'CUSTOMER') navigate('/customer/orders');
+    else navigate('/collaborator/dashboard');
+  };
   const [role, setRole] = useState<'customer' | 'kol' | 'shop' | 'admin' | 'manager'>('customer');
   const [email, setEmail] = useState('customer@scanms.vn');
   const [password, setPassword] = useState('Password@123');
@@ -149,17 +166,7 @@ export default function LoginPage() {
         setSuccessNotice(`Đăng nhập thành công với vai trò ${user?.fullName || targetEmail}!`);
 
         setTimeout(() => {
-          if (user?.role === 'SHOP_MANAGER') {
-            navigate('/merchant/dashboard');
-          } else if (user?.role === 'SYSTEM_ADMIN') {
-            navigate('/admin/analytics');
-          } else if (user?.role === 'SYSTEM_MANAGER') {
-            navigate('/admin/users');
-          } else if (user?.role === 'CUSTOMER') {
-            navigate('/customer/orders');
-          } else {
-            navigate('/collaborator/dashboard');
-          }
+          navigateAfterLogin(user?.role);
         }, 500);
       } catch (err: any) {
         const errorMsg =
@@ -187,17 +194,7 @@ export default function LoginPage() {
       setSuccessNotice('Đăng nhập thành công! Đang chuyển hướng...');
 
       setTimeout(() => {
-        if (user?.role === 'SHOP_MANAGER') {
-          navigate('/merchant/dashboard');
-        } else if (user?.role === 'SYSTEM_ADMIN') {
-          navigate('/admin/analytics');
-        } else if (user?.role === 'SYSTEM_MANAGER') {
-          navigate('/admin/users');
-        } else if (user?.role === 'CUSTOMER') {
-          navigate('/customer/orders');
-        } else {
-          navigate('/collaborator/dashboard');
-        }
+        navigateAfterLogin(user?.role);
       }, 600);
     } catch (err: any) {
       const errorMsg =
@@ -230,17 +227,7 @@ export default function LoginPage() {
         const res: any = await authService.googleLogin(idToken, apiRole);
         const user = res?.data?.user || res?.user;
         toast.success(`Đăng nhập Google thành công! Chào mừng ${user?.fullName || user?.email}`);
-        if (user?.role === 'SHOP_MANAGER') {
-          navigate('/merchant/dashboard');
-        } else if (user?.role === 'SYSTEM_ADMIN') {
-          navigate('/admin/analytics');
-        } else if (user?.role === 'SYSTEM_MANAGER') {
-          navigate('/admin/users');
-        } else if (user?.role === 'CUSTOMER') {
-          navigate('/customer/orders');
-        } else {
-          navigate('/collaborator/dashboard');
-        }
+        navigateAfterLogin(user?.role);
       } catch (err: any) {
         setError(err.message || 'Đăng nhập Google thất bại');
       } finally {
@@ -796,7 +783,7 @@ export default function LoginPage() {
               <div className="text-center text-xs text-[#7D715E] mt-1 flex flex-col gap-3 font-medium">
                 <div>
                   Chưa có tài khoản đối tác?{' '}
-                  <Link to="/register" className="font-extrabold text-[#B88E4F] hover:underline">
+                  <Link to={registerUrl} className="font-extrabold text-[#B88E4F] hover:underline">
                     Đăng ký tham gia ngay →
                   </Link>
                 </div>
@@ -811,7 +798,7 @@ export default function LoginPage() {
                         Khách mua hàng trực tiếp
                       </strong>
                       <span className="text-[11px] text-[#7D715E] block truncate">
-                        Không cần tài khoản để duyệt &amp; mua sản phẩm
+                        Xem sản phẩm tự do, đăng nhập khi đặt mua
                       </span>
                     </div>
                   </div>

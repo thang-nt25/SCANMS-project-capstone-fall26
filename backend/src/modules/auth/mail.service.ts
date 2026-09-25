@@ -42,7 +42,7 @@ export class MailService {
     const name = this.escapeHtml(input.customerName);
     const orderCode = this.escapeHtml(input.publicOrderCode);
     const storeName = this.escapeHtml(input.storeName);
-    const paymentMethod = input.paymentMethod === 'VIETQR' ? 'VietQR' : 'COD';
+    const paymentMethod = input.paymentMethod === 'PAYOS' ? 'PayOS' : input.paymentMethod === 'VIETQR' ? 'VietQR' : 'COD';
     const amount = new Intl.NumberFormat('vi-VN').format(input.finalAmount);
     const subject = `[SCANMS] Xác nhận đơn hàng ${input.publicOrderCode}`;
     const html = `

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -37,6 +37,7 @@ import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
+import { useCart } from '../../context/CartContext';
 
 const MARKETPLACE_BANNERS = [
   {
@@ -123,8 +124,7 @@ export default function MarketplacePage() {
   });
 
   // Cart & Gateways
-  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { totalCount: totalCartCount, addItem, openCart } = useCart();
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
@@ -250,13 +250,12 @@ export default function MarketplacePage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isGuideOpen) setIsGuideOpen(false);
-        if (isCartOpen) setIsCartOpen(false);
         if (isRoleDropdownOpen) setIsRoleDropdownOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isGuideOpen, isCartOpen, isRoleDropdownOpen]);
+  }, [isGuideOpen, isRoleDropdownOpen]);
 
   useEffect(() => {
     if (isBannerPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -266,38 +265,25 @@ export default function MarketplacePage() {
     return () => window.clearInterval(timer);
   }, [isBannerPaused]);
 
-  const totalCartCount = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
-  }, [cart]);
-
-  const cartSubtotal = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  }, [cart]);
-
   const handleAddToCart = (product: Product, quantity: number = 1) => {
-    setCart((prev) => {
-      const idx = prev.findIndex((item) => item.product.id === product.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx].quantity += quantity;
-        return next;
-      }
-      return [...prev, { product, quantity }];
-    });
-    toast.success(`Đã thêm ${quantity > 1 ? `x${quantity} ` : ''}"${product.name.slice(0, 32)}..." vào giỏ hàng!`);
-  };
-
-  const handleUpdateCartQuantity = (productId: string, delta: number) => {
-    setCart((prev) => {
-      return prev
-        .map((item) => {
-          if (item.product.id === productId) {
-            const nextQty = item.quantity + delta;
-            return nextQty > 0 ? { ...item, quantity: nextQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as { product: Product; quantity: number }[];
+    addItem({
+      product: {
+        id: product.id,
+        title: product.name,
+        sku: product.sku,
+        price: product.price,
+        originalPrice: product.origPrice,
+        imageUrl: product.image,
+        stockQuantity: product.stockQuantity || 0,
+        variants: product.variants,
+        isActive: true,
+      },
+      store: {
+        id: product.storeId || 'store-default',
+        name: product.brand || 'Gian hàng SCANMS',
+      },
+      quantity,
+      openCartAfterAdd: true,
     });
   };
 
@@ -517,7 +503,7 @@ export default function MarketplacePage() {
               {/* Cart Button */}
               <button
                 type="button"
-                onClick={() => setIsCartOpen(true)}
+                onClick={() => openCart()}
                 className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
                 title="Giỏ hàng của bạn"
               >
@@ -1350,108 +1336,6 @@ export default function MarketplacePage() {
           </div>
         </div>
       </footer>
-
-      {/* Cart Drawer Modal */}
-      {isCartOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setIsCartOpen(false)}
-          className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-6 text-left animate-in slide-in-from-right duration-200"
-          >
-            <div className="flex items-center justify-between pb-4 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-[#B88E4F]" />
-                <strong className="text-base font-black text-[#1A1612]">
-                  Giỏ hàng của bạn ({totalCartCount})
-                </strong>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCartOpen(false)}
-                className="p-1.5 text-[#7D715E] hover:text-[#1A1612] rounded-full hover:bg-[#F3EFE6] transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-3">
-              {cart.length === 0 ? (
-                <div className="text-center py-16 text-[#7D715E]">
-                  <ShoppingCart className="w-12 h-12 text-[#EAE4D7] mx-auto mb-2" />
-                  <p className="text-xs">Giỏ hàng của bạn đang trống</p>
-                </div>
-              ) : (
-                cart.map((item) => (
-                  <div
-                    key={item.product.id}
-                    className="flex items-center gap-3 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl"
-                  >
-                    <img
-                      src={item.product.image}
-                      alt={item.product.name}
-                      className="w-14 h-14 object-cover rounded-xl shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <strong className="text-xs font-bold text-[#1A1612] block truncate">
-                        {item.product.name}
-                      </strong>
-                      <span className="text-xs font-black text-[#B88E4F] block mt-0.5">
-                        {formatMoney(item.product.price)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateCartQuantity(item.product.id, -1)}
-                        className="w-6 h-6 rounded-md bg-white border border-[#EAE4D7] text-xs font-bold flex items-center justify-center hover:bg-[#F3EFE6] cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="text-xs font-bold text-[#1A1612] w-4 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateCartQuantity(item.product.id, 1)}
-                        className="w-6 h-6 rounded-md bg-white border border-[#EAE4D7] text-xs font-bold flex items-center justify-center hover:bg-[#F3EFE6] cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {cart.length > 0 && (
-              <div className="pt-4 border-t border-[#EAE4D7] flex flex-col gap-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-[#7D715E] font-medium">Tạm tính:</span>
-                  <strong className="text-xl font-black text-[#1A1612]">
-                    {formatMoney(cartSubtotal)}
-                  </strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCartOpen(false);
-                    handleOpenDirectCheckout(cart[0].product);
-                  }}
-                  className="w-full py-3 rounded-xl bg-[#C59B58] text-white text-xs sm:text-sm font-black hover:bg-[#B88E4F] transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Tiến hành đặt hàng ({totalCartCount})</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Shopping Guide & Policy Modal */}
       {isGuideOpen && (

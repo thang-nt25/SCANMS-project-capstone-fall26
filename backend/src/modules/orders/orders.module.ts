@@ -13,6 +13,7 @@ import { CloudinaryModule } from '../../core/cloudinary/cloudinary.module';
 import { CheckoutMetricsService } from './checkout-metrics.service';
 
 import { AuthModule } from '../auth/auth.module';
+import { PayosPaymentService } from './payos-payment.service';
 
 @Module({
   imports: [PrismaModule, CouponsModule, WalletsModule, CloudinaryModule, AuthModule],
@@ -24,6 +25,7 @@ import { AuthModule } from '../auth/auth.module';
     ExcelOrderImportService,
     ReviewMediaService,
     CheckoutMetricsService,
+    PayosPaymentService,
   ],
   exports: [OrdersService, CheckoutMetricsService],
 })

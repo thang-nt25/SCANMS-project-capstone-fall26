@@ -23,6 +23,7 @@ import {
   Gauge,
   MessageSquare,
   Heart,
+  ShoppingCart,
 } from 'lucide-react';
 import api from '../services/api';
 import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
@@ -30,6 +31,7 @@ import { PublicHeader } from '../components/layout/PublicHeader';
 import { authService } from '../services/auth.service';
 import { customerService } from '../services/customer.service';
 import { toast } from '../utils/toast';
+import { useCart } from '../context/CartContext';
 
 
 const SCANMS_PLACEHOLDER =
@@ -365,6 +367,7 @@ export default function ProductDetailPage() {
   };
 
   const { slug } = useParams<{ slug: string }>();
+  const { addItem } = useCart();
   const [analyticsConsent, setAnalyticsConsent] = useState<string | null>(() =>
     typeof window === 'undefined'
       ? null
@@ -1251,6 +1254,40 @@ export default function ProductDetailPage() {
                   type="button"
                   disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
                   onClick={() => {
+                    addItem({
+                      product: {
+                        id: product.id,
+                        title: product.title,
+                        sku: currentSku || product.sku,
+                        price: unitPrice,
+                        originalPrice: product.originalPrice ?? undefined,
+                        imageUrl: gallery[0] || product.imageUrl || undefined,
+                        stockQuantity: currentStock,
+                        variants: activeVariants,
+                        isActive: product.isActive,
+                      },
+                      store: {
+                        id: store.id,
+                        name: store.name,
+                        slug: store.slug,
+                      },
+                      variantId: selectedVariant?.id,
+                      quantity,
+                      openCartAfterAdd: true,
+                    });
+                    trackAnalytics('add_to_cart', { productId: product.id, variantId: selectedVariant?.id, quantity });
+                  }}
+                  className="py-4 px-6 rounded-2xl border-2 border-[#C59B58] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#B88E4F] font-black text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Thêm sản phẩm và phân loại đã chọn vào giỏ hàng"
+                >
+                  <ShoppingCart className="w-5 h-5 text-[#B88E4F]" />
+                  <span>Thêm Vào Giỏ</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
+                  onClick={() => {
                     setIsCheckoutOpen(true);
                     trackAnalytics('cta_click', { productId: product.id, variantId: selectedVariant?.id });
                   }}
@@ -1261,7 +1298,7 @@ export default function ProductDetailPage() {
                     {(!product.isActive || product.status === 'INACTIVE')
                       ? 'TẠM NGỪNG KINH DOANH'
                       : currentStock > 0
-                      ? 'ĐẶT MUA NGAY — GIAO HÀNG TẬN NƠI'
+                      ? 'ĐẶT MUA NGAY'
                       : 'TẠM HẾT HÀNG'}
                   </span>
                 </button>

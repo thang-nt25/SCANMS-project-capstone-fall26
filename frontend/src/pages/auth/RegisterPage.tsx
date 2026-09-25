@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Sparkles,
   ShoppingBag,
@@ -24,6 +24,12 @@ import { toast } from '../../utils/toast';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedRedirect = searchParams.get('redirect');
+  const returnTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\')
+    ? requestedRedirect
+    : null;
+  const loginUrl = returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login';
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -127,9 +133,9 @@ export default function RegisterPage() {
       // Tự động đăng nhập luôn để khách không phải gõ lại
       try {
         await authService.login(registeredEmail, password);
-        navigate('/customer/orders');
+        navigate(returnTo || '/customer/orders');
       } catch {
-        navigate('/login');
+        navigate(loginUrl);
       }
     } catch (err: any) {
       const errorMsg =
@@ -151,7 +157,7 @@ export default function RegisterPage() {
       try {
         await authService.googleLogin(idToken, 'CUSTOMER');
         toast.success('Đăng ký & xác thực tài khoản Google thành công!');
-        navigate('/customer/orders');
+        navigate(returnTo || '/customer/orders');
       } catch (err: any) {
         setError(err.message || 'Đăng ký qua Google thất bại');
       } finally {
@@ -188,7 +194,7 @@ export default function RegisterPage() {
         </Link>
         <div className="flex items-center gap-2 text-[#7D715E] font-medium">
           <span>Đã có tài khoản?</span>
-          <Link to="/login" className="font-bold text-[#B88E4F] hover:underline">
+          <Link to={loginUrl} className="font-bold text-[#B88E4F] hover:underline">
             Đăng nhập ngay ↗
           </Link>
         </div>

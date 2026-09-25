@@ -27,6 +27,7 @@ import { authService } from '../../services/auth.service';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
+import { useCart } from '../../context/CartContext';
 
 interface CategoryItem {
   name: string;
@@ -87,8 +88,7 @@ export default function SearchPage() {
   }, [stores, selectedStore, showAllStores]);
 
   // Cart & Modals
-  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { addItem, openCart } = useCart();
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null);
 
@@ -337,16 +337,25 @@ export default function SearchPage() {
   };
 
   const handleAddToCart = (product: Product, quantity = 1) => {
-    setCart((prev) => {
-      const idx = prev.findIndex((item) => item.product.id === product.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx].quantity += quantity;
-        return next;
-      }
-      return [...prev, { product, quantity }];
+    addItem({
+      product: {
+        id: product.id,
+        title: product.name,
+        sku: product.sku,
+        price: product.price,
+        originalPrice: product.origPrice,
+        imageUrl: product.image,
+        stockQuantity: product.stockQuantity || (product as any).stock || 0,
+        variants: product.variants,
+        isActive: true,
+      },
+      store: {
+        id: product.storeId || 'store-default',
+        name: product.brand || (product as any).seller || 'Gian hàng SCANMS',
+      },
+      quantity,
+      openCartAfterAdd: true,
     });
-    toast.success(`Đã thêm "${product.name.slice(0, 32)}..." vào giỏ hàng!`);
   };
 
   // Filter content renderer (shared by Desktop Sidebar and Mobile Drawer)
@@ -629,8 +638,7 @@ export default function SearchPage() {
 
       {/* Unified Public Header */}
       <PublicHeader
-        cartCount={cart.reduce((s, i) => s + i.quantity, 0)}
-        onOpenCart={() => setIsCartOpen(true)}
+        onOpenCart={openCart}
         defaultSearchQuery={searchInput}
         onSearchSubmit={(q) => {
           setSearchInput(q);
@@ -1144,134 +1152,6 @@ export default function SearchPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Cart Drawer Modal */}
-      {isCartOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setIsCartOpen(false)}
-          className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-6 text-left animate-in slide-in-from-right duration-200"
-          >
-            <div className="flex items-center justify-between pb-4 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-[#B88E4F]" />
-                <strong className="text-base font-black text-[#1A1612]">
-                  Giỏ hàng của bạn ({cart.reduce((s, i) => s + i.quantity, 0)})
-                </strong>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCartOpen(false)}
-                className="p-1.5 text-[#7D715E] hover:text-[#1A1612] rounded-full hover:bg-[#F3EFE6] transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-3">
-              {cart.length === 0 ? (
-                <div className="text-center py-16 text-[#7D715E]">
-                  <ShoppingCart className="w-12 h-12 text-[#EAE4D7] mx-auto mb-2" />
-                  <p className="text-xs">Giỏ hàng của bạn đang trống</p>
-                </div>
-              ) : (
-                cart.map((item) => (
-                  <div
-                    key={item.product.id}
-                    className="flex items-center gap-3 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl"
-                  >
-                    <img
-                      src={item.product.image}
-                      alt={item.product.name}
-                      className="w-14 h-14 object-cover rounded-xl shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <strong className="text-xs font-bold text-[#1A1612] block truncate">
-                        {item.product.name}
-                      </strong>
-                      <span className="text-xs font-black text-[#B88E4F] block mt-0.5">
-                        {formatMoney(item.product.price)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCart((prev) =>
-                            prev
-                              .map((i) => (i.product.id === item.product.id ? { ...i, quantity: i.quantity - 1 } : i))
-                              .filter((i) => i.quantity > 0)
-                          );
-                        }}
-                        className="w-6 h-6 rounded-md bg-white border border-[#EAE4D7] text-xs font-bold flex items-center justify-center hover:bg-[#F3EFE6] cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="text-xs font-bold text-[#1A1612] w-4 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCart((prev) =>
-                            prev.map((i) => (i.product.id === item.product.id ? { ...i, quantity: i.quantity + 1 } : i))
-                          );
-                        }}
-                        className="w-6 h-6 rounded-md bg-white border border-[#EAE4D7] text-xs font-bold flex items-center justify-center hover:bg-[#F3EFE6] cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {cart.length > 0 && (
-              <div className="pt-4 border-t border-[#EAE4D7] flex flex-col gap-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-[#7D715E] font-medium">Tạm tính:</span>
-                  <strong className="text-xl font-black text-[#1A1612]">
-                    {formatMoney(cart.reduce((s, i) => s + i.product.price * i.quantity, 0))}
-                  </strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCartOpen(false);
-                    const p = cart[0].product;
-                    setActiveCheckoutProduct({
-                      product: {
-                        id: p.id,
-                        sku: p.sku,
-                        title: p.name,
-                        price: p.price,
-                        originalPrice: p.origPrice,
-                        imageUrl: p.image,
-                        stockQuantity: p.stockQuantity || 0,
-                        variants: p.variants,
-                      },
-                      store: {
-                        id: p.storeId || 'store-default',
-                        name: p.brand,
-                      },
-                      couponCode: p.kol?.coupon || '',
-                    });
-                  }}
-                  className="w-full py-3 rounded-xl bg-[#C59B58] text-white text-xs sm:text-sm font-black hover:bg-[#B88E4F] transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Tiến hành đặt hàng ({cart.reduce((s, i) => s + i.quantity, 0)})</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
