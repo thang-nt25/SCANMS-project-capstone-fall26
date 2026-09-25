@@ -376,6 +376,34 @@
 - **CSDL**: Bảng `users`, `customer_addresses`, `customer_wishlists`, `orders`, `order_items`, `collaborator_profiles`, `stores`, `product_variants`
 - **Ghi chú**: TypeScript biên dịch 0 lỗi cả Frontend và Backend, `npm run build` thành công 100%, commit và push sạch sẽ lên nhánh `thang`.
 
+
+### [2026-09-23] Thành viên: Nguyễn Thành Thắng (Leader) — [TUẦN 3 BÁO CÁO TIẾN ĐỘ]
+- **Trạng thái**: COMPLETED (100% Tuần 3: Phân tách vai trò SYSTEM_MANAGER vs SYSTEM_ADMIN, Tái thiết kế LoginPage Vàng Be, Hợp nhất Git origin/main 0 conflict & Xuất Báo Cáo Tiến Độ Tuần 3 Excel)
+- **Hạng mục đã thực hiện**:
+  1. **Phân tách và chuẩn hóa độc lập 2 vai trò `SYSTEM_MANAGER` và `SYSTEM_ADMIN`**:
+     - Phân định rõ ràng: `SYSTEM_MANAGER` là nhân sự Vận hành & Tuân thủ sàn (kiểm duyệt hồ sơ định danh KYC, giám sát giao dịch, giải quyết tranh chấp); `SYSTEM_ADMIN` là Ban Quản trị Tối cao (toàn quyền hệ thống, phân quyền RBAC, cấu hình tham số bảo mật).
+     - Cập nhật menu điều hướng chuyên biệt tại `navigation.config.ts`, Sidebar lắng nghe workspace động tại `Sidebar.tsx`, logic tự động khởi tạo tài khoản quản lý `manager@scanms.vn` (Pass: `Password@123`) tại `backend/src/modules/auth/auth.service.ts`, và bộ điều hướng `DashboardDispatcher.tsx` (`/admin/users` cho Vận Hành và `/admin/analytics` cho Quản Trị).
+  2. **Tái thiết kế toàn diện Giao diện Đăng Nhập (`LoginPage.tsx`) phong cách Vàng Be (Warm Sand Gold)**:
+     - Gỡ bỏ hoàn toàn nền chấm nâu hạt thô cứng và các khối chữ kỹ thuật rườm rà.
+     - Triển khai nền Warm Sand mềm mại `#FAF8F5` cùng hiệu ứng quầng sáng ánh kim sang trọng.
+     - **Cột Trái (Synergy Showcase)**: Trưng bày thẻ trực quan sống động mô hình sàn đa bên: Shop mỹ phẩm `Sora Skin Official` (4.9★) liên kết trực tiếp với Top KOL `Nguyễn Thành Thắng` (Hoa hồng CPS 22%), bảo chứng qua Smart QR 30 ngày và Escrow 14 ngày.
+     - **Cột Phải (Login Card Đẳng Cấp)**: Thanh chuyển 5 vai trò (Khách Mua, KOL / CTV, Chủ Shop, Vận Hành, Quản Trị) mượt mà; thẻ preview tài khoản kèm nút "⚡ Vào Ngay" (1-chạm); danh sách 5 tài khoản mẫu thu gọn/mở rộng thanh lịch, hiển thị đầy đủ họ tên không bị cắt chữ.
+  3. **Hợp nhất Git và Đồng bộ Code (Merge `origin/main`)**:
+     - Tích hợp thành công các cập nhật từ `origin/main` (PR #50 từ Tuấn & PR #51 từ Dev) gồm tài liệu Use Case Bill OTP, tài liệu giải thích vai trò và tài nguyên banner.
+     - Kết quả: **0 xung đột (Zero conflicts)**, commit và push thành công lên nhánh `thang` trên GitHub (`ae3ccff..767b049`).
+     - Kiểm thử: Frontend build thành công trong 1.01s, Backend `nest build` thành công 100% không lỗi.
+  4. **Xuất File Báo Cáo Tiến Độ Tuần 3 Chuẩn Quy Định FPTU**:
+     - Khởi tạo script `scripts/generate_weekly_report_excel.py` sử dụng thư viện `openpyxl`.
+     - Xuất bản file Excel chính thức: `docs/BAO_CAO_TIEN_DO_TUAN_3_FA26SE032.xlsx` và `BAO_CAO_TIEN_DO_TUAN_3_FA26SE032.xlsx` gồm 3 sheet chi tiết:
+       - Sheet 1: Mẫu báo cáo tiến độ 14 tuần chuẩn Giảng viên hướng dẫn (ThS. Tôn Thất Hoàng Minh, Bộ môn SE, Mã đề tài FA26SE032).
+       - Sheet 2: Bảng đối soát chi tiết công việc Tuần 3, ánh xạ Git commit, PR, file code, API và bảng CSDL của 5 thành viên.
+       - Sheet 3: Danh sách sinh viên thực hiện đồ án, MSSV, thông tin liên lạc và phạm vi phân công chuyên trách.
+- **Màn hình UI**: `frontend/src/pages/auth/LoginPage.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/config/navigation.config.ts`, `frontend/src/pages/DashboardDispatcher.tsx`
+- **API Endpoint**: `POST /api/v1/auth/login`, `GET /api/v1/users/me`, `POST /api/v1/auth/google`
+- **Backend File**: `backend/src/modules/auth/auth.service.ts`
+- **CSDL**: Bảng `users`, `user_roles`, `kyc_profiles`, `orders`, `commissions`
+- **Ghi chú**: Đã hoàn thành 100% tiến độ Tuần 3, sẵn sàng báo cáo GVHD trong buổi gặp định kỳ.
+
 ---
 
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:
@@ -385,4 +413,5 @@ Mỗi khi bạn hoặc thành viên trong nhóm hoàn thành một đoạn code 
 > `/log-work` hoặc *"Ghi nhận tiến độ cho [Tên] vừa làm [Chức năng]"*
 
 Skill **`scanms-progress-tracker`** sẽ tự động soi code thực tế và ghi vết nhật ký đóng góp chi tiết vào file này!
+
 
