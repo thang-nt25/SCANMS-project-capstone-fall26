@@ -91,7 +91,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [addressReload, setAddressReload] = useState(0);
   const [orderNotes, setOrderNotes] = useState('');
   const [quantity, setQuantity] = useState(initialQuantity);
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'VIETQR'>('COD');
+  const paymentMethod: 'COD' | 'VIETQR' = 'VIETQR';
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
     undefined,
   );
@@ -616,18 +616,18 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <div className="flex justify-between text-[#7D715E]">
                   <span>Hình thức:</span>
                   <span className="font-semibold text-[#1A1612]">
-                    {orderSuccess.paymentMethod === 'VIETQR' ? 'Chuyển khoản VietQR 24/7' : 'Thanh toán COD khi nhận hàng'}
+                    Quét mã thanh toán
                   </span>
                 </div>
               </div>
             </div>
 
 
-            {orderSuccess.paymentMethod === 'VIETQR' && orderSuccess.vietqr && (
+            {orderSuccess.vietqr && (
               <div className="bg-[#FFFFFF] border-2 border-[#C59B58] rounded-2xl p-4 text-center mb-5 shadow-sm">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FBF5EB] rounded-full text-xs font-bold text-[#B88E4F] mb-3">
                   <QrCode className="w-3.5 h-3.5" />
-                  <span>QUÉT MÃ VIETQR ĐỂ HOÀN TẤT THANH TOÁN</span>
+                  <span>QUÉT MÃ THANH TOÁN ĐỂ HOÀN TẤT</span>
                 </div>
 
                 <div className="w-48 h-48 mx-auto bg-white p-2 rounded-xl border border-[#EAE4D7] shadow-inner mb-3 flex items-center justify-center">
@@ -906,36 +906,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <h3 className="text-xs sm:text-sm font-black text-[#1A1612]">Phương Thức Thanh Toán</h3>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('COD')}
-                        className={`p-3.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
-                          paymentMethod === 'COD'
-                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#B88E4F] ring-2 ring-[#C59B58]/30 shadow-2xs'
-                            : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]/50'
-                        }`}
+                    <div className="grid grid-cols-1 gap-2.5">
+                      <div
+                        className="p-3.5 rounded-xl border text-left text-xs border-[#C59B58] bg-[#FBF5EB] text-[#B88E4F] ring-2 ring-[#C59B58]/30 shadow-2xs"
                       >
-                        <div className="font-extrabold text-[#1A1612] flex items-center gap-1.5">
-                          <span>💵</span> Thanh toán COD
+                        <div className="font-extrabold text-[#1A1612] flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>📱</span>
+                            <span className="text-xs sm:text-sm">Quét mã thanh toán</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-[#B88E4F] bg-white px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                            Tự động xác nhận 24/7
+                          </span>
                         </div>
-                        <div className="text-[11px] text-[#7D715E] mt-1">Trả tiền mặt khi nhận hàng & kiểm tra</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('VIETQR')}
-                        className={`p-3.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
-                          paymentMethod === 'VIETQR'
-                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#B88E4F] ring-2 ring-[#C59B58]/30 shadow-2xs'
-                            : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]/50'
-                        }`}
-                      >
-                        <div className="font-extrabold text-[#1A1612] flex items-center gap-1.5">
-                          <span>📱</span> Quét mã VietQR
-                        </div>
-                        <div className="text-[11px] text-[#7D715E] mt-1">Chuyển khoản liên ngân hàng 24/7 tức thì</div>
-                      </button>
+                        <div className="text-[11px] text-[#7D715E] mt-1">Chuyển khoản liên ngân hàng 24/7 tức thì qua mã QR</div>
+                      </div>
                     </div>
 
                     <div>
