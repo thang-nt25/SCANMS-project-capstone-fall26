@@ -127,28 +127,19 @@ export default function RegisterPage() {
           <ScanMSLogo size="md" showSubtitle={true} />
         </Link>
 
-        <div className="flex items-center gap-3">
-          <Link
-            to="/marketplace"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition shadow-2xs"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-[#C59B58]" />
-            <span>Sàn mua sắm</span>
-          </Link>
-
-          <div className="text-xs text-[#7D715E] font-medium bg-white px-3.5 py-1.5 rounded-full border border-[#EAE4D7] shadow-2xs">
-            Đã có tài khoản?{' '}
-            <Link to="/login" className="font-bold text-[#B88E4F] hover:underline">
-              Đăng nhập
-            </Link>
-          </div>
-        </div>
+        <Link
+          to="/marketplace"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition shadow-2xs"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-[#C59B58]" />
+          <span>Sàn mua sắm</span>
+        </Link>
       </header>
 
-      <main className="max-w-[1240px] mx-auto w-full my-auto py-3">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-stretch lg:h-[610px]">
+      <main className="max-w-[1160px] mx-auto w-full my-auto py-2 sm:py-3">
+        <div className="w-full rounded-[28px] sm:rounded-[32px] border border-[#EAE4D7] bg-white shadow-[0_24px_65px_rgba(26,22,18,0.07)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[610px] relative">
           
-          <div className="relative w-full h-[480px] lg:h-[610px] rounded-3xl overflow-hidden border border-[#EAE4D7] shadow-[0_20px_50px_rgba(26,22,18,0.06)] bg-[#F3EFE6] flex flex-col justify-end p-8 sm:p-11 group">
+          <div className="relative w-full h-[340px] sm:h-[400px] lg:h-full lg:col-span-5 bg-[#231D15] overflow-hidden flex flex-col justify-end p-7 sm:p-9 group">
             <img
               src="/assets/marketplace_luxury_hero.jpg"
               alt="Hệ sinh thái thương mại đa gian hàng SCANMS"
@@ -157,21 +148,74 @@ export default function RegisterPage() {
 
             <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/45 to-transparent pointer-events-none" />
 
+            <div className="hidden lg:block absolute inset-y-0 right-0 w-36 bg-gradient-to-r from-transparent via-[#C59B58]/20 to-[#ECC272]/35 pointer-events-none z-10" />
+
             <div className="relative z-10 space-y-1">
               <h1
-                className="font-display italic text-3xl sm:text-4xl lg:text-[44px] leading-[1.15] tracking-tight drop-shadow-xl"
+                className="font-display italic text-2xl sm:text-3xl lg:text-[38px] leading-[1.18] tracking-tight drop-shadow-xl"
                 style={{ color: '#FFFFFF' }}
               >
-                Khởi đầu hành trình,<br />
+                Kết nối gian hàng,<br />
                 <span className="font-display italic" style={{ color: '#ECC272' }}>
-                  mở lối cơ hội.
+                  lan tỏa giá trị.
                 </span>
               </h1>
             </div>
+
+            <svg
+              className="lg:hidden absolute -bottom-[1px] left-0 right-0 w-full h-8 pointer-events-none z-20"
+              viewBox="0 0 400 32"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0,32 C90,12 170,28 260,12 C330,-1 370,24 400,20 L400,32 L0,32 Z"
+                fill="#FFFFFF"
+              />
+              <path
+                d="M0,32 C70,18 150,30 240,16 C310,4 360,26 400,24 L400,32 L0,32 Z"
+                fill="rgba(238, 223, 198, 0.45)"
+              />
+            </svg>
           </div>
 
-          <div className="w-full h-auto lg:h-[610px] bg-white rounded-3xl border border-[#EAE4D7] shadow-[0_20px_50px_rgba(26,22,18,0.06)] p-7 sm:p-9 flex flex-col justify-between text-left">
-            <div>
+          <div
+            className="relative w-full h-full lg:col-span-7 p-6 sm:p-8 lg:p-9 flex flex-col justify-between text-left overflow-hidden bg-white"
+            style={{
+              background: 'radial-gradient(ellipse 95% 75% at 0% 40%, rgba(238, 223, 198, 0.42) 0%, rgba(251, 245, 235, 0.25) 36%, rgba(255, 255, 255, 1) 72%)',
+            }}
+          >
+            <svg
+              className="hidden lg:block absolute -top-[1px] -bottom-[1px] -left-[1px] h-[calc(100%+2px)] w-20 xl:w-24 pointer-events-none z-10"
+              viewBox="0 0 100 620"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="waveBleedRegGrad1" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#C59B58" stopOpacity="0.35" />
+                  <stop offset="50%" stopColor="#EEDFC6" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="waveBleedRegGrad2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#ECC272" stopOpacity="0.28" />
+                  <stop offset="60%" stopColor="#FAF8F5" stopOpacity="0.38" />
+                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0,0 C32,95 76,170 56,260 C36,350 86,435 66,525 C50,580 24,605 0,620 Z"
+                fill="url(#waveBleedRegGrad1)"
+              />
+              <path
+                d="M0,0 C22,110 54,195 40,285 C24,375 66,455 48,545 C34,592 16,612 0,620 Z"
+                fill="url(#waveBleedRegGrad2)"
+              />
+              <path
+                d="M0,0 C12,125 34,205 24,295 C14,385 40,470 28,555 C18,598 6,615 0,620 Z"
+                fill="rgba(255, 255, 255, 0.45)"
+              />
+            </svg>
+
+            <div className="relative z-20">
               <h2 className="text-2xl font-black text-[#1A1612] tracking-tight">
                 Tạo tài khoản mới
               </h2>
