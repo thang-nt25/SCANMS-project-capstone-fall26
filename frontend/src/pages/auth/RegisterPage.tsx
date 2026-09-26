@@ -1,24 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Sparkles,
-  ShoppingBag,
-  Percent,
-  ShieldCheck,
-  AlertCircle,
-  Mail,
-  Phone,
-  Lock,
   Eye,
   EyeOff,
-  UserPlus,
   KeyRound,
   ArrowLeft,
-  Truck,
-  RotateCcw,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
-import { triggerGoogleSignIn, devBypassGoogleSignIn } from '../../utils/googleAuth';
+import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton';
+import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { Modal } from '../../components/ui/Modal';
 import { toast } from '../../utils/toast';
 
@@ -30,9 +20,8 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
 
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState('');
@@ -41,30 +30,6 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const getPasswordStrength = (pass: string) => {
-    if (!pass) return { score: 0, label: 'Chưa nhập', color: 'bg-slate-200' };
-    let score = 0;
-    if (pass.length >= 8) score++;
-    if (/[A-Z]/.test(pass)) score++;
-    if (/[0-9]/.test(pass)) score++;
-    if (/[^A-Za-z0-9]/.test(pass)) score++;
-
-    switch (score) {
-      case 1:
-        return { score: 1, label: 'Rất yếu', color: 'bg-rose-500' };
-      case 2:
-        return { score: 2, label: 'Trung bình', color: 'bg-amber-500' };
-      case 3:
-        return { score: 3, label: 'Khá mạnh', color: 'bg-emerald-500' };
-      case 4:
-        return { score: 4, label: 'Rất mạnh', color: 'bg-amber-600' };
-      default:
-        return { score: 0, label: 'Chưa nhập', color: 'bg-slate-200' };
-    }
-  };
-
-  const passStrength = getPasswordStrength(password);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -95,11 +60,10 @@ export default function RegisterPage() {
       }
       setShowOtpModal(true);
     } catch (err: any) {
-      console.error('Send OTP error:', err);
       const errorMsg =
         err?.response?.data?.message ||
         (err?.code === 'ERR_NETWORK' || err?.message?.includes('Network Error')
-          ? 'Không thể kết nối đến máy chủ Backend (cổng 3000).'
+          ? 'Không thể kết nối đến máy chủ Backend.'
           : err?.message || 'Không thể gửi mã xác thực OTP. Vui lòng kiểm tra lại email.');
       setError(errorMsg);
     } finally {
@@ -122,9 +86,8 @@ export default function RegisterPage() {
         otp: otp.trim(),
       });
 
-      toast.success('Đăng ký tài khoản Khách Hàng thành công! Đang tự động đăng nhập...');
+      toast.success('Đăng ký tài khoản thành công! Đang tự động đăng nhập...');
 
-      // Tự động đăng nhập luôn để khách không phải gõ lại
       try {
         await authService.login(registeredEmail, password);
         navigate('/customer/orders');
@@ -135,7 +98,7 @@ export default function RegisterPage() {
       const errorMsg =
         err?.response?.data?.message ||
         (err?.code === 'ERR_NETWORK' || err?.message?.includes('Network Error')
-          ? 'Không thể kết nối đến máy chủ Backend (cổng 3000).'
+          ? 'Không thể kết nối đến máy chủ Backend.'
           : err?.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
       setError(errorMsg);
     } finally {
@@ -143,417 +106,293 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleRegister = (useDevBypass: boolean = false) => {
-    setError(null);
-    setLoading(true);
-
-    const onTokenSuccess = async (idToken: string) => {
-      try {
-        await authService.googleLogin(idToken, 'CUSTOMER');
-        toast.success('Đăng ký & xác thực tài khoản Google thành công!');
-        navigate('/customer/orders');
-      } catch (err: any) {
-        setError(err.message || 'Đăng ký qua Google thất bại');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (useDevBypass) {
-      devBypassGoogleSignIn(onTokenSuccess, 'customer.new@scanms.vn');
-      return;
+  const onGoogleRegisterSuccess = async (idToken: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authService.googleLogin(idToken, 'CUSTOMER');
+      toast.success('Đăng ký & xác thực Google thành công!');
+      navigate('/customer/orders');
+    } catch (err: any) {
+      setError(err.message || 'Đăng ký qua Google thất bại');
+    } finally {
+      setLoading(false);
     }
-
-    triggerGoogleSignIn(
-      onTokenSuccess,
-      (errorMsg: string) => {
-        setError(errorMsg);
-        setLoading(false);
-      }
-    );
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-10">
-      {/* Top Breadcrumb */}
-      <div className="max-w-[1400px] mx-auto w-full mb-5 flex flex-wrap justify-between items-center gap-3 text-xs">
+    <div className="min-h-screen w-full bg-[#FAF8F5] text-[#1A1612] flex flex-col justify-between py-4 px-4 sm:px-8 lg:px-14 selection:bg-[#EEDFC6] selection:text-[#1A1612]">
+      <header className="max-w-[1240px] mx-auto w-full flex justify-between items-center py-2">
+        <Link to="/marketplace" className="hover:opacity-95 transition-opacity">
+          <ScanMSLogo size="md" showSubtitle={true} />
+        </Link>
+
         <Link
           to="/marketplace"
-          id="btn-back-to-marketplace-register"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EAE4D7] text-[#1A1612] font-bold hover:bg-[#F3EFE6] transition shadow-2xs group cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition shadow-2xs"
         >
-          <ArrowLeft className="w-4 h-4 text-[#B88E4F] group-hover:-translate-x-1 transition-transform" />
-          <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
-          <span>Quay về Sàn Mua Sắm Chính (SCANMS Marketplace)</span>
+          <ArrowLeft className="w-3.5 h-3.5 text-[#C59B58]" />
+          <span>Sàn mua sắm</span>
         </Link>
-        <div className="flex items-center gap-2 text-[#7D715E] font-medium">
-          <span>Đã có tài khoản?</span>
-          <Link to="/login" className="font-bold text-[#B88E4F] hover:underline">
-            Đăng nhập ngay ↗
-          </Link>
-        </div>
-      </div>
+      </header>
 
-      <div className="max-w-[1400px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-        {/* Left: Branding & Opportunity Showcase */}
-        <div className="lg:col-span-6 bg-[#F3EFE6] border border-[#EAE4D7] rounded-3xl p-7 sm:p-10 flex flex-col gap-6 text-left relative overflow-hidden shadow-xs">
-          <div
-            className="absolute inset-0 pointer-events-none opacity-35"
-            style={{
-              backgroundImage:
-                'radial-gradient(#B88E4F 0.75px, transparent 0.75px), radial-gradient(#B88E4F 0.75px, #F3EFE6 0.75px)',
-              backgroundSize: '30px 30px',
-              backgroundPosition: '0 0, 15px 15px',
-            }}
-          />
+      <main className="max-w-[1160px] mx-auto w-full my-auto py-2 sm:py-3">
+        <div className="w-full rounded-[28px] sm:rounded-[32px] border border-[#EAE4D7] bg-white shadow-[0_24px_65px_rgba(26,22,18,0.07)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[610px] relative">
+          
+          <div className="relative w-full h-[340px] sm:h-[400px] lg:h-full lg:col-span-5 bg-[#231D15] overflow-hidden flex flex-col justify-end p-7 sm:p-9 group">
+            <img
+              src="/assets/marketplace_luxury_hero.jpg"
+              alt="Hệ sinh thái thương mại đa gian hàng SCANMS"
+              className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105"
+            />
 
-          <div className="relative z-10 flex flex-col gap-5">
-            <Link to="/marketplace" className="flex items-center gap-3 no-underline w-fit">
-              <div className="w-11 h-11 rounded-xl bg-[#B88E4F] text-white flex items-center justify-center shadow-xs">
-                <Sparkles className="w-6 h-6 text-amber-100" />
-              </div>
-              <div>
-                <strong className="text-xl font-extrabold text-[#1A1612] tracking-tight block">
-                  SCANMS
-                </strong>
-                <span className="text-[11px] font-bold text-[#B88E4F] uppercase tracking-wider block">
-                  HỆ SINH THÁI THƯƠNG MẠI ĐIỆN TỬ &amp; TIẾP THỊ
+            <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/45 to-transparent pointer-events-none" />
+
+            <div className="hidden lg:block absolute inset-y-0 right-0 w-36 bg-gradient-to-r from-transparent via-[#C59B58]/20 to-[#ECC272]/35 pointer-events-none z-10" />
+
+            <div className="relative z-10 space-y-1">
+              <h1
+                className="font-display italic text-2xl sm:text-3xl lg:text-[38px] leading-[1.18] tracking-tight drop-shadow-xl"
+                style={{ color: '#FFFFFF' }}
+              >
+                Kết nối gian hàng,<br />
+                <span className="font-display italic" style={{ color: '#ECC272' }}>
+                  lan tỏa giá trị.
                 </span>
-              </div>
-            </Link>
-
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold w-fit">
-              <span className="w-2 h-2 rounded-full bg-[#B88E4F] animate-pulse" />
-              <span>Đăng Ký Tài Khoản Mua Sắm &amp; Mở Rộng Cơ Hội Hợp Tác</span>
+              </h1>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1A1612] tracking-tight leading-tight m-0">
-              Gia nhập SCANMS. <br />
-              <span className="text-[#B88E4F]">Mua Sắm An Tâm &amp; Nâng Cấp Linh Hoạt.</span>
-            </h1>
-
-            <p className="text-sm sm:text-base text-[#7D715E] leading-relaxed max-w-xl m-0">
-              Đăng ký tài khoản Khách Hàng chỉ trong 30 giây để tận hưởng chính sách đồng kiểm tận tay.
-              Bạn có thể dễ dàng nộp đơn xin nâng cấp lên <strong>KOL Tiếp Thị</strong> hoặc <strong>Mở Gian Hàng</strong> bất kỳ lúc nào!
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
-              <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="text-xs font-bold text-[#1A1612] block">100% Chính Hãng</strong>
-                  <span className="text-[11px] text-[#7D715E]">Kiểm định nguồn hàng KYC</span>
-                </div>
-              </div>
-
-              <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                  <RotateCcw className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="text-xs font-bold text-[#1A1612] block">Đồng Kiểm 14 Ngày</strong>
-                  <span className="text-[11px] text-[#7D715E]">Đổi trả miễn phí tận nơi</span>
-                </div>
-              </div>
-
-              <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                  <Percent className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="text-xs font-bold text-[#1A1612] block">Cơ Hội Kiếm Thu Nhập</strong>
-                  <span className="text-[11px] text-[#7D715E]">Nâng cấp làm KOL nhận hoa hồng</span>
-                </div>
-              </div>
-
-              <div className="bg-white p-3.5 rounded-2xl border border-[#EAE4D7] shadow-2xs flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
-                  <Truck className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="text-xs font-bold text-[#1A1612] block">Mở Gian Hàng Bán Lẻ</strong>
-                  <span className="text-[11px] text-[#7D715E]">Tiếp cận mạng lưới Creator</span>
-                </div>
-              </div>
-            </div>
+            <svg
+              className="lg:hidden absolute -bottom-[1px] left-0 right-0 w-full h-8 pointer-events-none z-20"
+              viewBox="0 0 400 32"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0,32 C90,12 170,28 260,12 C330,-1 370,24 400,20 L400,32 L0,32 Z"
+                fill="#FFFFFF"
+              />
+              <path
+                d="M0,32 C70,18 150,30 240,16 C310,4 360,26 400,24 L400,32 L0,32 Z"
+                fill="rgba(238, 223, 198, 0.45)"
+              />
+            </svg>
           </div>
-        </div>
 
-        {/* Right: Registration Form (Customer-First) */}
-        <div className="lg:col-span-6 w-full">
-          <div className="bg-white rounded-3xl border border-[#EAE4D7] shadow-lg p-6 sm:p-8 flex flex-col gap-5 text-left">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8C6226] mb-2">
-                <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>ĐĂNG KÝ TÀI KHOẢN KHÁCH HÀNG</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-[#1A1612] tracking-tight m-0">
-                Tạo Tài Khoản Mua Sắm
+          <div
+            className="relative w-full h-full lg:col-span-7 p-6 sm:p-8 lg:p-9 flex flex-col justify-between text-left overflow-hidden bg-white"
+            style={{
+              background: 'radial-gradient(ellipse 95% 75% at 0% 40%, rgba(238, 223, 198, 0.42) 0%, rgba(251, 245, 235, 0.25) 36%, rgba(255, 255, 255, 1) 72%)',
+            }}
+          >
+            <svg
+              className="hidden lg:block absolute -top-[1px] -bottom-[1px] -left-[1px] h-[calc(100%+2px)] w-20 xl:w-24 pointer-events-none z-10"
+              viewBox="0 0 100 620"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="waveBleedRegGrad1" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#C59B58" stopOpacity="0.35" />
+                  <stop offset="50%" stopColor="#EEDFC6" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="waveBleedRegGrad2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#ECC272" stopOpacity="0.28" />
+                  <stop offset="60%" stopColor="#FAF8F5" stopOpacity="0.38" />
+                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0,0 C32,95 76,170 56,260 C36,350 86,435 66,525 C50,580 24,605 0,620 Z"
+                fill="url(#waveBleedRegGrad1)"
+              />
+              <path
+                d="M0,0 C22,110 54,195 40,285 C24,375 66,455 48,545 C34,592 16,612 0,620 Z"
+                fill="url(#waveBleedRegGrad2)"
+              />
+              <path
+                d="M0,0 C12,125 34,205 24,295 C14,385 40,470 28,555 C18,598 6,615 0,620 Z"
+                fill="rgba(255, 255, 255, 0.45)"
+              />
+            </svg>
+
+            <div className="relative z-20">
+              <h2 className="text-2xl font-black text-[#1A1612] tracking-tight">
+                Tạo tài khoản mới
               </h2>
-              <p className="text-xs sm:text-sm text-[#7D715E] mt-1.5 m-0">
-                Chỉ mất 30 giây để bắt đầu. Bạn có thể gửi đơn xin nâng cấp lên KOL hoặc Mở Shop bất kỳ lúc nào sau khi đăng ký.
+              <p className="text-xs text-[#7D715E] mt-1 font-medium">
+                Nhanh chóng, an toàn và hoàn toàn miễn phí
               </p>
             </div>
 
+            <div className="w-full">
+              <GoogleOfficialButton
+                onSuccess={onGoogleRegisterSuccess}
+                onError={(err) => setError(err)}
+              />
+            </div>
+
+            <div className="relative flex items-center justify-center my-0.5">
+              <div className="border-t border-[#EAE4D7] w-full" />
+              <span className="bg-white px-3 text-[11px] font-medium text-[#7D715E] uppercase tracking-wider absolute">
+                hoặc email
+              </span>
+            </div>
+
             {error && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>{error}</span>
+              <div className="p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] font-medium">
+                {error}
               </div>
             )}
 
-            {/* Google Fast Sign-Up Button */}
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => handleGoogleRegister(false)}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-[#EAE4D7] hover:bg-[#FAF8F5] text-[#1A1612] font-bold text-xs rounded-xl shadow-2xs hover:shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <span>Đăng ký nhanh với Google</span>
-              </button>
-
-              {/* Dev Bypass Button for Localhost Verification */}
-              <button
-                type="button"
-                onClick={() => handleGoogleRegister(true)}
-                className="text-[11px] text-[#B88E4F] hover:underline font-semibold text-center cursor-pointer py-1"
-                title="Sử dụng nếu Google One Tap bị lỗi 403 do tên miền localhost chưa khai báo trên Google Cloud"
-              >
-                ⚡ Hoặc thử nghiệm nhanh với Google (Chế độ Dev Test)
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-[#EAE4D7]" />
-              <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
-                HOẶC ĐIỀN THÔNG TIN
-              </span>
-              <div className="flex-1 h-px bg-[#EAE4D7]" />
-            </div>
-
-            {/* Main Customer Register Form */}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="space-y-2.5">
               <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                  Họ và tên <span className="text-rose-600">*</span>
-                </label>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Ví dụ: Hoàng Minh Tuấn"
                   required
-                  className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
+                  placeholder="Họ và tên của bạn"
+                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-4 text-sm text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                    Địa chỉ Email <span className="text-rose-600">*</span>
-                  </label>
-                  <div className="relative flex items-center">
-                    <Mail className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="ban@gmail.com"
-                      required
-                      className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
-                    />
-                  </div>
+              <div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="Địa chỉ Email"
+                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-4 text-sm text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Số điện thoại (tùy chọn)"
+                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-4 text-sm text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative flex items-center">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="Mật khẩu"
+                    className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-3 pr-8 text-xs text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 text-[#A69986] p-1 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                    Số điện thoại nhận hàng
-                  </label>
-                  <div className="relative flex items-center">
-                    <Phone className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="0912 345 678"
-                      className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition font-mono"
-                    />
-                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    placeholder="Nhập lại mật khẩu"
+                    className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-3 text-xs text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                    Mật khẩu <span className="text-rose-600">*</span>
-                  </label>
-                  <div className="relative flex items-center">
-                    <Lock className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Tối thiểu 8 ký tự"
-                      required
-                      className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-10 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                    Xác nhận mật khẩu <span className="text-rose-600">*</span>
-                  </label>
-                  <div className="relative flex items-center">
-                    <Lock className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
-                    <input
-                      type={showConfirm ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Nhập lại mật khẩu"
-                      required
-                      className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-10 py-2.5 text-sm text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute right-3 text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
-                    >
-                      {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {password && (
-                <div className="flex items-center gap-2 pt-0.5">
-                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden flex gap-1">
-                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 1 ? passStrength.color : 'bg-slate-200'}`} />
-                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 2 ? passStrength.color : 'bg-slate-200'}`} />
-                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 3 ? passStrength.color : 'bg-slate-200'}`} />
-                    <div className={`h-full flex-1 rounded-full ${passStrength.score >= 4 ? passStrength.color : 'bg-slate-200'}`} />
-                  </div>
-                  <span className="text-[11px] font-bold text-[#7D715E] shrink-0">
-                    Độ mạnh: {passStrength.label}
-                  </span>
-                </div>
-              )}
-
-              {/* Agreement */}
-              <label className="flex items-start gap-2.5 text-xs text-[#7D715E] cursor-pointer select-none mt-1">
+              <div className="text-[11px] text-[#7D715E] pt-0.5 flex items-start gap-2">
                 <input
                   type="checkbox"
+                  id="agreeTerms"
                   checked={agreeTerms}
                   onChange={(e) => setAgreeTerms(e.target.checked)}
-                  className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] mt-0.5"
+                  className="mt-0.5 w-3.5 h-3.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
                 />
-                <span>
+                <label htmlFor="agreeTerms" className="cursor-pointer leading-snug">
                   Tôi đồng ý với{' '}
-                  <Link to="#" className="font-bold text-[#B88E4F] hover:underline">
-                    Điều khoản sử dụng
-                  </Link>{' '}
-                  và{' '}
-                  <Link to="#" className="font-bold text-[#B88E4F] hover:underline">
-                    Chính sách bảo mật
-                  </Link>{' '}
-                  của sàn thương mại điện tử SCANMS.
-                </span>
-              </label>
+                  <Link to="/terms" className="text-[#B88E4F] hover:underline font-semibold">Điều khoản dịch vụ</Link> và{' '}
+                  <Link to="/privacy" className="text-[#B88E4F] hover:underline font-semibold">Chính sách bảo mật</Link> của SCANMS.
+                </label>
+              </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white font-extrabold text-sm hover:opacity-95 transition shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50 mt-1"
+                className="w-full h-11 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-sm rounded-xl transition shadow-[0_4px_16px_rgba(197,155,88,0.28)] hover:shadow-[0_6px_20px_rgba(197,155,88,0.38)] active:scale-[0.99] cursor-pointer disabled:opacity-50"
               >
-                <UserPlus className="w-4 h-4" />
-                <span>{loading ? 'Đang xử lý...' : 'Đăng Ký Tài Khoản Khách Hàng'}</span>
+                {loading ? 'Đang gửi mã xác thực...' : 'Đăng ký tài khoản'}
               </button>
             </form>
 
-            <div className="pt-3 border-t border-[#EAE4D7] text-center text-xs text-[#7D715E]">
-              Bạn muốn tham gia tiếp thị hoặc bán hàng?{' '}
-              <span className="block mt-1 text-[11px] text-[#8C6226]">
-                💡 Đăng ký tài khoản Khách Hàng trước, sau đó nộp hồ sơ xin nâng cấp lên <strong>KOL</strong> hoặc <strong>Mở Shop</strong> với 1 biểu mẫu xác thực đơn giản!
-              </span>
+            <div className="border-t border-[#EAE4D7] pt-2 text-center text-xs text-[#7D715E]">
+              Đã có tài khoản?{' '}
+              <Link to="/login" className="font-bold text-[#B88E4F] hover:underline">
+                Đăng nhập ngay →
+              </Link>
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* OTP Verification Modal */}
       <Modal
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
-        title="Xác thực mã OTP đăng ký"
+        title="Xác thực mã OTP Email"
       >
-        <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 text-left">
-          <p className="text-xs text-[#7D715E] leading-relaxed">
-            Mã OTP 6 chữ số đã được gửi đến email{' '}
-            <strong className="text-[#1A1612] font-semibold">{registeredEmail}</strong>.
-            Vui lòng kiểm tra hộp thư đến hoặc thư mục Spam.
-          </p>
+        <form onSubmit={handleVerifyOtp} className="space-y-4 py-2 text-left">
+          <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#7D715E] leading-relaxed">
+            Mã xác thực 6 số đã được gửi tới hòm thư <strong className="text-[#1A1612] font-bold">{registeredEmail}</strong>.
+          </div>
 
           {mockOtpHint && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-mono">
-              <span className="font-bold">Mã OTP (Môi trường Dev / Demo): </span>
-              <strong className="text-sm text-amber-900 tracking-widest">{mockOtpHint}</strong>
-              <div className="text-[10px] text-amber-700 mt-1">Hoặc nhập mã test mặc định: <strong>123456</strong></div>
+            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Mã kiểm thử (Demo): <strong className="font-mono text-sm tracking-wider text-amber-900">{mockOtpHint}</strong></span>
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Mã OTP (6 số)</label>
-            <div className="relative flex items-center">
-              <KeyRound className="w-4 h-4 text-[#B88E4F] absolute left-3.5 pointer-events-none" />
-              <input
-                type="text"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
-                required
-                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-10 pr-3.5 py-3 text-base text-[#1A1612] font-mono tracking-widest text-center focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#1A1612]">
+              Mã xác thực 6 chữ số
+            </label>
+            <input
+              type="text"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+              required
+              placeholder="123456"
+              className="w-full h-11 text-center font-mono text-lg font-black tracking-[0.3em] bg-white border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:ring-3 focus:ring-[#C59B58]/15 outline-hidden"
+            />
           </div>
 
           <button
             type="submit"
             disabled={loading || otp.length < 6}
-            className="w-full py-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-xs transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full h-11 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
           >
-            <span>{loading ? 'Đang xác thực...' : 'Xác nhận & Hoàn tất đăng ký'}</span>
+            <span>{loading ? 'Đang xác thực...' : 'Hoàn tất & Đăng nhập'}</span>
           </button>
         </form>
       </Modal>
+
+      <footer className="max-w-[1240px] mx-auto w-full pt-3 text-center text-xs text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
+        <span>© 2026 SCANMS Corporation</span>
+        <span>•</span>
+        <Link to="/marketplace" className="hover:underline">Sàn Thương Mại</Link>
+        <span>•</span>
+        <Link to="/privacy" className="hover:underline">Chính sách bảo mật</Link>
+        <span>•</span>
+        <Link to="/terms" className="hover:underline">Điều khoản dịch vụ</Link>
+      </footer>
     </div>
   );
 }

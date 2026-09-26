@@ -38,7 +38,7 @@ export function initGoogleIdentity(
           }
         },
         auto_select: false,
-        cancel_on_tap_outside: true,
+        cancel_on_tap_outside: false,
         // Tắt FedCM tự động bắt buộc nếu trình duyệt gặp sự cố origin
         use_fedcm_for_prompt: false,
       });
@@ -110,8 +110,13 @@ export function triggerGoogleSignIn(
       } else if (notification.isSkippedMoment()) {
         const reason = notification.getSkippedReason?.();
         console.warn('Google prompt bị bỏ qua:', reason);
+        if (reason === 'tap_outside' || reason === 'user_cancel') {
+          // Người dùng click ra ngoài hoặc đóng prompt: không báo lỗi đỏ làm phiền
+          console.info('Google prompt đã ẩn do click ngoài.');
+          return;
+        }
         onError?.(
-          `Google Sign-In bị chặn hoặc bị bỏ qua (${reason || 'chưa cấp phép origin localhost:5173'}). Bạn có thể thêm http://localhost:5173 vào Google Cloud Console hoặc dùng nút Dev Bypass.`
+          `Google Sign-In prompt chưa sẵn sàng trên localhost (${reason || 'chưa cấp phép origin'}). Bạn hãy bấm nút '⚡ Google 1-Click (Dev Test)' ngay bên cạnh để vào thẳng 1 chạm!`
         );
       }
     });

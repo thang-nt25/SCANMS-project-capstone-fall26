@@ -1621,6 +1621,37 @@ export class OrdersService {
         });
       }
 
+      // 6.4 Tự động lưu địa chỉ vào Sổ địa chỉ CustomerAddress nếu chưa có (Nhiệm vụ 1 - Leader Thắng)
+      if (dto.customerId) {
+        try {
+          const existingAddr = await tx.customerAddress.findFirst({
+            where: {
+              userId: dto.customerId,
+              detailAddress: shippingAddress,
+            },
+          });
+          if (!existingAddr) {
+            const hasDefault = await tx.customerAddress.findFirst({
+              where: { userId: dto.customerId, isDefault: true },
+            });
+            await tx.customerAddress.create({
+              data: {
+                userId: dto.customerId,
+                fullName: customerName,
+                phoneNumber: customerPhone,
+                detailAddress: shippingAddress,
+                provinceName: 'Toàn quốc',
+                districtName: 'Địa chỉ nhận hàng',
+                wardName: 'Điểm giao',
+                isDefault: !hasDefault,
+              },
+            });
+          }
+        } catch (addrSyncErr) {
+          this.logger.warn(`Không thể tự động lưu sổ địa chỉ CustomerAddress: ${(addrSyncErr as Error).message}`);
+        }
+      }
+
       return { order, rawCancellationToken };
     });
 
@@ -2927,6 +2958,329 @@ export class OrdersService {
       status: updated.status,
       trackingNumber: updatedRaw.trackingNumber,
       carrierName: updatedRaw.carrierName,
+    };
+  }
+
+  // =========================================================================
+  // NHIỆM VỤ 4: CỔNG PHÂN XỬ TRỌNG TÀI KHIẾU NẠI ĐỔI TRẢ ĐỘC LẬP (Leader Thắng)
+  // =========================================================================
+
+  /**
+   * Khách hàng nộp hồ sơ khiếu nại (kèm video mở kiện unbox & ảnh bằng chứng)
+   */
+  async raiseDispute(
+    orderId: string,
+    customerId: string,
+    dto: {
+      reason: string;
+      customerProofVideoUrl?: string;
+      customerProofImages?: string[];
+      notes?: string;
+    },
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { store: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng cần khiếu nại');
+    }
+
+    if (order.customerId && order.customerId !== customerId) {
+      throw new ForbiddenException('Bạn không sở hữu đơn hàng này');
+    }
+
+    const currentRaw = (order.rawPayload as Record<string, any>) || {};
+    const disputeData = {
+      status: 'OPENED',
+      openedAt: new Date().toISOString(),
+      customerId,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      reason: dto.reason,
+      customerProofVideoUrl: dto.customerProofVideoUrl || null,
+      customerProofImages: dto.customerProofImages || [],
+      customerNotes: dto.notes || null,
+      storeResponse: null,
+      arbitration: null,
+    };
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        rawPayload: {
+          ...currentRaw,
+          dispute: disputeData,
+        },
+      },
+    });
+
+    if (order.store?.ownerId) {
+      try {
+        await this.prisma.notification.create({
+          data: {
+            userId: order.store.ownerId,
+            title: `Khiếu nại đổi trả mới cho đơn ${order.externalOrderSn}`,
+            message: `Khách hàng ${order.customerName} đã mở khiếu nại tranh chấp: "${dto.reason}". Vui lòng gửi giải trình.`,
+            type: 'DISPUTE_OPENED',
+            data: { orderId: order.id, externalOrderSn: order.externalOrderSn },
+          },
+        });
+      } catch (e) {
+        this.logger.warn(`Lỗi tạo thông báo: ${e}`);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Hồ sơ khiếu nại đã được tiếp nhận và chuyển đến Cổng Trọng Tài độc lập.',
+      dispute: disputeData,
+    };
+  }
+
+  /**
+   * Shop gửi phản hồi & chứng cứ đóng hàng/xuất kho
+   */
+  async respondDispute(
+    orderId: string,
+    shopOwnerId: string,
+    dto: {
+      storeResponse: string;
+      storeProofImages?: string[];
+    },
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { store: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    if (order.store.ownerId !== shopOwnerId) {
+      throw new ForbiddenException('Bạn không phải chủ gian hàng của đơn này');
+    }
+
+    const currentRaw = (order.rawPayload as Record<string, any>) || {};
+    const existingDispute = currentRaw.dispute || {
+      status: 'OPENED',
+      openedAt: new Date().toISOString(),
+    };
+
+    const updatedDispute = {
+      ...existingDispute,
+      storeResponse: dto.storeResponse,
+      storeProofImages: dto.storeProofImages || [],
+      storeRespondedAt: new Date().toISOString(),
+    };
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        rawPayload: {
+          ...currentRaw,
+          dispute: updatedDispute,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Gian hàng đã gửi phản hồi và chứng minh xuất kho thành công.',
+      dispute: updatedDispute,
+    };
+  }
+
+  /**
+   * Quản trị viên (Admin) lấy danh sách tranh chấp
+   */
+  async getAdminDisputes() {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        rawPayload: {
+          path: ['dispute'],
+          not: Prisma.JsonNullValueFilter.JsonNull,
+        },
+      },
+      include: {
+        store: { select: { id: true, name: true, logoUrl: true } },
+        orderItems: {
+          include: {
+            product: { select: { id: true, title: true, imageUrl: true } },
+          },
+        },
+        commissions: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    return orders.map((o) => {
+      const raw = (o.rawPayload as Record<string, any>) || {};
+      const dispute = raw.dispute || {};
+      return {
+        orderId: o.id,
+        externalOrderSn: o.externalOrderSn,
+        finalAmount: Number(o.finalAmount),
+        status: o.status,
+        createdAt: o.createdAt,
+        store: o.store,
+        customerName: o.customerName,
+        customerPhone: o.customerPhone,
+        customerEmail: o.customerEmail,
+        orderItems: o.orderItems,
+        commissions: o.commissions,
+        dispute,
+      };
+    });
+  }
+
+  /**
+   * Trọng tài tối cao (Admin) đưa ra Phán quyết Tranh chấp cuối cùng
+   */
+  async arbitrateDispute(
+    orderId: string,
+    adminUser: { id: string; fullName?: string; email: string },
+    adminIp: string,
+    dto: {
+      ruling: 'REFUND_BUYER' | 'REJECT_BUYER';
+      notes: string;
+    },
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        store: true,
+        commissions: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng cần phán quyết');
+    }
+
+    const currentRaw = (order.rawPayload as Record<string, any>) || {};
+    const existingDispute = currentRaw.dispute || {};
+
+    const arbitrationRecord = {
+      ruling: dto.ruling,
+      notes: dto.notes,
+      ruledAt: new Date().toISOString(),
+      ruledBy: adminUser.fullName || adminUser.email,
+      ruledById: adminUser.id,
+    };
+
+    let newStatus: OrderStatus = order.status;
+
+    if (dto.ruling === 'REFUND_BUYER') {
+      newStatus = OrderStatus.RETURNED;
+      if (order.commissions && order.commissions.length > 0) {
+        for (const comm of order.commissions) {
+          if (comm.status === CommissionStatus.PENDING) {
+            try {
+              await this.prisma.$transaction(async (tx) => {
+                await this.walletsService.reversePendingBalance(
+                  tx,
+                  comm.collaboratorId,
+                  comm.commissionAmount,
+                  { id: comm.id, type: 'ORDER_REFUND' },
+                  comm.storeWalletTracked ? order.storeId : undefined,
+                );
+                await tx.commission.update({
+                  where: { id: comm.id },
+                  data: {
+                    status: CommissionStatus.REVERSED,
+                    reversedAt: new Date(),
+                  },
+                });
+              });
+            } catch (err) {
+              this.logger.error(`Lỗi thu hồi hoa hồng khi hoàn tiền tranh chấp: ${err}`);
+            }
+          }
+        }
+      }
+    }
+
+    const updatedDispute = {
+      ...existingDispute,
+      status: dto.ruling === 'REFUND_BUYER' ? 'RESOLVED_REFUND' : 'RESOLVED_REJECTED',
+      arbitration: arbitrationRecord,
+    };
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: newStatus,
+        rawPayload: {
+          ...currentRaw,
+          dispute: updatedDispute,
+        },
+      },
+    });
+
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          userId: adminUser.id,
+          action: `DISPUTE_ARBITRATION_${dto.ruling}`,
+          ipAddress: adminIp,
+          details: {
+            orderId,
+            orderSn: order.externalOrderSn,
+            ruling: dto.ruling,
+            notes: dto.notes,
+            storeId: order.storeId,
+            customerId: order.customerId,
+          },
+        },
+      });
+    } catch (e) {
+      this.logger.warn(`Không thể ghi AuditLog phán quyết: ${e}`);
+    }
+
+    if (order.customerId) {
+      try {
+        await this.prisma.notification.create({
+          data: {
+            userId: order.customerId,
+            title: `Phán quyết khiếu nại đơn hàng ${order.externalOrderSn}`,
+            message:
+              dto.ruling === 'REFUND_BUYER'
+                ? `Trọng tài SCANMS đã chấp thuận yêu cầu hoàn tiền của bạn. Căn cứ: "${dto.notes}".`
+                : `Trọng tài SCANMS đã bác bỏ khiếu nại. Căn cứ: "${dto.notes}".`,
+            type: 'DISPUTE_RESOLVED',
+            data: { orderId, ruling: dto.ruling },
+          },
+        });
+      } catch (e) {}
+    }
+
+    if (order.store?.ownerId) {
+      try {
+        await this.prisma.notification.create({
+          data: {
+            userId: order.store.ownerId,
+            title: `Kết quả trọng tài tranh chấp đơn ${order.externalOrderSn}`,
+            message:
+              dto.ruling === 'REFUND_BUYER'
+                ? `Trọng tài quyết định hoàn tiền cho khách. Ghi chú: "${dto.notes}".`
+                : `Trọng tài đã bảo vệ gian hàng, bác bỏ khiếu nại của khách.`,
+            type: 'DISPUTE_RESOLVED',
+            data: { orderId, ruling: dto.ruling },
+          },
+        });
+      } catch (e) {}
+    }
+
+    return {
+      success: true,
+      message:
+        dto.ruling === 'REFUND_BUYER'
+          ? 'Đã ban hành phán quyết chấp thuận hoàn tiền cho người mua.'
+          : 'Đã ban hành phán quyết bác bỏ khiếu nại, bảo vệ gian hàng.',
+      orderStatus: newStatus,
+      dispute: updatedDispute,
     };
   }
 }

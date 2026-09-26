@@ -465,6 +465,82 @@ export class OrdersController {
     const clientIp = req.ip || ip;
     return this.ordersService.guestCancelOrder(publicCode, dto, clientIp);
   }
+
+  // =========================================================================
+  // NHIỆM VỤ 4: CỔNG PHÂN XỬ TRỌNG TÀI KHIẾU NẠI ĐỔI TRẢ ĐỘC LẬP (Leader Thắng)
+  // =========================================================================
+
+  @Get('admin/disputes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Lấy danh sách các đơn hàng có khiếu nại tranh chấp (Admin Portal)',
+  })
+  async getAdminDisputes() {
+    return this.ordersService.getAdminDisputes();
+  }
+
+  @Post(':id/dispute')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Khách hàng gửi hồ sơ khiếu nại đổi trả / unboxing',
+  })
+  async raiseDispute(
+    @Param('id') orderId: string,
+    @CurrentUser('id') customerId: string,
+    @Body()
+    dto: {
+      reason: string;
+      customerProofVideoUrl?: string;
+      customerProofImages?: string[];
+      notes?: string;
+    },
+  ) {
+    return this.ordersService.raiseDispute(orderId, customerId, dto);
+  }
+
+  @Post(':id/dispute/respond')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Gian hàng gửi giải trình & chứng cứ xuất kho đối soát',
+  })
+  async respondDispute(
+    @Param('id') orderId: string,
+    @CurrentUser('id') shopOwnerId: string,
+    @Body()
+    dto: {
+      storeResponse: string;
+      storeProofImages?: string[];
+    },
+  ) {
+    return this.ordersService.respondDispute(orderId, shopOwnerId, dto);
+  }
+
+  @Post(':id/dispute/arbitrate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Trọng tài độc lập SCANMS ban hành Phán quyết Tranh chấp cuối cùng',
+  })
+  async arbitrateDispute(
+    @Param('id') orderId: string,
+    @CurrentUser() adminUser: any,
+    @Ip() ip: string,
+    @Req() req: Request,
+    @Body()
+    dto: {
+      ruling: 'REFUND_BUYER' | 'REJECT_BUYER';
+      notes: string;
+    },
+  ) {
+    const adminIp = req.ip || ip;
+    return this.ordersService.arbitrateDispute(orderId, adminUser, adminIp, dto);
+  }
 }
 
 

@@ -21,6 +21,11 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import {
+  SendForgotPasswordOtpDto,
+  VerifyResetOtpDto,
+  ResetPasswordDto,
+} from './dto/forgot-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -76,6 +81,33 @@ export class AuthController {
     return this.authService.googleLogin(dto, { ipAddress: ip, userAgent });
   }
 
+  @Post('forgot-password/send-otp')
+  @ApiOperation({
+    summary: 'Gửi mã OTP xác thực khôi phục mật khẩu qua Email (Thời hạn 5 phút)',
+  })
+  @ApiResponse({ status: 200, description: 'Mã OTP đã được gửi' })
+  async sendForgotPasswordOtp(@Body() dto: SendForgotPasswordOtpDto) {
+    return this.authService.sendForgotPasswordOtp(dto);
+  }
+
+  @Post('forgot-password/verify-otp')
+  @ApiOperation({
+    summary: 'Kiểm tra tính hợp lệ của mã OTP khôi phục mật khẩu',
+  })
+  @ApiResponse({ status: 200, description: 'Mã OTP hợp lệ' })
+  async verifyResetOtp(@Body() dto: VerifyResetOtpDto) {
+    return this.authService.verifyResetOtp(dto);
+  }
+
+  @Post('forgot-password/reset')
+  @ApiOperation({
+    summary: 'Đặt lại mật khẩu mới được băm bằng thuật toán Argon2id chuẩn OWASP',
+  })
+  @ApiResponse({ status: 200, description: 'Đổi mật khẩu thành công' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -96,3 +128,4 @@ export class AuthController {
     return this.authService.getMe(userId);
   }
 }
+
