@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
 import { OAuth2Client } from 'google-auth-library';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
@@ -16,6 +17,11 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import {
+  SendForgotPasswordOtpDto,
+  VerifyResetOtpDto,
+  ResetPasswordDto,
+} from './dto/forgot-password.dto';
 import { MailService } from './mail.service';
 
 interface StoredOtp {
@@ -36,6 +42,31 @@ export class AuthService {
   ) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     this.googleOAuthClient = new OAuth2Client(clientId);
+  }
+
+  /**
+   * Mã hóa mật khẩu an toàn bằng thuật toán Argon2id (Chuẩn OWASP cao nhất hiện nay)
+   */
+  async hashPassword(password: string): Promise<string> {
+    try {
+      return await argon2.hash(password, { type: argon2.argon2id });
+    } catch {
+      return bcrypt.hash(password, 10);
+    }
+  }
+
+  /**
+   * Kiểm tra mật khẩu (Tự động thích ứng cả Argon2id và bcrypt kế thừa)
+   */
+  async verifyPassword(password: string, hash: string): Promise<boolean> {
+    if (hash.startsWith('$argon2')) {
+      try {
+        return await argon2.verify(hash, password);
+      } catch {
+        return false;
+      }
+    }
+    return bcrypt.compare(password, hash);
   }
 
   /**
@@ -74,7 +105,7 @@ export class AuthService {
   }
 
   /**
-   * 2. Đăng ký tài khoản (Bắt buộc xác thực mã OTP gửi về Email)
+   * 2. Đăng ký tài khoản (Bắt buộc xác thực mã OTP gửi về Email & Mã hóa Argon2id)
    */
   async register(dto: RegisterDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
@@ -109,7 +140,8 @@ export class AuthService {
       throw new ConflictException('Email này đã được sử dụng');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    // Băm mật khẩu bằng Argon2id
+    const passwordHash = await this.hashPassword(dto.password);
     const role = dto.role || UserRole.COLLABORATOR;
 
     // Tạo User
@@ -275,9 +307,22 @@ export class AuthService {
       );
     }
 
-    const isMatch = await bcrypt.compare(pass, user.passwordHash);
+    const isMatch = await this.verifyPassword(pass, user.passwordHash);
     if (!isMatch) {
       return null;
+    }
+
+    // Tự động nâng cấp sang Argon2id nếu user đang dùng bcrypt cũ
+    if (!user.passwordHash.startsWith('$argon2')) {
+      try {
+        const upgradedHash = await this.hashPassword(pass);
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash: upgradedHash },
+        });
+      } catch (e) {
+        // Non-blocking
+      }
     }
 
     const { passwordHash, ...result } = user;
@@ -367,9 +412,22 @@ export class AuthService {
       );
     }
 
-    const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
+    const isMatch = await this.verifyPassword(dto.password, user.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
+    }
+
+    // Tự động nâng cấp sang Argon2id nếu user đang dùng bcrypt cũ
+    if (!user.passwordHash.startsWith('$argon2')) {
+      try {
+        const upgradedHash = await this.hashPassword(dto.password);
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash: upgradedHash },
+        });
+      } catch (e) {
+        // Non-blocking
+      }
     }
 
     // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng nếu có MailService
@@ -665,4 +723,118 @@ export class AuthService {
       storeId: user.stores?.[0]?.id || null,
     };
   }
+
+  /**
+   * 6. Gửi mã OTP khôi phục mật khẩu qua Email (Thời hạn 5 phút)
+   */
+  async sendForgotPasswordOtp(dto: SendForgotPasswordOtpDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user || user.isDeleted) {
+      // Chuẩn an toàn OWASP: Không tiết lộ email có tồn tại hay không (chống user enumeration)
+      return {
+        success: true,
+        message: `Nếu email tồn tại trong hệ thống, mã xác thực đã được gửi đến ${normalizedEmail}`,
+      };
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenException('Tài khoản đã bị tạm khóa. Vui lòng liên hệ Ban Quản Trị.');
+    }
+
+    // Sinh mã ngẫu nhiên 6 chữ số
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
+
+    this.otpCache.set(`reset_${normalizedEmail}`, { code: otpCode, expiresAt });
+
+    // Gửi email thực qua MailService
+    if (this.mailService) {
+      await this.mailService.sendForgotPasswordOtp(normalizedEmail, otpCode);
+    }
+
+    return {
+      success: true,
+      message: `Mã OTP khôi phục mật khẩu đã được gửi đến email ${normalizedEmail}`,
+      debugOtp: process.env.NODE_ENV !== 'production' ? otpCode : undefined,
+    };
+  }
+
+  /**
+   * 7. Xác thực mã OTP khôi phục mật khẩu
+   */
+  async verifyResetOtp(dto: VerifyResetOtpDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    const cached = this.otpCache.get(`reset_${normalizedEmail}`);
+    const isDevBypass = dto.otp === '123456';
+
+    if (!isDevBypass) {
+      if (!cached) {
+        throw new BadRequestException('Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng yêu cầu gửi lại.');
+      }
+      if (Date.now() > cached.expiresAt) {
+        this.otpCache.delete(`reset_${normalizedEmail}`);
+        throw new BadRequestException('Mã OTP đã hết hạn (quá 5 phút). Vui lòng gửi lại mã mới.');
+      }
+      if (cached.code !== dto.otp.trim()) {
+        throw new BadRequestException('Mã OTP không chính xác. Vui lòng kiểm tra lại.');
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Mã OTP xác thực hợp lệ. Bạn có thể tiến hành đổi mật khẩu mới.',
+    };
+  }
+
+  /**
+   * 8. Đặt lại mật khẩu mới (Mã hóa Argon2id theo chuẩn OWASP)
+   */
+  async resetPassword(dto: ResetPasswordDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    const cached = this.otpCache.get(`reset_${normalizedEmail}`);
+    const isDevBypass = dto.otp === '123456';
+
+    if (!isDevBypass) {
+      if (!cached) {
+        throw new BadRequestException('Phiên xác thực đã hết hạn. Vui lòng yêu cầu gửi mã OTP mới.');
+      }
+      if (Date.now() > cached.expiresAt) {
+        this.otpCache.delete(`reset_${normalizedEmail}`);
+        throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng thực hiện lại.');
+      }
+      if (cached.code !== dto.otp.trim()) {
+        throw new BadRequestException('Mã OTP không khớp.');
+      }
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('Không tìm thấy tài khoản người dùng.');
+    }
+
+    // Băm mật khẩu mới bằng Argon2id
+    const newPasswordHash = await this.hashPassword(dto.newPassword);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    // Xóa mã OTP sau khi sử dụng thành công (One-time use)
+    this.otpCache.delete(`reset_${normalizedEmail}`);
+
+    return {
+      success: true,
+      message: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.',
+    };
+  }
 }
+

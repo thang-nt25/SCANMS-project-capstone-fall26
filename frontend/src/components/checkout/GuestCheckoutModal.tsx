@@ -15,10 +15,16 @@ import {
   Store as StoreIcon,
   Package,
   MapPin,
+  Lock,
+  LogIn,
+  Zap,
 } from 'lucide-react';
 import api from '../../services/api';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
+import { triggerGoogleSignIn, devBypassGoogleSignIn } from '../../utils/googleAuth';
+import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
+import { toast } from '../../utils/toast';
 import {
   loadShippingAddresses,
   type ShippingProvince,
@@ -77,6 +83,87 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
   const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string>('');
+
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const onTokenSuccessInCheckout = async (idToken: string) => {
+    try {
+      setIsLoggingIn(true);
+      setLoginError(null);
+      const res: any = await authService.googleLogin(idToken, 'CUSTOMER');
+      const user = res?.user || authService.getCurrentUser();
+      setCurrentUser(user);
+      if (user) {
+        setCustomerName(user.fullName || '');
+        setCustomerEmail(user.email || '');
+        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
+        customerService.getAddresses().then((addrs) => {
+          if (Array.isArray(addrs) && addrs.length > 0) {
+            setCustomerAddresses(addrs);
+            const def = addrs.find((a) => a.isDefault) || addrs[0];
+            if (def) {
+              handleSelectSavedAddress(def.id);
+            }
+          }
+        }).catch(() => {});
+      }
+      toast.success('Đăng nhập thành công! Vui lòng hoàn tất thông tin đặt hàng.');
+    } catch (err: any) {
+      setLoginError(err?.response?.data?.message || err?.message || 'Đăng nhập Google thất bại');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleGoogleLoginInCheckout = (useDevBypass: boolean = false) => {
+    if (useDevBypass) {
+      devBypassGoogleSignIn(onTokenSuccessInCheckout, 'customer.checkout@scanms.vn');
+      return;
+    }
+
+    triggerGoogleSignIn(
+      onTokenSuccessInCheckout,
+      (errMsg) => setLoginError(errMsg),
+    );
+  };
+
+  const handleEmailLoginInCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail.trim() || !loginPassword) {
+      setLoginError('Vui lòng nhập đầy đủ Email và Mật khẩu.');
+      return;
+    }
+    setIsLoggingIn(true);
+    setLoginError(null);
+    try {
+      const res: any = await authService.login(loginEmail.trim(), loginPassword);
+      const user = res?.user || authService.getCurrentUser();
+      setCurrentUser(user);
+      if (user) {
+        setCustomerName(user.fullName || '');
+        setCustomerEmail(user.email || '');
+        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
+        customerService.getAddresses().then((addrs) => {
+          if (Array.isArray(addrs) && addrs.length > 0) {
+            setCustomerAddresses(addrs);
+            const def = addrs.find((a) => a.isDefault) || addrs[0];
+            if (def) {
+              handleSelectSavedAddress(def.id);
+            }
+          }
+        }).catch(() => {});
+      }
+      toast.success('Đăng nhập thành công! Vui lòng hoàn tất thông tin đặt hàng.');
+    } catch (err: any) {
+      setLoginError(err?.response?.data?.message || err?.message || 'Email hoặc mật khẩu không chính xác');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -146,7 +233,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Load user and pre-fill on modal open
   useEffect(() => {
     if (isOpen) {
       const user = authService.getCurrentUser();
@@ -157,7 +243,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         setCustomerEmail(user.email || '');
         if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
 
-        // Fetch customer's address book if customer role
         if (user.role === 'CUSTOMER') {
           customerService.getAddresses().then((addrs) => {
             if (Array.isArray(addrs) && addrs.length > 0) {
@@ -365,6 +450,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
 
+    if (!currentUser) {
+      setErrorMessage(
+        'Vui lòng đăng nhập hoặc xác thực với Google trước khi hoàn tất đặt hàng để kích hoạt quyền lợi bảo hộ đơn hàng và chính sách Escrow 14 ngày.',
+      );
+      const gateEl = document.getElementById('mandatory-auth-gate');
+      if (gateEl) {
+        gateEl.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
 
     const trimmedName = customerName.trim();
     if (!trimmedName || trimmedName.length < 2) {
@@ -424,7 +519,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         shippingAddress: fullShippingAddress,
         orderNotes: orderNotes.trim() || undefined,
         paymentMethod,
-        // Chỉ gửi coupon đã được backend xác thực thành công.
         couponCode: appliedCoupon?.code || undefined,
         idempotencyKey,
         items: [
@@ -460,8 +554,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         confirmationEmailQueued: Boolean(resData.confirmationEmailQueued),
       };
 
-      // Chỉ ghi nhớ mã đơn công khai để khách có thể theo dõi lại sau khi đóng modal.
-      // Không lưu cancellationToken hoặc PII vào localStorage.
       localStorage.setItem(
         'scanms-recent-guest-order',
         JSON.stringify({ publicOrderCode, createdAt: Date.now() }),
@@ -681,11 +773,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
           </div>
         ) : (
           <div>
-            {/* Header */}
             <div className="mb-6 pb-4 border-b border-[#EAE4D7] pr-8 sm:pr-12">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider mb-2">
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>GUEST CHECKOUT • ĐẶT HÀNG NHANH KHÔNG CẦN TÀI KHOẢN</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
+                <span>SCANMS SECURE CHECKOUT • XÁC THỰC DANH TÍNH & BẢO HỘ ĐƠN HÀNG 100%</span>
               </div>
               <h2 id="guest-checkout-title" className="text-xl sm:text-2xl font-black text-[#1A1612]">
                 Thông Tin Giao Hàng & Thanh Toán
@@ -697,12 +788,122 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   {store.name}
                 </span>
                 <span>•</span>
-                <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                <span className="text-[#059669] font-semibold flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  Bảo hộ bởi SCANMS (Đồng kiểm trước khi nhận)
+                  Bảo chứng quỹ Escrow 14 ngày (Đồng kiểm trước khi nhận)
                 </span>
               </div>
             </div>
+
+            {!currentUser ? (
+              <div id="mandatory-auth-gate" className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#FBF5EB] to-[#FAF8F5] border-2 border-[#C59B58] shadow-sm text-left">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#C59B58] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-[#EEDFC6] text-[10px] font-black text-[#B88E4F] uppercase tracking-wider mb-1">
+                      BẮT BUỘC XÁC THỰC KHÁCH HÀNG (MANDATORY AUTH GATE)
+                    </div>
+                    <h3 className="text-sm sm:text-base font-black text-[#1A1612]">
+                      Đăng Nhập Hoặc Xác Thực Google Trước Khi Đặt Hàng
+                    </h3>
+                    <p className="text-xs text-[#7D715E] mt-1 leading-relaxed">
+                      Hệ thống SCANMS yêu cầu liên kết tài khoản để đảm bảo:
+                      <span className="font-semibold text-[#1A1612]"> (1) Kích hoạt Quỹ Bảo Chứng Escrow 14 ngày</span>,
+                      <span className="font-semibold text-[#1A1612]"> (2) Quyền gửi khiếu nại Trọng tài độc lập</span>, và
+                      <span className="font-semibold text-[#1A1612]"> (3) Tự động lưu Sổ địa chỉ giao hàng</span>.
+                    </p>
+
+                    {loginError && (
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/30 text-xs text-[#DC2626] font-medium flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{loginError}</span>
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                      <div className="shrink-0 min-w-[200px]">
+                        <GoogleOfficialButton
+                          onSuccess={onTokenSuccessInCheckout}
+                          onError={(errMsg) => setLoginError(errMsg)}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isLoggingIn}
+                          onClick={() => handleGoogleLoginInCheckout(true)}
+                          className="px-3.5 py-2.5 bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          title="Dùng chế độ Dev Test để vượt qua kiểm tra origin localhost"
+                        >
+                          <Zap className="w-3.5 h-3.5 fill-current" />
+                          <span>⚡ Google 1-Click (Dev Test)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailLogin(!showEmailLogin)}
+                          className="px-3.5 py-2.5 bg-white border border-[#EAE4D7] hover:border-[#1A1612] text-[#1A1612] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <LogIn className="w-3.5 h-3.5 text-[#7D715E]" />
+                          <span>{showEmailLogin ? 'Đóng đăng nhập Email' : 'Đăng nhập Email'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {showEmailLogin && (
+                      <div className="mt-3.5 p-3.5 bg-white rounded-xl border border-[#EAE4D7] space-y-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <input
+                            type="email"
+                            placeholder="Email tài khoản"
+                            value={loginEmail}
+                            onChange={(e) => setLoginEmail(e.target.value)}
+                            className="px-3 py-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-lg text-xs text-[#1A1612] focus:outline-hidden focus:border-[#C59B58]"
+                          />
+                          <input
+                            type="password"
+                            placeholder="Mật khẩu"
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
+                            className="px-3 py-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-lg text-xs text-[#1A1612] focus:outline-hidden focus:border-[#C59B58]"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-[#7D715E]">
+                            Chưa có tài khoản? Nhấn nút Google ở trên để đăng ký 1 chạm.
+                          </span>
+                          <button
+                            type="button"
+                            disabled={isLoggingIn}
+                            onClick={handleEmailLoginInCheckout}
+                            className="px-4 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                          >
+                            {isLoggingIn && <Loader2 className="w-3 h-3 animate-spin" />}
+                            <span>Đăng nhập ngay</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4 p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#1A1612] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#059669]" />
+                  <span>
+                    Khách hàng: <strong className="text-[#1A1612]">{currentUser.fullName || currentUser.email}</strong> ({currentUser.email})
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-[#059669] flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Đã xác thực danh tính
+                </span>
+              </div>
+            )}
 
             {errorMessage && (
               <div className="mb-5 p-3.5 rounded-2xl bg-[#DC2626]/10 border border-[#DC2626]/30 text-xs text-[#DC2626] flex items-center gap-2.5">
@@ -713,9 +914,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
             <form onSubmit={handleSubmitOrder}>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-                {/* LEFT COLUMN: Receiver Info, Address, Payment Method, Notes (7 cols) */}
                 <div className="lg:col-span-7 space-y-4 text-left">
-                  {/* Card 1: Receiver Information */}
                   <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-3">
                     <div className="flex items-center gap-2 pb-2 border-b border-[#EAE4D7]">
                       <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[11px] font-black flex items-center justify-center">1</span>
@@ -787,7 +986,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Card 2: Delivery Address */}
                   <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-3">
                     <div className="flex items-center gap-2 pb-2 border-b border-[#EAE4D7]">
                       <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[11px] font-black flex items-center justify-center">2</span>
@@ -899,7 +1097,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     />
                   </div>
 
-                  {/* Card 3: Payment Method & Notes */}
                   <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-3">
                     <div className="flex items-center gap-2 pb-2 border-b border-[#EAE4D7]">
                       <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[11px] font-black flex items-center justify-center">3</span>
@@ -953,9 +1150,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN: Product, Variants, Quantity, Voucher, Pricing, CTA (5 cols) */}
                 <div className="lg:col-span-5 space-y-4 text-left lg:sticky lg:top-3">
-                  {/* Order Summary Item */}
                   <div className="p-4 sm:p-5 bg-[#FAF8F5] border border-[#EEDFC6] rounded-2xl space-y-3.5 shadow-2xs">
                     <div className="flex items-center justify-between pb-2 border-b border-[#EAE4D7]">
                       <h3 className="text-xs sm:text-sm font-black text-[#1A1612] flex items-center gap-1.5">
@@ -967,7 +1162,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       </span>
                     </div>
 
-                    {/* Product preview */}
                     <div className="flex items-center gap-3">
                       <div className="w-16 h-16 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] overflow-hidden shrink-0">
                         <img
@@ -999,7 +1193,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Variants */}
                     {product.variants && product.variants.length > 0 && (
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
@@ -1051,7 +1244,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       </div>
                     )}
 
-                    {/* Quantity */}
                     <div className="flex items-center justify-between pt-2.5 border-t border-[#EAE4D7]">
                       <span className="text-xs font-bold text-[#1A1612]">Số lượng mua:</span>
                       <div className="flex items-center border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shrink-0 shadow-2xs">
@@ -1076,7 +1268,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Coupon */}
                   <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
                     <label className="block text-xs font-bold text-[#1A1612]">
                       Mã giảm giá KOL / Gian hàng (Tùy chọn)
@@ -1129,7 +1320,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     )}
                   </div>
 
-                  {/* Price Calculation Box */}
                   <div className="p-4 sm:p-5 bg-gradient-to-br from-[#FBF5EB] to-[#FAF8F5] border-2 border-[#EEDFC6] rounded-2xl space-y-2 text-xs shadow-xs">
                     <div className="flex justify-between text-[#7D715E]">
                       <span>Tiền hàng ({quantity} món):</span>
@@ -1153,7 +1343,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={isSubmitting || product.stockQuantity <= 0}
