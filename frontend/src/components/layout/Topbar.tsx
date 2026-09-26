@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, Bell, ChevronDown, Store, LogOut, Settings } from 'lucide-react';
+import { Sun, Moon, ChevronDown, Store, LogOut, Settings } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
-import { toast } from '../../utils/toast';
+import { NotificationDropdown } from './NotificationDropdown';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
@@ -137,15 +137,7 @@ export function Topbar({
           {theme === 'dark' ? <Sun className="w-4 h-4 text-[#B88E4F]" /> : <Moon className="w-4 h-4 text-[#7D715E]" />}
         </button>
 
-        <button
-          type="button"
-          aria-label="Thông báo"
-          onClick={() => toast.info('Hệ thống hoạt động bình thường. Không có cảnh báo mới.')}
-          className="w-8.5 h-8.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] flex items-center justify-center transition cursor-pointer shadow-2xs relative"
-        >
-          <Bell className="w-4 h-4 text-[#7D715E]" />
-          <span className="w-2 h-2 rounded-full bg-[#B88E4F] absolute top-1.5 right-1.5"></span>
-        </button>
+        <NotificationDropdown />
 
         <div className="relative" ref={menuRef}>
           <div

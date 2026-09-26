@@ -44,6 +44,9 @@ const AiFraudSentinelPage = lazy(() => import('../pages/merchant/AiFraudSentinel
 // Audit Logs & Security Trail (Quý - FR-32)
 const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
 
+// Dispute Arbitration Portal (Leader Thắng - Nhiệm vụ 4)
+const DisputeResolutionPage = lazy(() => import('../pages/admin/DisputeResolutionPage').then(m => ({ default: m.DisputeResolutionPage })));
+
 import { RouteContent } from './RouteContent';
 
 function AppRoutes() {
@@ -165,6 +168,8 @@ function AppRoutes() {
             <Route path="admin/fraud-sentinel" element={<AiFraudSentinelPage />} />
             <Route path="admin/leaderboard" element={<Navigate to="/admin/analytics?tab=leaderboard" replace />} />
             <Route path="admin/kol-recommendations" element={<Navigate to="/admin/analytics?tab=ai-matching" replace />} />
+            <Route path="admin/disputes" element={<DisputeResolutionPage />} />
+            <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
             <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
             <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />
           </Route>

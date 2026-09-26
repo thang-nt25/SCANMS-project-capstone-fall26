@@ -110,6 +110,44 @@ export class MailService {
   }
 
   /**
+   * Gửi mã OTP khôi phục mật khẩu khi người dùng bấm Quên mật khẩu
+   */
+  async sendForgotPasswordOtp(email: string, otp: string) {
+    const subject = '🔑 [SCANMS] Mã xác thực khôi phục mật khẩu tài khoản';
+    const html = `
+      <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; background: #FAF8F5; padding: 30px; color: #1A1612;">
+        <div style="max-width: 520px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border: 1px solid #EAE4D7; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 24px; font-weight: 800; color: #B88E4F; letter-spacing: -0.5px;">SCANMS</span>
+            <p style="font-size: 11px; color: #7D715E; margin: 4px 0 0; text-transform: uppercase; font-weight: 700;">Hệ thống bảo mật tài khoản & xác thực hai lớp</p>
+          </div>
+
+          <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 12px; text-align: center; color: #1A1612;">Khôi phục mật khẩu tài khoản</h2>
+          <p style="font-size: 13.5px; line-height: 1.6; color: #52525B; margin: 0 0 24px; text-align: center;">
+            Hệ thống nhận được yêu cầu đặt lại mật khẩu cho tài khoản liên kết với email này. Sử dụng mã OTP bảo mật bên dưới để tiến hành đổi mật khẩu mới:
+          </p>
+
+          <div style="background: #FBF5EB; border: 1.5px dashed #C59B58; border-radius: 12px; padding: 18px; text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #B88E4F;">${otp}</span>
+            <p style="margin: 6px 0 0; font-size: 12px; color: #7D715E; font-weight: 600;">Mã có hiệu lực chính xác trong vòng 5 phút (300 giây)</p>
+          </div>
+
+          <p style="font-size: 12px; color: #DC2626; line-height: 1.5; margin: 0 0 10px; font-weight: 600;">
+            ⚠️ Lưu ý an toàn: Không cung cấp mã OTP này cho bất kỳ ai. Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email hoặc đổi mật khẩu ngay để bảo vệ tài khoản.
+          </p>
+        </div>
+      </div>
+    `;
+
+    await this.sendMail(
+      email,
+      subject,
+      html,
+      `Mã OTP khôi phục mật khẩu của bạn là: ${otp} (hiệu lực 5 phút)`,
+    );
+  }
+
+  /**
    * Gửi thông báo bảo mật khi có người đăng nhập vào tài khoản
    */
   async sendLoginSecurityAlert(
