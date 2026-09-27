@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
@@ -20,13 +20,11 @@ import {
   ShoppingCart,
   Lock,
   LogIn,
-  Zap,
   ShieldCheck,
 } from 'lucide-react';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
-import { triggerGoogleSignIn, devBypassGoogleSignIn } from '../../utils/googleAuth';
 import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
 import { toast } from '../../utils/toast';
 import {
@@ -35,6 +33,7 @@ import {
 } from '../../services/order-address.service';
 import { useCart, type CartItem } from '../../context/CartContext';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
+import { formatSavedAddressOption, resolveSavedShippingAddress } from '../../utils/checkoutAddress';
 
 export interface ProductVariantItem {
   id: string;
@@ -121,7 +120,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             setCustomerAddresses(addrs);
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
-              handleSelectSavedAddress(def.id);
+              setSelectedSavedAddressId(def.id);
             }
           }
         }).catch(() => {});
@@ -132,18 +131,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     } finally {
       setIsLoggingIn(false);
     }
-  };
-
-  const handleGoogleLoginInCheckout = (useDevBypass: boolean = false) => {
-    if (useDevBypass) {
-      devBypassGoogleSignIn(onTokenSuccessInCheckout, 'customer.checkout@scanms.vn');
-      return;
-    }
-
-    triggerGoogleSignIn(
-      onTokenSuccessInCheckout,
-      (errMsg) => setLoginError(errMsg),
-    );
   };
 
   const handleEmailLoginInCheckout = async (e: React.FormEvent) => {
@@ -167,7 +154,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             setCustomerAddresses(addrs);
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
-              handleSelectSavedAddress(def.id);
+              setSelectedSavedAddressId(def.id);
             }
           }
         }).catch(() => {});
@@ -489,38 +476,31 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(districtCode));
   const selectedWard = selectedDistrict?.wards.find((w) => String(w.code) === String(wardCode));
 
-  const handleSelectSavedAddress = (addrId: string) => {
-    setSelectedSavedAddressId(addrId);
+  const applySavedAddress = useCallback((addrId: string) => {
     const addr = customerAddresses.find((a) => a.id === addrId);
     if (!addr) return;
 
     if (addr.fullName) setCustomerName(addr.fullName);
     if (addr.phoneNumber) setCustomerPhone(addr.phoneNumber);
-    if (addr.detailAddress) setShippingAddress(addr.detailAddress);
 
-    const foundProv = shippingProvinces.find(
-      (p) =>
-        (addr.provinceName && p.name.toLowerCase().includes(addr.provinceName.toLowerCase())) ||
-        String(p.code) === String(addr.provinceCode),
-    );
-    if (foundProv) {
-      setProvinceCode(String(foundProv.code));
-      const foundDist = foundProv.districts.find(
-        (d) =>
-          (addr.districtName && d.name.toLowerCase().includes(addr.districtName.toLowerCase())) ||
-          String(d.code) === String(addr.districtCode),
-      );
-      if (foundDist) {
-        setDistrictCode(String(foundDist.code));
-        const foundWard = foundDist.wards.find(
-          (w) =>
-            (addr.wardName && w.name.toLowerCase().includes(addr.wardName.toLowerCase())) ||
-            String(w.code) === String(addr.wardCode),
-        );
-        if (foundWard) setWardCode(String(foundWard.code));
-      }
-    }
+    const resolved = resolveSavedShippingAddress(addr, shippingProvinces);
+    setShippingAddress(resolved.detailAddress);
+    setProvinceCode(resolved.provinceCode);
+    setDistrictCode(resolved.districtCode);
+    setWardCode(resolved.wardCode);
+  }, [customerAddresses, shippingProvinces]);
+
+  const handleSelectSavedAddress = (addrId: string) => {
+    setSelectedSavedAddressId(addrId);
+    if (addrId) applySavedAddress(addrId);
   };
+
+  // Address data and the province catalog load independently. Re-apply the
+  // selected address once both are available so all three selects are filled.
+  useEffect(() => {
+    if (!isOpen || !selectedSavedAddressId || shippingProvinces.length === 0) return;
+    applySavedAddress(selectedSavedAddressId);
+  }, [applySavedAddress, isOpen, selectedSavedAddressId, shippingProvinces.length]);
 
   const isPhoneValid = (phone: string) => /^(0[3|5|7|8|9])[0-9]{8}$/.test(phone.trim());
   const isEmailValid = (email: string) =>
@@ -976,7 +956,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       Hệ thống SCANMS yêu cầu liên kết tài khoản để đảm bảo:
                       <span className="font-semibold text-[#1A1612]"> (1) Kích hoạt Quỹ Bảo Chứng Escrow 14 ngày</span>,
                       <span className="font-semibold text-[#1A1612]"> (2) Quyền gửi khiếu nại Trọng tài độc lập</span>, và
-                      <span className="font-semibold text-[#1A1612]"> (3) Tự động lưu Sổ địa chỉ giao hàng</span>.
+                      <span className="font-semibold text-[#1A1612]"> (3) Quản lý đơn hàng trong tài khoản</span>.
                     </p>
 
                     {loginError && (
@@ -987,25 +967,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     )}
 
                     <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                      <div className="shrink-0 min-w-[200px]">
+                      <div className={`shrink-0 min-w-[220px] ${isLoggingIn ? 'pointer-events-none opacity-60' : ''}`}>
                         <GoogleOfficialButton
                           onSuccess={onTokenSuccessInCheckout}
+                          text="continue_with"
                           onError={(errMsg) => setLoginError(errMsg)}
                         />
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={isLoggingIn}
-                          onClick={() => handleGoogleLoginInCheckout(true)}
-                          className="px-3.5 py-2.5 bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                          title="Dùng chế độ Dev Test để vượt qua kiểm tra origin localhost"
-                        >
-                          <Zap className="w-3.5 h-3.5 fill-current" />
-                          <span>⚡ Google 1-Click (Dev Test)</span>
-                        </button>
-
                         <button
                           type="button"
                           onClick={() => setShowEmailLogin(!showEmailLogin)}
@@ -1153,7 +1123,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
 
                     {customerAddresses.length > 0 && (
-                      <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] space-y-1.5">
+                      <div className="min-w-0 rounded-xl border border-[#EAE4D7] bg-[#FBF5EB] px-3 py-2.5 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-[#B88E4F] flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -1163,13 +1133,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         <select
                           value={selectedSavedAddressId}
                           onChange={(e) => handleSelectSavedAddress(e.target.value)}
-                          className="w-full text-xs bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-[#1A1612] font-medium outline-hidden focus:border-[#C59B58]"
+                          aria-label="Chọn địa chỉ nhận hàng đã lưu"
+                          className="block w-full min-w-0 truncate rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#1A1612] outline-hidden focus:border-[#C59B58]"
                         >
-                          <option value="">-- Chọn từ sổ địa chỉ đã lưu --</option>
+                          <option value="">Chọn địa chỉ đã lưu</option>
                           {customerAddresses.map((a) => (
                             <option key={a.id} value={a.id}>
-                              {a.isDefault ? '⭐ [Mặc định] ' : ''}
-                              {a.fullName} - {a.phoneNumber} ({a.detailAddress}, {a.wardName}, {a.districtName}, {a.provinceName})
+                              {formatSavedAddressOption(a, shippingProvinces)}
                             </option>
                           ))}
                         </select>

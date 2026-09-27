@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Sun, Moon, ChevronDown, Store, LogOut, Settings } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { NotificationDropdown } from './NotificationDropdown';
+import { ChatBell } from '../chat/ChatBell';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
@@ -138,6 +139,7 @@ export function Topbar({
         </button>
 
         <NotificationDropdown />
+        {(currentUser?.role === 'CUSTOMER' || currentUser?.role === 'SHOP_MANAGER') && <ChatBell userId={currentUser.id} isShop={isShop} />}
 
         <div className="relative" ref={menuRef}>
           <div

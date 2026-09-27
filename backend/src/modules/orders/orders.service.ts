@@ -1752,37 +1752,6 @@ export class OrdersService {
       });
     }
 
-    // 6.4 Tự động lưu địa chỉ vào Sổ địa chỉ CustomerAddress nếu chưa có (Nhiệm vụ 1 - Leader Thắng)
-    if (dto.customerId) {
-      try {
-        const existingAddr = await tx.customerAddress.findFirst({
-          where: {
-            userId: dto.customerId,
-            detailAddress: shippingAddress,
-          },
-        });
-        if (!existingAddr) {
-          const hasDefault = await tx.customerAddress.findFirst({
-            where: { userId: dto.customerId, isDefault: true },
-          });
-          await tx.customerAddress.create({
-            data: {
-              userId: dto.customerId,
-              fullName: customerName,
-              phoneNumber: customerPhone,
-              detailAddress: shippingAddress,
-              provinceName: 'Toàn quốc',
-              districtName: 'Địa chỉ nhận hàng',
-              wardName: 'Điểm giao',
-              isDefault: !hasDefault,
-            },
-          });
-        }
-      } catch (addrSyncErr) {
-        this.logger.warn(`Không thể tự động lưu sổ địa chỉ CustomerAddress: ${(addrSyncErr as Error).message}`);
-      }
-    }
-
     return {
       order,
       rawCancellationToken,

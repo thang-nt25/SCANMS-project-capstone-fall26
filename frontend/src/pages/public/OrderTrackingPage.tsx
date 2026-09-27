@@ -415,9 +415,7 @@ export default function OrderTrackingPage() {
                     <Store className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold text-[#7D715E] block">
-                      {order.store?.name || "Sora Skin Flagship"}
-                    </span>
+                    {order.store?.id ? <Link to={`/shops/${order.store.id}`} className="text-[11px] font-bold text-[#7D715E] block hover:text-[#B88E4F]">{order.store.name}</Link> : <span className="text-[11px] font-bold text-[#7D715E] block">Gian hàng đối tác</span>}
                     <strong className="text-sm sm:text-base font-black text-[#1A1612]">
                       #{order.externalOrderSn}
                     </strong>

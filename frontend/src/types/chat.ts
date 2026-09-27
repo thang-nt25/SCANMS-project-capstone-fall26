@@ -16,6 +16,7 @@ export interface ChatMessage {
 }
 
 export interface Conversation {
+  _count?: { chatMessages: number };
   id: string;
   storeId: string;
   collaboratorId?: string | null;

@@ -26,7 +26,7 @@ import {
   Award,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
-import { triggerGoogleSignIn, devBypassGoogleSignIn } from '../../utils/googleAuth';
+import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton';
 import { toast } from '../../utils/toast';
 import { ForgotPasswordModal } from '../../components/auth/ForgotPasswordModal';
 
@@ -209,48 +209,29 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = (useDevBypass: boolean = false) => {
+  const handleGoogleLogin = async (idToken: string) => {
     setError(null);
     setIsGoogleLoading(true);
-
-    const onTokenSuccess = async (idToken: string) => {
-      try {
-        const apiRole =
-          role === 'kol'
-            ? 'COLLABORATOR'
-            : role === 'shop'
-            ? 'SHOP_MANAGER'
-            : role === 'customer'
-            ? 'CUSTOMER'
-            : role === 'manager'
-            ? 'SYSTEM_MANAGER'
-            : 'SYSTEM_ADMIN';
-        const res: any = await authService.googleLogin(idToken, apiRole);
-        const user = res?.data?.user || res?.user;
-        toast.success(`Đăng nhập Google thành công! Chào mừng ${user?.fullName || user?.email}`);
-        navigateAfterLogin(user?.role);
-      } catch (err: any) {
-        setError(err.message || 'Đăng nhập Google thất bại');
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    };
-
-    if (useDevBypass) {
-      devBypassGoogleSignIn(onTokenSuccess, email || 'customer@scanms.vn');
-      return;
+    try {
+      const apiRole =
+        role === 'kol'
+          ? 'COLLABORATOR'
+          : role === 'shop'
+          ? 'SHOP_MANAGER'
+          : role === 'customer'
+          ? 'CUSTOMER'
+          : role === 'manager'
+          ? 'SYSTEM_MANAGER'
+          : 'SYSTEM_ADMIN';
+      const res: any = await authService.googleLogin(idToken, apiRole);
+      const user = res?.data?.user || res?.user;
+      toast.success(`Đăng nhập Google thành công! Chào mừng ${user?.fullName || user?.email}`);
+      navigateAfterLogin(user?.role);
+    } catch (err: any) {
+      setError(err.message || 'Đăng nhập Google thất bại');
+    } finally {
+      setIsGoogleLoading(false);
     }
-
-    triggerGoogleSignIn(
-      onTokenSuccess,
-      (errorMsg: string) => {
-        setError(errorMsg);
-        setIsGoogleLoading(false);
-      },
-      () => {
-        setIsGoogleLoading(false);
-      }
-    );
   };
 
   return (
@@ -552,23 +533,11 @@ export default function LoginPage() {
 
             {/* Error & Success Messages */}
             {error && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-xs font-medium flex flex-col gap-2">
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-xs font-medium">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                   <span>{error}</span>
                 </div>
-                {(error.toLowerCase().includes('google') || error.toLowerCase().includes('origin') || error.toLowerCase().includes('403')) && (
-                  <div className="mt-1 pt-2 border-t border-rose-200/60 flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-[#7D715E]">Lỗi Google Cloud chưa duyệt domain localhost?</span>
-                    <button
-                      type="button"
-                      onClick={() => handleGoogleLogin(true)}
-                      className="px-2.5 py-1 bg-[#EBD08C] hover:bg-[#DEC07A] text-white rounded-lg text-[10px] font-bold cursor-pointer transition shadow-2xs shrink-0"
-                    >
-                      Đăng nhập Google (Dev Bypass)
-                    </button>
-                  </div>
-                )}
               </div>
             )}
 
@@ -780,21 +749,17 @@ export default function LoginPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleGoogleLogin(false)}
-                  disabled={loading || isGoogleLoading}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] transition-all cursor-pointer shadow-2xs hover:border-[#C59B58] disabled:opacity-50"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
-                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.37 7.32 24 12 24z" />
-                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z" />
-                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.32 0 3.25 2.63 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                  </svg>
-                  <span>{isGoogleLoading ? 'Đang kết nối...' : 'Google SSO'}</span>
-                </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={loading || isGoogleLoading ? 'pointer-events-none opacity-60' : ''}>
+                  <GoogleOfficialButton
+                    onSuccess={handleGoogleLogin}
+                    text="signin_with"
+                    onError={(errorMessage) => {
+                      setError(errorMessage);
+                      setIsGoogleLoading(false);
+                    }}
+                  />
+                </div>
 
                 <button
                   type="button"

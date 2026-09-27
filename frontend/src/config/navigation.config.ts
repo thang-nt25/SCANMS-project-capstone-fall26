@@ -63,6 +63,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/merchant/orders', label: 'Quản lý Đơn hàng', icon: ShoppingBag },
       { path: '/merchant/products', label: 'Danh mục Sản phẩm', icon: Box },
       { path: '/merchant/kol-hub', label: 'Mạng lưới KOL & Hợp tác', icon: Sparkles },
+      { path: '/merchant/customer-messages', label: 'Tin nhắn khách hàng', icon: MessageSquare },
       { path: '/merchant/promotions', label: 'Khuyến mãi & Hoa hồng', icon: Tag },
       { path: '/merchant/payouts', label: 'Duyệt chi trả KOL', icon: Wallet },
       { path: '/merchant/fraud-sentinel', label: 'AI Chống gian lận traffic', icon: ShieldAlert },

@@ -20,6 +20,7 @@ export class ChatService {
     let storeId = dto.storeId;
     let collaboratorId = dto.collaboratorId;
     let customerId = dto.customerId;
+    let targetStoreOwnerId: string | undefined;
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true },
@@ -46,6 +47,7 @@ export class ChatService {
       if (!targetStore) throw new NotFoundException('Không tìm thấy cửa hàng');
 
       // Người không phải chủ shop chỉ được tạo hội thoại với chính danh tính của mình.
+      targetStoreOwnerId = targetStore.ownerId;
       if (targetStore.ownerId !== userId) {
         if (
           (collaboratorId && collaboratorId !== userId) ||
@@ -53,13 +55,17 @@ export class ChatService {
         ) {
           throw new ForbiddenException('Không thể tạo hội thoại thay cho người dùng khác');
         }
-        if (actor.role === 'CUSTOMER' || dto.asCustomer) {
+        if (actor.role === 'CUSTOMER') {
           customerId = userId;
           collaboratorId = undefined;
-        } else {
+        } else if (actor.role === 'COLLABORATOR') {
           collaboratorId = userId;
           customerId = undefined;
+        } else {
+          throw new ForbiddenException('Vai trò này không thể tạo hội thoại với Shop');
         }
+      } else if (actor.role !== 'SHOP_MANAGER' && actor.role !== 'SYSTEM_ADMIN') {
+        throw new ForbiddenException('Chỉ chủ Shop được mở hội thoại thay mặt Shop');
       }
     }
 
@@ -98,6 +104,14 @@ export class ChatService {
       // Ignored if relation already exists or schema differs
     }
 
+    if (targetStoreOwnerId === userId) {
+      const recipientId = customerId || collaboratorId!;
+      const recipient = await this.prisma.user.findUnique({ where: { id: recipientId }, select: { role: true, isActive: true } });
+      if (!recipient?.isActive || recipient.role !== (customerId ? 'CUSTOMER' : 'COLLABORATOR')) {
+        throw new BadRequestException('Người nhận không hợp lệ');
+      }
+    }
+
     const existing = await this.prisma.conversation.findFirst({
       where: customerId ? { storeId, customerId } : { storeId, collaboratorId },
       include: {
@@ -118,24 +132,35 @@ export class ChatService {
     });
     if (existing) return existing;
 
-    return this.prisma.conversation.create({
-      data: { storeId, collaboratorId: collaboratorId || null, customerId: customerId || null },
-      include: {
-        store: { select: { id: true, name: true, logoUrl: true } },
-        collaborator: { select: { id: true, fullName: true, role: true } },
-        customer: { select: { id: true, fullName: true, role: true } },
-        chatMessages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: {
-            messageText: true,
-            createdAt: true,
-            senderId: true,
-            isRead: true,
+    try {
+      return await this.prisma.conversation.create({
+        data: { storeId, collaboratorId: collaboratorId || null, customerId: customerId || null },
+        include: {
+          store: { select: { id: true, name: true, logoUrl: true } },
+          collaborator: { select: { id: true, fullName: true, role: true } },
+          customer: { select: { id: true, fullName: true, role: true } },
+          chatMessages: {
+            orderBy: { createdAt: 'desc' }, take: 1,
+            select: { messageText: true, createdAt: true, senderId: true, isRead: true },
           },
         },
-      },
-    });
+      });
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        const concurrent = await this.prisma.conversation.findFirst({
+          where: customerId ? { storeId, customerId } : { storeId, collaboratorId },
+          include: {
+            store: { select: { id: true, name: true, logoUrl: true } },
+            collaborator: { select: { id: true, fullName: true, role: true } },
+            customer: { select: { id: true, fullName: true, role: true } },
+            chatMessages: { orderBy: { createdAt: 'desc' }, take: 1,
+              select: { messageText: true, createdAt: true, senderId: true, isRead: true } },
+          },
+        });
+        if (concurrent) return concurrent;
+      }
+      throw error;
+    }
   }
 
   async getConversationsByUser(userId: string) {
@@ -149,6 +174,7 @@ export class ChatService {
         ],
       },
       include: {
+        _count: { select: { chatMessages: { where: { isRead: false, senderId: { not: userId } } } } },
         store: { select: { id: true, name: true, logoUrl: true } },
         collaborator: { select: { id: true, fullName: true, role: true } },
         customer: { select: { id: true, fullName: true, role: true } },
@@ -210,7 +236,7 @@ export class ChatService {
     const messages = await this.prisma.chatMessage.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'desc' },
-      take,
+      take: Math.min(Math.max(take, 1), 100),
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
         id: true,
@@ -225,12 +251,31 @@ export class ChatService {
     });
 
     // Đánh dấu đã đọc các tin nhắn chưa đọc của người khác gửi
-    await this.prisma.chatMessage.updateMany({
+    return messages.reverse(); // Trả về theo thứ tự thời gian cũ -> mới
+  }
+
+  async markRead(conversationId: string, userId: string) {
+    await this.getConversationById(conversationId, userId);
+    return this.prisma.chatMessage.updateMany({
       where: { conversationId, isRead: false, senderId: { not: userId } },
       data: { isRead: true },
     });
+  }
 
-    return messages.reverse(); // Trả về theo thứ tự thời gian cũ -> mới
+  async normalizeProductInquiry(card: any, storeId: string) {
+    if (!card?.productId || typeof card.message !== 'string' || !card.message.trim()) {
+      throw new BadRequestException('Sản phẩm hoặc nội dung chat không hợp lệ');
+    }
+    const product = await this.prisma.product.findFirst({
+      where: { id: card.productId, storeId, isDeleted: false, isActive: true },
+      select: { id: true, sku: true, title: true, imageUrl: true, price: true },
+    });
+    if (!product) throw new BadRequestException('Sản phẩm không thuộc Shop này');
+    return JSON.stringify({
+      type: 'PRODUCT_INQUIRY', productId: product.id, productSku: product.sku,
+      productTitle: product.title, productImage: product.imageUrl,
+      productPrice: Number(product.price), message: card.message.trim(),
+    });
   }
 
   async saveMessage(
@@ -238,10 +283,24 @@ export class ChatService {
     senderId: string,
     messageText: string,
     mediaUrl?: string,
+    messageId?: string,
   ) {
-    const [message] = await this.prisma.$transaction([
+    if (messageId) {
+      const existing = await this.prisma.chatMessage.findUnique({ where: { id: messageId },
+        include: { sender: { select: { id: true, fullName: true, role: true } } },
+      });
+      if (existing) {
+        if (existing.senderId !== senderId || existing.conversationId !== conversationId) {
+          throw new ForbiddenException('Mã tin nhắn không hợp lệ');
+        }
+        return existing;
+      }
+    }
+    let message;
+    try {
+      [message] = await this.prisma.$transaction([
       this.prisma.chatMessage.create({
-        data: { conversationId, senderId, messageText, mediaUrl },
+        data: { ...(messageId ? { id: messageId } : {}), conversationId, senderId, messageText, mediaUrl },
         select: {
           id: true,
           conversationId: true,
@@ -257,7 +316,16 @@ export class ChatService {
         where: { id: conversationId },
         data: { lastMessageAt: new Date() },
       }),
-    ]);
+      ]);
+    } catch (error: any) {
+      if (messageId && error?.code === 'P2002') {
+        const existing = await this.prisma.chatMessage.findUnique({ where: { id: messageId },
+          include: { sender: { select: { id: true, fullName: true, role: true } } },
+        });
+        if (existing?.senderId === senderId && existing.conversationId === conversationId) return existing;
+      }
+      throw error;
+    }
     return message;
   }
 

@@ -34,6 +34,7 @@ import { authService, type UserProfile } from '../../services/auth.service';
 import { customerService } from '../../services/customer.service';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
+import { ChatBell } from '../../components/chat/ChatBell';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
@@ -507,6 +508,7 @@ export default function MarketplacePage() {
 
             {/* Header Action Buttons */}
             <div className="flex items-center gap-2.5 sm:gap-3.5">
+              {currentUser?.role === 'CUSTOMER' && <ChatBell userId={currentUser.id} />}
               {/* Cart Button */}
               <button
                 type="button"
@@ -1078,10 +1080,10 @@ export default function MarketplacePage() {
 
                     <div className="flex flex-col gap-2 p-3 text-left">
                       <div className="flex min-w-0 items-center justify-between gap-1 text-[10px] text-[#7D715E]">
-                        <span className="flex min-w-0 items-center gap-1 truncate font-bold">
+                        <Link to={`/shops/${p.storeId}`} className="flex min-w-0 items-center gap-1 truncate font-bold hover:text-[#B88E4F]" onClick={(event) => event.stopPropagation()}>
                           <Store className="h-3 w-3 shrink-0 text-[#B88E4F]" />
                           {p.brand}
-                        </span>
+                        </Link>
                         <span className="shrink-0 font-bold text-[#B88E4F]">
                           KYC
                         </span>

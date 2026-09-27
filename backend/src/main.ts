@@ -71,6 +71,7 @@ async function bootstrap() {
       'Authorization',
       'X-Requested-With',
       'X-Idempotency-Key',
+      'X-Skip-Cache',
     ],
   });
 

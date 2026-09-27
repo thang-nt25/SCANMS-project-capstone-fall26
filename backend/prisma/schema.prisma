@@ -251,6 +251,7 @@ model User {
   customerCartItems         CustomerCartItem[]
   customerReturnRequests    ReturnRequest[]             @relation("CustomerReturnRequests")
   customerConversations     Conversation[]              @relation("CustomerConversations")
+  storeFollows              StoreFollow[]
 
   @@map("users")
 }
@@ -284,6 +285,7 @@ model Store {
   campaigns           Campaign[]
   orders              Order[]
   conversations       Conversation[]
+  follows              StoreFollow[]
   payoutRequests      PayoutRequest[]
   monthlyBonusResults MonthlyBonusResult[]
   referralLinks       ReferralLink[]
@@ -298,6 +300,20 @@ model Store {
 
   @@index([ownerId], map: "idx_fk_stores_owner")
   @@map("stores")
+}
+
+model StoreFollow {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String   @map("store_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, userId])
+  @@index([userId])
+  @@map("store_follows")
 }
 
 model StoreCollaborator {

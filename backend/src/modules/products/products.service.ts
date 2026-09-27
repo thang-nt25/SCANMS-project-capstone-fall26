@@ -1209,6 +1209,7 @@ export class ProductsService {
         id: product.store.id,
         name: product.store.name,
         slug: product.store.slug,
+        logoUrl: product.store.logoUrl,
         isVerified: isStoreVerified,
       },
       images: galleryImages,

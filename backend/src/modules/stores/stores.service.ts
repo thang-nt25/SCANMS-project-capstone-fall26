@@ -11,6 +11,48 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 export class StoresService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getPublicStoreById(storeId: string) {
+    const store = await this.prisma.store.findFirst({
+      where: { id: storeId, isDeleted: false, isActive: true, owner: { isActive: true } },
+      select: {
+        id: true, name: true, slug: true, logoUrl: true, description: true,
+        isActive: true, isVerified: true, createdAt: true,
+        _count: { select: {
+          products: { where: { isDeleted: false, isActive: true } },
+          follows: true,
+        } },
+      },
+    });
+    if (!store) throw new NotFoundException('Không tìm thấy Shop');
+    const categories = await this.prisma.product.findMany({
+      where: { storeId, isDeleted: false, isActive: true },
+      distinct: ['categoryName'],
+      select: { categoryName: true },
+      orderBy: { categoryName: 'asc' },
+    });
+    return { ...store, productCount: store._count.products, followerCount: store._count.follows,
+      categories: categories.map((item) => item.categoryName).filter(Boolean) };
+  }
+
+  async getFollowStatus(storeId: string, userId: string) {
+    await this.getPublicStoreById(storeId);
+    return { following: !!(await this.prisma.storeFollow.findUnique({
+      where: { storeId_userId: { storeId, userId } }, select: { id: true },
+    })) };
+  }
+
+  async setFollow(storeId: string, userId: string, following: boolean) {
+    await this.getPublicStoreById(storeId);
+    if (following) {
+      await this.prisma.storeFollow.upsert({
+        where: { storeId_userId: { storeId, userId } }, update: {}, create: { storeId, userId },
+      });
+    } else {
+      await this.prisma.storeFollow.deleteMany({ where: { storeId, userId } });
+    }
+    return { following };
+  }
+
   /**
    * Lấy thông tin cấu hình cửa hàng của Chủ Shop (Store Owner)
    */

@@ -762,9 +762,9 @@ export default function CustomerPortalPage() {
                           <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#EAE4D7]">
                             <div className="flex items-center gap-2">
                               <StoreIcon className="w-4 h-4 text-[#B88E4F]" />
-                              <strong className="text-xs font-black text-[#1A1612]">
+                              <Link to={`/shops/${order.storeId}`} className="text-xs font-black text-[#1A1612] hover:text-[#B88E4F]">
                                 {order.store?.name || 'Gian Hàng Đối Tác'}
-                              </strong>
+                              </Link>
                               <span className="text-[11px] font-mono text-[#7D715E] bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
                                 #{order.externalOrderSn}
                               </span>
@@ -1129,9 +1129,9 @@ export default function CustomerPortalPage() {
                               </button>
                             </div>
 
-                            <span className="text-[10px] font-bold text-[#7D715E] uppercase block mb-1">
+                            <Link to={p.store?.id ? `/shops/${p.store.id}` : '/marketplace'} className="text-[10px] font-bold text-[#7D715E] uppercase block mb-1 hover:text-[#B88E4F]">
                               {p.store?.name || 'Gian hàng chính hãng'}
-                            </span>
+                            </Link>
                             <Link
                               to={`/products/${p.sku || p.id}`}
                               className="text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] line-clamp-2 transition mb-2 block"

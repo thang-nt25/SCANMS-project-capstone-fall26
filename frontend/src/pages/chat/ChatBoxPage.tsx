@@ -14,6 +14,7 @@ import {
   Check,
   Sparkles,
   ArrowUp,
+  ArrowLeft,
   Gift,
   CheckCircle2,
   XCircle,
@@ -792,7 +793,7 @@ export default function ChatBoxPage({
   className = '',
   initialProductContext,
 }: ChatBoxPageProps = {}) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = (() => {
     try {
       return JSON.parse(localStorage.getItem('user') || 'null');
@@ -802,6 +803,7 @@ export default function ChatBoxPage({
   })();
 
   const effectiveTargetStoreId = targetStoreId || searchParams.get('storeId') || undefined;
+  const requestedConversationId = searchParams.get('conversationId');
   const isCustomerConversation =
     currentUser?.role === 'CUSTOMER' || searchParams.get('asCustomer') === '1';
   const queryProductId = searchParams.get('productId');
@@ -817,6 +819,8 @@ export default function ChatBoxPage({
   const effectiveProductContext = initialProductContext || queryProductContext;
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const conversationsRef = useRef<Conversation[]>([]);
+  conversationsRef.current = conversations;
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -840,12 +844,15 @@ export default function ChatBoxPage({
   const [showVipModal, setShowVipModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const isShop = currentUser?.role === 'SHOP_MANAGER';
+  const onlyCustomerChats = isShop && window.location.pathname === '/merchant/customer-messages';
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openConversationRef = useRef<(conv: Conversation) => Promise<void>>(() => Promise.resolve());
+  const activeConvIdRef = useRef<string | null>(null);
+  const sendingRef = useRef(false);
 
   const scrollToBottom = useCallback((smooth = false) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
@@ -856,6 +863,10 @@ export default function ChatBoxPage({
     let isMounted = true;
 
     const setupContext = async (list: Conversation[]) => {
+      if (requestedConversationId) {
+        const selected = list.find((conversation) => conversation.id === requestedConversationId);
+        if (selected) { openConversationRef.current(selected); return; }
+      }
       if (effectiveTargetStoreId) {
         const effectiveStoreId = LEGACY_ID_MAP[effectiveTargetStoreId] || effectiveTargetStoreId;
         const matching = list.find(
@@ -912,7 +923,8 @@ export default function ChatBoxPage({
       .get('/chat/conversations')
       .then((res: any) => {
         if (!isMounted) return;
-        const list: Conversation[] = Array.isArray(res) ? res : res?.data || [];
+        const all: Conversation[] = Array.isArray(res) ? res : res?.data || [];
+        const list = onlyCustomerChats ? all.filter((conversation) => Boolean(conversation.customerId)) : all;
         setConversations(list);
         setupContext(list);
       })
@@ -923,7 +935,7 @@ export default function ChatBoxPage({
     return () => {
       isMounted = false;
     };
-  }, [effectiveTargetStoreId, targetCollaboratorId, isCustomerConversation]);
+  }, [effectiveTargetStoreId, targetCollaboratorId, isCustomerConversation, requestedConversationId, onlyCustomerChats]);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -943,11 +955,22 @@ export default function ChatBoxPage({
     const socket = getChatSocket();
     setIsConnected(socket.connected);
 
-    socket.on('connect', () => setIsConnected(true));
-    socket.on('disconnect', () => setIsConnected(false));
-
-    socket.on('new_message', (msg: ChatMessage) => {
-      setMessages(prev => [...prev, msg]);
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
+    const onNewMessage = (msg: ChatMessage) => {
+      if (!conversationsRef.current.some((conversation) => conversation.id === msg.conversationId)) {
+        api.get('/chat/conversations', { headers: { 'x-skip-cache': '1' } }).then((response: any) => {
+          const all: Conversation[] = Array.isArray(response) ? response : response?.data || [];
+          setConversations(onlyCustomerChats ? all.filter((conversation) => Boolean(conversation.customerId)) : all);
+        }).catch(() => undefined);
+      }
+      if (msg.conversationId === activeConvIdRef.current) {
+        setMessages(prev => prev.some((item) => item.id === msg.id) ? prev : [...prev, msg]);
+        if (msg.senderId !== currentUser?.id) {
+          api.patch(`/chat/conversations/${msg.conversationId}/read`).catch(() => undefined);
+        }
+        setTimeout(() => scrollToBottom(true), 50);
+      }
       setConversations(prev =>
         prev
           .map(c =>
@@ -955,6 +978,8 @@ export default function ChatBoxPage({
               ? {
                 ...c,
                 lastMessageAt: msg.createdAt,
+                _count: { chatMessages: msg.senderId === currentUser?.id || msg.conversationId === activeConvIdRef.current
+                  ? (c._count?.chatMessages || 0) : (c._count?.chatMessages || 0) + 1 },
                 chatMessages: [
                   {
                     messageText: msg.messageText,
@@ -971,33 +996,41 @@ export default function ChatBoxPage({
               new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
           )
       );
-      setTimeout(() => scrollToBottom(true), 50);
-    });
+    };
+    const onRead = ({ conversationId, readerId }: { conversationId: string; readerId: string }) => {
+      if (conversationId === activeConvIdRef.current && readerId !== currentUser?.id) {
+        setMessages(prev => prev.map(msg => msg.senderId === currentUser?.id ? { ...msg, isRead: true } : msg));
+      }
+    };
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('new_message', onNewMessage);
+    socket.on('messages_read', onRead);
 
-    socket.on(
-      'user_typing',
-      ({ fullName, isTyping }: { fullName: string; isTyping: boolean }) => {
+    const onTyping = ({ fullName, isTyping }: { fullName: string; isTyping: boolean }) => {
         setTypingUser(isTyping ? fullName : null);
         if (isTyping) {
           if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
           typingTimerRef.current = setTimeout(() => setTypingUser(null), 3000);
         }
-      }
-    );
+      };
+    socket.on('user_typing', onTyping);
 
-    socket.on('error', (err: { message: string }) => {
+    const onError = (err: { message: string }) => {
       console.error('Socket error:', err.message);
       showErrorToast(err.message || 'Lỗi gửi tin nhắn');
-    });
+    };
+    socket.on('error', onError);
 
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('new_message');
-      socket.off('user_typing');
-      socket.off('error');
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('new_message', onNewMessage);
+      socket.off('messages_read', onRead);
+      socket.off('user_typing', onTyping);
+      socket.off('error', onError);
     };
-  }, [scrollToBottom]);
+  }, [scrollToBottom, onlyCustomerChats]);
 
 
   const openConversation = async (conv: Conversation) => {
@@ -1009,6 +1042,7 @@ export default function ChatBoxPage({
     }
 
     setActiveConvId(conv.id);
+    activeConvIdRef.current = conv.id;
     setMessages([]);
     setHasMore(false);
     setOldestMsgId(undefined);
@@ -1021,6 +1055,9 @@ export default function ChatBoxPage({
         setMessages(msgs);
         setHasMore(msgs.length === 50);
         setOldestMsgId(msgs[0]?.id);
+        await api.patch(`/chat/conversations/${conv.id}/read`);
+        setConversations(prev => prev.map(item => item.id === conv.id
+          ? { ...item, _count: { chatMessages: 0 }, chatMessages: item.chatMessages?.[0] ? [{ ...item.chatMessages[0], isRead: true }] : [] } : item));
       } catch (err) {
         console.error(err);
       } finally {
@@ -1063,7 +1100,7 @@ export default function ChatBoxPage({
 
   const sendMessage = useCallback(() => {
     const trimmed = inputText.trim();
-    if (!trimmed || !activeConvId || isSending) return;
+    if (!trimmed || !activeConvId || sendingRef.current) return;
 
     if (isBankAccountOrFraudText(trimmed)) {
       showErrorToast(
@@ -1091,20 +1128,34 @@ export default function ChatBoxPage({
         commissionRate: pinnedProduct.commissionRate,
         message: trimmed,
       });
-      setPinnedProduct(null);
     }
 
     const socket = getChatSocket();
+    if (!socket.connected) { showErrorToast('Mất kết nối chat, vui lòng thử lại.'); return; }
+    sendingRef.current = true;
     setIsSending(true);
-    socket.emit('send_message', {
+    socket.timeout(8000).emit('send_message', {
       conversationId: activeConvId,
       messageText: messageToSend,
+      messageId: crypto.randomUUID(),
+    }, (timeoutError: Error | null, result?: { ok: boolean; error?: string }) => {
+      sendingRef.current = false;
+      setIsSending(false);
+      if (timeoutError || !result?.ok) {
+        showErrorToast(result?.error || 'Không gửi được tin nhắn, vui lòng thử lại.');
+        return;
+      }
+      setInputText((current) => current.trim() === trimmed ? '' : current);
+      setPinnedProduct(null);
+      if (pinnedProduct && queryProductId) {
+        const nextParams = new URLSearchParams(searchParams);
+        ['productId', 'productTitle', 'productImage', 'productPrice', 'productSku', 'commissionRate'].forEach(key => nextParams.delete(key));
+        setSearchParams(nextParams, { replace: true });
+      }
     });
-    setInputText('');
-    setIsSending(false);
 
     socket.emit('typing', { conversationId: activeConvId, isTyping: false });
-  }, [inputText, activeConvId, isSending, pinnedProduct]);
+  }, [inputText, activeConvId, pinnedProduct, queryProductId, searchParams, setSearchParams]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1155,7 +1206,7 @@ export default function ChatBoxPage({
     >
       {!hideSidebar && (
       <aside
-        className="w-80 flex-shrink-0 flex flex-col border-r border-[#EAE4D7] bg-[#FAF8F5]/60"
+        className={`${activeConvId ? 'hidden sm:flex' : 'flex'} w-full sm:w-80 flex-shrink-0 flex-col border-r border-[#EAE4D7] bg-[#FAF8F5]/60`}
         aria-label="Danh sách hội thoại"
       >
 
@@ -1216,7 +1267,7 @@ export default function ChatBoxPage({
           {filteredConversations.map(conv => {
             const lastMsg = conv.chatMessages?.[0];
             const isActive = conv.id === activeConvId;
-            const unread = lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id;
+            const unread = (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id);
 
             return (
               <div
@@ -1276,7 +1327,7 @@ export default function ChatBoxPage({
       )}
 
 
-      <main className="flex-1 flex flex-col bg-[#FAF8F5]/30 relative min-w-0" aria-label="Khung chat">
+      <main className={`${activeConvId ? 'flex' : 'hidden sm:flex'} flex-1 flex-col bg-[#FAF8F5]/30 relative min-w-0`} aria-label="Khung chat">
         {!activeConv ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-3">
             <div className="w-16 h-16 rounded-2xl bg-amber-100/80 text-amber-700 flex items-center justify-center shadow-xs">
@@ -1293,6 +1344,7 @@ export default function ChatBoxPage({
             {!hideHeaderInChat && (
             <header className="px-6 py-3.5 bg-white border-b border-[#EAE4D7] flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3">
+                <button type="button" className="sm:hidden rounded-lg p-1 text-[#7D715E]" onClick={() => { setActiveConvId(null); activeConvIdRef.current = null; }} aria-label="Về danh sách hội thoại"><ArrowLeft size={20} /></button>
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-sm flex items-center justify-center shadow-xs">
                   {getOtherAvatar(activeConv)}
                 </div>
@@ -1334,7 +1386,7 @@ export default function ChatBoxPage({
 
 
             <div
-              className="flex-1 overflow-y-auto p-6 space-y-4"
+              className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4"
               ref={messagesContainerRef}
               onScroll={e => {
                 if ((e.target as HTMLElement).scrollTop < 60 && hasMore) {
