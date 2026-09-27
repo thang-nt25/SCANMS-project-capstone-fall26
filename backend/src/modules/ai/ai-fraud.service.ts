@@ -60,6 +60,7 @@ export class AiFraudService {
             id: true,
             fullName: true,
             email: true,
+            phoneNumber: true,
             role: true,
             collaboratorProfile: {
               select: {
@@ -118,21 +119,31 @@ export class AiFraudService {
 
       const pendingAmount = Number(pendingCommissions._sum.commissionAmount || 0);
 
-      // Thống kê đơn hàng liên quan đến link này
-      const totalOrdersCount = await this.prisma.order.count({
+      // Thống kê & kiểm tra danh sách đơn hàng liên quan đến link này
+      const relatedOrders = await this.prisma.order.findMany({
         where: {
           referralLinkId: link.id,
           status: { notIn: ['CANCELLED', 'RETURNED'] },
         },
+        select: {
+          id: true,
+          customerId: true,
+          customerName: true,
+          customerPhone: true,
+          customerEmail: true,
+          finalAmount: true,
+        },
+        take: 50,
       });
 
+      const totalOrdersCount = relatedOrders.length;
       const totalClicks = Math.max(link.totalClicks || link.clickTrafficLogs.length, 1);
       totalScannedClicks += totalClicks;
 
       const incidentId = `incident-${link.id}`;
       const actionRecord = incidentActionStore.get(incidentId);
 
-      // Phân tích dữ liệu bằng thuật toán AI Anomaly Heuristics
+      // Phân tích dữ liệu bằng thuật toán AI Anomaly Heuristics (kèm Self-Referral Detection)
       const analysis = this.evaluateFraudAnomalies({
         linkCode: link.shortCode,
         totalClicks,
@@ -140,6 +151,8 @@ export class AiFraudService {
         logs: link.clickTrafficLogs,
         productPrice: Number(link.product?.price || 0),
         pendingAmount,
+        orders: relatedOrders,
+        collaborator: link.collaborator,
       });
 
       // Nếu có query minRiskScore thì filter
@@ -314,6 +327,19 @@ export class AiFraudService {
           where: { id: linkId },
           data: { status: 'PAUSED' },
         });
+        try {
+          await this.prisma.commission.updateMany({
+            where: {
+              collaboratorId: referralLink.collaboratorId,
+              status: 'PENDING',
+            },
+            data: {
+              availableAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+            },
+          });
+        } catch (e) {
+          this.logger.warn(`Lỗi đóng băng hoa hồng pending: ${e}`);
+        }
         break;
 
       case 'PAUSE_LINK':
@@ -395,6 +421,19 @@ export class AiFraudService {
     logs: Array<{ ipAddress: string; userAgent: string | null; createdAt: Date; riskReason: string | null }>;
     productPrice: number;
     pendingAmount: number;
+    orders?: Array<{
+      id: string;
+      customerId?: string | null;
+      customerName?: string | null;
+      customerPhone?: string | null;
+      customerEmail?: string | null;
+    }>;
+    collaborator?: {
+      id: string;
+      fullName: string;
+      email: string;
+      phoneNumber?: string | null;
+    } | null;
   }): {
     riskScore: number;
     riskLevel: FraudRiskLevel;
@@ -407,7 +446,7 @@ export class AiFraudService {
     const anomalies: FraudAnomalyType[] = [];
     const evidences: FraudEvidenceItem[] = [];
 
-    const { totalClicks, totalOrders, logs } = data;
+    const { totalClicks, totalOrders, logs, orders, collaborator } = data;
     const conversionRate = totalClicks > 0 ? (totalOrders / totalClicks) * 100 : 0;
 
     // 1. Kiểm tra Zombie Traffic: Quá nhiều click nhưng không chuyển đổi (Clicks > 300, CR < 0.2%)
@@ -478,15 +517,39 @@ export class AiFraudService {
       });
     }
 
-    // 5. Kiểm tra Tự mua qua link tiếp thị của chính mình (Self-referral)
-    if (data.pendingAmount > 5000000 && totalOrders <= 2) {
-      score += 15;
+    // 5. Kiểm tra Chuyên sâu: Tự mua qua link tiếp thị của chính mình (Self-Referral Fraud Detection)
+    if (orders && orders.length > 0 && collaborator) {
+      const selfOrders = orders.filter((o) => {
+        const isMatchId = o.customerId && o.customerId === collaborator.id;
+        const isMatchEmail =
+          o.customerEmail &&
+          collaborator.email &&
+          o.customerEmail.toLowerCase().trim() === collaborator.email.toLowerCase().trim();
+        const isMatchPhone =
+          collaborator.phoneNumber &&
+          o.customerPhone &&
+          o.customerPhone.trim() === collaborator.phoneNumber.trim();
+        return isMatchId || isMatchEmail || isMatchPhone;
+      });
+
+      if (selfOrders.length > 0) {
+        score += 65; // Đẩy thẳng vào mức FRAUD_CRITICAL
+        anomalies.push('SELF_REFERRAL');
+        evidences.push({
+          metric: 'Tự Mua Hàng Trục Lợi (Self-Referral Exact Match)',
+          value: `${selfOrders.length}/${orders.length} đơn hàng vi phạm`,
+          severity: 'HIGH',
+          description: `Phát hiện đối tác KOL (${collaborator.fullName}) tự đặt hàng qua link tiếp thị của chính mình bằng tài khoản/Email (${collaborator.email}) hoặc SĐT (${collaborator.phoneNumber || 'trùng khớp'}).`,
+        });
+      }
+    } else if (data.pendingAmount > 5000000 && totalOrders <= 2) {
+      score += 25;
       anomalies.push('SELF_REFERRAL');
       evidences.push({
         metric: 'Hoa hồng đột biến trên ít đơn',
         value: `${(data.pendingAmount / 1000).toLocaleString('vi-VN')}k ₫`,
-        severity: 'LOW',
-        description: 'Giá trị hoa hồng lớn tập trung vào số ít đơn hàng giá trị cao.',
+        severity: 'MEDIUM',
+        description: 'Giá trị hoa hồng lớn tập trung vào số ít đơn hàng giá trị cao nghi vấn tự mua.',
       });
     }
 

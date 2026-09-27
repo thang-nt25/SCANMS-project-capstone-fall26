@@ -28,6 +28,7 @@ import {
 import { authService } from '../../services/auth.service';
 import { triggerGoogleSignIn, devBypassGoogleSignIn } from '../../utils/googleAuth';
 import { toast } from '../../utils/toast';
+import { ForgotPasswordModal } from '../../components/auth/ForgotPasswordModal';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -57,6 +58,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [showDemoAccounts, setShowDemoAccounts] = useState(false);
@@ -724,7 +726,7 @@ export default function LoginPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => toast.info('Vui lòng liên hệ Quản trị viên để đặt lại mật khẩu.')}
+                    onClick={() => setIsForgotPasswordOpen(true)}
                     className="text-xs font-semibold text-[#B88E4F] hover:underline bg-transparent border-none cursor-pointer"
                   >
                     Quên mật khẩu?
@@ -842,6 +844,16 @@ export default function LoginPage() {
         </section>
 
       </main>
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        defaultEmail={email}
+        onPasswordResetSuccess={(resetEmail) => {
+          setEmail(resetEmail);
+          setIsForgotPasswordOpen(false);
+          toast.success('Mật khẩu mới đã được cập nhật thành công! Vui lòng đăng nhập.');
+        }}
+      />
     </div>
   );
 }

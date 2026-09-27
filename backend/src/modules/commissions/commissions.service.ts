@@ -14,6 +14,11 @@ import {
   COMMISSION_PROCESSING_BATCH_SIZE,
   COMMISSION_REVERSAL_ORDER_STATUSES,
 } from './commission.constants';
+import {
+  calculateAdaptiveEscrowReleaseDate,
+  isVietnamHoliday,
+  type AdaptiveEscrowResult,
+} from './utils/vietnam-holidays.util';
 
 export interface CommissionReconciliationSummary {
   created: number;
@@ -190,7 +195,9 @@ export class CommissionsService {
         const receiptAt = order.completedAt ?? order.updatedAt;
         const eligibleAt =
           receiptAt.getTime() <= now.getTime() ? receiptAt : now;
-        const availableAt = this.addDays(eligibleAt, COMMISSION_HOLD_DAYS);
+        // Động cơ Bảo Chứng Escrow thích ứng Lễ/Tết Việt Nam (Nhiệm vụ 3 - Leader Thắng)
+        const escrowCalc = calculateAdaptiveEscrowReleaseDate(eligibleAt, COMMISSION_HOLD_DAYS);
+        const availableAt = escrowCalc.availableAt;
         const hasPayableCommission =
           calculation.totalCommissionAmount.greaterThan(0);
         const commission = await tx.commission.create({
@@ -331,6 +338,83 @@ export class CommissionsService {
 
       return true;
     });
+  }
+
+  /**
+   * Lấy thông tin chính sách Escrow thích ứng Lễ/Tết Việt Nam (Nhiệm vụ 3 - Leader Thắng)
+   */
+  getEscrowPolicyInfo(sampleDate?: string) {
+    const targetDate = sampleDate ? new Date(sampleDate) : new Date();
+    const calculation = calculateAdaptiveEscrowReleaseDate(targetDate, COMMISSION_HOLD_DAYS);
+    return {
+      policy: {
+        baseHoldDays: COMMISSION_HOLD_DAYS,
+        description:
+          'Chính sách Quỹ Bảo Chứng Escrow 14 ngày tự thích ứng với kỳ nghỉ Lễ/Tết Việt Nam. Đóng băng thời gian giải ngân trong các ngày nghỉ lễ chính thức để bảo vệ quyền lợi người mua và gian hàng.',
+        currentStatus: calculation.isCurrentlyHoliday
+          ? `Hệ thống Escrow đang tạm ngưng đếm ngược do kỳ nghỉ: ${calculation.currentHolidayName}`
+          : 'Hệ thống Escrow đang vận hành đếm ngược bình thường',
+      },
+      calculation,
+    };
+  }
+
+  /**
+   * Lấy chi tiết đếm ngược và trạng thái Escrow của một đơn hàng cụ thể
+   */
+  async getOrderEscrowDetails(orderId: string) {
+    const commission = await this.prisma.commission.findFirst({
+      where: { orderId },
+      include: {
+        order: {
+          select: {
+            id: true,
+            status: true,
+            completedAt: true,
+            updatedAt: true,
+            externalOrderSn: true,
+            store: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    if (!commission) {
+      return null;
+    }
+
+    const now = new Date();
+    const isMatured = commission.availableAt.getTime() <= now.getTime();
+    const remainingMs = Math.max(0, commission.availableAt.getTime() - now.getTime());
+    const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+    const remainingDays = Math.floor(remainingHours / 24);
+    const remainingHoursInDay = remainingHours % 24;
+
+    const holidayCheck = isVietnamHoliday(now);
+    const isFrozenDueToDispute = commission.order.status === OrderStatus.RETURNED;
+
+    return {
+      commissionId: commission.id,
+      orderId: commission.orderId,
+      orderSn: commission.order.externalOrderSn,
+      storeName: commission.order.store.name,
+      commissionAmount: Number(commission.commissionAmount),
+      status: commission.status,
+      eligibleAt: commission.eligibleAt,
+      availableAt: commission.availableAt,
+      isMatured,
+      isFrozen: isFrozenDueToDispute,
+      isHolidayPaused: holidayCheck.isHoliday,
+      currentHolidayName: holidayCheck.holidayName,
+      remainingTime: {
+        totalHours: remainingHours,
+        days: remainingDays,
+        hours: remainingHoursInDay,
+        formatted: isMatured
+          ? 'Đã đáo hạn (Sẵn sàng giải ngân)'
+          : `${remainingDays} ngày ${remainingHoursInDay} giờ`,
+      },
+    };
   }
 
   private isOrderEligible(
