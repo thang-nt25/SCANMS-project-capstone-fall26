@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 import {
   MessageSquare,
   Plus,
@@ -554,10 +555,12 @@ function NewConversationModal({
   onClose,
   onCreated,
   isShop,
+  asCustomer,
 }: {
   onClose: () => void;
   onCreated: (conv: Conversation) => void;
   isShop: boolean;
+  asCustomer: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
@@ -592,7 +595,9 @@ function NewConversationModal({
     const id = item.id;
     setCreating(id);
     try {
-      const body = isShop ? { collaboratorId: id } : { storeId: id };
+      const body = isShop
+        ? { collaboratorId: id }
+        : { storeId: id, ...(asCustomer ? { asCustomer: true } : {}) };
       const res: any = await api.post('/chat/conversations', body);
       const conv = res && res.id ? res : res?.data || res;
       if (conv && conv.id) {
@@ -787,6 +792,7 @@ export default function ChatBoxPage({
   className = '',
   initialProductContext,
 }: ChatBoxPageProps = {}) {
+  const [searchParams] = useSearchParams();
   const currentUser = (() => {
     try {
       return JSON.parse(localStorage.getItem('user') || 'null');
@@ -795,19 +801,34 @@ export default function ChatBoxPage({
     }
   })();
 
+  const effectiveTargetStoreId = targetStoreId || searchParams.get('storeId') || undefined;
+  const isCustomerConversation =
+    currentUser?.role === 'CUSTOMER' || searchParams.get('asCustomer') === '1';
+  const queryProductId = searchParams.get('productId');
+  const queryProductContext: ProductContextData | undefined = queryProductId
+    ? {
+        id: queryProductId,
+        title: searchParams.get('productTitle') || 'Sản phẩm đang quan tâm',
+        image: searchParams.get('productImage') || undefined,
+        price: Number(searchParams.get('productPrice')) || undefined,
+        sku: searchParams.get('productSku') || undefined,
+      }
+    : undefined;
+  const effectiveProductContext = initialProductContext || queryProductContext;
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [pinnedProduct, setPinnedProduct] = useState<ProductContextData | null>(
-    initialProductContext || null
+    effectiveProductContext || null
   );
 
   useEffect(() => {
-    if (initialProductContext) {
-      setPinnedProduct(initialProductContext);
+    if (effectiveProductContext) {
+      setPinnedProduct(effectiveProductContext);
     }
-  }, [initialProductContext]);
+  }, [initialProductContext, queryProductId]);
   const [isConnected, setIsConnected] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [isLoadingMsgs, setIsLoadingMsgs] = useState(false);
@@ -835,8 +856,8 @@ export default function ChatBoxPage({
     let isMounted = true;
 
     const setupContext = async (list: Conversation[]) => {
-      if (targetStoreId) {
-        const effectiveStoreId = LEGACY_ID_MAP[targetStoreId] || targetStoreId;
+      if (effectiveTargetStoreId) {
+        const effectiveStoreId = LEGACY_ID_MAP[effectiveTargetStoreId] || effectiveTargetStoreId;
         const matching = list.find(
           (c) => c.storeId === effectiveStoreId || c.store?.id === effectiveStoreId
         );
@@ -844,7 +865,10 @@ export default function ChatBoxPage({
           openConversationRef.current(matching);
         } else if (UUID_REGEX.test(effectiveStoreId)) {
           try {
-            const res: any = await api.post('/chat/conversations', { storeId: effectiveStoreId });
+            const res: any = await api.post('/chat/conversations', {
+              storeId: effectiveStoreId,
+              ...(isCustomerConversation ? { asCustomer: true } : {}),
+            });
             const realConv = res?.data || res;
             if (isMounted && realConv && realConv.id) {
               setConversations((prev) => {
@@ -899,7 +923,7 @@ export default function ChatBoxPage({
     return () => {
       isMounted = false;
     };
-  }, [targetStoreId, targetCollaboratorId]);
+  }, [effectiveTargetStoreId, targetCollaboratorId, isCustomerConversation]);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -1106,21 +1130,22 @@ export default function ChatBoxPage({
   const filteredConversations = conversations.filter(
     c =>
       (c.store?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.collaborator?.fullName || '').toLowerCase().includes(searchQuery.toLowerCase())
+      (c.collaborator?.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.customer?.fullName || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getOtherParty = (conv: Conversation) => {
     if (!currentUser) return conv.store?.name || 'Cửa hàng';
-    return currentUser.role === 'COLLABORATOR'
+    return currentUser.role === 'COLLABORATOR' || currentUser.role === 'CUSTOMER'
       ? conv.store?.name || 'Cửa hàng'
-      : conv.collaborator?.fullName || 'KOL / CTV';
+      : conv.customer?.fullName || conv.collaborator?.fullName || 'Khách hàng / Đối tác';
   };
 
   const getOtherAvatar = (conv: Conversation) => {
     if (!currentUser) return conv.store?.name?.[0]?.toUpperCase() || '💬';
-    return currentUser.role === 'COLLABORATOR'
+    return currentUser.role === 'COLLABORATOR' || currentUser.role === 'CUSTOMER'
       ? conv.store?.name?.[0]?.toUpperCase() || 'S'
-      : conv.collaborator?.fullName?.[0]?.toUpperCase() || 'K';
+      : conv.customer?.fullName?.[0]?.toUpperCase() || conv.collaborator?.fullName?.[0]?.toUpperCase() || 'K';
   };
 
   return (
@@ -1611,7 +1636,7 @@ export default function ChatBoxPage({
       )}
 
 
-      {showVipModal && activeConv && (
+      {showVipModal && activeConv?.collaboratorId && (
         <SendVipCampaignModal
           conversationId={activeConv.id}
           collaboratorName={getOtherParty(activeConv)}
@@ -1633,6 +1658,7 @@ export default function ChatBoxPage({
       {showNewChat && (
         <NewConversationModal
           isShop={isShop}
+          asCustomer={currentUser?.role === 'CUSTOMER'}
           onClose={() => setShowNewChat(false)}
           onCreated={conv => {
             if (!conv || !conv.id) return;

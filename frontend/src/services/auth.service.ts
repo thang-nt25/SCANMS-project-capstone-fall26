@@ -73,6 +73,7 @@ export const authService = {
         } else {
           localStorage.removeItem('current_store_id');
         }
+        window.dispatchEvent(new CustomEvent('scanms_auth_changed', { detail: { userId: user.id } }));
       }
     }
     return res;
@@ -101,6 +102,7 @@ export const authService = {
         } else {
           localStorage.removeItem('current_store_id');
         }
+        window.dispatchEvent(new CustomEvent('scanms_auth_changed', { detail: { userId: user.id } }));
       }
     }
     return res;
@@ -119,6 +121,7 @@ export const authService = {
   },
 
   logout() {
+    window.dispatchEvent(new CustomEvent('scanms_auth_changed', { detail: { userId: null } }));
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('scanms-current-role');

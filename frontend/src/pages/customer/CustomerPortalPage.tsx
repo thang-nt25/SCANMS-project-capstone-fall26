@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Sparkles,
   Home,
+  MessageSquare,
 } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
 import {
@@ -42,9 +43,11 @@ import { toast } from '../../utils/toast';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
+import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal';
+import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
 
 type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'upgrade';
-type OrderFilterStatus = 'ALL' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';
+type OrderFilterStatus = 'ALL' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'COMPLETED' | 'RETURN_REQUESTED' | 'CANCELLED';
 
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
@@ -74,6 +77,9 @@ export default function CustomerPortalPage() {
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const [returnOrder, setReturnOrder] = useState<CustomerOrder | null>(null);
+  const [reviewOrder, setReviewOrder] = useState<CustomerOrder | null>(null);
 
   // Tab 2: Addresses State
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -205,6 +211,19 @@ export default function CustomerPortalPage() {
       toast.error(err?.response?.data?.message || 'Không thể hủy đơn hàng');
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleConfirmReceipt = async (order: CustomerOrder) => {
+    setConfirmingOrderId(order.id);
+    try {
+      await customerService.confirmReceipt(order.id);
+      toast.success('Đơn hàng đã hoàn tất. Bạn có thể gửi đánh giá đã xác minh.');
+      await Promise.all([fetchOrders(), fetchProfile()]);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể xác nhận đã nhận hàng');
+    } finally {
+      setConfirmingOrderId(null);
     }
   };
 
@@ -607,6 +626,8 @@ export default function CustomerPortalPage() {
                       { key: 'PENDING', label: 'Chờ xác nhận' },
                       { key: 'SHIPPING', label: 'Đang giao' },
                       { key: 'DELIVERED', label: 'Đã giao' },
+                      { key: 'COMPLETED', label: 'Hoàn tất' },
+                      { key: 'RETURN_REQUESTED', label: 'Trả hàng' },
                       { key: 'CANCELLED', label: 'Đã hủy' },
                     ].map((tab) => (
                       <button
@@ -657,8 +678,15 @@ export default function CustomerPortalPage() {
                   <div className="flex flex-col gap-4">
                     {orders.map((order) => {
                       const isPending = order.status === 'PENDING';
-                      const isDelivered = order.status === 'DELIVERED' || order.status === 'COMPLETED';
+                      const isDelivered = order.status === 'DELIVERED';
+                      const isCompleted = order.status === 'COMPLETED';
                       const isCancelled = order.status === 'CANCELLED';
+                      const hasReturnRequest = Boolean(order.returnRequest) || ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'].includes(order.status);
+                      const returnAnchor = new Date(order.completedAt || order.updatedAt).getTime();
+                      const canRequestReturn =
+                        (isDelivered || isCompleted) &&
+                        !hasReturnRequest &&
+                        Date.now() <= returnAnchor + 14 * 24 * 60 * 60 * 1000;
 
                       return (
                         <div
@@ -695,6 +723,18 @@ export default function CustomerPortalPage() {
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                                   <CheckCircle2 className="w-3 h-3" />
                                   <span>Giao hàng thành công</span>
+                                </span>
+                              )}
+                              {isCompleted && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EEDFC6] px-2.5 py-1 rounded-full">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Đơn hàng hoàn tất</span>
+                                </span>
+                              )}
+                              {hasReturnRequest && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>Đang xử lý trả hàng</span>
                                 </span>
                               )}
                               {isCancelled && (
@@ -758,7 +798,7 @@ export default function CustomerPortalPage() {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => setSelectedOrderDetails(order)}
@@ -778,13 +818,37 @@ export default function CustomerPortalPage() {
                               )}
 
                               {isDelivered && (
-                                <Link
-                                  to={`/tracking?orderSn=${encodeURIComponent(order.externalOrderSn)}`}
-                                  className="px-3.5 py-2 rounded-xl bg-[#FBF5EB] hover:bg-[#ECE1CD] border border-[#EAE4D7] text-xs font-bold text-[#B88E4F] transition flex items-center gap-1"
+                                <button
+                                  type="button"
+                                  disabled={confirmingOrderId === order.id}
+                                  onClick={() => handleConfirmReceipt(order)}
+                                  className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-1"
                                 >
-                                  <span>Đánh giá 5★</span>
-                                </Link>
+                                  {confirmingOrderId === order.id && <Loader2 className="w-3 h-3 animate-spin" />}
+                                  <span>Đã nhận hàng</span>
+                                </button>
                               )}
+
+                              {canRequestReturn && (
+                                <button type="button" onClick={() => setReturnOrder(order)} className="px-3.5 py-2 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] transition">
+                                  Trả hàng / Hoàn tiền
+                                </button>
+                              )}
+
+                              {isCompleted && !hasReturnRequest && (
+                                <button type="button" onClick={() => setReviewOrder(order)} className="px-3.5 py-2 rounded-xl bg-[#231D15] hover:bg-[#1A1612] text-white text-xs font-bold transition">
+                                  Đánh giá đã xác minh
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/chat?storeId=${encodeURIComponent(order.storeId)}&asCustomer=1`)}
+                                className="p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#B88E4F]"
+                                title="Chat với gian hàng"
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </button>
 
                               <button
                                 type="button"
@@ -1591,6 +1655,28 @@ export default function CustomerPortalPage() {
             toast.success('Đặt hàng thành công!');
             fetchOrders();
             fetchProfile();
+          }}
+        />
+      )}
+
+      {returnOrder && (
+        <ReturnRequestModal
+          order={returnOrder}
+          onClose={() => setReturnOrder(null)}
+          onSubmitted={() => {
+            setReturnOrder(null);
+            fetchOrders();
+          }}
+        />
+      )}
+
+      {reviewOrder && (
+        <VerifiedReviewModal
+          order={reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          onSubmitted={() => {
+            setReviewOrder(null);
+            fetchOrders();
           }}
         />
       )}

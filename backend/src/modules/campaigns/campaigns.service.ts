@@ -293,6 +293,12 @@ export class CampaignsService {
       throw new ForbiddenException('Bạn không phải chủ sở hữu của cửa hàng trong cuộc hội thoại này.');
     }
 
+    if (!conv.collaboratorId) {
+      throw new BadRequestException(
+        'Hội thoại khách hàng không hỗ trợ lời mời chiến dịch KOL.',
+      );
+    }
+
     return this.inviteCollaborator(userId, dto.campaignId, {
       collaboratorId: conv.collaboratorId,
       conversationId: conv.id,
