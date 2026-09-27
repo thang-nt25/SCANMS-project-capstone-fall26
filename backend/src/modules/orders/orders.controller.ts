@@ -402,7 +402,7 @@ export class OrdersController {
   @ApiOperation({
     summary: 'FR-18: Gửi đánh giá & review 5 sao sau khi nhận hàng thành công',
     description:
-      'Khách hàng gửi số sao (1-5★) và nhận xét cho sản phẩm trong đơn đã giao (DELIVERED hoặc COMPLETED).',
+      'Khách hàng gửi số sao (1-5★) và nhận xét sau khi đã xác nhận nhận hàng (COMPLETED).',
   })
   async addReview(
     @Param('id', new ParseUUIDPipe({ version: '4' })) orderId: string,

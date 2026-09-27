@@ -343,12 +343,12 @@ export default function ProductDetailPage() {
 
   const handleContactShop = () => {
     if (!currentUser) {
-      toast.info('Vui lòng đăng nhập tài khoản KOL để trao đổi hợp tác với gian hàng');
+      toast.info('Vui lòng đăng nhập để trao đổi trực tiếp với gian hàng');
       navigate(`/login?redirect=/products/${slug}`);
       return;
     }
-    if (!isKolUser) {
-      toast.info('Tính năng liên hệ shop trực tiếp dành riêng cho tài khoản KOL / Creator.');
+    if (!isKolUser && currentUser.role !== 'CUSTOMER') {
+      toast.info('Tính năng liên hệ shop dành cho khách hàng và KOL / Creator.');
       return;
     }
     const storeId = data?.store?.id || 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
@@ -363,7 +363,11 @@ export default function ProductDetailPage() {
       productSku: data?.product?.sku || '',
       commissionRate: '15',
     });
-    navigate(`/collaborator/collaboration?${query.toString()}`);
+    navigate(
+      isKolUser
+        ? `/collaborator/collaboration?${query.toString()}`
+        : `/chat?${query.toString()}&asCustomer=1`,
+    );
   };
 
   const { slug } = useParams<{ slug: string }>();
@@ -1265,6 +1269,9 @@ export default function ProductDetailPage() {
                         id: store.id,
                         name: store.name,
                         slug: store.slug,
+                        policyReturn: policies?.returnPolicy,
+                        policyWarranty: policies?.warranty,
+                        policyShipping: policies?.shipping,
                       },
                       variantId: selectedVariant?.id,
                       quantity,
@@ -1314,7 +1321,7 @@ export default function ProductDetailPage() {
                   title={policies?.returnPolicy}
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>{policies?.returnPolicy ? 'Đổi trả bảo đảm' : 'Đổi trả 7 ngày'}</span>
+                  <span>{policies?.returnPolicy ? 'Đổi trả bảo đảm' : 'Đổi trả 14 ngày'}</span>
                 </div>
                 <div
                   className="flex flex-col items-center gap-1"
@@ -1330,6 +1337,11 @@ export default function ProductDetailPage() {
                   <Lock className="w-3.5 h-3.5 text-[#B88E4F]" />
                   <span>Bảo hành uy tín</span>
                 </div>
+              </div>
+              <div className="mt-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] p-3 text-left">
+                <strong className="block text-[11px] text-[#1A1612] mb-1.5">Chính sách của {store.name}</strong>
+                <p className="m-0 text-[11px] leading-relaxed text-[#7D715E]"><b>Đổi trả:</b> {policies?.returnPolicy || 'Yêu cầu trong 14 ngày kể từ khi nhận hàng, kèm ảnh và video mở hộp.'}</p>
+                <p className="m-0 mt-1 text-[11px] leading-relaxed text-[#7D715E]"><b>Bảo hành:</b> {policies?.warranty || 'Theo điều kiện bảo hành do gian hàng công bố và xác nhận trên đơn hàng.'}</p>
               </div>
             </div>
           </div>
@@ -1779,6 +1791,9 @@ export default function ProductDetailPage() {
             id: store.id,
             name: store.name,
             slug: store.slug,
+            policyReturn: policies?.returnPolicy,
+            policyWarranty: policies?.warranty,
+            policyShipping: policies?.shipping,
           }}
           initialVariantId={selectedVariant?.id}
           initialQuantity={quantity}

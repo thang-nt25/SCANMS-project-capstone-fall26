@@ -88,7 +88,7 @@ export class ReviewMediaService {
     });
     if (
       !order ||
-      !['DELIVERED', 'COMPLETED'].includes(order.status) ||
+      order.status !== 'COMPLETED' ||
       !order.orderItems.some((item) => item.productId === dto.productId)
     )
       throw new ForbiddenException(

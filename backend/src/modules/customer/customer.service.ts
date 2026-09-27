@@ -5,13 +5,18 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, ReviewStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { UpdateCustomerProfileDto } from './dto/update-profile.dto';
 import { ChangeCustomerPasswordDto } from './dto/change-password.dto';
 import { CreateCustomerAddressDto } from './dto/create-address.dto';
 import { UpdateCustomerAddressDto } from './dto/update-address.dto';
 import { CustomerOrdersQueryDto } from './dto/customer-orders-query.dto';
+import { SyncCustomerCartDto } from './dto/sync-cart.dto';
+import { CreateReturnRequestDto } from './dto/create-return-request.dto';
+import { CreateCustomerReviewDto } from './dto/create-customer-review.dto';
+
+const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class CustomerService {
@@ -187,6 +192,8 @@ export class CustomerService {
         coupon: {
           select: { displayCode: true, codeNormalized: true, discountValue: true, discountType: true },
         },
+        returnRequest: true,
+        productReviews: true,
       },
     });
 
@@ -218,6 +225,7 @@ export class CustomerService {
         coupon: true,
         paymentTransactions: true,
         productReviews: true,
+        returnRequest: true,
       },
     });
 
@@ -263,9 +271,212 @@ export class CustomerService {
     };
   }
 
-  /**
-   * 7. Quản lý sổ địa chỉ (Address Book)
-   */
+  /** Xác nhận giao hàng, đổi trả, đánh giá xác minh và giỏ hàng tập trung. */
+  async confirmReceipt(userId: string, orderId: string) {
+    const order = await this.getOrderDetails(userId, orderId);
+    if (order.status !== OrderStatus.DELIVERED) {
+      throw new BadRequestException('Chỉ có thể xác nhận khi đơn đang ở trạng thái Đã giao');
+    }
+    if (order.returnRequest) {
+      throw new BadRequestException('Đơn hàng đang có yêu cầu đổi trả nên chưa thể hoàn tất');
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
+    });
+    return { message: 'Đã xác nhận nhận hàng. Bạn có thể đánh giá sản phẩm.', order: updated };
+  }
+
+  async getReturnRequest(userId: string, orderId: string) {
+    await this.getOrderDetails(userId, orderId);
+    return this.prisma.returnRequest.findUnique({ where: { orderId } });
+  }
+
+  async createReturnRequest(
+    userId: string,
+    orderId: string,
+    dto: CreateReturnRequestDto,
+  ) {
+    const order = await this.getOrderDetails(userId, orderId);
+    if (
+      order.status !== OrderStatus.DELIVERED &&
+      order.status !== OrderStatus.COMPLETED
+    ) {
+      throw new BadRequestException('Chỉ đơn đã giao mới được yêu cầu đổi trả/hoàn tiền');
+    }
+    if (order.returnRequest) {
+      throw new BadRequestException('Đơn hàng này đã có yêu cầu đổi trả');
+    }
+
+    const deliveredAt = order.completedAt || order.updatedAt;
+    const deadlineAt = new Date(deliveredAt.getTime() + RETURN_WINDOW_MS);
+    if (deadlineAt.getTime() < Date.now()) {
+      throw new BadRequestException('Đơn hàng đã quá thời hạn đổi trả 14 ngày');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const request = await tx.returnRequest.create({
+        data: {
+          orderId,
+          customerId: userId,
+          reason: dto.reason,
+          details: dto.details?.trim() || null,
+          imageUrls: dto.imageUrls,
+          unboxingVideoUrl: dto.unboxingVideoUrl,
+          deadlineAt,
+        },
+      });
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.RETURN_REQUESTED },
+      });
+      await tx.notification.create({
+        data: {
+          userId: order.store.ownerId,
+          title: 'Yêu cầu đổi trả mới',
+          message: `Đơn ${order.externalOrderSn} vừa gửi yêu cầu đổi trả có video mở hộp.`,
+          type: 'RETURN_REQUESTED',
+          data: { orderId, returnRequestId: request.id },
+        },
+      });
+      return request;
+    });
+
+    return { message: 'Đã gửi yêu cầu đổi trả đến Shop', returnRequest: result };
+  }
+
+  async createVerifiedReview(
+    userId: string,
+    orderId: string,
+    dto: CreateCustomerReviewDto,
+  ) {
+    const order = await this.getOrderDetails(userId, orderId);
+    if (order.status !== OrderStatus.COMPLETED) {
+      throw new BadRequestException("Bạn cần bấm 'Đã nhận hàng - Hoàn tất' trước khi đánh giá");
+    }
+    if (order.returnRequest) {
+      throw new BadRequestException('Không thể đánh giá khi đơn hàng có yêu cầu đổi trả');
+    }
+    if (!order.orderItems.some((item) => item.productId === dto.productId)) {
+      throw new BadRequestException('Sản phẩm không thuộc đơn hàng này');
+    }
+    if (order.productReviews.some((review) => review.productId === dto.productId)) {
+      throw new BadRequestException('Sản phẩm này đã được đánh giá trong đơn hàng');
+    }
+
+    const review = await this.prisma.productReview.create({
+      data: {
+        orderId,
+        productId: dto.productId,
+        customerName: order.customerName || 'Khách mua hàng',
+        rating: dto.rating,
+        comment: dto.comment.trim(),
+        images: dto.images || [],
+        reviewImageUrl: dto.images?.[0] || null,
+        status: ReviewStatus.PENDING,
+        isApproved: false,
+      },
+    });
+    return { message: 'Đã gửi đánh giá xác minh, đang chờ Shop duyệt', review };
+  }
+
+  async getCart(userId: string) {
+    const rows = await this.prisma.customerCartItem.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'asc' },
+      include: {
+        variant: true,
+        product: {
+          include: { store: true, variants: { orderBy: { createdAt: 'asc' } } },
+        },
+      },
+    });
+
+    return {
+      items: rows.map((row) => {
+        const variant = row.variant;
+        const product = row.product;
+        const stockQuantity = variant?.stockQuantity ?? product.stockQuantity;
+        const price = variant?.price ?? product.price;
+        return {
+          id: row.id,
+          cartItemId: `${product.id}_${variant?.id || 'base'}`,
+          productId: product.id,
+          variantId: variant?.id,
+          variantName: variant?.name,
+          title: product.title,
+          sku: variant?.sku || product.sku,
+          price: Number(price),
+          originalPrice: product.originalPrice ? Number(product.originalPrice) : undefined,
+          imageUrl: product.imageUrl || '/assets/product-placeholder.svg',
+          quantity: Math.min(row.quantity, Math.max(stockQuantity, 1)),
+          stockQuantity,
+          isActive: product.isActive && !product.isDeleted && (variant?.isActive ?? true),
+          store: {
+            id: product.store.id,
+            name: product.store.name,
+            slug: product.store.slug,
+            logoUrl: product.store.logoUrl || undefined,
+            policyReturn: product.store.policyReturn || undefined,
+            policyWarranty: product.store.policyWarranty || undefined,
+            policyShipping: product.store.policyShipping || undefined,
+          },
+          availableVariants: product.variants.map((item) => ({
+            id: item.id,
+            name: item.name,
+            sku: item.sku,
+            price: item.price ? Number(item.price) : null,
+            stockQuantity: item.stockQuantity,
+            isActive: item.isActive,
+          })),
+        };
+      }),
+      syncedAt: new Date().toISOString(),
+    };
+  }
+
+  async syncCart(userId: string, dto: SyncCustomerCartDto) {
+    const unique = new Map<string, (typeof dto.items)[number]>();
+    for (const item of dto.items) {
+      unique.set(`${item.productId}:${item.variantId || 'base'}`, item);
+    }
+
+    const items = Array.from(unique.values());
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: items.map((item) => item.productId) }, isDeleted: false },
+      include: { variants: true },
+    });
+    const productMap = new Map(products.map((product) => [product.id, product]));
+    const warnings: string[] = [];
+    const valid = items.flatMap((item) => {
+      const product = productMap.get(item.productId);
+      const variant = item.variantId
+        ? product?.variants.find((entry) => entry.id === item.variantId)
+        : undefined;
+      if (!product || !product.isActive || (item.variantId && !variant)) {
+        warnings.push('Một sản phẩm không còn khả dụng và đã được bỏ khỏi giỏ hàng.');
+        return [];
+      }
+      const stock = variant?.stockQuantity ?? product.stockQuantity;
+      if (stock <= 0) warnings.push(`Sản phẩm "${product.title}" đã hết hàng.`);
+      return [{
+        userId,
+        productId: product.id,
+        variantId: variant?.id || null,
+        variantKey: variant?.id || 'base',
+        quantity: Math.max(1, Math.min(item.quantity, Math.max(stock, 1))),
+      }];
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.customerCartItem.deleteMany({ where: { userId } });
+      if (valid.length) await tx.customerCartItem.createMany({ data: valid });
+    });
+    const cart = await this.getCart(userId);
+    return { ...cart, warnings };
+  }
+
   async getAddresses(userId: string) {
     return this.prisma.customerAddress.findMany({
       where: { userId },

@@ -35,10 +35,11 @@ describe('ChatService (FR-25)', () => {
   beforeEach(async () => {
     prisma = {
       store: {
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(mockStore),
         findMany: jest.fn(),
       },
       user: {
+        findUnique: jest.fn().mockResolvedValue({ role: 'COLLABORATOR' }),
         findMany: jest.fn(),
       },
       storeCollaborator: {
