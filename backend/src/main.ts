@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -34,8 +34,8 @@ async function bootstrap() {
       'api/r/:shortCode',
       'r/rate-limit/health',
       'api/referral-links/rate-limit/health',
-      'products/:idOrSlug',
-      'p/:idOrSlug',
+      { path: 'products/:idOrSlug', method: RequestMethod.GET },
+      { path: 'p/:idOrSlug', method: RequestMethod.GET },
     ],
   });
   const rawOrigins = [
@@ -114,7 +114,7 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 SCANMS Backend is running on: http://localhost:${port}/api`);
   console.log(`📑 Swagger Documentation: http://localhost:${port}/api/docs`);
 }

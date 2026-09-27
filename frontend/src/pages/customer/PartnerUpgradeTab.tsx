@@ -176,7 +176,7 @@ export const PartnerUpgradeTab: React.FC = () => {
       {/* HEADER BANNER */}
       <div className="bg-gradient-to-br from-[#F3EFE6] via-[#FAF8F5] to-[#F3EFE6] border border-[#EAE4D7] rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
         <div className="relative z-10 max-w-3xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#B88E4F]/15 text-[#B88E4F] font-bold text-xs border border-[#B88E4F]/30 mb-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EBD08C]/15 text-[#B88E4F] font-bold text-xs border border-[#B88E4F]/30 mb-3">
             <Sparkles className="w-3.5 h-3.5 fill-current" />
             Cổng Nâng Cấp Đối Tác SCANMS
           </span>
@@ -233,7 +233,7 @@ export const PartnerUpgradeTab: React.FC = () => {
             <button
               type="button"
               onClick={() => authService.switchWorkspace('kol', navigate)}
-              className="w-full py-2 px-3 bg-[#B88E4F] hover:bg-[#9E7933] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+              className="w-full py-2 px-3 bg-[#EBD08C] hover:bg-[#DEC07A] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             >
               <span>Vào Bảng Điều Khiển KOL</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -244,7 +244,7 @@ export const PartnerUpgradeTab: React.FC = () => {
               onClick={() => setActivePartnerType('kol')}
               className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                 activePartnerType === 'kol'
-                  ? 'bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]'
+                  ? 'bg-[#FBF5EB] text-[#B88E4F] border-[#EAE4D7]'
                   : 'bg-white text-[#1A1612] border-[#EAE4D7] hover:bg-[#FAF8F5]'
               }`}
             >
@@ -287,7 +287,7 @@ export const PartnerUpgradeTab: React.FC = () => {
             <button
               type="button"
               onClick={() => authService.switchWorkspace('shop', navigate)}
-              className="w-full py-2 px-3 bg-[#B88E4F] hover:bg-[#9E7933] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+              className="w-full py-2 px-3 bg-[#EBD08C] hover:bg-[#DEC07A] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             >
               <span>Vào Cổng Quản Lý Gian Hàng</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -298,7 +298,7 @@ export const PartnerUpgradeTab: React.FC = () => {
               onClick={() => setActivePartnerType('shop')}
               className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                 activePartnerType === 'shop'
-                  ? 'bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]'
+                  ? 'bg-[#FBF5EB] text-[#B88E4F] border-[#EAE4D7]'
                   : 'bg-white text-[#1A1612] border-[#EAE4D7] hover:bg-[#FAF8F5]'
               }`}
             >
@@ -352,7 +352,7 @@ export const PartnerUpgradeTab: React.FC = () => {
             <button
               type="button"
               onClick={fillSampleKolData}
-              className="px-3 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-xs font-bold text-[#B88E4F] transition cursor-pointer"
             >
               ⚡ Nạp dữ liệu mẫu thử nghiệm
             </button>
@@ -557,7 +557,7 @@ export const PartnerUpgradeTab: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-black text-xs rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-6 py-3 bg-[#EBD08C] hover:bg-[#DEC07A] text-white font-black text-xs rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
               <span>{submitting ? 'Đang gửi hồ sơ...' : 'Nộp Đơn Đăng Ký Nâng Cấp KOL'}</span>
@@ -582,14 +582,14 @@ export const PartnerUpgradeTab: React.FC = () => {
             <button
               type="button"
               onClick={fillSampleShopData}
-              className="px-3 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-xs font-bold text-[#B88E4F] transition cursor-pointer"
             >
               ⚡ Nạp dữ liệu mẫu thử nghiệm
             </button>
           </div>
 
           {/* CHÍNH SÁCH PHÁP LÝ & GIẢI THÍCH NGHỊ ĐỊNH 85 */}
-          <div className="p-4 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#7D715E] leading-relaxed space-y-2">
+          <div className="p-4 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-xs text-[#7D715E] leading-relaxed space-y-2">
             <div className="flex items-center gap-2 font-bold text-[#B88E4F]">
               <Info className="w-4 h-4 shrink-0 text-[#B88E4F]" />
               <span>Quy chuẩn Thẩm định Hai Cấp (Two-Tier Compliance) trên Sàn SCANMS:</span>
@@ -745,7 +745,7 @@ export const PartnerUpgradeTab: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-black text-xs rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-6 py-3 bg-[#EBD08C] hover:bg-[#DEC07A] text-white font-black text-xs rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
               <span>{submitting ? 'Đang gửi hồ sơ...' : 'Nộp Hồ Sơ Mở Gian Hàng'}</span>

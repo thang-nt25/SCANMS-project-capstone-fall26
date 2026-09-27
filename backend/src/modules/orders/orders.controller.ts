@@ -29,7 +29,10 @@ import {
 import { UserRole } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { OrdersService } from './orders.service';
+import { PayosPaymentService } from './payos-payment.service';
+import type { Webhook as PayosWebhook } from '@payos/node';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { ValidateCartDto } from './dto/validate-cart.dto';
 import {
   OrderCreatedResponseDto,
   PublicOrderDetailResponseDto,
@@ -84,12 +87,27 @@ export class OrdersController {
     private readonly manualOrdersService: ManualOrdersService,
     private readonly excelOrderImportService: ExcelOrderImportService,
     private readonly reviewMediaService: ReviewMediaService,
+    private readonly payosPaymentService: PayosPaymentService,
   ) {}
+
+  @Post('validate-cart')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Kiểm tra tính hợp lệ, tồn kho và giá hiện hành của giỏ hàng trước khi chốt đơn (FR-Checkout)',
+    description:
+      'Đối chiếu từng sản phẩm, phân loại SKU, giá hiện hành từ cơ sở dữ liệu và tình trạng kho để cảnh báo khách mua.',
+  })
+  @ApiResponse({ status: 200, description: 'Kiểm tra giỏ hàng hoàn tất' })
+  async validateCart(@Body() dto: ValidateCartDto) {
+    return this.ordersService.validateCart(dto);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Đặt hàng mới (Guest Storefront hoặc Khách hàng trực tuyến)',
+    summary: 'Đặt hàng mới (yêu cầu đăng nhập)',
     description:
       'Nhận diện mã Coupon hoặc Link rút gọn của KOL và lưu đơn hàng. Hoa hồng được chuyển vào ví chờ sau khi giao hàng thành công.',
   })
@@ -113,7 +131,14 @@ export class OrdersController {
     description: 'Quá nhiều yêu cầu tạo đơn trong 1 phút',
   })
   @ApiResponse({ status: 500, description: 'Lỗi máy chủ nội bộ kèm requestId' })
-  async createOrder(@Body() dto: CreateOrderDto, @Req() req: Request) {
+  async createOrder(
+    @Body() dto: CreateOrderDto,
+    @Req() req: Request,
+    @CurrentUser('id') userId: string,
+  ) {
+    // Never trust a customerId supplied by the browser.
+    dto.customerId = userId;
+    if (dto.paymentMethod === 'PAYOS') this.payosPaymentService.assertReady();
     const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
     await this.ordersService.checkCreateOrderRateLimit(rawIp, dto.customerPhone);
 
@@ -178,6 +203,41 @@ export class OrdersController {
     const signatureOrSecret = signatureHeader || altSignatureHeader || secretHeader;
     const rawBody = (req as any)?.rawBody;
     return this.ordersService.reconcilePayment(dto, signatureOrSecret, rawBody);
+  }
+
+  @Post('payos/webhook')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'PayOS webhook đã ký: xác nhận thanh toán đơn hàng' })
+  async payosWebhook(@Body() body: PayosWebhook) {
+    return this.payosPaymentService.handleWebhook(body);
+  }
+
+  @Get('payos/availability')
+  @ApiOperation({ summary: 'Kiểm tra PayOS đã được cấu hình cho thanh toán hay chưa' })
+  getPayosAvailability() {
+    return this.payosPaymentService.isAvailable();
+  }
+
+  @Post('payos/:publicCode/link')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tạo mã QR/link PayOS cho đơn hàng của người mua' })
+  async createPayosLink(
+    @Param('publicCode') publicCode: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.payosPaymentService.createLink(publicCode, userId);
+  }
+
+  @Get('payos/:publicCode/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tra trạng thái PayOS của đơn hàng thuộc tài khoản' })
+  async getPayosStatus(
+    @Param('publicCode') publicCode: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.payosPaymentService.getStatus(publicCode, userId);
   }
 
 

@@ -121,7 +121,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                   onClick={() => handleSelectWorkspace(ws.key)}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
                     isActive
-                      ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]'
+                      ? 'bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F]'
                       : 'hover:bg-[#FAF8F5] text-[#1A1612]'
                   }`}
                 >
@@ -208,7 +208,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                   onClick={() => handleSelectWorkspace(ws.key)}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
                     isActive
-                      ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]'
+                      ? 'bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F]'
                       : 'hover:bg-[#FAF8F5] text-[#1A1612]'
                   }`}
                 >

@@ -413,14 +413,14 @@ export default function CustomerPortalPage() {
           <aside className="lg:col-span-3 bg-white border border-[#EAE4D7] rounded-3xl p-5 shadow-sm">
             {/* User Identity Banner */}
             <div className="flex items-center gap-3.5 pb-5 border-b border-[#EAE4D7]">
-              <div className="w-13 h-13 rounded-2xl bg-[#FBF5EB] border-2 border-[#EEDFC6] text-[#B88E4F] font-black text-lg flex items-center justify-center shrink-0 shadow-2xs">
+              <div className="w-13 h-13 rounded-2xl bg-[#FBF5EB] border-2 border-[#EAE4D7] text-[#B88E4F] font-black text-lg flex items-center justify-center shrink-0 shadow-2xs">
                 {profileData?.user.fullName ? profileData.user.fullName.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="min-w-0 flex-1 text-left">
                 <strong className="block text-sm font-black text-[#1A1612] truncate">
                   {profileData?.user.fullName || currentUser?.fullName || 'Khách Hàng'}
                 </strong>
-                <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6] inline-block mt-1">
+                <span className="text-[11px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EAE4D7] inline-block mt-1">
                   ✨ Khách Mua Hàng
                 </span>
                 <span className="block text-[11px] text-[#7D715E] truncate mt-0.5">
@@ -458,7 +458,7 @@ export default function CustomerPortalPage() {
                 onClick={() => setTab('orders')}
                 className={`flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
                   currentTab === 'orders'
-                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shadow-2xs'
+                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] shadow-2xs'
                     : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                 }`}
               >
@@ -467,7 +467,7 @@ export default function CustomerPortalPage() {
                   <span>Đơn mua của tôi</span>
                 </div>
                 {profileData?.stats.pendingOrders ? (
-                  <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[10px] font-black flex items-center justify-center">
+                  <span className="w-5 h-5 rounded-full bg-[#EBD08C] text-white text-[10px] font-black flex items-center justify-center">
                     {profileData.stats.pendingOrders}
                   </span>
                 ) : (
@@ -480,7 +480,7 @@ export default function CustomerPortalPage() {
                 onClick={() => setTab('addresses')}
                 className={`flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
                   currentTab === 'addresses'
-                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shadow-2xs'
+                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] shadow-2xs'
                     : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                 }`}
               >
@@ -496,7 +496,7 @@ export default function CustomerPortalPage() {
                 onClick={() => setTab('wishlist')}
                 className={`flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
                   currentTab === 'wishlist'
-                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shadow-2xs'
+                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] shadow-2xs'
                     : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                 }`}
               >
@@ -512,7 +512,7 @@ export default function CustomerPortalPage() {
                 onClick={() => setTab('profile')}
                 className={`flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
                   currentTab === 'profile'
-                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shadow-2xs'
+                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] shadow-2xs'
                     : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                 }`}
               >
@@ -528,15 +528,15 @@ export default function CustomerPortalPage() {
                 onClick={() => setTab('upgrade')}
                 className={`flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
                   currentTab === 'upgrade'
-                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shadow-2xs'
-                    : 'text-[#B88E4F] hover:bg-[#FAF8F5] bg-[#FBF5EB]/40 border border-[#EEDFC6]/50'
+                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] shadow-2xs'
+                    : 'text-[#B88E4F] hover:bg-[#FAF8F5] bg-[#FBF5EB]/40 border border-[#EAE4D7]/50'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <Sparkles className="w-4 h-4 text-[#B88E4F]" />
                   <span>Nâng cấp Đối tác</span>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#B88E4F] text-white font-black">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EBD08C] text-white font-black">
                   KOL / Shop
                 </span>
               </button>
@@ -633,7 +633,7 @@ export default function CustomerPortalPage() {
                   </div>
                 ) : orders.length === 0 ? (
                   <div className="py-16 text-center flex flex-col items-center justify-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center">
                       <ShoppingBag className="w-8 h-8" />
                     </div>
                     <div>
@@ -648,7 +648,7 @@ export default function CustomerPortalPage() {
                     </div>
                     <Link
                       to="/marketplace"
-                      className="px-5 py-2.5 rounded-xl bg-[#B88E4F] text-white text-xs font-bold hover:bg-[#8C6226] transition shadow-xs"
+                      className="px-5 py-2.5 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition shadow-xs"
                     >
                       Khám phá sản phẩm ngay
                     </Link>
@@ -751,7 +751,7 @@ export default function CustomerPortalPage() {
                               </span>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-[#7D715E]">Thành tiền:</span>
-                                <strong className="text-sm font-black text-[#8C6226]">
+                                <strong className="text-sm font-black text-[#B88E4F]">
                                   {formatMoney(order.finalAmount)}
                                 </strong>
                               </div>
@@ -780,7 +780,7 @@ export default function CustomerPortalPage() {
                               {isDelivered && (
                                 <Link
                                   to={`/tracking?orderSn=${encodeURIComponent(order.externalOrderSn)}`}
-                                  className="px-3.5 py-2 rounded-xl bg-[#FBF5EB] hover:bg-[#F5E7CC] border border-[#EEDFC6] text-xs font-bold text-[#8C6226] transition flex items-center gap-1"
+                                  className="px-3.5 py-2 rounded-xl bg-[#FBF5EB] hover:bg-[#ECE1CD] border border-[#EAE4D7] text-xs font-bold text-[#B88E4F] transition flex items-center gap-1"
                                 >
                                   <span>Đánh giá 5★</span>
                                 </Link>
@@ -789,7 +789,7 @@ export default function CustomerPortalPage() {
                               <button
                                 type="button"
                                 onClick={() => handleReorder(order)}
-                                className="px-3.5 py-2 rounded-xl bg-[#B88E4F] hover:bg-[#8C6226] text-white text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1"
+                                className="px-3.5 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1"
                               >
                                 <RotateCcw className="w-3 h-3" />
                                 <span>Mua lại</span>
@@ -821,7 +821,7 @@ export default function CustomerPortalPage() {
                   <button
                     type="button"
                     onClick={openAddAddressModal}
-                    className="px-4 py-2.5 rounded-xl bg-[#B88E4F] hover:bg-[#8C6226] text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
+                    className="px-4 py-2.5 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Thêm địa chỉ mới</span>
@@ -835,7 +835,7 @@ export default function CustomerPortalPage() {
                   </div>
                 ) : addresses.length === 0 ? (
                   <div className="py-16 text-center flex flex-col items-center justify-center gap-3">
-                    <div className="w-16 h-16 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center">
                       <MapPin className="w-8 h-8" />
                     </div>
                     <div>
@@ -849,7 +849,7 @@ export default function CustomerPortalPage() {
                     <button
                       type="button"
                       onClick={openAddAddressModal}
-                      className="px-4 py-2 rounded-xl bg-[#B88E4F] text-white text-xs font-bold hover:bg-[#8C6226] transition"
+                      className="px-4 py-2 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition"
                     >
                       Thêm ngay
                     </button>
@@ -874,7 +874,7 @@ export default function CustomerPortalPage() {
                               <span className="text-xs text-[#7D715E]">| {addr.phoneNumber}</span>
                             </div>
                             {addr.isDefault && (
-                              <span className="text-[10px] font-black uppercase text-[#8C6226] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                              <span className="text-[10px] font-black uppercase text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EAE4D7]">
                                 Mặc định
                               </span>
                             )}
@@ -892,7 +892,7 @@ export default function CustomerPortalPage() {
                             <button
                               type="button"
                               onClick={() => handleSetDefaultAddress(addr.id)}
-                              className="text-xs font-bold text-[#8C6226] hover:underline cursor-pointer"
+                              className="text-xs font-bold text-[#B88E4F] hover:underline cursor-pointer"
                             >
                               Đặt làm mặc định
                             </button>
@@ -963,7 +963,7 @@ export default function CustomerPortalPage() {
                     </div>
                     <Link
                       to="/marketplace"
-                      className="px-4 py-2 rounded-xl bg-[#B88E4F] text-white text-xs font-bold hover:bg-[#8C6226] transition"
+                      className="px-4 py-2 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition"
                     >
                       Dạo chợ mua sắm
                     </Link>
@@ -1011,7 +1011,7 @@ export default function CustomerPortalPage() {
                             </Link>
 
                             <div className="flex items-baseline gap-2 mb-3">
-                              <strong className="text-sm font-black text-[#8C6226]">
+                              <strong className="text-sm font-black text-[#B88E4F]">
                                 {formatMoney(p.price)}
                               </strong>
                               {p.originalPrice && Number(p.originalPrice) > Number(p.price) && (
@@ -1040,7 +1040,7 @@ export default function CustomerPortalPage() {
                                   },
                                 });
                               }}
-                              className="flex-1 py-2 rounded-xl bg-[#B88E4F] hover:bg-[#8C6226] text-white text-xs font-bold transition text-center cursor-pointer shadow-2xs"
+                              className="flex-1 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition text-center cursor-pointer shadow-2xs"
                             >
                               Mua ngay
                             </button>
@@ -1118,7 +1118,7 @@ export default function CustomerPortalPage() {
                     <button
                       type="submit"
                       disabled={updatingProfile || profileLoading}
-                      className="mt-2 py-2.5 rounded-xl bg-[#B88E4F] hover:bg-[#8C6226] text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                      className="mt-2 py-2.5 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
                     >
                       {(updatingProfile || profileLoading) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       <span>Lưu thay đổi</span>
@@ -1236,7 +1236,7 @@ export default function CustomerPortalPage() {
                 <div
                   className={`w-7 h-7 rounded-full flex items-center justify-center ${
                     selectedOrderDetails.status !== 'CANCELLED'
-                      ? 'bg-[#B88E4F] text-white'
+                      ? 'bg-[#EBD08C] text-white'
                       : 'bg-slate-200 text-slate-500'
                   }`}
                 >
@@ -1318,7 +1318,7 @@ export default function CustomerPortalPage() {
                   <span>-{formatMoney(selectedOrderDetails.discountAmount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm font-black text-[#8C6226] pt-2 border-t border-[#EAE4D7]">
+              <div className="flex justify-between text-sm font-black text-[#B88E4F] pt-2 border-t border-[#EAE4D7]">
                 <span>Tổng thanh toán:</span>
                 <span>{formatMoney(selectedOrderDetails.finalAmount)}</span>
               </div>
@@ -1568,7 +1568,7 @@ export default function CustomerPortalPage() {
                 <button
                   type="submit"
                   disabled={savingAddress}
-                  className="flex-1 py-2.5 rounded-xl bg-[#B88E4F] hover:bg-[#8C6226] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs"
+                  className="flex-1 py-2.5 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs"
                 >
                   {savingAddress && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Lưu địa chỉ</span>

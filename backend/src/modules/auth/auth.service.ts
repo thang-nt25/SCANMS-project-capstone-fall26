@@ -6,6 +6,7 @@ import {
   NotFoundException,
   BadRequestException,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -31,6 +32,7 @@ interface StoredOtp {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   // Bộ nhớ tạm lưu mã OTP (Hiệu lực 5 phút)
   private readonly otpCache = new Map<string, StoredOtp>();
   private readonly googleOAuthClient: OAuth2Client;
@@ -112,7 +114,7 @@ export class AuthService {
 
     // Xác thực mã OTP
     const cached = this.otpCache.get(normalizedEmail);
-    const isDevBypass = dto.otp === '123456'; // Hỗ trợ master key cho dev / demo bảo vệ
+    const isDevBypass = process.env.NODE_ENV !== 'production' && dto.otp === '123456';
 
     if (!isDevBypass) {
       if (!cached) {
@@ -234,13 +236,9 @@ export class AuthService {
     console.log(`Vai trò: ${user.role} | Tạo tài khoản thành công!`);
     console.log('======================================================\n');
 
-    const payload = { sub: user.id, email: user.email, role: user.role };
-    const accessToken = this.jwtService.sign(payload);
-
     return {
-      accessToken,
       user,
-      message: 'Đăng ký tài khoản thành công!',
+      message: 'Đăng ký tài khoản thành công. Vui lòng đăng nhập để tiếp tục.',
     };
   }
 
@@ -432,7 +430,6 @@ export class AuthService {
 
     // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng nếu có MailService
     if (this.mailService) {
-      try {
         const loginTime = new Date().toLocaleString('vi-VN', {
           timeZone: 'Asia/Ho_Chi_Minh',
         });
@@ -440,7 +437,7 @@ export class AuthService {
           meta?.userAgent || 'Trình duyệt Web (Chrome / Safari / Edge)';
         const ip = meta?.ipAddress || '127.0.0.1';
 
-        await this.mailService.sendLoginSecurityAlert(
+        void this.mailService.sendLoginSecurityAlert(
           user.email,
           user.fullName,
           {
@@ -448,10 +445,9 @@ export class AuthService {
             userAgent: device,
             time: loginTime,
           },
-        );
-      } catch (e) {
-        // Email alert failure is non-blocking
-      }
+        ).catch((error) => {
+          this.logger.warn(`Không thể gửi email cảnh báo đăng nhập: ${error instanceof Error ? error.message : String(error)}`);
+        });
     }
 
     const payload = { sub: user.id, email: user.email, role: user.role };
@@ -462,7 +458,7 @@ export class AuthService {
     return {
       accessToken,
       user: safeUser,
-      securityAlertSent: true,
+      securityAlertQueued: Boolean(this.mailService),
       message: 'Đăng nhập thành công',
     };
   }
@@ -487,6 +483,20 @@ export class AuthService {
         name: 'Khách Hàng Google (Xác Thực)',
         picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&h=120&fit=crop',
       };
+    } else if (dto.idToken && (dto.idToken.startsWith('ya29.') || !dto.idToken.includes('.'))) {
+      try {
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${dto.idToken}` },
+        });
+        if (!userInfoRes.ok) {
+          throw new Error(`Google userinfo HTTP status ${userInfoRes.status}`);
+        }
+        payload = await userInfoRes.json();
+      } catch (err: any) {
+        throw new UnauthorizedException(
+          `Xác thực Google Access Token thất bại: ${err.message}`,
+        );
+      }
     } else {
       try {
         const ticket = await this.googleOAuthClient.verifyIdToken({
@@ -495,9 +505,20 @@ export class AuthService {
         });
         payload = ticket.getPayload();
       } catch (err: any) {
-        throw new UnauthorizedException(
-          `Xác thực Google OAuth thất bại: ${err.message}`,
-        );
+        try {
+          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${dto.idToken}` },
+          });
+          if (userInfoRes.ok) {
+            payload = await userInfoRes.json();
+          } else {
+            throw new Error(`Google status ${userInfoRes.status}`);
+          }
+        } catch {
+          throw new UnauthorizedException(
+            `Xác thực Google OAuth thất bại: ${err.message}`,
+          );
+        }
       }
     }
 
@@ -643,7 +664,6 @@ export class AuthService {
 
     // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng
     if (this.mailService) {
-      try {
         const loginTime = new Date().toLocaleString('vi-VN', {
           timeZone: 'Asia/Ho_Chi_Minh',
         });
@@ -651,7 +671,7 @@ export class AuthService {
           meta?.userAgent || 'Google OAuth (Chrome / Safari / Edge)';
         const ip = meta?.ipAddress || '127.0.0.1';
 
-        await this.mailService.sendLoginSecurityAlert(
+        void this.mailService.sendLoginSecurityAlert(
           user.email,
           user.fullName,
           {
@@ -659,10 +679,9 @@ export class AuthService {
             userAgent: device,
             time: loginTime,
           },
-        );
-      } catch (e) {
-        // Non-blocking
-      }
+        ).catch((error) => {
+          this.logger.warn(`Không thể gửi email cảnh báo đăng nhập Google: ${error instanceof Error ? error.message : String(error)}`);
+        });
     }
 
     const jwtPayload = { sub: user.id, email: user.email, role: user.role };
@@ -673,7 +692,7 @@ export class AuthService {
     return {
       accessToken,
       user: safeUser,
-      securityAlertSent: true,
+      securityAlertQueued: Boolean(this.mailService),
       message: 'Đăng nhập Google OAuth thành công!',
     };
   }

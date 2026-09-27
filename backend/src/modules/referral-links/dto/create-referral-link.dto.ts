@@ -26,6 +26,13 @@ export class CreateReferralLinkDto {
   @IsUUID('4', { message: 'campaignId phải là định dạng UUID v4 hợp lệ' })
   campaignId?: string;
 
+  @ApiPropertyOptional({
+    description: 'ID Exclusive Deal đã được Shop duyệt, dùng khi phát hành link VIP.',
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'exclusiveDealId phải là định dạng UUID v4 hợp lệ' })
+  exclusiveDealId?: string;
+
   @ApiProperty({
     description:
       'Nhãn gợi nhớ cho link (bắt buộc, VD: Video review TikTok tháng 9)',

@@ -1,6 +1,6 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Search,
   Store,
@@ -37,10 +37,11 @@ import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
+import { useCart } from '../../context/CartContext';
 
 const MARKETPLACE_BANNERS = [
   {
-    image: '/assets/marketplace/scanms-marketplace-banner.png',
+    image: '/assets/marketplace/scanms-marketplace-banner-v3.png',
     eyebrow: 'Sàn đa gian hàng SCANMS',
     title: 'Một điểm đến, nhiều gian hàng chính hãng',
     description: 'Khám phá sản phẩm đa ngành từ các đối tác đã xác minh KYC trên cùng một nền tảng.',
@@ -51,7 +52,7 @@ const MARKETPLACE_BANNERS = [
     action: 'link' as const,
   },
   {
-    image: '/assets/marketplace/scanms-affiliate-banner.png',
+    image: '/assets/marketplace/scanms-affiliate-banner-v2.png',
     eyebrow: 'Affiliate Marketplace',
     title: 'Chọn sản phẩm hợp tệp người xem của bạn',
     description: 'So sánh sản phẩm, mức hoa hồng và gian hàng trước khi bắt đầu tạo nội dung.',
@@ -62,7 +63,7 @@ const MARKETPLACE_BANNERS = [
     action: 'link' as const,
   },
   {
-    image: '/assets/marketplace/scanms-live-banner.png',
+    image: '/assets/marketplace/scanms-live-banner-v2.png',
     eyebrow: 'SCANMS Live Commerce',
     title: 'Biến mỗi phiên Live thành một cửa hàng trực tiếp',
     description: 'Kết nối Creator, sản phẩm và người mua trong trải nghiệm mua sắm giàu tương tác.',
@@ -76,6 +77,7 @@ const MARKETPLACE_BANNERS = [
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<string>('newest');
 
@@ -123,13 +125,11 @@ export default function MarketplacePage() {
   });
 
   // Cart & Gateways
-  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { totalCount: totalCartCount, addItem, openCart } = useCart();
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
   const [activeBanner, setActiveBanner] = useState(0);
-  const [isBannerPaused, setIsBannerPaused] = useState(false);
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -183,6 +183,14 @@ export default function MarketplacePage() {
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<HTMLElement>(null);
   const trackingRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (location.hash !== '#catalog-section') return;
+    const frame = window.requestAnimationFrame(() => {
+      catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash]);
 
 
 
@@ -250,54 +258,39 @@ export default function MarketplacePage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isGuideOpen) setIsGuideOpen(false);
-        if (isCartOpen) setIsCartOpen(false);
         if (isRoleDropdownOpen) setIsRoleDropdownOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isGuideOpen, isCartOpen, isRoleDropdownOpen]);
+  }, [isGuideOpen, isRoleDropdownOpen]);
 
   useEffect(() => {
-    if (isBannerPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const timer = window.setInterval(() => {
       setActiveBanner((current) => (current + 1) % MARKETPLACE_BANNERS.length);
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [isBannerPaused]);
-
-  const totalCartCount = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
-  }, [cart]);
-
-  const cartSubtotal = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  }, [cart]);
+  }, []);
 
   const handleAddToCart = (product: Product, quantity: number = 1) => {
-    setCart((prev) => {
-      const idx = prev.findIndex((item) => item.product.id === product.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx].quantity += quantity;
-        return next;
-      }
-      return [...prev, { product, quantity }];
-    });
-    toast.success(`Đã thêm ${quantity > 1 ? `x${quantity} ` : ''}"${product.name.slice(0, 32)}..." vào giỏ hàng!`);
-  };
-
-  const handleUpdateCartQuantity = (productId: string, delta: number) => {
-    setCart((prev) => {
-      return prev
-        .map((item) => {
-          if (item.product.id === productId) {
-            const nextQty = item.quantity + delta;
-            return nextQty > 0 ? { ...item, quantity: nextQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as { product: Product; quantity: number }[];
+    addItem({
+      product: {
+        id: product.id,
+        title: product.name,
+        sku: product.sku,
+        price: product.price,
+        originalPrice: product.origPrice,
+        imageUrl: product.image,
+        stockQuantity: product.stockQuantity || 0,
+        variants: product.variants,
+        isActive: true,
+      },
+      store: {
+        id: product.storeId || 'store-default',
+        name: product.brand || 'Gian hàng SCANMS',
+      },
+      quantity,
+      openCartAfterAdd: true,
     });
   };
 
@@ -410,23 +403,23 @@ export default function MarketplacePage() {
       <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300">
         {/* Top Banner Bar - Slides up/collapses when scrolled */}
         <aside
-          className={`bg-[#F3EFE6] text-[#7A561B] text-[11.5px] font-medium px-4 border-b border-[#EEDFC6] transition-all duration-300 ease-in-out overflow-hidden ${
+          className={`bg-[#F3EFE6] text-[#B88E4F] text-[11.5px] font-medium px-4 border-b border-[#EAE4D7] transition-all duration-300 ease-in-out overflow-hidden ${
             isScrolled ? 'max-h-0 py-0 opacity-0 border-transparent pointer-events-none' : 'max-h-12 py-2 opacity-100'
           }`}
         >
           <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#C59B58] animate-ping"></span>
+              <span className="w-2 h-2 rounded-full bg-[#EBD08C] animate-ping"></span>
               <span className="font-bold text-[#1A1612]">ScanMS COMMERCE:</span>
               <span className="text-[#7D715E]">Sàn Tiếp Thị Liên Kết Đa Gian Hàng · 100% Đối Tác KYC · Đồng Kiểm 14 Ngày</span>
             </div>
-            <div className="hidden sm:flex items-center gap-5 text-xs text-[#7A561B]">
+            <div className="hidden sm:flex items-center gap-5 text-xs text-[#B88E4F]">
               <button
                 type="button"
                 onClick={() => setIsGuideOpen(true)}
                 className="hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer font-semibold"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-[#C59B58]" />
+                <ShieldCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
                 Chính sách an tâm
               </button>
               <button
@@ -436,7 +429,7 @@ export default function MarketplacePage() {
                 }}
                 className="hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer font-semibold"
               >
-                <Truck className="w-3.5 h-3.5 text-[#C59B58]" />
+                <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
                 Tra cứu đơn
               </button>
             </div>
@@ -446,7 +439,7 @@ export default function MarketplacePage() {
         {/* Main marketplace header */}
         <header
           className={`bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] transition-all duration-300 ease-in-out ${
-            isScrolled ? 'shadow-md shadow-[#231D15]/5' : 'shadow-xs'
+            isScrolled ? 'shadow-md shadow-[#1A1612]/5' : 'shadow-xs'
           }`}
         >
           <div
@@ -465,7 +458,7 @@ export default function MarketplacePage() {
             {/* Header search */}
             <form
               onSubmit={handleSearchSubmit}
-              className={`hidden md:flex min-w-0 w-full max-w-2xl justify-self-center items-center gap-2 rounded-2xl border border-[#EEDFC6] bg-white shadow-sm shadow-[#C59B58]/10 transition-all duration-300 ease-in-out focus-within:border-[#C59B58] ${
+              className={`hidden md:flex min-w-0 w-full max-w-2xl justify-self-center items-center gap-2 rounded-2xl border border-[#EAE4D7] bg-white shadow-sm shadow-[#C59B58]/10 transition-all duration-300 ease-in-out focus-within:border-[#C59B58] ${
                 isScrolled ? 'p-1' : 'p-1.5'
               }`}
             >
@@ -493,7 +486,7 @@ export default function MarketplacePage() {
               <button
                 type="button"
                 onClick={() => navigate('/search')}
-                className={`hidden xl:inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#8C6226] transition hover:bg-[#F3EFE6] cursor-pointer active:scale-[0.98] ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#B88E4F] transition hover:bg-[#F3EFE6] cursor-pointer active:scale-[0.98] ${
                   isScrolled ? 'px-2.5 py-1.5' : 'px-3 py-2'
                 }`}
                 title="Mở bộ lọc tìm kiếm"
@@ -503,7 +496,7 @@ export default function MarketplacePage() {
               </button>
               <button
                 type="submit"
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#C59B58] text-xs font-bold text-white transition hover:bg-[#B88E4F] cursor-pointer active:scale-[0.98] ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#C59B58] text-xs font-bold text-[#1A1612] transition hover:bg-[#B88E4F] cursor-pointer active:scale-[0.98] ${
                   isScrolled ? 'px-3.5 py-1.5' : 'px-4 py-2'
                 }`}
               >
@@ -517,14 +510,14 @@ export default function MarketplacePage() {
               {/* Cart Button */}
               <button
                 type="button"
-                onClick={() => setIsCartOpen(true)}
+                onClick={() => openCart()}
                 className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
                 title="Giỏ hàng của bạn"
               >
                 <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
                 <span className="hidden sm:inline">Giỏ hàng</span>
                 {totalCartCount > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[10px] font-black flex items-center justify-center -mr-1">
+                  <span className="w-5 h-5 rounded-full bg-[#EBD08C] text-white text-[10px] font-black flex items-center justify-center -mr-1">
                     {totalCartCount}
                   </span>
                 )}
@@ -538,7 +531,7 @@ export default function MarketplacePage() {
                     onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
                   >
-                    <div className="w-6 h-6 rounded-full bg-[#C59B58] text-white flex items-center justify-center font-black text-[11px] shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-[#EBD08C] text-white flex items-center justify-center font-black text-[11px] shrink-0">
                       {currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
                     </div>
                     <span className="hidden sm:inline max-w-[100px] truncate">{currentUser.fullName || 'Tài khoản'}</span>
@@ -554,7 +547,7 @@ export default function MarketplacePage() {
                         <small className="text-[11px] text-[#7D715E] block truncate">
                           {currentUser.email}
                         </small>
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6] text-[10px] font-bold">
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] text-[10px] font-bold">
                           {currentUser.role === 'CUSTOMER'
                             ? 'Khách Mua Sắm'
                             : currentUser.role === 'COLLABORATOR'
@@ -611,7 +604,7 @@ export default function MarketplacePage() {
                                 : '/admin/users'
                             }
                             onClick={() => setIsRoleDropdownOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl bg-[#FBF5EB] hover:bg-[#F5E7CC] text-[#8C6226] transition"
+                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl bg-[#FBF5EB] hover:bg-[#ECE1CD] text-[#B88E4F] transition"
                           >
                             <Store className="w-4 h-4 text-[#B88E4F]" />
                             <span>Vào không gian làm việc ↗</span>
@@ -641,7 +634,7 @@ export default function MarketplacePage() {
                   <button
                     type="button"
                     onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition cursor-pointer shadow-2xs"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EAE4D7] hover:bg-[#ECE1CD] transition cursor-pointer shadow-2xs"
                   >
                     <User className="w-4 h-4 text-[#B88E4F]" />
                     <span className="hidden sm:inline">Cổng đối tác</span>
@@ -665,7 +658,7 @@ export default function MarketplacePage() {
                           onClick={() => setIsRoleDropdownOpen(false)}
                           className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center shrink-0">
                             <TrendingUp className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
@@ -679,7 +672,7 @@ export default function MarketplacePage() {
                           onClick={() => setIsRoleDropdownOpen(false)}
                           className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-[#F5E7CC] text-[#7A561B] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#ECE1CD] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center shrink-0">
                             <Store className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
@@ -693,7 +686,7 @@ export default function MarketplacePage() {
                           onClick={() => setIsRoleDropdownOpen(false)}
                           className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#FBF5EB] transition text-left"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center shrink-0">
                             <Shield className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
@@ -707,14 +700,14 @@ export default function MarketplacePage() {
                         <Link
                           to="/login"
                           onClick={() => setIsRoleDropdownOpen(false)}
-                          className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
+                          className="text-center py-2 px-3 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition"
                         >
                           Đăng nhập
                         </Link>
                         <Link
                           to="/register"
                           onClick={() => setIsRoleDropdownOpen(false)}
-                          className="text-center py-2 px-3 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition"
+                          className="text-center py-2 px-3 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition"
                         >
                           Đăng ký
                         </Link>
@@ -728,7 +721,7 @@ export default function MarketplacePage() {
             {/* Mobile search keeps the same position inside the header */}
             <form
               onSubmit={handleSearchSubmit}
-              className={`col-span-3 flex md:hidden min-w-0 items-center gap-2 rounded-xl border border-[#EEDFC6] bg-white shadow-sm transition-all duration-300 ease-in-out ${
+              className={`col-span-3 flex md:hidden min-w-0 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white shadow-sm transition-all duration-300 ease-in-out ${
                 isScrolled ? 'p-1' : 'p-1.5'
               }`}
             >
@@ -741,7 +734,7 @@ export default function MarketplacePage() {
                 aria-label="Tìm sản phẩm, thương hiệu hoặc gian hàng"
                 className="min-w-0 flex-1 bg-transparent text-xs font-medium text-[#1A1612] placeholder:text-[#8C7D6B] outline-none"
               />
-              <button type="submit" className="rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-bold text-white cursor-pointer">
+              <button type="submit" className="rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] px-3 py-2 text-xs font-bold text-[#1A1612] cursor-pointer">
                 Tìm kiếm
               </button>
             </form>
@@ -818,9 +811,7 @@ export default function MarketplacePage() {
       <section className="border-b border-[#EAE4D7] bg-[#F3EFE6] py-5 text-left sm:py-6">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
           <div
-            className="group relative min-h-[360px] overflow-hidden rounded-[24px] border border-[#E4D3B7] bg-[#FAF8F5] shadow-[0_16px_44px_rgba(93,70,35,0.10)] sm:min-h-[430px]"
-            onMouseEnter={() => setIsBannerPaused(true)}
-            onMouseLeave={() => setIsBannerPaused(false)}
+            className="group relative isolate min-h-[450px] overflow-hidden rounded-[24px] border border-[#EAE4D7] bg-[#FAF8F5] shadow-[0_16px_44px_rgba(93,70,35,0.10)] sm:min-h-[430px]"
             aria-roledescription="carousel"
             aria-label="Chương trình nổi bật SCANMS"
           >
@@ -832,41 +823,45 @@ export default function MarketplacePage() {
                 }`}
                 aria-hidden={index !== activeBanner}
               >
-                <img src={slide.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,245,.98)_0%,rgba(250,248,245,.96)_34%,rgba(250,248,245,.72)_49%,rgba(250,248,245,0)_68%)]" />
-                <div className="relative z-10 flex min-h-[360px] max-w-[660px] flex-col justify-center px-6 py-9 sm:min-h-[430px] sm:px-10 lg:px-14">
-                  <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-[#EEDFC6] bg-white/80 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#8C6226] backdrop-blur-sm">
+                <div className="absolute inset-0">
+                  <img src={slide.image} alt="" className="absolute inset-0 h-full w-full object-cover object-[67%_center]" />
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,245,.98)_0%,rgba(250,248,245,.96)_30%,rgba(250,248,245,.80)_44%,rgba(250,248,245,.18)_66%,rgba(250,248,245,0)_100%)]" />
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,245,.98)_0%,rgba(250,248,245,.94)_56%,rgba(250,248,245,.50)_82%,rgba(250,248,245,.08)_100%)] sm:hidden" />
+                </div>
+                <div aria-hidden="true" className="pointer-events-none absolute -left-[35%] top-[-32%] hidden h-[164%] w-[94%] rounded-[50%] border-r-2 border-[#EBD08C]/80 sm:block" />
+                <div className="relative z-10 flex min-h-[450px] w-full flex-col justify-center px-6 pb-[82px] pt-8 sm:min-h-[430px] sm:w-[60%] sm:px-10 sm:pb-[88px] lg:px-14">
+                  <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-[#EAE4D7] bg-white/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#B88E4F] sm:bg-white/80 sm:backdrop-blur-sm">
                     {slide.action === 'live' ? <Radio className="h-3.5 w-3.5 text-[#E11D48]" /> : <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" />}
-                    {slide.eyebrow}
+                    {index === 0 ? 'SCANMS • SÀN ĐA GIAN HÀNG' : slide.eyebrow}
                   </div>
-                  <h1 className="m-0 max-w-[570px] text-3xl font-black leading-[1.08] tracking-[-0.035em] text-[#1A1612] sm:text-4xl lg:text-[46px]">
-                    {slide.title}
+                  <h1 className="m-0 max-w-[620px] text-3xl font-black leading-[1.08] tracking-[-0.035em] text-[#1A1612] sm:text-4xl lg:text-[46px]">
+                    {index === 0 ? <>Khám phá sản phẩm,<br className="hidden sm:block" />mua sắm theo cách bạn thích</> : slide.title}
                   </h1>
                   <p className="mb-6 mt-4 max-w-[500px] text-xs leading-6 text-[#5F5548] sm:text-sm">
-                    {slide.description}
+                    {index === 0 ? 'Nhiều gian hàng đối tác, sản phẩm đa ngành và trải nghiệm KOC & Live.' : slide.description}
                   </p>
                   <div className="flex flex-wrap gap-2.5">
                     {slide.action === 'live' ? (
                       <button
                         type="button"
                         onClick={() => setIsLiveModalOpen(true)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-5 py-3 text-xs font-black text-white transition hover:bg-[#B88E4F] active:scale-[0.98] cursor-pointer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#D8AC55] px-5 py-3 text-xs font-black text-[#1A1612] transition hover:bg-[#CB9B40] active:scale-[0.98] cursor-pointer"
                       >
-                        {slide.primaryLabel}<ArrowRight className="h-4 w-4" />
+                        {index === 0 ? 'Mua sắm ngay' : slide.primaryLabel}<ArrowRight className="h-4 w-4" />
                       </button>
                     ) : (
                       <Link
                         to={slide.href}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-5 py-3 text-xs font-black text-white transition hover:bg-[#B88E4F] active:scale-[0.98]"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#D8AC55] px-5 py-3 text-xs font-black text-[#1A1612] transition hover:bg-[#CB9B40] active:scale-[0.98]"
                       >
-                        {slide.primaryLabel}<ArrowRight className="h-4 w-4" />
+                        {index === 0 ? 'Mua sắm ngay' : slide.primaryLabel}<ArrowRight className="h-4 w-4" />
                       </Link>
                     )}
                     <Link
-                      to={slide.secondaryHref}
+                      to={index === 0 ? '#live' : slide.secondaryHref}
                       className="inline-flex items-center gap-2 rounded-xl border border-[#DCCBAE] bg-white/85 px-5 py-3 text-xs font-bold text-[#1A1612] backdrop-blur-sm transition hover:border-[#C59B58] hover:bg-white active:scale-[0.98]"
                     >
-                      {slide.secondaryLabel}
+                      {index === 0 ? 'Khám phá KOC & Live' : slide.secondaryLabel}
                     </Link>
                   </div>
                 </div>
@@ -890,17 +885,36 @@ export default function MarketplacePage() {
               <ArrowRight className="h-4 w-4" />
             </button>
 
-            <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/80 px-3 py-2 shadow-sm backdrop-blur-md">
+            <div className="absolute bottom-[72px] right-4 z-20 flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 shadow-sm backdrop-blur-md sm:bottom-4 sm:right-5">
               {MARKETPLACE_BANNERS.map((slide, index) => (
                 <button
                   key={slide.image}
                   type="button"
                   onClick={() => setActiveBanner(index)}
-                  className={`h-1.5 rounded-full transition-all cursor-pointer ${index === activeBanner ? 'w-7 bg-[#C59B58]' : 'w-1.5 bg-[#B9AD9A] hover:bg-[#8C7D6B]'}`}
+                  className={`h-1.5 rounded-full transition-all cursor-pointer ${index === activeBanner ? 'w-7 bg-[#EBD08C]' : 'w-1.5 bg-[#B9AD9A] hover:bg-[#8C7D6B]'}`}
                   aria-label={`Mở banner ${index + 1}`}
                   aria-current={index === activeBanner ? 'true' : undefined}
                 />
               ))}
+            </div>
+
+            <div className="absolute inset-x-0 bottom-0 z-[15] flex min-h-[58px] items-center border-t border-white/70 bg-white/75 px-3 backdrop-blur-md sm:right-auto sm:w-[52%] sm:rounded-tr-[42px] sm:px-8">
+              <div className="mx-0 flex w-full items-center justify-between gap-2 text-[9px] font-semibold text-[#5F5548] sm:text-xs">
+                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]"><Store className="h-3.5 w-3.5" /></span>
+                  <span className="truncate">Nhiều gian hàng</span>
+                </div>
+                <span className="h-6 w-px shrink-0 bg-[#EAE4D7]" />
+                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]"><Package className="h-3.5 w-3.5" /></span>
+                  <span className="truncate">Sản phẩm đa ngành</span>
+                </div>
+                <span className="h-6 w-px shrink-0 bg-[#EAE4D7]" />
+                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]"><Radio className="h-3.5 w-3.5" /></span>
+                  <span className="truncate">Affiliate &amp; Live</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -908,7 +922,7 @@ export default function MarketplacePage() {
       </section>
 
       {/* Dense commerce catalog with SCANMS affiliate information */}
-      <section ref={catalogRef} id="catalog-section" className="w-full bg-[#F3EFE6] py-7 text-left lg:py-9">
+      <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-4 bg-[#F3EFE6] py-7 text-left lg:py-9">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
 
         {/* Catalog navigation and controls */}
@@ -918,7 +932,7 @@ export default function MarketplacePage() {
               <h2 className="m-0 whitespace-nowrap text-[17px] font-black tracking-[-0.025em] text-[#1A1612] sm:text-[19px]">
                 Dành riêng cho bạn
               </h2>
-              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[#C59B58] sm:w-[174px]" aria-hidden="true" />
+              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[#EBD08C] sm:w-[174px]" aria-hidden="true" />
             </div>
 
             <div className="flex min-w-0 items-center gap-2 pb-3 sm:pb-0">
@@ -935,8 +949,8 @@ export default function MarketplacePage() {
                   onClick={() => setSortBy(option.value)}
                   className={`px-3.5 py-2 text-[11px] font-bold transition cursor-pointer ${
                     sortBy === option.value
-                      ? 'bg-[#C59B58] text-white shadow-sm'
-                      : 'text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#8C6226]'
+                      ? 'bg-[#EBD08C] text-white shadow-sm'
+                      : 'text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#B88E4F]'
                   }`}
                   aria-pressed={sortBy === option.value}
                 >
@@ -976,7 +990,7 @@ export default function MarketplacePage() {
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-2xl border border-[#EAE4D7] bg-white p-8 py-16 text-center">
-            <ShoppingBag className="w-14 h-14 text-[#A49B8B] mx-auto mb-3" />
+            <ShoppingBag className="w-14 h-14 text-[#7D715E] mx-auto mb-3" />
             <strong className="text-base font-black text-[#1A1612] block">
               Không có sản phẩm nào
             </strong>
@@ -985,7 +999,7 @@ export default function MarketplacePage() {
             </p>
             <Link
               to="/search"
-              className="px-6 py-2.5 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition cursor-pointer shadow-xs inline-block"
+              className="px-6 py-2.5 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition cursor-pointer shadow-xs inline-block"
             >
               Mở trang tìm kiếm
             </Link>
@@ -997,7 +1011,7 @@ export default function MarketplacePage() {
               return (
                 <div
                   key={p.id}
-                  className="group flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border border-[#E2DACC] bg-white text-left transition duration-200 hover:-translate-y-0.5 hover:border-[#C59B58] hover:shadow-[0_8px_24px_rgba(93,70,35,0.10)]"
+                  className="group flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border border-[#EAE4D7] bg-white text-left transition duration-200 hover:-translate-y-0.5 hover:border-[#C59B58] hover:shadow-[0_8px_24px_rgba(93,70,35,0.10)]"
                 >
                   <div>
                     {/* Clickable Image -> Product Details */}
@@ -1017,12 +1031,12 @@ export default function MarketplacePage() {
                           }}
                         />
                         {p.badge && (
-                          <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-[9px] font-black shadow-xs z-10 ${(p.stockQuantity ?? 0) > 0 ? 'bg-[#C59B58] text-white' : 'bg-[#231D15] text-white'}`}>
+                          <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-[9px] font-black shadow-xs z-10 ${(p.stockQuantity ?? 0) > 0 ? 'bg-[#EBD08C] text-white' : 'bg-[#1A1612] text-white'}`}>
                             {p.badge}
                           </span>
                         )}
                         {p.origPrice > p.price && (
-                          <span className="absolute top-2 right-10 px-2 py-0.5 rounded-md bg-[#FEEDE8] text-[#EE4D2D] text-[10px] sm:text-[11px] font-bold border border-[#FADCD5] shadow-2xs z-10">
+                          <span className="absolute top-2 right-10 px-2 py-0.5 rounded-md bg-[#FEE2E2] text-[#EE4D2D] text-[10px] sm:text-[11px] font-bold border border-[#FADCD5] shadow-2xs z-10">
                             -{Math.round(((p.origPrice - p.price) / p.origPrice) * 100)}%
                           </span>
                         )}
@@ -1084,8 +1098,8 @@ export default function MarketplacePage() {
 
                       {/* Affiliate Commission Badge */}
                       {p.commissionRate ? (
-                        <div className="flex items-center justify-between gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1.5 text-[9px]">
-                          <span className="truncate font-bold text-[#8C6226]">
+                        <div className="flex items-center justify-between gap-1 rounded-lg border border-[#EAE4D7] bg-[#FBF5EB] px-2 py-1.5 text-[9px]">
+                          <span className="truncate font-bold text-[#B88E4F]">
                             Hoa hồng {p.commissionRate}%
                           </span>
                           {p.commissionAmount && (
@@ -1124,7 +1138,7 @@ export default function MarketplacePage() {
                       type="button"
                       onClick={() => handleOpenDirectCheckout(p)}
                       disabled={(p.stockQuantity ?? 0) <= 0}
-                      className="flex items-center justify-center gap-1 rounded-lg bg-[#C59B58] px-2 py-2 text-[11px] font-black text-white transition hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:bg-[#A49B8B] cursor-pointer active:scale-[0.98]"
+                      className="flex items-center justify-center gap-1 rounded-lg bg-[#EBD08C] px-2 py-2 text-[11px] font-black text-white transition hover:bg-[#DEC07A] disabled:cursor-not-allowed disabled:bg-[#7D715E] cursor-pointer active:scale-[0.98]"
                     >
                       <span>Mua ngay</span>
                       <ArrowRight className="h-3 w-3" />
@@ -1138,15 +1152,15 @@ export default function MarketplacePage() {
 
         {/* Continue browsing */}
         <div className="mt-6 flex items-center gap-3 sm:gap-5">
-          <span className="h-px flex-1 bg-[#DDD4C5]" aria-hidden="true" />
+          <span className="h-px flex-1 bg-[#EAE4D7]" aria-hidden="true" />
           <Link
             to="/search"
-            className="group inline-flex shrink-0 items-center gap-2 border border-[#C59B58] bg-white px-5 py-2.5 text-xs font-black text-[#8C6226] shadow-[0_4px_14px_rgba(93,70,35,0.06)] transition hover:bg-[#C59B58] hover:text-white active:translate-y-px sm:px-7"
+            className="group inline-flex shrink-0 items-center gap-2 border border-[#C59B58] bg-white px-5 py-2.5 text-xs font-black text-[#B88E4F] shadow-[0_4px_14px_rgba(93,70,35,0.06)] transition hover:bg-[#DEC07A] hover:text-white active:translate-y-px sm:px-7"
           >
             <span>Xem tất cả sản phẩm</span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
-          <span className="h-px flex-1 bg-[#DDD4C5]" aria-hidden="true" />
+          <span className="h-px flex-1 bg-[#EAE4D7]" aria-hidden="true" />
         </div>
         </div>
       </section>
@@ -1154,7 +1168,7 @@ export default function MarketplacePage() {
       {/* Order Tracking Section */}
       <section ref={trackingRef} id="tracking-section" className="border-t border-[#EAE4D7] bg-[#F3EFE6] py-6">
         <div className="mx-auto max-w-[1400px] px-4 text-left sm:px-6 lg:px-8">
-          <div className="border-y border-[#E2DACC] bg-white px-4 py-4 sm:px-5">
+          <div className="border-y border-[#EAE4D7] bg-white px-4 py-4 sm:px-5">
             <div className="grid gap-4 lg:grid-cols-[260px_1fr] lg:items-center lg:gap-6">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]">
@@ -1164,7 +1178,7 @@ export default function MarketplacePage() {
                   <h2 className="m-0 text-base font-black tracking-[-0.02em] text-[#1A1612]">
                     Tra cứu đơn hàng
                   </h2>
-                  <Link to="/tracking" className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold text-[#8C6226] transition hover:text-[#1A1612]">
+                  <Link to="/tracking" className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold text-[#B88E4F] transition hover:text-[#1A1612]">
                     <span>Tra cứu nâng cao và đánh giá</span>
                     <ChevronRight className="h-3 w-3" />
                   </Link>
@@ -1181,13 +1195,13 @@ export default function MarketplacePage() {
                     value={trackQuery}
                     onChange={(e) => setTrackQuery(e.target.value)}
                     placeholder="Nhập số điện thoại hoặc mã vận đơn"
-                    className="w-full bg-transparent text-xs text-[#1A1612] outline-none placeholder:text-[#A49B8B] sm:text-sm"
+                    className="w-full bg-transparent text-xs text-[#1A1612] outline-none placeholder:text-[#7D715E] sm:text-sm"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={trackingLoading}
-                  className="min-h-11 shrink-0 rounded-lg bg-[#C59B58] px-6 text-xs font-black text-white transition hover:bg-[#B88E4F] disabled:cursor-wait disabled:opacity-60 cursor-pointer"
+                  className="min-h-11 shrink-0 rounded-lg bg-[#EBD08C] px-6 text-xs font-black text-white transition hover:bg-[#DEC07A] disabled:cursor-wait disabled:opacity-60 cursor-pointer"
                 >
                   {trackingLoading ? 'Đang tra cứu...' : 'Tra cứu đơn'}
                 </button>
@@ -1237,7 +1251,7 @@ export default function MarketplacePage() {
                 <div className="space-y-3">
                   {trackResult.timeline.map((step: any, idx: number) => (
                     <div key={idx} className="flex items-start gap-3 text-xs">
-                      <div className="w-2 h-2 rounded-full bg-[#C59B58] mt-1.5 shrink-0"></div>
+                      <div className="w-2 h-2 rounded-full bg-[#EBD08C] mt-1.5 shrink-0"></div>
                       <div>
                         <span className="text-[#7D715E] font-mono text-[11px] block">
                           {step.time}
@@ -1331,10 +1345,10 @@ export default function MarketplacePage() {
               SCANMS bảo vệ dữ liệu tài khoản, thông tin đơn hàng và quy trình đối soát đối tác.
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#8C6226]">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#B88E4F]">
                 <Shield className="h-3 w-3" /> 256-bit SSL
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#8C6226]">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#B88E4F]">
                 <BadgeCheck className="h-3 w-3" /> KYC Verified
               </span>
             </div>
@@ -1350,108 +1364,6 @@ export default function MarketplacePage() {
           </div>
         </div>
       </footer>
-
-      {/* Cart Drawer Modal */}
-      {isCartOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setIsCartOpen(false)}
-          className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-6 text-left animate-in slide-in-from-right duration-200"
-          >
-            <div className="flex items-center justify-between pb-4 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-[#B88E4F]" />
-                <strong className="text-base font-black text-[#1A1612]">
-                  Giỏ hàng của bạn ({totalCartCount})
-                </strong>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCartOpen(false)}
-                className="p-1.5 text-[#7D715E] hover:text-[#1A1612] rounded-full hover:bg-[#F3EFE6] transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-3">
-              {cart.length === 0 ? (
-                <div className="text-center py-16 text-[#7D715E]">
-                  <ShoppingCart className="w-12 h-12 text-[#EAE4D7] mx-auto mb-2" />
-                  <p className="text-xs">Giỏ hàng của bạn đang trống</p>
-                </div>
-              ) : (
-                cart.map((item) => (
-                  <div
-                    key={item.product.id}
-                    className="flex items-center gap-3 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl"
-                  >
-                    <img
-                      src={item.product.image}
-                      alt={item.product.name}
-                      className="w-14 h-14 object-cover rounded-xl shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <strong className="text-xs font-bold text-[#1A1612] block truncate">
-                        {item.product.name}
-                      </strong>
-                      <span className="text-xs font-black text-[#B88E4F] block mt-0.5">
-                        {formatMoney(item.product.price)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateCartQuantity(item.product.id, -1)}
-                        className="w-6 h-6 rounded-md bg-white border border-[#EAE4D7] text-xs font-bold flex items-center justify-center hover:bg-[#F3EFE6] cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="text-xs font-bold text-[#1A1612] w-4 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateCartQuantity(item.product.id, 1)}
-                        className="w-6 h-6 rounded-md bg-white border border-[#EAE4D7] text-xs font-bold flex items-center justify-center hover:bg-[#F3EFE6] cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {cart.length > 0 && (
-              <div className="pt-4 border-t border-[#EAE4D7] flex flex-col gap-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-[#7D715E] font-medium">Tạm tính:</span>
-                  <strong className="text-xl font-black text-[#1A1612]">
-                    {formatMoney(cartSubtotal)}
-                  </strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCartOpen(false);
-                    handleOpenDirectCheckout(cart[0].product);
-                  }}
-                  className="w-full py-3 rounded-xl bg-[#C59B58] text-white text-xs sm:text-sm font-black hover:bg-[#B88E4F] transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Tiến hành đặt hàng ({totalCartCount})</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Shopping Guide & Policy Modal */}
       {isGuideOpen && (
@@ -1473,7 +1385,7 @@ export default function MarketplacePage() {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center mb-4">
               <ShieldCheck className="w-6 h-6" />
             </div>
 
@@ -1511,7 +1423,7 @@ export default function MarketplacePage() {
               <button
                 type="button"
                 onClick={() => setIsGuideOpen(false)}
-                className="px-5 py-2.5 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition cursor-pointer"
               >
                 Tôi đã hiểu
               </button>
@@ -1552,7 +1464,7 @@ export default function MarketplacePage() {
           />
           <div className="relative w-full max-w-2xl bg-white border border-[#EAE4D7] rounded-3xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200 text-left">
             {/* Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-[#2A2218] to-[#1A1612] text-white flex items-center justify-between border-b border-[#3D3326]">
+            <div className="px-6 py-4 bg-gradient-to-r from-[#1A1612] to-[#1A1612] text-white flex items-center justify-between border-b border-[#7D715E]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#E11D48] to-[#9F1239] flex items-center justify-center text-white shadow-xs">
                   <Radio className="w-5 h-5 animate-pulse" />
@@ -1564,7 +1476,7 @@ export default function MarketplacePage() {
                       LIVE STREAM
                     </span>
                   </div>
-                  <p className="text-[11px] text-[#EEDFC6] m-0">
+                  <p className="text-[11px] text-[#EAE4D7] m-0">
                     Phòng phát sóng bán hàng & tiếp thị liên kết đa gian hàng ScanMS
                   </p>
                 </div>
@@ -1572,7 +1484,7 @@ export default function MarketplacePage() {
               <button
                 type="button"
                 onClick={() => setIsLiveModalOpen(false)}
-                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-[#EEDFC6] hover:text-white transition cursor-pointer"
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-[#EAE4D7] hover:text-white transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1581,7 +1493,7 @@ export default function MarketplacePage() {
             {/* Content Body */}
             <div className="p-6 max-h-[75vh] overflow-y-auto space-y-5 bg-[#FAF8F5]">
               {/* Feature Intro Banner */}
-              <div className="p-4 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-start gap-3">
+              <div className="p-4 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-start gap-3">
                 <Sparkles className="w-5 h-5 text-[#B88E4F] shrink-0 mt-0.5" />
                 <div>
                   <strong className="text-xs font-black text-[#1A1612] block">
@@ -1596,7 +1508,7 @@ export default function MarketplacePage() {
               {/* Active & Scheduled Live Sessions */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-black uppercase tracking-wider text-[#8C6226] flex items-center gap-1.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-[#B88E4F] flex items-center gap-1.5">
                     <Radio className="w-3.5 h-3.5 text-[#E11D48]" />
                     Phiên Live Đang Phát Sóng & Sắp Diễn Ra
                   </span>
@@ -1620,11 +1532,11 @@ export default function MarketplacePage() {
                         Review Siêu Phẩm Dưỡng Ẩm Hydro Boost
                       </strong>
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="w-5 h-5 rounded-full bg-[#EEDFC6] text-[#8C6226] text-[9px] font-black flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-[#EAE4D7] text-[#B88E4F] text-[9px] font-black flex items-center justify-center">
                           L
                         </div>
                         <span className="text-[11px] font-bold text-[#1A1612]">KOC Linh Trương</span>
-                        <BadgeCheck className="w-3.5 h-3.5 text-[#059669]" />
+                        <BadgeCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
                         <span className="text-[10px] text-[#7D715E]">• Sora Skin</span>
                       </div>
                       <div className="p-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-between text-xs">
@@ -1637,7 +1549,7 @@ export default function MarketplacePage() {
                       onClick={() => {
                         toast.success('Đã kết nối luồng Live KOC demo thành công!');
                       }}
-                      className="mt-3 w-full py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-2xs cursor-pointer"
+                      className="mt-3 w-full py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition shadow-2xs cursor-pointer"
                     >
                       Vào xem phiên Live demo
                     </button>
@@ -1647,7 +1559,7 @@ export default function MarketplacePage() {
                   <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-2xs hover:border-[#C59B58] transition flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#D97706] text-[10px] font-black">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-black">
                           <Calendar className="w-3.5 h-3.5" />
                           20:30 HÔM NAY
                         </span>
@@ -1657,11 +1569,11 @@ export default function MarketplacePage() {
                         Săn Deal Bàn Phím Cơ Custom & Tai Nghe ANC
                       </strong>
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="w-5 h-5 rounded-full bg-[#EEDFC6] text-[#8C6226] text-[9px] font-black flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-[#EAE4D7] text-[#B88E4F] text-[9px] font-black flex items-center justify-center">
                           D
                         </div>
                         <span className="text-[11px] font-bold text-[#1A1612]">KOC Duy Tech</span>
-                        <BadgeCheck className="w-3.5 h-3.5 text-[#059669]" />
+                        <BadgeCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
                         <span className="text-[10px] text-[#7D715E]">• TechStore</span>
                       </div>
                       <div className="p-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-between text-xs">
@@ -1683,17 +1595,17 @@ export default function MarketplacePage() {
               </div>
 
               {/* Callout for KOC registration */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#2A2218] to-[#1A1612] text-white flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#1A1612] to-[#1A1612] text-white flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div>
                   <strong className="text-xs font-black block">Bạn là Nhà Sáng Tạo Nội Dung (KOL/KOC)?</strong>
-                  <p className="text-[11px] text-[#EEDFC6] mt-0.5 m-0">
+                  <p className="text-[11px] text-[#EAE4D7] mt-0.5 m-0">
                     Đăng ký tài khoản Đối tác để tự do chọn sản phẩm và nhận link tiếp thị bán hàng trên các buổi Livestream.
                   </p>
                 </div>
                 <Link
                   to="/register"
                   onClick={() => setIsLiveModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition shrink-0 whitespace-nowrap"
+                  className="px-4 py-2 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition shrink-0 whitespace-nowrap"
                 >
                   Đăng ký làm KOC ngay
                 </Link>
@@ -1736,7 +1648,7 @@ export default function MarketplacePage() {
                 }}
               />
               <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[11px] font-medium flex items-center gap-1.5 pointer-events-none">
-                <ZoomIn className="w-3.5 h-3.5 text-[#EEDFC6]" />
+                <ZoomIn className="w-3.5 h-3.5 text-[#EAE4D7]" />
                 <span>Xem chi tiết độ phân giải cao</span>
               </div>
             </div>
@@ -1748,7 +1660,7 @@ export default function MarketplacePage() {
                 <div className="flex items-center gap-2 text-xs text-[#7D715E]">
                   <Store className="w-4 h-4 text-[#B88E4F]" />
                   <span className="font-bold text-[#1A1612]">{zoomProduct.brand}</span>
-                  <span className="px-1.5 py-0.5 rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-bold border border-[#EEDFC6]">
+                  <span className="px-1.5 py-0.5 rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-bold border border-[#EAE4D7]">
                     KYC Verified
                   </span>
                 </div>
@@ -1775,7 +1687,7 @@ export default function MarketplacePage() {
                 {/* Price block */}
                 <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-black text-[#8C6226]">
+                    <span className="text-xl font-black text-[#B88E4F]">
                       {formatMoney(zoomProduct.price)}
                     </span>
                     {zoomProduct.origPrice > zoomProduct.price && (
@@ -1792,7 +1704,7 @@ export default function MarketplacePage() {
                 </div>
 
                 {/* Assurance notice */}
-                <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#7A561B] space-y-1">
+                <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[11px] text-[#B88E4F] space-y-1">
                   <p className="font-bold m-0 flex items-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
                     Cam kết chính hãng 100%
@@ -1808,7 +1720,7 @@ export default function MarketplacePage() {
                 <Link
                   to={`/products/${zoomProduct.sku || zoomProduct.id}`}
                   onClick={() => setZoomProduct(null)}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold text-center flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold text-center flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
                 >
                   <span>Xem trang chi tiết đầy đủ</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -1835,4 +1747,3 @@ export default function MarketplacePage() {
     </div>
   );
 }
-
