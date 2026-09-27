@@ -510,6 +510,8 @@ export class CustomerService {
         wardCode: dto.wardCode,
         wardName: dto.wardName.trim(),
         detailAddress: dto.detailAddress.trim(),
+        latitude: dto.latitude,
+        longitude: dto.longitude,
         isDefault: shouldBeDefault,
       },
     });
@@ -548,6 +550,8 @@ export class CustomerService {
         wardCode: dto.wardCode !== undefined ? dto.wardCode : undefined,
         wardName: dto.wardName !== undefined ? dto.wardName.trim() : undefined,
         detailAddress: dto.detailAddress !== undefined ? dto.detailAddress.trim() : undefined,
+        latitude: dto.latitude !== undefined ? dto.latitude : undefined,
+        longitude: dto.longitude !== undefined ? dto.longitude : undefined,
         isDefault: dto.isDefault !== undefined ? dto.isDefault : undefined,
       },
     });
