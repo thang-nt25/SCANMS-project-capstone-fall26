@@ -133,6 +133,8 @@ export interface CustomerAddress {
   wardCode?: string | null;
   wardName: string;
   detailAddress: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;

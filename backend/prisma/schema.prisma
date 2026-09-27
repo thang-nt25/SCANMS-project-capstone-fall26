@@ -1300,6 +1300,8 @@ model CustomerAddress {
   wardCode      String?  @map("ward_code") @db.VarChar(50)
   wardName      String   @map("ward_name") @db.VarChar(100)
   detailAddress String   @map("detail_address") @db.VarChar(255)
+  latitude      Decimal? @db.Decimal(10, 7)
+  longitude     Decimal? @db.Decimal(10, 7)
   isDefault     Boolean  @default(false) @map("is_default")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
