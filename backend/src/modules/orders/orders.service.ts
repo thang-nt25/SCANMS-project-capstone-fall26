@@ -1248,22 +1248,12 @@ export class OrdersService {
             link.storeId === lockedStore.id &&
             link.collaborator?.isActive
           ) {
-            const storeCollab = await tx.storeCollaborator.findFirst({
-              where: {
-                storeId: lockedStore.id,
-                collaboratorId: link.collaboratorId,
-                status: StoreCollaboratorStatus.APPROVED,
-              },
-            });
-
-            if (storeCollab) {
-              candidateCookieCollaboratorId = link.collaboratorId;
-              candidateCookieReferralLinkId = link.id;
-              candidateCookieSessionId = session.id;
-              candidateCookieClickId = session.latestClickId;
-              candidateCookieClickedAt = session.lastClickedAt;
-              candidateVia = 'LINK';
-            }
+            candidateCookieCollaboratorId = link.collaboratorId;
+            candidateCookieReferralLinkId = link.id;
+            candidateCookieSessionId = session.id;
+            candidateCookieClickId = session.latestClickId;
+            candidateCookieClickedAt = session.lastClickedAt;
+            candidateVia = 'LINK';
           }
         }
       } else {
@@ -1288,24 +1278,14 @@ export class OrdersService {
               link.storeId === lockedStore.id &&
               link.collaborator?.isActive
             ) {
-              const storeCollab = await tx.storeCollaborator.findFirst({
-                where: {
-                  storeId: lockedStore.id,
-                  collaboratorId: link.collaboratorId,
-                  status: StoreCollaboratorStatus.APPROVED,
-                },
-              });
-
-              if (storeCollab) {
-                candidateCookieCollaboratorId = link.collaboratorId;
-                candidateCookieReferralLinkId = link.id;
-                candidateCookieSessionId = shopEntry.sessionId;
-                candidateCookieClickId = null;
-                candidateCookieClickedAt = shopEntry.clickedAt
-                  ? new Date(shopEntry.clickedAt)
-                  : null;
-                candidateVia = shopEntry.via || 'LINK';
-              }
+              candidateCookieCollaboratorId = link.collaboratorId;
+              candidateCookieReferralLinkId = link.id;
+              candidateCookieSessionId = shopEntry.sessionId;
+              candidateCookieClickId = null;
+              candidateCookieClickedAt = shopEntry.clickedAt
+                ? new Date(shopEntry.clickedAt)
+                : null;
+              candidateVia = shopEntry.via || 'LINK';
             }
           }
         }
@@ -1340,23 +1320,13 @@ export class OrdersService {
         (!link.expiresAt || new Date(link.expiresAt) > new Date()) &&
         link.collaborator?.isActive
       ) {
-        const storeCollab = await tx.storeCollaborator.findFirst({
-          where: {
-            storeId: lockedStore.id,
-            collaboratorId: link.collaboratorId,
-            status: StoreCollaboratorStatus.APPROVED,
-          },
-        });
-
-        if (storeCollab) {
-          hasStoreCookieTracking = true;
-          candidateCookieCollaboratorId = link.collaboratorId;
-          candidateCookieReferralLinkId = link.id;
-          candidateCookieSessionId = null;
-          candidateCookieClickId = null;
-          candidateCookieClickedAt = new Date();
-          candidateVia = 'LINK';
-        }
+        hasStoreCookieTracking = true;
+        candidateCookieCollaboratorId = link.collaboratorId;
+        candidateCookieReferralLinkId = link.id;
+        candidateCookieSessionId = null;
+        candidateCookieClickId = null;
+        candidateCookieClickedAt = new Date();
+        candidateVia = 'LINK';
       }
     }
 
@@ -1405,16 +1375,7 @@ export class OrdersService {
           click.referralLink.storeId === lockedStore.id &&
           click.referralLink.collaborator?.isActive
         ) {
-          const storeCollab = await tx.storeCollaborator.findFirst({
-            where: {
-              storeId: lockedStore.id,
-              collaboratorId: click.referralLink.collaboratorId,
-              status: StoreCollaboratorStatus.APPROVED,
-            },
-          });
-          if (storeCollab) {
-            validRecentClicks.push(click);
-          }
+          validRecentClicks.push(click);
         }
       }
 
@@ -1524,6 +1485,27 @@ export class OrdersService {
       calculatedCommissionAmount: number;
     }> = [];
 
+    const attributedReferralLink = referralLinkId
+      ? await tx.referralLink.findFirst({
+          where: {
+            id: referralLinkId,
+            collaboratorId: attributedCollaboratorId || undefined,
+            storeId: lockedStore.id,
+            deletedAt: null,
+          },
+          include: { exclusiveDeal: true },
+        })
+      : null;
+    const isOpenOfferLink = Boolean(
+      attributedReferralLink &&
+        !attributedReferralLink.campaignId &&
+        !attributedReferralLink.exclusiveDealId,
+    );
+    const approvedExclusiveDeal =
+      attributedReferralLink?.exclusiveDeal?.status === 'APPROVED'
+        ? attributedReferralLink.exclusiveDeal
+        : null;
+
     for (const item of dto.items) {
       const prod = productMap.get(item.productId)!;
       let unitPrice = Number(prod.price);
@@ -1538,7 +1520,24 @@ export class OrdersService {
         ? Number(prod.customCommissionRate)
         : Number(lockedStore.defaultCommissionRate || 10);
 
-      const finalCommissionRate = baseCommissionRate + extraTierRate;
+      let finalCommissionRate = baseCommissionRate + extraTierRate;
+      if (isOpenOfferLink) {
+        // Open Offer dùng đúng mức công khai; tier bonus không làm thay đổi rate offer.
+        finalCommissionRate = baseCommissionRate;
+      }
+      if (
+        approvedExclusiveDeal &&
+        approvedExclusiveDeal.productId === prod.id &&
+        attributedReferralLink?.productId === prod.id &&
+        approvedExclusiveDeal.collaboratorId === attributedCollaboratorId &&
+        approvedExclusiveDeal.storeId === lockedStore.id &&
+        approvedExclusiveDeal.approvedCommissionRate !== null
+      ) {
+        // VIP là tỷ lệ cuối cùng đã thỏa thuận, thay thế mức Open Offer.
+        finalCommissionRate = Number(
+          approvedExclusiveDeal.approvedCommissionRate,
+        );
+      }
       const itemSubtotal = unitPrice * quantity;
       const netItemSubtotal = itemSubtotal * txDiscountRatio;
       const calculatedCommission =

@@ -13,6 +13,8 @@ export class CommissionSchedulerService {
     waitForCompletion: true,
   })
   async reconcileCommissionBalances(): Promise<void> {
+    if (process.env.DISABLE_SCHEDULED_JOBS === 'true') return;
+
     const summary = await this.commissionsService.reconcileCommissions();
     if (
       summary.created > 0 ||

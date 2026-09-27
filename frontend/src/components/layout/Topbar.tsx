@@ -121,7 +121,7 @@ export function Topbar({
 
         <Link
           to="/marketplace"
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#8A662C] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition shadow-2xs group"
+          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] hover:bg-[#ECE1CD] transition shadow-2xs group"
           title="Xem Sàn Mua Sắm & Tiếp Thị Đa Gian Hàng"
         >
           <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -144,7 +144,7 @@ export function Topbar({
           className="w-8.5 h-8.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] flex items-center justify-center transition cursor-pointer shadow-2xs relative"
         >
           <Bell className="w-4 h-4 text-[#7D715E]" />
-          <span className="w-2 h-2 rounded-full bg-[#B88E4F] absolute top-1.5 right-1.5"></span>
+          <span className="w-2 h-2 rounded-full bg-[#EBD08C] absolute top-1.5 right-1.5"></span>
         </button>
 
         <div className="relative" ref={menuRef}>
@@ -153,7 +153,7 @@ export function Topbar({
             className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#F3EFE6] border border-[#EAE4D7] hover:bg-[#EAE4D7] transition cursor-pointer shadow-2xs"
           >
             <span
-              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-[#EEDFC6] text-[#B88E4F]"
+              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-[#EAE4D7] text-[#B88E4F]"
             >
               {userProfile.avatar}
             </span>
@@ -165,7 +165,7 @@ export function Topbar({
                 {userProfile.sub}
               </small>
             </div>
-            <ChevronDown className={`w-3.5 h-3.5 text-[#A49B8B] transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
           </div>
 
           {isMenuOpen && (
@@ -177,7 +177,7 @@ export function Topbar({
                 <div className="text-[11px] text-[#7D715E] truncate mt-0.5">
                   {currentUser?.email || 'N/A'}
                 </div>
-                <div className="mt-1.5 inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                <div className="mt-1.5 inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                   {displaySub}
                 </div>
               </div>

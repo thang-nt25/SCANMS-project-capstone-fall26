@@ -14,7 +14,7 @@ const DEFAULT_CLIENT_ID =
   '1028788240521-ujoshj82g60v811p5fkqv3hh4iirqbt3.apps.googleusercontent.com';
 
 /**
- * Khởi tạo Google Identity Services
+ * Khởi tạo Google Identity Services (dành cho ID Token & renderButton)
  */
 export function initGoogleIdentity(
   onSuccess: (idToken: string) => void,
@@ -39,7 +39,6 @@ export function initGoogleIdentity(
         },
         auto_select: false,
         cancel_on_tap_outside: true,
-        // Tắt FedCM tự động bắt buộc nếu trình duyệt gặp sự cố origin
         use_fedcm_for_prompt: false,
       });
       isGoogleInitialized = true;
@@ -82,45 +81,89 @@ export function renderGoogleButton(
 }
 
 /**
- * Kích hoạt popup / One Tap Google Sign-In
+ * Kích hoạt popup đăng nhập Google (Hỗ trợ chuẩn OAuth2 Popup & One Tap fallback)
  */
 export function triggerGoogleSignIn(
-  onSuccess: (idToken: string) => void,
+  onSuccess: (token: string) => void,
   onError?: (errorMsg: string) => void,
+  onCancel?: () => void,
 ) {
-  if (typeof window === 'undefined' || !window.google?.accounts?.id) {
-    const msg =
-      'Thư viện Google Identity Services đang tải hoặc bị chặn bởi trình duyệt. Bạn có thể sử dụng biểu mẫu Đăng ký/Đăng nhập trực tiếp.';
-    if (onError) onError(msg);
-    else toast.error(msg);
-    return;
+  if (typeof window === 'undefined') return;
+
+  // 1. ƯU TIÊN HÀNG ĐẦU: Sử dụng Google OAuth2 Token Client (Mở cửa sổ Popup chuẩn chọn tài khoản Gmail)
+  if (window.google?.accounts?.oauth2) {
+    try {
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: DEFAULT_CLIENT_ID,
+        scope: 'email profile openid',
+        callback: (response: any) => {
+          if (response?.error) {
+            if (response.error === 'access_denied') {
+              console.log('Người dùng bấm Hủy hoặc đóng Popup chọn tài khoản Google');
+              onCancel?.();
+            } else {
+              onError?.(`Đăng nhập Google thất bại: ${response.error}`);
+            }
+            return;
+          }
+          if (response?.access_token) {
+            onSuccess(response.access_token);
+          } else {
+            onError?.('Không nhận được mã truy cập từ Google.');
+          }
+        },
+        error_callback: (err: any) => {
+          console.warn('Sự kiện cửa sổ Google OAuth Popup:', err);
+          if (err?.type === 'popup_closed') {
+            // Người dùng chủ động đóng popup Google -> Hủy nhẹ nhàng, không báo lỗi đỏ
+            onCancel?.();
+          } else if (err?.type === 'popup_blocked_by_browser') {
+            onError?.('Trình duyệt chặn cửa sổ popup. Vui lòng bật cho phép popup để đăng nhập Google.');
+          } else {
+            onCancel?.();
+          }
+        },
+      });
+
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+      return;
+    } catch (err: any) {
+      console.warn('Lỗi mở Google OAuth2 Token Client:', err);
+    }
   }
 
-  const initialized = initGoogleIdentity(onSuccess, onError);
-  if (!initialized) return;
+  // 2. Dự phòng: Google One Tap Prompt
+  if (window.google?.accounts?.id) {
+    const initialized = initGoogleIdentity(onSuccess, onError);
+    if (!initialized) return;
 
-  try {
-    window.google.accounts.id.prompt((notification: any) => {
-      if (notification.isNotDisplayed()) {
-        const reason = notification.getNotDisplayedReason?.() || 'trình duyệt chặn hoặc chưa cấu hình origin';
-        console.warn('Google prompt không hiển thị:', reason);
-        onError?.(
-          `Google Sign-In prompt chưa được cấp phép hiển thị trên http://localhost:5173 (${reason}). Bạn có thể click nút 'Tiếp tục với Google (Môi trường Dev)' để kiểm thử ngay!`
-        );
-      } else if (notification.isSkippedMoment()) {
-        const reason = notification.getSkippedReason?.();
-        console.warn('Google prompt bị bỏ qua:', reason);
-        onError?.(
-          `Google Sign-In bị chặn hoặc bị bỏ qua (${reason || 'chưa cấp phép origin localhost:5173'}). Bạn có thể thêm http://localhost:5173 vào Google Cloud Console hoặc dùng nút Dev Bypass.`
-        );
-      }
-    });
-  } catch (err: any) {
-    console.error('Google Sign-In error:', err);
-    onError?.(
-      'Không thể kích hoạt Google Sign-In. Vui lòng sử dụng tài khoản Email hoặc chế độ kiểm thử nhanh.'
-    );
+    try {
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed()) {
+          const reason = notification.getNotDisplayedReason?.() || 'unknown';
+          console.warn('Google prompt không hiển thị:', reason);
+          if (reason === 'suppressed_by_user' || reason === 'opt_out_or_no_session' || reason === 'cool_down_phase') {
+            onCancel?.();
+            return;
+          }
+          onError?.(
+            `Google Sign-In prompt không thể hiển thị (${reason}). Bạn có thể đăng ký trực tiếp bằng biểu mẫu.`
+          );
+        } else if (notification.isSkippedMoment() || notification.isDismissedMoment()) {
+          onCancel?.();
+        }
+      });
+      return;
+    } catch (err: any) {
+      console.error('Google One Tap error:', err);
+    }
   }
+
+  // 3. Nếu script Google chưa load xong
+  const msg =
+    'Thư viện Google Identity Services đang tải hoặc bị chặn. Bạn có thể đăng ký trực tiếp bằng biểu mẫu.';
+  if (onError) onError(msg);
+  else toast.error(msg);
 }
 
 /**

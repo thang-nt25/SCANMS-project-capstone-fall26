@@ -29,9 +29,9 @@ export default function PayosReturnPage() {
     return () => { active = false; window.clearInterval(timer); };
   }, [loggedIn, orderCode]);
 
-  const icon = status === 'PAID' ? <CheckCircle2 className="h-10 w-10 text-[#059669]" />
+  const icon = status === 'PAID' ? <CheckCircle2 className="h-10 w-10 text-[#B88E4F]" />
     : status === 'error' ? <AlertCircle className="h-10 w-10 text-[#DC2626]" />
-    : <Clock3 className="h-10 w-10 text-[#C59B58]" />;
+    : <Clock3 className="h-10 w-10 text-[#B88E4F]" />;
   const title = status === 'PAID' ? 'Thanh toán thành công'
     : status === 'error' ? 'Chưa kiểm tra được thanh toán'
     : 'Đang chờ PayOS xác nhận';
@@ -49,9 +49,9 @@ export default function PayosReturnPage() {
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           {!loggedIn ? (
             <Link to={`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`}
-              className="rounded-xl bg-[#C59B58] px-5 py-3 text-sm font-bold text-white">Đăng nhập</Link>
+              className="rounded-xl bg-[#EBD08C] px-5 py-3 text-sm font-bold text-white">Đăng nhập</Link>
           ) : (
-            <Link to="/customer/orders" className="rounded-xl bg-[#C59B58] px-5 py-3 text-sm font-bold text-white">Xem đơn mua</Link>
+            <Link to="/customer/orders" className="rounded-xl bg-[#EBD08C] px-5 py-3 text-sm font-bold text-white">Xem đơn mua</Link>
           )}
           <Link to="/marketplace" className="rounded-xl border border-[#EAE4D7] px-5 py-3 text-sm font-bold">Về sàn</Link>
         </div>

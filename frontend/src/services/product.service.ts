@@ -15,6 +15,7 @@ export interface Product {
   customCommissionRate?: number;
   stockQuantity: number;
   isActive: boolean;
+  isAffiliateEnabled?: boolean;
   store?: {
     id: string;
     name: string;

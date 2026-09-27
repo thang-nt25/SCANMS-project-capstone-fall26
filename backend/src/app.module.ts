@@ -29,6 +29,7 @@ import { WalletsModule } from './modules/wallets/wallets.module';
 // Quy's modules (FR-25 ~ FR-32)
 import { ChatModule } from './modules/chat/chat.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
+import { AffiliateDealsModule } from './modules/affiliate-deals/affiliate-deals.module';
 import { SamplesModule } from './modules/samples/samples.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
@@ -87,6 +88,7 @@ import { validateEnv } from './core/config/env.validation';
     ChatModule,
     SamplesModule,
     CampaignsModule,
+    AffiliateDealsModule,
     DashboardModule,
     AiModule,
     AuditModule,

@@ -10,7 +10,6 @@ import {
   Check,
   Truck,
   QrCode,
-  ShieldCheck,
   Tag,
   Loader2,
   Store as StoreIcon,
@@ -659,19 +658,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         className="bg-[#FFFFFF] rounded-3xl max-w-4xl lg:max-w-5xl xl:max-w-6xl w-full p-5 sm:p-7 lg:p-8 border border-[#EAE4D7] shadow-2xl relative max-h-[92vh] overflow-y-auto font-sans text-left"
       >
+        {/* Close Button at Top Right Corner */}
         <button
           type="button"
           onClick={onClose}
           aria-label="Đóng cửa sổ"
-          className="sticky top-0 float-right -mr-2 -mt-2 sm:-mr-3 sm:-mt-3 text-[#7D715E] hover:text-[#1A1612] p-2 rounded-full hover:bg-[#F3EFE6] transition-colors cursor-pointer z-30 bg-white/90 backdrop-blur-xs border border-[#EAE4D7] shadow-xs"
+          title="Đóng cửa sổ"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 w-10 h-10 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#1A1612] flex items-center justify-center transition-all duration-200 active:scale-90 shadow-2xs cursor-pointer z-30 group"
         >
-          <X className="w-5 h-5" />
+          <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" />
         </button>
 
         {orderSuccess ? (
           /* Order Confirmation Screen (Requirement 10) */
           <div className="max-w-2xl mx-auto py-2 text-center">
-            <div className="w-16 h-16 rounded-full bg-[#FBF5EB] border-2 border-[#C59B58] text-[#C59B58] flex items-center justify-center mx-auto mb-3 shadow-xs">
+            <div className="w-16 h-16 rounded-full bg-[#FBF5EB] border-2 border-[#C59B58] text-[#B88E4F] flex items-center justify-center mx-auto mb-3 shadow-xs">
               <CheckCircle2 className="w-10 h-10" />
             </div>
 
@@ -685,7 +686,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             </p>
 
             {orderSuccess.confirmationEmailQueued && customerEmail.trim() && (
-              <div className="mb-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-left text-[11px] text-[#7D715E]">
+              <div className="mb-4 rounded-xl border border-[#EAE4D7] bg-[#FBF5EB] px-3 py-2 text-left text-[11px] text-[#7D715E]">
                 Mã đơn và liên kết tra cứu đang được gửi tới{' '}
                 <strong className="text-[#1A1612]">{customerEmail.trim().toLowerCase()}</strong>.
               </div>
@@ -696,7 +697,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               {orderSuccess.orders.map((subOrder, index) => (
                 <div
                   key={subOrder.publicOrderCode || index}
-                  className="bg-[#FAF8F5] border border-[#EEDFC6] rounded-2xl p-4 text-left space-y-2.5 shadow-2xs"
+                  className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-4 text-left space-y-2.5 shadow-2xs"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-[#EAE4D7]">
                     <div className="flex items-center gap-2">
@@ -737,7 +738,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <Link
                         to={`/tracking?sn=${encodeURIComponent(subOrder.publicOrderCode)}`}
                         target="_blank"
-                        className="px-2.5 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 bg-[#EBD08C] hover:bg-[#DEC07A] text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <span>Tra cứu</span>
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -778,7 +779,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     href={orderSuccess.payos.checkoutUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-[#C59B58] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#B88E4F]"
+                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-[#EBD08C] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#DEC07A]"
                   >
                     Mở trang thanh toán PayOS ↗
                   </a>
@@ -788,7 +789,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
             {/* COD Notice */}
             {orderSuccess.paymentMethod === 'COD' && (
-              <div className="p-3.5 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#B88E4F] flex items-center gap-2.5 mb-5 text-left">
+              <div className="p-3.5 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-xs text-[#B88E4F] flex items-center gap-2.5 mb-5 text-left">
                 <Truck className="w-5 h-5 shrink-0" />
                 <div>
                   <strong className="block text-[#1A1612]">Thanh toán tiền mặt khi nhận hàng (COD)</strong>
@@ -802,7 +803,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               <Link
                 to="/customer/orders"
                 onClick={onClose}
-                className="w-full py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-3 bg-[#EBD08C] hover:bg-[#DEC07A] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Xem danh sách đơn mua trong tài khoản</span>
@@ -819,33 +820,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         ) : (
           /* Checkout Form (Requirements 6, 7, 8, 9) */
           <div>
-            {/* Header */}
-            <div className="mb-6 pb-4 border-b border-[#EAE4D7] pr-8 sm:pr-12">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider mb-2">
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>XÁC NHẬN ĐẶT HÀNG • SÀN ĐA GIAN HÀNG SCANMS</span>
+            <h2 id="guest-checkout-title" className="sr-only">
+              Thông Tin Giao Hàng &amp; Thanh Toán
+            </h2>
+
+            {isValidatingCart && (
+              <div className="mb-4 p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-xs text-[#B88E4F] flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                <span className="font-semibold">Đang đối chiếu giá và tồn kho từ hệ thống...</span>
               </div>
-              <h2 id="guest-checkout-title" className="text-xl sm:text-2xl font-black text-[#1A1612]">
-                Thông Tin Giao Hàng &amp; Thanh Toán
-              </h2>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-[#7D715E] mt-1.5">
-                <span>Số lượng món đặt:</span>
-                <strong className="text-[#1A1612] bg-[#FAF8F5] px-2.5 py-0.5 rounded-lg border border-[#EAE4D7]">
-                  {activeItems.length} dòng sản phẩm ({itemsGroupedByShop.length} Gian hàng)
-                </strong>
-                {isValidatingCart && (
-                  <span className="flex items-center gap-1 text-[11px] text-[#B88E4F] font-bold">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>Đang đối chiếu giá & tồn kho...</span>
-                  </span>
-                )}
-                <span>•</span>
-                <span className="text-emerald-700 font-bold flex items-center gap-1.5 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-2xs">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  Đồng kiểm trước khi thanh toán
-                </span>
-              </div>
-            </div>
+            )}
 
             {/* Validation warnings banner (Requirement 6) */}
             {validationWarnings.length > 0 && (
@@ -876,7 +860,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   {/* Card 1: Receiver Information */}
                   <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-3">
                     <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#EAE4D7]">
-                      <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white text-xs font-black flex items-center justify-center shadow-xs ring-2 ring-[#C59B58]/20 shrink-0">
+                      <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#EBD08C] to-[#DEC07A] text-[#231D15] text-xs font-black flex items-center justify-center shadow-xs ring-2 ring-[#DEC07A]/30 shrink-0">
                         1
                       </span>
                       <h3 className="text-xs sm:text-sm font-black text-[#1A1612]">Thông Tin Người Nhận</h3>
@@ -942,17 +926,17 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   {/* Card 2: Delivery Address */}
                   <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-3">
                     <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#EAE4D7]">
-                      <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white text-xs font-black flex items-center justify-center shadow-xs ring-2 ring-[#C59B58]/20 shrink-0">
+                      <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#EBD08C] to-[#DEC07A] text-[#231D15] text-xs font-black flex items-center justify-center shadow-xs ring-2 ring-[#DEC07A]/30 shrink-0">
                         2
                       </span>
                       <h3 className="text-xs sm:text-sm font-black text-[#1A1612]">Địa Chỉ Nhận Hàng</h3>
                     </div>
 
                     {customerAddresses.length > 0 && (
-                      <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] space-y-1.5">
+                      <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-[#8C6226] flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-[#C59B58]" />
+                          <span className="text-[11px] font-bold text-[#B88E4F] flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-[#B88E4F]" />
                             Sổ địa chỉ của bạn ({customerAddresses.length} địa chỉ)
                           </span>
                         </div>
@@ -1043,7 +1027,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   {/* Card 3: Payment Method Selection (Requirement 9) */}
                   <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-3">
                     <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#EAE4D7]">
-                      <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white text-xs font-black flex items-center justify-center shadow-xs ring-2 ring-[#C59B58]/20 shrink-0">
+                      <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#EBD08C] to-[#DEC07A] text-[#231D15] text-xs font-black flex items-center justify-center shadow-xs ring-2 ring-[#DEC07A]/30 shrink-0">
                         3
                       </span>
                       <h3 className="text-xs sm:text-sm font-black text-[#1A1612]">Phương Thức Thanh Toán</h3>
@@ -1054,7 +1038,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <label
                         className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
                           paymentMethod === 'COD'
-                            ? 'bg-[#FBF5EB] border-[#C59B58] ring-2 ring-[#C59B58]/20 shadow-xs'
+                            ? 'bg-[#FBF5EB] border-[#C59B58] ring-2 ring-[#DEC07A]/30 shadow-xs'
                             : 'bg-white border-[#EAE4D7] hover:border-[#C59B58]/50'
                         }`}
                       >
@@ -1066,7 +1050,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                               value="COD"
                               checked={paymentMethod === 'COD'}
                               onChange={() => setPaymentMethod('COD')}
-                              className="w-4 h-4 text-[#C59B58] accent-[#C59B58]"
+                              className="w-4 h-4 text-[#B88E4F] accent-[#EBD08C]"
                             />
                             <strong className="text-xs sm:text-sm text-[#1A1612]">Thanh toán khi nhận (COD)</strong>
                           </div>
@@ -1083,7 +1067,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <label
                         className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
                           paymentMethod === 'PAYOS'
-                            ? 'bg-[#FBF5EB] border-[#C59B58] ring-2 ring-[#C59B58]/20 shadow-xs'
+                            ? 'bg-[#FBF5EB] border-[#C59B58] ring-2 ring-[#DEC07A]/30 shadow-xs'
                             : 'bg-white border-[#EAE4D7] hover:border-[#C59B58]/50'
                         }`}
                       >
@@ -1095,11 +1079,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                               value="PAYOS"
                               checked={paymentMethod === 'PAYOS'}
                               onChange={() => setPaymentMethod('PAYOS')}
-                              className="w-4 h-4 text-[#C59B58] accent-[#C59B58]"
+                              className="w-4 h-4 text-[#B88E4F] accent-[#EBD08C]"
                             />
                             <strong className="text-xs sm:text-sm text-[#1A1612]">Chuyển khoản PayOS (QR)</strong>
                           </div>
-                          <span className="text-[10px] font-bold text-[#B88E4F] bg-white px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                          <span className="text-[10px] font-bold text-[#B88E4F] bg-white px-2 py-0.5 rounded-full border border-[#EAE4D7]">
                             Tự động 24/7
                           </span>
                         </div>
@@ -1133,10 +1117,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 {/* RIGHT COLUMN: Full Product List Grouped by Shop & Pricing (5 cols) */}
                 <div className="lg:col-span-5 space-y-4 text-left lg:sticky lg:top-3">
                   {/* Order Items Grouped by Store (Requirement 7 & 8) */}
-                  <div className="p-4 sm:p-5 bg-[#FAF8F5] border border-[#EEDFC6] rounded-3xl space-y-3.5 shadow-2xs">
+                  <div className="p-4 sm:p-5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-3xl space-y-3.5 shadow-2xs">
                     <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FBF5EB] to-[#F3EFE6] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FBF5EB] to-[#F3EFE6] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
                           <Package className="w-4 h-4 text-[#B88E4F]" />
                         </div>
                         <div className="min-w-0">
@@ -1144,7 +1128,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                             <h3 className="text-xs sm:text-sm font-black text-[#1A1612] truncate">
                               Danh Sách Đặt Hàng
                             </h3>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] shrink-0">
                               {activeItems.length} món · {itemsGroupedByShop.length} Shop
                             </span>
                           </div>
@@ -1152,7 +1136,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       </div>
 
                       {/* Luxury Segmented Action Buttons (Pure Icon, Bright Pink-Purple Tone, Symmetrical Rounded Boxes) */}
-                      <div className="flex items-center gap-1.5 p-1 bg-gradient-to-r from-[#FDF4FF] via-[#FAF5FF] to-[#FDF2F8] border border-[#F0ABFC]/80 rounded-2xl shadow-xs ring-2 ring-[#F5D0FE]/40 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           title="Sửa giỏ hàng"
@@ -1173,7 +1157,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           onClick={() => {
                             continueShoppingFromCheckout(activeItems);
                             onClose();
-                            navigate('/marketplace');
+                            navigate('/marketplace#catalog-section');
                           }}
                           className="w-8 h-8 rounded-xl flex items-center justify-center text-[#C026D3] bg-gradient-to-br from-white via-[#FDF2F8] to-[#F5D0FE]/40 border border-[#F0ABFC] hover:border-[#D946EF] hover:bg-white transition-all duration-200 active:scale-90 cursor-pointer shadow-xs group"
                         >
@@ -1189,19 +1173,19 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           {/* Store title */}
                           <div className="flex items-center justify-between pb-2 border-b border-[#EAE4D7]/70">
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-6 h-6 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+                              <div className="w-6 h-6 rounded-lg bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center shrink-0">
                                 <StoreIcon className="w-3.5 h-3.5 text-[#B88E4F]" />
                               </div>
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <strong className="text-xs font-bold text-[#1A1612] truncate">
                                   {shopGroup.store.name}
                                 </strong>
-                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#231D15] text-[#FAF8F5] shrink-0">
+                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#1A1612] text-[#FAF8F5] shrink-0">
                                   SHOP
                                 </span>
                               </div>
                             </div>
-                            <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]/60 shrink-0">
+                            <span className="text-[11px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EAE4D7]/60 shrink-0">
                               {formatMoney(shopGroup.subtotal)}
                             </span>
                           </div>
@@ -1273,7 +1257,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           type="button"
                           disabled={!couponCode.trim() || couponLoading}
                           onClick={handleValidateCoupon}
-                          className="px-4 py-2 bg-[#F3EFE6] hover:bg-[#C59B58] hover:text-white disabled:opacity-50 text-[#1A1612] font-bold text-xs rounded-xl border border-[#EAE4D7] transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                          className="px-4 py-2 bg-[#F3EFE6] hover:bg-[#DEC07A] hover:text-white disabled:opacity-50 text-[#1A1612] font-bold text-xs rounded-xl border border-[#EAE4D7] transition flex items-center gap-1.5 cursor-pointer shrink-0"
                         >
                           {couponLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Áp dụng'}
                         </button>
@@ -1325,7 +1309,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting || activeItems.length === 0}
-                    className="w-full py-3.5 bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A67D3E] disabled:opacity-50 text-white font-extrabold text-sm rounded-xl shadow-md hover:shadow-lg shadow-[#C59B58]/20 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-[#B88E4F]"
+                    className="w-full py-3.5 bg-gradient-to-r from-[#EBD08C] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#D4B26F] disabled:opacity-50 text-[#231D15] font-extrabold text-sm rounded-xl shadow-md hover:shadow-lg shadow-[#C59B58]/20 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-[#DEC07A]"
                   >
                     {isSubmitting ? (
                       <>

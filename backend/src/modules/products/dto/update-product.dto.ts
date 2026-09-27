@@ -100,4 +100,12 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Cho phép KOL tạo link tiếp thị liên kết cho sản phẩm',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isAffiliateEnabled?: boolean;
 }

@@ -67,7 +67,7 @@ export const CartDrawer: React.FC = () => {
         {/* Drawer Header */}
         <div className="p-4 sm:p-5 bg-white border-b border-[#EAE4D7] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
@@ -85,23 +85,44 @@ export const CartDrawer: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
+            {/* Nút Làm Mới / Đồng Bộ Tồn Kho & Giá */}
             <button
               type="button"
               onClick={() => refreshCartStock()}
               disabled={isValidatingStock}
-              className="p-2 rounded-xl text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
+              aria-label="Cập nhật lại giá và tồn kho từ hệ thống"
               title="Cập nhật lại giá & tồn kho từ hệ thống"
+              className={`relative group w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center border transition-all duration-200 cursor-pointer active:scale-95 ${
+                isValidatingStock
+                  ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F] ring-2 ring-[#C59B58]/20 shadow-xs'
+                  : 'bg-[#FAF8F5] hover:bg-[#FBF5EB] border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#B88E4F] shadow-2xs hover:shadow-xs hover:-translate-y-0.5'
+              }`}
             >
-              <RefreshCw className={`w-4 h-4 ${isValidatingStock ? 'animate-spin text-[#B88E4F]' : ''}`} />
+              <RefreshCw
+                className={`w-4 h-4 transition-transform duration-500 ease-out ${
+                  isValidatingStock
+                    ? 'animate-spin text-[#B88E4F]'
+                    : 'group-hover:rotate-180 group-hover:text-[#B88E4F]'
+                }`}
+              />
+              {isValidatingStock && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C59B58] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#B88E4F]"></span>
+                </span>
+              )}
             </button>
+
+            {/* Nút Đóng Giỏ Hàng */}
             <button
               type="button"
               onClick={closeCart}
-              className="p-2 rounded-xl text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
-              title="Đóng giỏ hàng"
+              aria-label="Đóng giỏ hàng (Esc)"
+              title="Đóng giỏ hàng (Esc)"
+              className="group w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#FAF8F5] hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#1A1612] flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs hover:-translate-y-0.5"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4.5 h-4.5 group-hover:rotate-90 transition-transform duration-200 ease-out" />
             </button>
           </div>
         </div>
@@ -122,7 +143,7 @@ export const CartDrawer: React.FC = () => {
               <button
                 type="button"
                 onClick={closeCart}
-                className="px-6 py-3 rounded-2xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs"
+                className="px-6 py-3 rounded-2xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition shadow-xs"
               >
                 Tiếp tục mua sắm
               </button>
@@ -130,7 +151,7 @@ export const CartDrawer: React.FC = () => {
           ) : (
             <>
               {/* Nationwide free shipping notice */}
-              <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center gap-2.5 text-xs text-[#B88E4F]">
+              <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-center gap-2.5 text-xs text-[#B88E4F]">
                 <Truck className="w-4 h-4 shrink-0" />
                 <span className="font-semibold">
                   Miễn phí giao hàng toàn quốc cho tất cả đơn hàng trên sàn SCANMS!
@@ -154,7 +175,7 @@ export const CartDrawer: React.FC = () => {
                             if (el) el.indeterminate = group.someSelected;
                           }}
                           onChange={() => toggleSelectStore(group.storeId)}
-                          className="w-4 h-4 rounded text-[#C59B58] accent-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                          className="w-4 h-4 rounded text-[#B88E4F] accent-[#EBD08C] focus:ring-[#C59B58] cursor-pointer"
                         />
                         <div className="flex items-center gap-1.5">
                           <Store className="w-4 h-4 text-[#B88E4F]" />
@@ -181,7 +202,7 @@ export const CartDrawer: React.FC = () => {
                             key={item.cartItemId}
                             className={`p-3 rounded-2xl border transition-all ${
                               isSelected
-                                ? 'bg-[#FBF5EB]/30 border-[#EEDFC6]'
+                                ? 'bg-[#FBF5EB]/30 border-[#EAE4D7]'
                                 : 'bg-[#FAF8F5]/60 border-[#EAE4D7]'
                             } ${!isAvailable ? 'opacity-65' : ''}`}
                           >
@@ -193,7 +214,7 @@ export const CartDrawer: React.FC = () => {
                                   disabled={!isAvailable}
                                   checked={isSelected && isAvailable}
                                   onChange={() => toggleSelectItem(item.cartItemId)}
-                                  className="w-4 h-4 rounded text-[#C59B58] accent-[#C59B58] focus:ring-[#C59B58] cursor-pointer disabled:opacity-40"
+                                  className="w-4 h-4 rounded text-[#B88E4F] accent-[#EBD08C] focus:ring-[#C59B58] cursor-pointer disabled:opacity-40"
                                 />
                               </div>
 
@@ -330,13 +351,13 @@ export const CartDrawer: React.FC = () => {
                   type="checkbox"
                   checked={isAllSelected}
                   onChange={() => toggleSelectAll()}
-                  className="w-4 h-4 rounded text-[#C59B58] accent-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                  className="w-4 h-4 rounded text-[#B88E4F] accent-[#EBD08C] focus:ring-[#C59B58] cursor-pointer"
                 />
                 <span className="font-bold text-[#1A1612]">Chọn tất cả ({cart.length})</span>
               </label>
 
               <span>
-                Đã chọn <strong className="text-[#C59B58]">{selectedCount}</strong> sản phẩm
+                Đã chọn <strong className="text-[#B88E4F]">{selectedCount}</strong> sản phẩm
               </span>
             </div>
 
@@ -353,7 +374,7 @@ export const CartDrawer: React.FC = () => {
               type="button"
               onClick={() => startCheckout()}
               disabled={selectedCount === 0}
-              className="w-full py-3.5 px-4 rounded-2xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:bg-[#EAE4D7] disabled:text-[#7D715E] text-white font-black text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-99 disabled:cursor-not-allowed"
+              className="w-full py-3.5 px-4 rounded-2xl bg-[#EBD08C] hover:bg-[#DEC07A] disabled:bg-[#EAE4D7] disabled:text-[#7D715E] text-white font-black text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-99 disabled:cursor-not-allowed"
             >
               <span>Tiến hành đặt hàng ({selectedCount})</span>
               <ArrowRight className="w-4 h-4" />

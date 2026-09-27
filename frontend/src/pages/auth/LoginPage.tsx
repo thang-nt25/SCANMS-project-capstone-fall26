@@ -33,6 +33,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedRedirect = searchParams.get('redirect');
+  const registeredProvider = searchParams.get('registered');
+  const registeredEmail = searchParams.get('email');
   const returnTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\')
     ? requestedRedirect
     : null;
@@ -49,11 +51,12 @@ export default function LoginPage() {
     else navigate('/collaborator/dashboard');
   };
   const [role, setRole] = useState<'customer' | 'kol' | 'shop' | 'admin' | 'manager'>('customer');
-  const [email, setEmail] = useState('customer@scanms.vn');
-  const [password, setPassword] = useState('Password@123');
+  const [email, setEmail] = useState(registeredEmail || 'customer@scanms.vn');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [showDemoAccounts, setShowDemoAccounts] = useState(false);
@@ -141,7 +144,7 @@ export default function LoginPage() {
     const matched = DEMO_ACCOUNTS.find((a) => a.role === selectedRole);
     if (matched) {
       setEmail(matched.email);
-      setPassword(matched.password);
+      setPassword(matched.password || '');
     }
     setError(null);
   };
@@ -165,9 +168,7 @@ export default function LoginPage() {
 
         setSuccessNotice(`Đăng nhập thành công với vai trò ${user?.fullName || targetEmail}!`);
 
-        setTimeout(() => {
-          navigateAfterLogin(user?.role);
-        }, 500);
+        navigateAfterLogin(user?.role);
       } catch (err: any) {
         const errorMsg =
           err?.response?.data?.message ||
@@ -193,9 +194,7 @@ export default function LoginPage() {
 
       setSuccessNotice('Đăng nhập thành công! Đang chuyển hướng...');
 
-      setTimeout(() => {
-        navigateAfterLogin(user?.role);
-      }, 600);
+      navigateAfterLogin(user?.role);
     } catch (err: any) {
       const errorMsg =
         err?.response?.data?.message ||
@@ -210,7 +209,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = (useDevBypass: boolean = false) => {
     setError(null);
-    setLoading(true);
+    setIsGoogleLoading(true);
 
     const onTokenSuccess = async (idToken: string) => {
       try {
@@ -231,7 +230,7 @@ export default function LoginPage() {
       } catch (err: any) {
         setError(err.message || 'Đăng nhập Google thất bại');
       } finally {
-        setLoading(false);
+        setIsGoogleLoading(false);
       }
     };
 
@@ -244,15 +243,18 @@ export default function LoginPage() {
       onTokenSuccess,
       (errorMsg: string) => {
         setError(errorMsg);
-        setLoading(false);
+        setIsGoogleLoading(false);
+      },
+      () => {
+        setIsGoogleLoading(false);
       }
     );
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] relative overflow-hidden flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-12 selection:bg-[#EEDFC6] selection:text-[#1A1612]">
+    <div className="min-h-screen bg-[#FAF8F5] relative overflow-hidden flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-12 selection:bg-[#EAE4D7] selection:text-[#1A1612]">
       {/* Soft Warm Ambient Lighting Orbs */}
-      <div className="absolute top-[-8%] left-[-6%] w-[550px] h-[550px] rounded-full bg-gradient-to-br from-[#C59B58]/12 via-[#EEDFC6]/25 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute top-[-8%] left-[-6%] w-[550px] h-[550px] rounded-full bg-gradient-to-br from-[#C59B58]/12 via-[#EAE4D7]/25 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-6%] w-[650px] h-[650px] rounded-full bg-gradient-to-tl from-[#C59B58]/10 via-[#F3EFE6]/50 to-transparent blur-3xl pointer-events-none" />
 
       {/* Top Header Bar */}
@@ -272,7 +274,7 @@ export default function LoginPage() {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Hệ thống vận hành 99.98% SLA
           </span>
-          <span className="text-[#C59B58] font-bold">Cổng Đăng Nhập Bảo Mật</span>
+          <span className="text-[#B88E4F] font-bold">Cổng Đăng Nhập Bảo Mật</span>
         </div>
       </header>
 
@@ -280,7 +282,7 @@ export default function LoginPage() {
       <main className="max-w-[1480px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch relative z-10 my-auto">
 
         {/* LEFT COLUMN: Luxury Platform Showcase */}
-        <section className="lg:col-span-7 bg-gradient-to-br from-[#F8F5EE] via-[#F3EFE6] to-[#ECE4D4] border border-[#E5DAC8] rounded-[32px] p-7 sm:p-10 lg:p-12 flex flex-col justify-between gap-8 relative overflow-hidden shadow-[0_12px_40px_rgba(184,142,79,0.06)] text-left">
+        <section className="lg:col-span-7 bg-gradient-to-br from-[#F6EFE3] via-[#F3EFE6] to-[#ECE4D4] border border-[#EAE4D7] rounded-[32px] p-7 sm:p-10 lg:p-12 flex flex-col justify-between gap-8 relative overflow-hidden shadow-[0_12px_40px_rgba(184,142,79,0.06)] text-left">
           
           {/* Subtle Golden Glow Halo */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-b from-[#C59B58]/15 via-transparent to-transparent rounded-full blur-2xl pointer-events-none" />
@@ -288,7 +290,7 @@ export default function LoginPage() {
           {/* Top Branding Section */}
           <div className="relative z-10 flex flex-col gap-5">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#B88E4F] via-[#C59B58] to-[#DFC187] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(184,142,79,0.3)]">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#EBD08C] via-[#E5C783] to-[#DEC07A] text-[#231D15] flex items-center justify-center shadow-[0_6px_20px_rgba(184,142,79,0.3)]">
                 <Sparkles className="w-6 h-6 text-amber-50" />
               </div>
               <div>
@@ -301,8 +303,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold w-fit shadow-2xs backdrop-blur-xs">
-              <span className="w-2 h-2 rounded-full bg-[#B88E4F]" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-[#EAE4D7] text-[#B88E4F] text-xs font-bold w-fit shadow-2xs backdrop-blur-xs">
+              <span className="w-2 h-2 rounded-full bg-[#EBD08C]" />
               <span>Chuẩn Đề Án FA26SE032 • Kết Nối Doanh Nghiệp &amp; Nhà Sáng Tạo</span>
             </div>
 
@@ -324,7 +326,7 @@ export default function LoginPage() {
                   <Award className="w-4 h-4 text-[#B88E4F]" />
                   <span>Mô Hình Hợp Tác Tiêu Biểu Trên Sàn</span>
                 </div>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   Đang Hoạt Động
                 </span>
@@ -354,14 +356,14 @@ export default function LoginPage() {
 
                 {/* Connector Arrow */}
                 <div className="md:col-span-1 flex flex-col items-center justify-center py-1">
-                  <div className="w-7 h-7 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shadow-2xs">
+                  <div className="w-7 h-7 rounded-full bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center shadow-2xs">
                     <ArrowRight className="w-3.5 h-3.5 rotate-90 md:rotate-0" />
                   </div>
                 </div>
 
                 {/* Creator Node */}
                 <div className="md:col-span-5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3.5 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#B88E4F] to-[#C59B58] text-white flex items-center justify-center shrink-0 shadow-2xs font-extrabold text-xs">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#EBD08C] to-[#DEC07A] text-[#231D15] flex items-center justify-center shrink-0 shadow-2xs font-extrabold text-xs">
                     NT
                   </div>
                   <div className="min-w-0">
@@ -369,7 +371,7 @@ export default function LoginPage() {
                       <strong className="text-xs font-extrabold text-[#1A1612] truncate block">
                         Nguyễn Thành Thắng
                       </strong>
-                      <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                      <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                         Top 1 KOL
                       </span>
                     </div>
@@ -387,7 +389,7 @@ export default function LoginPage() {
                   <span>Dynamic Smart QR</span>
                   <span className="text-[11px] font-normal text-[#7D715E]">• Lưu vết Last-Click 30 Ngày</span>
                 </div>
-                <span className="text-[11px] font-semibold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
+                <span className="text-[11px] font-semibold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
                   Escrow Tự Động 14 Ngày
                 </span>
               </div>
@@ -559,7 +561,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => handleGoogleLogin(true)}
-                      className="px-2.5 py-1 bg-[#B88E4F] hover:bg-[#9E7933] text-white rounded-lg text-[10px] font-bold cursor-pointer transition shadow-2xs shrink-0"
+                      className="px-2.5 py-1 bg-[#EBD08C] hover:bg-[#DEC07A] text-white rounded-lg text-[10px] font-bold cursor-pointer transition shadow-2xs shrink-0"
                     >
                       Đăng nhập Google (Dev Bypass)
                     </button>
@@ -568,18 +570,31 @@ export default function LoginPage() {
               </div>
             )}
 
+            {registeredProvider && (
+              <div className="p-3.5 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl text-[#1A1612] text-xs flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-[#B88E4F] mt-0.5" />
+                <span>
+                  <strong className="block">Tạo tài khoản thành công</strong>
+                  {registeredProvider === 'google'
+                    ? 'Hãy chọn đăng nhập bằng Google để vào tài khoản vừa tạo.'
+                    : 'Nhập mật khẩu của tài khoản vừa đăng ký để tiếp tục.'}
+                </span>
+              </div>
+            )}
+
             {successNotice && (
-              <div className="p-3.5 bg-[#FBF5EB] border border-[#EEDFC6] rounded-2xl text-[#B88E4F] text-xs font-bold flex items-center gap-2">
+              <div className="p-3.5 bg-[#FBF5EB] border border-[#EAE4D7] rounded-2xl text-[#B88E4F] text-xs font-bold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-[#B88E4F]" />
                 <span>{successNotice}</span>
               </div>
             )}
 
             {/* ACTIVE ROLE PREVIEW & QUICK 1-CLICK ACTION */}
+            {!registeredProvider && (
             <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-3.5 flex flex-col gap-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#B88E4F] to-[#C59B58] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#EBD08C] to-[#DEC07A] text-[#231D15] flex items-center justify-center shrink-0 shadow-2xs">
                     <currentDemo.icon className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
@@ -597,16 +612,20 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin(currentDemo.role, currentDemo.email, currentDemo.password, true)}
-                  disabled={loading}
-                  className="px-3 py-1.5 bg-[#B88E4F] hover:bg-[#A07736] text-white rounded-xl text-xs font-extrabold shrink-0 cursor-pointer shadow-2xs hover:shadow-xs transition active:scale-95 flex items-center gap-1.5"
-                  title={`Đăng nhập 1-chạm vào vai trò ${currentDemo.badge}`}
-                >
-                  <Zap className="w-3.5 h-3.5 fill-current" />
-                  <span>Vào Ngay</span>
-                </button>
+                {currentDemo.password ? (
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin(currentDemo.role, currentDemo.email, currentDemo.password, true)}
+                    disabled={loading}
+                    className="px-3 py-1.5 bg-[#EBD08C] hover:bg-[#DEC07A] text-white rounded-xl text-xs font-extrabold shrink-0 cursor-pointer shadow-2xs hover:shadow-xs transition active:scale-95 flex items-center gap-1.5"
+                    title={`Đăng nhập 1-chạm vào vai trò ${currentDemo.badge}`}
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <span>Vào ngay</span>
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-[#7D715E] text-right max-w-28">Nhập mật khẩu hiện tại</span>
+                )}
               </div>
 
               {/* Accordion Trigger for All 5 Test Accounts */}
@@ -620,7 +639,7 @@ export default function LoginPage() {
                   {showDemoAccounts ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
                 <span className="text-[#7D715E]">
-                  Mật khẩu: <code className="font-bold text-[#1A1612]">Password@123</code>
+                  {currentDemo.password ? <>Mật khẩu mẫu: <code className="font-bold text-[#1A1612]">Password@123</code></> : 'Mật khẩu riêng'}
                 </span>
               </div>
 
@@ -640,7 +659,7 @@ export default function LoginPage() {
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isCurrent ? 'bg-[#B88E4F] text-white' : 'bg-[#FAF8F5] text-[#7D715E]'}`}>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isCurrent ? 'bg-[#EBD08C] text-white' : 'bg-[#FAF8F5] text-[#7D715E]'}`}>
                             <acc.icon className="w-3.5 h-3.5" />
                           </div>
                           <div className="min-w-0">
@@ -658,22 +677,27 @@ export default function LoginPage() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleQuickLogin(acc.role, acc.email, acc.password, true);
-                          }}
-                          className="px-2.5 py-1 bg-white hover:bg-[#B88E4F] text-[#B88E4F] hover:text-white border border-[#EEDFC6] hover:border-[#B88E4F] rounded-lg text-[10.5px] font-extrabold shrink-0 cursor-pointer shadow-2xs transition"
-                        >
-                          Vào
-                        </button>
+                        {acc.password ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickLogin(acc.role, acc.email, acc.password, true);
+                            }}
+                            className="px-2.5 py-1 bg-white hover:bg-[#DEC07A] text-[#B88E4F] hover:text-white border border-[#EAE4D7] hover:border-[#B88E4F] rounded-lg text-[10.5px] font-extrabold shrink-0 cursor-pointer shadow-2xs transition"
+                          >
+                            Vào
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-[#7D715E] shrink-0">Mật khẩu riêng</span>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
+            )}
 
             {/* Standard Login Form */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -731,7 +755,7 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer accent-[#C59B58]"
+                  className="rounded border-[#EAE4D7] text-[#B88E4F] focus:ring-[#C59B58] cursor-pointer accent-[#EBD08C]"
                 />
                 <label htmlFor="remember-checkbox" className="text-xs text-[#7D715E] font-medium cursor-pointer select-none">
                   Ghi nhớ phiên đăng nhập trên thiết bị này
@@ -741,7 +765,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-[#C59B58] via-[#B88E4F] to-[#9E7933] hover:from-[#B88E4F] hover:to-[#8C6728] text-white font-black rounded-xl text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_8px_20px_rgba(184,142,79,0.28)] hover:shadow-[0_10px_25px_rgba(184,142,79,0.38)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50"
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-[#EBD08C] via-[#E5C783] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#D4B26F] text-[#231D15] font-black rounded-xl text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_8px_20px_rgba(184,142,79,0.18)] hover:shadow-[0_10px_25px_rgba(184,142,79,0.24)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50"
               >
                 <LogIn className="w-4 h-4" />
                 <span>{loading ? 'Đang xác thực hệ thống...' : 'Đăng nhập an toàn'}</span>
@@ -758,7 +782,8 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleGoogleLogin(false)}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] transition-all cursor-pointer shadow-2xs hover:border-[#C59B58]"
+                  disabled={loading || isGoogleLoading}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] transition-all cursor-pointer shadow-2xs hover:border-[#C59B58] disabled:opacity-50"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
@@ -766,7 +791,7 @@ export default function LoginPage() {
                     <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z" />
                     <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.32 0 3.25 2.63 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
                   </svg>
-                  <span>Google SSO</span>
+                  <span>{isGoogleLoading ? 'Đang kết nối...' : 'Google SSO'}</span>
                 </button>
 
                 <button
@@ -788,9 +813,9 @@ export default function LoginPage() {
                   </Link>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between gap-3 text-left">
+                <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-center justify-between gap-3 text-left">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#B88E4F] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <div className="w-8 h-8 rounded-xl bg-[#EBD08C] text-white flex items-center justify-center shrink-0 shadow-2xs">
                       <ShoppingBag className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -805,7 +830,7 @@ export default function LoginPage() {
                   <Link
                     to="/marketplace"
                     id="btn-goto-shopping-marketplace"
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#EEDFC6] text-xs font-extrabold text-[#B88E4F] shadow-2xs transition cursor-pointer"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] text-xs font-extrabold text-[#B88E4F] shadow-2xs transition cursor-pointer"
                   >
                     <span>Vào sàn</span>
                     <ArrowRight className="w-3.5 h-3.5" />

@@ -17,9 +17,11 @@ import {
   ShoppingBag,
   MapPin,
   Heart,
+  SlidersHorizontal,
+  ArrowRight,
+  X,
 } from 'lucide-react';
 import { ScanMSLogo } from '../common/ScanMSLogo';
-import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { useCart } from '../../context/CartContext';
 
@@ -29,6 +31,7 @@ export interface PublicHeaderProps {
   onOpenTracking?: () => void;
   defaultSearchQuery?: string;
   onSearchSubmit?: (query: string) => void;
+  onOpenFilter?: () => void;
 }
 
 export function PublicHeader({
@@ -37,6 +40,7 @@ export function PublicHeader({
   onOpenTracking,
   defaultSearchQuery = '',
   onSearchSubmit,
+  onOpenFilter,
 }: PublicHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -92,6 +96,14 @@ export function PublicHeader({
     }
   };
 
+  const handleFilterClick = () => {
+    if (onOpenFilter) {
+      onOpenFilter();
+    } else if (location.pathname !== '/search') {
+      navigate('/search');
+    }
+  };
+
   const handleLogout = () => {
     setIsUserMenuOpen(false);
     authService.logout();
@@ -123,7 +135,7 @@ export function PublicHeader({
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
-      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-3 sm:gap-6">
+      <div className="max-w-[1520px] mx-auto px-3 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-2 sm:gap-4 lg:gap-6">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
@@ -131,28 +143,55 @@ export function PublicHeader({
           </Link>
         </div>
 
-        {/* Center: Search Form */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-xl hidden md:flex items-center">
-          <div className="relative w-full flex items-center">
-            <Search className="w-4 h-4 text-[#7D715E] absolute left-3.5 pointer-events-none" />
+        {/* Center: Search Form - Consistent with Marketplace Header */}
+        <form
+          onSubmit={handleSearch}
+          className="hidden md:flex min-w-0 flex-1 max-w-2xl mx-auto items-center gap-1.5 sm:gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-1 sm:p-1.5 shadow-sm shadow-[#C59B58]/10 transition-all duration-300 ease-in-out focus-within:border-[#C59B58]"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-2 px-2 sm:px-2.5">
+            <Search className="h-4 w-4 shrink-0 text-[#B88E4F]" />
             <input
-              type="text"
+              type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm sản phẩm, thương hiệu hoặc gian hàng..."
-              className="w-full pl-10 pr-24 py-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-full text-xs font-medium text-[#1A1612] placeholder-[#7D715E]/70 focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
+              placeholder="Tìm sản phẩm, thương hiệu, gian hàng..."
+              aria-label="Tìm sản phẩm, thương hiệu hoặc gian hàng"
+              className="min-w-0 w-full bg-transparent text-xs font-medium text-[#1A1612] placeholder:text-[#8C7D6B] outline-none"
             />
-            <button
-              type="submit"
-              className="absolute right-1.5 px-3.5 py-1 bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold rounded-full transition shadow-2xs cursor-pointer"
-            >
-              Tìm
-            </button>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  if (onSearchSubmit) onSearchSubmit('');
+                }}
+                className="shrink-0 rounded-lg p-1 text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] cursor-pointer"
+                aria-label="Xóa nội dung tìm kiếm"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
+          <button
+            type="button"
+            onClick={handleFilterClick}
+            className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-[#B88E4F] transition hover:bg-[#F3EFE6] cursor-pointer active:scale-[0.98]"
+            title="Mở bộ lọc tìm kiếm"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-[#B88E4F]" />
+            <span>Bộ lọc</span>
+          </button>
+          <button
+            type="submit"
+            className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-bold text-[#1A1612] transition cursor-pointer active:scale-[0.98]"
+          >
+            <span>Tìm kiếm</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </form>
 
         {/* Right Navigation & User Status */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Quick Tracking Button */}
           <button
             type="button"
@@ -190,7 +229,7 @@ export function PublicHeader({
             <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
             <span className="hidden sm:inline">Giỏ hàng</span>
             {effectiveCartCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white text-[10px] font-black flex items-center justify-center -mr-1">
+              <span className="w-5 h-5 rounded-full bg-[#EBD08C] text-white text-[10px] font-black flex items-center justify-center -mr-1">
                 {effectiveCartCount}
               </span>
             )}
@@ -200,9 +239,6 @@ export function PublicHeader({
           {currentUser ? (
             /* Logged in User Profile & Workspace Link */
             <div className="flex items-center gap-2">
-              {/* Workspace Switcher Component */}
-              <WorkspaceSwitcher variant="header" />
-
               {/* User Dropdown Pill */}
               <div className="relative" ref={userMenuRef}>
                 <button
@@ -211,7 +247,7 @@ export function PublicHeader({
                   className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full bg-[#F3EFE6] border border-[#EAE4D7] hover:bg-[#EAE4D7] transition cursor-pointer shadow-2xs"
                   title="Xem thông tin tài khoản và đăng xuất"
                 >
-                  <span className="w-7 h-7 rounded-full bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#E4D3B7]">
+                  <span className="w-7 h-7 rounded-full bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#EAE4D7]">
                     {currentUser.fullName?.[0]?.toUpperCase() || 'U'}
                   </span>
                   <div className="text-left hidden md:block max-w-[140px]">
@@ -222,7 +258,7 @@ export function PublicHeader({
                       {isCustomer ? '🛍️ Khách Mua Hàng' : isKol ? '⭐ KOL / KOC' : isShop ? `🏪 ${storeName}` : '🛡️ Quản Trị'}
                     </span>
                   </div>
-                  <ChevronDown className={`w-3.5 h-3.5 text-[#A49B8B] transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
                 </button>
 
                 {/* Dropdown Menu */}
@@ -231,7 +267,7 @@ export function PublicHeader({
                     {/* User Identity Box */}
                     <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] mb-2">
                       <div className="flex items-center gap-2.5">
-                        <span className="w-9 h-9 rounded-xl bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-black text-sm shrink-0 border border-[#E4D3B7]">
+                        <span className="w-9 h-9 rounded-xl bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-black text-sm shrink-0 border border-[#EAE4D7]">
                           {currentUser.fullName?.[0]?.toUpperCase() || 'U'}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -247,7 +283,7 @@ export function PublicHeader({
                       {/* Official Role Badge */}
                       <div className="mt-2 pt-2 border-t border-[#EAE4D7] flex items-center justify-between text-[11px]">
                         <span className="text-[#7D715E] font-medium">Vai trò:</span>
-                        <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                        <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                           {isCustomer
                             ? '🛍️ Khách Mua Sắm'
                             : isKol
@@ -329,7 +365,7 @@ export function PublicHeader({
                         <Link
                           to="/customer/orders?tab=upgrade"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] rounded-xl hover:bg-[#F3EFE6] border border-[#EEDFC6] transition mt-1"
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] rounded-xl hover:bg-[#F3EFE6] border border-[#EAE4D7] transition mt-1"
                         >
                           <Sparkles className="w-4 h-4 text-[#B88E4F]" />
                           <span>Nâng cấp Đối tác (KOL / Shop)</span>
@@ -422,13 +458,58 @@ export function PublicHeader({
 
               <Link
                 to="/register"
-                className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#C59B58] hover:bg-[#B88E4F] transition shadow-2xs"
+                className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#EBD08C] hover:bg-[#DEC07A] transition shadow-2xs"
               >
                 Đăng ký đối tác
               </Link>
             </div>
           )}
         </div>
+      </div>
+
+      {/* Mobile search bar */}
+      <div className="md:hidden px-4 pb-3 pt-1 border-t border-[#F3EFE6] bg-[#FFFEFC]">
+        <form
+          onSubmit={handleSearch}
+          className="flex min-w-0 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white p-1.5 shadow-sm focus-within:border-[#C59B58]"
+        >
+          <Search className="ml-2 h-4 w-4 shrink-0 text-[#B88E4F]" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Tìm sản phẩm, thương hiệu, gian hàng..."
+            aria-label="Tìm sản phẩm, thương hiệu hoặc gian hàng"
+            className="min-w-0 flex-1 bg-transparent text-xs font-medium text-[#1A1612] placeholder:text-[#8C7D6B] outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                if (onSearchSubmit) onSearchSubmit('');
+              }}
+              className="shrink-0 rounded-lg p-1 text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] cursor-pointer"
+              aria-label="Xóa nội dung tìm kiếm"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleFilterClick}
+            className="shrink-0 p-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] hover:bg-[#F3EFE6] cursor-pointer"
+            title="Bộ lọc"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="submit"
+            className="rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] px-3 py-1.5 text-xs font-bold text-[#1A1612] cursor-pointer"
+          >
+            Tìm kiếm
+          </button>
+        </form>
       </div>
     </header>
   );

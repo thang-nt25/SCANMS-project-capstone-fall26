@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from '../utils/toast';
 import { authService } from '../services/auth.service';
 import api from '../services/api';
@@ -145,8 +145,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
   const [isValidatingStock, setIsValidatingStock] = useState(false);
-  const resumeCheckoutAfterAdd = useRef(false);
-  const [pendingResumeItemId, setPendingResumeItemId] = useState<string | null>(null);
 
   // Sync cart to localStorage
   useEffect(() => {
@@ -374,10 +372,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Auto-select this item for checkout
       setSelectedItemIds((prev) => (prev.includes(cartItemId) ? prev : [...prev, cartItemId]));
 
-      if (resumeCheckoutAfterAdd.current) {
-        setPendingResumeItemId(cartItemId);
-      }
-
       toast.success(
         `Đã thêm ${quantity > 1 ? `x${quantity} ` : ''}"${prodTitle}${matchedVariant ? ` (${matchedVariant.name})` : ''}" vào giỏ hàng!`,
       );
@@ -538,8 +532,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Start checkout flow (Requirement 4 & 5)
   const startCheckout = useCallback(
     (customItems?: CartItem[]) => {
-      resumeCheckoutAfterAdd.current = false;
-      setPendingResumeItemId(null);
       const itemsToCheckout = customItems || selectedItems;
 
       if (!itemsToCheckout || itemsToCheckout.length === 0) {
@@ -600,25 +592,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const editCheckoutCart = useCallback((items: CartItem[]) => {
     stageCheckoutItems(items);
     setIsCartOpen(true);
-    resumeCheckoutAfterAdd.current = false;
-    setPendingResumeItemId(null);
   }, [stageCheckoutItems]);
 
   const continueShoppingFromCheckout = useCallback((items: CartItem[]) => {
     stageCheckoutItems(items);
     setIsCartOpen(false);
-    setPendingResumeItemId(null);
-    resumeCheckoutAfterAdd.current = true;
   }, [stageCheckoutItems]);
-
-  useEffect(() => {
-    if (!pendingResumeItemId || !selectedItemIds.includes(pendingResumeItemId)) return;
-    if (!cart.some((item) => item.cartItemId === pendingResumeItemId)) return;
-    const items = cart.filter((item) =>
-      selectedItemIds.includes(item.cartItemId) && item.isActive && item.stockQuantity > 0,
-    );
-    if (items.length > 0) startCheckout(items);
-  }, [cart, pendingResumeItemId, selectedItemIds, startCheckout]);
 
   const closeCheckout = useCallback(() => {
     setIsCheckoutOpen(false);

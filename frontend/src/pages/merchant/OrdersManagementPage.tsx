@@ -547,14 +547,14 @@ export default function OrdersManagementPage({
             </div>
             <div className="flex items-center gap-3">
               <button
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#EAE4D7] bg-white text-[#4A3E2D] font-bold text-xs sm:text-sm hover:bg-[#F3EFE6] transition shadow-2xs"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] font-bold text-xs sm:text-sm hover:bg-[#F3EFE6] transition shadow-2xs"
                 onClick={() => open("excel")}
               >
-                <FileSpreadsheet className="w-4 h-4 text-[#C59B58]" />
+                <FileSpreadsheet className="w-4 h-4 text-[#B88E4F]" />
                 <span>Import Excel (FR-20)</span>
               </button>
               <button
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C59B58] text-white font-bold text-xs sm:text-sm hover:bg-[#B88E4F] transition shadow-xs"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#EBD08C] text-white font-bold text-xs sm:text-sm hover:bg-[#DEC07A] transition shadow-xs"
                 onClick={() => open("manual")}
               >
                 <PackagePlus className="w-4 h-4" />
@@ -580,8 +580,8 @@ export default function OrdersManagementPage({
               </strong>
             </div>
             <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <span className="text-xs font-bold text-[#D97706] block">Chờ xử lý / Đóng gói</span>
-              <strong className="text-xl sm:text-2xl font-black text-[#D97706] mt-1 block">
+              <span className="text-xs font-bold text-[#B88E4F] block">Chờ xử lý / Đóng gói</span>
+              <strong className="text-xl sm:text-2xl font-black text-[#B88E4F] mt-1 block">
                 {orders.filter((o) => o.status === "PENDING").length}
               </strong>
             </div>
@@ -620,8 +620,8 @@ export default function OrdersManagementPage({
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                       active
-                        ? "bg-[#C59B58] text-white shadow-2xs"
-                        : "bg-[#F3EFE6] text-[#4A3E2D] hover:bg-[#EAE4D7]"
+                        ? "bg-[#EBD08C] text-white shadow-2xs"
+                        : "bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EAE4D7]"
                     }`}
                   >
                     {tab.label}
@@ -633,7 +633,7 @@ export default function OrdersManagementPage({
             {/* Search Input */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1 sm:w-72">
-                <Search className="w-4 h-4 text-[#A49B8B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Tìm mã đơn, tên, SĐT..."
@@ -663,7 +663,7 @@ export default function OrdersManagementPage({
               </div>
             ) : orders.length === 0 ? (
               <div className="p-12 text-center flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#C59B58] grid place-items-center">
+                <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] grid place-items-center">
                   <ShoppingBag className="w-6 h-6" />
                 </div>
                 <div>
@@ -717,7 +717,7 @@ export default function OrdersManagementPage({
                             <strong className="text-[#1A1612] font-mono text-xs block">
                               #{order.externalOrderSn}
                             </strong>
-                            <span className="text-[11px] text-[#A49B8B] block mt-0.5">
+                            <span className="text-[11px] text-[#7D715E] block mt-0.5">
                               {new Date(order.createdAt).toLocaleDateString("vi-VN", {
                                 day: "2-digit",
                                 month: "2-digit",
@@ -736,7 +736,7 @@ export default function OrdersManagementPage({
                             <span className="text-[11px] text-[#7D715E] block mt-0.5">
                               {order.customerPhone}
                             </span>
-                            <span className="text-[10.5px] text-[#A49B8B] block truncate max-w-[180px]" title={order.shippingAddress}>
+                            <span className="text-[10.5px] text-[#7D715E] block truncate max-w-[180px]" title={order.shippingAddress}>
                               {order.shippingAddress}
                             </span>
                           </td>
@@ -746,7 +746,7 @@ export default function OrdersManagementPage({
                             <div className="flex flex-col gap-1 max-w-[200px]">
                               {order.items.slice(0, 2).map((item, idx) => (
                                 <div key={idx} className="flex items-center gap-1.5">
-                                  <span className="w-4 h-4 rounded bg-[#F3EFE6] text-[10px] font-bold text-[#8A662C] flex items-center justify-center shrink-0">
+                                  <span className="w-4 h-4 rounded bg-[#F3EFE6] text-[10px] font-bold text-[#B88E4F] flex items-center justify-center shrink-0">
                                     {item.quantity}
                                   </span>
                                   <span className="truncate text-xs text-[#1A1612]" title={item.title}>
@@ -755,7 +755,7 @@ export default function OrdersManagementPage({
                                 </div>
                               ))}
                               {order.items.length > 2 && (
-                                <span className="text-[10px] text-[#A49B8B] font-semibold">
+                                <span className="text-[10px] text-[#7D715E] font-semibold">
                                   +{order.items.length - 2} sản phẩm khác
                                 </span>
                               )}
@@ -793,7 +793,7 @@ export default function OrdersManagementPage({
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-[#A49B8B] italic">Chưa tạo vận đơn</span>
+                              <span className="text-[11px] text-[#7D715E] italic">Chưa tạo vận đơn</span>
                             )}
                           </td>
 
@@ -801,7 +801,7 @@ export default function OrdersManagementPage({
                           <td className="p-3.5 align-top">
                             {order.totalCommission > 0 ? (
                               <div>
-                                <strong className="text-xs font-bold text-[#C59B58] block">
+                                <strong className="text-xs font-bold text-[#B88E4F] block">
                                   +{order.totalCommission.toLocaleString("vi-VN")} ₫
                                 </strong>
                                 <span className="text-[10px] text-[#7D715E] block truncate max-w-[120px]">
@@ -809,7 +809,7 @@ export default function OrdersManagementPage({
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-[#A49B8B]">—</span>
+                              <span className="text-[11px] text-[#7D715E]">—</span>
                             )}
                           </td>
 
@@ -819,7 +819,7 @@ export default function OrdersManagementPage({
                               {order.status === "PENDING" && (
                                 <button
                                   onClick={() => handleOpenShippingModal(order)}
-                                  className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                                  className="px-2.5 py-1.5 rounded-lg bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
                                   title="Nhập mã vận đơn & chuyển sang Đang giao"
                                 >
                                   <Truck className="w-3.5 h-3.5" />
@@ -909,7 +909,7 @@ export default function OrdersManagementPage({
 
             <div className="flex flex-col gap-3">
               <div>
-                <label className="text-xs font-bold text-[#4A3E2D] block mb-1">
+                <label className="text-xs font-bold text-[#1A1612] block mb-1">
                   Đơn vị vận chuyển *
                 </label>
                 <select
@@ -928,7 +928,7 @@ export default function OrdersManagementPage({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#4A3E2D] block mb-1">
+                <label className="text-xs font-bold text-[#1A1612] block mb-1">
                   Mã vận đơn bưu cục *
                 </label>
                 <input
@@ -941,7 +941,7 @@ export default function OrdersManagementPage({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#4A3E2D] block mb-1">
+                <label className="text-xs font-bold text-[#1A1612] block mb-1">
                   Ghi chú đóng gói / giao hàng
                 </label>
                 <input
@@ -966,7 +966,7 @@ export default function OrdersManagementPage({
                 type="button"
                 disabled={updatingFulfillment}
                 onClick={handleSubmitShipping}
-                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs"
+                className="px-4 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs"
               >
                 {updatingFulfillment ? "Đang cập nhật..." : "Xác nhận gửi hàng"}
               </button>
@@ -1009,12 +1009,12 @@ export default function OrdersManagementPage({
 
             {/* Sản phẩm trong đơn */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-[#4A3E2D]">Sản phẩm ({selectedOrderDetails.items.length}):</span>
+              <span className="text-xs font-bold text-[#1A1612]">Sản phẩm ({selectedOrderDetails.items.length}):</span>
               <div className="divide-y divide-[#EAE4D7] border border-[#EAE4D7] rounded-xl overflow-hidden">
                 {selectedOrderDetails.items.map((item, idx) => (
                   <div key={idx} className="p-3 flex items-center justify-between gap-3 text-xs bg-white">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-[#F3EFE6] text-[#C59B58] grid place-items-center font-bold text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#F3EFE6] text-[#B88E4F] grid place-items-center font-bold text-xs shrink-0">
                         {item.quantity}x
                       </div>
                       <div>
@@ -1031,7 +1031,7 @@ export default function OrdersManagementPage({
             </div>
 
             {/* Tài chính & Hoa hồng */}
-            <div className="p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl flex flex-col gap-1.5 text-xs">
+            <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl flex flex-col gap-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-[#7D715E]">Tiền hàng:</span>
                 <span className="font-bold">{selectedOrderDetails.subtotalAmount.toLocaleString("vi-VN")} ₫</span>
@@ -1046,9 +1046,9 @@ export default function OrdersManagementPage({
                   <span className="font-bold">-{selectedOrderDetails.discountAmount.toLocaleString("vi-VN")} ₫</span>
                 </div>
               )}
-              <div className="flex justify-between border-t border-[#EEDFC6] pt-1.5 text-sm font-black text-[#1A1612]">
+              <div className="flex justify-between border-t border-[#EAE4D7] pt-1.5 text-sm font-black text-[#1A1612]">
                 <span>Tổng thanh toán:</span>
-                <span className="text-[#C59B58]">{selectedOrderDetails.finalAmount.toLocaleString("vi-VN")} ₫</span>
+                <span className="text-[#B88E4F]">{selectedOrderDetails.finalAmount.toLocaleString("vi-VN")} ₫</span>
               </div>
               <div className="flex justify-between pt-1 text-[11px] text-[#7D715E]">
                 <span>Hoa hồng KOL ghi nhận:</span>
@@ -1062,7 +1062,7 @@ export default function OrdersManagementPage({
               <button
                 type="button"
                 onClick={() => setSelectedOrderDetails(null)}
-                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs"
+                className="px-4 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition shadow-xs"
               >
                 Đóng
               </button>

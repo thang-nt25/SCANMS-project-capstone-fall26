@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -100,4 +101,13 @@ export class CreateProductDto {
   @IsNumber({}, { message: 'Số lượng tồn kho phải là số nguyên' })
   @Min(0, { message: 'Tồn kho không được âm' })
   stockQuantity?: number = 0;
+
+  @ApiPropertyOptional({
+    example: false,
+    default: false,
+    description: 'Cho phép KOL tạo link tiếp thị liên kết cho sản phẩm',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isAffiliateEnabled?: boolean;
 }
