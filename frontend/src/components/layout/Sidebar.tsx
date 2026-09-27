@@ -133,7 +133,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
 
       <div className="p-4 pb-3 border-b border-[#EAE4D7]/80 flex flex-col gap-2.5">
         <div className="flex items-center gap-3">
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white font-black text-lg flex items-center justify-center shadow-xs">
+          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#EBD08C] to-[#DEC07A] text-[#231D15] font-black text-lg flex items-center justify-center shadow-xs">
             S
           </span>
           <div className="flex flex-col">
@@ -148,14 +148,14 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
 
         <Link
           to="/marketplace"
-          className="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-[#8A662C] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F5E7CC] transition shadow-2xs group"
+          className="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] hover:bg-[#ECE1CD] transition shadow-2xs group"
           title="Mở Sàn Tiếp Thị Đa Gian Hàng Công Khai"
         >
           <span className="flex items-center gap-2">
             <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
             <span>Sàn Mua Sắm Chính</span>
           </span>
-          <ExternalLink className="w-3 h-3 text-[#A49B8B] group-hover:text-[#B88E4F] transition" />
+          <ExternalLink className="w-3 h-3 text-[#7D715E] group-hover:text-[#B88E4F] transition" />
         </Link>
       </div>
 
@@ -174,15 +174,15 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
               to={item.path}
               className={`group flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs sm:text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-offset-1 ${
                 active
-                  ? 'bg-[#B88E4F] text-white shadow-xs font-bold'
-                  : 'text-[#4A3E2D] hover:bg-[#EAE4D7]/70 hover:text-[#1A1612]'
+                  ? 'bg-[#EBD08C] text-white shadow-xs font-bold'
+                  : 'text-[#1A1612] hover:bg-[#EAE4D7]/70 hover:text-[#1A1612]'
               }`}
             >
               <span
                 className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border transition-all duration-200 ${
                   active
                     ? 'border-white/25 bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
-                    : 'border-[#E4D3B7] bg-[#FBF5EB] text-[#8A662C] group-hover:border-[#C59B58] group-hover:bg-[#F5E7CC] group-hover:text-[#6F4E1D]'
+                    : 'border-[#EAE4D7] bg-[#FBF5EB] text-[#B88E4F] group-hover:border-[#C59B58] group-hover:bg-[#ECE1CD] group-hover:text-[#B88E4F]'
                 }`}
                 aria-hidden="true"
               >
@@ -210,7 +210,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
             <WorkspaceSwitcher variant="sidebar" />
 
             <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-[#EAE4D7] shadow-2xs">
-              <span className="w-8 h-8 rounded-lg bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#E4D3B7]">
+              <span className="w-8 h-8 rounded-lg bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#EAE4D7]">
                 {currentUser.fullName?.[0]?.toUpperCase() || 'U'}
               </span>
               <div className="min-w-0 flex-1">
@@ -235,7 +235,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         ) : (
           <Link
             to="/login"
-            className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-[#C59B58] text-white hover:bg-[#B88E4F] transition cursor-pointer text-center w-full shadow-2xs"
+            className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-[#EBD08C] text-white hover:bg-[#DEC07A] transition cursor-pointer text-center w-full shadow-2xs"
           >
             <LogIn className="w-3.5 h-3.5 shrink-0" />
             <span>Đăng nhập</span>

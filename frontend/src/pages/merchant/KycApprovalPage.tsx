@@ -147,7 +147,7 @@ export default function KycApprovalPage() {
       createdAt: new Date(p.createdAt || Date.now()).toLocaleDateString('vi-VN'),
       status: isVerified ? 'active' : isRejected ? 'rejected' : 'pending',
       avatar: fullName[0]?.toUpperCase() || 'K',
-      avatarBg: isVerified ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]' : isRejected ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800',
+      avatarBg: isVerified ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]' : isRejected ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800',
       idCardNumber: p.idCardNumber || 'Chưa cung cấp',
       taxCode: p.taxCode || 'Chưa nộp',
       bankName: p.bankName || 'Chưa cung cấp',
@@ -228,7 +228,7 @@ export default function KycApprovalPage() {
           className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center gap-2 border ${
             toastMsg.type === 'error'
               ? 'bg-rose-950 text-rose-200 border-rose-800'
-              : 'bg-[#231D15] text-[#F3EFE6] border-[#B88E4F]'
+              : 'bg-[#1A1612] text-[#F3EFE6] border-[#B88E4F]'
           }`}
         >
           {toastMsg.type === 'error' ? (
@@ -265,7 +265,7 @@ export default function KycApprovalPage() {
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#B88E4F] animate-pulse"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#EBD08C] animate-pulse"></span>
             <span className="text-xs font-bold uppercase tracking-wider text-[#B88E4F]">
               Cổng Quản Trị Thẩm Định Đa Cấp (Two-Tier Compliance)
             </span>
@@ -525,7 +525,7 @@ export default function KycApprovalPage() {
                     <tr key={s.id} className="hover:bg-[#FAF8F5]/60 transition-colors">
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0">
                             {s.name.charAt(0)}
                           </div>
                           <div>

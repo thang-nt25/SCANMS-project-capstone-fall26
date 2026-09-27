@@ -566,6 +566,7 @@ export class ProductsService {
         originalPrice: dto.originalPrice || null,
         customCommissionRate: dto.customCommissionRate || null,
         stockQuantity: dto.stockQuantity || 0,
+        isAffiliateEnabled: dto.isAffiliateEnabled ?? false,
       },
     });
 
@@ -644,6 +645,9 @@ export class ProductsService {
           stockQuantity: dto.stockQuantity,
         }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        ...(dto.isAffiliateEnabled !== undefined && {
+          isAffiliateEnabled: dto.isAffiliateEnabled,
+        }),
       },
     });
 

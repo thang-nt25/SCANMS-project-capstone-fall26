@@ -96,7 +96,7 @@ export class ReferralLinksService {
       this.configService.get<string>('PUBLIC_APP_URL') ||
       this.configService.get<string>('FRONTEND_URL') ||
       'http://localhost:5173'
-    );
+    ).replace(/\/+$/, '');
   }
 
   /**
@@ -109,68 +109,61 @@ export class ReferralLinksService {
    */
   async getEligibleProducts(
     collaboratorId: string,
-    query: { search?: string; storeId?: string },
+    query: { search?: string; storeId?: string; page?: number; limit?: number },
   ) {
-    // 1. Tìm các Store ID mà KOL đã được Shop duyệt chính thức
-    const approvedStoreRelations = await this.prisma.storeCollaborator.findMany(
-      {
-        where: {
-          collaboratorId,
-          status: StoreCollaboratorStatus.APPROVED,
-        },
-        select: { storeId: true },
-      },
-    );
-    const eligibleStoreIds = new Set<string>(
-      approvedStoreRelations.map((r) => r.storeId),
-    );
-
-    // 2. Tìm các Store ID mà KOL đã tham gia chiến dịch còn hiệu lực
-    const now = new Date();
-    const acceptedCampaigns = await this.prisma.campaignParticipant.findMany({
-      where: {
-        collaboratorId,
-        status: CampaignParticipantStatus.ACCEPTED,
-        campaign: {
-          isActive: true,
-          endDate: { gte: now },
-        },
-      },
-      select: {
-        campaign: { select: { storeId: true } },
-      },
+    const collaborator = await this.prisma.user.findUnique({
+      where: { id: collaboratorId },
+      include: { collaboratorProfile: { select: { kycStatus: true } } },
     });
-    for (const c of acceptedCampaigns) {
-      if (c.campaign?.storeId) {
-        eligibleStoreIds.add(c.campaign.storeId);
-      }
-    }
-
-    if (eligibleStoreIds.size === 0) {
+    if (
+      !collaborator ||
+      collaborator.role !== UserRole.COLLABORATOR ||
+      !collaborator.isActive ||
+      collaborator.deletedAt ||
+      collaborator.collaboratorProfile?.kycStatus !== 'VERIFIED'
+    ) {
       return [];
     }
 
-    const storeIdsArray = Array.from(eligibleStoreIds);
-
+    const page = Number.isInteger(query.page) && Number(query.page) > 0 ? Number(query.page) : 1;
+    const limit = Number.isInteger(query.limit)
+      ? Math.min(Math.max(Number(query.limit), 1), 100)
+      : 100;
+    const filters: Prisma.ProductWhereInput[] = [
+      {
+        OR: [
+          { customCommissionRate: { gt: 0 } },
+          {
+            AND: [
+              { customCommissionRate: null },
+              { store: { defaultCommissionRate: { gt: 0 } } },
+            ],
+          },
+        ],
+      },
+    ];
     const where: Prisma.ProductWhereInput = {
       isActive: true,
       isAffiliateEnabled: true,
       deletedAt: null,
       store: {
         deletedAt: null,
+        isDeleted: false,
+        isActive: true,
       },
-      storeId: query.storeId
-        ? { in: storeIdsArray.filter((id) => id === query.storeId) }
-        : { in: storeIdsArray },
+      ...(query.storeId ? { storeId: query.storeId } : {}),
+      AND: filters,
     };
 
     if (query.search && query.search.trim()) {
       const s = query.search.trim();
-      where.OR = [
-        { title: { contains: s, mode: 'insensitive' } },
-        { categoryName: { contains: s, mode: 'insensitive' } },
-        { sku: { contains: s, mode: 'insensitive' } },
-      ];
+      filters.push({
+        OR: [
+          { title: { contains: s, mode: 'insensitive' } },
+          { categoryName: { contains: s, mode: 'insensitive' } },
+          { sku: { contains: s, mode: 'insensitive' } },
+        ],
+      });
     }
 
     const products = await this.prisma.product.findMany({
@@ -194,8 +187,9 @@ export class ReferralLinksService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
     return products
@@ -209,8 +203,7 @@ export class ReferralLinksService {
           estimatedCommissionRate: estimatedRate,
           estimatedCommissionAmount: (Number(p.price) * estimatedRate) / 100,
         };
-      })
-      .filter((p) => p.estimatedCommissionRate > 0);
+      });
   }
 
   /**
@@ -259,6 +252,12 @@ export class ReferralLinksService {
       );
     }
 
+    if (collaborator.collaboratorProfile?.kycStatus !== 'VERIFIED') {
+      throw new ForbiddenException(
+        'KOL cần xác thực KYC trước khi tạo link tiếp thị.',
+      );
+    }
+
     // 2.3 Kiểm tra sản phẩm và Cửa hàng
     const product = await this.prisma.product.findUnique({
       where: { id: dto.productId },
@@ -273,7 +272,12 @@ export class ReferralLinksService {
       throw new BadRequestException('Sản phẩm hiện đang tạm ngừng kinh doanh.');
     }
 
-    if (!product.store || product.store.deletedAt) {
+    if (
+      !product.store ||
+      product.store.deletedAt ||
+      product.store.isDeleted ||
+      !product.store.isActive
+    ) {
       throw new BadRequestException(
         'Cửa hàng sở hữu sản phẩm này không còn hoạt động.',
       );
@@ -297,11 +301,45 @@ export class ReferralLinksService {
       );
     }
 
-    // 2.4 Kiểm tra chiến dịch và quan hệ KOL–Shop chính thức
+    if (dto.campaignId && dto.exclusiveDealId) {
+      throw new BadRequestException(
+        'Một link không thể đồng thời thuộc chiến dịch và Exclusive Deal.',
+      );
+    }
+
+    // 2.4 Phân luồng Open Offer, chiến dịch hiện hữu và Exclusive Deal.
     let validatedCampaign: any = null;
+    let validatedExclusiveDeal: any = null;
     const now = new Date();
 
-    if (dto.campaignId) {
+    if (dto.exclusiveDealId) {
+      const deal = await this.prisma.exclusiveDealProposal.findUnique({
+        where: { id: dto.exclusiveDealId },
+      });
+      if (
+        !deal ||
+        deal.status !== 'APPROVED' ||
+        deal.collaboratorId !== collaboratorId ||
+        deal.storeId !== product.storeId ||
+        deal.productId !== product.id
+      ) {
+        throw new ForbiddenException(
+          'Deal chưa được Shop duyệt hoặc không thuộc đúng KOL/sản phẩm này.',
+        );
+      }
+      if (deal.approvedCommissionRate === null) {
+        throw new BadRequestException(
+          'Deal đã duyệt nhưng chưa có mức VIP được chốt.',
+        );
+      }
+      const existingDealLink = await this.prisma.referralLink.findFirst({
+        where: { exclusiveDealId: deal.id, deletedAt: null },
+      });
+      if (existingDealLink) {
+        throw new BadRequestException('Deal này đã có link tiếp thị VIP.');
+      }
+      validatedExclusiveDeal = deal;
+    } else if (dto.campaignId) {
       const campaign = await this.prisma.campaign.findUnique({
         where: { id: dto.campaignId },
       });
@@ -392,30 +430,7 @@ export class ReferralLinksService {
 
       validatedCampaign = campaign;
     } else {
-      // Khi không có campaignId: Kiểm tra quan hệ chính thức giữa KOL và Shop (StoreCollaborator: APPROVED)
-      const officialCollab = await this.prisma.storeCollaborator.findFirst({
-        where: {
-          storeId: product.storeId,
-          collaboratorId,
-          status: StoreCollaboratorStatus.APPROVED,
-        },
-      });
-
-      const hasAcceptedCampaign =
-        await this.prisma.campaignParticipant.findFirst({
-          where: {
-            collaboratorId,
-            campaign: { storeId: product.storeId, isActive: true },
-            status: CampaignParticipantStatus.ACCEPTED,
-          },
-        });
-
-      if (!officialCollab && !hasAcceptedCampaign) {
-        throw new ForbiddenException(
-          'KOL chưa được Cửa hàng duyệt làm cộng tác viên chính thức hoặc chưa có chiến dịch hợp lệ (403 Forbidden).',
-        );
-      }
-
+      // Open Offer: KOL đã KYC có thể lấy ngay mức hoa hồng công khai.
       if (dto.expiresAt && new Date(dto.expiresAt) <= now) {
         throw new BadRequestException(
           'Thời hạn hết hạn của liên kết (expiresAt) phải nằm trong tương lai.',
@@ -494,6 +509,7 @@ export class ReferralLinksService {
               storeId: product.storeId,
               productId: product.id,
               campaignId: validatedCampaign?.id ?? null,
+              exclusiveDealId: validatedExclusiveDeal?.id ?? null,
               shortCode,
               label: sanitizeUtmString(dto.label, 150),
               channel: dto.channel,
@@ -658,6 +674,7 @@ export class ReferralLinksService {
               },
             },
           },
+          exclusiveDeal: true,
           store: {
             select: {
               id: true,
@@ -677,7 +694,10 @@ export class ReferralLinksService {
       const effectiveStatus = computeEffectiveStatus(item);
 
       const commissionRate =
-        item.product.customCommissionRate !== null
+        item.exclusiveDeal?.approvedCommissionRate !== null &&
+        item.exclusiveDeal?.approvedCommissionRate !== undefined
+          ? Number(item.exclusiveDeal.approvedCommissionRate)
+          : item.product.customCommissionRate !== null
           ? Number(item.product.customCommissionRate)
           : Number(item.product.store.defaultCommissionRate);
 
@@ -727,6 +747,7 @@ export class ReferralLinksService {
             },
           },
         },
+        exclusiveDeal: true,
         store: {
           select: {
             id: true,
@@ -748,6 +769,13 @@ export class ReferralLinksService {
       ...link,
       status: effectiveStatus,
       shortUrl: `${publicAppUrl}/r/${link.shortCode}`,
+      commissionRate:
+        link.exclusiveDeal?.approvedCommissionRate !== null &&
+        link.exclusiveDeal?.approvedCommissionRate !== undefined
+          ? Number(link.exclusiveDeal.approvedCommissionRate)
+          : link.product.customCommissionRate !== null
+            ? Number(link.product.customCommissionRate)
+            : Number(link.product.store.defaultCommissionRate),
     };
   }
 
@@ -994,6 +1022,18 @@ export class ReferralLinksService {
               title: true,
               price: true,
               imageUrl: true,
+              customCommissionRate: true,
+              store: {
+                select: { defaultCommissionRate: true },
+              },
+            },
+          },
+          exclusiveDeal: {
+            select: {
+              id: true,
+              status: true,
+              proposedCommissionRate: true,
+              approvedCommissionRate: true,
             },
           },
         },
@@ -1008,6 +1048,19 @@ export class ReferralLinksService {
       data: items.map((item) => ({
         ...item,
         shortUrl: `${publicAppUrl}/r/${item.shortCode}`,
+        commissionType: item.exclusiveDealId
+          ? 'EXCLUSIVE_DEAL'
+          : item.campaignId
+            ? 'CAMPAIGN'
+            : 'OPEN_OFFER',
+        commissionRate: item.campaignId
+          ? null
+          : item.exclusiveDeal?.status === 'APPROVED' &&
+              item.exclusiveDeal.approvedCommissionRate !== null
+            ? Number(item.exclusiveDeal.approvedCommissionRate)
+            : item.product.customCommissionRate !== null
+              ? Number(item.product.customCommissionRate)
+              : Number(item.product.store.defaultCommissionRate),
       })),
       meta: {
         total,
@@ -2287,6 +2340,7 @@ export class ReferralLinksService {
         product: true,
         store: true,
         campaign: true,
+        exclusiveDeal: true,
       },
     });
 
@@ -2332,12 +2386,16 @@ export class ReferralLinksService {
 
     // Tính tỷ lệ hoa hồng snapshot
     let commissionRate =
-      link.product.customCommissionRate !== null
+      link.exclusiveDeal?.status === 'APPROVED' &&
+      link.exclusiveDeal.approvedCommissionRate !== null
+        ? Number(link.exclusiveDeal.approvedCommissionRate)
+        : link.product.customCommissionRate !== null
         ? Number(link.product.customCommissionRate)
         : Number(link.store.defaultCommissionRate);
 
     // Cộng thưởng chiến dịch nếu chiến dịch còn hiệu lực
     if (
+      !link.exclusiveDeal &&
       link.campaign &&
       link.campaign.isActive &&
       new Date(link.campaign.endDate) >= new Date()
@@ -2791,6 +2849,8 @@ export class ReferralLinksService {
       CronExpression.EVERY_DAY_AT_MIDNIGHT,
   )
   async handleScheduledDataRetentionCleanup() {
+    if (process.env.DISABLE_SCHEDULED_JOBS === 'true') return;
+
     const rawDays =
       process.env.TRACKING_DATA_RETENTION_DAYS ||
       (this.configService

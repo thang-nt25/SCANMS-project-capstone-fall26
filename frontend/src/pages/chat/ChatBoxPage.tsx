@@ -184,6 +184,82 @@ function tryParseCampaignCard(text: string) {
   return null;
 }
 
+function tryParseExclusiveDealCard(text: string) {
+  try {
+    const obj = JSON.parse(text);
+    if (['EXCLUSIVE_DEAL_PROPOSAL', 'EXCLUSIVE_DEAL_DECISION'].includes(obj.type)) return obj;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function ExclusiveDealCardBubble({ card, isMine, isShop }: { card: any; isMine: boolean; isShop: boolean }) {
+  const [loading, setLoading] = useState(false);
+  const [decision, setDecision] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState<string | null>(card.shortUrl || null);
+  const [error, setError] = useState<string | null>(null);
+
+  const decide = async (approve: boolean) => {
+    if (!card.proposalId || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response: any = await api.patch(
+        `/affiliate-deals/${card.proposalId}/${approve ? 'approve' : 'reject'}`,
+        approve ? {} : { reason: '' },
+      );
+      const result = response?.data?.data || response?.data || response;
+      setDecision(approve ? 'APPROVED' : 'REJECTED');
+      if (result?.shortUrl) setLinkUrl(result.shortUrl);
+      toast.success(approve ? 'Đã duyệt deal và tạo link VIP.' : 'Đã từ chối đề xuất deal.');
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Không thể xử lý đề xuất lúc này.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const status = decision || card.status;
+  const isDecisionCard = card.type === 'EXCLUSIVE_DEAL_DECISION';
+  const isApproved = status === 'APPROVED';
+  const isRejected = status === 'REJECTED';
+
+  return (
+    <div className="max-w-sm space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-[#1A1612] shadow-xs">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#B88E4F]"><Sparkles className="h-3.5 w-3.5" /> EXCLUSIVE DEAL</span>
+        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${isApproved ? 'bg-white text-[#B88E4F]' : isRejected ? 'bg-rose-50 text-rose-700' : 'bg-[#F3EFE6] text-[#7D715E]'}`}>
+          {isApproved ? 'Đã duyệt' : isRejected ? 'Đã từ chối' : 'Chờ Shop duyệt'}
+        </span>
+      </div>
+      <div>
+        <div className="text-sm font-extrabold">{card.productTitle || 'Sản phẩm'}</div>
+        {card.storeName && <div className="mt-0.5 text-[11px] text-[#7D715E]">Shop: {card.storeName}</div>}
+      </div>
+      {card.publicCommissionRate !== undefined && (
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5">Open Offer<strong className="mt-1 block text-sm">{card.publicCommissionRate}%</strong></div>
+          <div className="rounded-lg border border-[#EEDFC6] bg-white p-2.5">Mức VIP đề xuất<strong className="mt-1 block text-sm text-[#B88E4F]">{card.approvedCommissionRate ?? card.proposedCommissionRate}%</strong></div>
+        </div>
+      )}
+      {card.salesCommitment && <div className="rounded-lg border border-[#EAE4D7] bg-white p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-[#7D715E]">Cam kết doanh số</div><p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed">{card.salesCommitment}</p></div>}
+      {card.shopResponse && <div className="text-xs text-[#7D715E]">Phản hồi Shop: {card.shopResponse}</div>}
+      {error && <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">{error}</div>}
+      {isApproved && linkUrl && <a href={linkUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 break-all text-xs font-bold text-[#B88E4F] underline"><ExternalLink className="h-3.5 w-3.5 shrink-0" /> Mở link VIP</a>}
+      {!isDecisionCard && status === 'PENDING' && isShop && !isMine && (
+        <div className="flex gap-2">
+          <button type="button" disabled={loading} onClick={() => void decide(false)} className="flex-1 rounded-lg border border-[#EAE4D7] bg-white px-2 py-2 text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] disabled:opacity-50">Từ chối</button>
+          <button type="button" disabled={loading} onClick={() => void decide(true)} className="flex-1 rounded-lg bg-[#C59B58] px-2 py-2 text-xs font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50">{loading ? 'Đang xử lý...' : 'Duyệt & tạo link'}</button>
+        </div>
+      )}
+      {!isDecisionCard && status === 'PENDING' && isMine && <div className="text-center text-[11px] font-semibold text-[#7D715E]">Đã gửi Shop · Đang chờ phản hồi</div>}
+      {isDecisionCard && isApproved && <div className="text-[11px] text-[#7D715E]">Shop đã chốt mức VIP. Link riêng đã được cấp cho KOL.</div>}
+      {isDecisionCard && isRejected && <div className="text-[11px] text-[#7D715E]">Shop đã phản hồi đề xuất này.</div>}
+    </div>
+  );
+}
+
 
 function CampaignCardBubble({
   card,
@@ -403,17 +479,17 @@ function ProductInquiryCardBubble({
     <div
       className={`max-w-sm rounded-2xl border p-3.5 space-y-3 shadow-xs ${
         isMine
-          ? 'bg-[#FAF8F5] border-[#EEDFC6] text-[#1A1612]'
+          ? 'bg-[#FAF8F5] border-[#EAE4D7] text-[#1A1612]'
           : 'bg-white border-[#EAE4D7] text-[#1A1612]'
       }`}
     >
       <div className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
           <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
           <span>Trao đổi về Sản Phẩm</span>
         </span>
         {card.commissionRate && (
-          <span className="text-[11px] font-extrabold text-[#059669] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+          <span className="text-[11px] font-extrabold text-[#B88E4F] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
             Hoa hồng: {card.commissionRate}%
           </span>
         )}
@@ -461,7 +537,7 @@ function ProductInquiryCardBubble({
           href={`/products/${card.productSku || card.productId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:text-[#A67D3E] hover:underline"
+          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:text-[#B88E4F] hover:underline"
         >
           <span>Xem chi tiết trên Sàn</span>
           <ExternalLink className="w-3 h-3" />
@@ -1152,11 +1228,13 @@ export default function ChatBoxPage({
                     >
                       {lastMsg
                         ? lastMsg.messageText.startsWith('{')
-                          ? lastMsg.messageText.includes('PRODUCT_INQUIRY')
-                            ? '🛍️ [Trao đổi về sản phẩm]'
-                            : lastMsg.messageText.includes('CAMPAIGN_')
-                            ? '👑 [Chiến dịch hợp tác VIP]'
-                            : '💬 [Tin nhắn đính kèm]'
+                          ? lastMsg.messageText.includes('EXCLUSIVE_DEAL_')
+                            ? '🤝 [Đề xuất Exclusive Deal]'
+                            : lastMsg.messageText.includes('PRODUCT_INQUIRY')
+                              ? '🛍️ [Trao đổi về sản phẩm]'
+                              : lastMsg.messageText.includes('CAMPAIGN_')
+                                ? '👑 [Chiến dịch hợp tác VIP]'
+                                : '💬 [Tin nhắn đính kèm]'
                           : lastMsg.messageText
                         : 'Bắt đầu cuộc trò chuyện...'}
                     </span>
@@ -1218,7 +1296,7 @@ export default function ChatBoxPage({
               {isShop && (
                 <button
                   id="btn-open-vip-invite"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer border border-[#EEDFC6]"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer border border-[#EAE4D7]"
                   onClick={() => setShowVipModal(true)}
                   title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
                 >
@@ -1293,6 +1371,11 @@ export default function ChatBoxPage({
                         )}
 
                         {(() => {
+                          const exclusiveDealCard = tryParseExclusiveDealCard(msg.messageText);
+                          if (exclusiveDealCard) {
+                            return <ExclusiveDealCardBubble card={exclusiveDealCard} isMine={isMine} isShop={isShop} />;
+                          }
+
                           const inquiryCard = tryParseProductInquiryCard(msg.messageText);
                           if (inquiryCard) {
                             return <ProductInquiryCardBubble card={inquiryCard} isMine={isMine} />;
@@ -1364,7 +1447,7 @@ export default function ChatBoxPage({
             <div className="bg-white border-t border-stone-200 shadow-xs">
               {/* PINNED PRODUCT INQUIRY BANNER */}
               {pinnedProduct && (
-                <div className="mx-4 mt-3 p-3 bg-gradient-to-r from-[#FBF5EB] to-[#FAF8F5] border border-[#EEDFC6] rounded-2xl shadow-2xs">
+                <div className="mx-4 mt-3 p-3 bg-gradient-to-r from-[#FBF5EB] to-[#FAF8F5] border border-[#EAE4D7] rounded-2xl shadow-2xs">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
                       {pinnedProduct.image ? (
@@ -1380,11 +1463,11 @@ export default function ChatBoxPage({
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-[#B88E4F] bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                          <span className="text-[10px] font-bold text-[#B88E4F] bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#EAE4D7]">
                             Đang đính kèm sản phẩm
                           </span>
                           {pinnedProduct.commissionRate && (
-                            <span className="text-[10.5px] font-extrabold text-[#059669]">
+                            <span className="text-[10.5px] font-extrabold text-[#B88E4F]">
                               Hoa hồng: {pinnedProduct.commissionRate}%
                             </span>
                           )}
@@ -1411,7 +1494,7 @@ export default function ChatBoxPage({
                   </div>
 
                   {/* Quick question chips */}
-                  <div className="mt-2.5 pt-2 border-t border-[#EEDFC6]/60 flex flex-wrap gap-1.5 items-center">
+                  <div className="mt-2.5 pt-2 border-t border-[#EAE4D7]/60 flex flex-wrap gap-1.5 items-center">
                     <span className="text-[10.5px] font-bold text-[#7D715E] flex items-center gap-1 mr-1">
                       <Sparkles className="w-3 h-3 text-[#B88E4F]" /> Gợi ý nhanh:
                     </span>

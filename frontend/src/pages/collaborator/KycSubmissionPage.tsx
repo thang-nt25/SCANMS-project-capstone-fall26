@@ -222,7 +222,7 @@ export default function KycSubmissionPage() {
           className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center gap-2 border ${
             toastMsg.type === 'error'
               ? 'bg-rose-950 text-rose-200 border-rose-800'
-              : 'bg-[#231D15] text-[#F3EFE6] border-[#B88E4F]'
+              : 'bg-[#1A1612] text-[#F3EFE6] border-[#B88E4F]'
           }`}
         >
           {toastMsg.type === 'error' ? (
@@ -240,7 +240,7 @@ export default function KycSubmissionPage() {
             Hồ Sơ Định Danh & Năng Lực KOL (KYC)
           </h1>
           {isVerified && (
-            <span className="inline-flex items-center gap-1 bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-xs font-black px-2.5 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1 bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] text-xs font-black px-2.5 py-1 rounded-full">
               <CheckCircle2 className="w-3.5 h-3.5 text-[#B88E4F]" /> TÍCH XANH CHÍNH THỨC
             </span>
           )}
@@ -254,7 +254,7 @@ export default function KycSubmissionPage() {
       <Card
         className={`p-5 sm:p-6 border transition rounded-2xl ${
           isVerified
-            ? 'bg-[#FBF5EB] border-[#EEDFC6]'
+            ? 'bg-[#FBF5EB] border-[#EAE4D7]'
             : isRejected
             ? 'bg-rose-50 border-rose-200'
             : isPending
@@ -266,7 +266,7 @@ export default function KycSubmissionPage() {
           <div
             className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
               isVerified
-                ? 'bg-[#EEDFC6] text-[#B88E4F]'
+                ? 'bg-[#EAE4D7] text-[#B88E4F]'
                 : isRejected
                 ? 'bg-rose-100 text-rose-700'
                 : 'bg-amber-100 text-amber-700'
@@ -350,7 +350,7 @@ export default function KycSubmissionPage() {
 
         {/* Form thêm kênh */}
         {showAddChannel && (
-          <form onSubmit={handleAddChannel} className="mt-4 p-4 bg-[#FAF8F5] border border-[#EEDFC6] rounded-xl flex flex-col gap-3">
+          <form onSubmit={handleAddChannel} className="mt-4 p-4 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl flex flex-col gap-3">
             <h3 className="text-xs font-bold text-[#1A1612] uppercase tracking-wider m-0">
               Thêm Kênh Mạng Xã Hội Mới
             </h3>
@@ -470,7 +470,7 @@ export default function KycSubmissionPage() {
                           {c.channelName || c.platformName}
                         </span>
                         {c.isPrimary && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] px-1.5 py-0.2 rounded-full shrink-0">
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] px-1.5 py-0.2 rounded-full shrink-0">
                             <Star className="w-2.5 h-2.5 fill-[#B88E4F]" /> Kênh chính
                           </span>
                         )}

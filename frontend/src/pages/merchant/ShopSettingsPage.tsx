@@ -147,7 +147,7 @@ export default function ShopSettingsPage() {
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto text-left">
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 bg-[#231D15] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2">
+        <div className="fixed top-5 right-5 z-50 bg-[#1A1612] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
           <span>{toastMsg}</span>
         </div>
@@ -213,7 +213,7 @@ export default function ShopSettingsPage() {
                       >
                         <img src={p.url} alt={p.label} className="w-7 h-7 rounded-md object-cover" />
                         {isSelected && (
-                          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#059669] text-white flex items-center justify-center">
+                          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#15803d] text-white flex items-center justify-center">
                             <Check className="w-2.5 h-2.5" />
                           </div>
                         )}

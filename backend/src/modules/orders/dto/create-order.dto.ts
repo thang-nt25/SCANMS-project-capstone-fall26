@@ -18,6 +18,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export enum PaymentMethod {
   COD = 'COD',
   VIETQR = 'VIETQR',
+  PAYOS = 'PAYOS',
 }
 
 export class OrderItemInputDto {
@@ -114,6 +115,12 @@ export class CreateOrderDto {
   couponCode?: string;
 
   @ApiPropertyOptional({
+    description: 'Bản đồ coupon theo từng gian hàng trong đơn đa Shop { [storeId]: couponCode }',
+  })
+  @IsOptional()
+  couponsByStore?: Record<string, string>;
+
+  @ApiPropertyOptional({
     description: 'Mã tracking rút gọn từ link tiếp thị (VD: anc-pro-thang)',
   })
   @IsOptional()
@@ -121,7 +128,7 @@ export class CreateOrderDto {
   cookieRefCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Phương thức thanh toán (COD hoặc VIETQR)',
+    description: 'Phương thức thanh toán (COD, VIETQR hoặc PAYOS)',
     enum: PaymentMethod,
     example: PaymentMethod.COD,
     default: PaymentMethod.COD,
@@ -129,7 +136,7 @@ export class CreateOrderDto {
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
   @IsEnum(PaymentMethod, {
-    message: 'Phương thức thanh toán phải là COD hoặc VIETQR',
+    message: 'Phương thức thanh toán phải là COD, VIETQR hoặc PAYOS',
   })
   paymentMethod?: PaymentMethod;
 

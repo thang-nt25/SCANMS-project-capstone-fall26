@@ -98,23 +98,28 @@ export class CheckoutService {
           !session.referralLink.deletedAt &&
           session.referralLink.status === 'ACTIVE'
         ) {
-          const verification =
-            await this.referralLinksService.verifyAttributionForOrder({
-              shortCode: session.referralLink.shortCode,
-              storeId: dto.storeId,
-              productId: dto.items[0]?.productId,
-            });
+          const linkedProduct = dto.items.find(
+            (item) => item.productId === session.referralLink!.productId,
+          );
+          if (linkedProduct) {
+            const verification =
+              await this.referralLinksService.verifyAttributionForOrder({
+                shortCode: session.referralLink.shortCode,
+                storeId: dto.storeId,
+                productId: linkedProduct.productId,
+              });
 
-          if (verification.isValid) {
-            attributionResult = {
-              isValid: true,
-              collaboratorId: verification.collaboratorId,
-              referralLinkId: verification.referralLinkId,
-              appliedCommissionRate: verification.appliedCommissionRate,
-              calculatedCommissionAmount:
-                verification.calculatedCommissionAmount,
-              attributedProductId: dto.items[0]?.productId,
-            };
+            if (verification.isValid) {
+              attributionResult = {
+                isValid: true,
+                collaboratorId: verification.collaboratorId,
+                referralLinkId: verification.referralLinkId,
+                appliedCommissionRate: verification.appliedCommissionRate,
+                calculatedCommissionAmount:
+                  verification.calculatedCommissionAmount,
+                attributedProductId: linkedProduct.productId,
+              };
+            }
           }
         }
       }

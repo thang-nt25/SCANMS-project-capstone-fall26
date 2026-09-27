@@ -43,7 +43,7 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
             {/* Gradient Vàng Hoàng Kim Độc Quyền ScanMS */}
             <linearGradient id="scanms-vn-gold" x1="15%" y1="10%" x2="85%" y2="90%">
               <stop offset="0%" stopColor="#FFF4C2" />
-              <stop offset="30%" stopColor="#ECC272" />
+              <stop offset="30%" stopColor="#DEBE85" />
               <stop offset="70%" stopColor="#C59B58" />
               <stop offset="100%" stopColor="#966D2E" />
             </linearGradient>
@@ -56,8 +56,8 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
 
             <linearGradient id="star-gold" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#FFFFFF" />
-              <stop offset="50%" stopColor="#FDE68A" />
-              <stop offset="100%" stopColor="#D97706" />
+              <stop offset="50%" stopColor="#C59B58" />
+              <stop offset="100%" stopColor="#B88E4F" />
             </linearGradient>
 
             <radialGradient id="sea-ambient" cx="72%" cy="52%" r="55%">
@@ -140,7 +140,7 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
                 stroke="url(#scanms-stroke-gold)"
                 strokeWidth="0.25"
               />
-              <circle cx="25.8" cy="48.2" r="0.25" fill="#FDE68A" />
+              <circle cx="25.8" cy="48.2" r="0.25" fill="#C59B58" />
             </g>
           </g>
 
@@ -153,9 +153,9 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
             />
             <circle cx="0" cy="0" r="0.9" fill="#FFFFFF" />
             {/* Các đảo thuộc quần đảo Hoàng Sa */}
-            <circle cx="-1.8" cy="-1.5" r="0.7" fill="#FDE68A" />
-            <circle cx="2.2" cy="1.8" r="0.6" fill="#FDE68A" />
-            <circle cx="2.5" cy="-1.0" r="0.6" fill="#FDE68A" />
+            <circle cx="-1.8" cy="-1.5" r="0.7" fill="#C59B58" />
+            <circle cx="2.2" cy="1.8" r="0.6" fill="#C59B58" />
+            <circle cx="2.5" cy="-1.0" r="0.6" fill="#C59B58" />
           </g>
 
           {/* QUẦN ĐẢO TRƯỜNG SA (Cụm sao đảo biển Đông - Nam Bộ) */}
@@ -167,24 +167,24 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
             />
             <circle cx="0" cy="0" r="1.0" fill="#FFFFFF" />
             {/* Các đảo thuộc quần đảo Trường Sa */}
-            <circle cx="-2.5" cy="-2.0" r="0.7" fill="#FDE68A" />
-            <circle cx="-2.0" cy="2.2" r="0.7" fill="#FDE68A" />
-            <circle cx="2.2" cy="-1.5" r="0.6" fill="#FDE68A" />
-            <circle cx="3.0" cy="2.5" r="0.6" fill="#FDE68A" />
-            <circle cx="1.0" cy="3.5" r="0.6" fill="#FDE68A" />
+            <circle cx="-2.5" cy="-2.0" r="0.7" fill="#C59B58" />
+            <circle cx="-2.0" cy="2.2" r="0.7" fill="#C59B58" />
+            <circle cx="2.2" cy="-1.5" r="0.6" fill="#C59B58" />
+            <circle cx="3.0" cy="2.5" r="0.6" fill="#C59B58" />
+            <circle cx="1.0" cy="3.5" r="0.6" fill="#C59B58" />
           </g>
 
           {/* Tia sóng kết nối chủ quyền biển đảo về đất liền */}
           <path
             d="M 23 27 Q 28 25, 31 24"
-            stroke="#ECC272"
+            stroke="#DEBE85"
             strokeWidth="0.7"
             strokeDasharray="1.5 1.5"
             strokeOpacity="0.85"
           />
           <path
             d="M 24 38 Q 32 40, 39 42"
-            stroke="#ECC272"
+            stroke="#DEBE85"
             strokeWidth="0.7"
             strokeDasharray="1.5 1.5"
             strokeOpacity="0.85"
@@ -203,12 +203,12 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
               Scan
             </span>
             <span
-              className={`font-black italic text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#8C6226] ml-0.5 ${iconDimensions.textMain}`}
+              className={`font-black italic text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#B88E4F] ml-0.5 ${iconDimensions.textMain}`}
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               MS
             </span>
-            <span className="text-[#C59B58] text-xs ml-1 font-serif font-bold animate-pulse">✦</span>
+            <span className="text-[#B88E4F] text-xs ml-1 font-serif font-bold animate-pulse">✦</span>
           </div>
 
           {showSubtitle && (

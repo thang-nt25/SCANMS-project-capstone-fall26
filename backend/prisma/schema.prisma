@@ -134,6 +134,12 @@ enum ReferralLinkStatus {
   EXPIRED
 }
 
+enum ExclusiveDealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum StoreCollaboratorStatus {
   PENDING
   APPROVED
@@ -207,6 +213,8 @@ model User {
   collaboratorConversations Conversation[]              @relation("CollaboratorConversations")
   sentChatMessages          ChatMessage[]               @relation("SentChatMessages")
   campaignParticipants      CampaignParticipant[]
+  exclusiveDealProposals    ExclusiveDealProposal[] @relation("ExclusiveDealCollaborator")
+  reviewedExclusiveDeals    ExclusiveDealProposal[] @relation("ExclusiveDealReviewer")
   storeCollaborations       StoreCollaborator[]         @relation("CollaboratorStoreRelations")
   monthlyBonusResults       MonthlyBonusResult[]        @relation("CollaboratorMonthlyBonusResults")
   auditLogs                 AuditLog[]
@@ -265,6 +273,7 @@ model Store {
   storeWallets     StoreWallet[]
   financialLedgers FinancialLedger[]
   payoutBatches    PayoutBatch[]
+  exclusiveDealProposals ExclusiveDealProposal[]
 
   @@index([ownerId], map: "idx_fk_stores_owner")
   @@map("stores")
@@ -381,6 +390,7 @@ model Product {
   couponProducts        CouponProduct[]
   variants              ProductVariant[]
   customerWishlists     CustomerWishlist[]
+  exclusiveDealProposals ExclusiveDealProposal[]
 
   @@index([storeId], map: "idx_fk_products_store")
   @@map("products")
@@ -554,6 +564,7 @@ model ReferralLink {
   storeId          String             @map("store_id") @db.Uuid
   productId        String             @map("product_id") @db.Uuid
   campaignId       String?            @map("campaign_id") @db.Uuid
+  exclusiveDealId  String?            @unique @map("exclusive_deal_id") @db.Uuid
   shortCode        String             @unique @map("short_code") @db.VarChar(50)
   label            String?            @db.VarChar(150)
   channel          SocialPlatform?    @map("channel")
@@ -583,6 +594,7 @@ model ReferralLink {
   store               Store                @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   product             Product              @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   campaign            Campaign?            @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  exclusiveDeal       ExclusiveDealProposal? @relation(fields: [exclusiveDealId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   clickTrafficLogs    ClickTrafficLog[]
   orders              Order[]
   orderItems          OrderItem[]
@@ -716,6 +728,36 @@ model CampaignProduct {
   @@index([campaignId], map: "idx_fk_camp_prod_campaign")
   @@index([productId], map: "idx_fk_camp_prod_product")
   @@map("campaign_products")
+}
+
+model ExclusiveDealProposal {
+  id                      String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId          String              @map("collaborator_id") @db.Uuid
+  storeId                 String              @map("store_id") @db.Uuid
+  productId               String              @map("product_id") @db.Uuid
+  conversationId          String              @map("conversation_id") @db.Uuid
+  proposedCommissionRate  Decimal             @map("proposed_commission_rate") @db.Decimal(5, 2)
+  approvedCommissionRate  Decimal?            @map("approved_commission_rate") @db.Decimal(5, 2)
+  salesCommitment         String              @map("sales_commitment") @db.VarChar(1000)
+  status                  ExclusiveDealStatus @default(PENDING)
+  shopResponse            String?             @map("shop_response") @db.VarChar(1000)
+  reviewerId              String?             @map("reviewer_id") @db.Uuid
+  reviewedAt              DateTime?           @map("reviewed_at") @db.Timestamptz(6)
+  createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  collaborator User         @relation("ExclusiveDealCollaborator", fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviewer     User?        @relation("ExclusiveDealReviewer", fields: [reviewerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  referralLink ReferralLink?
+
+  @@index([storeId, status, createdAt(sort: Desc)], map: "idx_exclusive_deal_store_status")
+  @@index([collaboratorId, status], map: "idx_exclusive_deal_collaborator_status")
+  @@index([productId], map: "idx_exclusive_deal_product")
+  @@index([conversationId], map: "idx_exclusive_deal_conversation")
+  @@map("exclusive_deal_proposals")
 }
 
 // ==========================================
@@ -1143,6 +1185,7 @@ model Conversation {
   store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   collaborator User          @relation("CollaboratorConversations", fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   chatMessages ChatMessage[]
+  exclusiveDealProposals ExclusiveDealProposal[]
 
   @@index([storeId], map: "idx_fk_conversations_store")
   @@index([collaboratorId], map: "idx_fk_conversations_collab")
