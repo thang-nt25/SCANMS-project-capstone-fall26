@@ -1,216 +1,257 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2800 2000" width="2800" height="2000" style="background:#ffffff; font-family: Arial, Helvetica, sans-serif;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2800 2000" width="2800" height="2000" style="background:#ffffff; font-family: Helvetica, Arial, sans-serif;">
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#000000" />
     </marker>
     <style>
+      .entity-box { fill: #ffffff; stroke: #000000; stroke-width: 2px; }
       .entity-title { font-size: 17px; font-weight: bold; fill: #000000; text-anchor: middle; }
-      .entity-sub { font-size: 12px; font-style: italic; fill: #000000; text-anchor: middle; }
+      .entity-sub { font-size: 12px; font-style: italic; fill: #222222; text-anchor: middle; }
+      
+      .label-card { fill: #ffffff; stroke: #666666; stroke-width: 1px; stroke-dasharray: 4,4; rx: 6px; }
+      .label-card-solid { fill: #ffffff; stroke: #000000; stroke-width: 1px; rx: 6px; }
+      
       .flow-title { font-size: 12.5px; font-weight: bold; fill: #000000; }
       .flow-item { font-size: 11.5px; fill: #000000; }
-      .sys-num { font-size: 28px; font-weight: bold; fill: #000000; text-anchor: middle; }
-      .sys-name { font-size: 22px; font-weight: bold; fill: #000000; text-anchor: middle; }
-      .sys-sub { font-size: 13.5px; fill: #000000; text-anchor: middle; }
-      .main-title { font-size: 25px; font-weight: bold; fill: #000000; text-anchor: middle; }
-      .main-sub { font-size: 13px; font-style: italic; fill: #555555; text-anchor: middle; }
+      
+      .wire { fill: none; stroke: #000000; stroke-width: 1.5px; }
+      
+      .sys-num { font-size: 34px; font-weight: bold; fill: #000000; text-anchor: middle; }
+      .sys-name { font-size: 21px; font-weight: bold; fill: #000000; text-anchor: middle; }
+      .sys-sub { font-size: 13px; font-weight: bold; fill: #000000; text-anchor: middle; }
+      .sys-feature { font-size: 11.5px; fill: #000000; }
+      
+      .main-title { font-size: 26px; font-weight: bold; fill: #000000; text-anchor: middle; }
+      .main-sub { font-size: 13.5px; font-style: italic; fill: #333333; text-anchor: middle; }
     </style>
   </defs>
 
-  <!-- TITLE -->
-  <text x="1400" y="60" class="main-title">SCANMS PLATFORM - CONTEXT DIAGRAM (DFD LEVEL 0)</text>
-  <text x="1400" y="90" class="main-sub">Sales Collaborator &amp; Affiliate Network Management System (Hệ Thống Sàn Tiếp Thị Liên Kết &amp; Gian Hàng Đối Tác - FA26SE032)</text>
-  <line x1="200" y1="115" x2="2600" y2="115" stroke="#000000" stroke-width="1.5" />
+  <!-- ==================== HEADER & TITLE ==================== -->
+  <text x="1400" y="55" class="main-title">CONTEXT DIAGRAM (DFD LEVEL 0) - SCANMS PLATFORM</text>
+  <text x="1400" y="90" class="main-sub">Sales Collaborator &amp; Affiliate Network Management System (Đồ án tốt nghiệp Kỹ thuật Phần mềm - Khóa FA26SE032)</text>
+  <line x1="150" y1="110" x2="2650" y2="110" stroke="#000000" stroke-width="1.5" />
 
-  <!-- PROCESS 0 SCANMS SYSTEM -->
-  <circle cx="1400" cy="980" r="230" fill="#ffffff" stroke="#000000" stroke-width="3" />
-  <circle cx="1400" cy="980" r="222" fill="#ffffff" stroke="#000000" stroke-width="1" stroke-dasharray="4,4"/>
-  <text x="1400" y="930" class="sys-num">0</text>
-  <text x="1400" y="965" class="sys-name">SCANMS SYSTEM</text>
-  <text x="1400" y="995" class="sys-sub">Core Multi-Merchant &amp; Affiliate Engine</text>
-  <text x="1400" y="1018" font-size="12px" fill="#000000" text-anchor="middle">(IAM, Escrow, Orders, Commissions, AI Fraud Sentinel)</text>
-
-  <!-- ==================== 1. SYSTEM ADMIN (Top Left) ==================== -->
-  <rect x="520" y="200" width="380" height="130" fill="#ffffff" stroke="#000000" stroke-width="2" />
-  <text x="710" y="255" class="entity-title">System Admin</text>
-  <text x="710" y="280" class="entity-sub">(Quản Trị Cấp Cao, Bảo Mật &amp; Trọng Tài - Thắng)</text>
-
-  <!-- Admin Inflow: ent_admin -> proc_scanms -->
-  <path d="M 850 330 L 850 510 L 1260 510 L 1260 765" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(870, 410)">
-    <text y="15" class="flow-title">System Admin ➔ SCANMS:</text>
-    <text y="33" class="flow-item">• Final Dispute Arbitration Ruling</text>
-    <text y="51" class="flow-item">• Escrow Fund Manual Settlement / Freeze Action</text>
-    <text y="69" class="flow-item">• Self-Referral Fraud Flag &amp; Anomaly Rules</text>
-    <text y="87" class="flow-item">• User Account RBAC &amp; System Security Policy</text>
+  <!-- ==================== CENTRAL PROCESS 0: SCANMS SYSTEM ==================== -->
+  <!-- Center: (1400, 960), Radius: 215 -->
+  <circle cx="1400" cy="960" r="215" fill="#ffffff" stroke="#000000" stroke-width="3" />
+  <circle cx="1400" cy="960" r="207" fill="#ffffff" stroke="#000000" stroke-width="1" stroke-dasharray="4,4" />
+  
+  <text x="1400" y="865" class="sys-num">0</text>
+  <text x="1400" y="895" class="sys-name">SCANMS SYSTEM</text>
+  <text x="1400" y="920" class="sys-sub">Core Multi-Merchant &amp; Affiliate Engine</text>
+  <line x1="1260" y1="935" x2="1540" y2="935" stroke="#000000" stroke-width="1" />
+  
+  <g transform="translate(1245, 945)">
+    <text y="20" class="sys-feature">• IAM, KYC &amp; RBAC 5-Role Security Guard</text>
+    <text y="38" class="sys-feature">• Multi-Merchant E-Commerce &amp; Inventory Sync</text>
+    <text y="56" class="sys-feature">• Last-Click Attribution &amp; Redis Anti-Click Spam</text>
+    <text y="74" class="sys-feature">• 14-Day Escrow Ledger &amp; Two-Tier Commissions</text>
+    <text y="92" class="sys-feature">• Automated Payout, Dispute Arbitration &amp; AI Sentinel</text>
   </g>
 
-  <!-- Admin Outflow: proc_scanms -> ent_admin -->
-  <path d="M 1290 760 L 1290 380 L 650 380 L 650 330" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(480, 420)">
+  <!-- ==================== 1. SYSTEM ADMIN (Top Left) ==================== -->
+  <rect x="450" y="170" width="380" height="110" class="entity-box" />
+  <text x="640" y="222" class="entity-title">System Admin</text>
+  <text x="640" y="247" class="entity-sub">(Quản Trị Cấp Cao, Bảo Mật &amp; Trọng Tài Escrow - Thắng)</text>
+
+  <!-- Admin Inflow Wire: (780, 280) -> (780, 490) -> (1262, 490) -> (1262, 775) -->
+  <path d="M 780 280 L 780 490 L 1262 490 L 1262 770" class="wire" marker-end="url(#arrow)" />
+  <!-- Admin Inflow Label Box -->
+  <rect x="830" y="380" width="410" height="95" class="label-card" />
+  <g transform="translate(845, 395)">
+    <text y="15" class="flow-title">System Admin ➔ SCANMS:</text>
+    <text y="33" class="flow-item">1. Final Dispute Arbitration Ruling (Customer vs Shop)</text>
+    <text y="51" class="flow-item">2. Escrow Fund Manual Settlement / Freeze Action</text>
+    <text y="69" class="flow-item">3. Self-Referral Fraud Flag &amp; Blacklist Enforcement</text>
+    <text y="87" class="flow-item">4. User Account Role RBAC &amp; Security Policy Config</text>
+  </g>
+
+  <!-- Admin Outflow Wire: (1318, 765) -> (1318, 340) -> (580, 340) -> (580, 280) -->
+  <path d="M 1318 765 L 1318 340 L 580 340 L 580 285" class="wire" marker-end="url(#arrow)" />
+  <!-- Admin Outflow Label Box -->
+  <rect x="410" y="390" width="390" height="95" class="label-card" />
+  <g transform="translate(425, 405)">
     <text y="15" class="flow-title">SCANMS ➔ System Admin:</text>
-    <text y="33" class="flow-item">• Disputed Return Dossiers (Customer Video vs Shop)</text>
-    <text y="51" class="flow-item">• AI Fraud Sentinel Alerts &amp; Anomaly Scores</text>
-    <text y="69" class="flow-item">• Immutable Audit Logs &amp; Double-Entry Ledger</text>
-    <text y="87" class="flow-item">• System Health &amp; Security Threat Metrics</text>
+    <text y="33" class="flow-item">1. Disputed Return Dossiers (Customer Video vs Evidence)</text>
+    <text y="51" class="flow-item">2. AI Fraud Sentinel Alerts &amp; Anomaly Risk Scores</text>
+    <text y="69" class="flow-item">3. Comprehensive Audit Logs &amp; Double-Entry Ledger</text>
+    <text y="87" class="flow-item">4. System Health, API Latency &amp; Security Threat Metrics</text>
   </g>
 
   <!-- ==================== 2. SYSTEM MANAGER (Top Right) ==================== -->
-  <rect x="1900" y="200" width="380" height="130" fill="#ffffff" stroke="#000000" stroke-width="2" />
-  <text x="2090" y="255" class="entity-title">System Manager</text>
-  <text x="2090" y="280" class="entity-sub">(Vận Hành &amp; Kiểm Duyệt Sàn - Tuấn)</text>
+  <rect x="1970" y="170" width="380" height="110" class="entity-box" />
+  <text x="2160" y="222" class="entity-title">System Manager</text>
+  <text x="2160" y="247" class="entity-sub">(Vận Hành Sàn &amp; Kiểm Duyệt Nội Dung - Tuấn)</text>
 
-  <!-- Manager Inflow: ent_manager -> proc_scanms -->
-  <path d="M 1950 330 L 1950 510 L 1540 510 L 1540 765" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(1580, 410)">
+  <!-- Manager Inflow Wire: (2020, 280) -> (2020, 490) -> (1538, 490) -> (1538, 770) -->
+  <path d="M 2020 280 L 2020 490 L 1538 490 L 1538 770" class="wire" marker-end="url(#arrow)" />
+  <!-- Manager Inflow Label Box -->
+  <rect x="1560" y="380" width="410" height="95" class="label-card" />
+  <g transform="translate(1575, 395)">
     <text y="15" class="flow-title">System Manager ➔ SCANMS:</text>
-    <text y="33" class="flow-item">• Shop Onboarding &amp; Merchant KYC Approval</text>
-    <text y="51" class="flow-item">• Product Moderation (DRAFT ➔ APPROVED / REJECT)</text>
-    <text y="69" class="flow-item">• Platform Coupon Approval / Freeze Decision</text>
-    <text y="87" class="flow-item">• Media Asset Marketing Content Approval</text>
+    <text y="33" class="flow-item">1. Shop Onboarding &amp; Merchant KYC Approval Decision</text>
+    <text y="51" class="flow-item">2. Product Moderation (DRAFT ➔ APPROVED / REJECT)</text>
+    <text y="69" class="flow-item">3. Platform Coupon Approval / Freeze Decision</text>
+    <text y="87" class="flow-item">4. Media Asset Hub Marketing Content Moderation</text>
   </g>
 
-  <!-- Manager Outflow: proc_scanms -> ent_manager -->
-  <path d="M 1510 760 L 1510 380 L 2150 380 L 2150 330" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(1960, 420)">
+  <!-- Manager Outflow Wire: (1482, 765) -> (1482, 340) -> (2220, 340) -> (2220, 285) -->
+  <path d="M 1482 765 L 1482 340 L 2220 340 L 2220 285" class="wire" marker-end="url(#arrow)" />
+  <!-- Manager Outflow Label Box -->
+  <rect x="2000" y="390" width="390" height="95" class="label-card" />
+  <g transform="translate(2015, 405)">
     <text y="15" class="flow-title">SCANMS ➔ System Manager:</text>
-    <text y="33" class="flow-item">• Pending Shop Onboarding &amp; KOL KYC Queue</text>
-    <text y="51" class="flow-item">• Pending Product Review Dossier &amp; Ingredients</text>
-    <text y="69" class="flow-item">• Platform-Wide Affiliate Link Traffic Reports</text>
-    <text y="87" class="flow-item">• Marketing Media Hub Submissions</text>
+    <text y="33" class="flow-item">1. Pending Shop Onboarding &amp; KOL KYC Review Queue</text>
+    <text y="51" class="flow-item">2. Pending Product Review Queue &amp; Ingredient Dossier</text>
+    <text y="69" class="flow-item">3. Platform-Wide Affiliate Link Traffic &amp; CR% Reports</text>
+    <text y="87" class="flow-item">4. Marketing Media Assets Pending Moderation</text>
   </g>
 
   <!-- ==================== 3. CUSTOMER (Middle Left) ==================== -->
-  <rect x="250" y="680" width="320" height="150" fill="#ffffff" stroke="#000000" stroke-width="2" />
-  <text x="410" y="740" class="entity-title">Customer</text>
-  <text x="410" y="765" class="entity-sub">(Khách Mua Hàng - Thịnh)</text>
+  <rect x="120" y="640" width="320" height="160" class="entity-box" />
+  <text x="280" y="715" class="entity-title">Customer</text>
+  <text x="280" y="742" class="entity-sub">(Khách Mua Hàng - Thịnh)</text>
 
-  <!-- Customer Inflow: ent_customer -> proc_scanms -->
-  <path d="M 570 720 L 950 720 L 1180 870" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(600, 625)">
+  <!-- Customer Inflow Wire: (440, 680) -> (1100, 680) -> (1100, 857) -> (1190, 857) -->
+  <path d="M 440 680 L 1100 680 L 1100 857 L 1190 857" class="wire" marker-end="url(#arrow)" />
+  <!-- Customer Inflow Label Box -->
+  <rect x="520" y="580" width="480" height="110" class="label-card" />
+  <g transform="translate(535, 595)">
     <text y="15" class="flow-title">Customer ➔ SCANMS:</text>
-    <text y="33" class="flow-item">• Order &amp; Checkout Payload (Persistent Cart, Vouchers)</text>
-    <text y="51" class="flow-item">• 14-Day Return Request (Mandatory Unboxing Video)</text>
-    <text y="69" class="flow-item">• Verified Review (1-5★ Rating) after COMPLETED Order</text>
-    <text y="87" class="flow-item">• Live In-App Chat Inquiries &amp; Referral Cookie Click</text>
+    <text y="33" class="flow-item">1. Order &amp; Checkout Data, Cart Items (Guest Checkout)</text>
+    <text y="51" class="flow-item">2. 14-Day Return Request (Mandatory Unboxing Video Proof)</text>
+    <text y="69" class="flow-item">3. Verified Product Review (1-5★ Rating after Delivery)</text>
+    <text y="87" class="flow-item">4. Live Chat Inquiries &amp; Direct Messages to Store</text>
+    <text y="105" class="flow-item">5. Referral Link / Dynamic QR Tracking Click &amp; Redirect</text>
   </g>
 
-  <!-- Customer Outflow: proc_scanms -> ent_customer -->
-  <path d="M 1175 950 L 950 810 L 570 810" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(600, 835)">
+  <!-- Customer Outflow Wire: (1190, 925) -> (1150, 925) -> (1150, 940) -> (360, 940) -> (360, 805) -->
+  <path d="M 1190 925 L 1150 925 L 1150 940 L 360 940 L 360 805" class="wire" marker-end="url(#arrow)" />
+  <!-- Customer Outflow Label Box -->
+  <rect x="520" y="815" width="480" height="110" class="label-card" />
+  <g transform="translate(535, 830)">
     <text y="15" class="flow-title">SCANMS ➔ Customer:</text>
-    <text y="33" class="flow-item">• Product Catalog, Stock Realtime &amp; Store Policies</text>
-    <text y="51" class="flow-item">• Order Invoices, Receipts &amp; VietQR Payment Data</text>
-    <text y="69" class="flow-item">• Real-Time Delivery Tracking Journey Updates</text>
-    <text y="87" class="flow-item">• Return / Refund Decision &amp; Chat Consultation</text>
+    <text y="33" class="flow-item">1. Product Catalog, Real-Time Stock &amp; Shop Policies</text>
+    <text y="51" class="flow-item">2. Order Invoices &amp; Dynamic VietQR Banking Payment Data</text>
+    <text y="69" class="flow-item">3. Live Delivery Tracking Journey &amp; Status Updates</text>
+    <text y="87" class="flow-item">4. Return/Refund Progress &amp; Real-Time Chat Replies</text>
+    <text y="105" class="flow-item">5. Auth Session Tokens &amp; Delivery Address Profile</text>
   </g>
 
   <!-- ==================== 4. COLLABORATOR (Bottom Left) ==================== -->
-  <rect x="250" y="1150" width="320" height="150" fill="#ffffff" stroke="#000000" stroke-width="2" />
-  <text x="410" y="1210" class="entity-title">Collaborator</text>
-  <text x="410" y="1235" class="entity-sub">(KOL / KOC / CTV - Tuấn)</text>
+  <rect x="120" y="1180" width="320" height="160" class="entity-box" />
+  <text x="280" y="1255" class="entity-title">Collaborator</text>
+  <text x="280" y="1282" class="entity-sub">(KOL / KOC / CTV - Tuấn)</text>
 
-  <!-- KOL Inflow: ent_kol -> proc_scanms -->
-  <path d="M 570 1190 L 950 1190 L 1180 1060" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(600, 1095)">
+  <!-- KOL Inflow Wire: (440, 1220) -> (1100, 1220) -> (1100, 1063) -> (1190, 1063) -->
+  <path d="M 440 1220 L 1100 1220 L 1100 1063 L 1190 1063" class="wire" marker-end="url(#arrow)" />
+  <!-- KOL Inflow Label Box -->
+  <rect x="520" y="1120" width="480" height="110" class="label-card" />
+  <g transform="translate(535, 1135)">
     <text y="15" class="flow-title">Collaborator ➔ SCANMS:</text>
-    <text y="33" class="flow-item">• KYC Registration &amp; Social Channels (TikTok, YT, FB)</text>
-    <text y="51" class="flow-item">• 4-Step Sample Product Request &amp; Review Video Link</text>
-    <text y="69" class="flow-item">• Exclusive Deal VIP Rate Proposal (via Chat)</text>
-    <text y="87" class="flow-item">• Wallet Withdrawal Request &amp; Live Voucher Setup</text>
+    <text y="33" class="flow-item">1. KYC Dossier &amp; Multi-Channel Links (TikTok, YT, FB)</text>
+    <text y="51" class="flow-item">2. 4-Step Sample Product Request &amp; Review Video Link</text>
+    <text y="69" class="flow-item">3. Exclusive Deal Negotiation &amp; VIP Commission Offer</text>
+    <text y="87" class="flow-item">4. Payout Withdrawal Request (Bank Account Info &amp; OTP)</text>
+    <text y="105" class="flow-item">5. Livestream Exclusive Voucher &amp; Campaign Request</text>
   </g>
 
-  <!-- KOL Outflow: proc_scanms -> ent_kol -->
-  <path d="M 1190 1140 L 950 1270 L 570 1270" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(600, 1295)">
+  <!-- KOL Outflow Wire: (1215, 1120) -> (1250, 1120) -> (1250, 1450) -> (360, 1450) -> (360, 1345) -->
+  <path d="M 1215 1120 L 1250 1120 L 1250 1450 L 360 1450 L 360 1345" class="wire" marker-end="url(#arrow)" />
+  <!-- KOL Outflow Label Box -->
+  <rect x="520" y="1325" width="480" height="110" class="label-card" />
+  <g transform="translate(535, 1340)">
     <text y="15" class="flow-title">SCANMS ➔ Collaborator:</text>
-    <text y="33" class="flow-item">• Approved Short Links &amp; Dynamic QR Codes</text>
-    <text y="51" class="flow-item">• Commission Wallet: 14D Escrow Pending &amp; Available</text>
-    <text y="69" class="flow-item">• Sample Dispatch Approval &amp; Waybill Tracking</text>
-    <text y="87" class="flow-item">• Real-Time Sales Dashboard &amp; Monthly Tier Rank</text>
+    <text y="33" class="flow-item">1. Approved Encrypted Short Links &amp; Dynamic QR Codes</text>
+    <text y="51" class="flow-item">2. Commission Wallet: 14D Escrow Pending &amp; Available Balance</text>
+    <text y="69" class="flow-item">3. Sample Dispatch Approval &amp; GHN Delivery Waybill Code</text>
+    <text y="87" class="flow-item">4. Real-Time Sales Performance &amp; Monthly Leaderboard Rank</text>
+    <text y="105" class="flow-item">5. Centralized Media Hub Assets &amp; Campaign Invitations</text>
   </g>
 
   <!-- ==================== 5. SHOP MANAGER (Middle Right) ==================== -->
-  <rect x="2230" y="880" width="320" height="180" fill="#ffffff" stroke="#000000" stroke-width="2" />
-  <text x="2390" y="955" class="entity-title">Shop Manager</text>
-  <text x="2390" y="980" class="entity-sub">(Chủ Gian Hàng Đối Tác - Quý)</text>
+  <rect x="2360" y="840" width="340" height="200" class="entity-box" />
+  <text x="2530" y="935" class="entity-title">Shop Manager</text>
+  <text x="2530" y="962" class="entity-sub">(Chủ Gian Hàng Đối Tác - Quý)</text>
 
-  <!-- Shop Inflow: ent_shop -> proc_scanms -->
-  <path d="M 2230 930 L 1630 930" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(1700, 815)">
+  <!-- Shop Inflow Wire: (2360, 890) -> (1610, 890) -->
+  <path d="M 2360 890 L 1618 890" class="wire" marker-end="url(#arrow)" />
+  <!-- Shop Inflow Label Box -->
+  <rect x="1760" y="760" width="490" height="120" class="label-card" />
+  <g transform="translate(1775, 775)">
     <text y="15" class="flow-title">Shop Manager ➔ SCANMS:</text>
-    <text y="33" class="flow-item">• Product Drafts &amp; Inventory Stock Sync</text>
-    <text y="51" class="flow-item">• 2-Tier Commission Rules (Open Offer vs Exclusive)</text>
-    <text y="69" class="flow-item">• Order Fulfillment Confirmation &amp; A6 Barcode Print</text>
-    <text y="87" class="flow-item">• Return Decision (Approve / Reject Video Proof)</text>
-    <text y="105" class="flow-item">• Shop Order Cancellation with Mandatory Reason</text>
+    <text y="33" class="flow-item">1. Product Info, Media Uploads &amp; Real-Time Stock Updates</text>
+    <text y="51" class="flow-item">2. Two-Tier Commission Rule Config (Open Rate vs VIP)</text>
+    <text y="69" class="flow-item">3. Order Fulfillment Confirmation &amp; Barcode Waybill Print</text>
+    <text y="87" class="flow-item">4. Return/Refund Decision (Accept / Reject Video Proof)</text>
+    <text y="105" class="flow-item">5. Shop Voucher &amp; Special Campaign Creation</text>
+    <text y="123" class="flow-item">6. Order Cancellation (with Mandatory Reason)</text>
   </g>
 
-  <!-- Shop Outflow: proc_scanms -> ent_shop -->
-  <path d="M 1630 1025 L 2230 1025" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(1700, 1050)">
+  <!-- Shop Outflow Wire: (1610, 1000) -> (2355, 1000) -->
+  <path d="M 1610 1000 L 2355 1000" class="wire" marker-end="url(#arrow)" />
+  <!-- Shop Outflow Label Box -->
+  <rect x="1760" y="1020" width="490" height="110" class="label-card" />
+  <g transform="translate(1775, 1035)">
     <text y="15" class="flow-title">SCANMS ➔ Shop Manager:</text>
-    <text y="33" class="flow-item">• New Order Notifications, Shipping Slips &amp; Inquiries</text>
-    <text y="51" class="flow-item">• Escrow Pending Revenue &amp; Settle Ledgers</text>
-    <text y="69" class="flow-item">• Low-Stock Warning Alert (Stock &lt;= 5)</text>
-    <text y="87" class="flow-item">• Customer 14-Day Return Claims &amp; Unboxing Videos</text>
-    <text y="105" class="flow-item">• Sample Product Requests &amp; AI KOL Match Suggestions</text>
+    <text y="33" class="flow-item">1. New Order Notifications, Shipping Slips &amp; Inquiries</text>
+    <text y="51" class="flow-item">2. Escrow Pending Revenue &amp; Settled Wallet Ledgers</text>
+    <text y="69" class="flow-item">3. Low-Stock Warning Alert (Remaining Stock &lt;= 5)</text>
+    <text y="87" class="flow-item">4. Customer 14-Day Return Claims &amp; Unboxing Videos</text>
+    <text y="105" class="flow-item">5. Sample Requests &amp; AI Smart KOL Match Suggestions</text>
   </g>
 
   <!-- ==================== 6. PAYMENT GATEWAY (Bottom Left External) ==================== -->
-  <rect x="450" y="1650" width="450" height="130" fill="#ffffff" stroke="#000000" stroke-width="2" />
-  <text x="675" y="1705" class="entity-title">Payment Gateway</text>
-  <text x="675" y="1730" class="entity-sub">(VietQR / PayOS Banking Network)</text>
+  <rect x="420" y="1720" width="420" height="110" class="entity-box" />
+  <text x="630" y="1770" class="entity-title">Payment Gateway</text>
+  <text x="630" y="1795" class="entity-sub">(VietQR / PayOS Banking Network)</text>
 
-  <!-- Payment Inflow: ent_payment -> proc_scanms -->
-  <path d="M 550 1650 L 550 1440 L 1260 1440 L 1260 1205" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(580, 1490)">
-    <text y="15" class="flow-title">Gateway ➔ SCANMS:</text>
-    <text y="33" class="flow-item">• Webhook Callback (HMAC-SHA256 Paid Confirmed)</text>
+  <!-- Payment Outflow Wire: (1305, 1170) -> (1305, 1520) -> (567, 1520) -> (567, 1715) -->
+  <path d="M 1305 1170 L 1305 1520 L 567 1520 L 567 1715" class="wire" marker-end="url(#arrow)" />
+  <!-- Payment Inflow Wire: (722, 1720) -> (722, 1590) -> (1271, 1590) -> (1271, 1165) -->
+  <path d="M 722 1720 L 722 1590 L 1271 1590 L 1271 1165" class="wire" marker-end="url(#arrow)" />
+  <!-- Payment Flows Label Box -->
+  <rect x="445" y="1630" width="370" height="50" class="label-card" />
+  <g transform="translate(455, 1645)">
+    <text y="13" class="flow-item"><tspan font-weight="bold">SCANMS ➔ Gateway:</tspan> Payment Init &amp; Batch Payout File</text>
+    <text y="29" class="flow-item"><tspan font-weight="bold">Gateway ➔ SCANMS:</tspan> Instant Webhook (HMAC-SHA256)</text>
   </g>
 
-  <!-- Payment Outflow: proc_scanms -> ent_payment -->
-  <path d="M 1310 1210 L 1310 1500 L 850 1500 L 850 1650" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(580, 1565)">
-    <text y="15" class="flow-title">SCANMS ➔ Gateway:</text>
-    <text y="33" class="flow-item">• Payment Initialization &amp; Batch Payout File</text>
+  <!-- ==================== 7. LOGISTICS CARRIER (Bottom Center External) ==================== -->
+  <rect x="1190" y="1720" width="420" height="110" class="entity-box" />
+  <text x="1400" y="1770" class="entity-title">Logistics Carrier</text>
+  <text x="1400" y="1795" class="entity-sub">(Giao Hàng Nhanh / GHN Simulator)</text>
+
+  <!-- Logistics Outflow Wire: (1450, 1175) -> (1450, 1715) -->
+  <path d="M 1450 1175 L 1450 1715" class="wire" marker-end="url(#arrow)" />
+  <rect x="1465" y="1420" width="220" height="45" class="label-card" />
+  <g transform="translate(1475, 1435)">
+    <text y="13" class="flow-title">SCANMS ➔ Logistics:</text>
+    <text y="27" class="flow-item">Waybill Creation &amp; Barcode A6 Info</text>
   </g>
 
-  <!-- ==================== 7. LOGISTICS PARTNER (Bottom Center External) ==================== -->
-  <rect x="1175" y="1650" width="450" height="130" fill="#ffffff" stroke="#000000" stroke-width="2" />
-  <text x="1400" y="1705" class="entity-title">Logistics Partner</text>
-  <text x="1400" y="1730" class="entity-sub">(Giao Hàng Nhanh / GHN Simulator)</text>
-
-  <!-- Logistics Inflow: ent_logistics -> proc_scanms -->
-  <path d="M 1320 1650 L 1320 1210" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(1070, 1540)">
-    <text y="15" class="flow-title" text-anchor="end">Logistics ➔ SCANMS:</text>
-    <text y="33" class="flow-item" text-anchor="end">• Delivery Status &amp; Proof of Delivery</text>
-  </g>
-
-  <!-- Logistics Outflow: proc_scanms -> ent_logistics -->
-  <path d="M 1480 1210 L 1480 1650" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(1500, 1540)">
-    <text y="15" class="flow-title">SCANMS ➔ Logistics:</text>
-    <text y="33" class="flow-item">• Waybill Creation &amp; Barcode A6 Info</text>
+  <!-- Logistics Inflow Wire: (1350, 1720) -> (1350, 1175) -->
+  <path d="M 1350 1720 L 1350 1180" class="wire" marker-end="url(#arrow)" />
+  <rect x="1115" y="1420" width="220" height="45" class="label-card" />
+  <g transform="translate(1125, 1435)">
+    <text y="13" class="flow-title">Logistics ➔ SCANMS:</text>
+    <text y="27" class="flow-item">Delivery Webhook &amp; Proof of Delivery</text>
   </g>
 
   <!-- ==================== 8. AUTH & EMAIL GATEWAY (Bottom Right External) ==================== -->
-  <rect x="1900" y="1650" width="450" height="130" fill="#ffffff" stroke="#000000" stroke-width="2" />
-  <text x="2125" y="1705" class="entity-title">Auth &amp; Email Gateway</text>
-  <text x="2125" y="1730" class="entity-sub">(Google OAuth 1-Click &amp; SMTP OTP Mail)</text>
+  <rect x="1960" y="1720" width="420" height="110" class="entity-box" />
+  <text x="2170" y="1770" class="entity-title">Auth &amp; Messaging Service</text>
+  <text x="2170" y="1795" class="entity-sub">(Google OAuth 2.0 &amp; SMTP Email OTP)</text>
 
-  <!-- Auth Inflow: ent_auth_gw -> proc_scanms -->
-  <path d="M 1980 1650 L 1980 1500 L 1510 1500 L 1510 1210" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(1990, 1490)">
-    <text y="15" class="flow-title">Auth Gateway ➔ SCANMS:</text>
-    <text y="33" class="flow-item">• Google User Profile &amp; OTP Delivery Status</text>
-  </g>
-
-  <!-- Auth Outflow: proc_scanms -> ent_auth_gw -->
-  <path d="M 1550 1205 L 1550 1440 L 2270 1440 L 2270 1650" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)" />
-  <g transform="translate(1990, 1565)">
-    <text y="15" class="flow-title">SCANMS ➔ Auth Gateway:</text>
-    <text y="33" class="flow-item">• OAuth Verify Request &amp; 6-Digit Email OTP</text>
+  <!-- Auth Outflow Wire: (1495, 1170) -> (1495, 1520) -> (2233, 1520) -> (2233, 1715) -->
+  <path d="M 1495 1170 L 1495 1520 L 2233 1520 L 2233 1715" class="wire" marker-end="url(#arrow)" />
+  <!-- Auth Inflow Wire: (2078, 1720) -> (2078, 1590) -> (1529, 1590) -> (1529, 1165) -->
+  <path d="M 2078 1720 L 2078 1590 L 1529 1590 L 1529 1165" class="wire" marker-end="url(#arrow)" />
+  <!-- Auth Flows Label Box -->
+  <rect x="1985" y="1630" width="370" height="50" class="label-card" />
+  <g transform="translate(1995, 1645)">
+    <text y="13" class="flow-item"><tspan font-weight="bold">SCANMS ➔ Auth:</tspan> OAuth Verification &amp; 6-Digit Email OTP</text>
+    <text y="29" class="flow-item"><tspan font-weight="bold">Auth ➔ SCANMS:</tspan> Google User Profile &amp; OTP Delivery Status</text>
   </g>
 
 </svg>
