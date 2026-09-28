@@ -170,26 +170,17 @@ export default function LoginPage() {
       </header>
 
       <main className="max-w-[1180px] mx-auto w-full my-auto py-2 sm:py-3">
-        <div className="w-full rounded-[28px] sm:rounded-[32px] border border-[#EEDFC6] bg-white shadow-[0_20px_60px_rgba(26,22,18,0.07)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[620px] relative">
-          
-          {/* CỘT TRÁI: MỞ RỘNG (7 COLS = ~58%) - HERO IMAGE ĐẲNG CẤP VỚI ÁNH SÁNG TỰ NHIÊN */}
-          <div className="relative w-full h-[320px] sm:h-[380px] lg:h-full lg:col-span-7 bg-[#F3EFE6] overflow-hidden flex flex-col justify-between p-6 sm:p-8 lg:p-12 group">
-            {/* Ảnh Hero mỹ phẩm cao cấp với ánh sáng chiếu tự nhiên từ góc trên bên trái */}
-            <img
-              src="/assets/auth_luxury_hero.jpg"
-              alt="Hệ sinh thái thương mại đa gian hàng SCANMS"
-              className="absolute inset-0 w-full h-full object-cover object-[25%_center] sm:object-center transition-transform duration-1000 group-hover:scale-105"
-            />
-
-            {/* Chùm sáng ấm Volumetric Light Leak từ góc trên bên trái */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(255,248,225,0.45)_0%,_rgba(236,194,114,0.15)_40%,_transparent_75%)] pointer-events-none z-10" />
-
-            {/* Chuyển sắc viền mép phải nối sang form mượt mà */}
-            <div className="hidden lg:block absolute inset-y-0 right-0 w-20 bg-gradient-to-r from-transparent via-[#FAF8F5]/30 to-white/60 pointer-events-none z-10" />
-
-            {/* Đường hairline ngăn cách dọc tinh tế */}
-            <div className="hidden lg:block absolute inset-y-0 right-0 w-[1px] bg-gradient-to-b from-[#EEDFC6]/20 via-[#C59B58]/35 to-[#EEDFC6]/20 z-20 pointer-events-none" />
-
+        <div
+          className="w-full rounded-[28px] sm:rounded-[32px] border-2 border-[#EEDFC6] shadow-[0_24px_70px_rgba(197,155,88,0.16),0_10px_30px_rgba(26,22,18,0.06)] ring-1 ring-[#C59B58]/20 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[620px] relative bg-[#FAF8F5]"
+          style={{
+            backgroundImage: "url('/assets/auth_luxury_card_inner.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          {/* CỘT TRÁI: MỞ RỘNG (7 COLS = ~58%) - KHÔNG GIAN SẢN PHẨM & SLOGAN HOÀNG GIA */}
+          <div className="relative w-full h-[280px] sm:h-[340px] lg:h-full lg:col-span-7 overflow-hidden flex flex-col justify-between p-6 sm:p-8 lg:p-12">
             {/* Top-Left Section: Glassmorphic Badge & Slogan */}
             <div className="relative z-20 space-y-3.5 max-w-md">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-[#EEDFC6] text-[#1A1612] text-xs font-bold shadow-xs">
@@ -197,9 +188,9 @@ export default function LoginPage() {
                 <span>Sàn Thương Mại Đối Tác</span>
               </div>
 
-              <h1 className="font-heading font-black text-2xl sm:text-3xl lg:text-[34px] leading-[1.2] tracking-tight text-[#1A1612]">
+              <h1 className="font-display italic text-2xl sm:text-3xl lg:text-[36px] leading-[1.18] tracking-tight drop-shadow-xs text-[#1A1612]">
                 Kết nối gian hàng,<br />
-                <span className="text-[#B88E4F]">
+                <span className="font-display italic text-[#B88E4F]">
                   lan tỏa giá trị.
                 </span>
               </h1>
@@ -207,27 +198,14 @@ export default function LoginPage() {
 
             {/* Dưới chân để thoáng cho các sản phẩm và hộp quà travertine */}
             <div className="relative z-20" />
-
-            {/* Mobile wave transition */}
-            <svg
-              className="lg:hidden absolute -bottom-[1px] left-0 right-0 w-full h-7 pointer-events-none z-20"
-              viewBox="0 0 400 28"
-              preserveAspectRatio="none"
-            >
-              <path
-                d="M0,28 C120,8 280,32 400,16 L400,28 L0,28 Z"
-                fill="#FFFFFF"
-              />
-            </svg>
           </div>
 
           {/* CỘT PHẢI: FORM ĐĂNG NHẬP GIAO DIỆN SANG TRỌNG (5 COLS = ~42%) */}
-          <div className="relative w-full h-full lg:col-span-5 p-6 sm:p-8 lg:p-9 xl:p-10 flex flex-col justify-between text-left overflow-hidden bg-white">
-            
-            {/* Header: Tiêu đề căn giữa, typography hiện đại */}
-            <div className="text-center">
-              <h2 className="text-2xl sm:text-[26px] font-black tracking-tight text-[#1A1612]">
-                Đăng nhập
+          <div className="relative w-full h-full lg:col-span-5 p-6 sm:p-8 lg:py-7 lg:pr-8 lg:pl-10 xl:pl-12 flex flex-col justify-between text-left">
+            {/* Header: Tiêu đề căn giữa, phong cách hoàng gia như mockup */}
+            <div className="relative z-20 text-center">
+              <h2 className="font-display text-3xl sm:text-[34px] font-black tracking-tight text-[#1A1612]">
+                Đăng <span className="font-display text-[#B88E4F]">nhập</span>
               </h2>
             </div>
 
@@ -386,14 +364,14 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Submit button: Brand Gold */}
+              {/* Submit button: Imperial Metallic Gold Shiny Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-[0_4px_16px_rgba(197,155,88,0.28)] hover:shadow-[0_6px_22px_rgba(197,155,88,0.4)] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                className="w-full h-12 btn-gold-glossy flex items-center justify-center gap-2 text-sm tracking-wide disabled:opacity-50"
               >
-                <LogIn className="w-4 h-4" />
-                <span>{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
+                <LogIn className="w-4 h-4 text-[#1A1612] relative z-10" />
+                <span className="relative z-10">{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
               </button>
             </form>
 

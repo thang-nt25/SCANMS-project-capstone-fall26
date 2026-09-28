@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&family=Inter:wght@400;500;600;700&display=swap&subset=vietnamese');
 @import "tailwindcss";
 
 @theme {
@@ -241,6 +241,84 @@ img {
   min-height: 32px;
   padding: 4px 10px;
   font-size: 12px;
+}
+
+/* Nút bấm Vàng Kim Bóng Hoàng Gia (Imperial Glossy Gold Button) */
+.btn-gold-glossy {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #FFF6DC 0%, #FBE599 14%, #F2BC4F 46%, #E0982E 72%, #BA7315 90%, #8E4F0A 100%);
+  border: 1px solid rgba(255, 245, 215, 0.95);
+  box-shadow: 
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2.5px 3.5px 0 rgba(115, 62, 8, 0.45),
+    0 12px 28px -4px rgba(212, 155, 55, 0.52),
+    0 4px 10px rgba(184, 125, 35, 0.28);
+  color: #1A1612;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+/* Lớp vòm phản quang bóng gương (Gloss Lens Reflection) */
+.btn-gold-glossy::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 1.5px;
+  height: 48%;
+  border-radius: 9999px 9999px 80px 80px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.25) 55%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Tia sáng kim loại lướt qua khi hover (Metallic Sheen Sweep) */
+.btn-gold-glossy::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -130%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.65) 50%, transparent 100%);
+  transform: skewX(-22deg);
+  transition: left 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.btn-gold-glossy:hover {
+  filter: brightness(1.06);
+  box-shadow: 
+    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -2.5px 3.5px 0 rgba(115, 62, 8, 0.48),
+    0 15px 34px -2px rgba(212, 155, 55, 0.65),
+    0 6px 14px rgba(184, 125, 35, 0.35);
+}
+
+.btn-gold-glossy:hover::after {
+  left: 180%;
+}
+
+.btn-gold-glossy:active {
+  transform: scale(0.985);
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 2px 4px 0 rgba(115, 62, 8, 0.38),
+    0 5px 14px rgba(212, 155, 55, 0.4);
+}
+
+.btn-gold-glossy:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
 }
 
 .table-wrap {
