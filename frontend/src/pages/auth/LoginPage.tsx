@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Check,
   ArrowLeft,
+  LogIn,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
@@ -148,32 +149,45 @@ export default function LoginPage() {
         </Link>
       </header>
 
-      <main className="max-w-[1160px] mx-auto w-full my-auto py-2 sm:py-3">
-        <div className="w-full rounded-[28px] sm:rounded-[32px] border border-[#EAE4D7] bg-white shadow-[0_24px_65px_rgba(26,22,18,0.07)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[610px] relative">
+      <main className="max-w-[1180px] mx-auto w-full my-auto py-2 sm:py-3">
+        <div className="w-full rounded-[28px] sm:rounded-[32px] border border-[#EEDFC6] bg-white shadow-[0_24px_70px_rgba(197,155,88,0.14),0_10px_30px_rgba(26,22,18,0.06)] ring-1 ring-[#C59B58]/15 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[620px] relative">
           
-          <div className="relative w-full h-[340px] sm:h-[400px] lg:h-full lg:col-span-5 bg-[#231D15] overflow-hidden flex flex-col justify-end p-7 sm:p-9 group">
+          {/* CỘT TRÁI: MỞ RỘNG (6 COLS = 50%) - HERO IMAGE ĐẲNG CẤP VỚI ÁNH SÁNG TRÁI -> PHẢI */}
+          <div className="relative w-full h-[320px] sm:h-[380px] lg:h-full lg:col-span-6 bg-[#F3EFE6] overflow-hidden flex flex-col justify-between p-6 sm:p-8 lg:p-10 group">
+            {/* Ảnh Hero mỹ phẩm cao cấp với ánh sáng chiếu tự nhiên từ góc trên bên trái */}
             <img
-              src="/assets/marketplace_luxury_hero.jpg"
+              src="/assets/auth_luxury_hero.jpg"
               alt="Hệ sinh thái thương mại đa gian hàng SCANMS"
               className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105"
             />
 
-            <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/45 to-transparent pointer-events-none" />
+            {/* Chùm sáng ấm Volumetric Light Leak từ góc trên bên trái */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(255,248,225,0.4)_0%,_rgba(236,194,114,0.15)_40%,_transparent_75%)] pointer-events-none z-10" />
 
-            <div className="hidden lg:block absolute inset-y-0 right-0 w-36 bg-gradient-to-r from-transparent via-[#C59B58]/20 to-[#ECC272]/35 pointer-events-none z-10" />
+            {/* Hào quang quét sang mép phải qua dải sóng vào form */}
+            <div className="hidden lg:block absolute inset-y-0 right-0 w-44 bg-gradient-to-r from-transparent via-[#C59B58]/20 to-[#ECC272]/40 pointer-events-none z-10" />
 
-            <div className="relative z-10 space-y-1">
+            {/* Top-Left Section: Glassmorphic Badge & Slogan đặt ở phần trên đón sáng */}
+            <div className="relative z-20 space-y-3 max-w-md">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/75 backdrop-blur-md border border-[#EEDFC6] text-[#1A1612] text-xs font-bold shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-[#C59B58]" />
+                <span>Sàn Thương Mại Đối Tác</span>
+              </div>
+
               <h1
-                className="font-display italic text-2xl sm:text-3xl lg:text-[38px] leading-[1.18] tracking-tight drop-shadow-xl"
-                style={{ color: '#FFFFFF' }}
+                className="font-display italic text-2xl sm:text-3xl lg:text-[35px] leading-[1.2] tracking-tight drop-shadow-xs text-[#1A1612]"
               >
                 Kết nối gian hàng,<br />
-                <span className="font-display italic" style={{ color: '#ECC272' }}>
+                <span className="font-display italic text-[#B88E4F]">
                   lan tỏa giá trị.
                 </span>
               </h1>
             </div>
 
+            {/* Dưới chân để thoáng cho các sản phẩm và hộp quà travertine */}
+            <div className="relative z-20" />
+
+            {/* Mobile wave transition */}
             <svg
               className="lg:hidden absolute -bottom-[1px] left-0 right-0 w-full h-8 pointer-events-none z-20"
               viewBox="0 0 400 32"
@@ -190,50 +204,73 @@ export default function LoginPage() {
             </svg>
           </div>
 
+          {/* CỘT PHẢI: FORM ĐĂNG NHẬP (6 COLS = 50%) */}
           <div
-            className="relative w-full h-full lg:col-span-7 p-6 sm:p-8 lg:p-9 flex flex-col justify-between text-left overflow-hidden bg-white"
+            className="relative w-full h-full lg:col-span-6 p-6 sm:p-8 lg:p-9 xl:p-10 flex flex-col justify-between text-left overflow-hidden bg-white"
             style={{
-              background: 'radial-gradient(ellipse 95% 75% at 0% 40%, rgba(238, 223, 198, 0.42) 0%, rgba(251, 245, 235, 0.25) 36%, rgba(255, 255, 255, 1) 72%)',
+              background: 'radial-gradient(ellipse 95% 75% at 0% 40%, rgba(238, 223, 198, 0.48) 0%, rgba(251, 245, 235, 0.3) 36%, rgba(255, 255, 255, 1) 75%)',
             }}
           >
+            {/* Desktop Wave Bleed SVG Transition with 3D Sculpted Liquid Gold Ribbon */}
             <svg
-              className="hidden lg:block absolute -top-[1px] -bottom-[1px] -left-[1px] h-[calc(100%+2px)] w-20 xl:w-24 pointer-events-none z-10"
-              viewBox="0 0 100 620"
+              className="hidden lg:block absolute -top-[1px] -bottom-[1px] -left-[1px] h-[calc(100%+2px)] w-24 xl:w-32 pointer-events-none z-10"
+              viewBox="0 0 120 620"
               preserveAspectRatio="none"
             >
               <defs>
-                <linearGradient id="waveBleedGrad1" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#C59B58" stopOpacity="0.35" />
-                  <stop offset="50%" stopColor="#EEDFC6" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                <linearGradient id="sculptedGoldRibbon" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#C59B58" />
+                  <stop offset="25%" stopColor="#ECC272" />
+                  <stop offset="50%" stopColor="#FFF9E6" />
+                  <stop offset="70%" stopColor="#ECC272" />
+                  <stop offset="90%" stopColor="#B88E4F" />
+                  <stop offset="100%" stopColor="#8C6527" />
                 </linearGradient>
-                <linearGradient id="waveBleedGrad2" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#ECC272" stopOpacity="0.28" />
-                  <stop offset="60%" stopColor="#FAF8F5" stopOpacity="0.38" />
-                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                <linearGradient id="waveHaze1" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#ECC272" stopOpacity="0.38" />
+                  <stop offset="60%" stopColor="#FAF8F5" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.9" />
                 </linearGradient>
+                <filter id="ribbonDepthGlow" x="-30%" y="-20%" width="160%" height="140%">
+                  <feDropShadow dx="-2" dy="2" stdDeviation="3" floodColor="#8C6527" floodOpacity="0.4" />
+                  <feDropShadow dx="4" dy="3" stdDeviation="6" floodColor="#ECC272" floodOpacity="0.6" />
+                </filter>
               </defs>
+              {/* Lớp bóng mờ warm gold phía sau dải sóng */}
               <path
-                d="M0,0 C32,95 76,170 56,260 C36,350 86,435 66,525 C50,580 24,605 0,620 Z"
-                fill="url(#waveBleedGrad1)"
+                d="M0,0 C45,115 85,215 62,330 C38,450 86,540 50,620 L0,620 Z"
+                fill="url(#waveHaze1)"
               />
               <path
-                d="M0,0 C22,110 54,195 40,285 C24,375 66,455 48,545 C34,592 16,612 0,620 Z"
-                fill="url(#waveBleedGrad2)"
+                d="M0,0 C38,115 72,215 52,330 C30,450 72,540 42,620 L0,620 Z"
+                fill="#FFFFFF"
+                opacity="0.85"
               />
+              {/* Thân dải sóng lụa vàng kim 3D uốn lượn mềm mại */}
               <path
-                d="M0,0 C12,125 34,205 24,295 C14,385 40,470 28,555 C18,598 6,615 0,620 Z"
-                fill="rgba(255, 255, 255, 0.45)"
+                d="M0,0 C45,115 85,215 62,330 C38,450 86,540 50,620"
+                fill="none"
+                stroke="url(#sculptedGoldRibbon)"
+                strokeWidth="7"
+                filter="url(#ribbonDepthGlow)"
+                strokeLinecap="round"
+              />
+              {/* Vệt sáng lấp lánh Specular Glint dọc sống dải lụa */}
+              <path
+                d="M0,0 C45,115 85,215 62,330 C38,450 86,540 50,620"
+                fill="none"
+                stroke="#FFFDF5"
+                strokeWidth="2"
+                opacity="0.85"
               />
             </svg>
 
-            <div className="relative z-20">
-              <h2 className="text-2xl font-black text-[#1A1612] tracking-tight">
+            {/* Title Header with subtle golden underline */}
+            <div className="relative z-20 text-center flex flex-col items-center">
+              <h2 className="text-2xl sm:text-[28px] font-black tracking-tight text-[#1A1612]">
                 Đăng nhập
               </h2>
-              <p className="text-xs text-[#7D715E] mt-1 font-medium">
-                Chọn vai trò để truy cập bảng điều khiển tương ứng
-              </p>
+              <div className="w-12 h-1 bg-gradient-to-r from-transparent via-[#C59B58] to-transparent rounded-full mt-1.5 opacity-80" />
             </div>
 
             <div className="relative">
@@ -388,16 +425,17 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-sm rounded-xl transition shadow-[0_4px_16px_rgba(197,155,88,0.28)] hover:shadow-[0_6px_20px_rgba(197,155,88,0.38)] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                className="w-full h-11 bg-gradient-to-r from-[#C59B58] via-[#D4A359] to-[#B88E4F] hover:from-[#B88E4F] hover:via-[#C59B58] hover:to-[#A67E3F] text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-[0_8px_25px_rgba(197,155,88,0.4)] hover:shadow-[0_10px_30px_rgba(197,155,88,0.55)] active:scale-[0.99] border-t border-white/25 cursor-pointer disabled:opacity-50"
               >
-                {loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}
+                <LogIn className="w-4 h-4" />
+                <span>{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
               </button>
             </form>
 
             <div className="text-center pt-2 border-t border-[#EAE4D7] text-xs text-[#7D715E]">
-              Chưa có tài khoản?{' '}
+              Chưa có tài khoản đối tác?{' '}
               <Link to="/register" className="font-bold text-[#B88E4F] hover:underline">
-                Đăng ký thành viên ngay →
+                Đăng ký ngay →
               </Link>
             </div>
           </div>
