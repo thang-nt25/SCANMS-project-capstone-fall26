@@ -51,6 +51,10 @@ export interface CustomerOrder {
   shippingFee: number | string;
   finalAmount: number | string;
   status: string;
+  completedAt?: string | null;
+  policyAcceptedAt?: string | null;
+  policySnapshot?: Record<string, unknown> | null;
+  returnRequest?: CustomerReturnRequest | null;
   rawPayload?: any;
   createdAt: string;
   updatedAt: string;
@@ -71,6 +75,52 @@ export interface CustomerOrder {
   productReviews?: any[];
 }
 
+export interface CustomerReturnRequest {
+  id: string;
+  orderId: string;
+  reason: 'DAMAGED' | 'WRONG_ITEM' | 'EXPIRED' | 'OTHER';
+  details?: string | null;
+  imageUrls: string[];
+  unboxingVideoUrl: string;
+  status: 'REQUESTED' | 'SHOP_APPROVED' | 'SHOP_REJECTED' | 'DISPUTED' | 'REFUNDED' | 'CLOSED';
+  deadlineAt: string;
+  shopResponse?: string | null;
+  submittedAt: string;
+  updatedAt: string;
+}
+
+export interface SyncedCartItem {
+  cartItemId: string;
+  productId: string;
+  variantId?: string;
+  variantName?: string;
+  title: string;
+  sku: string;
+  price: number;
+  originalPrice?: number;
+  imageUrl: string;
+  quantity: number;
+  stockQuantity: number;
+  isActive: boolean;
+  store: {
+    id: string;
+    name: string;
+    slug?: string;
+    logoUrl?: string;
+    policyReturn?: string;
+    policyWarranty?: string;
+    policyShipping?: string;
+  };
+  availableVariants?: Array<{
+    id: string;
+    name: string;
+    sku: string;
+    price?: number | null;
+    stockQuantity: number;
+    isActive?: boolean;
+  }>;
+}
+
 export interface CustomerAddress {
   id: string;
   userId: string;
@@ -83,6 +133,8 @@ export interface CustomerAddress {
   wardCode?: string | null;
   wardName: string;
   detailAddress: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
@@ -145,6 +197,44 @@ export const customerService = {
 
   async cancelOrder(orderId: string, reason?: string): Promise<any> {
     const res: any = await api.post(`/customer/orders/${orderId}/cancel`, { reason });
+    return res?.data?.data || res?.data || res;
+  },
+
+  async confirmReceipt(orderId: string): Promise<any> {
+    const res: any = await api.post(`/customer/orders/${orderId}/confirm-receipt`);
+    return res?.data?.data || res?.data || res;
+  },
+
+  async createReturnRequest(
+    orderId: string,
+    data: {
+      reason: CustomerReturnRequest['reason'];
+      details?: string;
+      imageUrls: string[];
+      unboxingVideoUrl: string;
+    },
+  ): Promise<{ message: string; returnRequest: CustomerReturnRequest }> {
+    const res: any = await api.post(`/customer/orders/${orderId}/return-request`, data);
+    return res?.data?.data || res?.data || res;
+  },
+
+  async submitVerifiedReview(
+    orderId: string,
+    data: { productId: string; rating: number; comment: string; images?: string[] },
+  ): Promise<any> {
+    const res: any = await api.post(`/customer/orders/${orderId}/reviews`, data);
+    return res?.data?.data || res?.data || res;
+  },
+
+  async getCart(): Promise<{ items: SyncedCartItem[]; syncedAt: string }> {
+    const res: any = await api.get('/customer/cart', { headers: { 'x-skip-cache': 'true' } });
+    return res?.data?.data || res?.data || res;
+  },
+
+  async syncCart(
+    items: Array<{ productId: string; variantId?: string; quantity: number }>,
+  ): Promise<{ items: SyncedCartItem[]; warnings?: string[]; syncedAt: string }> {
+    const res: any = await api.put('/customer/cart', { items });
     return res?.data?.data || res?.data || res;
   },
 

@@ -62,6 +62,9 @@ export interface CheckoutStoreInfo {
   name: string;
   slug?: string;
   logoUrl?: string;
+  policyReturn?: string;
+  policyWarranty?: string;
+  policyShipping?: string;
 }
 
 interface GuestCheckoutModalProps {
@@ -188,6 +191,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
+  const [policyAccepted, setPolicyAccepted] = useState(false);
 
   // Payment Method: Default to COD (reliable & always available), with PayOS option
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS'>('COD');
@@ -399,6 +403,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   // Pre-fill user data & addresses on open
   useEffect(() => {
     if (isOpen) {
+      setPolicyAccepted(false);
       const user = authService.getCurrentUser();
 
       if (user) {
@@ -621,6 +626,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
+    if (!policyAccepted) {
+      setErrorMessage('Bạn cần đọc và đồng ý chính sách đổi trả của các gian hàng trước khi đặt mua.');
+      return;
+    }
+
     const fullShippingAddress = [
       addressDetail,
       selectedWard.name,
@@ -647,6 +657,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         customerPhone: customerPhone.trim(),
         customerEmail: customerEmail.trim().toLowerCase() || undefined,
         shippingAddress: fullShippingAddress,
+        policyAccepted: true,
         orderNotes: orderNotes.trim() || undefined,
         paymentMethod,
         couponCode: appliedCoupon?.code || undefined,
@@ -1513,10 +1524,38 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
                   </div>
 
+                  <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-xs">
+                    <div className="mb-3 flex items-center gap-2 font-black text-[#1A1612]">
+                      <ShieldCheck className="h-4 w-4 text-[#B88E4F]" />
+                      <span>Cam kết chính sách gian hàng</span>
+                    </div>
+                    <div className="space-y-2 text-[11px] leading-relaxed text-[#7D715E]">
+                      {itemsGroupedByShop.map((group) => (
+                        <div key={group.store.id} className="rounded-xl border border-[#EAE4D7] bg-white p-3">
+                          <strong className="block text-[#1A1612]">{group.store.name}</strong>
+                          <p>• {group.store.policyReturn || 'Đổi trả trong 14 ngày khi có ảnh lỗi và video mở hộp.'}</p>
+                          <p>• {group.store.policyWarranty || 'Cam kết hàng chính hãng, bảo hành theo công bố của Shop.'}</p>
+                          <p>• {group.store.policyShipping || 'Hoàn tiền được xử lý sau khi Shop xác minh yêu cầu hợp lệ.'}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-[#EEDFC6] bg-white p-3">
+                      <input
+                        type="checkbox"
+                        checked={policyAccepted}
+                        onChange={(event) => setPolicyAccepted(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 accent-[#C59B58]"
+                      />
+                      <span className="font-semibold leading-relaxed text-[#1A1612]">
+                        Tôi đã đọc và đồng ý với chính sách đổi trả, bảo hành của các Shop trong đơn hàng.
+                      </span>
+                    </label>
+                  </div>
+
                   {/* Submit Button (Requirement 10: debounce & disable) */}
                   <button
                     type="submit"
-                    disabled={isSubmitting || activeItems.length === 0}
+                    disabled={isSubmitting || activeItems.length === 0 || !policyAccepted}
                     className="w-full py-3.5 bg-gradient-to-r from-[#EBD08C] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#D4B26F] disabled:opacity-50 text-[#231D15] font-extrabold text-sm rounded-xl shadow-md hover:shadow-lg shadow-[#C59B58]/20 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-[#DEC07A]"
                   >
                     {isSubmitting ? (

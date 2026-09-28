@@ -365,6 +365,17 @@ export class OrdersService {
         ],
         COMPLETED: [OrderStatus.COMPLETED, OrderStatus.RETURNED],
         CANCELLED: [OrderStatus.CANCELLED],
+        RETURN_REQUESTED: [
+          OrderStatus.RETURN_REQUESTED,
+          OrderStatus.DISPUTED,
+          OrderStatus.RETURNED,
+          OrderStatus.COMPLETED,
+        ],
+        DISPUTED: [
+          OrderStatus.DISPUTED,
+          OrderStatus.RETURNED,
+          OrderStatus.COMPLETED,
+        ],
         RETURNED: [OrderStatus.RETURNED],
       };
       if (!transitions[current.status].includes(normalized.status))
@@ -1627,13 +1638,22 @@ export class OrdersService {
         cancellationToken: hashedCancellationToken,
         shippingFee: new Prisma.Decimal(shippingFee),
         finalAmount: new Prisma.Decimal(orderFinalAmount),
-        rawPayload: {
-          orderNotes: orderNotes || null,
-          paymentMethod,
-          paymentStatus: isVietQr || isPayos ? 'WAITING_PAYMENT' : 'UNPAID',
-          vietqr: vietqrData,
-          requestHash: currentPayloadHash,
-        },
+          rawPayload: {
+            orderNotes: orderNotes || null,
+            paymentMethod,
+            paymentStatus: isVietQr || isPayos ? 'WAITING_PAYMENT' : 'UNPAID',
+            vietqr: vietqrData,
+            requestHash: currentPayloadHash,
+          },
+          policyAcceptedAt: new Date(),
+          policySnapshot: {
+            storeId: lockedStore.id,
+            storeName: lockedStore.name,
+            returnPolicy: lockedStore.policyReturn || 'Đổi trả trong 14 ngày khi có ảnh và video mở hộp.',
+            warrantyPolicy: lockedStore.policyWarranty || 'Bảo hành theo chính sách công bố của gian hàng.',
+            shippingPolicy: lockedStore.policyShipping || 'Đồng kiểm theo điều kiện của đơn vị vận chuyển.',
+            accepted: dto.policyAccepted === true,
+          },
         attributedCollaboratorId,
         attributionMethod,
         referralLinkId,
@@ -3097,13 +3117,10 @@ export class OrdersService {
       );
     }
 
-    // 2. Nghiệp vụ FR-18: Đơn hàng phải ở trạng thái DELIVERED hoặc COMPLETED mới được review
-    if (
-      order.status !== OrderStatus.DELIVERED &&
-      order.status !== OrderStatus.COMPLETED
-    ) {
+    // 2. Nghiệp vụ FR-18: Khách đã xác nhận nhận hàng (COMPLETED) mới được review.
+    if (order.status !== OrderStatus.COMPLETED) {
       throw new BadRequestException(
-        'Chỉ có thể gửi đánh giá khi đơn hàng đã được giao nhận thành công (Trạng thái DELIVERED hoặc COMPLETED).',
+        'Vui lòng xác nhận đã nhận hàng trước khi gửi đánh giá (trạng thái COMPLETED).',
       );
     }
 
@@ -3137,12 +3154,7 @@ export class OrdersService {
         Prisma.sql`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`,
       );
       const freshOrder = await tx.order.findUnique({ where: { id: orderId } });
-      if (
-        !freshOrder ||
-        ![OrderStatus.DELIVERED, OrderStatus.COMPLETED].includes(
-          freshOrder.status as 'DELIVERED' | 'COMPLETED',
-        )
-      )
+      if (!freshOrder || freshOrder.status !== OrderStatus.COMPLETED)
         throw new BadRequestException(
           'Đơn hàng không còn đủ điều kiện đánh giá',
         );

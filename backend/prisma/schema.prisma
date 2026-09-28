@@ -75,7 +75,25 @@ enum OrderStatus {
   DELIVERED
   COMPLETED
   CANCELLED
+  RETURN_REQUESTED
+  DISPUTED
   RETURNED
+}
+
+enum ReturnRequestStatus {
+  REQUESTED
+  SHOP_APPROVED
+  SHOP_REJECTED
+  DISPUTED
+  REFUNDED
+  CLOSED
+}
+
+enum ReturnReason {
+  DAMAGED
+  WRONG_ITEM
+  EXPIRED
+  OTHER
 }
 
 enum OrderSourcePlatform {
@@ -213,8 +231,8 @@ model User {
   collaboratorConversations Conversation[]              @relation("CollaboratorConversations")
   sentChatMessages          ChatMessage[]               @relation("SentChatMessages")
   campaignParticipants      CampaignParticipant[]
-  exclusiveDealProposals    ExclusiveDealProposal[] @relation("ExclusiveDealCollaborator")
-  reviewedExclusiveDeals    ExclusiveDealProposal[] @relation("ExclusiveDealReviewer")
+  exclusiveDealProposals    ExclusiveDealProposal[]     @relation("ExclusiveDealCollaborator")
+  reviewedExclusiveDeals    ExclusiveDealProposal[]     @relation("ExclusiveDealReviewer")
   storeCollaborations       StoreCollaborator[]         @relation("CollaboratorStoreRelations")
   monthlyBonusResults       MonthlyBonusResult[]        @relation("CollaboratorMonthlyBonusResults")
   auditLogs                 AuditLog[]
@@ -230,6 +248,9 @@ model User {
   customerAddresses         CustomerAddress[]
   customerWishlists         CustomerWishlist[]
   customerOrders            Order[]                     @relation("CustomerOrders")
+  customerCartItems         CustomerCartItem[]
+  customerReturnRequests    ReturnRequest[]             @relation("CustomerReturnRequests")
+  customerConversations     Conversation[]              @relation("CustomerConversations")
 
   @@map("users")
 }
@@ -270,9 +291,9 @@ model Store {
   coupons             Coupon[]
   attributionSessions AttributionSession[]
 
-  storeWallets     StoreWallet[]
-  financialLedgers FinancialLedger[]
-  payoutBatches    PayoutBatch[]
+  storeWallets           StoreWallet[]
+  financialLedgers       FinancialLedger[]
+  payoutBatches          PayoutBatch[]
   exclusiveDealProposals ExclusiveDealProposal[]
 
   @@index([ownerId], map: "idx_fk_stores_owner")
@@ -380,16 +401,17 @@ model Product {
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  store                 Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  mediaAssets           MediaAsset[]
-  sampleProductRequests SampleProductRequest[]
-  referralLinks         ReferralLink[]
-  orderItems            OrderItem[]
-  productReviews        ProductReview[]
-  campaignProducts      CampaignProduct[]
-  couponProducts        CouponProduct[]
-  variants              ProductVariant[]
-  customerWishlists     CustomerWishlist[]
+  store                  Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mediaAssets            MediaAsset[]
+  sampleProductRequests  SampleProductRequest[]
+  referralLinks          ReferralLink[]
+  orderItems             OrderItem[]
+  productReviews         ProductReview[]
+  campaignProducts       CampaignProduct[]
+  couponProducts         CouponProduct[]
+  variants               ProductVariant[]
+  customerWishlists      CustomerWishlist[]
+  customerCartItems      CustomerCartItem[]
   exclusiveDealProposals ExclusiveDealProposal[]
 
   @@index([storeId], map: "idx_fk_products_store")
@@ -417,27 +439,28 @@ model ProductReview {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
+  @@unique([orderId, productId], map: "idx_unique_review_order_product")
   @@index([productId], map: "idx_fk_product_reviews_product")
   @@index([orderId], map: "idx_fk_product_reviews_order")
   @@index([status], map: "idx_fk_product_reviews_status")
-  @@unique([orderId, productId], map: "idx_unique_review_order_product")
   @@map("product_reviews")
 }
 
 model ProductVariant {
-  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId     String      @map("product_id") @db.Uuid
-  sku           String      @unique @db.VarChar(100)
-  name          String      @db.VarChar(150)
-  price         Decimal?    @db.Decimal(15, 2)
-  stockQuantity Int         @default(0) @map("stock_quantity")
-  isActive      Boolean     @default(true) @map("is_active")
-  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId     String   @map("product_id") @db.Uuid
+  sku           String   @unique @db.VarChar(100)
+  name          String   @db.VarChar(150)
+  price         Decimal? @db.Decimal(15, 2)
+  stockQuantity Int      @default(0) @map("stock_quantity")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  orderItems    OrderItem[]
+  product           Product            @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  orderItems        OrderItem[]
+  customerCartItems CustomerCartItem[]
 
   @@index([productId], map: "idx_fk_product_variants_product")
   @@map("product_variants")
@@ -590,10 +613,10 @@ model ReferralLink {
   updatedAt        DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
-  collaborator        User                 @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  store               Store                @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  product             Product              @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  campaign            Campaign?            @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  collaborator        User                   @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  store               Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product             Product                @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campaign            Campaign?              @relation(fields: [campaignId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   exclusiveDeal       ExclusiveDealProposal? @relation(fields: [exclusiveDealId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   clickTrafficLogs    ClickTrafficLog[]
   orders              Order[]
@@ -731,26 +754,26 @@ model CampaignProduct {
 }
 
 model ExclusiveDealProposal {
-  id                      String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  collaboratorId          String              @map("collaborator_id") @db.Uuid
-  storeId                 String              @map("store_id") @db.Uuid
-  productId               String              @map("product_id") @db.Uuid
-  conversationId          String              @map("conversation_id") @db.Uuid
-  proposedCommissionRate  Decimal             @map("proposed_commission_rate") @db.Decimal(5, 2)
-  approvedCommissionRate  Decimal?            @map("approved_commission_rate") @db.Decimal(5, 2)
-  salesCommitment         String              @map("sales_commitment") @db.VarChar(1000)
-  status                  ExclusiveDealStatus @default(PENDING)
-  shopResponse            String?             @map("shop_response") @db.VarChar(1000)
-  reviewerId              String?             @map("reviewer_id") @db.Uuid
-  reviewedAt              DateTime?           @map("reviewed_at") @db.Timestamptz(6)
-  createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt               DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId         String              @map("collaborator_id") @db.Uuid
+  storeId                String              @map("store_id") @db.Uuid
+  productId              String              @map("product_id") @db.Uuid
+  conversationId         String              @map("conversation_id") @db.Uuid
+  proposedCommissionRate Decimal             @map("proposed_commission_rate") @db.Decimal(5, 2)
+  approvedCommissionRate Decimal?            @map("approved_commission_rate") @db.Decimal(5, 2)
+  salesCommitment        String              @map("sales_commitment") @db.VarChar(1000)
+  status                 ExclusiveDealStatus @default(PENDING)
+  shopResponse           String?             @map("shop_response") @db.VarChar(1000)
+  reviewerId             String?             @map("reviewer_id") @db.Uuid
+  reviewedAt             DateTime?           @map("reviewed_at") @db.Timestamptz(6)
+  createdAt              DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  collaborator User         @relation("ExclusiveDealCollaborator", fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reviewer     User?        @relation("ExclusiveDealReviewer", fields: [reviewerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  collaborator User          @relation("ExclusiveDealCollaborator", fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviewer     User?         @relation("ExclusiveDealReviewer", fields: [reviewerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   referralLink ReferralLink?
 
   @@index([storeId, status, createdAt(sort: Desc)], map: "idx_exclusive_deal_store_status")
@@ -916,6 +939,8 @@ model Order {
   status                    OrderStatus         @default(PENDING)
   completedAt               DateTime?           @map("completed_at") @db.Timestamptz(6)
   refundedAmount            Decimal             @default(0.00) @map("refunded_amount") @db.Decimal(15, 2)
+  policyAcceptedAt          DateTime?           @map("policy_accepted_at") @db.Timestamptz(6)
+  policySnapshot            Json?               @map("policy_snapshot") @db.JsonB
   createdAt                 DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                 DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -932,6 +957,7 @@ model Order {
   refunds                OrderRefund[]
   attributionAdjustments AttributionAdjustment[]
   paymentTransactions    PaymentTransaction[]
+  returnRequest          ReturnRequest?
 
   @@unique([storeId, sourcePlatform, externalOrderSn], map: "idx_unique_store_platform_external_order")
   @@index([storeId], map: "idx_fk_orders_store")
@@ -1008,17 +1034,17 @@ model AttributionAdjustment {
 }
 
 model OrderItem {
-  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId                    String   @map("order_id") @db.Uuid
-  productId                  String   @map("product_id") @db.Uuid
-  variantId                  String?  @map("variant_id") @db.Uuid
-  referralLinkId             String?  @map("referral_link_id") @db.Uuid
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId                    String    @map("order_id") @db.Uuid
+  productId                  String    @map("product_id") @db.Uuid
+  variantId                  String?   @map("variant_id") @db.Uuid
+  referralLinkId             String?   @map("referral_link_id") @db.Uuid
   quantity                   Int
-  unitPrice                  Decimal  @map("unit_price") @db.Decimal(15, 2)
-  appliedCommissionRate      Decimal  @map("applied_commission_rate") @db.Decimal(5, 2)
-  calculatedCommissionAmount Decimal  @map("calculated_commission_amount") @db.Decimal(15, 2)
+  unitPrice                  Decimal   @map("unit_price") @db.Decimal(15, 2)
+  appliedCommissionRate      Decimal   @map("applied_commission_rate") @db.Decimal(5, 2)
+  calculatedCommissionAmount Decimal   @map("calculated_commission_amount") @db.Decimal(15, 2)
   commissionSnapshotAt       DateTime? @map("commission_snapshot_at") @db.Timestamptz(6)
-  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
   order        Order           @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1177,18 +1203,21 @@ model PayoutBatch {
 model Conversation {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   storeId        String   @map("store_id") @db.Uuid
-  collaboratorId String   @map("collaborator_id") @db.Uuid
+  collaboratorId String?  @map("collaborator_id") @db.Uuid
+  customerId     String?  @map("customer_id") @db.Uuid
   lastMessageAt  DateTime @default(now()) @map("last_message_at") @db.Timestamptz(6)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  collaborator User          @relation("CollaboratorConversations", fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  chatMessages ChatMessage[]
+  store                  Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  collaborator           User?                   @relation("CollaboratorConversations", fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer               User?                   @relation("CustomerConversations", fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  chatMessages           ChatMessage[]
   exclusiveDealProposals ExclusiveDealProposal[]
 
   @@index([storeId], map: "idx_fk_conversations_store")
   @@index([collaboratorId], map: "idx_fk_conversations_collab")
+  @@index([customerId], map: "idx_fk_conversations_customer")
   @@map("conversations")
 }
 
@@ -1243,17 +1272,17 @@ model Notification {
 }
 
 model PaymentTransaction {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId       String    @map("order_id") @db.Uuid
-  transactionId String    @unique @map("transaction_id") @db.VarChar(100)
-  amount        Decimal   @db.Decimal(15, 2)
-  currency      String    @default("VND") @db.VarChar(10)
-  paymentMethod String    @map("payment_method") @db.VarChar(50)
-  paymentProof  String?   @map("payment_proof")
-  status        String    @default("SUCCESS") @db.VarChar(20)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId       String   @map("order_id") @db.Uuid
+  transactionId String   @unique @map("transaction_id") @db.VarChar(100)
+  amount        Decimal  @db.Decimal(15, 2)
+  currency      String   @default("VND") @db.VarChar(10)
+  paymentMethod String   @map("payment_method") @db.VarChar(50)
+  paymentProof  String?  @map("payment_proof")
+  status        String   @default("SUCCESS") @db.VarChar(20)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId], map: "idx_fk_payment_transactions_order")
   @@map("payment_transactions")
@@ -1271,6 +1300,8 @@ model CustomerAddress {
   wardCode      String?  @map("ward_code") @db.VarChar(50)
   wardName      String   @map("ward_name") @db.VarChar(100)
   detailAddress String   @map("detail_address") @db.VarChar(255)
+  latitude      Decimal? @db.Decimal(10, 7)
+  longitude     Decimal? @db.Decimal(10, 7)
   isDefault     Boolean  @default(false) @map("is_default")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1298,3 +1329,46 @@ model CustomerWishlist {
   @@map("customer_wishlists")
 }
 
+model CustomerCartItem {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  productId  String   @map("product_id") @db.Uuid
+  variantId  String?  @map("variant_id") @db.Uuid
+  variantKey String   @default("base") @map("variant_key") @db.VarChar(36)
+  quantity   Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, productId, variantKey], map: "idx_unique_customer_cart_line")
+  @@index([userId, updatedAt], map: "idx_customer_cart_user_updated")
+  @@index([productId], map: "idx_customer_cart_product")
+  @@index([variantId], map: "idx_customer_cart_variant")
+  @@map("customer_cart_items")
+}
+
+model ReturnRequest {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String              @unique @map("order_id") @db.Uuid
+  customerId       String              @map("customer_id") @db.Uuid
+  reason           ReturnReason
+  details          String?             @db.VarChar(1000)
+  imageUrls        String[]            @default([]) @map("image_urls")
+  unboxingVideoUrl String              @map("unboxing_video_url")
+  status           ReturnRequestStatus @default(REQUESTED)
+  deadlineAt       DateTime            @map("deadline_at") @db.Timestamptz(6)
+  shopResponse     String?             @map("shop_response") @db.VarChar(1000)
+  shopRespondedAt  DateTime?           @map("shop_responded_at") @db.Timestamptz(6)
+  submittedAt      DateTime            @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer User  @relation("CustomerReturnRequests", fields: [customerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([customerId, submittedAt], map: "idx_return_requests_customer")
+  @@index([status, submittedAt], map: "idx_return_requests_status")
+  @@map("return_requests")
+}

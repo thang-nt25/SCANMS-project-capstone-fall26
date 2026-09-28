@@ -11,6 +11,7 @@ import {
   IsEmail,
   MaxLength,
   IsUUID,
+  Equals,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -105,6 +106,14 @@ export class CreateOrderDto {
   @IsString()
   @IsNotEmpty()
   shippingAddress: string;
+
+  @ApiProperty({
+    description: 'Khách đã đọc và đồng ý chính sách đổi trả/bảo hành của các Shop',
+    example: true,
+  })
+  @IsBoolean()
+  @Equals(true, { message: 'Bạn phải đồng ý chính sách gian hàng trước khi đặt mua' })
+  policyAccepted: boolean;
 
   @ApiPropertyOptional({
     description: 'Mã coupon ưu đãi của KOL (VD: THANGVIP10)',

@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Sparkles,
   Home,
+  MessageSquare,
 } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
 import {
@@ -42,9 +43,35 @@ import { toast } from '../../utils/toast';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
+import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal';
+import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
+import {
+  AddressLocationPicker,
+  type AddressLocationResult,
+} from '../../components/customer/AddressLocationPicker';
 
 type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'upgrade';
-type OrderFilterStatus = 'ALL' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';
+type OrderFilterStatus = 'ALL' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'COMPLETED' | 'RETURN_REQUESTED' | 'CANCELLED';
+
+const normalizeAdministrativeName = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd')
+  .toLowerCase()
+  .replace(/\b(thanh pho|tinh|quan|huyen|thi xa|thi tran|phuong|xa)\b/g, '')
+  .replace(/[^a-z0-9]/g, '');
+
+const administrativeNamesMatch = (left: string, right: string) => {
+  const normalizedLeft = normalizeAdministrativeName(left);
+  const normalizedRight = normalizeAdministrativeName(right);
+  return Boolean(
+    normalizedLeft &&
+    normalizedRight &&
+    (normalizedLeft === normalizedRight ||
+      normalizedLeft.includes(normalizedRight) ||
+      normalizedRight.includes(normalizedLeft))
+  );
+};
 
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
@@ -74,6 +101,9 @@ export default function CustomerPortalPage() {
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const [returnOrder, setReturnOrder] = useState<CustomerOrder | null>(null);
+  const [reviewOrder, setReviewOrder] = useState<CustomerOrder | null>(null);
 
   // Tab 2: Addresses State
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -90,10 +120,14 @@ export default function CustomerPortalPage() {
     wardCode: '',
     wardName: '',
     detailAddress: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
     isDefault: false,
   });
   const [provinces, setProvinces] = useState<ShippingProvince[]>([]);
   const [savingAddress, setSavingAddress] = useState(false);
+  const [addressPendingDeletion, setAddressPendingDeletion] = useState<CustomerAddress | null>(null);
+  const [isDeletingAddress, setIsDeletingAddress] = useState(false);
 
   // Tab 3: Wishlist State
   const [wishlist, setWishlist] = useState<CustomerWishlistItem[]>([]);
@@ -208,6 +242,19 @@ export default function CustomerPortalPage() {
     }
   };
 
+  const handleConfirmReceipt = async (order: CustomerOrder) => {
+    setConfirmingOrderId(order.id);
+    try {
+      await customerService.confirmReceipt(order.id);
+      toast.success('Đơn hàng đã hoàn tất. Bạn có thể gửi đánh giá đã xác minh.');
+      await Promise.all([fetchOrders(), fetchProfile()]);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể xác nhận đã nhận hàng');
+    } finally {
+      setConfirmingOrderId(null);
+    }
+  };
+
   const fetchAddresses = async () => {
     setAddressesLoading(true);
     try {
@@ -232,6 +279,8 @@ export default function CustomerPortalPage() {
       wardCode: '',
       wardName: '',
       detailAddress: '',
+      latitude: null,
+      longitude: null,
       isDefault: addresses.length === 0,
     });
     setIsAddressModalOpen(true);
@@ -249,6 +298,8 @@ export default function CustomerPortalPage() {
       wardCode: addr.wardCode || '',
       wardName: addr.wardName,
       detailAddress: addr.detailAddress,
+      latitude: addr.latitude == null ? null : Number(addr.latitude),
+      longitude: addr.longitude == null ? null : Number(addr.longitude),
       isDefault: addr.isDefault,
     });
     setIsAddressModalOpen(true);
@@ -278,14 +329,47 @@ export default function CustomerPortalPage() {
     }
   };
 
-  const handleDeleteAddress = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) return;
+  const handleDeleteAddress = async () => {
+    if (!addressPendingDeletion) return;
+    setIsDeletingAddress(true);
     try {
-      await customerService.deleteAddress(id);
+      await customerService.deleteAddress(addressPendingDeletion.id);
       toast.success('Đã xóa địa chỉ');
-      fetchAddresses();
+      setAddressPendingDeletion(null);
+      await fetchAddresses();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Không thể xóa địa chỉ');
+    } finally {
+      setIsDeletingAddress(false);
+    }
+  };
+
+  const handleAddressLocationChange = (locationResult: AddressLocationResult) => {
+    const matchedProvince = provinces.find((province) =>
+      administrativeNamesMatch(province.name, locationResult.provinceName),
+    );
+    const matchedDistrict = matchedProvince?.districts.find((district) =>
+      administrativeNamesMatch(district.name, locationResult.districtName),
+    );
+    const matchedWard = matchedDistrict?.wards.find((ward) =>
+      administrativeNamesMatch(ward.name, locationResult.wardName),
+    );
+
+    setAddressForm((current) => ({
+      ...current,
+      latitude: locationResult.latitude,
+      longitude: locationResult.longitude,
+      detailAddress: locationResult.detailAddress || current.detailAddress,
+      provinceCode: matchedProvince ? String(matchedProvince.code) : current.provinceCode,
+      provinceName: matchedProvince?.name || current.provinceName,
+      districtCode: matchedDistrict ? String(matchedDistrict.code) : current.districtCode,
+      districtName: matchedDistrict?.name || current.districtName,
+      wardCode: matchedWard ? String(matchedWard.code) : current.wardCode,
+      wardName: matchedWard?.name || current.wardName,
+    }));
+
+    if (!matchedProvince || !matchedDistrict || !matchedWard) {
+      toast.info('Đã ghim tọa độ. Vui lòng kiểm tra lại Tỉnh/Quận/Phường trước khi lưu.');
     }
   };
 
@@ -607,6 +691,8 @@ export default function CustomerPortalPage() {
                       { key: 'PENDING', label: 'Chờ xác nhận' },
                       { key: 'SHIPPING', label: 'Đang giao' },
                       { key: 'DELIVERED', label: 'Đã giao' },
+                      { key: 'COMPLETED', label: 'Hoàn tất' },
+                      { key: 'RETURN_REQUESTED', label: 'Trả hàng' },
                       { key: 'CANCELLED', label: 'Đã hủy' },
                     ].map((tab) => (
                       <button
@@ -657,8 +743,15 @@ export default function CustomerPortalPage() {
                   <div className="flex flex-col gap-4">
                     {orders.map((order) => {
                       const isPending = order.status === 'PENDING';
-                      const isDelivered = order.status === 'DELIVERED' || order.status === 'COMPLETED';
+                      const isDelivered = order.status === 'DELIVERED';
+                      const isCompleted = order.status === 'COMPLETED';
                       const isCancelled = order.status === 'CANCELLED';
+                      const hasReturnRequest = Boolean(order.returnRequest) || ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'].includes(order.status);
+                      const returnAnchor = new Date(order.completedAt || order.updatedAt).getTime();
+                      const canRequestReturn =
+                        (isDelivered || isCompleted) &&
+                        !hasReturnRequest &&
+                        Date.now() <= returnAnchor + 14 * 24 * 60 * 60 * 1000;
 
                       return (
                         <div
@@ -695,6 +788,18 @@ export default function CustomerPortalPage() {
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                                   <CheckCircle2 className="w-3 h-3" />
                                   <span>Giao hàng thành công</span>
+                                </span>
+                              )}
+                              {isCompleted && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EEDFC6] px-2.5 py-1 rounded-full">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Đơn hàng hoàn tất</span>
+                                </span>
+                              )}
+                              {hasReturnRequest && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>Đang xử lý trả hàng</span>
                                 </span>
                               )}
                               {isCancelled && (
@@ -758,7 +863,7 @@ export default function CustomerPortalPage() {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => setSelectedOrderDetails(order)}
@@ -778,13 +883,37 @@ export default function CustomerPortalPage() {
                               )}
 
                               {isDelivered && (
-                                <Link
-                                  to={`/tracking?orderSn=${encodeURIComponent(order.externalOrderSn)}`}
-                                  className="px-3.5 py-2 rounded-xl bg-[#FBF5EB] hover:bg-[#ECE1CD] border border-[#EAE4D7] text-xs font-bold text-[#B88E4F] transition flex items-center gap-1"
+                                <button
+                                  type="button"
+                                  disabled={confirmingOrderId === order.id}
+                                  onClick={() => handleConfirmReceipt(order)}
+                                  className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-1"
                                 >
-                                  <span>Đánh giá 5★</span>
-                                </Link>
+                                  {confirmingOrderId === order.id && <Loader2 className="w-3 h-3 animate-spin" />}
+                                  <span>Đã nhận hàng</span>
+                                </button>
                               )}
+
+                              {canRequestReturn && (
+                                <button type="button" onClick={() => setReturnOrder(order)} className="px-3.5 py-2 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] transition">
+                                  Trả hàng / Hoàn tiền
+                                </button>
+                              )}
+
+                              {isCompleted && !hasReturnRequest && (
+                                <button type="button" onClick={() => setReviewOrder(order)} className="px-3.5 py-2 rounded-xl bg-[#231D15] hover:bg-[#1A1612] text-white text-xs font-bold transition">
+                                  Đánh giá đã xác minh
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/chat?storeId=${encodeURIComponent(order.storeId)}&asCustomer=1`)}
+                                className="p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#B88E4F]"
+                                title="Chat với gian hàng"
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </button>
 
                               <button
                                 type="button"
@@ -914,7 +1043,7 @@ export default function CustomerPortalPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDeleteAddress(addr.id)}
+                              onClick={() => setAddressPendingDeletion(addr)}
                               className="p-1.5 text-[#7D715E] hover:text-rose-600 transition cursor-pointer"
                               title="Xóa địa chỉ"
                             >
@@ -1387,11 +1516,92 @@ export default function CustomerPortalPage() {
       )}
 
       {/* ========================================================= */}
+      {/* MODAL: XÁC NHẬN XÓA ĐỊA CHỈ */}
+      {/* ========================================================= */}
+      {addressPendingDeletion && (
+        <div
+          className="fixed inset-0 z-[70] bg-[#231D15]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isDeletingAddress) {
+              setAddressPendingDeletion(null);
+            }
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-address-title"
+            aria-describedby="delete-address-description"
+            className="w-full max-w-md overflow-hidden rounded-3xl border border-[#EAE4D7] bg-white shadow-2xl animate-in zoom-in-95 duration-150"
+          >
+            <div className="p-6 sm:p-7 text-center">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shadow-xs">
+                <Trash2 className="w-6 h-6" />
+              </div>
+
+              <h2 id="delete-address-title" className="mt-4 text-lg font-black text-[#1A1612]">
+                Xóa địa chỉ nhận hàng?
+              </h2>
+              <p id="delete-address-description" className="mt-2 text-xs leading-relaxed text-[#7D715E]">
+                Địa chỉ này sẽ bị xóa khỏi sổ địa chỉ của bạn. Thao tác này không thể hoàn tác.
+              </p>
+
+              <div className="mt-5 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-sm font-black text-[#1A1612] truncate">
+                    {addressPendingDeletion.fullName}
+                  </strong>
+                  <span className="text-[11px] font-semibold text-[#7D715E] shrink-0">
+                    {addressPendingDeletion.phoneNumber}
+                  </span>
+                </div>
+                <p className="m-0 mt-2 text-xs font-semibold text-[#1A1612]">
+                  {addressPendingDeletion.detailAddress}
+                </p>
+                <p className="m-0 mt-1 text-[11px] leading-relaxed text-[#7D715E]">
+                  {addressPendingDeletion.wardName}, {addressPendingDeletion.districtName}, {addressPendingDeletion.provinceName}
+                </p>
+                {addressPendingDeletion.isDefault && (
+                  <span className="inline-flex mt-3 rounded-full border border-[#EEDFC6] bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#B88E4F]">
+                    Địa chỉ mặc định
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 border-t border-[#EAE4D7] bg-[#FAF8F5] p-4 sm:px-7">
+              <button
+                type="button"
+                disabled={isDeletingAddress}
+                onClick={() => setAddressPendingDeletion(null)}
+                className="rounded-xl border border-[#EAE4D7] bg-white px-4 py-2.5 text-xs font-bold text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] disabled:opacity-50"
+              >
+                Giữ lại địa chỉ
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAddress}
+                onClick={handleDeleteAddress}
+                className="rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {isDeletingAddress ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>{isDeletingAddress ? 'Đang xóa...' : 'Xóa địa chỉ'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
       {/* MODAL: THÊM / SỬA ĐỊA CHỈ NHẬN HÀNG */}
       {/* ========================================================= */}
       {isAddressModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-5 text-left animate-in fade-in zoom-in-95">
+          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-2xl max-h-[94vh] overflow-y-auto p-6 shadow-2xl flex flex-col gap-5 text-left animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
               <strong className="text-base font-black text-[#1A1612]">
                 {editingAddressId ? 'Chỉnh Sửa Địa Chỉ' : 'Thêm Địa Chỉ Nhận Hàng Mới'}
@@ -1453,6 +1663,8 @@ export default function CustomerPortalPage() {
                       districtName: '',
                       wardCode: '',
                       wardName: '',
+                      latitude: null,
+                      longitude: null,
                     });
                   }}
                   required
@@ -1484,6 +1696,8 @@ export default function CustomerPortalPage() {
                         districtName: d?.name || '',
                         wardCode: '',
                         wardName: '',
+                        latitude: null,
+                        longitude: null,
                       });
                     }}
                     disabled={!selectedProvince}
@@ -1513,6 +1727,8 @@ export default function CustomerPortalPage() {
                         ...addressForm,
                         wardCode: code,
                         wardName: w?.name || '',
+                        latitude: null,
+                        longitude: null,
                       });
                     }}
                     disabled={!selectedDistrict}
@@ -1537,12 +1753,30 @@ export default function CustomerPortalPage() {
                 <input
                   type="text"
                   value={addressForm.detailAddress}
-                  onChange={(e) => setAddressForm({ ...addressForm, detailAddress: e.target.value })}
+                  onChange={(e) => setAddressForm({
+                    ...addressForm,
+                    detailAddress: e.target.value,
+                    latitude: null,
+                    longitude: null,
+                  })}
                   required
                   placeholder="Ví dụ: Số 123 Đường D1, Chung cư ABC"
                   className="w-full bg-[#FAF8F5] border border-[#EAE4D7] focus:bg-white focus:border-[#C59B58] rounded-xl px-3 py-2 text-xs text-[#1A1612] outline-none transition"
                 />
               </div>
+
+              <AddressLocationPicker
+                latitude={addressForm.latitude}
+                longitude={addressForm.longitude}
+                addressQuery={[
+                  addressForm.detailAddress,
+                  addressForm.wardName,
+                  addressForm.districtName,
+                  addressForm.provinceName,
+                  'Việt Nam',
+                ].filter(Boolean).join(', ')}
+                onChange={handleAddressLocationChange}
+              />
 
               <div className="flex items-center gap-2 pt-1">
                 <input
@@ -1591,6 +1825,28 @@ export default function CustomerPortalPage() {
             toast.success('Đặt hàng thành công!');
             fetchOrders();
             fetchProfile();
+          }}
+        />
+      )}
+
+      {returnOrder && (
+        <ReturnRequestModal
+          order={returnOrder}
+          onClose={() => setReturnOrder(null)}
+          onSubmitted={() => {
+            setReturnOrder(null);
+            fetchOrders();
+          }}
+        />
+      )}
+
+      {reviewOrder && (
+        <VerifiedReviewModal
+          order={reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          onSubmitted={() => {
+            setReviewOrder(null);
+            fetchOrders();
           }}
         />
       )}
