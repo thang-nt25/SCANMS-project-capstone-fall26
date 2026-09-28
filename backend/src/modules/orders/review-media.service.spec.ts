@@ -85,7 +85,7 @@ describe('FR-18 review media and DTO', () => {
     const db = {
       order: {
         findUnique: jest.fn().mockResolvedValue({
-          status: 'DELIVERED',
+          status: 'COMPLETED',
           orderItems: [{ productId: 'product' }],
         }),
       },

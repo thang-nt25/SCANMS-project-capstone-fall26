@@ -11,6 +11,7 @@ import {
   IsEmail,
   MaxLength,
   IsUUID,
+  Equals,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -18,6 +19,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export enum PaymentMethod {
   COD = 'COD',
   VIETQR = 'VIETQR',
+  PAYOS = 'PAYOS',
 }
 
 export class OrderItemInputDto {
@@ -105,6 +107,14 @@ export class CreateOrderDto {
   @IsNotEmpty()
   shippingAddress: string;
 
+  @ApiProperty({
+    description: 'Khách đã đọc và đồng ý chính sách đổi trả/bảo hành của các Shop',
+    example: true,
+  })
+  @IsBoolean()
+  @Equals(true, { message: 'Bạn phải đồng ý chính sách gian hàng trước khi đặt mua' })
+  policyAccepted: boolean;
+
   @ApiPropertyOptional({
     description: 'Mã coupon ưu đãi của KOL (VD: THANGVIP10)',
     example: 'THANGVIP10',
@@ -114,6 +124,12 @@ export class CreateOrderDto {
   couponCode?: string;
 
   @ApiPropertyOptional({
+    description: 'Bản đồ coupon theo từng gian hàng trong đơn đa Shop { [storeId]: couponCode }',
+  })
+  @IsOptional()
+  couponsByStore?: Record<string, string>;
+
+  @ApiPropertyOptional({
     description: 'Mã tracking rút gọn từ link tiếp thị (VD: anc-pro-thang)',
   })
   @IsOptional()
@@ -121,7 +137,7 @@ export class CreateOrderDto {
   cookieRefCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Phương thức thanh toán (COD hoặc VIETQR)',
+    description: 'Phương thức thanh toán (COD, VIETQR hoặc PAYOS)',
     enum: PaymentMethod,
     example: PaymentMethod.COD,
     default: PaymentMethod.COD,
@@ -129,7 +145,7 @@ export class CreateOrderDto {
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
   @IsEnum(PaymentMethod, {
-    message: 'Phương thức thanh toán phải là COD hoặc VIETQR',
+    message: 'Phương thức thanh toán phải là COD, VIETQR hoặc PAYOS',
   })
   paymentMethod?: PaymentMethod;
 

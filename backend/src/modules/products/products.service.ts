@@ -566,6 +566,7 @@ export class ProductsService {
         originalPrice: dto.originalPrice || null,
         customCommissionRate: dto.customCommissionRate || null,
         stockQuantity: dto.stockQuantity || 0,
+        isAffiliateEnabled: dto.isAffiliateEnabled ?? false,
       },
     });
 
@@ -644,6 +645,9 @@ export class ProductsService {
           stockQuantity: dto.stockQuantity,
         }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        ...(dto.isAffiliateEnabled !== undefined && {
+          isAffiliateEnabled: dto.isAffiliateEnabled,
+        }),
       },
     });
 
@@ -1126,7 +1130,7 @@ export class ProductsService {
 
       const isVerifiedBuyer = Boolean(
         (r.orderId || (r as any).order?.id) &&
-          (r.order?.status === 'DELIVERED' || r.order?.status === 'COMPLETED'),
+          r.order?.status === 'COMPLETED',
       );
 
       return {

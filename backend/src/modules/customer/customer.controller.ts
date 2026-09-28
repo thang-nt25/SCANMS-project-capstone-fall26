@@ -20,6 +20,9 @@ import { ChangeCustomerPasswordDto } from './dto/change-password.dto';
 import { CreateCustomerAddressDto } from './dto/create-address.dto';
 import { UpdateCustomerAddressDto } from './dto/update-address.dto';
 import { CustomerOrdersQueryDto } from './dto/customer-orders-query.dto';
+import { SyncCustomerCartDto } from './dto/sync-cart.dto';
+import { CreateReturnRequestDto } from './dto/create-return-request.dto';
+import { CreateCustomerReviewDto } from './dto/create-customer-review.dto';
 
 @ApiTags('Customer Portal (Dành Cho Khách Hàng)')
 @ApiBearerAuth()
@@ -87,7 +90,63 @@ export class CustomerController {
   }
 
   // ==========================================
-  // 3. SỔ ĐỊA CHỈ NHẬN HÀNG
+  // 3. XÁC NHẬN, ĐỔI TRẢ, ĐÁNH GIÁ & GIỎ HÀNG
+  // ==========================================
+  @Post('orders/:id/confirm-receipt')
+  @ApiOperation({ summary: 'Khách xác nhận đã nhận hàng để chuyển đơn sang COMPLETED' })
+  async confirmReceipt(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) orderId: string,
+  ) {
+    return this.customerService.confirmReceipt(userId, orderId);
+  }
+
+  @Get('orders/:id/return-request')
+  @ApiOperation({ summary: 'Xem yêu cầu đổi trả/hoàn tiền của đơn hàng' })
+  async getReturnRequest(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) orderId: string,
+  ) {
+    return this.customerService.getReturnRequest(userId, orderId);
+  }
+
+  @Post('orders/:id/return-request')
+  @ApiOperation({ summary: 'Gửi yêu cầu đổi trả trong 14 ngày, bắt buộc ảnh và video mở hộp' })
+  async createReturnRequest(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) orderId: string,
+    @Body() dto: CreateReturnRequestDto,
+  ) {
+    return this.customerService.createReturnRequest(userId, orderId, dto);
+  }
+
+  @Post('orders/:id/reviews')
+  @ApiOperation({ summary: 'Đánh giá sản phẩm từ đơn COMPLETED đã xác minh' })
+  async createVerifiedReview(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) orderId: string,
+    @Body() dto: CreateCustomerReviewDto,
+  ) {
+    return this.customerService.createVerifiedReview(userId, orderId, dto);
+  }
+
+  @Get('cart')
+  @ApiOperation({ summary: 'Tải giỏ hàng tập trung của tài khoản từ PostgreSQL' })
+  async getCart(@CurrentUser('id') userId: string) {
+    return this.customerService.getCart(userId);
+  }
+
+  @Put('cart')
+  @ApiOperation({ summary: 'Đồng bộ toàn bộ giỏ hàng của tài khoản vào PostgreSQL' })
+  async syncCart(
+    @CurrentUser('id') userId: string,
+    @Body() dto: SyncCustomerCartDto,
+  ) {
+    return this.customerService.syncCart(userId, dto);
+  }
+
+  // ==========================================
+  // 4. SỔ ĐỊA CHỈ NHẬN HÀNG
   // ==========================================
   @Get('addresses')
   @ApiOperation({ summary: 'Lấy danh sách địa chỉ nhận hàng đã lưu' })
@@ -133,7 +192,7 @@ export class CustomerController {
   }
 
   // ==========================================
-  // 4. SẢN PHẨM YÊU THÍCH (WISHLIST)
+  // 5. SẢN PHẨM YÊU THÍCH (WISHLIST)
   // ==========================================
   @Get('wishlist')
   @ApiOperation({ summary: 'Lấy danh sách sản phẩm yêu thích' })

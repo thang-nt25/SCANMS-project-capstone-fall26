@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsNotEmpty,
   MaxLength,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -40,4 +41,14 @@ export class CreateConversationDto {
   @IsOptional()
   @IsUUID()
   collaboratorId?: string;
+
+  @ApiPropertyOptional({ description: 'ID khách hàng khi Shop mở hội thoại hỗ trợ' })
+  @IsOptional()
+  @IsUUID()
+  customerId?: string;
+
+  @ApiPropertyOptional({ description: 'Mở hội thoại với tư cách người mua hàng' })
+  @IsOptional()
+  @IsBoolean()
+  asCustomer?: boolean;
 }

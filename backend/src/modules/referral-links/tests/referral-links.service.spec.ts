@@ -109,6 +109,41 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
     jest.clearAllMocks();
   });
 
+  describe('Eligible product pagination', () => {
+    it('uses a stable page window, caps the page size, and filters out zero-commission products before paging', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'kol-1',
+        role: UserRole.COLLABORATOR,
+        isActive: true,
+        deletedAt: null,
+        collaboratorProfile: { kycStatus: 'VERIFIED' },
+      });
+      mockPrismaService.product.findMany.mockResolvedValue([
+        {
+          id: 'product-1',
+          title: 'Serum',
+          price: 100000,
+          customCommissionRate: 15,
+          store: { defaultCommissionRate: 10 },
+        },
+      ]);
+
+      const products = await service.getEligibleProducts('kol-1', {
+        page: 3,
+        limit: 500,
+        search: 'serum',
+      });
+
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 200, take: 100 }),
+      );
+      const query = mockPrismaService.product.findMany.mock.calls[0][0];
+      expect(query.where.AND).toHaveLength(2);
+      expect(products).toHaveLength(1);
+      expect(products[0].estimatedCommissionRate).toBe(15);
+    });
+  });
+
   describe('1. Quy tắc sinh shortCode (Mục 6)', () => {
     it('Mã rút gọn phải gồm đúng 8 ký tự chỉ chứa chữ thường [a-z] và số [0-9]', () => {
       for (let i = 0; i < 20; i++) {
@@ -138,7 +173,7 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       role: UserRole.COLLABORATOR,
       isActive: true,
       deletedAt: null,
-      collaboratorProfile: { id: 'prof-1' },
+      collaboratorProfile: { id: 'prof-1', kycStatus: 'VERIFIED' },
     };
 
     const defaultProductMock = {
@@ -149,7 +184,13 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       isAffiliateEnabled: true,
       deletedAt: null,
       customCommissionRate: 15,
-      store: { id: validStoreId, defaultCommissionRate: 10, deletedAt: null },
+      store: {
+        id: validStoreId,
+        defaultCommissionRate: 10,
+        deletedAt: null,
+        isDeleted: false,
+        isActive: true,
+      },
     };
 
     it('Tạo link thành công khi KOL và sản phẩm hợp lệ, có quan hệ Shop được duyệt', async () => {
@@ -235,19 +276,25 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('Từ chối khi KOL chưa được Shop duyệt hoặc chưa tham gia chiến dịch (403 Forbidden)', async () => {
+    it('Cho phép KOL đã KYC lấy Open Offer mà chưa có quan hệ Shop được duyệt', async () => {
       prisma.user.findUnique.mockResolvedValue(defaultUserMock);
       prisma.product.findUnique.mockResolvedValue(defaultProductMock);
-      prisma.storeCollaborator.findFirst.mockResolvedValue(null);
-      prisma.campaignParticipant.findFirst.mockResolvedValue(null);
+      prisma.referralLink.count.mockResolvedValue(0);
+      prisma.referralLink.create.mockResolvedValue({
+        id: 'open-offer-link',
+        shortCode: 'open1234',
+        productId: validProdId,
+        storeId: validStoreId,
+      });
 
-      await expect(
-        service.createReferralLink(validCollabId, {
+      const result = await service.createReferralLink(validCollabId, {
           productId: validProdId,
           label: 'Review TikTok',
           channel: SocialPlatform.TIKTOK,
-        }),
-      ).rejects.toThrow(ForbiddenException);
+        });
+
+      expect(result.shortUrl).toContain('/r/open1234');
+      expect(prisma.storeCollaborator.findFirst).not.toHaveBeenCalled();
     });
 
     it('Kiểm tra chiến dịch: từ chối khi chiến dịch đã hết hạn (409 Conflict)', async () => {
@@ -698,6 +745,38 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
 
       expect(res.isValid).toBe(true);
       expect(res.collaboratorId).toBe('collab-1');
+    });
+
+    it('Link Exclusive Deal áp dụng mức VIP đã duyệt thay cho Open Offer và campaign bonus', async () => {
+      prisma.referralLink.findUnique.mockResolvedValue({
+        id: 'vip-link-1',
+        shortCode: 'vip12345',
+        collaboratorId: 'collab-1',
+        storeId: 'store-1',
+        productId: 'prod-1',
+        status: ReferralLinkStatus.ACTIVE,
+        deletedAt: null,
+        product: {
+          isActive: true,
+          isAffiliateEnabled: true,
+          deletedAt: null,
+          customCommissionRate: 15,
+          price: 100000,
+        },
+        store: { deletedAt: null, defaultCommissionRate: 10 },
+        campaign: { isActive: true, endDate: new Date(Date.now() + 60000), bonusCommissionRate: 8 },
+        exclusiveDeal: { status: 'APPROVED', approvedCommissionRate: 25 },
+      });
+
+      const result = await service.verifyAttributionForOrder({
+        shortCode: 'vip12345',
+        storeId: 'store-1',
+        productId: 'prod-1',
+      });
+
+      expect(result.isValid).toBe(true);
+      expect(result.appliedCommissionRate).toBe(25);
+      expect(result.calculatedCommissionAmount).toBe(25000);
     });
 
     it('Sản phẩm hoặc Cửa hàng không khớp -> Từ chối attribution', async () => {

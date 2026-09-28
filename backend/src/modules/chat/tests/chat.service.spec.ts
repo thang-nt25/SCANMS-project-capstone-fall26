@@ -7,31 +7,43 @@ describe('ChatService (FR-25)', () => {
   let service: ChatService;
   let prisma: any;
 
+  const mockStoreId = 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d';
+  const mockOwnerId = 'b2c3d4e5-f6a1-4b2c-8d3e-4f5a6b7c8d9e';
+  const mockCollaboratorId = 'c3d4e5f6-a1b2-4c3d-8e4f-5a6b7c8d9e0f';
+  const mockConversationId = 'd4e5f6a1-b2c3-4d4e-8f5a-6b7c8d9e0f1a';
+  const mockIntruderId = 'e5f6a1b2-c3d4-4e5f-8a6b-7c8d9e0f1a2b';
+  const mockNonExistentConvId = 'f6a1b2c3-d4e5-4f6a-8b7c-8d9e0f1a2b3c';
+  const mockMessageId = 'a7b8c9d0-e1f2-4a3b-8c4d-5e6f7a8b9c0d';
+
   const mockStore = {
-    id: 'store-1',
+    id: mockStoreId,
     name: 'Cửa hàng Sora',
-    ownerId: 'shop-owner-1',
+    ownerId: mockOwnerId,
     isDeleted: false,
   };
 
   const mockConversation = {
-    id: 'conv-1',
-    storeId: 'store-1',
-    collaboratorId: 'kol-1',
+    id: mockConversationId,
+    storeId: mockStoreId,
+    collaboratorId: mockCollaboratorId,
     lastMessageAt: new Date(),
     store: mockStore,
-    collaborator: { id: 'kol-1', fullName: 'KOL Linh', role: 'COLLABORATOR' },
+    collaborator: { id: mockCollaboratorId, fullName: 'KOL Linh', role: 'COLLABORATOR' },
     chatMessages: [],
   };
 
   beforeEach(async () => {
     prisma = {
       store: {
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(mockStore),
         findMany: jest.fn(),
       },
       user: {
+        findUnique: jest.fn().mockResolvedValue({ role: 'COLLABORATOR' }),
         findMany: jest.fn(),
+      },
+      storeCollaborator: {
+        upsert: jest.fn().mockResolvedValue({}),
       },
       conversation: {
         findFirst: jest.fn(),
@@ -64,11 +76,11 @@ describe('ChatService (FR-25)', () => {
       prisma.conversation.findFirst.mockResolvedValue(mockConversation);
 
       const res = await service.getOrCreateConversation(
-        { storeId: 'store-1', collaboratorId: 'kol-1' },
-        'kol-1',
+        { storeId: mockStoreId, collaboratorId: mockCollaboratorId },
+        mockCollaboratorId,
       );
 
-      expect(res.id).toBe('conv-1');
+      expect(res.id).toBe(mockConversationId);
       expect(prisma.conversation.create).not.toHaveBeenCalled();
     });
 
@@ -78,13 +90,13 @@ describe('ChatService (FR-25)', () => {
       prisma.conversation.create.mockResolvedValue(mockConversation);
 
       const res = await service.getOrCreateConversation(
-        { collaboratorId: 'kol-1' },
-        'shop-owner-1',
+        { collaboratorId: mockCollaboratorId },
+        mockOwnerId,
       );
 
-      expect(res.id).toBe('conv-1');
+      expect(res.id).toBe(mockConversationId);
       expect(prisma.store.findFirst).toHaveBeenCalledWith({
-        where: { ownerId: 'shop-owner-1', isDeleted: false },
+        where: { ownerId: mockOwnerId, isDeleted: false },
       });
       expect(prisma.conversation.create).toHaveBeenCalled();
     });
@@ -93,7 +105,7 @@ describe('ChatService (FR-25)', () => {
       prisma.store.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.getOrCreateConversation({ collaboratorId: 'kol-1' }, 'shop-owner-no-store'),
+        service.getOrCreateConversation({ collaboratorId: mockCollaboratorId }, mockOwnerId),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -102,15 +114,15 @@ describe('ChatService (FR-25)', () => {
     it('should return conversation if user is a valid participant', async () => {
       prisma.conversation.findUnique.mockResolvedValue(mockConversation);
 
-      const res = await service.getConversationById('conv-1', 'kol-1');
-      expect(res.id).toBe('conv-1');
+      const res = await service.getConversationById(mockConversationId, mockCollaboratorId);
+      expect(res.id).toBe(mockConversationId);
     });
 
     it('should throw ForbiddenException if user is an outsider', async () => {
       prisma.conversation.findUnique.mockResolvedValue(mockConversation);
 
       await expect(
-        service.getConversationById('conv-1', 'intruder-user'),
+        service.getConversationById(mockConversationId, mockIntruderId),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -118,7 +130,7 @@ describe('ChatService (FR-25)', () => {
       prisma.conversation.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.getConversationById('non-existent-conv', 'kol-1'),
+        service.getConversationById(mockNonExistentConvId, mockCollaboratorId),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -126,20 +138,20 @@ describe('ChatService (FR-25)', () => {
   describe('saveMessage', () => {
     it('should create message and update conversation lastMessageAt in transaction', async () => {
       const mockSavedMessage = {
-        id: 'msg-1',
-        conversationId: 'conv-1',
-        senderId: 'kol-1',
+        id: mockMessageId,
+        conversationId: mockConversationId,
+        senderId: mockCollaboratorId,
         messageText: 'Chào shop!',
         mediaUrl: null,
         isRead: false,
         createdAt: new Date(),
-        sender: { id: 'kol-1', fullName: 'KOL Linh', role: 'COLLABORATOR' },
+        sender: { id: mockCollaboratorId, fullName: 'KOL Linh', role: 'COLLABORATOR' },
       };
 
       prisma.$transaction.mockResolvedValue([mockSavedMessage, mockConversation]);
 
-      const res = await service.saveMessage('conv-1', 'kol-1', 'Chào shop!');
-      expect(res.id).toBe('msg-1');
+      const res = await service.saveMessage(mockConversationId, mockCollaboratorId, 'Chào shop!');
+      expect(res.id).toBe(mockMessageId);
       expect(prisma.$transaction).toHaveBeenCalled();
     });
   });
