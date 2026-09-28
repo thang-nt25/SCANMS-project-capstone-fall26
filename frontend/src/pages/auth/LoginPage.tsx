@@ -11,7 +11,6 @@ import {
   ChevronDown,
   Check,
   ArrowLeft,
-  LogIn,
   Mail,
   Lock,
 } from 'lucide-react';
@@ -364,14 +363,13 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Submit button: Imperial Metallic Gold Shiny Button */}
+              {/* Submit button: Exact match to user mockup */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 btn-gold-glossy flex items-center justify-center gap-2 text-sm tracking-wide disabled:opacity-50"
+                className="w-full h-11 btn-gold-glossy disabled:opacity-50"
               >
-                <LogIn className="w-4 h-4 text-[#1A1612] relative z-10" />
-                <span className="relative z-10">{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
+                <span>{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
               </button>
             </form>
 

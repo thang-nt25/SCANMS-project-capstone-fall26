@@ -11,7 +11,6 @@ import {
   Phone,
   Lock,
   Gift,
-  UserPlus,
   Clock,
   RefreshCw,
 } from 'lucide-react';
@@ -393,14 +392,13 @@ export default function RegisterPage() {
                 </label>
               </div>
 
-              {/* Submit button: Imperial Metallic Gold Shiny Button */}
+              {/* Submit button: Exact match to user mockup */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 btn-gold-glossy flex items-center justify-center gap-2 text-sm tracking-wide disabled:opacity-50"
+                className="w-full h-11 btn-gold-glossy disabled:opacity-50"
               >
-                <UserPlus className="w-4 h-4 text-[#1A1612] relative z-10" />
-                <span className="relative z-10">{loading ? 'Đang gửi mã xác thực...' : 'Đăng ký tài khoản'}</span>
+                <span>{loading ? 'Đang gửi mã xác thực...' : 'Đăng ký tài khoản'}</span>
               </button>
             </form>
 
