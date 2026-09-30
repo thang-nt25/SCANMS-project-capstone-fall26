@@ -1,7 +1,24 @@
-import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Max, Min, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateStoreDto {
+  @ApiPropertyOptional({ description: 'Chính sách đổi trả của Shop (tối đa 500 ký tự)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  policyReturn?: string;
+
+  @ApiPropertyOptional({ description: 'Chính sách bảo hành của Shop (tối đa 500 ký tự)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  policyWarranty?: string;
+
+  @ApiPropertyOptional({ description: 'Chính sách giao hàng của Shop (tối đa 500 ký tự)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  policyShipping?: string;
   @ApiPropertyOptional({
     example: 'Tech Store Vietnam',
     description: 'Tên gian hàng',

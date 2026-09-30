@@ -747,7 +747,7 @@ export default function CustomerPortalPage() {
                       const isCompleted = order.status === 'COMPLETED';
                       const isCancelled = order.status === 'CANCELLED';
                       const hasReturnRequest = Boolean(order.returnRequest) || ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'].includes(order.status);
-                      const returnAnchor = new Date(order.completedAt || order.updatedAt).getTime();
+                      const returnAnchor = new Date(order.deliveredAt || order.completedAt || 0).getTime();
                       const canRequestReturn =
                         (isDelivered || isCompleted) &&
                         !hasReturnRequest &&
@@ -799,7 +799,10 @@ export default function CustomerPortalPage() {
                               {hasReturnRequest && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
                                   <RotateCcw className="w-3 h-3" />
-                                  <span>Đang xử lý trả hàng</span>
+                                  <span>{order.returnRequest?.status === 'SHOP_APPROVED' ? 'Shop đã duyệt · chờ xử lý tiền/hàng'
+                                    : order.returnRequest?.status === 'SHOP_REJECTED' ? 'Shop đã từ chối đổi trả'
+                                    : order.returnRequest?.status === 'REFUNDED' ? 'Đã hoàn tiền'
+                                    : 'Đang xử lý trả hàng'}</span>
                                 </span>
                               )}
                               {isCancelled && (
@@ -810,6 +813,12 @@ export default function CustomerPortalPage() {
                               )}
                             </div>
                           </div>
+
+                          {order.returnRequest?.shopResponse && (
+                            <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#1A1612]">
+                              Phản hồi của Shop: {order.returnRequest.shopResponse}
+                            </p>
+                          )}
 
                           {/* Order Items */}
                           <div className="flex flex-col gap-3">
@@ -882,7 +891,7 @@ export default function CustomerPortalPage() {
                                 </button>
                               )}
 
-                              {isDelivered && (
+                              {isDelivered && !hasReturnRequest && (
                                 <button
                                   type="button"
                                   disabled={confirmingOrderId === order.id}

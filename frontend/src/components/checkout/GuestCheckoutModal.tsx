@@ -23,6 +23,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import api from '../../services/api';
+import { apiCache } from '../../utils/apiCache';
 import { authService } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
 import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
@@ -179,6 +180,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [addressError, setAddressError] = useState<string | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
   const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [shopPolicies, setShopPolicies] = useState<Record<string, CheckoutStoreInfo>>({});
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
 
   // Payment Method: Default to COD (reliable & always available), with PayOS option
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS'>('COD');
@@ -272,6 +276,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             name: store.name,
             slug: store.slug,
             logoUrl: store.logoUrl,
+            policyReturn: store.policyReturn,
+            policyWarranty: store.policyWarranty,
+            policyShipping: store.policyShipping,
           },
         },
       ];
@@ -299,6 +306,24 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
     return Array.from(map.values());
   }, [activeItems]);
+  const policyStoreIds = itemsGroupedByShop.map((group) => group.store.id).join(',');
+
+  useEffect(() => {
+    if (!isOpen || !policyStoreIds) return;
+    let active = true;
+    setPolicyLoading(true);
+    setPolicyError(null);
+    setPolicyAccepted(false);
+    apiCache.invalidate('/stores/public/id/');
+    Promise.all(policyStoreIds.split(',').map(async (id) => {
+      const response: any = await api.get(`/stores/public/id/${id}`);
+      return [id, response?.data || response] as const;
+    }))
+      .then((entries) => { if (active) setShopPolicies(Object.fromEntries(entries)); })
+      .catch(() => { if (active) setPolicyError('Không tải được chính sách hiện hành của Shop. Vui lòng thử lại sau.'); })
+      .finally(() => { if (active) setPolicyLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, policyStoreIds]);
 
   // Calculate Subtotal & Totals
   const rawSubtotal = useMemo(() => {
@@ -606,7 +631,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
-    if (!policyAccepted) {
+    if (!policyAccepted || policyLoading || policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])) {
       setErrorMessage('Bạn cần đọc và đồng ý chính sách đổi trả của các gian hàng trước khi đặt mua.');
       return;
     }
@@ -1503,16 +1528,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       {itemsGroupedByShop.map((group) => (
                         <div key={group.store.id} className="rounded-xl border border-[#EAE4D7] bg-white p-3">
                           <strong className="block text-[#1A1612]">{group.store.name}</strong>
-                          <p>• {group.store.policyReturn || 'Đổi trả trong 14 ngày khi có ảnh lỗi và video mở hộp.'}</p>
-                          <p>• {group.store.policyWarranty || 'Cam kết hàng chính hãng, bảo hành theo công bố của Shop.'}</p>
-                          <p>• {group.store.policyShipping || 'Hoàn tiền được xử lý sau khi Shop xác minh yêu cầu hợp lệ.'}</p>
+                          {shopPolicies[group.store.id]?.policyReturn
+                            ? <p>• Đổi trả (Shop): {shopPolicies[group.store.id].policyReturn}</p>
+                            : <p>• Đổi trả (quy định SCANMS): yêu cầu trong 14 ngày kể từ khi giao, kèm ảnh và video mở hộp.</p>}
+                          <p>• Bảo hành: {shopPolicies[group.store.id]?.policyWarranty || 'Shop chưa công bố chính sách bảo hành riêng.'}</p>
+                          <p>• Giao hàng: {shopPolicies[group.store.id]?.policyShipping || 'Shop chưa công bố chính sách giao hàng riêng.'}</p>
                         </div>
                       ))}
                     </div>
+                    {policyLoading && <p className="text-xs text-[#7D715E]">Đang tải chính sách hiện hành...</p>}
+                    {policyError && <p role="alert" className="text-xs text-[#DC2626]">{policyError}</p>}
                     <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-[#EEDFC6] bg-white p-3">
                       <input
                         type="checkbox"
                         checked={policyAccepted}
+                        disabled={policyLoading || !!policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])}
                         onChange={(event) => setPolicyAccepted(event.target.checked)}
                         className="mt-0.5 h-4 w-4 accent-[#C59B58]"
                       />
@@ -1525,7 +1555,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   {/* Submit Button (Requirement 10: debounce & disable) */}
                   <button
                     type="submit"
-                    disabled={isSubmitting || activeItems.length === 0 || !policyAccepted}
+                    disabled={isSubmitting || activeItems.length === 0 || !policyAccepted || policyLoading || !!policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])}
                     className="w-full py-3.5 bg-gradient-to-r from-[#EBD08C] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#D4B26F] disabled:opacity-50 text-[#231D15] font-extrabold text-sm rounded-xl shadow-md hover:shadow-lg shadow-[#C59B58]/20 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-[#DEC07A]"
                   >
                     {isSubmitting ? (

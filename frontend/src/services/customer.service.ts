@@ -52,6 +52,7 @@ export interface CustomerOrder {
   finalAmount: number | string;
   status: string;
   completedAt?: string | null;
+  deliveredAt?: string | null;
   policyAcceptedAt?: string | null;
   policySnapshot?: Record<string, unknown> | null;
   returnRequest?: CustomerReturnRequest | null;

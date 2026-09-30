@@ -68,6 +68,7 @@ import {
   UpdateOrderFulfillmentDto,
   QueryStoreOrdersDto,
 } from './dto/fulfillment-order.dto';
+import { RespondReturnRequestDto } from './dto/respond-return-request.dto';
 
 function readCookie(req: Request, names: string[]): string | undefined {
   const cookies: unknown = req.cookies;
@@ -338,6 +339,19 @@ export class OrdersController {
     @Query() query: QueryStoreOrdersDto,
   ) {
     return this.ordersService.getMyStoreOrders(manager.id, manager.role, query);
+  }
+
+  @Patch(':id/return-request/respond')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Shop duyệt hoặc từ chối yêu cầu đổi trả của đơn thuộc Shop mình' })
+  async respondReturnRequest(
+    @CurrentUser() manager: OrderManagerIdentity,
+    @Param('id', ParseUUIDPipe) orderId: string,
+    @Body() dto: RespondReturnRequestDto,
+  ) {
+    return this.ordersService.respondReturnRequest(orderId, manager.id, manager.role, dto);
   }
 
   @Patch(':id/fulfillment')

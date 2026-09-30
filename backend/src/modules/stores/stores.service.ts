@@ -17,6 +17,7 @@ export class StoresService {
       select: {
         id: true, name: true, slug: true, logoUrl: true, description: true,
         isActive: true, isVerified: true, createdAt: true,
+        policyReturn: true, policyWarranty: true, policyShipping: true,
         _count: { select: {
           products: { where: { isDeleted: false, isActive: true } },
           follows: true,
@@ -135,6 +136,9 @@ export class StoresService {
         ...(dto.websiteUrl !== undefined && {
           websiteUrl: dto.websiteUrl?.trim(),
         }),
+        ...(dto.policyReturn !== undefined && { policyReturn: dto.policyReturn?.trim() || null }),
+        ...(dto.policyWarranty !== undefined && { policyWarranty: dto.policyWarranty?.trim() || null }),
+        ...(dto.policyShipping !== undefined && { policyShipping: dto.policyShipping?.trim() || null }),
         ...(dto.defaultCommissionRate !== undefined && {
           defaultCommissionRate: dto.defaultCommissionRate,
         }),
@@ -167,6 +171,9 @@ export class StoresService {
         description: true,
         websiteUrl: true,
         defaultCommissionRate: true,
+        policyReturn: true,
+        policyWarranty: true,
+        policyShipping: true,
       },
     });
 
