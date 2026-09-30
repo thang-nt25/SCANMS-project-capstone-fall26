@@ -41,10 +41,13 @@ export default function ShopSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const [name, setName] = useState('Sora Skin Official Store');
-  const [description, setDescription] = useState('Thương hiệu D2C mỹ phẩm phục hồi da sinh học.');
-  const [logoUrl, setLogoUrl] = useState(SHOP_LOGO_PRESETS[0].url);
-  const [websiteUrl, setWebsiteUrl] = useState('https://soraskin.vn');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [policyReturn, setPolicyReturn] = useState('');
+  const [policyWarranty, setPolicyWarranty] = useState('');
+  const [policyShipping, setPolicyShipping] = useState('');
   const [defaultCommissionRate, setDefaultCommissionRate] = useState<number>(10);
   const [attributionWindowDays, setAttributionWindowDays] = useState<number>(30);
   const [minPayoutAmount, setMinPayoutAmount] = useState<number>(200000);
@@ -79,6 +82,9 @@ export default function ShopSettingsPage() {
       if (store.description) setDescription(store.description);
       if (store.logoUrl) setLogoUrl(store.logoUrl);
       if (store.websiteUrl) setWebsiteUrl(store.websiteUrl);
+      setPolicyReturn(store.policyReturn || '');
+      setPolicyWarranty(store.policyWarranty || '');
+      setPolicyShipping(store.policyShipping || '');
       if (store.defaultCommissionRate) setDefaultCommissionRate(Number(store.defaultCommissionRate));
       if (store.attributionWindowDays) setAttributionWindowDays(store.attributionWindowDays);
       if (store.minPayoutAmount) setMinPayoutAmount(Number(store.minPayoutAmount));
@@ -107,6 +113,9 @@ export default function ShopSettingsPage() {
         description,
         logoUrl: logoUrl.trim(),
         websiteUrl,
+        policyReturn,
+        policyWarranty,
+        policyShipping,
         defaultCommissionRate: Number(defaultCommissionRate),
         attributionWindowDays: Number(attributionWindowDays),
         minPayoutAmount: Number(minPayoutAmount),
@@ -130,7 +139,7 @@ export default function ShopSettingsPage() {
             Khu Vực Dành Cho Chủ Gian Hàng
           </h2>
           <p className="text-xs sm:text-sm text-[#7D715E] leading-relaxed m-0">
-            Cài đặt gian hàng, hạn mức rút tiền tối thiểu và thời hạn lưu vết cookie 30 ngày là tính năng quản trị dành riêng cho Chủ Shop (Sora Skin).
+            Cài đặt gian hàng, hạn mức rút tiền tối thiểu và thời hạn lưu vết cookie là tính năng quản trị dành riêng cho Chủ Shop.
           </p>
           <Button
             variant="gold"
@@ -293,6 +302,24 @@ export default function ShopSettingsPage() {
               />
             </div>
           </div>
+
+          <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 space-y-3">
+            <div>
+              <h2 className="text-sm font-bold text-[#1A1612]">Chính sách công khai của Shop</h2>
+              <p className="text-xs text-[#7D715E]">Khách sẽ thấy nội dung này trước khi đặt hàng. Nếu chưa nhập chính sách đổi trả, hệ thống hiển thị rõ quy định mặc định của SCANMS.</p>
+            </div>
+            {([
+              ['Đổi trả / hoàn tiền', policyReturn, setPolicyReturn],
+              ['Bảo hành', policyWarranty, setPolicyWarranty],
+              ['Giao hàng', policyShipping, setPolicyShipping],
+            ] as const).map(([label, value, setValue]) => (
+              <label key={label} className="block text-xs font-bold text-[#1A1612]">
+                {label}
+                <textarea value={value} onChange={(event) => setValue(event.target.value)} maxLength={500} rows={2}
+                  className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm font-normal outline-none focus:border-[#C59B58]" />
+              </label>
+            ))}
+          </section>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

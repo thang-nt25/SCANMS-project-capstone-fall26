@@ -24,6 +24,7 @@ import {
 import { ScanMSLogo } from '../common/ScanMSLogo';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { useCart } from '../../context/CartContext';
+import { ChatBell } from '../chat/ChatBell';
 
 export interface PublicHeaderProps {
   cartCount?: number;
@@ -192,6 +193,7 @@ export function PublicHeader({
 
         {/* Right Navigation & User Status */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {isCustomer && currentUser?.id && <ChatBell userId={currentUser.id} />}
           {/* Quick Tracking Button */}
           <button
             type="button"

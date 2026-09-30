@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
@@ -20,13 +20,12 @@ import {
   ShoppingCart,
   Lock,
   LogIn,
-  Zap,
   ShieldCheck,
 } from 'lucide-react';
 import api from '../../services/api';
+import { apiCache } from '../../utils/apiCache';
 import { authService } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
-import { triggerGoogleSignIn, devBypassGoogleSignIn } from '../../utils/googleAuth';
 import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
 import { toast } from '../../utils/toast';
 import {
@@ -35,6 +34,7 @@ import {
 } from '../../services/order-address.service';
 import { useCart, type CartItem } from '../../context/CartContext';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
+import { formatSavedAddressOption, resolveSavedShippingAddress } from '../../utils/checkoutAddress';
 
 export interface ProductVariantItem {
   id: string;
@@ -121,7 +121,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             setCustomerAddresses(addrs);
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
-              handleSelectSavedAddress(def.id);
+              setSelectedSavedAddressId(def.id);
             }
           }
         }).catch(() => {});
@@ -132,18 +132,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     } finally {
       setIsLoggingIn(false);
     }
-  };
-
-  const handleGoogleLoginInCheckout = (useDevBypass: boolean = false) => {
-    if (useDevBypass) {
-      devBypassGoogleSignIn(onTokenSuccessInCheckout, 'customer.checkout@scanms.vn');
-      return;
-    }
-
-    triggerGoogleSignIn(
-      onTokenSuccessInCheckout,
-      (errMsg) => setLoginError(errMsg),
-    );
   };
 
   const handleEmailLoginInCheckout = async (e: React.FormEvent) => {
@@ -167,7 +155,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             setCustomerAddresses(addrs);
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
-              handleSelectSavedAddress(def.id);
+              setSelectedSavedAddressId(def.id);
             }
           }
         }).catch(() => {});
@@ -192,6 +180,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [addressError, setAddressError] = useState<string | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
   const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [shopPolicies, setShopPolicies] = useState<Record<string, CheckoutStoreInfo>>({});
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
 
   // Payment Method: Default to COD (reliable & always available), with PayOS option
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS'>('COD');
@@ -285,6 +276,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             name: store.name,
             slug: store.slug,
             logoUrl: store.logoUrl,
+            policyReturn: store.policyReturn,
+            policyWarranty: store.policyWarranty,
+            policyShipping: store.policyShipping,
           },
         },
       ];
@@ -312,6 +306,24 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
     return Array.from(map.values());
   }, [activeItems]);
+  const policyStoreIds = itemsGroupedByShop.map((group) => group.store.id).join(',');
+
+  useEffect(() => {
+    if (!isOpen || !policyStoreIds) return;
+    let active = true;
+    setPolicyLoading(true);
+    setPolicyError(null);
+    setPolicyAccepted(false);
+    apiCache.invalidate('/stores/public/id/');
+    Promise.all(policyStoreIds.split(',').map(async (id) => {
+      const response: any = await api.get(`/stores/public/id/${id}`);
+      return [id, response?.data || response] as const;
+    }))
+      .then((entries) => { if (active) setShopPolicies(Object.fromEntries(entries)); })
+      .catch(() => { if (active) setPolicyError('Không tải được chính sách hiện hành của Shop. Vui lòng thử lại sau.'); })
+      .finally(() => { if (active) setPolicyLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, policyStoreIds]);
 
   // Calculate Subtotal & Totals
   const rawSubtotal = useMemo(() => {
@@ -489,38 +501,31 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(districtCode));
   const selectedWard = selectedDistrict?.wards.find((w) => String(w.code) === String(wardCode));
 
-  const handleSelectSavedAddress = (addrId: string) => {
-    setSelectedSavedAddressId(addrId);
+  const applySavedAddress = useCallback((addrId: string) => {
     const addr = customerAddresses.find((a) => a.id === addrId);
     if (!addr) return;
 
     if (addr.fullName) setCustomerName(addr.fullName);
     if (addr.phoneNumber) setCustomerPhone(addr.phoneNumber);
-    if (addr.detailAddress) setShippingAddress(addr.detailAddress);
 
-    const foundProv = shippingProvinces.find(
-      (p) =>
-        (addr.provinceName && p.name.toLowerCase().includes(addr.provinceName.toLowerCase())) ||
-        String(p.code) === String(addr.provinceCode),
-    );
-    if (foundProv) {
-      setProvinceCode(String(foundProv.code));
-      const foundDist = foundProv.districts.find(
-        (d) =>
-          (addr.districtName && d.name.toLowerCase().includes(addr.districtName.toLowerCase())) ||
-          String(d.code) === String(addr.districtCode),
-      );
-      if (foundDist) {
-        setDistrictCode(String(foundDist.code));
-        const foundWard = foundDist.wards.find(
-          (w) =>
-            (addr.wardName && w.name.toLowerCase().includes(addr.wardName.toLowerCase())) ||
-            String(w.code) === String(addr.wardCode),
-        );
-        if (foundWard) setWardCode(String(foundWard.code));
-      }
-    }
+    const resolved = resolveSavedShippingAddress(addr, shippingProvinces);
+    setShippingAddress(resolved.detailAddress);
+    setProvinceCode(resolved.provinceCode);
+    setDistrictCode(resolved.districtCode);
+    setWardCode(resolved.wardCode);
+  }, [customerAddresses, shippingProvinces]);
+
+  const handleSelectSavedAddress = (addrId: string) => {
+    setSelectedSavedAddressId(addrId);
+    if (addrId) applySavedAddress(addrId);
   };
+
+  // Address data and the province catalog load independently. Re-apply the
+  // selected address once both are available so all three selects are filled.
+  useEffect(() => {
+    if (!isOpen || !selectedSavedAddressId || shippingProvinces.length === 0) return;
+    applySavedAddress(selectedSavedAddressId);
+  }, [applySavedAddress, isOpen, selectedSavedAddressId, shippingProvinces.length]);
 
   const isPhoneValid = (phone: string) => /^(0[3|5|7|8|9])[0-9]{8}$/.test(phone.trim());
   const isEmailValid = (email: string) =>
@@ -626,7 +631,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
-    if (!policyAccepted) {
+    if (!policyAccepted || policyLoading || policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])) {
       setErrorMessage('Bạn cần đọc và đồng ý chính sách đổi trả của các gian hàng trước khi đặt mua.');
       return;
     }
@@ -976,7 +981,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       Hệ thống SCANMS yêu cầu liên kết tài khoản để đảm bảo:
                       <span className="font-semibold text-[#1A1612]"> (1) Kích hoạt Quỹ Bảo Chứng Escrow 14 ngày</span>,
                       <span className="font-semibold text-[#1A1612]"> (2) Quyền gửi khiếu nại Trọng tài độc lập</span>, và
-                      <span className="font-semibold text-[#1A1612]"> (3) Tự động lưu Sổ địa chỉ giao hàng</span>.
+                      <span className="font-semibold text-[#1A1612]"> (3) Quản lý đơn hàng trong tài khoản</span>.
                     </p>
 
                     {loginError && (
@@ -987,25 +992,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     )}
 
                     <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                      <div className="shrink-0 min-w-[200px]">
+                      <div className={`shrink-0 min-w-[220px] ${isLoggingIn ? 'pointer-events-none opacity-60' : ''}`}>
                         <GoogleOfficialButton
                           onSuccess={onTokenSuccessInCheckout}
+                          text="continue_with"
                           onError={(errMsg) => setLoginError(errMsg)}
                         />
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={isLoggingIn}
-                          onClick={() => handleGoogleLoginInCheckout(true)}
-                          className="px-3.5 py-2.5 bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                          title="Dùng chế độ Dev Test để vượt qua kiểm tra origin localhost"
-                        >
-                          <Zap className="w-3.5 h-3.5 fill-current" />
-                          <span>⚡ Google 1-Click (Dev Test)</span>
-                        </button>
-
                         <button
                           type="button"
                           onClick={() => setShowEmailLogin(!showEmailLogin)}
@@ -1153,7 +1148,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
 
                     {customerAddresses.length > 0 && (
-                      <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] space-y-1.5">
+                      <div className="min-w-0 rounded-xl border border-[#EAE4D7] bg-[#FBF5EB] px-3 py-2.5 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-[#B88E4F] flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -1163,13 +1158,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         <select
                           value={selectedSavedAddressId}
                           onChange={(e) => handleSelectSavedAddress(e.target.value)}
-                          className="w-full text-xs bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-[#1A1612] font-medium outline-hidden focus:border-[#C59B58]"
+                          aria-label="Chọn địa chỉ nhận hàng đã lưu"
+                          className="block w-full min-w-0 truncate rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#1A1612] outline-hidden focus:border-[#C59B58]"
                         >
-                          <option value="">-- Chọn từ sổ địa chỉ đã lưu --</option>
+                          <option value="">Chọn địa chỉ đã lưu</option>
                           {customerAddresses.map((a) => (
                             <option key={a.id} value={a.id}>
-                              {a.isDefault ? '⭐ [Mặc định] ' : ''}
-                              {a.fullName} - {a.phoneNumber} ({a.detailAddress}, {a.wardName}, {a.districtName}, {a.provinceName})
+                              {formatSavedAddressOption(a, shippingProvinces)}
                             </option>
                           ))}
                         </select>
@@ -1533,16 +1528,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       {itemsGroupedByShop.map((group) => (
                         <div key={group.store.id} className="rounded-xl border border-[#EAE4D7] bg-white p-3">
                           <strong className="block text-[#1A1612]">{group.store.name}</strong>
-                          <p>• {group.store.policyReturn || 'Đổi trả trong 14 ngày khi có ảnh lỗi và video mở hộp.'}</p>
-                          <p>• {group.store.policyWarranty || 'Cam kết hàng chính hãng, bảo hành theo công bố của Shop.'}</p>
-                          <p>• {group.store.policyShipping || 'Hoàn tiền được xử lý sau khi Shop xác minh yêu cầu hợp lệ.'}</p>
+                          {shopPolicies[group.store.id]?.policyReturn
+                            ? <p>• Đổi trả (Shop): {shopPolicies[group.store.id].policyReturn}</p>
+                            : <p>• Đổi trả (quy định SCANMS): yêu cầu trong 14 ngày kể từ khi giao, kèm ảnh và video mở hộp.</p>}
+                          <p>• Bảo hành: {shopPolicies[group.store.id]?.policyWarranty || 'Shop chưa công bố chính sách bảo hành riêng.'}</p>
+                          <p>• Giao hàng: {shopPolicies[group.store.id]?.policyShipping || 'Shop chưa công bố chính sách giao hàng riêng.'}</p>
                         </div>
                       ))}
                     </div>
+                    {policyLoading && <p className="text-xs text-[#7D715E]">Đang tải chính sách hiện hành...</p>}
+                    {policyError && <p role="alert" className="text-xs text-[#DC2626]">{policyError}</p>}
                     <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-[#EEDFC6] bg-white p-3">
                       <input
                         type="checkbox"
                         checked={policyAccepted}
+                        disabled={policyLoading || !!policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])}
                         onChange={(event) => setPolicyAccepted(event.target.checked)}
                         className="mt-0.5 h-4 w-4 accent-[#C59B58]"
                       />
@@ -1555,7 +1555,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   {/* Submit Button (Requirement 10: debounce & disable) */}
                   <button
                     type="submit"
-                    disabled={isSubmitting || activeItems.length === 0 || !policyAccepted}
+                    disabled={isSubmitting || activeItems.length === 0 || !policyAccepted || policyLoading || !!policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])}
                     className="w-full py-3.5 bg-gradient-to-r from-[#EBD08C] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#D4B26F] disabled:opacity-50 text-[#231D15] font-extrabold text-sm rounded-xl shadow-md hover:shadow-lg shadow-[#C59B58]/20 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-[#DEC07A]"
                   >
                     {isSubmitting ? (

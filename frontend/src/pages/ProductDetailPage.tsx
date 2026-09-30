@@ -66,6 +66,7 @@ interface LandingStore {
   id: string;
   name: string;
   slug: string;
+  logoUrl?: string | null;
   isVerified: boolean;
 }
 
@@ -351,7 +352,8 @@ export default function ProductDetailPage() {
       toast.info('Tính năng liên hệ shop dành cho khách hàng và KOL / Creator.');
       return;
     }
-    const storeId = data?.store?.id || 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
+    const storeId = data?.store?.id;
+    if (!storeId) { toast.error('Không tìm thấy Shop của sản phẩm'); return; }
     const firstImg = data?.images?.[0] || data?.product?.imageUrl || '';
     const query = new URLSearchParams({
       tab: 'messages',
@@ -361,7 +363,6 @@ export default function ProductDetailPage() {
       productImage: firstImg,
       productPrice: String(data?.product?.price || 0),
       productSku: data?.product?.sku || '',
-      commissionRate: '15',
     });
     navigate(
       isKolUser
@@ -960,14 +961,14 @@ export default function ProductDetailPage() {
 
             <div className="lg:max-w-[460px] lg:mx-auto p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-between gap-3 min-w-0">
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className="w-9 h-9 shrink-0 rounded-lg bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-xs">
-                  {store.name.charAt(0)}
-                </div>
+                <Link to={`/shops/${store.id}`} className="w-9 h-9 shrink-0 rounded-lg bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-xs" aria-label={`Xem Shop ${store.name}`}>
+                  {store.logoUrl ? <img src={store.logoUrl} alt="" className="h-full w-full rounded-lg object-cover" /> : store.name.charAt(0)}
+                </Link>
                 <div className="min-w-0">
                   <div className="text-[10px] text-[#7D715E]">Cung cấp bởi</div>
-                  <div className="text-xs font-bold text-[#1A1612] truncate" title={store.name}>
+                  <Link to={`/shops/${store.id}`} className="block text-xs font-bold text-[#1A1612] truncate hover:text-[#B88E4F]" title={store.name}>
                     {store.name}
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-1 text-[10px] text-[#B88E4F]">
                     {store.isVerified && (
                       <BadgeCheck className="w-3 h-3 shrink-0" />
@@ -983,7 +984,7 @@ export default function ProductDetailPage() {
                 title="Liên hệ trao đổi mẫu thử và hoa hồng tiếp thị với Shop"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>Chat Shop</span>
+                <span>Chat ngay với Shop</span>
               </button>
             </div>
           </div>

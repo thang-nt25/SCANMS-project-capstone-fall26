@@ -747,7 +747,7 @@ export default function CustomerPortalPage() {
                       const isCompleted = order.status === 'COMPLETED';
                       const isCancelled = order.status === 'CANCELLED';
                       const hasReturnRequest = Boolean(order.returnRequest) || ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'].includes(order.status);
-                      const returnAnchor = new Date(order.completedAt || order.updatedAt).getTime();
+                      const returnAnchor = new Date(order.deliveredAt || order.completedAt || 0).getTime();
                       const canRequestReturn =
                         (isDelivered || isCompleted) &&
                         !hasReturnRequest &&
@@ -762,9 +762,9 @@ export default function CustomerPortalPage() {
                           <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#EAE4D7]">
                             <div className="flex items-center gap-2">
                               <StoreIcon className="w-4 h-4 text-[#B88E4F]" />
-                              <strong className="text-xs font-black text-[#1A1612]">
+                              <Link to={`/shops/${order.storeId}`} className="text-xs font-black text-[#1A1612] hover:text-[#B88E4F]">
                                 {order.store?.name || 'Gian Hàng Đối Tác'}
-                              </strong>
+                              </Link>
                               <span className="text-[11px] font-mono text-[#7D715E] bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
                                 #{order.externalOrderSn}
                               </span>
@@ -799,7 +799,10 @@ export default function CustomerPortalPage() {
                               {hasReturnRequest && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
                                   <RotateCcw className="w-3 h-3" />
-                                  <span>Đang xử lý trả hàng</span>
+                                  <span>{order.returnRequest?.status === 'SHOP_APPROVED' ? 'Shop đã duyệt · chờ xử lý tiền/hàng'
+                                    : order.returnRequest?.status === 'SHOP_REJECTED' ? 'Shop đã từ chối đổi trả'
+                                    : order.returnRequest?.status === 'REFUNDED' ? 'Đã hoàn tiền'
+                                    : 'Đang xử lý trả hàng'}</span>
                                 </span>
                               )}
                               {isCancelled && (
@@ -810,6 +813,12 @@ export default function CustomerPortalPage() {
                               )}
                             </div>
                           </div>
+
+                          {order.returnRequest?.shopResponse && (
+                            <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#1A1612]">
+                              Phản hồi của Shop: {order.returnRequest.shopResponse}
+                            </p>
+                          )}
 
                           {/* Order Items */}
                           <div className="flex flex-col gap-3">
@@ -882,7 +891,7 @@ export default function CustomerPortalPage() {
                                 </button>
                               )}
 
-                              {isDelivered && (
+                              {isDelivered && !hasReturnRequest && (
                                 <button
                                   type="button"
                                   disabled={confirmingOrderId === order.id}
@@ -1129,9 +1138,9 @@ export default function CustomerPortalPage() {
                               </button>
                             </div>
 
-                            <span className="text-[10px] font-bold text-[#7D715E] uppercase block mb-1">
+                            <Link to={p.store?.id ? `/shops/${p.store.id}` : '/marketplace'} className="text-[10px] font-bold text-[#7D715E] uppercase block mb-1 hover:text-[#B88E4F]">
                               {p.store?.name || 'Gian hàng chính hãng'}
-                            </span>
+                            </Link>
                             <Link
                               to={`/products/${p.sku || p.id}`}
                               className="text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] line-clamp-2 transition mb-2 block"

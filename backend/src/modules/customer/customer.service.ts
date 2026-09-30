@@ -281,9 +281,13 @@ export class CustomerService {
       throw new BadRequestException('Đơn hàng đang có yêu cầu đổi trả nên chưa thể hoàn tất');
     }
 
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.order.updateMany({
+        where: { id: orderId, status: OrderStatus.DELIVERED, returnRequest: { is: null } },
+        data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
+      });
+      if (changed.count !== 1) throw new BadRequestException('Đơn đã thay đổi trạng thái hoặc có yêu cầu đổi trả');
+      return tx.order.findUniqueOrThrow({ where: { id: orderId } });
     });
     return { message: 'Đã xác nhận nhận hàng. Bạn có thể đánh giá sản phẩm.', order: updated };
   }
@@ -309,13 +313,25 @@ export class CustomerService {
       throw new BadRequestException('Đơn hàng này đã có yêu cầu đổi trả');
     }
 
-    const deliveredAt = order.completedAt || order.updatedAt;
+    const deliveredAt = order.deliveredAt || order.completedAt;
+    if (!deliveredAt) {
+      throw new BadRequestException('Chưa xác định được ngày giao hàng; vui lòng liên hệ hỗ trợ');
+    }
     const deadlineAt = new Date(deliveredAt.getTime() + RETURN_WINDOW_MS);
     if (deadlineAt.getTime() < Date.now()) {
       throw new BadRequestException('Đơn hàng đã quá thời hạn đổi trả 14 ngày');
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.order.updateMany({
+        where: {
+          id: orderId,
+          status: order.status,
+          returnRequest: { is: null },
+        },
+        data: { status: OrderStatus.RETURN_REQUESTED },
+      });
+      if (changed.count !== 1) throw new BadRequestException('Đơn đã thay đổi trạng thái hoặc đã có yêu cầu đổi trả');
       const request = await tx.returnRequest.create({
         data: {
           orderId,
@@ -325,11 +341,8 @@ export class CustomerService {
           imageUrls: dto.imageUrls,
           unboxingVideoUrl: dto.unboxingVideoUrl,
           deadlineAt,
+          originalOrderStatus: order.status,
         },
-      });
-      await tx.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.RETURN_REQUESTED },
       });
       await tx.notification.create({
         data: {

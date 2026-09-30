@@ -122,6 +122,9 @@ export default function OrdersManagementPage({
 
   // Modals for order fulfillment & viewing
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<StoreOrderRecord | null>(null);
+  const [returnResponse, setReturnResponse] = useState('');
+  const [returnError, setReturnError] = useState('');
+  const [respondingReturn, setRespondingReturn] = useState(false);
   const [shippingModalOrder, setShippingModalOrder] = useState<StoreOrderRecord | null>(null);
   const [shippingCarrier, setShippingCarrier] = useState("GHTK");
   const [shippingTrackingNumber, setShippingTrackingNumber] = useState("");
@@ -210,6 +213,32 @@ export default function OrdersManagementPage({
       alert(err.message || "Không thể cập nhật trạng thái đơn hàng");
     } finally {
       setUpdatingFulfillment(false);
+    }
+  };
+
+  const handleReturnDecision = async (decision: 'APPROVE' | 'REJECT') => {
+    if (!selectedOrderDetails?.returnRequest || returnResponse.trim().length < 10) {
+      setReturnError('Vui lòng ghi rõ hướng xử lý (ít nhất 10 ký tự).');
+      return;
+    }
+    if (!window.confirm(decision === 'APPROVE'
+      ? 'Duyệt yêu cầu đổi trả? Thao tác này chưa chuyển hoặc hoàn tiền cho khách.'
+      : 'Từ chối yêu cầu đổi trả và gửi lý do cho khách?')) return;
+    setRespondingReturn(true);
+    setReturnError('');
+    try {
+      const result = await orderService.respondReturnRequest(selectedOrderDetails.id, {
+        decision,
+        response: returnResponse.trim(),
+      });
+      setActionSuccessMsg(result.message);
+      setSelectedOrderDetails(null);
+      setReturnResponse('');
+      setOrdersRefreshCount((count) => count + 1);
+    } catch (error) {
+      setReturnError(messageOf(error));
+    } finally {
+      setRespondingReturn(false);
     }
   };
 
@@ -698,6 +727,8 @@ export default function OrdersManagementPage({
                         DELIVERED: "bg-emerald-50 text-emerald-700 border-emerald-200",
                         COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200",
                         CANCELLED: "bg-rose-50 text-rose-700 border-rose-200",
+                        RETURN_REQUESTED: "bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]",
+                        DISPUTED: "bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]",
                         RETURNED: "bg-purple-50 text-purple-700 border-purple-200",
                       }[order.status] || "bg-gray-50 text-gray-700 border-gray-200";
 
@@ -707,6 +738,8 @@ export default function OrdersManagementPage({
                         DELIVERED: "Đã giao",
                         COMPLETED: "Hoàn tất",
                         CANCELLED: "Đã hủy",
+                        RETURN_REQUESTED: "Yêu cầu đổi trả",
+                        DISPUTED: "Đang khiếu nại",
                         RETURNED: "Trả hàng",
                       }[order.status] || order.status;
 
@@ -840,7 +873,7 @@ export default function OrdersManagementPage({
                               )}
 
                               <button
-                                onClick={() => setSelectedOrderDetails(order)}
+                                  onClick={() => { setSelectedOrderDetails(order); setReturnResponse(''); setReturnError(''); }}
                                 className="p-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#7D715E] hover:text-[#1A1612] transition"
                                 title="Xem chi tiết đơn"
                               >
@@ -1029,6 +1062,38 @@ export default function OrdersManagementPage({
                 ))}
               </div>
             </div>
+
+            {selectedOrderDetails.returnRequest && (
+              <section className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 space-y-3 text-xs">
+                <h4 className="font-bold text-[#1A1612]">Hồ sơ đổi trả / hoàn tiền</h4>
+                <p>Trạng thái: <strong>{selectedOrderDetails.returnRequest.status}</strong> · Gửi lúc {new Date(selectedOrderDetails.returnRequest.submittedAt).toLocaleString('vi-VN')}</p>
+                <p>Lý do: <strong>{selectedOrderDetails.returnRequest.reason}</strong></p>
+                {selectedOrderDetails.returnRequest.details && <p>{selectedOrderDetails.returnRequest.details}</p>}
+                <div className="flex flex-wrap gap-2">
+                  {selectedOrderDetails.returnRequest.imageUrls.map((url, index) => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Ảnh {index + 1}</a>
+                  ))}
+                  <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Video mở hộp</a>
+                </div>
+                {selectedOrderDetails.returnRequest.shopResponse && <p>Phản hồi của Shop: {selectedOrderDetails.returnRequest.shopResponse}</p>}
+                {selectedOrderDetails.returnRequest.status === 'REQUESTED' && (
+                  <div className="space-y-2">
+                    <label className="block font-bold">Hướng xử lý gửi khách
+                      <textarea value={returnResponse} onChange={(event) => setReturnResponse(event.target.value)} maxLength={1000} rows={3}
+                        className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal outline-none focus:border-[#C59B58]" />
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('APPROVE')}
+                        className="rounded-xl bg-[#C59B58] px-4 py-2 font-bold text-white disabled:opacity-50">Duyệt yêu cầu</button>
+                      <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('REJECT')}
+                        className="rounded-xl border border-[#DC2626] px-4 py-2 font-bold text-[#DC2626] disabled:opacity-50">Từ chối</button>
+                    </div>
+                    {returnError && <p role="alert" className="text-[#DC2626]">{returnError}</p>}
+                    <p className="text-[#7D715E]">Duyệt yêu cầu không đồng nghĩa tiền đã được hoàn; cần đối soát thanh toán riêng.</p>
+                  </div>
+                )}
+              </section>
+            )}
 
             {/* Tài chính & Hoa hồng */}
             <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl flex flex-col gap-1.5 text-xs">

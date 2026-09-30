@@ -472,29 +472,17 @@ export class AuthService {
   ) {
     let payload: any;
 
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      dto.idToken &&
-      dto.idToken.startsWith('mock-google-token:')
-    ) {
-      const email = dto.idToken.split(':')[1] || 'customer.google@scanms.vn';
-      payload = {
-        email,
-        name: 'Khách Hàng Google (Xác Thực)',
-        picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&h=120&fit=crop',
-      };
-    } else if (dto.idToken && (dto.idToken.startsWith('ya29.') || !dto.idToken.includes('.'))) {
+    if (dto.idToken.startsWith('ya29.') || dto.idToken.split('.').length !== 3) {
       try {
-        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${dto.idToken}` },
         });
-        if (!userInfoRes.ok) {
-          throw new Error(`Google userinfo HTTP status ${userInfoRes.status}`);
-        }
-        payload = await userInfoRes.json();
+        if (!userInfoResponse.ok) throw new Error(`Google HTTP ${userInfoResponse.status}`);
+        payload = await userInfoResponse.json();
       } catch (err: any) {
+        this.logger.warn(`Google Access Token verification failed: ${err.message}`);
         throw new UnauthorizedException(
-          `Xác thực Google Access Token thất bại: ${err.message}`,
+          'Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.',
         );
       }
     } else {
@@ -505,24 +493,14 @@ export class AuthService {
         });
         payload = ticket.getPayload();
       } catch (err: any) {
-        try {
-          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${dto.idToken}` },
-          });
-          if (userInfoRes.ok) {
-            payload = await userInfoRes.json();
-          } else {
-            throw new Error(`Google status ${userInfoRes.status}`);
-          }
-        } catch {
-          throw new UnauthorizedException(
-            `Xác thực Google OAuth thất bại: ${err.message}`,
-          );
-        }
+        this.logger.warn(`Google ID Token verification failed: ${err.message}`);
+        throw new UnauthorizedException(
+          'Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.',
+        );
       }
     }
 
-    if (!payload || !payload.email) {
+    if (!payload || !payload.email || payload.email_verified === false) {
       throw new BadRequestException('Thông tin tài khoản Google không hợp lệ');
     }
 

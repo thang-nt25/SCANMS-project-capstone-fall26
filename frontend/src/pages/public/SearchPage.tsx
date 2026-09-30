@@ -1064,10 +1064,10 @@ export default function SearchPage() {
                         <div className="p-3">
                           {/* Store Name with Badge */}
                           <div className="flex items-center justify-between gap-1 mb-1.5">
-                            <span className="text-[11px] font-bold text-[#7D715E] flex items-center gap-1 truncate">
+                            <Link to={`/shops/${p.storeId}`} className="text-[11px] font-bold text-[#7D715E] flex items-center gap-1 truncate hover:text-[#B88E4F]" onClick={(event) => event.stopPropagation()}>
                               <Store className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
                               <span className="truncate">{p.brand}</span>
-                            </span>
+                            </Link>
                             <span className="text-[10px] text-[#B88E4F] font-bold shrink-0">
                               Chính hãng
                             </span>

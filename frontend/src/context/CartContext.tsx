@@ -194,7 +194,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(async (remote) => {
         if (!active) return;
         const previousOwner = localStorage.getItem(CART_OWNER_KEY);
-        const localItems = previousOwner && previousOwner !== user.id ? [] : cart;
+        // Once a cart belongs to an account, PostgreSQL is authoritative on
+        // subsequent sign-ins. Only an unowned guest cart may be merged.
+        const localItems = previousOwner ? [] : cart;
         const merged = new Map<string, CartItem>();
         for (const item of remote.items || []) merged.set(item.cartItemId, item as CartItem);
         for (const item of localItems) {
