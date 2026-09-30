@@ -170,8 +170,8 @@ export function renderGoogleButton(
       theme: 'outline',
       size: 'large',
       type: 'standard',
-      shape: 'rectangular',
-      text: options?.text || 'signin_with',
+      shape: 'pill',
+      text: options?.text || 'continue_with',
       logo_alignment: 'left',
       width: Math.min(400, Math.max(200, Math.floor(options?.width || 200))),
     });
