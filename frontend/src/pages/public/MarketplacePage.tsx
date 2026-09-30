@@ -38,6 +38,7 @@ import { uploadService } from '../../services/upload.service';
 import { customerService } from '../../services/customer.service';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
+import { ChatBell } from '../../components/chat/ChatBell';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
@@ -528,7 +529,8 @@ export default function MarketplacePage() {
             </form>
 
             {/* Header Action Buttons */}
-            <div className="flex items-center gap-2 sm:gap-2.5">
+<div className="flex items-center gap-2.5 sm:gap-3.5">
+              {currentUser?.role === 'CUSTOMER' && <ChatBell userId={currentUser.id} />}
 
               {/* Shopee-style Minimalist Cart Icon Button */}
               <button
@@ -1135,17 +1137,22 @@ export default function MarketplacePage() {
                       </button>
                     </div>
 
-                    {/* Card Content - Shopee Compact Proportions */}
+{/* Card Content - Shopee Compact Proportions */}
                     <div className="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
                       <div>
                         {/* Row 1: Store Icon & Shop Name • Chính hãng */}
                         <div className="flex items-center justify-between gap-1 h-5 mb-1 min-w-0">
-                          <span className="text-[10.5px] font-bold text-[#7D715E] flex items-center gap-1 min-w-0 truncate">
-                            <Store className="w-3 h-3 text-[#B88E4F]" />
-                            <span className="truncate max-w-[85px] sm:max-w-[105px]" title={p.brand || 'Gian hàng đối tác'}>
+                          <Link
+                            to={p.storeId ? `/shops/${p.storeId}` : `/marketplace?store=${encodeURIComponent(p.brand || '')}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[10.5px] font-bold text-[#7D715E] hover:text-[#B88E4F] flex items-center gap-1 min-w-0 truncate"
+                            title={p.brand || 'Gian hàng đối tác'}
+                          >
+                            <Store className="w-3 h-3 text-[#B88E4F] shrink-0" />
+                            <span className="truncate max-w-[85px] sm:max-w-[105px]">
                               {p.brand || 'Gian hàng đối tác'}
                             </span>
-                          </span>
+                          </Link>
                           <span className="inline-flex items-center px-1 py-0.2 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[8.5px] sm:text-[9px] font-extrabold text-[#B88E4F] shrink-0">
                             Chính hãng
                           </span>

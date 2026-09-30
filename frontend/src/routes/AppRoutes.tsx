@@ -13,6 +13,7 @@ const RedirectHandlerPage = lazy(() => import('../pages/RedirectHandlerPage'));
 
 const UiReferencePage = lazy(() => import('../pages/UiReferencePage'));
 const MarketplacePage = lazy(() => import('../pages/public/MarketplacePage'));
+const ShopPage = lazy(() => import('../pages/public/ShopPage'));
 const SearchPage = lazy(() => import('../pages/public/SearchPage'));
 const PayosReturnPage = lazy(() => import('../pages/public/PayosReturnPage'));
 
@@ -98,6 +99,7 @@ function AppRoutes() {
             <Routes>
               <Route path="/" element={<MarketplacePage />} />
               <Route path="/marketplace" element={<MarketplacePage />} />
+              <Route path="/shops/:shopId" element={<ShopPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/marketplace/search" element={<SearchPage />} />
               <Route path="/payment/payos-return" element={<PayosReturnPage />} />
@@ -106,7 +108,7 @@ function AppRoutes() {
               <Route path="/shop" element={<ShopStorefrontPage />} />
               <Route path="/shop/:slug" element={<ShopStorefrontPage />} />
               <Route path="/stores/:slug" element={<ShopStorefrontPage />} />
-              <Route path="/leaderboard" element={<PublicLeaderboardPage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
 
         <Route path="/prototype" element={<UiReferencePage />} />
         <Route path="/ui-reference" element={<UiReferencePage />} />
@@ -153,6 +155,7 @@ function AppRoutes() {
 
             {/* Merchant Consolidated Hubs */}
             <Route path="merchant/kol-hub" element={<ShopKolHubPage />} />
+            <Route path="merchant/customer-messages" element={<ChatBoxPage />} />
             <Route path="merchant/promotions" element={<ShopPromotionsHubPage />} />
             <Route path="merchant/fraud-sentinel" element={<AiFraudSentinelPage />} />
             <Route path="merchant/ai-fraud" element={<AiFraudSentinelPage />} />

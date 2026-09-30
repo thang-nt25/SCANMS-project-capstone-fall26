@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   ParseUUIDPipe,
@@ -25,6 +26,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ChatService } from './chat.service';
+import { ChatGateway } from './chat.gateway';
 import { CreateConversationDto } from './dto/send-message.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { MAX_CHAT_ATTACHMENT_BYTES } from './chat-attachment.utils';
@@ -34,7 +36,14 @@ import { MAX_CHAT_ATTACHMENT_BYTES } from './chat-attachment.utils';
 @UseGuards(JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService, private readonly chatGateway: ChatGateway) {}
+
+  @Patch('conversations/:conversationId/read')
+  async markRead(@Param('conversationId', ParseUUIDPipe) conversationId: string, @CurrentUser() user: any) {
+    const result = await this.chatService.markRead(conversationId, user.id);
+    if (result.count) this.chatGateway.broadcastToConversation(conversationId, 'messages_read', { conversationId, readerId: user.id });
+    return result;
+  }
 
   @Post('conversations')
   @ApiOperation({ summary: 'Tạo hoặc lấy hội thoại giữa Shop và KOL' })

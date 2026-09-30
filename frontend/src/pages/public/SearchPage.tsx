@@ -1116,17 +1116,22 @@ export default function SearchPage() {
                           </button>
                         </div>
 
-                        {/* Card Content - Shopee Compact Proportions */}
+{/* Card Content - Shopee Compact Proportions */}
                         <div className="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
                           <div>
                             {/* Row 1: Store Icon & Shop Name • Chính hãng */}
                             <div className="flex items-center justify-between gap-1 h-5 mb-1 min-w-0">
-                              <span className="text-[10.5px] font-bold text-[#7D715E] flex items-center gap-1 min-w-0 truncate">
+                              <Link
+                                to={p.storeId ? `/shops/${p.storeId}` : `/marketplace?store=${encodeURIComponent(p.brand || '')}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[10.5px] font-bold text-[#7D715E] hover:text-[#B88E4F] flex items-center gap-1 min-w-0 truncate"
+                                title={p.brand || 'Gian hàng đối tác'}
+                              >
                                 <Store className="w-3 h-3 text-[#B88E4F] shrink-0" />
-                                <span className="truncate max-w-[85px] sm:max-w-[105px]" title={p.brand || 'Gian hàng đối tác'}>
+                                <span className="truncate max-w-[85px] sm:max-w-[105px]">
                                   {p.brand || 'Gian hàng đối tác'}
                                 </span>
-                              </span>
+                              </Link>
                               <span className="inline-flex items-center px-1 py-0.2 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[8.5px] sm:text-[9px] font-extrabold text-[#B88E4F] shrink-0">
                                 Chính hãng
                               </span>

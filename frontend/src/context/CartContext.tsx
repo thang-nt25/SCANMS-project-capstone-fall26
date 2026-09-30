@@ -1,8 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { toast } from '../utils/toast';
 import { authService } from '../services/auth.service';
 import api from '../services/api';
+<<<<<<< HEAD
 import { getSafeProductImageUrl } from '../features/marketplace/marketplaceUtils';
+=======
+import { customerService } from '../services/customer.service';
+>>>>>>> origin/dev
 
 export interface CartVariantInfo {
   id: string;
@@ -31,6 +35,9 @@ export interface CartItem {
     name: string;
     slug?: string;
     logoUrl?: string;
+    policyReturn?: string;
+    policyWarranty?: string;
+    policyShipping?: string;
   };
   availableVariants?: CartVariantInfo[];
 }
@@ -70,6 +77,9 @@ interface AddItemParams {
     name: string;
     slug?: string;
     logoUrl?: string;
+    policyReturn?: string;
+    policyWarranty?: string;
+    policyShipping?: string;
   };
   openCartAfterAdd?: boolean;
 }
@@ -105,6 +115,8 @@ interface CartContextType {
   closeCheckout: () => void;
   refreshCartStock: () => Promise<void>;
   isValidatingStock: boolean;
+  isCartSyncing: boolean;
+  cartSyncedAt: string | null;
 }
 
 const getCartStorageKey = (userId?: string | null) => {
@@ -184,6 +196,8 @@ const loadSelectedFromStorage = (uid: string | null): string[] => {
   return [];
 };
 
+const CART_OWNER_KEY = 'scanms_cart_owner';
+
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -200,6 +214,102 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
   const [isValidatingStock, setIsValidatingStock] = useState(false);
+  const [isCartSyncing, setIsCartSyncing] = useState(false);
+  const [cartSyncedAt, setCartSyncedAt] = useState<string | null>(null);
+  const [authVersion, setAuthVersion] = useState(0);
+  const hydratedUserRef = useRef<string | null>(null);
+  const skipNextPushRef = useRef(false);
+
+  useEffect(() => {
+    const onAuthChanged = () => setAuthVersion((value) => value + 1);
+    window.addEventListener('scanms_auth_changed', onAuthChanged);
+    window.addEventListener('storage', onAuthChanged);
+    return () => {
+      window.removeEventListener('scanms_auth_changed', onAuthChanged);
+      window.removeEventListener('storage', onAuthChanged);
+    };
+  }, []);
+
+  // Hydrate from PostgreSQL after sign-in and merge only a genuine guest cart.
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    const token = localStorage.getItem('token');
+    if (!token || !user?.id) {
+      if (hydratedUserRef.current) {
+        setCart([]);
+        setSelectedItemIds([]);
+        setCartSyncedAt(null);
+        hydratedUserRef.current = null;
+        localStorage.removeItem(CART_OWNER_KEY);
+      }
+      return;
+    }
+    if (hydratedUserRef.current === user.id) return;
+
+    let active = true;
+    setIsCartSyncing(true);
+    customerService
+      .getCart()
+      .then(async (remote) => {
+        if (!active) return;
+        const previousOwner = localStorage.getItem(CART_OWNER_KEY);
+        // Once a cart belongs to an account, PostgreSQL is authoritative on
+        // subsequent sign-ins. Only an unowned guest cart may be merged.
+        const localItems = previousOwner ? [] : cart;
+        const merged = new Map<string, CartItem>();
+        for (const item of remote.items || []) merged.set(item.cartItemId, item as CartItem);
+        for (const item of localItems) {
+          const existing = merged.get(item.cartItemId);
+          merged.set(item.cartItemId, existing
+            ? { ...existing, quantity: Math.min(Math.max(existing.quantity, item.quantity), existing.stockQuantity || 1) }
+            : item);
+        }
+        const next = Array.from(merged.values());
+        skipNextPushRef.current = true;
+        setCart(next);
+        setSelectedItemIds(next.filter((item) => item.isActive && item.stockQuantity > 0).map((item) => item.cartItemId));
+        hydratedUserRef.current = user.id;
+        localStorage.setItem(CART_OWNER_KEY, user.id);
+        setCartSyncedAt(remote.syncedAt || new Date().toISOString());
+        if (localItems.length > 0) {
+          const synced = await customerService.syncCart(next.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          })));
+          if (active) setCartSyncedAt(synced.syncedAt || new Date().toISOString());
+        }
+      })
+      .catch(() => {
+        // Keep the local guest cart if the API is temporarily unavailable.
+      })
+      .finally(() => active && setIsCartSyncing(false));
+
+    return () => { active = false; };
+  }, [authVersion]);
+
+  // Persist every signed-in cart mutation to the centralized cart table.
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    if (!user?.id || hydratedUserRef.current !== user.id) return;
+    if (skipNextPushRef.current) {
+      skipNextPushRef.current = false;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setIsCartSyncing(true);
+      customerService
+        .syncCart(cart.map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+        })))
+        .then((result) => setCartSyncedAt(result.syncedAt || new Date().toISOString()))
+        .catch(() => toast.error('Chưa thể đồng bộ giỏ hàng. Hệ thống sẽ thử lại khi bạn thao tác tiếp.'))
+        .finally(() => setIsCartSyncing(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [cart]);
 
   // Clear legacy shared un-scoped cart so it never leaks between different accounts
   useEffect(() => {
@@ -502,6 +612,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: store.name,
             slug: store.slug,
             logoUrl: store.logoUrl,
+            policyReturn: store.policyReturn,
+            policyWarranty: store.policyWarranty,
+            policyShipping: store.policyShipping,
           },
           availableVariants,
         };
@@ -823,6 +936,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       closeCheckout,
       refreshCartStock,
       isValidatingStock,
+      isCartSyncing,
+      cartSyncedAt,
     }),
     [
       cart,
@@ -853,6 +968,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       closeCheckout,
       refreshCartStock,
       isValidatingStock,
+      isCartSyncing,
+      cartSyncedAt,
     ],
   );
 

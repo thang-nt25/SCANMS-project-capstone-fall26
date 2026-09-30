@@ -1132,7 +1132,7 @@ export class ProductsService {
 
       const isVerifiedBuyer = Boolean(
         (r.orderId || (r as any).order?.id) &&
-          (r.order?.status === 'DELIVERED' || r.order?.status === 'COMPLETED'),
+          r.order?.status === 'COMPLETED',
       );
 
       return {

@@ -49,8 +49,8 @@ export const uploadService = {
       throw new Error('Chỉ chấp nhận file video định dạng MP4, MOV, WEBM hoặc AVI');
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      throw new Error('Dung lượng video không được vượt quá 50MB');
+    if (file.size > 100 * 1024 * 1024) {
+      throw new Error('Dung lượng video không được vượt quá 100MB');
     }
 
     const formData = new FormData();
@@ -58,6 +58,7 @@ export const uploadService = {
 
     const res: any = await api.post(`/upload/video?folder=${encodeURIComponent(folder)}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180000,
     });
 
     const data = res?.data?.data || res?.data || res;

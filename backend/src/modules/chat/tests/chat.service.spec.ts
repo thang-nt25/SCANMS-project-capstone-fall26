@@ -36,16 +36,19 @@ describe('ChatService (FR-25)', () => {
   beforeEach(async () => {
     prisma = {
       store: {
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(mockStore),
         findMany: jest.fn(),
       },
       user: {
-        findUnique: jest.fn().mockResolvedValue({ role: 'COLLABORATOR' }),
+        findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+          role: where.id === mockOwnerId ? 'SHOP_MANAGER' : 'COLLABORATOR', isActive: true,
+        })),
         findMany: jest.fn(),
       },
       storeCollaborator: {
         upsert: jest.fn().mockResolvedValue({}),
       },
+      product: { findFirst: jest.fn() },
       conversation: {
         findFirst: jest.fn(),
         findUnique: jest.fn(),
@@ -55,6 +58,7 @@ describe('ChatService (FR-25)', () => {
       },
       chatMessage: {
         findMany: jest.fn(),
+        findUnique: jest.fn(),
         create: jest.fn(),
         updateMany: jest.fn(),
         count: jest.fn(),
@@ -90,8 +94,8 @@ describe('ChatService (FR-25)', () => {
 
     it('should resolve storeId when shop manager initiates chat with collaboratorId', async () => {
       prisma.user.findUnique
-        .mockResolvedValueOnce({ role: 'SHOP_MANAGER' })
-        .mockResolvedValueOnce({ role: 'COLLABORATOR' });
+        .mockResolvedValueOnce({ role: 'SHOP_MANAGER', isActive: true })
+        .mockResolvedValueOnce({ role: 'COLLABORATOR', isActive: true });
       prisma.store.findFirst.mockResolvedValue(mockStore);
       prisma.conversation.findFirst.mockResolvedValue(null);
       prisma.conversation.create.mockResolvedValue(mockConversation);
@@ -118,18 +122,43 @@ describe('ChatService (FR-25)', () => {
     });
 
     it('does not create an affiliate relationship for a customer opening product chat', async () => {
-      prisma.user.findUnique.mockResolvedValue({ role: 'CUSTOMER' });
+      prisma.user.findUnique.mockResolvedValue({ role: 'CUSTOMER', isActive: true });
       prisma.conversation.findFirst.mockResolvedValue(null);
-      prisma.conversation.create.mockResolvedValue(mockConversation);
+      prisma.conversation.create.mockResolvedValue({ ...mockConversation, customerId: mockIntruderId });
 
       const result = await service.getOrCreateConversation(
         { storeId: mockStoreId },
-        mockOwnerId,
+        mockIntruderId,
       );
 
       expect(result.id).toBe(mockConversationId);
       expect(prisma.storeCollaborator.upsert).not.toHaveBeenCalled();
       expect(prisma.conversation.create).toHaveBeenCalled();
+    });
+
+    it('rejects a non-owner attempting to create a conversation for another customer', async () => {
+      await expect(service.getOrCreateConversation(
+        { storeId: mockStoreId, customerId: mockIntruderId }, mockCollaboratorId,
+      )).rejects.toThrow(ForbiddenException);
+    });
+
+    it('does not allow a collaborator to impersonate a customer via asCustomer', async () => {
+      prisma.conversation.findFirst.mockResolvedValue(null);
+      prisma.conversation.create.mockResolvedValue(mockConversation);
+      await service.getOrCreateConversation({ storeId: mockStoreId, asCustomer: true }, mockCollaboratorId);
+      expect(prisma.conversation.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ collaboratorId: mockCollaboratorId, customerId: null }),
+      }));
+    });
+
+    it('routes a customer to their own customerId, ignoring FE asCustomer', async () => {
+      prisma.user.findUnique.mockResolvedValue({ role: 'CUSTOMER', isActive: true });
+      prisma.conversation.findFirst.mockResolvedValue(null);
+      prisma.conversation.create.mockResolvedValue({ ...mockConversation, customerId: mockIntruderId });
+      await service.getOrCreateConversation({ storeId: mockStoreId }, mockIntruderId);
+      expect(prisma.conversation.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ customerId: mockIntruderId, collaboratorId: null }),
+      }));
     });
   });
 
@@ -184,8 +213,10 @@ describe('ChatService (FR-25)', () => {
 
       expect(prisma.conversation.findMany).toHaveBeenCalledWith(expect.objectContaining({
         where: {
-          collaboratorId: mockCollaboratorId,
-          collaborator: { is: { role: 'CUSTOMER' } },
+          OR: [
+            { customerId: mockCollaboratorId },
+            { collaboratorId: mockCollaboratorId, collaborator: { is: { role: 'CUSTOMER' } } },
+          ],
         },
       }));
       expect(conversations[0].chatMessages[0].messageText).toBe('Shop đã gửi tin nhắn.');
@@ -334,6 +365,33 @@ describe('ChatService (FR-25)', () => {
       expect(prisma.coupon.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({ where: expect.objectContaining({ storeId: mockStoreId }) }),
       );
+    });
+  });
+
+  describe('saveMessage idempotency', () => {
+    it('returns the existing message for the same client-generated id without inserting again', async () => {
+      const existing = { id: mockMessageId, conversationId: mockConversationId, senderId: mockCollaboratorId };
+      prisma.chatMessage.findUnique.mockResolvedValue(existing);
+      const result = await service.saveMessage(mockConversationId, mockCollaboratorId, 'Xin chào', undefined, undefined, undefined, mockMessageId);
+      expect(result).toEqual(existing);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects reuse of another sender’s message id', async () => {
+      prisma.chatMessage.findUnique.mockResolvedValue({ id: mockMessageId, conversationId: mockConversationId, senderId: mockIntruderId });
+      await expect(service.saveMessage(mockConversationId, mockCollaboratorId, 'Xin chào', undefined, undefined, undefined, mockMessageId))
+        .rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('product inquiry', () => {
+    it('rejects a product that does not belong to the conversation Shop', async () => {
+      prisma.product.findFirst.mockResolvedValue(null);
+      await expect(service.normalizeProductInquiry({ productId: mockMessageId, message: 'Cho tôi hỏi sản phẩm này' }, mockStoreId))
+        .rejects.toThrow(BadRequestException);
+      expect(prisma.product.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ storeId: mockStoreId }),
+      }));
     });
   });
 

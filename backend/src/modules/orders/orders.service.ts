@@ -40,8 +40,10 @@ import {
   StoreCollaboratorStatus,
   OrderSourcePlatform,
   ReviewStatus,
+  ReturnRequestStatus,
   Prisma,
 } from '@prisma/client';
+import { RespondReturnRequestDto, ReturnDecision } from './dto/respond-return-request.dto';
 import {
   ExternalOrderPlatform,
   OrderWebhookDto,
@@ -207,6 +209,7 @@ export class OrdersService {
             discountAmount,
             finalAmount,
             status: normalizedOrder.status,
+            deliveredAt: normalizedOrder.receivedAt,
             completedAt: normalizedOrder.receivedAt,
             orderItems: {
               create: resolvedItems.map((item) => ({
@@ -365,6 +368,17 @@ export class OrdersService {
         ],
         COMPLETED: [OrderStatus.COMPLETED, OrderStatus.RETURNED],
         CANCELLED: [OrderStatus.CANCELLED],
+        RETURN_REQUESTED: [
+          OrderStatus.RETURN_REQUESTED,
+          OrderStatus.DISPUTED,
+          OrderStatus.RETURNED,
+          OrderStatus.COMPLETED,
+        ],
+        DISPUTED: [
+          OrderStatus.DISPUTED,
+          OrderStatus.RETURNED,
+          OrderStatus.COMPLETED,
+        ],
         RETURNED: [OrderStatus.RETURNED],
       };
       if (!transitions[current.status].includes(normalized.status))
@@ -381,6 +395,7 @@ export class OrdersService {
           ...(normalized.receivedAt && !current.completedAt
             ? { completedAt: normalized.receivedAt }
             : {}),
+          ...(normalized.receivedAt ? { deliveredAt: normalized.receivedAt } : {}),
         },
         select: this.webhookOrderSelect,
       });
@@ -1648,13 +1663,23 @@ export class OrdersService {
         cancellationToken: hashedCancellationToken,
         shippingFee: new Prisma.Decimal(shippingFee),
         finalAmount: new Prisma.Decimal(orderFinalAmount),
-        rawPayload: {
-          orderNotes: orderNotes || null,
-          paymentMethod,
-          paymentStatus: isVietQr || isPayos ? 'WAITING_PAYMENT' : 'UNPAID',
-          vietqr: vietqrData,
-          requestHash: currentPayloadHash,
-        },
+          rawPayload: {
+            orderNotes: orderNotes || null,
+            paymentMethod,
+            paymentStatus: isVietQr || isPayos ? 'WAITING_PAYMENT' : 'UNPAID',
+            vietqr: vietqrData,
+            requestHash: currentPayloadHash,
+          },
+          policyAcceptedAt: new Date(),
+          policySnapshot: {
+            storeId: lockedStore.id,
+            storeName: lockedStore.name,
+            returnPolicy: lockedStore.policyReturn || 'Quy định SCANMS: yêu cầu đổi trả trong 14 ngày kể từ khi giao, kèm ảnh và video mở hộp.',
+            returnPolicySource: lockedStore.policyReturn ? 'SHOP' : 'SCANMS',
+            warrantyPolicy: lockedStore.policyWarranty || null,
+            shippingPolicy: lockedStore.policyShipping || null,
+            accepted: dto.policyAccepted === true,
+          },
         attributedCollaboratorId,
         attributionMethod,
         referralLinkId,
@@ -1751,37 +1776,6 @@ export class OrdersService {
         where: { id: referralLinkId },
         data: { totalOrders: { increment: 1 } },
       });
-    }
-
-    // 6.4 Tự động lưu địa chỉ vào Sổ địa chỉ CustomerAddress nếu chưa có (Nhiệm vụ 1 - Leader Thắng)
-    if (dto.customerId) {
-      try {
-        const existingAddr = await tx.customerAddress.findFirst({
-          where: {
-            userId: dto.customerId,
-            detailAddress: shippingAddress,
-          },
-        });
-        if (!existingAddr) {
-          const hasDefault = await tx.customerAddress.findFirst({
-            where: { userId: dto.customerId, isDefault: true },
-          });
-          await tx.customerAddress.create({
-            data: {
-              userId: dto.customerId,
-              fullName: customerName,
-              phoneNumber: customerPhone,
-              detailAddress: shippingAddress,
-              provinceName: 'Toàn quốc',
-              districtName: 'Địa chỉ nhận hàng',
-              wardName: 'Điểm giao',
-              isDefault: !hasDefault,
-            },
-          });
-        }
-      } catch (addrSyncErr) {
-        this.logger.warn(`Không thể tự động lưu sổ địa chỉ CustomerAddress: ${(addrSyncErr as Error).message}`);
-      }
     }
 
     return {
@@ -3118,13 +3112,10 @@ export class OrdersService {
       );
     }
 
-    // 2. Nghiệp vụ FR-18: Đơn hàng phải ở trạng thái DELIVERED hoặc COMPLETED mới được review
-    if (
-      order.status !== OrderStatus.DELIVERED &&
-      order.status !== OrderStatus.COMPLETED
-    ) {
+    // 2. Nghiệp vụ FR-18: Khách đã xác nhận nhận hàng (COMPLETED) mới được review.
+    if (order.status !== OrderStatus.COMPLETED) {
       throw new BadRequestException(
-        'Chỉ có thể gửi đánh giá khi đơn hàng đã được giao nhận thành công (Trạng thái DELIVERED hoặc COMPLETED).',
+        'Vui lòng xác nhận đã nhận hàng trước khi gửi đánh giá (trạng thái COMPLETED).',
       );
     }
 
@@ -3158,12 +3149,7 @@ export class OrdersService {
         Prisma.sql`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`,
       );
       const freshOrder = await tx.order.findUnique({ where: { id: orderId } });
-      if (
-        !freshOrder ||
-        ![OrderStatus.DELIVERED, OrderStatus.COMPLETED].includes(
-          freshOrder.status as 'DELIVERED' | 'COMPLETED',
-        )
-      )
+      if (!freshOrder || freshOrder.status !== OrderStatus.COMPLETED)
         throw new BadRequestException(
           'Đơn hàng không còn đủ điều kiện đánh giá',
         );
@@ -3468,6 +3454,17 @@ export class OrdersService {
     },
   ) {
     let targetStoreId = query.storeId;
+    if (
+      targetStoreId &&
+      userRole !== UserRole.SYSTEM_ADMIN &&
+      userRole !== UserRole.SYSTEM_MANAGER
+    ) {
+      const ownedStore = await this.prisma.store.findFirst({
+        where: { id: targetStoreId, ownerId: userId, isDeleted: false },
+        select: { id: true },
+      });
+      if (!ownedStore) throw new ForbiddenException('Bạn không quản lý gian hàng này');
+    }
     if (!targetStoreId) {
       if (userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER) {
         // Admin xem toàn bộ hoặc storeId truyền vào
@@ -3532,6 +3529,7 @@ export class OrdersService {
           commissions: {
             select: { id: true, commissionAmount: true, status: true },
           },
+          returnRequest: true,
         },
       }),
     ]);
@@ -3545,6 +3543,7 @@ export class OrdersService {
           createdAt: order.createdAt,
           updatedAt: order.updatedAt,
           completedAt: order.completedAt,
+          deliveredAt: order.deliveredAt,
           status: order.status,
           customerName: order.customerName,
           customerPhone: order.customerPhone,
@@ -3565,6 +3564,7 @@ export class OrdersService {
             (sum, c) => sum + Number(c.commissionAmount || 0),
             0,
           ),
+          returnRequest: order.returnRequest,
           items: order.orderItems.map((item) => ({
             productId: item.productId,
             title: item.product?.title || 'Sản phẩm',
@@ -3584,6 +3584,69 @@ export class OrdersService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async respondReturnRequest(
+    orderId: string,
+    userId: string,
+    userRole: string,
+    dto: RespondReturnRequestDto,
+  ) {
+    if (dto.decision !== ReturnDecision.APPROVE && dto.decision !== ReturnDecision.REJECT) {
+      throw new BadRequestException('Quyết định xử lý không hợp lệ');
+    }
+    const response = dto.response?.trim();
+    if (!response || response.length < 10) {
+      throw new BadRequestException('Phản hồi phải có ít nhất 10 ký tự');
+    }
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { store: { select: { ownerId: true } }, returnRequest: true },
+    });
+    if (!order?.returnRequest) throw new NotFoundException('Không tìm thấy yêu cầu đổi trả');
+    if (
+      userRole !== UserRole.SYSTEM_ADMIN &&
+      userRole !== UserRole.SYSTEM_MANAGER &&
+      order.store.ownerId !== userId
+    ) {
+      throw new ForbiddenException('Bạn không quản lý gian hàng của đơn này');
+    }
+    if (order.status !== OrderStatus.RETURN_REQUESTED) {
+      throw new ConflictException('Đơn hàng không còn ở trạng thái chờ xử lý đổi trả');
+    }
+
+    const approved = dto.decision === ReturnDecision.APPROVE;
+    const result = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.returnRequest.updateMany({
+        where: { id: order.returnRequest!.id, status: ReturnRequestStatus.REQUESTED },
+        data: {
+          status: approved ? ReturnRequestStatus.SHOP_APPROVED : ReturnRequestStatus.SHOP_REJECTED,
+          shopResponse: response,
+          shopRespondedAt: new Date(),
+        },
+      });
+      if (changed.count !== 1) throw new ConflictException('Yêu cầu đã được xử lý trước đó');
+      if (!approved) {
+        const restored = await tx.order.updateMany({
+          where: { id: orderId, status: OrderStatus.RETURN_REQUESTED },
+          data: { status: order.returnRequest!.originalOrderStatus },
+        });
+        if (restored.count !== 1) throw new ConflictException('Đơn hàng đã thay đổi trạng thái');
+      }
+      await tx.notification.create({
+        data: {
+          userId: order.returnRequest!.customerId,
+          title: approved ? 'Shop đã chấp thuận yêu cầu đổi trả' : 'Shop đã từ chối yêu cầu đổi trả',
+          message: approved
+            ? `Đơn ${order.externalOrderSn}: Shop đã đồng ý xử lý. Đây chưa phải xác nhận đã hoàn tiền. Phản hồi: ${response}`
+            : `Đơn ${order.externalOrderSn}: ${response}`,
+          type: approved ? 'RETURN_APPROVED' : 'RETURN_REJECTED',
+          data: { orderId, returnRequestId: order.returnRequest!.id },
+        },
+      });
+      return tx.returnRequest.findUniqueOrThrow({ where: { id: order.returnRequest!.id } });
+    });
+    return { message: approved ? 'Đã duyệt yêu cầu, chờ hoàn tất xử lý/hoàn tiền' : 'Đã từ chối yêu cầu', returnRequest: result };
   }
 
   /**
@@ -3616,6 +3679,14 @@ export class OrdersService {
       throw new ForbiddenException('Bạn không có quyền cập nhật đơn hàng của gian hàng này');
     }
 
+    if (
+      (dto.status !== OrderStatus.SHIPPING && dto.status !== OrderStatus.DELIVERED) ||
+      (dto.status === OrderStatus.SHIPPING && order.status !== OrderStatus.PENDING) ||
+      (dto.status === OrderStatus.DELIVERED && order.status !== OrderStatus.SHIPPING)
+    ) {
+      throw new BadRequestException('Chỉ được cập nhật đơn từ Chờ lấy hàng → Đang giao → Đã giao');
+    }
+
     const currentRaw = (order.rawPayload as Record<string, any>) || {};
     const updatedRaw = {
       ...currentRaw,
@@ -3631,8 +3702,9 @@ export class OrdersService {
       sourceUpdatedAt: new Date(),
     };
 
-    if (dto.status === OrderStatus.DELIVERED && !order.completedAt) {
-      updateData.completedAt = new Date();
+    if (dto.status === OrderStatus.DELIVERED && !order.deliveredAt) {
+      updateData.deliveredAt = new Date();
+      if (!order.completedAt) updateData.completedAt = new Date();
     }
 
     const updated = await this.prisma.order.update({

@@ -79,6 +79,7 @@ interface LandingStore {
   id: string;
   name: string;
   slug: string;
+  logoUrl?: string | null;
   isVerified: boolean;
   logoUrl?: string;
 }
@@ -456,6 +457,35 @@ export default function ProductDetailPage() {
     } : undefined;
 
     openChat(storeObj, productObj);
+  };
+
+  const handleContactShop = () => {
+    if (!currentUser) {
+      toast.info('Vui lòng đăng nhập để trao đổi trực tiếp với gian hàng');
+      navigate(`/login?redirect=/products/${slug}`);
+      return;
+    }
+    if (!isKolUser && currentUser.role !== 'CUSTOMER') {
+      toast.info('Tính năng liên hệ shop dành cho khách hàng và KOL / Creator.');
+      return;
+    }
+    const storeId = data?.store?.id;
+    if (!storeId) { toast.error('Không tìm thấy Shop của sản phẩm'); return; }
+    const firstImg = data?.images?.[0] || data?.product?.imageUrl || '';
+    const query = new URLSearchParams({
+      tab: 'messages',
+      storeId,
+      productId: data?.product?.id || '',
+      productTitle: data?.product?.title || '',
+      productImage: firstImg,
+      productPrice: String(data?.product?.price || 0),
+      productSku: data?.product?.sku || '',
+    });
+    navigate(
+      isKolUser
+        ? `/collaborator/collaboration?${query.toString()}`
+        : `/chat?${query.toString()}&asCustomer=1`,
+    );
   };
 
   const { slug } = useParams<{ slug: string }>();
@@ -1226,7 +1256,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* Shopee Image 4 Social Share & Wishlist Row */}
+{/* Shopee Image 4 Social Share & Wishlist Row */}
             <div className="w-full lg:max-w-[460px] lg:mx-auto flex items-center justify-between py-2 px-1 text-sm text-[#7D715E] border-t border-[#EAE4D7]/60">
               <div className="flex items-center gap-2 text-xs sm:text-sm">
                 <span>Chia sẻ:</span>
@@ -1284,7 +1314,7 @@ export default function ProductDetailPage() {
                 className="shrink-0 no-underline group block"
                 title={`Xem gian hàng ${store.name}`}
               >
-                {store.logoUrl && !store.logoUrl.includes('unsplash.com') ? (
+{store.logoUrl && !store.logoUrl.includes('unsplash.com') ? (
                   <img
                     src={store.logoUrl}
                     alt={store.name}
@@ -1303,13 +1333,18 @@ export default function ProductDetailPage() {
               {/* Right Column: Name + Online Status + Action Buttons */}
               <div className="min-w-0 flex-1">
                 <Link
-                  to={`/shop/${store.slug || 'sora-skin'}`}
+                  to={`/shop/${store.slug || store.id || 'sora-skin'}`}
                   className="no-underline block group"
                   title={`Xem gian hàng ${store.name}`}
                 >
-                  <h3 className="m-0 text-sm sm:text-base font-semibold text-[#1A1612] group-hover:text-[#B88E4F] leading-tight truncate uppercase transition-colors">
-                    {store.name}
-                  </h3>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="m-0 text-sm sm:text-base font-semibold text-[#1A1612] group-hover:text-[#B88E4F] leading-tight truncate uppercase transition-colors">
+                      {store.name}
+                    </h3>
+                    {store.isVerified && (
+                      <BadgeCheck className="w-4 h-4 text-[#B88E4F] shrink-0" />
+                    )}
+                  </div>
                 </Link>
                 <div className="flex items-center gap-1.5 text-xs text-[#757575] mt-1">
                   <span className="w-2 h-2 rounded-full bg-[#10B981] inline-block shrink-0" />
@@ -1320,19 +1355,17 @@ export default function ProductDetailPage() {
                   {/* Button 1: Chat Ngay (Shopee Style) */}
                   <button
                     type="button"
-                    onClick={handleOpenShopeeChat}
+                    onClick={handleContactShop}
                     className="h-8 px-3 sm:px-3.5 border border-[#d0011b] bg-[#ffeeee] hover:bg-[#ffe5e5] text-[#d0011b] rounded-[2px] text-xs sm:text-[13px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none active:scale-98"
                     title="Chat Ngay với gian hàng"
                   >
-                    <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 fill-current shrink-0">
-                      <path d="M14 1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h2v3.5L8.5 12H14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm-3 7.5a4.5 4.5 0 0 1-6 0 .5.5 0 0 1 .7-.7 3.5 3.5 0 0 0 4.6 0 .5.5 0 0 1 .7.7z" />
-                    </svg>
+                    <MessageSquare className="w-3.5 h-3.5 shrink-0" />
                     <span>Chat Ngay</span>
                   </button>
 
                   {/* Button 2: Xem Shop (Shopee Style) */}
                   <Link
-                    to={`/shop/${store.slug || 'sora-skin'}`}
+                    to={`/shop/${store.slug || store.id || 'sora-skin'}`}
                     className="h-8 px-3 sm:px-3.5 border border-black/15 bg-white hover:bg-[#FAF8F5] text-[#555555] rounded-[2px] text-xs sm:text-[13px] font-normal flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none no-underline active:scale-98"
                     title="Xem tất cả sản phẩm của Shop"
                   >
@@ -1626,6 +1659,9 @@ export default function ProductDetailPage() {
                         id: store.id,
                         name: store.name,
                         slug: store.slug,
+                        policyReturn: policies?.returnPolicy,
+                        policyWarranty: policies?.warranty,
+                        policyShipping: policies?.shipping,
                       },
                       variantId: selectedVariant?.id,
                       quantity,
@@ -1693,6 +1729,11 @@ export default function ProductDetailPage() {
                   <Lock className="w-3.5 h-3.5 text-[#B88E4F]" />
                   <span>Bảo hành uy tín</span>
                 </div>
+              </div>
+              <div className="mt-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] p-3 text-left">
+                <strong className="block text-[11px] text-[#1A1612] mb-1.5">Chính sách của {store.name}</strong>
+                <p className="m-0 text-[11px] leading-relaxed text-[#7D715E]"><b>Đổi trả:</b> {policies?.returnPolicy || 'Yêu cầu trong 14 ngày kể từ khi nhận hàng, kèm ảnh và video mở hộp.'}</p>
+                <p className="m-0 mt-1 text-[11px] leading-relaxed text-[#7D715E]"><b>Bảo hành:</b> {policies?.warranty || 'Theo điều kiện bảo hành do gian hàng công bố và xác nhận trên đơn hàng.'}</p>
               </div>
             </div>
           </div>
@@ -2129,6 +2170,9 @@ export default function ProductDetailPage() {
             id: store.id,
             name: store.name,
             slug: store.slug,
+            policyReturn: policies?.returnPolicy,
+            policyWarranty: policies?.warranty,
+            policyShipping: policies?.shipping,
           }}
           initialVariantId={selectedVariant?.id}
           initialQuantity={quantity}

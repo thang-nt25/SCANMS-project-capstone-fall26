@@ -32,6 +32,8 @@ export const CartDrawer: React.FC = () => {
     startCheckout,
     refreshCartStock,
     isValidatingStock,
+    isCartSyncing,
+    cartSyncedAt,
   } = useCart();
 
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -80,7 +82,11 @@ export const CartDrawer: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-[#7D715E] mt-0.5">
-                Đồng bộ giỏ hàng trên toàn sàn &amp; đối tác
+                {isCartSyncing
+                  ? 'Đang đồng bộ giỏ hàng...'
+                  : cartSyncedAt
+                    ? `Đã đồng bộ lúc ${new Date(cartSyncedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Đồng bộ giỏ hàng trên toàn sàn & đối tác'}
               </p>
             </div>
           </div>

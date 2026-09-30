@@ -27,6 +27,7 @@ import {
   Bell,
   Ticket,
   MessageCircle,
+  MessageSquare,
   User,
   Copy,
   Package,
@@ -65,9 +66,35 @@ import {
   type AppNotification,
   type NotificationCategory,
 } from '../../services/notifications.service';
+import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal';
+import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
+import {
+  AddressLocationPicker,
+  type AddressLocationResult,
+} from '../../components/customer/AddressLocationPicker';
 
 type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'identity' | 'upgrade' | 'vouchers' | 'notifications' | 'security';
-type OrderFilterStatus = 'ALL' | 'UNPAID' | 'SHIPPING' | 'RECEIVING' | 'COMPLETED' | 'CANCELLED' | 'RETURNED';
+type OrderFilterStatus = 'ALL' | 'UNPAID' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'RECEIVING' | 'COMPLETED' | 'RETURN_REQUESTED' | 'CANCELLED' | 'RETURNED';
+
+const normalizeAdministrativeName = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd')
+  .toLowerCase()
+  .replace(/\b(thanh pho|tinh|quan|huyen|thi xa|thi tran|phuong|xa)\b/g, '')
+  .replace(/[^a-z0-9]/g, '');
+
+const administrativeNamesMatch = (left: string, right: string) => {
+  const normalizedLeft = normalizeAdministrativeName(left);
+  const normalizedRight = normalizeAdministrativeName(right);
+  return Boolean(
+    normalizedLeft &&
+    normalizedRight &&
+    (normalizedLeft === normalizedRight ||
+      normalizedLeft.includes(normalizedRight) ||
+      normalizedRight.includes(normalizedLeft))
+  );
+};
 
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
@@ -131,6 +158,9 @@ export default function CustomerPortalPage() {
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const [returnOrder, setReturnOrder] = useState<CustomerOrder | null>(null);
+  const [reviewOrder, setReviewOrder] = useState<CustomerOrder | null>(null);
 
   // Return / Refund Dispute State (Shopee Style)
   const [returningOrder, setReturningOrder] = useState<CustomerOrder | null>(null);
@@ -156,10 +186,14 @@ export default function CustomerPortalPage() {
     wardCode: '',
     wardName: '',
     detailAddress: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
     isDefault: false,
   });
   const [provinces, setProvinces] = useState<ShippingProvince[]>([]);
   const [savingAddress, setSavingAddress] = useState(false);
+  const [addressPendingDeletion, setAddressPendingDeletion] = useState<CustomerAddress | null>(null);
+  const [isDeletingAddress, setIsDeletingAddress] = useState(false);
 
   // Tab 3: Wishlist State
   const [wishlist, setWishlist] = useState<CustomerWishlistItem[]>([]);
@@ -575,6 +609,19 @@ export default function CustomerPortalPage() {
     }
   };
 
+  const handleConfirmReceipt = async (order: CustomerOrder) => {
+    setConfirmingOrderId(order.id);
+    try {
+      await customerService.confirmReceipt(order.id);
+      toast.success('Đơn hàng đã hoàn tất. Bạn có thể gửi đánh giá đã xác minh.');
+      await Promise.all([fetchOrders(), fetchProfile()]);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể xác nhận đã nhận hàng');
+    } finally {
+      setConfirmingOrderId(null);
+    }
+  };
+
   const handleUploadProofFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -655,6 +702,8 @@ export default function CustomerPortalPage() {
       setIsSubmittingReturn(false);
     }
   };
+    }
+  };
 
   const fetchAddresses = async () => {
     setAddressesLoading(true);
@@ -680,6 +729,8 @@ export default function CustomerPortalPage() {
       wardCode: '',
       wardName: '',
       detailAddress: '',
+      latitude: null,
+      longitude: null,
       isDefault: addresses.length === 0,
     });
     setIsAddressModalOpen(true);
@@ -697,6 +748,8 @@ export default function CustomerPortalPage() {
       wardCode: addr.wardCode || '',
       wardName: addr.wardName,
       detailAddress: addr.detailAddress,
+      latitude: addr.latitude == null ? null : Number(addr.latitude),
+      longitude: addr.longitude == null ? null : Number(addr.longitude),
       isDefault: addr.isDefault,
     });
     setIsAddressModalOpen(true);
@@ -726,14 +779,47 @@ export default function CustomerPortalPage() {
     }
   };
 
-  const handleDeleteAddress = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) return;
+  const handleDeleteAddress = async () => {
+    if (!addressPendingDeletion) return;
+    setIsDeletingAddress(true);
     try {
-      await customerService.deleteAddress(id);
+      await customerService.deleteAddress(addressPendingDeletion.id);
       toast.success('Đã xóa địa chỉ');
-      fetchAddresses();
+      setAddressPendingDeletion(null);
+      await fetchAddresses();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Không thể xóa địa chỉ');
+    } finally {
+      setIsDeletingAddress(false);
+    }
+  };
+
+  const handleAddressLocationChange = (locationResult: AddressLocationResult) => {
+    const matchedProvince = provinces.find((province) =>
+      administrativeNamesMatch(province.name, locationResult.provinceName),
+    );
+    const matchedDistrict = matchedProvince?.districts.find((district) =>
+      administrativeNamesMatch(district.name, locationResult.districtName),
+    );
+    const matchedWard = matchedDistrict?.wards.find((ward) =>
+      administrativeNamesMatch(ward.name, locationResult.wardName),
+    );
+
+    setAddressForm((current) => ({
+      ...current,
+      latitude: locationResult.latitude,
+      longitude: locationResult.longitude,
+      detailAddress: locationResult.detailAddress || current.detailAddress,
+      provinceCode: matchedProvince ? String(matchedProvince.code) : current.provinceCode,
+      provinceName: matchedProvince?.name || current.provinceName,
+      districtCode: matchedDistrict ? String(matchedDistrict.code) : current.districtCode,
+      districtName: matchedDistrict?.name || current.districtName,
+      wardCode: matchedWard ? String(matchedWard.code) : current.wardCode,
+      wardName: matchedWard?.name || current.wardName,
+    }));
+
+    if (!matchedProvince || !matchedDistrict || !matchedWard) {
+      toast.info('Đã ghim tọa độ. Vui lòng kiểm tra lại Tỉnh/Quận/Phường trước khi lưu.');
     }
   };
 
@@ -1363,17 +1449,24 @@ export default function CustomerPortalPage() {
                   <div className="flex flex-col gap-3.5">
                     {orders.map((order) => {
                       const isPending = order.status === 'PENDING';
-                      const isDelivered = order.status === 'DELIVERED' || order.status === 'COMPLETED';
-                      const isCancelled = order.status === 'CANCELLED';
                       const isShipping = order.status === 'SHIPPING';
-                      const isReturned = order.status === 'RETURNED';
+                      const isDelivered = order.status === 'DELIVERED';
+                      const isCompleted = order.status === 'COMPLETED';
+                      const isCancelled = order.status === 'CANCELLED';
+                      const isReturned = order.status === 'RETURNED' || order.status === 'RETURN_REQUESTED';
+                      const hasReturnRequest = Boolean(order.returnRequest) || ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'].includes(order.status);
+                      const returnAnchor = new Date(order.deliveredAt || order.completedAt || 0).getTime();
+                      const canRequestReturn =
+                        (isDelivered || isCompleted) &&
+                        !hasReturnRequest &&
+                        Date.now() <= returnAnchor + 14 * 24 * 60 * 60 * 1000;
 
                       return (
                         <div
                           key={order.id}
                           className="bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 rounded-xl shadow-2xs hover:shadow-xs transition flex flex-col overflow-hidden"
                         >
-                          {/* Order Card Header (Image 1 Style) */}
+                          {/* Order Card Header (Shopee Style) */}
                           <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:px-5 sm:py-3.5 border-b border-[#F0EBE0]">
                             <div className="flex items-center flex-wrap gap-2">
                               <span className="px-1.5 py-0.5 rounded-[2px] bg-[#C59B58] text-white text-[10.5px] font-bold tracking-tight">
@@ -1383,8 +1476,12 @@ export default function CustomerPortalPage() {
                                 to={`/shop/${order.store?.slug || order.storeId}`}
                                 className="text-xs sm:text-sm font-bold text-[#1A1612] hover:text-[#B88E4F] transition flex items-center gap-1"
                               >
+                                <StoreIcon className="w-3.5 h-3.5 text-[#B88E4F]" />
                                 <span>{order.store?.name || 'Gian Hàng Đối Tác'}</span>
                               </Link>
+                              <span className="text-[11px] font-mono text-[#7D715E] bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
+                                #{order.externalOrderSn}
+                              </span>
 
                               <div className="flex items-center gap-1.5 ml-1">
                                 <button
@@ -1422,6 +1519,20 @@ export default function CustomerPortalPage() {
                                   <span className="font-bold text-[#B88E4F] uppercase">HOÀN THÀNH</span>
                                 </div>
                               )}
+                              {isCompleted && (
+                                <div className="flex items-center gap-1.5 text-xs">
+                                  <Truck className="w-3.5 h-3.5 text-[#059669]" />
+                                  <span className="text-[#059669] font-medium">Giao hàng thành công</span>
+                                  <span className="text-[#EAE4D7]">|</span>
+                                  <span className="font-bold text-[#B88E4F] uppercase">HOÀN THÀNH</span>
+                                </div>
+                              )}
+                              {isDelivered && !isCompleted && (
+                                <div className="flex items-center gap-1.5 text-xs text-[#059669]">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span className="font-bold uppercase">ĐÃ GIAO HÀNG</span>
+                                </div>
+                              )}
                               {isShipping && (
                                 <div className="flex items-center gap-1.5 text-xs text-blue-700">
                                   <Truck className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
@@ -1434,16 +1545,32 @@ export default function CustomerPortalPage() {
                                   <span className="font-bold uppercase">CHỜ XÁC NHẬN</span>
                                 </div>
                               )}
-                              {isReturned && (
-                                <div className="flex items-center gap-1.5 text-xs text-rose-700">
-                                  <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
-                                  <span className="font-bold uppercase">TRẢ HÀNG / HOÀN TIỀN</span>
-                                </div>
+                              {hasReturnRequest && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>{order.returnRequest?.status === 'SHOP_APPROVED' ? 'Shop đã duyệt · chờ xử lý tiền/hàng'
+                                    : order.returnRequest?.status === 'SHOP_REJECTED' ? 'Shop đã từ chối đổi trả'
+                                    : order.returnRequest?.status === 'REFUNDED' ? 'Đã hoàn tiền'
+                                    : 'Đang xử lý trả hàng'}</span>
+                                </span>
+                              )}
+                              {isCancelled && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full">
+                                  <XCircle className="w-3 h-3" />
+                                  <span>Đã hủy đơn</span>
+                                </span>
+                              )}
                               )}
                             </div>
                           </div>
 
-                          {/* Order Items List (Image 1 Style) */}
+                          {order.returnRequest?.shopResponse && (
+                            <div className="mx-3.5 sm:mx-5 mt-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#1A1612]">
+                              <strong>Phản hồi của Shop:</strong> {order.returnRequest.shopResponse}
+                            </div>
+                          )}
+
+                          {/* Order Items List (Shopee Style) */}
                           <div className="divide-y divide-[#F5EFE6] px-3.5 sm:px-5">
                             {order.orderItems.map((item) => (
                               <div key={item.id} className="py-3.5 flex items-start gap-3.5">
@@ -1570,9 +1697,9 @@ export default function CustomerPortalPage() {
                               </div>
                             </div>
 
-                            {/* Action Buttons Row (Image 1 Style) */}
+                            {/* Action Buttons Row (Shopee Style) */}
                             <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2 border-t border-[#EAE4D7]/70">
-                              {/* Primary Button: Mua Lại (Shopee Orange/SCANMS Brand Gold) */}
+                              {/* Primary Button: Mua Lại */}
                               <button
                                 type="button"
                                 onClick={() => handleReorder(order)}
@@ -1629,14 +1756,41 @@ export default function CustomerPortalPage() {
                                 </button>
                               )}
 
-                              {/* Review Button if Delivered */}
-                              {isDelivered && (
-                                <Link
-                                  to={`/tracking?orderSn=${encodeURIComponent(order.externalOrderSn)}`}
-                                  className="px-4 py-2 rounded-md bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] transition flex items-center gap-1"
+                              {/* Confirm Receipt Button if Delivered */}
+                              {isDelivered && !hasReturnRequest && (
+                                <button
+                                  type="button"
+                                  disabled={confirmingOrderId === order.id}
+                                  onClick={() => handleConfirmReceipt(order)}
+                                  className="px-4 py-2 rounded-md bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
                                 >
-                                  <span>Đánh Giá</span>
-                                </Link>
+                                  {confirmingOrderId === order.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                                  <span>Đã Nhận Hàng</span>
+                                </button>
+                              )}
+
+                              {/* Return Request Button */}
+                              {canRequestReturn && (
+                                <button
+                                  type="button"
+                                  onClick={() => setReturnOrder(order)}
+                                  className="px-4 py-2 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-semibold text-amber-800 transition cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>Yêu Cầu Trả Hàng / Hoàn Tiền</span>
+                                </button>
+                              )}
+
+                              {/* Verified Review Button if Completed */}
+                              {isCompleted && !hasReturnRequest && (
+                                <button
+                                  type="button"
+                                  onClick={() => setReviewOrder(order)}
+                                  className="px-4 py-2 rounded-md bg-[#231D15] hover:bg-[#1A1612] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5 text-[#C59B58]" />
+                                  <span>Đánh Giá Đã Xác Minh</span>
+                                </button>
                               )}
                             </div>
                           </div>
@@ -1758,7 +1912,7 @@ export default function CustomerPortalPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDeleteAddress(addr.id)}
+                              onClick={() => setAddressPendingDeletion(addr)}
                               className="w-8 h-8 rounded-xl bg-white border border-rose-200 hover:border-rose-400 hover:bg-rose-50 flex items-center justify-center text-rose-500 hover:text-rose-600 shadow-2xs hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95 group"
                               title="Xóa địa chỉ"
                             >
@@ -1845,9 +1999,9 @@ export default function CustomerPortalPage() {
                               </button>
                             </div>
 
-                            <span className="text-[10px] font-bold text-[#7D715E] uppercase block mb-1">
+                            <Link to={p.store?.id ? `/shops/${p.store.id}` : '/marketplace'} className="text-[10px] font-bold text-[#7D715E] uppercase block mb-1 hover:text-[#B88E4F]">
                               {p.store?.name || 'Gian hàng chính hãng'}
-                            </span>
+                            </Link>
                             <Link
                               to={`/products/${p.sku || p.id}`}
                               className="text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] line-clamp-2 transition mb-2 block"
@@ -3321,191 +3475,163 @@ export default function CustomerPortalPage() {
       )}
 
       {/* ========================================================= */}
-      {/* MODAL: YÊU CẦU TRẢ HÀNG / HOÀN TIỀN (CHUẨN SHOPEE) */}
+      {/* MODAL: XÁC NHẬN XÓA ĐỊA CHỈ */}
       {/* ========================================================= */}
-      {returningOrder && (
-        <div className="fixed inset-0 z-50 bg-[#1A1612]/35 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 shadow-2xl flex flex-col gap-4 text-left animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center">
-                  <RotateCcw className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="text-base font-black text-[#1A1612] block">
-                    Yêu Cầu Trả Hàng / Hoàn Tiền
-                  </strong>
-                  <span className="text-[11px] text-[#7D715E]">Bảo vệ quyền lợi người mua chuẩn sàn SCANMS</span>
-                </div>
+      {addressPendingDeletion && (
+        <div
+          className="fixed inset-0 z-[70] bg-[#231D15]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isDeletingAddress) {
+              setAddressPendingDeletion(null);
+            }
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-address-title"
+            aria-describedby="delete-address-description"
+            className="w-full max-w-md overflow-hidden rounded-3xl border border-[#EAE4D7] bg-white shadow-2xl animate-in zoom-in-95 duration-150"
+          >
+            <div className="p-6 sm:p-7 text-center">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shadow-xs">
+                <Trash2 className="w-6 h-6" />
               </div>
-              <button
-                type="button"
-                onClick={() => setReturningOrder(null)}
-                className="w-8 h-8 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#7D715E] flex items-center justify-center transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
 
-            {/* Info card */}
-            <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] flex items-center justify-between">
-              <div>
-                <span className="text-xs text-[#7D715E] block">Mã đơn hàng</span>
-                <strong className="text-xs font-mono font-bold text-[#1A1612]">#{returningOrder.externalOrderSn}</strong>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-[#7D715E] block">Số tiền hoàn dự kiến</span>
-                <strong className="text-base font-mono font-bold text-[#C59B58]">
-                  {formatMoney(returningOrder.finalAmount)}
-                </strong>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                Lý do yêu cầu trả hàng / hoàn tiền <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] outline-none transition"
-              >
-                <option value="Hàng bị bể vỡ / hư hỏng do vận chuyển">Hàng bị bể vỡ / hư hỏng do vận chuyển</option>
-                <option value="Hàng lỗi kỹ thuật / không hoạt động">Hàng lỗi kỹ thuật / không hoạt động</option>
-                <option value="Người bán gửi sai sản phẩm / sai phân loại">Người bán gửi sai sản phẩm / sai phân loại</option>
-                <option value="Thiếu phụ kiện / quà tặng đi kèm">Thiếu phụ kiện / quà tặng đi kèm</option>
-                <option value="Hàng giả / hàng nhái / không chính hãng">Hàng giả / hàng nhái / không chính hãng</option>
-                <option value="Khác (Sản phẩm không đúng như mô tả)">Khác (Sản phẩm không đúng như mô tả)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                Mô tả chi tiết / Ghi chú cho người bán (Tùy chọn)
-              </label>
-              <textarea
-                value={returnNotes}
-                onChange={(e) => setReturnNotes(e.target.value)}
-                placeholder="Mô tả cụ thể tình trạng hàng nhận được để được duyệt hoàn tiền nhanh chóng..."
-                rows={3}
-                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] outline-none transition"
-              />
-            </div>
-
-            {/* Upload Bằng Chứng Ảnh / Video Khui Hàng (Chuẩn Shopee / TikTok Shop / Lazada) */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
-                  <Camera className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Hình ảnh / Video bằng chứng mở hộp & kiểm hàng</span>
-                </label>
-                <span className="text-[11px] font-bold text-[#B88E4F] bg-[#FAF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
-                  {returnProofFiles.length}/6 tệp
-                </span>
-              </div>
-              <p className="text-[11px] text-[#7D715E] m-0 leading-relaxed">
-                Tải lên ảnh phiếu gửi hàng/mã vận đơn, video bóc seal khui hàng hoặc ảnh sản phẩm bị nứt vỡ/lỗi để Gian hàng và Trọng tài SCANMS hoàn tiền ngay lập tức.
+              <h2 id="delete-address-title" className="mt-4 text-lg font-black text-[#1A1612]">
+                Xóa địa chỉ nhận hàng?
+              </h2>
+              <p id="delete-address-description" className="mt-2 text-xs leading-relaxed text-[#7D715E]">
+                Địa chỉ này sẽ bị xóa khỏi sổ địa chỉ của bạn. Thao tác này không thể hoàn tác.
               </p>
 
-              {/* Hidden file input */}
-              <input
-                ref={proofFileInputRef}
-                type="file"
-                accept="image/*,video/mp4,video/quicktime,video/webm"
-                multiple
-                onChange={handleUploadProofFiles}
-                className="hidden"
-              />
-
-              {/* Proofs Grid */}
-              <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                {returnProofFiles.map((proof, idx) => (
-                  <div
-                    key={idx}
-                    className="relative w-18 h-18 sm:w-20 sm:h-20 rounded-xl border border-[#EAE4D7] overflow-hidden bg-black/5 group shrink-0 shadow-2xs"
-                  >
-                    {proof.type === 'video' ? (
-                      <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white relative">
-                        <video
-                          src={proof.url}
-                          className="w-full h-full object-cover opacity-75"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-[11px] font-bold">
-                            ▶
-                          </span>
-                        </div>
-                        <span className="absolute bottom-1 right-1 text-[9px] bg-black/80 px-1 py-0.2 rounded text-white font-mono">
-                          VIDEO
-                        </span>
-                      </div>
-                    ) : (
-                      <img
-                        src={proof.url}
-                        alt={`Bằng chứng ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-
-                    {/* Delete button */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveProof(idx)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-rose-600 text-white text-[10px] flex items-center justify-center transition cursor-pointer shadow-xs"
-                      title="Xóa tệp này"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-
-                {/* Add button */}
-                {returnProofFiles.length < 6 && (
-                  <button
-                    type="button"
-                    disabled={isUploadingProof}
-                    onClick={() => proofFileInputRef.current?.click()}
-                    className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl border-2 border-dashed border-[#EEDFC6] hover:border-[#C59B58] bg-[#FAF8F5] hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#B88E4F] flex flex-col items-center justify-center gap-1 transition cursor-pointer shrink-0 disabled:opacity-60 active:scale-95"
-                  >
-                    {isUploadingProof ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-[#C59B58]" />
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-1 text-[#C59B58]">
-                          <Camera className="w-4 h-4" />
-                          <span className="text-[10px]">/</span>
-                          <Video className="w-4 h-4" />
-                        </div>
-                        <span className="text-[10px] font-bold text-center leading-tight">
-                          Thêm tệp
-                        </span>
-                      </>
-                    )}
-                  </button>
+              <div className="mt-5 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-sm font-black text-[#1A1612] truncate">
+                    {addressPendingDeletion.fullName}
+                  </strong>
+                  <span className="text-[11px] font-semibold text-[#7D715E] shrink-0">
+                    {addressPendingDeletion.phoneNumber}
+                  </span>
+                </div>
+                <p className="m-0 mt-2 text-xs font-semibold text-[#1A1612]">
+                  {addressPendingDeletion.detailAddress}
+                </p>
+                <p className="m-0 mt-1 text-[11px] leading-relaxed text-[#7D715E]">
+                  {addressPendingDeletion.wardName}, {addressPendingDeletion.districtName}, {addressPendingDeletion.provinceName}
+                </p>
+                {addressPendingDeletion.isDefault && (
+                  <span className="inline-flex mt-3 rounded-full border border-[#EEDFC6] bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#B88E4F]">
+                    Địa chỉ mặc định
+                  </span>
                 )}
               </div>
             </div>
 
-            <div className="p-3 bg-[#FBF5EB] rounded-xl border border-[#EEDFC6] text-[11px] text-[#7D715E] leading-relaxed">
-              💡 <strong>Chính sách SCANMS:</strong> Sau khi gửi yêu cầu, số tiền hoàn <strong className="text-[#1A1612]">{formatMoney(returningOrder.finalAmount)}</strong> sẽ được chuyển sang trạng thái chờ giải quyết tranh chấp. Gian hàng và Trọng tài SCANMS sẽ xác minh trong vòng 24-48 giờ.
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
+            <div className="grid grid-cols-2 gap-3 border-t border-[#EAE4D7] bg-[#FAF8F5] p-4 sm:px-7">
               <button
                 type="button"
-                onClick={() => setReturningOrder(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] text-xs font-bold text-[#7D715E] transition cursor-pointer"
+                disabled={isDeletingAddress}
+                onClick={() => setAddressPendingDeletion(null)}
+                className="rounded-xl border border-[#EAE4D7] bg-white px-4 py-2.5 text-xs font-bold text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] disabled:opacity-50"
               >
-                Hủy bỏ
+                Giữ lại địa chỉ
               </button>
               <button
                 type="button"
-                disabled={isSubmittingReturn}
-                onClick={handleRequestReturn}
-                className="flex-1 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                disabled={isDeletingAddress}
+                onClick={handleDeleteAddress}
+                className="rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                {isSubmittingReturn && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Gửi Yêu Cầu Hoàn Tiền</span>
+                {isDeletingAddress ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>{isDeletingAddress ? 'Đang xóa...' : 'Xóa địa chỉ'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: THÊM / SỬA ĐỊA CHỈ NHẬN HÀNG */}
+      {/* ========================================================= */}
+      {/* MODAL: XÁC NHẬN XÓA ĐỊA CHỈ */}
+      {/* ========================================================= */}
+      {addressPendingDeletion && (
+        <div
+          className="fixed inset-0 z-[70] bg-[#231D15]/55 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isDeletingAddress) {
+              setAddressPendingDeletion(null);
+            }
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-address-title"
+            aria-describedby="delete-address-description"
+            className="w-full max-w-md overflow-hidden rounded-3xl border border-[#EAE4D7] bg-white shadow-2xl animate-in zoom-in-95 duration-150"
+          >
+            <div className="p-6 sm:p-7 text-center">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shadow-xs">
+                <Trash2 className="w-6 h-6" />
+              </div>
+
+              <h2 id="delete-address-title" className="mt-4 text-lg font-black text-[#1A1612]">
+                Xóa địa chỉ nhận hàng?
+              </h2>
+              <p id="delete-address-description" className="mt-2 text-xs leading-relaxed text-[#7D715E]">
+                Địa chỉ này sẽ bị xóa khỏi sổ địa chỉ của bạn. Thao tác này không thể hoàn tác.
+              </p>
+
+              <div className="mt-5 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-sm font-black text-[#1A1612] truncate">
+                    {addressPendingDeletion.fullName}
+                  </strong>
+                  <span className="text-[11px] font-semibold text-[#7D715E] shrink-0">
+                    {addressPendingDeletion.phoneNumber}
+                  </span>
+                </div>
+                <p className="m-0 mt-2 text-xs font-semibold text-[#1A1612]">
+                  {addressPendingDeletion.detailAddress}
+                </p>
+                <p className="m-0 mt-1 text-[11px] leading-relaxed text-[#7D715E]">
+                  {addressPendingDeletion.wardName}, {addressPendingDeletion.districtName}, {addressPendingDeletion.provinceName}
+                </p>
+                {addressPendingDeletion.isDefault && (
+                  <span className="inline-flex mt-3 rounded-full border border-[#EEDFC6] bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#B88E4F]">
+                    Địa chỉ mặc định
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 border-t border-[#EAE4D7] bg-[#FAF8F5] p-4 sm:px-7">
+              <button
+                type="button"
+                disabled={isDeletingAddress}
+                onClick={() => setAddressPendingDeletion(null)}
+                className="rounded-xl border border-[#EAE4D7] bg-white px-4 py-2.5 text-xs font-bold text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] disabled:opacity-50"
+              >
+                Giữ lại địa chỉ
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAddress}
+                onClick={handleDeleteAddress}
+                className="rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {isDeletingAddress ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>{isDeletingAddress ? 'Đang xóa...' : 'Xóa địa chỉ'}</span>
               </button>
             </div>
           </div>
@@ -3516,8 +3642,8 @@ export default function CustomerPortalPage() {
       {/* MODAL: THÊM / SỬA ĐỊA CHỈ NHẬN HÀNG */}
       {/* ========================================================= */}
       {isAddressModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#1A1612]/35 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-5 text-left animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-2xl max-h-[94vh] overflow-y-auto p-6 shadow-2xl flex flex-col gap-5 text-left animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
               <strong className="text-base font-black text-[#1A1612]">
                 {editingAddressId ? 'Chỉnh Sửa Địa Chỉ' : 'Thêm Địa Chỉ Nhận Hàng Mới'}
@@ -3578,6 +3704,8 @@ export default function CustomerPortalPage() {
                       districtName: '',
                       wardCode: '',
                       wardName: '',
+                      latitude: null,
+                      longitude: null,
                     });
                   }}
                   options={provinces.map((p) => ({ value: String(p.code), label: p.name }))}
@@ -3602,6 +3730,8 @@ export default function CustomerPortalPage() {
                         districtName: d?.name || '',
                         wardCode: '',
                         wardName: '',
+                        latitude: null,
+                        longitude: null,
                       });
                     }}
                     disabled={!selectedProvince}
@@ -3624,6 +3754,8 @@ export default function CustomerPortalPage() {
                         ...addressForm,
                         wardCode: code,
                         wardName: w?.name || '',
+                        latitude: null,
+                        longitude: null,
                       });
                     }}
                     disabled={!selectedDistrict}
@@ -3642,12 +3774,30 @@ export default function CustomerPortalPage() {
                 <input
                   type="text"
                   value={addressForm.detailAddress}
-                  onChange={(e) => setAddressForm({ ...addressForm, detailAddress: e.target.value })}
+                  onChange={(e) => setAddressForm({
+                    ...addressForm,
+                    detailAddress: e.target.value,
+                    latitude: null,
+                    longitude: null,
+                  })}
                   required
                   placeholder="Ví dụ: Số 123 Đường D1, Chung cư ABC"
                   className="w-full bg-[#FAF8F5] border border-[#EAE4D7] focus:bg-white focus:border-[#C59B58] rounded-xl px-3 py-2 text-xs text-[#1A1612] outline-none transition"
                 />
               </div>
+
+              <AddressLocationPicker
+                latitude={addressForm.latitude}
+                longitude={addressForm.longitude}
+                addressQuery={[
+                  addressForm.detailAddress,
+                  addressForm.wardName,
+                  addressForm.districtName,
+                  addressForm.provinceName,
+                  'Việt Nam',
+                ].filter(Boolean).join(', ')}
+                onChange={handleAddressLocationChange}
+              />
 
               <div className="flex items-center gap-2 pt-1">
                 <input
@@ -3696,6 +3846,28 @@ export default function CustomerPortalPage() {
             toast.success('Đặt hàng thành công!');
             fetchOrders();
             fetchProfile();
+          }}
+        />
+      )}
+
+      {returnOrder && (
+        <ReturnRequestModal
+          order={returnOrder}
+          onClose={() => setReturnOrder(null)}
+          onSubmitted={() => {
+            setReturnOrder(null);
+            fetchOrders();
+          }}
+        />
+      )}
+
+      {reviewOrder && (
+        <VerifiedReviewModal
+          order={reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          onSubmitted={() => {
+            setReviewOrder(null);
+            fetchOrders();
           }}
         />
       )}

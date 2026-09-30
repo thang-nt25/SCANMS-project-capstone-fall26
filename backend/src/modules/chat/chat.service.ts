@@ -37,154 +37,149 @@ export class ChatService {
   // - Shop gọi: truyền collaboratorId (storeId tự lấy từ userId)
   // - KOL gọi: truyền storeId (collaboratorId = userId)
   async getOrCreateConversation(dto: CreateConversationDto, userId: string) {
-    const requester = await this.prisma.user.findUnique({
+    let storeId = dto.storeId;
+    let collaboratorId = dto.collaboratorId;
+    let customerId = dto.customerId;
+    let targetStoreOwnerId: string | undefined;
+    const actor = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true },
     });
-    if (!requester) throw new NotFoundException('Không tìm thấy tài khoản chat.');
+    if (!actor) throw new ForbiddenException('Tài khoản không tồn tại');
 
-    let storeId: string | undefined;
-    let collaboratorId: string;
-
-    if (requester.role === 'SHOP_MANAGER') {
-      if (!dto.collaboratorId) {
-        throw new BadRequestException('Shop cần chọn KOL/CTV để bắt đầu chat.');
-      }
-      const ownedStore = await this.prisma.store.findFirst({
-        where: {
-          ownerId: userId,
-          isDeleted: false,
-          ...(dto.storeId ? { id: dto.storeId } : {}),
-        },
+    // Nếu shop gọi (có collaboratorId, không có storeId) → tự lấy storeId
+    if (!storeId && (collaboratorId || customerId)) {
+      const store = await this.prisma.store.findFirst({
+        where: { ownerId: userId, isDeleted: false },
       });
-      if (!ownedStore) {
-        if (!dto.storeId) {
-          throw new BadRequestException('Tài khoản Shop này chưa có cửa hàng nào.');
-        }
-        throw new ForbiddenException('Shop không có quyền mở chat cho gian hàng này.');
-      }
-      storeId = ownedStore.id;
-      collaboratorId = dto.collaboratorId;
-    } else if (requester.role === 'COLLABORATOR') {
-      if (!dto.storeId) {
-        throw new BadRequestException('KOL cần chọn gian hàng để bắt đầu chat.');
-      }
-      if (dto.collaboratorId && dto.collaboratorId !== userId) {
-        throw new ForbiddenException('KOL chỉ được mở hội thoại bằng tài khoản của mình.');
-      }
-      storeId = dto.storeId;
-      collaboratorId = userId;
-    } else if (requester.role === 'CUSTOMER') {
-      if (!dto.storeId) {
-        throw new BadRequestException('Khách hàng cần chọn gian hàng để bắt đầu chat.');
-      }
-      if (dto.collaboratorId) {
-        throw new ForbiddenException('Khách hàng chỉ được chat trực tiếp với Shop.');
-      }
-      storeId = dto.storeId;
-      collaboratorId = userId;
-    } else {
-      throw new ForbiddenException('Tài khoản này không được phép tạo hội thoại Shop–KOL.');
+      if (!store)
+        throw new BadRequestException(
+          'Tài khoản Shop này chưa có cửa hàng nào',
+        );
+      storeId = store.id;
     }
 
-    if (!storeId || !collaboratorId) {
+    if (storeId) {
+      const targetStore = await this.prisma.store.findFirst({
+        where: { id: storeId, isDeleted: false, isActive: true },
+        select: { ownerId: true },
+      });
+      if (!targetStore) throw new NotFoundException('Không tìm thấy cửa hàng');
+
+      // Người không phải chủ shop chỉ được tạo hội thoại với chính danh tính của mình.
+      targetStoreOwnerId = targetStore.ownerId;
+      if (targetStore.ownerId !== userId) {
+        if (
+          (collaboratorId && collaboratorId !== userId) ||
+          (customerId && customerId !== userId)
+        ) {
+          throw new ForbiddenException('Không thể tạo hội thoại thay cho người dùng khác');
+        }
+        if (actor.role === 'CUSTOMER') {
+          customerId = userId;
+          collaboratorId = undefined;
+        } else if (actor.role === 'COLLABORATOR') {
+          collaboratorId = userId;
+          customerId = undefined;
+        } else {
+          throw new ForbiddenException('Vai trò này không thể tạo hội thoại với Shop');
+        }
+      } else if (actor.role !== 'SHOP_MANAGER' && actor.role !== 'SYSTEM_ADMIN') {
+        throw new ForbiddenException('Chỉ chủ Shop được mở hội thoại thay mặt Shop');
+      }
+    }
+
+    if (!storeId || (!collaboratorId && !customerId) || (collaboratorId && customerId)) {
       throw new BadRequestException(
         'Thông tin cửa hàng hoặc người nhận không hợp lệ',
       );
     }
 
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!UUID_REGEX.test(storeId) || !UUID_REGEX.test(collaboratorId)) {
+    if (
+      !UUID_REGEX.test(storeId) ||
+      (collaboratorId ? !UUID_REGEX.test(collaboratorId) : false) ||
+      (customerId ? !UUID_REGEX.test(customerId) : false)
+    ) {
       throw new BadRequestException('ID cửa hàng hoặc đối tác không đúng định dạng UUID');
     }
 
-    const recipient = await this.prisma.user.findUnique({
-      where: { id: collaboratorId },
-      select: { role: true },
-    });
-    if (requester.role === 'SHOP_MANAGER' && recipient?.role !== 'COLLABORATOR') {
-      throw new BadRequestException('Người nhận chat phải là tài khoản KOL/CTV.');
-    }
-    if (recipient?.role === 'COLLABORATOR') {
-      await this.prisma.storeCollaborator.upsert({
-        where: { storeId_collaboratorId: { storeId, collaboratorId } },
-        update: {},
-        create: { storeId, collaboratorId, status: 'APPROVED' },
-      });
+    // Đảm bảo quan hệ đối tác StoreCollaborator được ghi nhận nếu là collaborator
+    if (collaboratorId) {
+      try {
+        await this.prisma.storeCollaborator.upsert({
+          where: { storeId_collaboratorId: { storeId, collaboratorId } },
+          update: {},
+          create: { storeId, collaboratorId, status: 'APPROVED' },
+        });
+      } catch {}
     }
 
-    const existing = await this.prisma.conversation.findFirst({
-      where: { storeId, collaboratorId },
-      include: {
-        store: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            logoUrl: true,
-            owner: { select: { fullName: true, avatarUrl: true } },
-          },
-        },
-        collaborator: {
-          select: {
-            id: true,
-            fullName: true,
-            role: true,
-            avatarUrl: true,
-            collaboratorProfile: { select: { avatarUrl: true } },
-          },
-        },
-        chatMessages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: {
-            messageText: true,
-            mediaType: true,
-            mediaName: true,
-            createdAt: true,
-            senderId: true,
-            isRead: true,
-          },
+    if (targetStoreOwnerId === userId) {
+      const recipientId = customerId || collaboratorId!;
+      const recipient = await this.prisma.user.findUnique({ where: { id: recipientId }, select: { role: true, isActive: true } });
+      if (!recipient?.isActive || recipient.role !== (customerId ? 'CUSTOMER' : 'COLLABORATOR')) {
+        throw new BadRequestException('Người nhận không hợp lệ');
+      }
+    }
+
+    const convInclude = {
+      store: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+          owner: { select: { fullName: true, avatarUrl: true } },
         },
       },
+      collaborator: {
+        select: {
+          id: true,
+          fullName: true,
+          role: true,
+          avatarUrl: true,
+          collaboratorProfile: { select: { avatarUrl: true } },
+        },
+      },
+      customer: { select: { id: true, fullName: true, role: true } },
+      chatMessages: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+        select: {
+          id: true,
+          messageText: true,
+          mediaUrl: true,
+          mediaType: true,
+          mediaName: true,
+          createdAt: true,
+          senderId: true,
+          isRead: true,
+        },
+      },
+    };
+
+    const existing = await this.prisma.conversation.findFirst({
+      where: customerId ? { storeId, customerId } : { storeId, collaboratorId },
+      include: convInclude,
     });
     if (existing) return existing;
 
-    return this.prisma.conversation.create({
-      data: { storeId, collaboratorId },
-      include: {
-        store: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            logoUrl: true,
-            owner: { select: { fullName: true, avatarUrl: true } },
-          },
-        },
-        collaborator: {
-          select: {
-            id: true,
-            fullName: true,
-            role: true,
-            avatarUrl: true,
-            collaboratorProfile: { select: { avatarUrl: true } },
-          },
-        },
-        chatMessages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: {
-            messageText: true,
-            mediaType: true,
-            mediaName: true,
-            createdAt: true,
-            senderId: true,
-            isRead: true,
-          },
-        },
-      },
-    });
+    try {
+      return await this.prisma.conversation.create({
+        data: { storeId, collaboratorId: collaboratorId || null, customerId: customerId || null },
+        include: convInclude,
+      });
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        const concurrent = await this.prisma.conversation.findFirst({
+          where: customerId ? { storeId, customerId } : { storeId, collaboratorId },
+          include: convInclude,
+        });
+        if (concurrent) return concurrent;
+      }
+      throw error;
+    }
   }
 
   async getConversationsByUser(userId: string) {
@@ -195,11 +190,23 @@ export class ChatService {
     });
     const isCustomer = requester?.role === 'CUSTOMER';
     const conversationWhere: Prisma.ConversationWhereInput = isCustomer
-      ? { collaboratorId: userId, collaborator: { is: { role: 'CUSTOMER' } } }
-      : { OR: [{ collaboratorId: userId }, { store: { ownerId: userId } }] };
+      ? {
+          OR: [
+            { customerId: userId },
+            { collaboratorId: userId, collaborator: { is: { role: 'CUSTOMER' } } },
+          ],
+        }
+      : {
+          OR: [
+            { collaboratorId: userId },
+            { customerId: userId },
+            { store: { ownerId: userId } },
+          ],
+        };
     const conversations = await this.prisma.conversation.findMany({
       where: conversationWhere,
       include: {
+        _count: { select: { chatMessages: { where: { isRead: false, senderId: { not: userId } } } } },
         store: {
           select: {
             id: true,
@@ -218,6 +225,7 @@ export class ChatService {
             collaboratorProfile: { select: { avatarUrl: true } },
           },
         },
+        customer: { select: { id: true, fullName: true, role: true } },
         chatMessages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -267,12 +275,15 @@ export class ChatService {
           },
         },
         collaborator: { select: { id: true, fullName: true, role: true } },
+        customer: { select: { id: true, fullName: true, role: true } },
       },
     });
     if (!conv) throw new NotFoundException('Không tìm thấy hội thoại');
 
     const isParticipant =
-      conv.collaboratorId === userId || conv.store.ownerId === userId;
+      conv.collaboratorId === userId ||
+      conv.customerId === userId ||
+      conv.store.ownerId === userId;
     if (!isParticipant)
       throw new ForbiddenException('Bạn không có quyền truy cập hội thoại này');
 
@@ -284,7 +295,8 @@ export class ChatService {
     });
     if (
       requester?.role === 'CUSTOMER' &&
-      (conv.collaboratorId !== userId || conv.collaborator.role !== 'CUSTOMER')
+      conv.customerId !== userId &&
+      (conv.collaboratorId !== userId || conv.collaborator?.role !== 'CUSTOMER')
     ) {
       throw new ForbiddenException('Khách hàng không có quyền truy cập trao đổi nội bộ Shop–KOL.');
     }
@@ -433,7 +445,7 @@ export class ChatService {
     const messages = await this.prisma.chatMessage.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'desc' },
-      take,
+      take: Math.min(Math.max(take, 1), 100),
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
         id: true,
@@ -457,19 +469,41 @@ export class ChatService {
       },
     });
 
-    // Đánh dấu đã đọc các tin nhắn chưa đọc của người khác gửi
-    await this.prisma.chatMessage.updateMany({
-      where: { conversationId, isRead: false, senderId: { not: userId } },
-      data: { isRead: true },
-    });
-
     const orderedMessages = messages.reverse();
     const isCustomerConversation =
-      conversation.collaboratorId === userId &&
-      conversation.collaborator.role === 'CUSTOMER';
+      (conversation.collaboratorId === userId && conversation.collaborator?.role === 'CUSTOMER') ||
+      conversation.customerId === userId;
     return isCustomerConversation
       ? orderedMessages.filter((message) => !isExclusiveDealMessage(message.messageText))
       : orderedMessages;
+  }
+
+  async markRead(conversationId: string, userId: string) {
+    await this.getConversationById(conversationId, userId);
+    return this.prisma.chatMessage.updateMany({
+      where: { conversationId, isRead: false, senderId: { not: userId } },
+      data: { isRead: true },
+    });
+  }
+
+  async normalizeProductInquiry(card: any, storeId: string) {
+    if (!card?.productId || typeof card.message !== 'string' || !card.message.trim()) {
+      throw new BadRequestException('Sản phẩm hoặc nội dung chat không hợp lệ');
+    }
+    const product = await this.prisma.product.findFirst({
+      where: { id: card.productId, storeId, isDeleted: false, isActive: true },
+      select: { id: true, sku: true, title: true, imageUrl: true, price: true },
+    });
+    if (!product) throw new BadRequestException('Sản phẩm không thuộc Shop này');
+    return JSON.stringify({
+      type: 'PRODUCT_INQUIRY',
+      productId: product.id,
+      productSku: product.sku,
+      productTitle: product.title,
+      productImage: product.imageUrl,
+      productPrice: Number(product.price),
+      message: card.message.trim(),
+    });
   }
 
   async saveMessage(
@@ -479,27 +513,12 @@ export class ChatService {
     mediaUrl?: string,
     mediaType?: ChatAttachmentType,
     mediaName?: string,
+    messageId?: string,
   ) {
-    const [message] = await this.prisma.$transaction([
-      this.prisma.chatMessage.create({
-        data: {
-          conversationId,
-          senderId,
-          messageText,
-          mediaUrl,
-          mediaType,
-          mediaName,
-        },
-        select: {
-          id: true,
-          conversationId: true,
-          senderId: true,
-          messageText: true,
-          mediaUrl: true,
-          mediaType: true,
-          mediaName: true,
-          isRead: true,
-          createdAt: true,
+    if (messageId) {
+      const existing = await this.prisma.chatMessage.findUnique({
+        where: { id: messageId },
+        include: {
           sender: {
             select: {
               id: true,
@@ -510,12 +529,73 @@ export class ChatService {
             },
           },
         },
-      }),
-      this.prisma.conversation.update({
-        where: { id: conversationId },
-        data: { lastMessageAt: new Date() },
-      }),
-    ]);
+      });
+      if (existing) {
+        if (existing.senderId !== senderId || existing.conversationId !== conversationId) {
+          throw new ForbiddenException('Mã tin nhắn không hợp lệ');
+        }
+        return existing;
+      }
+    }
+    let message;
+    try {
+      [message] = await this.prisma.$transaction([
+        this.prisma.chatMessage.create({
+          data: {
+            ...(messageId ? { id: messageId } : {}),
+            conversationId,
+            senderId,
+            messageText,
+            mediaUrl,
+            mediaType,
+            mediaName,
+          },
+          select: {
+            id: true,
+            conversationId: true,
+            senderId: true,
+            messageText: true,
+            mediaUrl: true,
+            mediaType: true,
+            mediaName: true,
+            isRead: true,
+            createdAt: true,
+            sender: {
+              select: {
+                id: true,
+                fullName: true,
+                role: true,
+                avatarUrl: true,
+                collaboratorProfile: { select: { avatarUrl: true } },
+              },
+            },
+          },
+        }),
+        this.prisma.conversation.update({
+          where: { id: conversationId },
+          data: { lastMessageAt: new Date() },
+        }),
+      ]);
+    } catch (error: any) {
+      if (messageId && error?.code === 'P2002') {
+        const existing = await this.prisma.chatMessage.findUnique({
+          where: { id: messageId },
+          include: {
+            sender: {
+              select: {
+                id: true,
+                fullName: true,
+                role: true,
+                avatarUrl: true,
+                collaboratorProfile: { select: { avatarUrl: true } },
+              },
+            },
+          },
+        });
+        if (existing?.senderId === senderId && existing.conversationId === conversationId) return existing;
+      }
+      throw error;
+    }
     return message;
   }
 
@@ -546,18 +626,17 @@ export class ChatService {
   }
 
   async countUnread(userId: string) {
-    const requester = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
-    const conversationWhere: Prisma.ConversationWhereInput = requester?.role === 'CUSTOMER'
-      ? { collaboratorId: userId, collaborator: { is: { role: 'CUSTOMER' } } }
-      : { OR: [{ collaboratorId: userId }, { store: { ownerId: userId } }] };
     return this.prisma.chatMessage.count({
       where: {
         isRead: false,
         senderId: { not: userId },
-        conversation: conversationWhere,
+        conversation: {
+          OR: [
+            { collaboratorId: userId },
+            { customerId: userId },
+            { store: { ownerId: userId } },
+          ],
+        },
       },
     });
   }

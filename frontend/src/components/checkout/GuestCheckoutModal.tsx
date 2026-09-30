@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
@@ -17,6 +17,8 @@ import {
   ExternalLink,
   Pencil,
   ShoppingCart,
+  Lock,
+  LogIn,
   ShieldCheck,
   MessageSquare,
   Save,
@@ -37,8 +39,10 @@ function normalizeVietnameseAddress(str: string): string {
     .replace(/\s+/g, ' ');
 }
 import api from '../../services/api';
+import { apiCache } from '../../utils/apiCache';
 import { authService } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
+import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
 import { toast } from '../../utils/toast';
 import {
   loadShippingAddresses,
@@ -48,6 +52,7 @@ import { useCart, type CartItem } from '../../context/CartContext';
 import { useShopeeChat } from '../../context/ShopeeChatContext';
 import { formatMoney, getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 import { CustomSelect } from '../ui/CustomSelect';
+import { formatSavedAddressOption, resolveSavedShippingAddress } from '../../utils/checkoutAddress';
 
 const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
@@ -80,6 +85,9 @@ export interface CheckoutStoreInfo {
   name: string;
   slug?: string;
   logoUrl?: string;
+  policyReturn?: string;
+  policyWarranty?: string;
+  policyShipping?: string;
 }
 
 interface GuestCheckoutModalProps {
@@ -136,6 +144,75 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string>('');
 
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const onTokenSuccessInCheckout = async (idToken: string) => {
+    try {
+      setIsLoggingIn(true);
+      setLoginError(null);
+      const res: any = await authService.googleLogin(idToken, 'CUSTOMER');
+      const user = res?.user || authService.getCurrentUser();
+      setCurrentUser(user);
+      if (user) {
+        setCustomerName(user.fullName || '');
+        setCustomerEmail(user.email || '');
+        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
+        customerService.getAddresses().then((addrs) => {
+          if (Array.isArray(addrs) && addrs.length > 0) {
+            setCustomerAddresses(addrs);
+            const def = addrs.find((a) => a.isDefault) || addrs[0];
+            if (def) {
+              setSelectedSavedAddressId(def.id);
+            }
+          }
+        }).catch(() => {});
+      }
+      toast.success('Đăng nhập thành công! Vui lòng hoàn tất thông tin đặt hàng.');
+    } catch (err: any) {
+      setLoginError(err?.response?.data?.message || err?.message || 'Đăng nhập Google thất bại');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleEmailLoginInCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail.trim() || !loginPassword) {
+      setLoginError('Vui lòng nhập đầy đủ Email và Mật khẩu.');
+      return;
+    }
+    setIsLoggingIn(true);
+    setLoginError(null);
+    try {
+      const res: any = await authService.login(loginEmail.trim(), loginPassword);
+      const user = res?.user || authService.getCurrentUser();
+      setCurrentUser(user);
+      if (user) {
+        setCustomerName(user.fullName || '');
+        setCustomerEmail(user.email || '');
+        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
+        customerService.getAddresses().then((addrs) => {
+          if (Array.isArray(addrs) && addrs.length > 0) {
+            setCustomerAddresses(addrs);
+            const def = addrs.find((a) => a.isDefault) || addrs[0];
+            if (def) {
+              setSelectedSavedAddressId(def.id);
+            }
+          }
+        }).catch(() => {});
+      }
+      toast.success('Đăng nhập thành công! Vui lòng hoàn tất thông tin đặt hàng.');
+    } catch (err: any) {
+      setLoginError(err?.response?.data?.message || err?.message || 'Email hoặc mật khẩu không chính xác');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -150,6 +227,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [saveToAddressBook, setSaveToAddressBook] = useState(true);
   const [setAsDefaultAddress, setSetAsDefaultAddress] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [shopPolicies, setShopPolicies] = useState<Record<string, CheckoutStoreInfo>>({});
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
 
   // Payment Method: Default to COD (reliable & always available), with PayOS option
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS'>('COD');
@@ -247,6 +328,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             name: store.name,
             slug: store.slug,
             logoUrl: store.logoUrl,
+            policyReturn: store.policyReturn,
+            policyWarranty: store.policyWarranty,
+            policyShipping: store.policyShipping,
           },
         },
       ];
@@ -274,6 +358,24 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
     return Array.from(map.values());
   }, [activeItems]);
+  const policyStoreIds = itemsGroupedByShop.map((group) => group.store.id).join(',');
+
+  useEffect(() => {
+    if (!isOpen || !policyStoreIds) return;
+    let active = true;
+    setPolicyLoading(true);
+    setPolicyError(null);
+    setPolicyAccepted(false);
+    apiCache.invalidate('/stores/public/id/');
+    Promise.all(policyStoreIds.split(',').map(async (id) => {
+      const response: any = await api.get(`/stores/public/id/${id}`);
+      return [id, response?.data || response] as const;
+    }))
+      .then((entries) => { if (active) setShopPolicies(Object.fromEntries(entries)); })
+      .catch(() => { if (active) setPolicyError('Không tải được chính sách hiện hành của Shop. Vui lòng thử lại sau.'); })
+      .finally(() => { if (active) setPolicyLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, policyStoreIds]);
 
   // Calculate Subtotal & Totals
   const rawSubtotal = useMemo(() => {
@@ -359,6 +461,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   // Pre-fill user data & addresses on open
   useEffect(() => {
     if (isOpen) {
+      setPolicyAccepted(false);
       const user = authService.getCurrentUser();
 
       if (user) {
@@ -492,7 +595,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   ) => {
     if (addr.fullName) setCustomerName(addr.fullName);
     if (addr.phoneNumber) setCustomerPhone(addr.phoneNumber);
-    if (addr.detailAddress) setShippingAddress(addr.detailAddress);
+
+    const resolved = resolveSavedShippingAddress(addr, provinces);
+    if (resolved.provinceCode) {
+      setShippingAddress(resolved.detailAddress || addr.detailAddress || '');
+      setProvinceCode(resolved.provinceCode);
+      setDistrictCode(resolved.districtCode);
+      setWardCode(resolved.wardCode);
+      return;
+    }
 
     const normProv = normalizeVietnameseAddress(addr.provinceName || '');
     const foundProv = provinces.find(
@@ -533,22 +644,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
   };
 
-  // Tự động phân giải và điền đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã khi cả sổ địa chỉ và shippingProvinces đã tải xong
-  useEffect(() => {
-    if (!shippingProvinces.length || !customerAddresses.length || !selectedSavedAddressId) return;
-    const addr = customerAddresses.find((a) => a.id === selectedSavedAddressId);
-    if (!addr) return;
-
-    if (!provinceCode) {
-      populateAddressFromRecord(addr, shippingProvinces);
-    }
-  }, [shippingProvinces, customerAddresses, selectedSavedAddressId, provinceCode]);
-
-  const handleSelectSavedAddress = (addrId: string) => {
-    setSelectedSavedAddressId(addrId);
+  const applySavedAddress = useCallback((addrId: string) => {
     const addr = customerAddresses.find((a) => a.id === addrId);
     if (!addr) return;
     populateAddressFromRecord(addr, shippingProvinces);
+  }, [customerAddresses, shippingProvinces]);
+
+  // Tự động phân giải và điền đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã khi cả sổ địa chỉ và shippingProvinces đã tải xong
+  useEffect(() => {
+    if (!isOpen || !selectedSavedAddressId || shippingProvinces.length === 0) return;
+    applySavedAddress(selectedSavedAddressId);
+  }, [applySavedAddress, isOpen, selectedSavedAddressId, shippingProvinces.length]);
+
+  const handleSelectSavedAddress = (addrId: string) => {
+    setSelectedSavedAddressId(addrId);
+    if (addrId) applySavedAddress(addrId);
   };
 
   const handleStartNewAddress = () => {
@@ -762,6 +872,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
+    if (!policyAccepted || policyLoading || policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])) {
+      setErrorMessage('Bạn cần đọc và đồng ý chính sách đổi trả của các gian hàng trước khi đặt mua.');
+      return;
+    }
+
     const fullShippingAddress = [
       addressDetail,
       selectedWard.name,
@@ -796,6 +911,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         customerPhone: customerPhone.trim(),
         customerEmail: customerEmail.trim().toLowerCase() || undefined,
         shippingAddress: fullShippingAddress,
+        policyAccepted: true,
         orderNotes: orderNotes.trim() || undefined,
         paymentMethod,
         couponCode: appliedCoupon?.code || undefined,
@@ -1134,9 +1250,93 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             )}
 
-            {/* Customer identification status */}
-            {currentUser && (
-              <div className="p-3.5 rounded-lg bg-white border border-gray-200 text-xs text-[#1A1612] flex items-center justify-between shadow-2xs">
+            {!currentUser ? (
+              <div id="mandatory-auth-gate" className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#FBF5EB] to-[#FAF8F5] border-2 border-[#C59B58] shadow-sm text-left">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#C59B58] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-[#EEDFC6] text-[10px] font-black text-[#B88E4F] uppercase tracking-wider mb-1">
+                      BẮT BUỘC XÁC THỰC KHÁCH HÀNG (MANDATORY AUTH GATE)
+                    </div>
+                    <h3 className="text-sm sm:text-base font-black text-[#1A1612]">
+                      Đăng Nhập Hoặc Xác Thực Google Trước Khi Đặt Hàng
+                    </h3>
+                    <p className="text-xs text-[#7D715E] mt-1 leading-relaxed">
+                      Hệ thống SCANMS yêu cầu liên kết tài khoản để đảm bảo:
+                      <span className="font-semibold text-[#1A1612]"> (1) Kích hoạt Quỹ Bảo Chứng Escrow 14 ngày</span>,
+                      <span className="font-semibold text-[#1A1612]"> (2) Quyền gửi khiếu nại Trọng tài độc lập</span>, và
+                      <span className="font-semibold text-[#1A1612]"> (3) Quản lý đơn hàng trong tài khoản</span>.
+                    </p>
+
+                    {loginError && (
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/30 text-xs text-[#DC2626] font-medium flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{loginError}</span>
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                      <div className={`shrink-0 min-w-[220px] ${isLoggingIn ? 'pointer-events-none opacity-60' : ''}`}>
+                        <GoogleOfficialButton
+                          onSuccess={onTokenSuccessInCheckout}
+                          text="continue_with"
+                          onError={(errMsg) => setLoginError(errMsg)}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailLogin(!showEmailLogin)}
+                          className="px-3.5 py-2.5 bg-white border border-[#EAE4D7] hover:border-[#1A1612] text-[#1A1612] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <LogIn className="w-3.5 h-3.5 text-[#7D715E]" />
+                          <span>{showEmailLogin ? 'Đóng đăng nhập Email' : 'Đăng nhập Email'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {showEmailLogin && (
+                      <div className="mt-3.5 p-3.5 bg-white rounded-xl border border-[#EAE4D7] space-y-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <input
+                            type="email"
+                            placeholder="Email tài khoản"
+                            value={loginEmail}
+                            onChange={(e) => setLoginEmail(e.target.value)}
+                            className="px-3 py-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-lg text-xs text-[#1A1612] focus:outline-hidden focus:border-[#C59B58]"
+                          />
+                          <input
+                            type="password"
+                            placeholder="Mật khẩu"
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
+                            className="px-3 py-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-lg text-xs text-[#1A1612] focus:outline-hidden focus:border-[#C59B58]"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-[#7D715E]">
+                            Chưa có tài khoản? Nhấn nút Google ở trên để đăng ký 1 chạm.
+                          </span>
+                          <button
+                            type="button"
+                            disabled={isLoggingIn}
+                            onClick={handleEmailLoginInCheckout}
+                            className="px-4 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                          >
+                            {isLoggingIn && <Loader2 className="w-3 h-3 animate-spin" />}
+                            <span>Đăng nhập ngay</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4 p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#1A1612] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-[#059669]" />
                   <span>
@@ -1354,6 +1554,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           onChange={(e) => setCustomerEmail(e.target.value)}
                           className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#ee4d2d] transition"
                         />
+                      </div>
                       </div>
                     </div>
 

@@ -26,6 +26,7 @@ import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
+import { ChatBell } from '../chat/ChatBell';
 
 export interface PublicHeaderProps {
   cartCount?: number;
@@ -220,8 +221,8 @@ export function PublicHeader({
           </button>
         </form>
 
-        {/* Right Navigation & User Status */}
         <div className="flex items-center gap-3 sm:gap-4 lg:gap-5 shrink-0">
+          {isCustomer && currentUser?.id && <ChatBell userId={currentUser.id} />}
           {/* Quick Tracking Button */}
           <button
             type="button"
