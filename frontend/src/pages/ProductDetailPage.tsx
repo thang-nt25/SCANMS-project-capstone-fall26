@@ -29,6 +29,7 @@ import {
   Minus,
   Plus,
   Store,
+  MessageSquare,
 } from 'lucide-react';
 import api from '../services/api';
 import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
@@ -81,7 +82,6 @@ interface LandingStore {
   slug: string;
   logoUrl?: string | null;
   isVerified: boolean;
-  logoUrl?: string;
 }
 
 interface LandingVideo {
@@ -430,12 +430,20 @@ function trackAnalytics(eventName: string, payload?: Record<string, any>) {
 export default function ProductDetailPage() {
   const navigate = useNavigate();
   const { openChat } = useShopeeChat();
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      return null;
+    }
+  })();
+  const isKolUser = currentUser?.role === 'COLLABORATOR';
 
   const handleOpenShopeeChat = () => {
     const storeObj = data?.store ? {
       id: data.store.id,
       name: data.store.name,
-      logoUrl: data.store.logoUrl,
+      logoUrl: data.store.logoUrl || undefined,
       slug: data.store.slug,
       isVerified: true,
     } : {
@@ -458,6 +466,7 @@ export default function ProductDetailPage() {
 
     openChat(storeObj, productObj);
   };
+  void handleOpenShopeeChat;
 
   const handleContactShop = () => {
     if (!currentUser) {

@@ -7,7 +7,6 @@ import {
   Clock,
   AlertCircle,
   Search,
-  Store,
   Coins,
   ShieldAlert,
   Loader2,
@@ -136,7 +135,6 @@ export const ShopCouponsPage: React.FC = () => {
   const targetStoreId = urlStoreId || queryStoreId;
 
   const [storeId, setStoreId] = useState<string>('');
-  const [storeName, setStoreName] = useState<string>('Gian Hàng Của Bạn');
   const [storesList, setStoresList] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,7 +293,6 @@ export const ShopCouponsPage: React.FC = () => {
 
       if (foundStore) {
         setStoreId(foundStore.id);
-        setStoreName(foundStore.name);
         localStorage.setItem('current_store_id', foundStore.id);
         if (queryStoreId && queryStoreId !== foundStore.id) {
           setSearchParams({ storeId: foundStore.id }, { replace: true });
@@ -315,7 +312,6 @@ export const ShopCouponsPage: React.FC = () => {
     const selected = storesList.find((s) => s.id === newStoreId);
     if (selected) {
       setStoreId(selected.id);
-      setStoreName(selected.name);
       setSearchParams({ storeId: selected.id });
       localStorage.setItem('current_store_id', selected.id);
       fetchStoreCoupons(selected.id);

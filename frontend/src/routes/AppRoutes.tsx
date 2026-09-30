@@ -108,7 +108,7 @@ function AppRoutes() {
               <Route path="/shop" element={<ShopStorefrontPage />} />
               <Route path="/shop/:slug" element={<ShopStorefrontPage />} />
               <Route path="/stores/:slug" element={<ShopStorefrontPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/leaderboard" element={<PublicLeaderboardPage />} />
 
         <Route path="/prototype" element={<UiReferencePage />} />
         <Route path="/ui-reference" element={<UiReferencePage />} />

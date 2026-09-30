@@ -1354,12 +1354,7 @@ export default function ChatBoxPage({
     );
   };
 
-  const getOtherAvatar = (conv: Conversation) => {
-    if (!currentUser) return conv.store?.name?.[0]?.toUpperCase() || '💬';
-    return currentUser.role === 'COLLABORATOR' || currentUser.role === 'CUSTOMER'
-      ? conv.store?.name?.[0]?.toUpperCase() || 'S'
-      : conv.customer?.fullName?.[0]?.toUpperCase() || conv.collaborator?.fullName?.[0]?.toUpperCase() || 'K';
-  };
+  // getOtherAvatar replaced by ChatAvatar with getOtherAvatarUrl
 
   const openOtherProfile = (conv: Conversation) => {
     if (currentUser?.role === 'COLLABORATOR') {

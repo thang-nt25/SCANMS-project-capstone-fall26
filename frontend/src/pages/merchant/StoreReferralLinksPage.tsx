@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Link2,
-  Store,
   ShieldAlert,
   Search,
   User,
@@ -20,14 +19,12 @@ export default function StoreReferralLinksPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string>('');
-  const [storeName, setStoreName] = useState<string>('Gian Hàng Của Bạn');
 
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [totalLinks, setTotalLinks] = useState(0);
 
 
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
@@ -47,14 +44,12 @@ export default function StoreReferralLinksPage() {
 
         if (user?.stores && user.stores.length > 0) {
           setStoreId(user.stores[0].id);
-          setStoreName(user.stores[0].name);
         } else {
 
           const storeRes: any = await api.get('/collaborator/stores');
           const stores = storeRes?.data || storeRes || [];
           if (stores.length > 0) {
             setStoreId(stores[0].id);
-            setStoreName(stores[0].name);
           }
         }
       } catch (err: any) {
@@ -77,7 +72,6 @@ export default function StoreReferralLinksPage() {
         search: search.trim() || undefined,
       });
       setLinks(res.data);
-      setTotalLinks(res.meta.total);
     } catch (err: any) {
       setErrorMsg(err.message || 'Lỗi khi tải danh sách liên kết tiếp thị');
     } finally {

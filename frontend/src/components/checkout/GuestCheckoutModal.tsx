@@ -52,7 +52,7 @@ import { useCart, type CartItem } from '../../context/CartContext';
 import { useShopeeChat } from '../../context/ShopeeChatContext';
 import { formatMoney, getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 import { CustomSelect } from '../ui/CustomSelect';
-import { formatSavedAddressOption, resolveSavedShippingAddress } from '../../utils/checkoutAddress';
+import { resolveSavedShippingAddress } from '../../utils/checkoutAddress';
 
 const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
@@ -119,7 +119,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const { openChat } = useShopeeChat();
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const isSignedIn = Boolean(localStorage.getItem('token') && authService.getCurrentUser());
-  const [currentUser] = useState<any>(() => authService.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<any>(() => authService.getCurrentUser());
 
   // Bắt buộc đăng nhập khi vào Checkout: nếu chưa đăng nhập, tự động chuyển sang /login
   useEffect(() => {
@@ -1554,7 +1554,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           onChange={(e) => setCustomerEmail(e.target.value)}
                           className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#ee4d2d] transition"
                         />
-                      </div>
                       </div>
                     </div>
 

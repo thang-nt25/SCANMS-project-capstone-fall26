@@ -21,10 +21,6 @@ import {
   DollarSign,
   Share2,
   ShoppingBag,
-  Mail,
-  Phone,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import api from '../../services/api';
 import ChatBoxPage from '../chat/ChatBoxPage';

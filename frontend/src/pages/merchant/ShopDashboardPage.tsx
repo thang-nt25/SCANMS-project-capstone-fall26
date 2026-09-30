@@ -22,7 +22,6 @@ import { productService, type Product } from '../../services/product.service';
 import { orderService, type StoreOrderRecord } from '../../services/order.service';
 
 export default function ShopDashboardPage() {
-  const [store, setStore] = useState<any>(null);
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
   const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
   const [topProducts, setTopProducts] = useState<Product[]>([]);
@@ -34,7 +33,6 @@ export default function ShopDashboardPage() {
     setLoading(true);
     try {
       const currentStore = await storeService.getMyStore().catch(() => null);
-      setStore(currentStore);
 
       const [overviewData, seriesData, productsData, ordersData] = await Promise.all([
         analyticsService.getRealtimeOverview({ days: 30, storeId: currentStore?.id }).catch(() => null),

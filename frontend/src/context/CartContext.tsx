@@ -2,11 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { toast } from '../utils/toast';
 import { authService } from '../services/auth.service';
 import api from '../services/api';
-<<<<<<< HEAD
 import { getSafeProductImageUrl } from '../features/marketplace/marketplaceUtils';
-=======
 import { customerService } from '../services/customer.service';
->>>>>>> origin/dev
 
 export interface CartVariantInfo {
   id: string;

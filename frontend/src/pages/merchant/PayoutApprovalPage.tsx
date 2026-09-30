@@ -45,7 +45,6 @@ function saveWorkbook(blob: Blob, filename: string) {
 export default function PayoutApprovalPage() {
   const { storeId: routeStoreId } = useParams<{ storeId: string }>();
   const [storeId, setStoreId] = useState(routeStoreId ?? "");
-  const [storeName, setStoreName] = useState("Gian hàng của bạn");
   const [history, setHistory] = useState<MerchantPayoutHistory | null>(null);
   const [batches, setBatches] = useState<MerchantPayoutBatch[]>([]);
   const [page, setPage] = useState(1);
@@ -90,7 +89,6 @@ export default function PayoutApprovalPage() {
       .then((store) => {
         if (active) {
           setStoreId(store.id);
-          setStoreName(store.name);
         }
       })
       .catch((err: unknown) => {

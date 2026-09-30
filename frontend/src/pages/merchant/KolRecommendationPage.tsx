@@ -7,9 +7,7 @@ import {
   CheckCircle2,
   Send,
   BarChart3,
-  Flame,
   X,
-  ShieldCheck,
   ShoppingBag,
   Zap,
 } from 'lucide-react';

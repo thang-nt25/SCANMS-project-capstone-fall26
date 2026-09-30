@@ -28,7 +28,7 @@ export default function KycSubmissionPage() {
   const currentUser = authService.getCurrentUser();
   const [profile, setProfile] = useState<KycProfile | null>(null);
   const [socialChannels, setSocialChannels] = useState<SocialChannel[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true); void _loading;
   const [saving, setSaving] = useState(false);
 
   // Social Channels & Primary Channel (Matching PartnerUpgradeTab - Image 2)
@@ -102,8 +102,8 @@ export default function KycSubmissionPage() {
       const primary = channels?.find((c) => c.isPrimary) || channels?.[0];
       if (primary) {
         setPlatform((prev) => (prev ? prev : (primary.platformName as any) || 'TIKTOK'));
-        setChannelName((prev) => (prev ? prev : primary.channelName));
-        setChannelUrl((prev) => (prev ? prev : primary.channelUrl));
+        setChannelName((prev) => (prev ? prev : primary.channelName || ''));
+        setChannelUrl((prev) => (prev ? prev : primary.channelUrl || ''));
         setFollowerCount((prev) => (prev !== '' ? prev : primary.followerCount || ''));
       }
     } catch (err) {

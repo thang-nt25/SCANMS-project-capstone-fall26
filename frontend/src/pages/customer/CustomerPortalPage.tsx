@@ -22,12 +22,11 @@ import {
   Sparkles,
   Home,
   X,
+  XCircle,
   Camera,
-  Video,
   Bell,
   Ticket,
   MessageCircle,
-  MessageSquare,
   User,
   Copy,
   Package,
@@ -162,14 +161,6 @@ export default function CustomerPortalPage() {
   const [returnOrder, setReturnOrder] = useState<CustomerOrder | null>(null);
   const [reviewOrder, setReviewOrder] = useState<CustomerOrder | null>(null);
 
-  // Return / Refund Dispute State (Shopee Style)
-  const [returningOrder, setReturningOrder] = useState<CustomerOrder | null>(null);
-  const [returnReason, setReturnReason] = useState('Hàng bị bể vỡ / hư hỏng do vận chuyển');
-  const [returnNotes, setReturnNotes] = useState('');
-  const [returnProofFiles, setReturnProofFiles] = useState<Array<{ url: string; type: 'image' | 'video'; name?: string }>>([]);
-  const [isUploadingProof, setIsUploadingProof] = useState(false);
-  const proofFileInputRef = useRef<HTMLInputElement>(null);
-  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
 
   // Tab 2: Addresses State
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -619,89 +610,6 @@ export default function CustomerPortalPage() {
       toast.error(err?.response?.data?.message || 'Không thể xác nhận đã nhận hàng');
     } finally {
       setConfirmingOrderId(null);
-    }
-  };
-
-  const handleUploadProofFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    if (returnProofFiles.length + files.length > 6) {
-      toast.error('Tối đa chỉ được tải lên 6 tệp ảnh/video bằng chứng');
-      return;
-    }
-
-    setIsUploadingProof(true);
-    const newProofs: Array<{ url: string; type: 'image' | 'video'; name?: string }> = [];
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const isVideo = file.type.startsWith('video/') || Boolean(file.name.match(/\.(mp4|mov|webm|avi)$/i));
-
-        if (isVideo && file.size > 50 * 1024 * 1024) {
-          toast.error(`Video "${file.name}" vượt quá dung lượng tối đa 50MB`);
-          continue;
-        }
-        if (!isVideo && file.size > 10 * 1024 * 1024) {
-          toast.error(`Ảnh "${file.name}" vượt quá dung lượng tối đa 10MB`);
-          continue;
-        }
-
-        const uploaded = await uploadService.uploadMedia(file, 'scanms/disputes');
-        newProofs.push({
-          url: uploaded.url,
-          type: uploaded.type,
-          name: file.name,
-        });
-      }
-
-      setReturnProofFiles((prev) => [...prev, ...newProofs]);
-      toast.success(`Đã tải lên ${newProofs.length} tệp bằng chứng thành công!`);
-    } catch (err: any) {
-      console.error('Lỗi khi tải bằng chứng:', err);
-      toast.error(err?.message || 'Không thể tải ảnh/video lên. Vui lòng thử lại!');
-    } finally {
-      setIsUploadingProof(false);
-      if (e.target) e.target.value = '';
-    }
-  };
-
-  const handleRemoveProof = (indexToRemove: number) => {
-    setReturnProofFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-  };
-
-  const handleRequestReturn = async () => {
-    if (!returningOrder) return;
-    if (!returnReason.trim()) {
-      toast.error('Vui lòng chọn lý do trả hàng / hoàn tiền');
-      return;
-    }
-    setIsSubmittingReturn(true);
-    try {
-      const proofImages = returnProofFiles.filter((p) => p.type === 'image').map((p) => p.url);
-      const proofVideos = returnProofFiles.filter((p) => p.type === 'video').map((p) => p.url);
-
-      await customerService.requestReturnOrder(returningOrder.id, {
-        reason: returnReason,
-        notes: returnNotes.trim() || undefined,
-        proofImages,
-        proofVideos,
-      });
-      toast.success('Gửi yêu cầu Trả hàng / Hoàn tiền thành công!');
-      setReturningOrder(null);
-      setReturnNotes('');
-      setReturnProofFiles([]);
-      // Chuyển sang tab RETURNED để khách thấy đơn hàng ngay lập tức!
-      setOrderStatusFilter('RETURNED');
-      fetchOrders();
-      fetchProfile();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Không thể gửi yêu cầu hoàn tiền');
-    } finally {
-      setIsSubmittingReturn(false);
-    }
-  };
     }
   };
 
@@ -1560,7 +1468,6 @@ export default function CustomerPortalPage() {
                                   <span>Đã hủy đơn</span>
                                 </span>
                               )}
-                              )}
                             </div>
                           </div>
 
@@ -1732,12 +1639,7 @@ export default function CustomerPortalPage() {
                               {!isCancelled && !isReturned && (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setReturningOrder(order);
-                                    setReturnReason('Hàng bị bể vỡ / hư hỏng do vận chuyển');
-                                    setReturnNotes('');
-                                    setReturnProofFiles([]);
-                                  }}
+                                  onClick={() => setReturnOrder(order)}
                                   className="px-4 py-2 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-semibold text-amber-800 transition cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
                                 >
                                   <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
@@ -3394,10 +3296,7 @@ export default function CustomerPortalPage() {
                   onClick={() => {
                     const ord = selectedOrderDetails;
                     setSelectedOrderDetails(null);
-                    setReturningOrder(ord);
-                    setReturnReason('Hàng bị bể vỡ / hư hỏng do vận chuyển');
-                    setReturnNotes('');
-                    setReturnProofFiles([]);
+                    setReturnOrder(ord);
                   }}
                   className="px-4 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-semibold text-amber-800 transition cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
                 >

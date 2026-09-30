@@ -9,7 +9,6 @@ import {
   PauseCircle,
   Eye,
   Activity,
-  Bot,
   Sparkles,
   Info,
   Shield,

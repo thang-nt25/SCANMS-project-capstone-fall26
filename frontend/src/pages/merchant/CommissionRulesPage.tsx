@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Trophy,
   Plus,
   Edit2,
   Trash2,
