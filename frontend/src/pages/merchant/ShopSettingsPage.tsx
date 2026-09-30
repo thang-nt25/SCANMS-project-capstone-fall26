@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Save,
@@ -14,6 +14,7 @@ import {
   Loader2,
   Check,
   ImageIcon,
+  Camera,
 } from 'lucide-react';
 import { storeService } from '../../services/store.service';
 import { authService } from '../../services/auth.service';
@@ -40,6 +41,9 @@ export default function ShopSettingsPage() {
 
   const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState(currentUser);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -55,6 +59,12 @@ export default function ShopSettingsPage() {
 
   useEffect(() => {
     loadStore();
+
+    const handleUserSync = () => {
+      setCurrentUserProfile(authService.getCurrentUser());
+    };
+    window.addEventListener('auth-user-updated', handleUserSync);
+    return () => window.removeEventListener('auth-user-updated', handleUserSync);
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,6 +81,35 @@ export default function ShopSettingsPage() {
       showToast(err?.response?.data?.message || err?.message || 'Không thể tải logo lên Cloudinary');
     } finally {
       setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Vui lòng chọn tệp hình ảnh hợp lệ (PNG, JPG, WEBP)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Kích thước ảnh tối đa 5MB');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const secureUrl = await uploadService.uploadImage(file, 'scanms/avatars');
+      await authService.updateAvatar(secureUrl);
+      setCurrentUserProfile(authService.getCurrentUser());
+      showToast('Cập nhật ảnh đại diện chủ gian hàng thành công!');
+    } catch (err: any) {
+      console.error('Lỗi tải ảnh đại diện:', err);
+      showToast(err?.response?.data?.message || err?.message || 'Không thể tải ảnh đại diện lên');
+    } finally {
+      setUploadingAvatar(false);
       e.target.value = '';
     }
   };
@@ -156,20 +195,85 @@ export default function ShopSettingsPage() {
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto text-left">
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 bg-[#1A1612] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2">
+        <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 border border-[#EEDFC6]">
           <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      <header>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">
-          Cài Đặt Gian Hàng &amp; Quy Tắc Tiếp Thị
-        </h1>
-        <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-          Thiết lập thông tin thương hiệu, tỷ lệ hoa hồng mặc định và cơ chế phân bổ cookie ghi nhận đơn hàng.
-        </p>
-      </header>
+
+
+      {/* Shop Owner Profile Header Card */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#EAE4D7] shadow-xs flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+          <div className="relative group shrink-0">
+            <div className="w-18 h-18 rounded-2xl overflow-hidden border-2 border-[#E8D4B0] bg-gradient-to-br from-[#FAF0DD] to-[#F3EFE6] shadow-sm flex items-center justify-center">
+              {currentUserProfile?.avatarUrl ? (
+                <img
+                  src={currentUserProfile.avatarUrl}
+                  alt={currentUserProfile.fullName || 'Chủ Shop'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-2xl font-black text-[#8C6226]">
+                  {currentUserProfile?.fullName?.[0]?.toUpperCase() || 'S'}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              title="Bấm để tải ảnh đại diện lên"
+              className="absolute -bottom-1 -right-1 p-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white shadow-sm border-2 border-white transition cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95"
+            >
+              {uploadingAvatar ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Camera className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+
+          <div>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <h2 className="text-base sm:text-lg font-black text-[#1A1612]">
+                {currentUserProfile?.fullName || 'Chủ Gian Hàng'}
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
+                🏪 Quản Trị Gian Hàng
+              </span>
+            </div>
+            <p className="text-xs text-[#7D715E] mt-0.5">{currentUserProfile?.email}</p>
+            <p className="text-xs text-[#8C7D6B] mt-1">
+              Ảnh đại diện cá nhân của bạn sẽ hiển thị trên thanh điều hướng, tin nhắn hợp tác với KOL và hệ thống toàn sàn.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          disabled={uploadingAvatar}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] hover:bg-[#F3EFE6] text-xs font-bold text-[#1A1612] transition shadow-2xs cursor-pointer active:scale-98"
+        >
+          {uploadingAvatar ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B88E4F]" />
+          ) : (
+            <Camera className="w-3.5 h-3.5 text-[#B88E4F]" />
+          )}
+          <span>{uploadingAvatar ? 'Đang tải...' : 'Đổi ảnh cá nhân'}</span>
+        </button>
+
+        <input
+          type="file"
+          ref={avatarInputRef}
+          onChange={handleAvatarUpload}
+          accept="image/png,image/jpeg,image/webp,image/jpg"
+          className="hidden"
+        />
+      </div>
 
       <Card className="p-6 sm:p-7 bg-white border border-[#EAE4D7]">
         <form onSubmit={handleSave} className="flex flex-col gap-5">

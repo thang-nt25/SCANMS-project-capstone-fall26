@@ -7,9 +7,7 @@ import {
   CheckCircle2,
   Send,
   BarChart3,
-  Flame,
   X,
-  ShieldCheck,
   ShoppingBag,
   Zap,
 } from 'lucide-react';
@@ -210,40 +208,7 @@ export default function KolRecommendationPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* 1. Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 p-6 md:p-8 text-white shadow-xl">
-        <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-md border border-white/20">
-            <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
-            <span className="text-amber-200 font-semibold">AI Recommendation & Smart Matching Engine</span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-            Gợi Ý & Ghép Đôi KOL Phù Hợp Sản Phẩm
-          </h1>
-          <p className="text-sm md:text-base text-indigo-100/90 leading-relaxed">
-            Hệ thống phân tích ma trận đa tiêu chí (Mức độ hợp ngành 35%, Tỷ lệ chuyển đổi CR% 25%, Tầm ảnh hưởng 20%, Phân khúc giá 20%) giúp chủ shop tìm ra những nhà sáng tạo có khả năng bùng nổ doanh số cao nhất.
-          </p>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
-            <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 backdrop-blur-sm">
-              <Zap className="h-4 w-4 text-amber-300" />
-              <span>Thuật toán giải trình minh bạch (Explainable AI)</span>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 backdrop-blur-sm">
-              <ShieldCheck className="h-4 w-4 text-emerald-300" />
-              <span>Dữ liệu chuyển đổi thực tế</span>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 backdrop-blur-sm">
-              <Flame className="h-4 w-4 text-rose-300" />
-              <span>Gợi ý độc quyền cho Shop</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Decorative blur balls */}
-        <div className="absolute -right-12 -bottom-12 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute right-1/3 -top-12 h-48 w-48 rounded-full bg-indigo-400/20 blur-2xl pointer-events-none" />
-      </div>
 
       {/* 2. Target Product Selector & Profile Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -850,12 +815,12 @@ export default function KolRecommendationPage() {
             </div>
 
             {/* AI Recommendation Conclusion */}
-            <div className="rounded-2xl bg-slate-900 p-4 text-white text-xs space-y-2">
-              <div className="flex items-center gap-2 text-amber-300 font-bold">
+            <div className="rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] p-4 text-[#1A1612] text-xs space-y-2">
+              <div className="flex items-center gap-2 text-[#8F682E] font-bold">
                 <Sparkles className="h-4 w-4" />
                 <span>Kết luận từ AI Engine:</span>
               </div>
-              <p className="text-slate-300 leading-relaxed">
+              <p className="text-[#7D715E] leading-relaxed">
                 {analyzingKol.aiReasoning}
               </p>
             </div>

@@ -373,15 +373,7 @@ export default function ShopCampaignsPage() {
       )}
 
 
-      <div className="flex items-start sm:items-center justify-between gap-4 flex-wrap pb-2 border-b border-[#EAE4D7]">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] flex items-center gap-2.5">
-            <span>🎯</span> Chiến Dịch Tiếp Thị Liên Kết
-          </h1>
-          <p className="text-sm text-[#7D715E] mt-1">
-            Tạo chiến dịch hoa hồng thưởng và mời Top KOL quảng bá sản phẩm cho gian hàng
-          </p>
-        </div>
+      <div className="flex items-center justify-end pb-2">
         <button
           id="btn-new-campaign"
           type="button"

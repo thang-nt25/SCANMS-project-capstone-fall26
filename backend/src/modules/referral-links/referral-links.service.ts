@@ -99,6 +99,37 @@ export class ReferralLinksService {
     ).replace(/\/+$/, '');
   }
 
+  private async getCurrentApprovedDeals(
+    pairs: Array<{ collaboratorId: string; productId: string }>,
+  ) {
+    const uniquePairs = Array.from(
+      new Map(
+        pairs.map((pair) => [
+          `${pair.collaboratorId}:${pair.productId}`,
+          pair,
+        ]),
+      ).values(),
+    );
+    if (!uniquePairs.length) return new Map<string, any>();
+
+    const deals = await this.prisma.exclusiveDealProposal.findMany({
+      where: { status: 'APPROVED', OR: uniquePairs },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        collaboratorId: true,
+        productId: true,
+        approvedCommissionRate: true,
+      },
+    });
+    const currentDeals = new Map<string, any>();
+    for (const deal of deals) {
+      const key = `${deal.collaboratorId}:${deal.productId}`;
+      if (!currentDeals.has(key)) currentDeals.set(key, deal);
+    }
+    return currentDeals;
+  }
+
   /**
    * 1. Lấy danh sách sản phẩm hợp lệ để KOL tạo link tiếp thị
    * - BẮT BUỘC nhận collaboratorId
@@ -689,13 +720,24 @@ export class ReferralLinksService {
       }),
     ]);
 
+    const currentDeals = await this.getCurrentApprovedDeals(
+      items
+        .filter((item) => item.exclusiveDealId)
+        .map((item) => ({ collaboratorId: item.collaboratorId, productId: item.productId })),
+    );
+
     const publicAppUrl = this.getPublicAppUrl();
     const formattedItems = items.map((item) => {
       const effectiveStatus = computeEffectiveStatus(item);
 
+      const currentDeal = item.exclusiveDealId
+        ? currentDeals.get(`${item.collaboratorId}:${item.productId}`)
+        : null;
       const commissionRate =
-        item.exclusiveDeal?.approvedCommissionRate !== null &&
-        item.exclusiveDeal?.approvedCommissionRate !== undefined
+        currentDeal?.approvedCommissionRate != null
+          ? Number(currentDeal.approvedCommissionRate)
+          : item.exclusiveDeal?.approvedCommissionRate !== null &&
+            item.exclusiveDeal?.approvedCommissionRate !== undefined
           ? Number(item.exclusiveDeal.approvedCommissionRate)
           : item.product.customCommissionRate !== null
           ? Number(item.product.customCommissionRate)
@@ -1043,6 +1085,12 @@ export class ReferralLinksService {
       }),
     ]);
 
+    const currentDeals = await this.getCurrentApprovedDeals(
+      items
+        .filter((item) => item.exclusiveDealId)
+        .map((item) => ({ collaboratorId: item.collaboratorId, productId: item.productId })),
+    );
+
     const publicAppUrl = this.getPublicAppUrl();
     return {
       data: items.map((item) => ({
@@ -1055,9 +1103,11 @@ export class ReferralLinksService {
             : 'OPEN_OFFER',
         commissionRate: item.campaignId
           ? null
-          : item.exclusiveDeal?.status === 'APPROVED' &&
-              item.exclusiveDeal.approvedCommissionRate !== null
-            ? Number(item.exclusiveDeal.approvedCommissionRate)
+          : item.exclusiveDealId &&
+              currentDeals.get(`${item.collaboratorId}:${item.productId}`)?.approvedCommissionRate != null
+            ? Number(currentDeals.get(`${item.collaboratorId}:${item.productId}`).approvedCommissionRate)
+            : item.exclusiveDeal?.status === 'APPROVED' && item.exclusiveDeal.approvedCommissionRate !== null
+              ? Number(item.exclusiveDeal.approvedCommissionRate)
             : item.product.customCommissionRate !== null
               ? Number(item.product.customCommissionRate)
               : Number(item.product.store.defaultCommissionRate),
@@ -2384,11 +2434,25 @@ export class ReferralLinksService {
       };
     }
 
-    // Tính tỷ lệ hoa hồng snapshot
+    const currentDeal = link.exclusiveDealId
+      ? await this.prisma.exclusiveDealProposal.findFirst({
+          where: {
+            collaboratorId: link.collaboratorId,
+            productId: link.productId,
+            status: 'APPROVED',
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { status: true, approvedCommissionRate: true },
+        })
+      : null;
+    const effectiveDeal = currentDeal ?? link.exclusiveDeal;
+
+    // A renewed deal applies to new orders through every VIP link; existing
+    // orders retain their immutable OrderItem commission snapshots.
     let commissionRate =
-      link.exclusiveDeal?.status === 'APPROVED' &&
-      link.exclusiveDeal.approvedCommissionRate !== null
-        ? Number(link.exclusiveDeal.approvedCommissionRate)
+      effectiveDeal?.status === 'APPROVED' &&
+      effectiveDeal.approvedCommissionRate !== null
+        ? Number(effectiveDeal.approvedCommissionRate)
         : link.product.customCommissionRate !== null
         ? Number(link.product.customCommissionRate)
         : Number(link.store.defaultCommissionRate);

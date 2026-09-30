@@ -413,8 +413,8 @@ export const AuditLogsPage: React.FC = () => {
                 }}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   selectedCategory === tab.id
-                    ? 'bg-[#1A1612] text-[#FAF8F5] shadow-xs'
-                    : 'bg-[#FAF8F5] text-stone-700 hover:bg-[#EAE4D7]/50 hover:text-[#1A1612]'
+                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#C59B58] ring-2 ring-[#C59B58]/20 font-black shadow-xs'
+                    : 'bg-[#FAF8F5] text-stone-700 border border-[#EAE4D7] hover:bg-[#EAE4D7]/50 hover:text-[#1A1612]'
                 }`}
               >
                 {tab.label}
@@ -693,7 +693,7 @@ export const AuditLogsPage: React.FC = () => {
                     )}
                   </button>
                 </div>
-                <div className="bg-[#1A1612] text-[#FAF8F5] p-4 rounded-xl font-mono text-xs overflow-x-auto max-h-60 border border-stone-800">
+                <div className="bg-[#FAF8F5] text-[#1A1612] p-4 rounded-xl font-mono text-xs overflow-x-auto max-h-60 border border-[#EAE4D7]">
                   <pre>{JSON.stringify(selectedLog.details || {}, null, 2)}</pre>
                 </div>
               </div>
@@ -703,7 +703,7 @@ export const AuditLogsPage: React.FC = () => {
             <div className="p-4 border-t border-[#EAE4D7] bg-[#FAF8F5] flex justify-end">
               <button
                 onClick={() => setSelectedLog(null)}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-[#1A1612] text-[#FAF8F5] hover:bg-stone-800 transition-colors"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EAE4D7] border border-[#EAE4D7] transition-colors"
               >
                 Đóng
               </button>

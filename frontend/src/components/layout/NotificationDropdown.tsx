@@ -16,7 +16,7 @@ import { authService } from '../../services/auth.service';
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<'ALL' | 'ORDER' | 'FINANCE' | 'SYSTEM'>('ALL');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM'>('ALL');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -204,13 +204,13 @@ export const NotificationDropdown: React.FC = () => {
             )}
           </div>
 
-          {/* 4 Category Tabs */}
+          {/* Category Tabs */}
           <div className="flex border-b border-[#EAE4D7] bg-white px-2 pt-2 gap-1 text-xs">
             {(
               [
                 { id: 'ALL', label: 'Tất cả' },
                 { id: 'ORDER', label: 'Đơn hàng' },
-                { id: 'FINANCE', label: 'Tài chính' },
+                { id: 'PROMOTION', label: 'Khuyến mãi' },
                 { id: 'SYSTEM', label: 'Hệ thống' },
               ] as const
             ).map((tab) => (

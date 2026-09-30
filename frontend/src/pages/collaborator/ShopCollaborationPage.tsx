@@ -36,6 +36,8 @@ export interface PartnerStore {
   name: string;
   slug?: string;
   logoUrl?: string;
+  ownerAvatarUrl?: string;
+  ownerName?: string;
   category?: string;
   commissionRange?: string;
   rating?: number;
@@ -45,12 +47,53 @@ export interface PartnerStore {
   pendingSamplesCount?: number;
 }
 
+const getShopLogoUrl = (logoUrl?: string | null) => {
+  const normalized = logoUrl?.trim();
+  if (!normalized || /unsplash\.com/i.test(normalized)) return undefined;
+  return normalized;
+};
+
+function StoreAvatar({
+  name,
+  logoUrl,
+  className,
+}: {
+  name: string;
+  logoUrl?: string;
+  className: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [logoUrl]);
+
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'S';
+
+  return (
+    <span className={`${className} relative inline-flex items-center justify-center overflow-hidden bg-[#F3EFE6] text-[#B88E4F] font-extrabold`}>
+      {logoUrl && !imageFailed ? (
+        <img
+          src={logoUrl}
+          alt={`Logo ${name}`}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <span aria-hidden="true">{initials}</span>
+      )}
+    </span>
+  );
+}
+
 const REAL_STORES: PartnerStore[] = [
   {
     id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
     name: 'Sora Skin Official Store',
     slug: 'sora-skin',
-    logoUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=150&auto=format&fit=crop&q=80',
     category: 'Dược mỹ phẩm & Phục hồi da',
     commissionRange: '20% - 32%',
     rating: 4.9,
@@ -62,7 +105,6 @@ const REAL_STORES: PartnerStore[] = [
     id: '461bdfe3-2260-4ac7-b93b-6a6da5c45535',
     name: 'Aura Bio Cosmetics Vietnam',
     slug: 'aura-bio-cosmetics',
-    logoUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80',
     category: 'Mỹ phẩm sinh học & Thuần chay',
     commissionRange: '25% - 35%',
     rating: 4.8,
@@ -74,7 +116,6 @@ const REAL_STORES: PartnerStore[] = [
     id: 'c4444444-4444-4444-8444-444444444444',
     name: 'GreenBio Health & Herbs',
     slug: 'greenbio-health',
-    logoUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=150&auto=format&fit=crop&q=80',
     category: 'Thực phẩm chức năng & Trà',
     commissionRange: '18% - 25%',
     rating: 4.7,
@@ -86,7 +127,6 @@ const REAL_STORES: PartnerStore[] = [
     id: 'd5555555-5555-4555-8555-555555555555',
     name: 'Lumière Lab Vietnam',
     slug: 'lumiere-lab',
-    logoUrl: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=150&auto=format&fit=crop&q=80',
     category: 'Serum & Chăm sóc chuyên sâu',
     commissionRange: '22% - 35%',
     rating: 5.0,
@@ -231,7 +271,9 @@ export default function ShopCollaborationPage() {
             id: storeId,
             name: st.name || 'Gian hàng đối tác',
             slug: st.slug || '',
-            logoUrl: st.logoUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80',
+            logoUrl: getShopLogoUrl(st.logoUrl),
+            ownerAvatarUrl: st.owner?.avatarUrl || undefined,
+            ownerName: st.owner?.fullName || undefined,
             category: 'Thương mại điện tử & Mỹ phẩm',
             commissionRange: `${st.defaultCommissionRate || 20}% - 35%`,
             rating: 4.9,
@@ -247,7 +289,9 @@ export default function ShopCollaborationPage() {
             id: ms.id,
             name: ms.name,
             slug: ms.slug || '',
-            logoUrl: ms.logoUrl || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=150&auto=format&fit=crop&q=80',
+            logoUrl: getShopLogoUrl(ms.logoUrl),
+            ownerAvatarUrl: ms.owner?.avatarUrl || undefined,
+            ownerName: ms.owner?.fullName || undefined,
             category: ms.description?.slice(0, 30) || 'Mỹ phẩm & Chăm sóc da',
             commissionRange: `${ms.defaultCommissionRate || 20}% - 30%`,
             rating: 4.8,
@@ -278,6 +322,14 @@ export default function ShopCollaborationPage() {
   const selectedStore = useMemo(() => {
     return stores.find((s) => s.id === selectedStoreId) || stores[0] || REAL_STORES[0];
   }, [stores, selectedStoreId]);
+
+  const openStorefront = useCallback((store: PartnerStore) => {
+    if (store.slug) {
+      navigate(`/shop/${encodeURIComponent(store.slug)}`);
+      return;
+    }
+    navigate(`/marketplace?shop=${encodeURIComponent(store.id)}`);
+  }, [navigate]);
 
   // Load products (chỉ hiện spinner nếu chưa có sản phẩm)
   const loadStoreProducts = useCallback(async (storeId: string) => {
@@ -594,40 +646,37 @@ export default function ShopCollaborationPage() {
                   <div
                     key={st.id}
                     id={`shop-item-${st.id}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      setSelectedStoreId(st.id);
-                      updateUrl(st.id, activeTab);
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && setSelectedStoreId(st.id)}
-                    className={`px-3.5 py-3 flex items-center gap-3 cursor-pointer transition-all ${
+                    className={`px-3.5 py-3 flex items-center gap-3 transition-all ${
                       isSelected
                         ? 'bg-[#FBF5EB] border-l-4 border-l-[#C59B58] text-[#1A1612]'
                         : 'hover:bg-[#FAF8F5] text-[#1A1612] border-l-4 border-l-transparent'
                     }`}
                   >
-                    {/* Logo Gian hàng */}
                     <div className="relative shrink-0">
-                      {st.logoUrl ? (
-                        <img
-                          src={st.logoUrl}
-                          alt={st.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-[#EAE4D7] bg-white shadow-2xs"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#EBD08C] to-[#DEC07A] text-[#231D15] font-black flex items-center justify-center text-xs shadow-2xs">
-                          {st.name[0]}
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => openStorefront(st)}
+                        title={`Mở gian hàng ${st.name}`}
+                        aria-label={`Mở gian hàng ${st.name}`}
+                        className="rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]"
+                      >
+                        <StoreAvatar name={st.ownerName || st.name} logoUrl={st.ownerAvatarUrl || st.logoUrl} className="w-10 h-10 rounded-xl border border-[#EAE4D7] bg-white shadow-2xs text-xs" />
+                      </button>
                       {/* Chấm tròn báo tin nhắn mới nếu có unread */}
                       {st.unreadCount ? (
                         <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#EBD08C] border-2 border-white ring-1 ring-[#C59B58]/30 animate-pulse" />
                       ) : null}
                     </div>
 
-                    {/* Tên Shop & Thông Tin (Đã bỏ hoàn toàn text lastMessage) */}
-                    <div className="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStoreId(st.id);
+                        updateUrl(st.id, activeTab);
+                      }}
+                      className="flex-1 min-w-0 text-left cursor-pointer bg-transparent border-0 p-0"
+                      aria-label={`Mở cuộc trò chuyện với ${st.name}`}
+                    >
                       <div className="flex items-center justify-between gap-1">
                         <strong className="text-xs font-bold truncate text-[#1A1612] leading-snug">
                           {st.name}
@@ -642,16 +691,24 @@ export default function ShopCollaborationPage() {
                           {st.commissionRange || '20%'}
                         </span>
                       </div>
-                    </div>
+                    </button>
 
-                    {/* Icon Tin Nhắn Trực Quan bên phải */}
-                    <div className="shrink-0 text-stone-300">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStoreId(st.id);
+                        updateUrl(st.id, activeTab);
+                      }}
+                      title={`Mở chat với ${st.name}`}
+                      aria-label={`Mở chat với ${st.name}`}
+                      className="shrink-0 bg-transparent border-0 p-1 cursor-pointer"
+                    >
                       <MessageSquare
                         className={`w-3.5 h-3.5 transition ${
                           isSelected || st.unreadCount ? 'text-[#B88E4F]' : 'text-stone-300'
                         }`}
                       />
-                    </div>
+                    </button>
                   </div>
                 );
               })
@@ -664,23 +721,30 @@ export default function ShopCollaborationPage() {
           {/* Shop Context Header Bar */}
           <div className="shrink-0 px-5 py-2.5 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-3 min-w-0">
-              {selectedStore.logoUrl ? (
-                <img
-                  src={selectedStore.logoUrl}
-                  alt={selectedStore.name}
-                  className="w-10 h-10 rounded-xl object-cover border border-[#EAE4D7] shadow-2xs shrink-0"
+              <button
+                type="button"
+                onClick={() => openStorefront(selectedStore)}
+                title={`Mở gian hàng ${selectedStore.name}`}
+                aria-label={`Mở gian hàng ${selectedStore.name}`}
+                className="rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] shrink-0"
+              >
+                <StoreAvatar
+                  name={selectedStore.ownerName || selectedStore.name}
+                  logoUrl={selectedStore.ownerAvatarUrl || selectedStore.logoUrl}
+                  className="w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm"
                 />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#EBD08C] to-[#DEC07A] text-[#231D15] font-extrabold text-sm flex items-center justify-center shadow-xs shrink-0">
-                  {selectedStore.name[0]}
-                </div>
-              )}
+              </button>
 
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-sm font-extrabold text-[#1A1612] truncate m-0">
+                  <button
+                    type="button"
+                    onClick={() => openStorefront(selectedStore)}
+                    className="text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
+                    title={`Mở gian hàng ${selectedStore.name}`}
+                  >
                     {selectedStore.name}
-                  </h2>
+                  </button>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                     <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> Gian Hàng Xác Minh
                   </span>
@@ -708,7 +772,9 @@ export default function ShopCollaborationPage() {
             {/* Nút Xem Trang Gian Hàng Trên Sàn nhẹ nhàng */}
             <div className="flex items-center gap-2 shrink-0">
               <a
-                href={`/marketplace?shop=${selectedStore.id}`}
+                href={selectedStore.slug
+                  ? `/shop/${encodeURIComponent(selectedStore.slug)}`
+                  : `/marketplace?shop=${encodeURIComponent(selectedStore.id)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="px-3 py-1.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] text-xs font-bold text-[#1A1612] flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
@@ -1038,7 +1104,7 @@ export default function ShopCollaborationPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleConfirmReceivedSample(samp.id)}
-                                    className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer"
+                                    className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer"
                                   >
                                     Đã nhận được hàng
                                   </button>
@@ -1629,10 +1695,10 @@ export default function ShopCollaborationPage() {
                         className="pt-3 first:pt-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/50 hover:bg-white transition"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <img
-                            src={ms.logoUrl || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=100&auto=format&fit=crop&q=80'}
-                            alt={ms.name}
-                            className="w-12 h-12 rounded-xl object-cover border border-[#EAE4D7] shrink-0"
+                          <StoreAvatar
+                            name={ms.name}
+                            logoUrl={getShopLogoUrl(ms.logoUrl)}
+                            className="w-12 h-12 rounded-xl border border-[#EAE4D7] shrink-0 text-sm"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">

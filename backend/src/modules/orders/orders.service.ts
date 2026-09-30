@@ -1516,10 +1516,29 @@ export class OrdersService {
         !attributedReferralLink.campaignId &&
         !attributedReferralLink.exclusiveDealId,
     );
-    const approvedExclusiveDeal =
-      attributedReferralLink?.exclusiveDeal?.status === 'APPROVED'
-        ? attributedReferralLink.exclusiveDeal
-        : null;
+    const approvedExclusiveDeals = attributedCollaboratorId
+      ? await tx.exclusiveDealProposal.findMany({
+          where: {
+            collaboratorId: attributedCollaboratorId,
+            productId: { in: [...new Set(dto.items.map((item) => item.productId))] },
+            status: 'APPROVED',
+          },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            collaboratorId: true,
+            storeId: true,
+            productId: true,
+            approvedCommissionRate: true,
+          },
+        })
+      : [];
+    const currentDealByProduct = new Map<string, (typeof approvedExclusiveDeals)[number]>();
+    for (const deal of approvedExclusiveDeals) {
+      if (!currentDealByProduct.has(deal.productId)) {
+        currentDealByProduct.set(deal.productId, deal);
+      }
+    }
 
     for (const item of dto.items) {
       const prod = productMap.get(item.productId)!;
@@ -1534,6 +1553,7 @@ export class OrdersService {
       const baseCommissionRate = prod.customCommissionRate
         ? Number(prod.customCommissionRate)
         : Number(lockedStore.defaultCommissionRate || 10);
+      const approvedExclusiveDeal = currentDealByProduct.get(prod.id);
 
       let finalCommissionRate = baseCommissionRate + extraTierRate;
       if (isOpenOfferLink) {
@@ -1541,6 +1561,7 @@ export class OrdersService {
         finalCommissionRate = baseCommissionRate;
       }
       if (
+        attributedReferralLink?.exclusiveDealId &&
         approvedExclusiveDeal &&
         approvedExclusiveDeal.productId === prod.id &&
         attributedReferralLink?.productId === prod.id &&

@@ -28,6 +28,16 @@ export default function MainLayout() {
           // Token expired or invalid
         });
     }
+
+    const handleUserUpdated = () => {
+      const updated = authService.getCurrentUser();
+      if (updated) {
+        setCurrentUser(updated);
+      }
+    };
+
+    window.addEventListener('auth-user-updated', handleUserUpdated);
+    return () => window.removeEventListener('auth-user-updated', handleUserUpdated);
   }, [location.pathname]);
 
   const toggleTheme = () => {

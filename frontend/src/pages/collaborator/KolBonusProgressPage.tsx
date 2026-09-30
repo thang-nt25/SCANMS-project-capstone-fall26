@@ -543,22 +543,7 @@ export const KolBonusProgressPage: React.FC = () => {
                 <ShieldCheck size={13} color="#15803d" /> ĐỐI SOÁT TỰ ĐỘNG
               </span>
             </div>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 20,
-                fontWeight: 850,
-                color: '#1A1612',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 9,
-              }}
-            >
-              <Trophy size={24} color="#DEBE85" /> Thưởng Doanh Số Tháng (KPI & Lũy Tiến)
-            </h1>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#7D715E', maxWidth: 820, lineHeight: 1.5 }}>
-              Chính sách mốc thưởng do Chủ Shop thiết lập. Đạt doanh số càng cao, tiền thưởng cố định và tỷ lệ % vượt mốc càng lớn.
-            </p>
+            
           </div>
 
 

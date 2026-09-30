@@ -36,6 +36,7 @@ import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
+import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -775,7 +776,7 @@ export default function ProductManagementPage() {
             commissionRate: 8,
             stockQuantity: 120,
             status: 'active',
-            images: ['/assets/serum-hero-optimized.jpg'],
+            images: ['/assets/products/real/vitamin-c-15-serum.jpg'],
           },
           {
             id: 'p-2',
@@ -786,7 +787,7 @@ export default function ProductManagementPage() {
             commissionRate: 10,
             stockQuantity: 84,
             status: 'active',
-            images: ['/assets/sunscreen-product.jpg'],
+            images: ['/assets/products/real/spf50-oil-control.jpg'],
           },
           {
             id: 'p-3',
@@ -797,7 +798,7 @@ export default function ProductManagementPage() {
             commissionRate: 12,
             stockQuantity: 0,
             status: 'out_of_stock',
-            images: ['/assets/serum-hero-optimized.jpg'],
+            images: ['/assets/products/real/tea-tree-cleanser.jpg'],
           },
           {
             id: 'p-4',
@@ -808,7 +809,7 @@ export default function ProductManagementPage() {
             commissionRate: 7,
             stockQuantity: 45,
             status: 'active',
-            images: ['/assets/serum-hero-optimized.jpg'],
+            images: ['/assets/products/real/bha-toner-2pct.png'],
           },
           {
             id: 'p-5',
@@ -819,7 +820,7 @@ export default function ProductManagementPage() {
             commissionRate: 15,
             stockQuantity: 15,
             status: 'paused',
-            images: ['/assets/serum-hero-optimized.jpg'],
+            images: ['/assets/products/real/centella-sheet-mask.jpg'],
           },
         ];
 
@@ -844,27 +845,16 @@ export default function ProductManagementPage() {
   return (
     <div className="flex flex-col gap-6 text-left max-w-[1520px] mx-auto w-full p-4 sm:p-6 min-h-screen">
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-[100] p-3.5 bg-slate-900 text-white rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border border-[#EEDFC6] rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
           <span>{toastMsg}</span>
         </div>
       )}
 
 
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight m-0">
-            {isKol ? 'Kho Sản Phẩm & Mức Hoa Hồng' : 'Danh mục sản phẩm'}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 m-0">
-            {isKol
-              ? 'Duyệt các sản phẩm có hoa hồng cao để lấy link tiếp thị hoặc đăng ký nhận hàng mẫu.'
-              : 'Cập nhật tồn kho, giá bán và mức hoa hồng riêng cho từng sản phẩm.'}
-          </p>
-        </div>
-
+      <div className="flex items-center justify-end gap-2.5">
         {!isKol ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="amber"
               size="md"
@@ -905,7 +895,7 @@ export default function ProductManagementPage() {
             Tạo link tiếp thị
           </Button>
         )}
-      </header>
+      </div>
 
 
       <Card className="p-3.5 sm:p-4 bg-white">
@@ -968,7 +958,7 @@ export default function ProductManagementPage() {
               const price = p.price || 0;
               const rate = p.customCommissionRate ?? p.commissionRate ?? 10;
               const stock = p.stockQuantity ?? p.stock ?? 0;
-              const img = p.imageUrl || p.images?.[0] || p.image || '';
+              const img = getSafeProductImageUrl(p.imageUrl || p.images?.[0] || p.image, title, p.categoryName);
               const status =
                 p.status || (p.isActive === false ? 'paused' : stock === 0 ? 'out_of_stock' : 'active');
 
@@ -1499,7 +1489,7 @@ export default function ProductManagementPage() {
                   onClick={() => handleCommissionAmountChange(amt)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                     formCommissionAmount === amt
-                      ? 'bg-[#1A1612] text-white shadow-xs'
+                      ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#C59B58] ring-2 ring-[#C59B58]/20 font-black shadow-xs'
                       : 'bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#F3EFE6]'
                   }`}
                 >

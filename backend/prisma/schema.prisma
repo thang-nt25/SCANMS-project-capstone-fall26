@@ -212,6 +212,7 @@ model User {
   role         UserRole  @default(COLLABORATOR)
   fullName     String    @map("full_name") @db.VarChar(150)
   phoneNumber  String?   @map("phone_number") @db.VarChar(20)
+  avatarUrl    String?   @map("avatar_url")
   isActive     Boolean   @default(true) @map("is_active")
   isDeleted    Boolean   @default(false) @map("is_deleted")
   deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
@@ -269,7 +270,7 @@ model Store {
   minPayoutAmount       Decimal   @default(200000.00) @map("min_payout_amount") @db.Decimal(15, 2)
   isActive              Boolean   @default(true) @map("is_active")
   isVerified            Boolean   @default(false) @map("is_verified")
-  policyReturn          String?   @map("policy_return") @db.VarChar(500)
+  policyReturn          String?   @map("policy_return")
   policyWarranty        String?   @map("policy_warranty") @db.VarChar(500)
   policyShipping        String?   @map("policy_shipping") @db.VarChar(500)
   isDeleted             Boolean   @default(false) @map("is_deleted")
@@ -1244,6 +1245,8 @@ model ChatMessage {
   senderId       String   @map("sender_id") @db.Uuid
   messageText    String   @map("message_text")
   mediaUrl       String?  @map("media_url")
+  mediaType      String?  @map("media_type") @db.VarChar(20)
+  mediaName      String?  @map("media_name") @db.VarChar(255)
   isRead         Boolean  @default(false) @map("is_read")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

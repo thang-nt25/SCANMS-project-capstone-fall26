@@ -158,7 +158,7 @@ export default function ReferralLinksPage() {
   const [selectedProduct, setSelectedProduct] = useState<EligibleProduct | null>(null);
   const [dealProposals, setDealProposals] = useState<any[]>([]);
   const [dealProposalProduct, setDealProposalProduct] = useState<EligibleProduct | null>(null);
-  const [dealProposalRate, setDealProposalRate] = useState(0);
+  const [dealProposalRate, setDealProposalRate] = useState('0');
   const [dealSalesCommitment, setDealSalesCommitment] = useState('');
   const [loadingDealProposals, setLoadingDealProposals] = useState(false);
   const [submittingDealProposal, setSubmittingDealProposal] = useState(false);
@@ -688,16 +688,64 @@ export default function ReferralLinksPage() {
 
   const openExclusiveDealDialog = (product: EligibleProduct) => {
     setDealProposalProduct(product);
-    setDealProposalRate(Math.min(100, Number(product.estimatedCommissionRate) + 5));
+    const currentDeal = dealProposals.find(
+      (deal) => deal.productId === product.id && deal.isCurrentDeal,
+    );
+    const minimumRate = Math.max(
+      Number(product.estimatedCommissionRate),
+      Number(currentDeal?.approvedCommissionRate ?? 0),
+    );
+    setDealProposalRate(String(Math.min(100, minimumRate + 5)));
     setDealSalesCommitment('');
+  };
+
+  const openDealRevision = (deal: any) => {
+    const existingProduct = eligibleProducts.find((product) => product.id === deal.productId);
+    const product: EligibleProduct = existingProduct ?? {
+      id: deal.productId,
+      title: deal.product?.title || 'Sản phẩm',
+      sku: '',
+      categoryName: null,
+      imageUrl: deal.product?.imageUrl || null,
+      originalPrice: null,
+      price: deal.product?.price ?? 0,
+      customCommissionRate: deal.publicCommissionRate ?? null,
+      stockQuantity: 0,
+      store: {
+        id: deal.storeId,
+        name: deal.store?.name || 'Shop',
+        slug: '',
+        defaultCommissionRate: deal.publicCommissionRate ?? 0,
+      },
+      estimatedCommissionRate: Number(deal.publicCommissionRate ?? 0),
+      estimatedCommissionAmount: 0,
+    };
+    openExclusiveDealDialog(product);
+  };
+
+  const normalizeDealProposalRate = (value: string) => {
+    const normalized = value.replace(/,/g, '.').replace(/[^\d.]/g, '');
+    const decimalIndex = normalized.indexOf('.');
+    const integerPart = (decimalIndex === -1 ? normalized : normalized.slice(0, decimalIndex))
+      .replace(/^0+(?=\d)/, '');
+
+    if (decimalIndex === -1) return integerPart;
+
+    const decimalPart = normalized.slice(decimalIndex + 1).replace(/\./g, '').slice(0, 2);
+    return `${integerPart || '0'}.${decimalPart}`;
   };
 
   const handleSubmitExclusiveDeal = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!dealProposalProduct || submittingDealProposal) return;
     const openRate = Number(dealProposalProduct.estimatedCommissionRate);
-    if (dealProposalRate <= openRate || dealProposalRate > 100) {
-      toast.error(`Mức VIP phải cao hơn Open Offer (${openRate}%) và không quá 100%.`);
+    const currentDeal = dealProposals.find(
+      (deal) => deal.productId === dealProposalProduct.id && deal.isCurrentDeal,
+    );
+    const minimumRate = Math.max(openRate, Number(currentDeal?.approvedCommissionRate ?? 0));
+    const proposedRate = Number(dealProposalRate);
+    if (!dealProposalRate.trim() || !Number.isFinite(proposedRate) || proposedRate <= minimumRate || proposedRate > 100) {
+      toast.error(`Mức đề xuất phải cao hơn mức đang áp dụng (${minimumRate}%) và không quá 100%.`);
       return;
     }
     if (dealSalesCommitment.trim().length < 5) {
@@ -709,7 +757,7 @@ export default function ReferralLinksPage() {
     try {
       const proposal = await referralLinksService.createExclusiveDeal({
         productId: dealProposalProduct.id,
-        proposedCommissionRate: dealProposalRate,
+        proposedCommissionRate: proposedRate,
         salesCommitment: dealSalesCommitment.trim(),
       });
       setDealProposals((current) => [proposal, ...current.filter((item) => item.id !== proposal.id)]);
@@ -868,11 +916,11 @@ export default function ReferralLinksPage() {
               <span>Đã bị khóa</span>
             </span>
             {link.disabledReason && (
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-20 w-64 p-2.5 bg-gray-900 text-white text-xs rounded-xl shadow-xl text-left">
-                <div className="font-semibold text-rose-300 mb-0.5">Lý do khóa:</div>
-                <div className="text-gray-200">{link.disabledReason}</div>
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-20 w-64 p-2.5 bg-white text-[#1A1612] border border-[#EEDFC6] text-xs rounded-xl shadow-xl text-left">
+                <div className="font-semibold text-[#DC2626] mb-0.5">Lý do khóa:</div>
+                <div className="text-[#7D715E]">{link.disabledReason}</div>
                 {link.disabledBy && (
-                  <div className="text-[10px] text-gray-400 mt-1">
+                  <div className="text-[10px] text-[#7D715E] mt-1">
                     Người thực hiện khóa: {link.disabledBy}
                   </div>
                 )}
@@ -916,6 +964,14 @@ export default function ReferralLinksPage() {
     }
   };
 
+  const dealProposalCurrentDeal = dealProposalProduct
+    ? dealProposals.find((deal) => deal.productId === dealProposalProduct.id && deal.isCurrentDeal)
+    : undefined;
+  const dealProposalMinimumRate = Math.max(
+    Number(dealProposalProduct?.estimatedCommissionRate ?? 0),
+    Number(dealProposalCurrentDeal?.approvedCommissionRate ?? 0),
+  );
+
   return (
     <div className="space-y-4 text-[#1A1612] font-sans pb-8">
 
@@ -936,12 +992,7 @@ export default function ReferralLinksPage() {
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#1A1612] flex items-center gap-2">
-              Liên Kết Tiếp Thị Của Bạn
-            </h1>
-            <p className="mt-1 text-xs sm:text-[13px] text-[#7D715E] max-w-2xl leading-relaxed">
-              Lấy link Open Offer theo mức công khai của Shop hoặc gửi đề xuất Exclusive Deal để đàm phán hoa hồng VIP riêng.
-            </p>
+            
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -1019,7 +1070,7 @@ export default function ReferralLinksPage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="exclusive-deals-heading" className="text-base font-extrabold text-[#1A1612]">Đề xuất Exclusive Deal</h2>
-            <p className="mt-0.5 text-xs text-[#7D715E]">Gửi mức hoa hồng VIP và cam kết doanh số cho Shop; link riêng chỉ được tạo sau khi Shop duyệt.</p>
+            <p className="mt-0.5 text-xs text-[#7D715E]">Đề xuất mức hoa hồng độc quyền và cam kết doanh số cho Shop; link tiếp thị độc quyền sẽ được kích hoạt sau khi Shop duyệt.</p>
           </div>
           <button type="button" onClick={() => navigate('/chat')} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1.5 text-[11px] font-bold text-[#7D715E] hover:bg-[#F3EFE6]">
             <ExternalLink className="h-3 w-3" /> Mở Chat
@@ -1028,7 +1079,7 @@ export default function ReferralLinksPage() {
         {loadingDealProposals ? (
           <div className="mt-4 flex items-center gap-2 text-sm text-[#7D715E]"><Loader2 className="h-4 w-4 animate-spin" /> Đang tải đề xuất...</div>
         ) : dealProposals.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs text-[#7D715E]">Bạn chưa gửi đề xuất nào. Chọn sản phẩm trong kho hàng rồi bấm “Đề xuất deal VIP”.</p>
+          <p className="mt-3 rounded-lg border border-dashed border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs text-[#7D715E]">Bạn chưa gửi đề xuất nào. Chọn sản phẩm trong kho hàng rồi bấm “Đề xuất deal độc quyền”.</p>
         ) : (
           <div className="mt-3 grid gap-2.5 md:grid-cols-2">
             {dealProposals.map((deal) => (
@@ -1039,15 +1090,74 @@ export default function ReferralLinksPage() {
                     <div className="mt-1 text-xs text-[#7D715E]">{deal.store?.name || 'Shop'} · {new Date(deal.createdAt).toLocaleDateString('vi-VN')}</div>
                   </div>
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${deal.status === 'APPROVED' ? 'bg-[#FBF5EB] text-[#B88E4F]' : deal.status === 'REJECTED' ? 'bg-rose-50 text-rose-700' : 'bg-[#F3EFE6] text-[#7D715E]'}`}>
-                    {deal.status === 'APPROVED' ? 'Đã duyệt' : deal.status === 'REJECTED' ? 'Bị từ chối' : 'Chờ Shop duyệt'}
+                    {deal.status === 'APPROVED' ? (deal.isCurrentDeal ? 'Đang áp dụng' : 'Deal đã thay thế') : deal.status === 'REJECTED' ? 'Bị từ chối' : 'Chờ Shop duyệt'}
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#7D715E]">
-                  <span>Open Offer: <strong>{deal.publicCommissionRate ?? '—'}%</strong></span>
-                  <span>Đề xuất VIP: <strong className="text-[#B88E4F]">{deal.approvedCommissionRate ?? deal.proposedCommissionRate}%</strong></span>
+                  <span>Hoa hồng sàn: <strong>{deal.publicCommissionRate ?? '—'}%</strong></span>
+                  <span>Hoa hồng độc quyền: <strong className="text-[#B88E4F]">{deal.approvedCommissionRate ?? deal.proposedCommissionRate}%</strong></span>
+                  {deal.status === 'PENDING' && deal.currentCommissionRate != null && <span>Đang áp dụng: <strong className="text-[#B88E4F]">{deal.currentCommissionRate}%</strong></span>}
                 </div>
-                {deal.status === 'APPROVED' && deal.shortUrl && <a href={deal.shortUrl} className="mt-3 inline-block break-all text-xs font-bold text-[#B88E4F] underline">Mở link VIP: {deal.shortUrl}</a>}
+                {deal.status === 'PENDING' && deal.currentCommissionRate != null && <p className="mt-2 text-[11px] leading-relaxed text-[#7D715E]">Mức hoa hồng độc quyền hiện tại tiếp tục áp dụng trong lúc Shop xem xét. Đơn đã tạo giữ nguyên mức hoa hồng lúc đặt.</p>}
+                {deal.status === 'APPROVED' && deal.shortUrl && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <div className="flex-1 min-w-[200px] flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-[#EEDFC6] text-xs">
+                      <div className="flex items-center gap-1.5 overflow-hidden">
+                        <span className="text-[11px] font-bold text-[#7D715E] shrink-0 font-sans">Link độc quyền:</span>
+                        <a
+                          href={deal.shortUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono font-bold text-[#B88E4F] hover:underline truncate"
+                          title={deal.shortUrl}
+                        >
+                          {deal.shortUrl}
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(deal.shortUrl!, deal.shortCode || deal.id)}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold transition-all shrink-0 cursor-pointer ${
+                          copiedCode === (deal.shortCode || deal.id)
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] border border-[#EAE4D7]'
+                        }`}
+                        title="Sao chép link tiếp thị độc quyền"
+                      >
+                        {copiedCode === (deal.shortCode || deal.id) ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-600" />
+                            <span>Đã chép</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3 text-[#B88E4F]" />
+                            <span>Sao chép</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {deal.isCurrentDeal && !dealProposals.some((item) => item.productId === deal.productId && item.status === 'PENDING') && (
+                      <button
+                        type="button"
+                        onClick={() => openDealRevision(deal)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-3 py-1.5 text-xs font-bold text-[#B88E4F] hover:bg-[#FBF5EB] shadow-2xs transition shrink-0 cursor-pointer"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" /> Đề xuất điều chỉnh hoa hồng
+                      </button>
+                    )}
+                  </div>
+                )}
                 {deal.status === 'REJECTED' && deal.shopResponse && <p className="mt-2 text-xs text-[#7D715E]">Phản hồi Shop: {deal.shopResponse}</p>}
+                {deal.status !== 'APPROVED' && deal.isCurrentDeal && !dealProposals.some((item) => item.productId === deal.productId && item.status === 'PENDING') && (
+                  <button type="button" onClick={() => openDealRevision(deal)} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-3 py-1.5 text-xs font-bold text-[#B88E4F] hover:bg-[#FBF5EB] cursor-pointer">
+                    <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" /> Đề xuất điều chỉnh hoa hồng
+                  </button>
+                )}
+                {deal.isCurrentDeal && dealProposals.some((item) => item.productId === deal.productId && item.status === 'PENDING') && (
+                  <p className="mt-2 text-[11px] font-semibold text-[#7D715E]">Đang có đề xuất thay đổi mức hoa hồng chờ Shop phản hồi.</p>
+                )}
               </div>
             ))}
           </div>
@@ -1167,7 +1277,7 @@ export default function ReferralLinksPage() {
                           <img
                             src={
                               link.product?.imageUrl ||
-                              'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'
+                              '/assets/product-placeholder.svg'
                             }
                             alt={link.product?.title}
                             className="w-11 h-11 rounded-lg object-cover border border-[#EAE4D7] flex-shrink-0 bg-[#FAF8F5]"
@@ -1526,7 +1636,7 @@ export default function ReferralLinksPage() {
                       <div className="p-2 bg-[#FAF8F5] border border-[#DEBE85] rounded-xl flex items-center justify-between gap-2.5 shadow-2xs animate-fadeIn">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <img
-                            src={selectedProduct.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'}
+                            src={selectedProduct.imageUrl || '/assets/product-placeholder.svg'}
                             alt={selectedProduct.title}
                             className="w-9 h-9 rounded-lg object-cover border border-[#EAE4D7] flex-shrink-0 bg-white"
                           />
@@ -1649,7 +1759,7 @@ export default function ReferralLinksPage() {
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     <img
-                                      src={p.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100'}
+                                      src={p.imageUrl || '/assets/product-placeholder.svg'}
                                       alt={p.title}
                                       className="w-7 h-7 rounded object-cover border border-[#EAE4D7] flex-shrink-0 bg-[#FAF8F5]"
                                     />
@@ -1691,7 +1801,7 @@ export default function ReferralLinksPage() {
                         onClick={() => openExclusiveDealDialog(selectedProduct)}
                         className="mt-2 inline-flex items-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#B88E4F] hover:bg-[#F3EFE6]"
                       >
-                        <Sparkles className="h-3.5 w-3.5" /> Đề xuất deal VIP với Shop
+                        <Sparkles className="h-3.5 w-3.5" /> Đề xuất deal độc quyền với Shop
                       </button>
                     )}
 
@@ -2761,20 +2871,44 @@ export default function ReferralLinksPage() {
             <div className="space-y-4 p-5">
               <div className="flex items-center gap-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
                 <img src={dealProposalProduct.imageUrl || ''} alt="" className="h-12 w-12 rounded-lg border border-[#EAE4D7] bg-white object-cover" />
-                <div className="min-w-0"><div className="truncate text-sm font-bold text-[#1A1612]">{dealProposalProduct.title}</div><div className="mt-1 text-xs text-[#7D715E]">{dealProposalProduct.store.name} · Open Offer {dealProposalProduct.estimatedCommissionRate}%</div></div>
+                <div className="min-w-0"><div className="truncate text-sm font-bold text-[#1A1612]">{dealProposalProduct.title}</div><div className="mt-1 text-xs text-[#7D715E]">{dealProposalProduct.store.name} · Open Offer {dealProposalProduct.estimatedCommissionRate}%</div>{dealProposalCurrentDeal && <div className="mt-1 text-xs font-semibold text-[#B88E4F]">Deal độc quyền đang áp dụng: {dealProposalCurrentDeal.approvedCommissionRate}%</div>}</div>
               </div>
-              <label className="block text-sm font-bold text-[#1A1612]">Mức hoa hồng VIP đề xuất (%)
-                <input type="number" min={Number(dealProposalProduct.estimatedCommissionRate) + 0.01} max="100" step="0.01" value={dealProposalRate} onChange={(event) => setDealProposalRate(Number(event.target.value))} className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C59B58]" required />
+              <label className="block text-sm font-bold text-[#1A1612]">Mức hoa hồng độc quyền đề xuất (%)
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={dealProposalRate}
+                  onChange={(event) => setDealProposalRate(normalizeDealProposalRate(event.target.value))}
+                  onFocus={(event) => event.currentTarget.select()}
+                  aria-label="Mức hoa hồng độc quyền đề xuất theo phần trăm"
+                  className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C59B58]"
+                  required
+                />
+                <span className={`mt-1.5 block text-xs font-medium ${
+                  dealProposalMinimumRate >= 100 ||
+                  Number(dealProposalRate) > 100 ||
+                  (dealProposalRate.trim() && Number(dealProposalRate) <= dealProposalMinimumRate)
+                    ? 'text-[#DC2626]'
+                    : 'text-[#7D715E]'
+                }`}>
+                  {dealProposalMinimumRate >= 100
+                    ? 'Mức deal hiện tại đã là 100%, không thể đề xuất cao hơn trong giới hạn cho phép.'
+                    : Number(dealProposalRate) > 100
+                      ? 'Mức đề xuất không được vượt quá 100%.'
+                      : dealProposalRate.trim() && Number(dealProposalRate) <= dealProposalMinimumRate
+                        ? `Mức đề xuất phải cao hơn ${dealProposalMinimumRate}%. Ví dụ: ${Math.min(100, dealProposalMinimumRate + 1)}%.`
+                        : `Mức cao nhất hiện tại là ${dealProposalMinimumRate}%; hãy nhập mức cao hơn.`}
+                </span>
               </label>
               <label className="block text-sm font-bold text-[#1A1612]">Cam kết doanh số
                 <textarea value={dealSalesCommitment} onChange={(event) => setDealSalesCommitment(event.target.value)} rows={4} maxLength={1000} minLength={5} placeholder="Ví dụ: tạo 4 video review trong tháng đầu và hướng đến 80 đơn hàng." className="mt-1.5 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#C59B58]" required />
                 <span className="mt-1 block text-right text-[11px] font-normal text-[#7D715E]">{dealSalesCommitment.length}/1000</span>
               </label>
-              <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs leading-relaxed text-[#7D715E]">Đề xuất sẽ được gửi trong Chat. Shop duyệt thì hệ thống tự tạo link riêng cho bạn; link này áp mức VIP đã chốt thay cho Open Offer.</div>
+              <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs leading-relaxed text-[#7D715E]">Đề xuất sẽ được gửi trong Chat. {dealProposalCurrentDeal ? 'Mức hoa hồng độc quyền hiện tại tiếp tục áp dụng khi Shop chưa duyệt. Sau khi duyệt, các đơn mới qua link riêng áp dụng mức mới; đơn đã tạo giữ nguyên hoa hồng cũ.' : 'Shop duyệt thì hệ thống tự kích hoạt link độc quyền riêng cho bạn.'}</div>
             </div>
             <div className="flex justify-end gap-2 border-t border-[#EAE4D7] p-4">
               <button type="button" onClick={() => setDealProposalProduct(null)} disabled={submittingDealProposal} className="rounded-xl border border-[#EAE4D7] px-4 py-2.5 text-sm font-bold text-[#7D715E] hover:bg-[#FAF8F5]">Hủy</button>
-              <button type="submit" disabled={submittingDealProposal || dealProposalRate <= Number(dealProposalProduct.estimatedCommissionRate) || dealProposalRate > 100 || dealSalesCommitment.trim().length < 5} className="inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="submit" disabled={submittingDealProposal || !dealProposalRate.trim() || Number(dealProposalRate) <= dealProposalMinimumRate || Number(dealProposalRate) > 100 || dealSalesCommitment.trim().length < 5} className="inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-50">
                 {submittingDealProposal ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
                 Gửi đề xuất qua Chat
               </button>

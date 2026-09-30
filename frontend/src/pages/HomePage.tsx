@@ -81,38 +81,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-6 text-left">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">
-            Tổng quan CTV / KOL
-          </h1>
-          <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-            Theo dõi lưu lượng tiếp thị, kết quả đơn hàng và hoa hồng bán mỹ phẩm thời gian thực.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="md"
-            icon={<RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
-            onClick={loadData}
-          >
-            Làm mới
-          </Button>
-          <Button
-            variant="gold"
-            size="md"
-            icon={<PlusCircle className="w-4 h-4" />}
-            onClick={() => navigate('/collaborator/referral-links')}
-          >
-            Tạo link tiếp thị
-          </Button>
-        </div>
-      </header>
-
-      {/* Filter Bar */}
+      {/* Filter & Action Card */}
       <Card className="p-4 bg-white border border-[#EAE4D7]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -125,7 +94,7 @@ export default function HomePage() {
                 <select
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
-                  className="bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-[#1A1612] appearance-none outline-none cursor-pointer hover:bg-[#EAE4D7] transition"
+                  className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-[#1A1612] appearance-none outline-none cursor-pointer hover:border-[#C59B58] transition"
                 >
                   <option value="7">7 ngày gần nhất</option>
                   <option value="30">30 ngày gần nhất</option>
@@ -136,20 +105,41 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="text-xs font-semibold text-[#7D715E]">
-            {overview?.period ? (
-              <span>
-                Dữ liệu: {new Date(overview.period.startDate).toLocaleDateString('vi-VN')} – {new Date(overview.period.endDate).toLocaleDateString('vi-VN')}
-              </span>
-            ) : (
-              <span>Dữ liệu thực tế từ ví &amp; giao dịch sàn</span>
-            )}
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="text-xs font-semibold text-[#7D715E]">
+              {overview?.period ? (
+                <span>
+                  Dữ liệu: {new Date(overview.period.startDate).toLocaleDateString('vi-VN')} – {new Date(overview.period.endDate).toLocaleDateString('vi-VN')}
+                </span>
+              ) : (
+                <span>Dữ liệu thực tế từ ví &amp; giao dịch sàn</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />}
+                onClick={loadData}
+              >
+                Làm mới
+              </Button>
+              <Button
+                variant="gold"
+                size="sm"
+                icon={<PlusCircle className="w-3.5 h-3.5" />}
+                onClick={() => navigate('/collaborator/referral-links')}
+              >
+                Tạo link tiếp thị
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
 
       {/* Real Wallet Balance Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#1A1612] p-6 sm:p-7 shadow-2xs">
+      <div className="relative overflow-hidden rounded-2xl bg-[#FAF5EB] border border-[#EEDFC6] text-[#1A1612] p-6 sm:p-7 shadow-2xs">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div className="flex flex-col gap-1">
             <span className="text-xs sm:text-sm font-semibold text-[#7D715E] flex items-center gap-1.5">
@@ -174,7 +164,7 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => navigate('/collaborator/wallet')}
-            className="px-5 py-2.5 bg-[#EBD08C] hover:bg-[#DEC07A] text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shadow-xs shrink-0 flex items-center justify-center gap-2"
+            className="px-5 py-2.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shadow-xs shrink-0 flex items-center justify-center gap-2"
           >
             <span>Quản lý ví &amp; Rút tiền</span>
             <ArrowUpRight className="w-4 h-4 text-white" />
@@ -310,7 +300,7 @@ export default function HomePage() {
                 value={metric}
                 onChange={(e) => setMetric(e.target.value as any)}
                 aria-label="Chọn chỉ số biểu đồ"
-                className="bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-[#1A1612] appearance-none outline-none cursor-pointer hover:bg-[#EAE4D7] transition"
+                className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-[#1A1612] appearance-none outline-none cursor-pointer hover:border-[#C59B58] transition"
               >
                 <option value="clicks">Lượt nhấp (Traffic)</option>
                 <option value="orders">Đơn hàng (Orders)</option>
@@ -347,7 +337,7 @@ export default function HomePage() {
                     </span>
                     <div
                       style={{ height: `${heightPct}%` }}
-                      className="w-full max-w-[36px] rounded-t-lg bg-[#EAE4D7] group-hover:bg-[#DEC07A] transition-all"
+                      className="w-full max-w-[36px] rounded-t-lg bg-[#EAE4D7] group-hover:bg-[#C59B58] transition-all"
                     />
                     <span className="text-xs font-bold text-[#7D715E] transition group-hover:text-[#B88E4F]">
                       {d.label}

@@ -136,7 +136,7 @@ describe('AffiliateDealsService', () => {
       storeId,
       productId,
       conversationId,
-      proposedCommissionRate: 25,
+      proposedCommissionRate: 30,
       status: 'PENDING',
       store: { id: storeId, ownerId: shopOwnerId, defaultCommissionRate: 10 },
       product: { id: productId, title: 'Serum', customCommissionRate: 15 },
@@ -148,6 +148,10 @@ describe('AffiliateDealsService', () => {
       name: 'Sora Skin',
       deletedAt: null,
     });
+    prisma.exclusiveDealProposal.findFirst.mockResolvedValue({
+      id: 'previous-deal',
+      approvedCommissionRate: 20,
+    });
     tx.chatMessage.create.mockResolvedValue({ id: 'decision-message' });
 
     const result = await service.approveProposal(proposalId, shopOwnerId, 'SHOP_MANAGER' as any);
@@ -155,19 +159,86 @@ describe('AffiliateDealsService', () => {
     expect(prisma.exclusiveDealProposal.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: proposalId, status: 'PENDING' },
-        data: expect.objectContaining({ status: 'APPROVED', approvedCommissionRate: 25 }),
+        data: expect.objectContaining({ status: 'APPROVED', approvedCommissionRate: 30 }),
       }),
     );
     expect(referralLinksService.createReferralLink).toHaveBeenCalledWith(
       collaboratorId,
       expect.objectContaining({ productId, exclusiveDealId: proposalId }),
     );
-    expect(result.approvedCommissionRate).toBe(25);
+    expect(result.approvedCommissionRate).toBe(30);
+    const decisionCard = JSON.parse(tx.chatMessage.create.mock.calls[0][0].data.messageText);
+    expect(decisionCard).toEqual(expect.objectContaining({
+      previousCommissionRate: 20,
+      approvedCommissionRate: 30,
+    }));
     expect(chatGateway.broadcastNewMessage).toHaveBeenCalledWith(
       conversationId,
       expect.objectContaining({ id: 'decision-message' }),
       collaboratorId,
     );
+  });
+
+  it('allows one higher-rate renegotiation while retaining the active deal during review', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: collaboratorId,
+      role: 'COLLABORATOR',
+      isActive: true,
+      deletedAt: null,
+      collaboratorProfile: { kycStatus: 'VERIFIED' },
+    });
+    prisma.product.findUnique.mockResolvedValue({
+      id: productId,
+      storeId,
+      title: 'Serum',
+      imageUrl: null,
+      price: 350000,
+      customCommissionRate: 25,
+      isActive: true,
+      isAffiliateEnabled: true,
+      deletedAt: null,
+      store: {
+        id: storeId,
+        name: 'Sora Skin',
+        ownerId: shopOwnerId,
+        isActive: true,
+        deletedAt: null,
+        defaultCommissionRate: 10,
+      },
+    });
+    prisma.exclusiveDealProposal.findFirst.mockImplementation(({ where }: any) =>
+      where.status === 'APPROVED'
+        ? { id: 'previous-deal', approvedCommissionRate: 20 }
+        : null,
+    );
+    tx.exclusiveDealProposal.create.mockResolvedValue({
+      id: proposalId,
+      collaboratorId,
+      storeId,
+      productId,
+      conversationId,
+      proposedCommissionRate: 30,
+      salesCommitment: 'Tăng doanh số trong tháng này',
+      status: 'PENDING',
+    });
+    tx.chatMessage.create.mockImplementation(async ({ data }: any) => ({
+      id: 'revision-message',
+      messageText: data.messageText,
+    }));
+
+    const result = await service.createProposal(collaboratorId, {
+      productId,
+      proposedCommissionRate: 30,
+      salesCommitment: 'Tăng doanh số trong tháng này',
+    });
+
+    expect(result.status).toBe('PENDING');
+    const proposalCard = JSON.parse(tx.chatMessage.create.mock.calls[0][0].data.messageText);
+    expect(proposalCard).toEqual(expect.objectContaining({
+      currentCommissionRate: 20,
+      proposedCommissionRate: 30,
+      isRevision: true,
+    }));
   });
 
   it('does not approve a proposal if the Shop raised Open Offer above the proposed VIP rate', async () => {
@@ -192,7 +263,7 @@ describe('AffiliateDealsService', () => {
 
     await expect(
       service.approveProposal(proposalId, shopOwnerId, 'SHOP_MANAGER' as any),
-    ).rejects.toThrow('Mức Open Offer hiện tại đã là 30%');
+    ).rejects.toThrow('Open Offer (30%)');
     expect(prisma.exclusiveDealProposal.updateMany).not.toHaveBeenCalled();
     expect(referralLinksService.createReferralLink).not.toHaveBeenCalled();
   });

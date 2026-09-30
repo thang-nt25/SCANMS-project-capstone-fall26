@@ -24,7 +24,7 @@ export class NotificationsController {
   })
   async getUserNotifications(
     @CurrentUser('id') userId: string,
-    @Query('category') category?: 'ALL' | 'ORDER' | 'FINANCE' | 'SYSTEM',
+    @Query('category') category?: 'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM',
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {

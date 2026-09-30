@@ -717,7 +717,57 @@ export class AuthService {
     const { passwordHash: _, ...safeUser } = user;
     return {
       ...safeUser,
+      avatarUrl: user.avatarUrl || user.collaboratorProfile?.avatarUrl || null,
       storeId: user.stores?.[0]?.id || null,
+    };
+  }
+
+  /**
+   * Cập nhật ảnh đại diện (Avatar) cho mọi vai trò (User, KOL, Shop, Admin)
+   */
+  async updateAvatar(userId: string, avatarUrl: string) {
+    if (!userId) {
+      throw new UnauthorizedException('Không tìm thấy định danh người dùng');
+    }
+    const cleanUrl = avatarUrl?.trim();
+    if (!cleanUrl) {
+      throw new BadRequestException('Đường dẫn ảnh đại diện không hợp lệ');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { collaboratorProfile: true },
+    });
+
+    if (!user || user.isDeleted || !user.isActive) {
+      throw new NotFoundException('Không tìm thấy tài khoản người dùng');
+    }
+
+    // 1. Cập nhật avatar_url trực tiếp trên User table
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: cleanUrl },
+    });
+
+    // 2. Nếu là KOL / CTV, đồng bộ luôn sang collaborator_profiles.avatar_url
+    if (user.collaboratorProfile) {
+      await this.prisma.collaboratorProfile.update({
+        where: { userId },
+        data: { avatarUrl: cleanUrl },
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Cập nhật ảnh đại diện thành công',
+      avatarUrl: cleanUrl,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        role: updatedUser.role,
+        avatarUrl: cleanUrl,
+      },
     };
   }
 

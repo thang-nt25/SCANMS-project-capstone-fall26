@@ -115,6 +115,36 @@ export class ApplyShopUpgradeDto {
   @IsString({ message: 'Email đối soát không được để trống' })
   @IsNotEmpty({ message: 'Email đối soát là bắt buộc' })
   contactEmail: string;
+
+  @ApiProperty({ example: 'Vietcombank', description: 'Tên ngân hàng nhận doanh thu bán hàng' })
+  @IsString({ message: 'Tên ngân hàng không được để trống' })
+  @IsNotEmpty({ message: 'Tên ngân hàng nhận doanh thu là bắt buộc' })
+  bankName: string;
+
+  @ApiProperty({ example: '0123456789', description: 'Số tài khoản ngân hàng nhận doanh thu' })
+  @IsString({ message: 'Số tài khoản không được để trống' })
+  @IsNotEmpty({ message: 'Số tài khoản nhận doanh thu là bắt buộc' })
+  bankAccountNumber: string;
+
+  @ApiProperty({ example: 'CONG TY TNHH SORA SKIN', description: 'Tên chủ tài khoản thụ hưởng (In hoa)' })
+  @IsString({ message: 'Tên chủ tài khoản không được để trống' })
+  @IsNotEmpty({ message: 'Tên chủ tài khoản là bắt buộc' })
+  bankAccountName: string;
+
+  @ApiPropertyOptional({ example: '001201012345', description: 'Số CCCD chủ shop / người đại diện (bắt buộc với Cá nhân kinh doanh)' })
+  @IsOptional()
+  @IsString()
+  idCardNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Ảnh CCCD mặt trước (với Cá nhân kinh doanh)' })
+  @IsOptional()
+  @IsString()
+  frontCardUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Ảnh CCCD mặt sau (với Cá nhân kinh doanh)' })
+  @IsOptional()
+  @IsString()
+  backCardUrl?: string;
 }
 
 export class ReviewUpgradeApplicationDto {
