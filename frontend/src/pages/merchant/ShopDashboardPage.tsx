@@ -9,6 +9,8 @@ import {
   ArrowRight,
   RefreshCw,
   Box,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { storeService } from '../../services/store.service';
 import {
@@ -25,6 +27,7 @@ export default function ShopDashboardPage() {
   const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
   const [topProducts, setTopProducts] = useState<Product[]>([]);
   const [recentOrders, setRecentOrders] = useState<StoreOrderRecord[]>([]);
+  const [isOrdersExpanded, setIsOrdersExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
@@ -37,7 +40,7 @@ export default function ShopDashboardPage() {
         analyticsService.getRealtimeOverview({ days: 30, storeId: currentStore?.id }).catch(() => null),
         analyticsService.getTimeSeries({ days: 7, interval: 'day', storeId: currentStore?.id }).catch(() => []),
         productService.getProducts({ storeId: currentStore?.id, page: 1, limit: 5 }).catch(() => ({ items: [] })),
-        orderService.getMyStoreOrders({ storeId: currentStore?.id, page: 1, limit: 5 }).catch(() => ({ items: [] })),
+        orderService.getMyStoreOrders({ storeId: currentStore?.id, page: 1, limit: 10 }).catch(() => ({ items: [] })),
       ]);
 
       if (overviewData) setOverview(overviewData);
@@ -59,42 +62,25 @@ export default function ShopDashboardPage() {
   const maxRevenue = Math.max(...(timeSeries.map((t) => t.revenue) || [1]), 1);
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] tracking-tight m-0">
-              Tổng quan {store?.name || 'Gian hàng của bạn'}
-            </h1>
-            {store?.slug && (
-              <span className="text-xs px-2 py-0.5 rounded-md bg-[#F3EFE6] border border-[#EAE4D7] text-[#7D715E] font-mono">
-                @{store.slug}
-              </span>
-            )}
-          </div>
-          <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-            Theo dõi doanh thu liên kết, chi phí hoa hồng và sức khỏe đơn hàng thực tế từ sàn tiếp thị.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadData}
-            title="Tải lại dữ liệu"
-            className="p-2.5 rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <Link
-            to="/merchant/campaigns"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#EBD08C] text-white font-bold text-xs sm:text-sm hover:bg-[#DEC07A] transition shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tạo chiến dịch</span>
-          </Link>
-        </div>
-      </header>
+    <div className="flex flex-col gap-5 text-left">
+      {/* Top Action Bar (Compact without bulky title texts) */}
+      <div className="flex items-center justify-end gap-2.5">
+        <button
+          onClick={loadData}
+          title="Tải lại dữ liệu"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition shadow-2xs text-xs font-bold cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#B88E4F]' : ''}`} />
+          <span>Làm mới</span>
+        </button>
+        <Link
+          to="/merchant/promotions?tab=coupons"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition shadow-xs cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Tạo chiến dịch</span>
+        </Link>
+      </div>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -182,7 +168,7 @@ export default function ShopDashboardPage() {
             </div>
             <div className="flex items-center gap-3 text-xs text-[#7D715E] font-bold">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#EBD08C]" /> Doanh thu (GMV)
+                <span className="w-3 h-3 rounded-xs bg-[#C59B58]" /> Doanh thu (GMV)
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-xs bg-[#EAE4D7]" /> Hoa hồng KOL
@@ -206,7 +192,7 @@ export default function ShopDashboardPage() {
                       <div
                         style={{ height: `${revHeight}%` }}
                         title={`Doanh thu: ${col.revenue.toLocaleString('vi-VN')} ₫`}
-                        className="w-3.5 sm:w-5 bg-[#EBD08C] rounded-t-sm transition-all hover:bg-[#DEC07A]"
+                        className="w-3.5 sm:w-5 bg-[#C59B58] rounded-t-sm transition-all hover:bg-[#B88E4F]"
                       />
                       <div
                         style={{ height: `${commHeight}%` }}
@@ -240,10 +226,10 @@ export default function ShopDashboardPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2.5">
-              {recentOrders.map((order) => (
+              {(isOrdersExpanded ? recentOrders : recentOrders.slice(0, 3)).map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]"
+                  className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] transition-all hover:bg-[#F3EFE6]/50"
                 >
                   <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center shrink-0">
                     <ShoppingBag className="w-4 h-4" />
@@ -261,6 +247,26 @@ export default function ShopDashboardPage() {
                   </strong>
                 </div>
               ))}
+
+              {recentOrders.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setIsOrdersExpanded(!isOrdersExpanded)}
+                  className="w-full py-2.5 px-3 mt-0.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  {isOrdersExpanded ? (
+                    <>
+                      <span>Thu gọn danh sách</span>
+                      <ChevronUp className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Xem thêm ({recentOrders.length - 3} đơn khác)</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           )}
         </div>

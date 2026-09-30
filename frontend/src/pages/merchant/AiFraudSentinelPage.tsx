@@ -139,47 +139,29 @@ export default function AiFraudSentinelPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-700 via-amber-600 to-orange-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black tracking-wider bg-white/20 backdrop-blur-xs text-amber-100 border border-white/20">
-              <Bot className="w-4 h-4 text-amber-300" />
-              <span>FR-31: AI FRAUD SENTINEL & TRAFFIC DEFENSE</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Động Cơ AI Phát Hiện Gian Lận & Click Ảo
-            </h1>
-            <p className="text-amber-100/90 text-sm leading-relaxed">
-              Hệ thống AI phân tích hành vi đa chiều (Multi-Dimensional Heuristic Anomaly Detection) tự động quét lưu lượng traffic, nhận diện click bot, zombie traffic và bảo vệ ngân sách hoa hồng gian hàng.
-            </p>
-          </div>
+      {/* Controls Bar */}
+      <div className="flex items-center justify-end gap-3">
+        <select
+          id="timeframe-select"
+          value={timeframe}
+          onChange={(e) => setTimeframe(e.target.value as any)}
+          className="px-4 py-2 bg-white border border-[#EAE4D7] text-[#1A1612] rounded-xl text-xs font-bold outline-none cursor-pointer shadow-xs"
+        >
+          <option value="24h">24 giờ qua</option>
+          <option value="7d">7 ngày gần nhất</option>
+          <option value="30d">30 ngày qua</option>
+          <option value="all">Toàn thời gian</option>
+        </select>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              id="timeframe-select"
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value as any)}
-              className="px-4 py-2.5 bg-white/15 hover:bg-white/20 border border-white/25 text-white rounded-xl text-xs font-bold outline-none cursor-pointer transition-all backdrop-blur-xs"
-            >
-              <option value="24h" className="text-stone-900">24 giờ qua</option>
-              <option value="7d" className="text-stone-900">7 ngày gần nhất</option>
-              <option value="30d" className="text-stone-900">30 ngày qua</option>
-              <option value="all" className="text-stone-900">Toàn thời gian</option>
-            </select>
-
-            <button
-              id="btn-rescan-traffic"
-              onClick={loadData}
-              disabled={loading}
-              className="px-4 py-2.5 bg-white text-amber-900 hover:bg-amber-50 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Quét lại toàn sàn</span>
-            </button>
-          </div>
-        </div>
+        <button
+          id="btn-rescan-traffic"
+          onClick={loadData}
+          disabled={loading}
+          className="px-4 py-2 bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EBD08C] border border-[#EAE4D7] rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+          <span>Quét lại toàn sàn</span>
+        </button>
       </div>
 
       {/* KPI Metric Cards */}
@@ -294,7 +276,7 @@ export default function AiFraudSentinelPage() {
               onClick={() => setSelectedTab('LOW')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 selectedTab === 'LOW'
-                  ? 'bg-stone-700 text-white shadow-xs'
+                  ? 'bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6] shadow-xs'
                   : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
               }`}
             >

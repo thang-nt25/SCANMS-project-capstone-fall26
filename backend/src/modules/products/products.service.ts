@@ -223,6 +223,7 @@ export class ProductsService {
         },
     pageArg = 1,
     limitArg = 24,
+    includeCommission = false,
   ) {
     let search = '';
     let category: string | undefined;
@@ -301,7 +302,7 @@ export class ProductsService {
           imageUrl: true,
           price: true,
           originalPrice: true,
-          customCommissionRate: true,
+          ...(includeCommission ? { customCommissionRate: true } : {}),
           stockQuantity: true,
           variants: {
             where: { isActive: true },
@@ -322,6 +323,7 @@ export class ProductsService {
               slug: true,
               logoUrl: true,
               isVerified: true,
+              ...(includeCommission ? { defaultCommissionRate: true } : {}),
             },
           },
           mediaAssets: {
@@ -1209,6 +1211,10 @@ export class ProductsService {
         id: product.store.id,
         name: product.store.name,
         slug: product.store.slug,
+        logoUrl:
+          product.store.logoUrl && !product.store.logoUrl.includes('unsplash.com')
+            ? product.store.logoUrl
+            : null,
         isVerified: isStoreVerified,
       },
       images: galleryImages,

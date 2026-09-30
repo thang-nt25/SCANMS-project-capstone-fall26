@@ -138,22 +138,7 @@ export default function StoreReferralLinksPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] font-sans pb-16">
 
-      <div className="bg-[#F3EFE6] border-b border-[#EAE4D7]">
-        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-[#B88E4F] text-sm font-bold mb-1">
-            <Store className="w-4 h-4" />
-            <span>Dành cho Chủ Cửa hàng (Shop Manager)</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#1A1612] flex items-center gap-3">
-            Quản Lý Liên Kết Tiếp Thị Sản Phẩm
-          </h1>
-          <p className="mt-1 text-sm text-[#7D715E] max-w-2xl">
-            Theo dõi tất cả KOL đang quảng bá sản phẩm của gian hàng <strong className="text-[#1A1612]">{storeName}</strong> ({totalLinks} liên kết). Bạn có quyền tạm khóa các liên kết vi phạm nội dung hoặc chính sách giá.
-          </p>
-        </div>
-      </div>
-
-      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 pt-2">
 
         <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 shadow-xs mb-6">
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">

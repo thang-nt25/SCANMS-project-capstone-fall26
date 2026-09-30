@@ -201,13 +201,7 @@ export default function PayoutApprovalPage() {
     ) ?? [];
   return (
     <div className="space-y-6 text-ink">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Duyệt chi trả KOL</h1>
-          <p className="mt-1 text-sm text-muted">
-            {storeName} · Chỉ quản lý payout thuộc shop của bạn.
-          </p>
-        </div>
+      <div className="flex items-center justify-end gap-2.5">
         <button
           type="button"
           onClick={() => void load()}
@@ -218,7 +212,7 @@ export default function PayoutApprovalPage() {
           <RefreshCw size={16} />
           Tải lại
         </button>
-      </header>
+      </div>
       {error && (
         <p
           role="alert"

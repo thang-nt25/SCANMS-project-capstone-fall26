@@ -34,6 +34,7 @@ import {
   validateManualItems,
   type ManualItemForm,
 } from "../../components/orders/manualOrderValidation";
+import { CustomSelect } from "../../components/ui/CustomSelect";
 
 type OrderAction = "manual" | "excel";
 interface Props {
@@ -535,32 +536,22 @@ export default function OrdersManagementPage({
     <div className="space-y-6 text-ink text-left">
       {!initialAction && (
         <>
-          {/* Header & Quick Actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] tracking-tight m-0">
-                Quản lý Đơn hàng Gian hàng
-              </h1>
-              <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-                Theo dõi đơn hàng từ khách mua, cập nhật vận đơn bưu cục và kiểm soát hoa hồng KOL.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] font-bold text-xs sm:text-sm hover:bg-[#F3EFE6] transition shadow-2xs"
-                onClick={() => open("excel")}
-              >
-                <FileSpreadsheet className="w-4 h-4 text-[#B88E4F]" />
-                <span>Import Excel (FR-20)</span>
-              </button>
-              <button
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#EBD08C] text-white font-bold text-xs sm:text-sm hover:bg-[#DEC07A] transition shadow-xs"
-                onClick={() => open("manual")}
-              >
-                <PackagePlus className="w-4 h-4" />
-                <span>Tạo đơn thủ công</span>
-              </button>
-            </div>
+          {/* Quick Actions (Compact without bulky headers) */}
+          <div className="flex items-center justify-end gap-2.5">
+            <button
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] font-bold text-xs hover:bg-[#F3EFE6] transition shadow-2xs cursor-pointer"
+              onClick={() => open("excel")}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
+              <span>Import Excel (FR-20)</span>
+            </button>
+            <button
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition shadow-xs cursor-pointer"
+              onClick={() => open("manual")}
+            >
+              <PackagePlus className="w-3.5 h-3.5" />
+              <span>Tạo đơn thủ công</span>
+            </button>
           </div>
 
           {/* Success Alert Banner */}
@@ -831,7 +822,7 @@ export default function OrdersManagementPage({
                                 <button
                                   onClick={() => handleConfirmDelivered(order)}
                                   disabled={updatingFulfillment}
-                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50"
+                                  className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50"
                                   title="Xác nhận khách đã nhận được hàng"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1194,64 +1185,45 @@ export default function OrdersManagementPage({
                         </label>
                         <label className="text-sm">
                           Tỉnh/Thành phố *
-                          <select
+                          <CustomSelect
+                            className="mt-1"
                             required
                             disabled={loadingAddresses}
-                            className={inputClass}
                             value={provinceCode}
-                            onChange={(e) => {
-                              setProvinceCode(e.target.value);
+                            onChange={(code) => {
+                              setProvinceCode(code);
                               setDistrictCode("");
                               setWardCode("");
                             }}
-                          >
-                            <option value="">
-                              {loadingAddresses
-                                ? "Đang tải địa chỉ..."
-                                : "Chọn tỉnh/thành phố"}
-                            </option>
-                            {addresses.map((p) => (
-                              <option key={p.code} value={p.code}>
-                                {p.name}
-                              </option>
-                            ))}
-                          </select>
+                            placeholder={loadingAddresses ? "Đang tải địa chỉ..." : "Chọn tỉnh/thành phố"}
+                            options={addresses.map((p) => ({ value: String(p.code), label: p.name }))}
+                          />
                         </label>
                         <label className="text-sm">
                           Quận/Huyện *
-                          <select
+                          <CustomSelect
+                            className="mt-1"
                             required
                             disabled={!province}
-                            className={inputClass}
                             value={districtCode}
-                            onChange={(e) => {
-                              setDistrictCode(e.target.value);
+                            onChange={(code) => {
+                              setDistrictCode(code);
                               setWardCode("");
                             }}
-                          >
-                            <option value="">Chọn quận/huyện</option>
-                            {province?.districts.map((d) => (
-                              <option key={d.code} value={d.code}>
-                                {d.name}
-                              </option>
-                            ))}
-                          </select>
+                            placeholder="Chọn quận/huyện"
+                            options={(province?.districts || []).map((d) => ({ value: String(d.code), label: d.name }))}
+                          />
                         </label>
                         <label className="text-sm">
                           Phường/Xã
-                          <select
+                          <CustomSelect
+                            className="mt-1"
                             disabled={!district}
-                            className={inputClass}
                             value={wardCode}
-                            onChange={(e) => setWardCode(e.target.value)}
-                          >
-                            <option value="">Chọn phường/xã (tùy chọn)</option>
-                            {district?.wards.map((w) => (
-                              <option key={w.code} value={w.code}>
-                                {w.name}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={setWardCode}
+                            placeholder="Chọn phường/xã (tùy chọn)"
+                            options={(district?.wards || []).map((w) => ({ value: String(w.code), label: w.name }))}
+                          />
                         </label>
                         <p className="self-center text-xs text-muted">
                           Danh mục địa chỉ giao hàng 3 cấp (v1, trước sắp xếp

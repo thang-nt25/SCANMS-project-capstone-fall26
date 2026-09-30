@@ -1,11 +1,42 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 
+export type NotificationCategory = 'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM';
+
 export interface GetNotificationsQuery {
-  category?: 'ALL' | 'ORDER' | 'FINANCE' | 'SYSTEM';
+  category?: NotificationCategory;
   page?: number;
   limit?: number;
 }
+
+const ORDER_TYPES = [
+  'ORDER_CREATED',
+  'ORDER_SHIPPING',
+  'ORDER_DELIVERED',
+  'ORDER_COMPLETED',
+  'ORDER_CANCELLED',
+  'DISPUTE_OPENED',
+  'DISPUTE_RESOLVED',
+];
+
+const PROMOTION_TYPES = [
+  'PROMOTION_COUPON',
+  'VOUCHER_RECEIVED',
+  'FLASH_SALE',
+  'CAMPAIGN_INVITE',
+  'PROMO_DISCOUNT',
+  'VOUCHER_EXPIRED',
+];
+
+const SYSTEM_TYPES = [
+  'KYC_SUBMITTED',
+  'KYC_VERIFIED',
+  'KYC_REJECTED',
+  'SECURITY_ALERT',
+  'SYSTEM_NOTICE',
+  'WELCOME',
+  'PARTNER_UPGRADE',
+];
 
 @Injectable()
 export class NotificationsService {
@@ -14,9 +45,45 @@ export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Lấy danh sách thông báo của người dùng kèm bộ lọc 4 danh mục đa vai trò
+   * Khởi tạo thông báo chào mừng thực tế cho người dùng mới đăng ký
+   * (Chỉ gieo thông báo chào mừng & ưu đãi khách mới; KHÔNG gieo đơn ảo hay ví ảo)
+   */
+  private async ensureSeedNotifications(userId: string) {
+    const totalCount = await this.prisma.notification.count({ where: { userId } });
+    if (totalCount === 0) {
+      try {
+        await this.prisma.notification.createMany({
+          data: [
+            {
+              userId,
+              title: 'Chào mừng bạn đến với Hệ sinh thái Sàn SCANMS',
+              message: 'Sàn thương mại tiếp thị liên kết kết nối hàng trăm gian hàng chính hãng. Nâng cấp ngay tài khoản Đối tác để tăng thu nhập!',
+              type: 'WELCOME',
+              data: { actionUrl: '/customer/upgrade' },
+              isRead: false,
+            },
+            {
+              userId,
+              title: 'Tặng bạn voucher giảm giá 15% bạn mới',
+              message: 'Chào mừng bạn đến với SCANMS! Khám phá kho voucher để nhận các ưu đãi hấp dẫn áp dụng toàn sàn.',
+              type: 'PROMOTION_COUPON',
+              data: { discount: '15%', actionUrl: '/customer/vouchers' },
+              isRead: false,
+            },
+          ],
+        });
+      } catch (e) {
+        this.logger.warn(`Không thể khởi tạo thông báo chào mừng: ${e}`);
+      }
+    }
+  }
+
+  /**
+   * Lấy danh sách thông báo của người dùng kèm bộ lọc 3 danh mục (Đơn Hàng, Khuyến Mãi, SCANMS)
    */
   async getUserNotifications(userId: string, query?: GetNotificationsQuery) {
+    await this.ensureSeedNotifications(userId);
+
     const page = Math.max(1, Number(query?.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
     const skip = (page - 1) * limit;
@@ -26,46 +93,18 @@ export class NotificationsService {
     if (query?.category && query.category !== 'ALL') {
       switch (query.category) {
         case 'ORDER':
-          whereClause.type = {
-            in: [
-              'ORDER_CREATED',
-              'ORDER_SHIPPING',
-              'ORDER_DELIVERED',
-              'ORDER_COMPLETED',
-              'ORDER_CANCELLED',
-              'DISPUTE_OPENED',
-              'DISPUTE_RESOLVED',
-            ],
-          };
+          whereClause.type = { in: ORDER_TYPES };
           break;
-        case 'FINANCE':
-          whereClause.type = {
-            in: [
-              'COMMISSION_EARNED',
-              'COMMISSION_RELEASED',
-              'COMMISSION_REVERSED',
-              'PAYOUT_APPROVED',
-              'PAYOUT_COMPLETED',
-              'WALLET_TOPUP',
-            ],
-          };
+        case 'PROMOTION':
+          whereClause.type = { in: PROMOTION_TYPES };
           break;
         case 'SYSTEM':
-          whereClause.type = {
-            in: [
-              'KYC_SUBMITTED',
-              'KYC_VERIFIED',
-              'KYC_REJECTED',
-              'CAMPAIGN_INVITE',
-              'SECURITY_ALERT',
-              'SYSTEM_NOTICE',
-            ],
-          };
+          whereClause.type = { in: SYSTEM_TYPES };
           break;
       }
     }
 
-    const [items, total, unreadCount] = await Promise.all([
+    const [items, total, unreadCount, orderUnread, promotionUnread, systemUnread] = await Promise.all([
       this.prisma.notification.findMany({
         where: whereClause,
         orderBy: { createdAt: 'desc' },
@@ -74,6 +113,9 @@ export class NotificationsService {
       }),
       this.prisma.notification.count({ where: whereClause }),
       this.prisma.notification.count({ where: { userId, isRead: false } }),
+      this.prisma.notification.count({ where: { userId, isRead: false, type: { in: ORDER_TYPES } } }),
+      this.prisma.notification.count({ where: { userId, isRead: false, type: { in: PROMOTION_TYPES } } }),
+      this.prisma.notification.count({ where: { userId, isRead: false, type: { in: SYSTEM_TYPES } } }),
     ]);
 
     return {
@@ -83,17 +125,33 @@ export class NotificationsService {
       limit,
       totalPages: Math.ceil(total / limit),
       unreadCount,
+      categoryUnreadCounts: {
+        ORDER: orderUnread,
+        PROMOTION: promotionUnread,
+        SYSTEM: systemUnread,
+      },
     };
   }
 
   /**
    * Đếm nhanh số lượng thông báo chưa đọc (phục vụ hiển thị badge chuông báo)
    */
-  async getUnreadCount(userId: string): Promise<{ unreadCount: number }> {
-    const unreadCount = await this.prisma.notification.count({
-      where: { userId, isRead: false },
-    });
-    return { unreadCount };
+  async getUnreadCount(userId: string) {
+    const [unreadCount, orderUnread, promotionUnread, systemUnread] = await Promise.all([
+      this.prisma.notification.count({ where: { userId, isRead: false } }),
+      this.prisma.notification.count({ where: { userId, isRead: false, type: { in: ORDER_TYPES } } }),
+      this.prisma.notification.count({ where: { userId, isRead: false, type: { in: PROMOTION_TYPES } } }),
+      this.prisma.notification.count({ where: { userId, isRead: false, type: { in: SYSTEM_TYPES } } }),
+    ]);
+
+    return {
+      unreadCount,
+      categoryUnreadCounts: {
+        ORDER: orderUnread,
+        PROMOTION: promotionUnread,
+        SYSTEM: systemUnread,
+      },
+    };
   }
 
   /**

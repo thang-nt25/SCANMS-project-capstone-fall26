@@ -90,6 +90,12 @@ export interface ApplyShopData {
   brandAuthorizationUrl?: string;
   contactPhone: string;
   contactEmail: string;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  idCardNumber?: string;
+  frontCardUrl?: string;
+  backCardUrl?: string;
 }
 
 export interface UpgradeStatusResponse {
@@ -129,6 +135,11 @@ export const kycService = {
     bio?: string;
     frontCardUrl?: string;
     backCardUrl?: string;
+    channelProofUrl?: string;
+    platform?: string;
+    channelName?: string;
+    channelUrl?: string;
+    followerCount?: number;
   }) {
     const res: any = await api.put('/kyc/submit', data);
     return res.data;

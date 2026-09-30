@@ -188,6 +188,12 @@ export default function KycApprovalPage() {
       taxCode: legalDocs.taxCode || 'Chưa nộp',
       businessLicenseUrl: legalDocs.businessLicenseUrl || null,
       brandAuthorizationUrl: legalDocs.brandAuthorizationUrl || null,
+      bankName: legalDocs.bankName || 'Chưa cung cấp',
+      accountNumber: legalDocs.bankAccountNumber || 'Chưa cung cấp',
+      accountHolder: legalDocs.bankAccountName || s.owner?.fullName || 'Chưa cung cấp',
+      idCardNumber: legalDocs.idCardNumber || null,
+      frontCardUrl: legalDocs.frontCardUrl || null,
+      backCardUrl: legalDocs.backCardUrl || null,
       isVerified: s.isVerified,
       statusLabel: s.isVerified ? 'Đã xác minh (Tích Xanh)' : 'Chờ thẩm định GPKD',
       createdAt: new Date(s.createdAt || Date.now()).toLocaleDateString('vi-VN'),
@@ -227,12 +233,12 @@ export default function KycApprovalPage() {
         <div
           className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center gap-2 border ${
             toastMsg.type === 'error'
-              ? 'bg-rose-950 text-rose-200 border-rose-800'
-              : 'bg-[#1A1612] text-[#F3EFE6] border-[#B88E4F]'
+              ? 'bg-rose-50 text-rose-700 border-rose-200'
+              : 'bg-[#FBF5EB] text-[#8F682E] border-[#EEDFC6]'
           }`}
         >
           {toastMsg.type === 'error' ? (
-            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <AlertCircle className="w-4 h-4 text-rose-600" />
           ) : (
             <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
           )}
@@ -262,42 +268,25 @@ export default function KycApprovalPage() {
         </div>
       )}
 
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#EBD08C] animate-pulse"></span>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#B88E4F]">
-              Cổng Quản Trị Thẩm Định Đa Cấp (Two-Tier Compliance)
-            </span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1A1612] tracking-tight m-0">
-            Xét Duyệt Hồ Sơ Đối Tác (KOL &amp; Gian Hàng)
-          </h1>
-          <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-            Thẩm định tính hợp pháp của CCCD, mã số thuế TNCN, kênh truyền thông của KOL và giấy phép kinh doanh, kho hàng theo Nghị định 85/2021/NĐ-CP.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="md"
-            icon={<Download className="w-4 h-4 text-[#B88E4F]" />}
-            onClick={() => showToast('Đang xuất báo cáo thẩm định...')}
-            className="border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5]"
-          >
-            Xuất báo cáo
-          </Button>
-          <Button
-            variant="gold"
-            size="md"
-            icon={<RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
-            onClick={() => loadApplications()}
-          >
-            Làm mới
-          </Button>
-        </div>
-      </header>
+      <div className="flex items-center justify-end gap-3">
+        <Button
+          variant="outline"
+          size="md"
+          icon={<Download className="w-4 h-4 text-[#B88E4F]" />}
+          onClick={() => showToast('Đang xuất báo cáo thẩm định...')}
+          className="border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5]"
+        >
+          Xuất báo cáo
+        </Button>
+        <Button
+          variant="gold"
+          size="md"
+          icon={<RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
+          onClick={() => loadApplications()}
+        >
+          Làm mới
+        </Button>
+      </div>
 
       {/* TOP TABS: KOL VS SHOP */}
       <div className="flex border-b border-[#EAE4D7] gap-4">
@@ -747,8 +736,11 @@ export default function KycApprovalPage() {
                   <span className="text-[11px] text-[#7D715E] font-mono">{inspectStore.ownerEmail} - {inspectStore.ownerPhone}</span>
                 </div>
                 <div>
-                  <span className="text-[#7D715E] block">Mã số thuế doanh nghiệp/HKD:</span>
+                  <span className="text-[#7D715E] block">Mã số thuế doanh nghiệp/HKD/Cá nhân:</span>
                   <strong className="font-mono text-[#1A1612] text-sm font-bold block">{inspectStore.taxCode}</strong>
+                  {inspectStore.idCardNumber && (
+                    <span className="text-[11px] text-[#7D715E] font-mono block mt-0.5">Số CCCD: <strong className="text-[#1A1612]">{inspectStore.idCardNumber}</strong></span>
+                  )}
                 </div>
               </div>
 
@@ -761,53 +753,139 @@ export default function KycApprovalPage() {
               </div>
             </div>
 
-            {/* 2. Tài liệu chứng từ pháp lý */}
+            {/* 2. Tài liệu chứng từ pháp lý & Định danh */}
             <div className="p-3.5 bg-white border border-[#EAE4D7] rounded-2xl space-y-3">
               <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
-                2. Chứng từ pháp lý &amp; Giấy phép kinh doanh
+                2. Chứng từ pháp lý &amp; {inspectStore.businessType === 'INDIVIDUAL' ? 'Căn cước công dân định danh' : 'Giấy phép kinh doanh'}
               </strong>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
-                  <span className="font-bold text-[#1A1612] block">Giấy phép ĐKKD:</span>
-                  {inspectStore.businessLicenseUrl ? (
-                    <div
-                      onClick={() => setPreviewImage(inspectStore.businessLicenseUrl)}
-                      className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
-                    >
-                      <img
-                        src={inspectStore.businessLicenseUrl}
-                        alt="Giấy phép kinh doanh"
-                        className="w-full h-full object-cover group-hover:scale-105 transition"
-                      />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
-                        Xem tài liệu
+              {inspectStore.businessType === 'INDIVIDUAL' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
+                    <span className="font-bold text-[#1A1612] block">CCCD Mặt trước:</span>
+                    {inspectStore.frontCardUrl ? (
+                      <div
+                        onClick={() => setPreviewImage(inspectStore.frontCardUrl)}
+                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
+                      >
+                        <img
+                          src={inspectStore.frontCardUrl}
+                          alt="CCCD mặt trước"
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
+                          Xem ảnh gốc
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-[#7D715E] italic">Chưa tải lên</span>
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
+                    <span className="font-bold text-[#1A1612] block">CCCD Mặt sau:</span>
+                    {inspectStore.backCardUrl ? (
+                      <div
+                        onClick={() => setPreviewImage(inspectStore.backCardUrl)}
+                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
+                      >
+                        <img
+                          src={inspectStore.backCardUrl}
+                          alt="CCCD mặt sau"
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
+                          Xem ảnh gốc
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-[#7D715E] italic">Chưa tải lên</span>
+                    )}
+                  </div>
+
+                  {inspectStore.brandAuthorizationUrl && (
+                    <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2 sm:col-span-2">
+                      <span className="font-bold text-[#1A1612] block">Ủy quyền thương hiệu / Nguồn gốc xuất xứ:</span>
+                      <div
+                        onClick={() => setPreviewImage(inspectStore.brandAuthorizationUrl)}
+                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
+                      >
+                        <img
+                          src={inspectStore.brandAuthorizationUrl}
+                          alt="Ủy quyền thương hiệu"
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
+                          Xem tài liệu
+                        </div>
                       </div>
                     </div>
-                  ) : (
-                    <span className="text-[#7D715E] italic">Chưa tải lên</span>
                   )}
                 </div>
-
-                <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
-                  <span className="font-bold text-[#1A1612] block">Ủy quyền thương hiệu / Nguồn gốc:</span>
-                  {inspectStore.brandAuthorizationUrl ? (
-                    <div
-                      onClick={() => setPreviewImage(inspectStore.brandAuthorizationUrl)}
-                      className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
-                    >
-                      <img
-                        src={inspectStore.brandAuthorizationUrl}
-                        alt="Ủy quyền thương hiệu"
-                        className="w-full h-full object-cover group-hover:scale-105 transition"
-                      />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
-                        Xem tài liệu
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
+                    <span className="font-bold text-[#1A1612] block">Giấy phép ĐKKD:</span>
+                    {inspectStore.businessLicenseUrl ? (
+                      <div
+                        onClick={() => setPreviewImage(inspectStore.businessLicenseUrl)}
+                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
+                      >
+                        <img
+                          src={inspectStore.businessLicenseUrl}
+                          alt="Giấy phép kinh doanh"
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
+                          Xem tài liệu
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <span className="text-[#7D715E] italic">Chưa tải lên</span>
-                  )}
+                    ) : (
+                      <span className="text-[#7D715E] italic">Chưa tải lên</span>
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
+                    <span className="font-bold text-[#1A1612] block">Ủy quyền thương hiệu / Nguồn gốc:</span>
+                    {inspectStore.brandAuthorizationUrl ? (
+                      <div
+                        onClick={() => setPreviewImage(inspectStore.brandAuthorizationUrl)}
+                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
+                      >
+                        <img
+                          src={inspectStore.brandAuthorizationUrl}
+                          alt="Ủy quyền thương hiệu"
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
+                          Xem tài liệu
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-[#7D715E] italic">Chưa tải lên</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Tài khoản ngân hàng nhận tiền doanh thu */}
+            <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-2">
+              <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
+                3. Tài khoản ngân hàng nhận doanh thu bán hàng (Đối soát)
+              </strong>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <span className="text-[#7D715E] block">Ngân hàng:</span>
+                  <strong className="text-[#1A1612] font-bold">{inspectStore.bankName}</strong>
+                </div>
+                <div>
+                  <span className="text-[#7D715E] block">Số tài khoản:</span>
+                  <strong className="font-mono text-[#1A1612] font-bold">{inspectStore.accountNumber}</strong>
+                </div>
+                <div>
+                  <span className="text-[#7D715E] block">Chủ tài khoản:</span>
+                  <strong className="text-[#1A1612] font-bold">{inspectStore.accountHolder}</strong>
                 </div>
               </div>
             </div>

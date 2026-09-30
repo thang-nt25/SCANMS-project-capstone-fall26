@@ -55,7 +55,11 @@ export class StoreCollaboratorsService {
             email: true,
             phoneNumber: true,
             collaboratorProfile: {
-              select: { totalFollowers: true, kycStatus: true },
+              select: {
+                avatarUrl: true,
+                totalFollowers: true,
+                kycStatus: true,
+              },
             },
             socialChannels: {
               where: { isPrimary: true },

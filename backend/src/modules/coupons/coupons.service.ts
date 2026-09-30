@@ -55,6 +55,73 @@ export class CouponsService {
     private readonly cacheService: CacheService,
   ) {}
 
+  async getPublicStoreCoupons(storeId: string) {
+    const now = new Date();
+    const coupons = await this.prisma.coupon.findMany({
+      where: {
+        storeId,
+        status: CouponStatus.ACTIVE,
+        deletedAt: null,
+        store: {
+          isDeleted: false,
+          isActive: true,
+          owner: { isActive: true, isDeleted: false },
+        },
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        ],
+      },
+      select: {
+        id: true,
+        displayCode: true,
+        discountType: true,
+        discountValue: true,
+        minimumOrderAmount: true,
+        maximumDiscountAmount: true,
+        usageLimitTotal: true,
+        usageCount: true,
+        expiresAt: true,
+        scopeType: true,
+        couponProducts: {
+          where: { product: { isDeleted: false, isActive: true } },
+          select: { product: { select: { id: true, title: true } } },
+        },
+        couponCategories: { select: { categoryName: true } },
+        store: { select: { name: true } },
+      },
+      orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    return coupons
+      .filter(
+        (coupon) =>
+          coupon.usageLimitTotal === null ||
+          coupon.usageCount < coupon.usageLimitTotal,
+      )
+      .map((coupon) => ({
+      id: coupon.id,
+      code: coupon.displayCode,
+      discountType: coupon.discountType,
+      discountValue: Number(coupon.discountValue),
+      minimumOrderAmount: coupon.minimumOrderAmount
+        ? Number(coupon.minimumOrderAmount)
+        : null,
+      maximumDiscountAmount: coupon.maximumDiscountAmount
+        ? Number(coupon.maximumDiscountAmount)
+        : null,
+      remainingUses:
+        coupon.usageLimitTotal === null
+          ? null
+          : Math.max(0, coupon.usageLimitTotal - coupon.usageCount),
+      expiresAt: coupon.expiresAt,
+      scopeType: coupon.scopeType,
+      products: coupon.couponProducts.map((item) => item.product),
+      categories: coupon.couponCategories.map((item) => item.categoryName),
+      storeName: coupon.store.name,
+      }));
+  }
+
   // =========================================================================
   // 1. UTILITY & NORMALIZATION METHODS
   // =========================================================================

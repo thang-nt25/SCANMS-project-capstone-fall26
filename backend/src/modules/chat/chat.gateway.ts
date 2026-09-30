@@ -13,6 +13,11 @@ import { UseGuards, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { checkProfanity } from './profanity-filter';
+import {
+  ChatAttachmentType,
+  isCloudinaryChatAttachmentUrl,
+  sanitizeChatAttachmentName,
+} from './chat-attachment.utils';
 
 // Map userId -> Set of socket IDs (hỗ trợ multi-tab)
 const userSocketMap = new Map<string, Set<string>>();
@@ -139,45 +144,84 @@ export class ChatGateway
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    data: { conversationId: string; messageText: string; mediaUrl?: string },
+    data: {
+      conversationId: string;
+      messageText?: string;
+      mediaUrl?: string;
+      mediaType?: ChatAttachmentType;
+      mediaName?: string;
+    },
   ) {
     const userId = client.data.userId;
-    if (!data.conversationId || !data.messageText?.trim()) {
+    let messageText = data.messageText?.trim() || '';
+    if (!data.conversationId || (!messageText && !data.mediaUrl)) {
       client.emit('error', {
         message: 'Thiếu conversationId hoặc nội dung tin nhắn',
       });
       return;
     }
 
-    // Kiểm tra từ ngữ thô tục / xúc phạm / lừa đảo chuyển khoản STK
-    const profanityCheck = checkProfanity(data.messageText);
-    if (profanityCheck.isProfane) {
+    if (
+      data.mediaUrl &&
+      (!data.mediaType ||
+        !data.mediaName ||
+        !isCloudinaryChatAttachmentUrl(data.mediaUrl, data.mediaType))
+    ) {
       client.emit('error', {
-        message:
-          profanityCheck.errorMessage ||
-          'Tin nhắn bị chặn: Vui lòng không sử dụng từ ngữ thô tục, chửi thề hoặc vi phạm chuẩn mực văn minh.',
+        message: 'Tệp đính kèm không hợp lệ hoặc chưa được tải lên hệ thống.',
       });
+      return;
+    }
+
+    if (!data.mediaUrl && (data.mediaType || data.mediaName)) {
+      client.emit('error', { message: 'Thiếu đường dẫn tệp đính kèm.' });
       return;
     }
 
     try {
       // Kiểm tra quyền
-      await this.chatService.getConversationById(data.conversationId, userId);
+      const conversation = await this.chatService.getConversationById(
+        data.conversationId,
+        userId,
+      );
+      // Ensure the sender receives the persisted message echo as well as the other participant.
+      await client.join(`conv:${data.conversationId}`);
+      messageText = await this.chatService.normalizeShareCardMessage(
+        conversation.storeId,
+        messageText,
+      );
+
+      // Kiểm tra nội dung người dùng nhập; các trường giá/mã của thẻ được lấy từ DB.
+      const profanityCheck = messageText
+        ? checkProfanity(messageText)
+        : { isProfane: false };
+      if (profanityCheck.isProfane) {
+        client.emit('error', {
+          message:
+            profanityCheck.errorMessage ||
+            'Tin nhắn bị chặn: Vui lòng không sử dụng từ ngữ thô tục, chửi thề hoặc vi phạm chuẩn mực văn minh.',
+        });
+        return;
+      }
 
       // Lưu vào DB
       const message = await this.chatService.saveMessage(
         data.conversationId,
         userId,
-        data.messageText.trim(),
+        messageText,
         data.mediaUrl,
+        data.mediaType,
+        data.mediaName ? sanitizeChatAttachmentName(data.mediaName) : undefined,
       );
 
       // Phát tới tất cả trong phòng conv:xxx
       this.server
         .to(`conv:${data.conversationId}`)
         .emit('new_message', message);
+      return { ok: true, messageId: message.id };
     } catch (err: any) {
       client.emit('error', { message: err.message });
+      return { ok: false, message: err.message };
     }
   }
 

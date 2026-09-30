@@ -246,14 +246,7 @@ export default function ShopSampleRequestsPage() {
       )}
 
 
-      <div className="pb-2 border-b border-[#EAE4D7]">
-        <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] flex items-center gap-2.5">
-          <span>📋</span> Quản Lý Yêu Cầu Mẫu Trải Nghiệm
-        </h1>
-        <p className="text-sm text-[#7D715E] mt-1">
-          Duyệt yêu cầu, hỗ trợ sản phẩm dùng thử và cập nhật mã vận đơn cho KOL / Nhà sáng tạo
-        </p>
-      </div>
+
 
 
       {stats && (

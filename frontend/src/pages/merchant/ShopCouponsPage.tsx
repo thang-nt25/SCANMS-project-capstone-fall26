@@ -477,35 +477,18 @@ export const ShopCouponsPage: React.FC = () => {
     <div className="min-h-screen h-full overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
       <div className="max-w-[1520px] mx-auto mb-8">
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE4D7] pb-6 mb-6">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                <Store className="w-3.5 h-3.5" />
-                {storeName}
-              </span>
-              {storesList.length > 1 && (
-                <div className="inline-flex items-center gap-1.5 ml-1">
-                  <span className="text-xs text-[#7D715E]">Chọn Shop:</span>
-                  <CustomSandSelect
-                    value={storeId}
-                    onChange={(val) => handleStoreChange(val)}
-                    options={storesList.map((s) => ({ value: s.id, label: s.name }))}
-                    className="min-w-[160px]"
-                    buttonClassName="py-1 px-2.5 text-xs font-semibold"
-                  />
-                </div>
-              )}
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612]">
-              Quản lý Coupon KOL (FR-12)
-            </h1>
-            <p className="text-sm sm:text-base text-[#7D715E] mt-1">
-              Phê duyệt đề xuất mã giảm giá từ các Nhà sáng tạo (KOL/KOC), cấu
-              hình mức giảm giá, ngân sách và theo dõi doanh thu đơn hàng.
-            </p>
+        {storesList.length > 1 && (
+          <div className="flex items-center justify-end gap-2 mb-4">
+            <span className="text-xs text-[#7D715E]">Chọn Shop:</span>
+            <CustomSandSelect
+              value={storeId}
+              onChange={(val) => handleStoreChange(val)}
+              options={storesList.map((s) => ({ value: s.id, label: s.name }))}
+              className="min-w-[160px]"
+              buttonClassName="py-1 px-2.5 text-xs font-semibold"
+            />
           </div>
-        </div>
+        )}
 
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">

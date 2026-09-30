@@ -145,6 +145,49 @@ export class CloudinaryService implements OnModuleInit {
     });
   }
 
+  /** Upload a chat document as a raw Cloudinary asset. */
+  async uploadDocument(
+    file: Express.Multer.File,
+    folder: string = 'scanms/chat/documents',
+  ): Promise<CloudinaryUploadResult> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Không tìm thấy tài liệu để tải lên');
+    }
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: 'raw',
+          filename_override: file.originalname,
+          use_filename: true,
+          unique_filename: true,
+        },
+        (
+          error: UploadApiErrorResponse | undefined,
+          result: UploadApiResponse | undefined,
+        ) => {
+          if (error) return reject(new BadRequestException(error.message));
+          if (!result)
+            return reject(
+              new BadRequestException('Lỗi tải tài liệu lên Cloudinary'),
+            );
+
+          resolve({
+            publicId: result.public_id,
+            url: result.url,
+            secureUrl: result.secure_url,
+            format: result.format,
+            bytes: result.bytes,
+            resourceType: result.resource_type,
+          });
+        },
+      );
+
+      Readable.from(file.buffer).pipe(uploadStream);
+    });
+  }
+
   /**
    * Xóa file khỏi Cloudinary theo publicId
    */

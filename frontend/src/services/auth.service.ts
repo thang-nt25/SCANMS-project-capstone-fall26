@@ -6,6 +6,7 @@ export interface UserProfile {
   fullName: string;
   role: 'SYSTEM_ADMIN' | 'SYSTEM_MANAGER' | 'SHOP_MANAGER' | 'COLLABORATOR' | 'CUSTOMER';
   phoneNumber?: string;
+  avatarUrl?: string | null;
   stores?: any[];
   collaboratorProfile?: any;
   wallet?: any;
@@ -73,6 +74,7 @@ export const authService = {
         } else {
           localStorage.removeItem('current_store_id');
         }
+        window.dispatchEvent(new Event('auth-user-updated'));
       }
     }
     return res;
@@ -101,6 +103,7 @@ export const authService = {
         } else {
           localStorage.removeItem('current_store_id');
         }
+        window.dispatchEvent(new Event('auth-user-updated'));
       }
     }
     return res;
@@ -118,12 +121,29 @@ export const authService = {
     return user;
   },
 
+  async updateAvatar(avatarUrl: string): Promise<any> {
+    const res: any = await api.patch('/auth/avatar', { avatarUrl });
+    const user = this.getCurrentUser();
+    if (user) {
+      user.avatarUrl = avatarUrl;
+      localStorage.setItem('user', JSON.stringify(user));
+      window.dispatchEvent(new Event('auth-user-updated'));
+    }
+    return res?.data || res;
+  },
+
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('scanms-current-role');
     localStorage.removeItem('scanms-active-workspace');
     localStorage.removeItem('current_store_id');
+    localStorage.removeItem('scanms_cart_v1');
+    localStorage.removeItem('scanms_cart_selected_v1');
+    localStorage.removeItem('scanms_cart_guest');
+    localStorage.removeItem('scanms_cart_selected_guest');
+    localStorage.removeItem('scanms_pending_checkout');
+    window.dispatchEvent(new Event('auth-user-updated'));
     window.location.href = '/login';
   },
 

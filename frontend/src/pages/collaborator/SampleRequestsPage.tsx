@@ -263,15 +263,7 @@ export default function SampleRequestsPage() {
   return (
     <div className="max-w-[1520px] mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6" id="kol-sample-requests-page">
 
-      <div className="flex items-start sm:items-center justify-between gap-4 flex-wrap pb-2 border-b border-[#EAE4D7]">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] flex items-center gap-2.5">
-            <span>📦</span> Sản Phẩm Mẫu Trải Nghiệm
-          </h1>
-          <p className="text-sm text-[#7D715E] mt-1">
-            Yêu cầu gian hàng gửi mẫu sản phẩm dùng thử để sáng tạo nội dung review chất lượng
-          </p>
-        </div>
+      <div className="flex items-center justify-end gap-4 pb-2">
         <button
           id="btn-new-sample-request"
           type="button"
@@ -418,7 +410,7 @@ export default function SampleRequestsPage() {
                       <button
                         type="button"
                         onClick={() => setReceivedIds((prev) => ({ ...prev, [req.id]: true }))}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] font-bold text-xs transition cursor-pointer"
                       >
                         ✓ Đã Nhận Hàng
                       </button>

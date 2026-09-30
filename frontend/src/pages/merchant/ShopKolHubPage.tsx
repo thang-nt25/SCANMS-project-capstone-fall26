@@ -21,6 +21,10 @@ import {
   DollarSign,
   Share2,
   ShoppingBag,
+  Mail,
+  Phone,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import api from '../../services/api';
 import ChatBoxPage from '../chat/ChatBoxPage';
@@ -60,6 +64,60 @@ export interface PartnerKol {
   };
   lastMessage?: string;
   lastMessageTime?: string;
+}
+
+type PartnerTier = NonNullable<PartnerKol['tier']>;
+
+const normalizePartnerTier = (tier: unknown): PartnerTier | undefined => {
+  const tierName =
+    typeof tier === 'string'
+      ? tier
+      : tier && typeof tier === 'object' && 'name' in tier
+        ? String((tier as { name?: unknown }).name ?? '')
+        : '';
+  const normalized = tierName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  if (normalized.includes('DIAMOND') || normalized.includes('KIM CUONG')) return 'DIAMOND';
+  if (normalized.includes('GOLD') || normalized.includes('VANG')) return 'GOLD';
+  if (normalized.includes('SILVER') || normalized.includes('BAC')) return 'SILVER';
+  if (normalized.includes('BRONZE') || normalized.includes('DONG')) return 'BRONZE';
+  return undefined;
+};
+
+function KolAvatar({
+  src,
+  name,
+  className,
+}: {
+  src?: string;
+  name: string;
+  className: string;
+}) {
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'K';
+
+  return (
+    <span className={`${className} relative inline-flex items-center justify-center overflow-hidden bg-[#F3EFE6] text-[#B88E4F] font-bold`}>
+      <span aria-hidden="true">{initials}</span>
+      {src && failedSource !== src && (
+        <img
+          src={src}
+          alt={name}
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={() => setFailedSource(src)}
+        />
+      )}
+    </span>
+  );
 }
 
 export interface SampleRequestItem {
@@ -388,10 +446,8 @@ export default function ShopKolHubPage() {
             id: c.id || `collab-${idx}`,
             fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
             email: c.email || '',
-            avatarUrl:
-              c.avatarUrl ||
-              `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-            tier: profile.tier || 'GOLD',
+            avatarUrl: profile.avatarUrl || c.avatarUrl || undefined,
+            tier: normalizePartnerTier(profile.tier) || 'GOLD',
             handle: channel?.channelName ? `@${channel.channelName}` : `@kol_${c.id?.slice(0, 5)}`,
             primaryChannel: {
               platform: (channel?.platformName?.toUpperCase() as any) || 'TIKTOK',
@@ -417,8 +473,17 @@ export default function ShopKolHubPage() {
         setKols((prev) => {
           const combined = [...prev];
           backendKols.forEach((bk) => {
-            if (!combined.some((k) => k.id === bk.id || k.email === bk.email)) {
+            const existingIndex = combined.findIndex(
+              (k) => k.id === bk.id || k.email === bk.email
+            );
+            if (existingIndex === -1) {
               combined.push(bk);
+            } else {
+              combined[existingIndex] = {
+                ...combined[existingIndex],
+                ...bk,
+                stats: combined[existingIndex].stats,
+              };
             }
           });
           return combined;
@@ -437,10 +502,8 @@ export default function ShopKolHubPage() {
             fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
             email: c.email || '',
             phone: c.phoneNumber || '',
-            avatarUrl:
-              c.avatarUrl ||
-              `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-            tier: profile.tier || 'GOLD',
+            avatarUrl: profile.avatarUrl || c.avatarUrl || undefined,
+            tier: normalizePartnerTier(profile.tier) || 'GOLD',
             handle: channel?.channelName ? `@${channel.channelName}` : undefined,
             primaryChannel: channel
               ? {
@@ -546,6 +609,15 @@ export default function ShopKolHubPage() {
         kol: kolId,
         tab: activeTab,
       },
+      { replace: true }
+    );
+  };
+
+  const openKolProfile = (kolId: string) => {
+    setSelectedKolId(kolId);
+    setActiveTab('profile');
+    setSearchParams(
+      { kol: kolId, tab: 'profile' },
       { replace: true }
     );
   };
@@ -719,10 +791,8 @@ export default function ShopKolHubPage() {
         fullName: creator.fullName || 'Nhà Sáng Tạo SCANMS',
         email: creator.email || '',
         phone: creator.phoneNumber || '',
-        avatarUrl:
-          creator.avatarUrl ||
-          `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-        tier: profile.tier || 'GOLD',
+        avatarUrl: profile.avatarUrl || creator.avatarUrl || undefined,
+        tier: normalizePartnerTier(profile.tier) || 'GOLD',
         handle: channel?.channelName ? `@${channel.channelName}` : undefined,
         primaryChannel: channel
           ? {
@@ -787,10 +857,10 @@ export default function ShopKolHubPage() {
       if (!matchSearch) return false;
 
       if (discoveryFilter === 'DIAMOND') {
-        return creator.collaboratorProfile?.tier === 'DIAMOND';
+        return normalizePartnerTier(creator.collaboratorProfile?.tier) === 'DIAMOND';
       }
       if (discoveryFilter === 'GOLD') {
-        return creator.collaboratorProfile?.tier === 'GOLD';
+        return normalizePartnerTier(creator.collaboratorProfile?.tier) === 'GOLD';
       }
       if (discoveryFilter === 'TIKTOK') {
         return (creator.socialChannels || []).some(
@@ -812,74 +882,42 @@ export default function ShopKolHubPage() {
   }, [directoryCreators, discoverySearch, discoveryFilter]);
 
   return (
-    <div className="w-full flex flex-col gap-6" id="shop-kol-hub-workspace">
-      {/* Top Banner & Mode Toggle */}
-      <div className="bg-white border border-[#EAE4D7] rounded-3xl p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-              Merchant Partner Hub
-            </span>
-            <span className="text-xs text-[#7D715E]">Mạng lưới Tiếp thị Liên kết SCANMS</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-[#1A1612] tracking-tight">
-            Mạng Lưới KOL & Không Gian Hợp Tác
-          </h1>
-          <p className="text-xs md:text-sm text-[#7D715E] mt-1">
-            Làm việc 1-1 với Nhà sáng tạo: trao đổi trực tiếp, duyệt hàng mẫu trải nghiệm, theo dõi doanh số và khám phá đối tác mới
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <button
-            type="button"
-            id="btn-toggle-ai-mode"
-            onClick={() => {
-              const nextMode = !isAiMatchingMode;
-              setIsAiMatchingMode(nextMode);
-              setSearchParams(
-                nextMode ? { mode: 'ai-matching' } : { kol: selectedKolId, tab: activeTab },
-                { replace: true }
-              );
-            }}
-            className={`flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
-              isAiMatchingMode
-                ? 'bg-[#1A1612] text-white'
-                : 'bg-[#FBF5EB] text-[#B88E4F] hover:bg-[#F3EFE6] border border-[#EAE4D7]'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-[#B88E4F]" />
-            {isAiMatchingMode ? 'Quay lại Không Gian 1-1' : 'AI Tìm Kiếm KOL Mới'}
-          </button>
-
-          <button
-            type="button"
-            id="btn-open-creator-directory"
-            onClick={() => setShowDiscoveryModal(true)}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[#EBD08C] text-white hover:bg-[#DEC07A] transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-          >
-            <Users className="w-4 h-4" />
-            Khám Phá & Mời KOL
-          </button>
-        </div>
-      </div>
-
+    <div className="w-full flex flex-col" id="shop-kol-hub-workspace">
       {/* Mode 1: AI Recommendation Mode */}
       {isAiMatchingMode ? (
-        <div className="animate-in fade-in-50 duration-200">
+        <div className="space-y-3 animate-in fade-in-50 duration-200">
+          <div className="flex items-center justify-between bg-white border border-[#EAE4D7] rounded-2xl px-4 py-2.5 shadow-xs">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#B88E4F]" />
+              <span className="text-xs font-black text-[#1A1612] uppercase tracking-wider">
+                Hệ Thống AI Đề Xuất & Tìm Kiếm KOL
+              </span>
+            </div>
+            <button
+              type="button"
+              id="btn-return-workspace"
+              onClick={() => {
+                setIsAiMatchingMode(false);
+                setSearchParams({ kol: selectedKolId, tab: activeTab }, { replace: true });
+              }}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#C59B58] text-white hover:bg-[#B88E4F] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <span>← Quay lại Không Gian 1-1</span>
+            </button>
+          </div>
           <KolRecommendationPage />
         </div>
       ) : (
         /* Mode 2: Partner-Centric 2-Column Workspace */
-        <div className="bg-white border border-[#EAE4D7] rounded-3xl shadow-sm overflow-hidden flex flex-row h-[calc(100vh-175px)] min-h-[640px] max-h-[900px]">
+        <div className="bg-white border border-[#EAE4D7] rounded-3xl shadow-sm overflow-hidden flex flex-row h-[calc(100vh-100px)] min-h-[620px] max-h-[960px]">
           {/* LEFT COLUMN: KOL List & Filters */}
           <div className="w-[280px] sm:w-[310px] lg:w-[340px] flex-shrink-0 border-r border-[#EAE4D7] bg-[#FDFCFB] flex flex-col h-full">
             {/* Header left */}
-            <div className="p-4 border-b border-[#EAE4D7] space-y-3 bg-[#FAF8F5]/80">
+            <div className="p-3 border-b border-[#EAE4D7] space-y-2 bg-[#FAF8F5]">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-[#B88E4F]" />
-                  <span className="text-xs font-extrabold text-[#1A1612] uppercase tracking-wider">
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span className="text-xs font-black text-[#1A1612] uppercase tracking-wider">
                     Nhà Sáng Tạo ({filteredKols.length})
                   </span>
                 </div>
@@ -895,7 +933,7 @@ export default function ShopKolHubPage() {
                   <button
                     type="button"
                     onClick={() => setShowInviteModal(true)}
-                    className="text-[11px] font-medium text-[#7D715E] hover:underline cursor-pointer flex items-center gap-0.5"
+                    className="text-[11px] font-medium text-[#7D715E] hover:underline cursor-pointer"
                   >
                     Mời riêng
                   </button>
@@ -904,25 +942,25 @@ export default function ShopKolHubPage() {
 
               {/* Search bar */}
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
                 <input
                   type="text"
                   id="input-search-kol-list"
                   placeholder="Tìm theo tên, TikTok, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-[#EAE4D7] rounded-xl text-[#1A1612] placeholder-[#7D715E]/60 outline-none focus:border-[#B88E4F] focus:ring-1 focus:ring-[#B88E4F] transition"
+                  className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-white border border-[#EAE4D7] rounded-lg text-[#1A1612] placeholder-[#7D715E]/60 outline-none focus:border-[#B88E4F] focus:ring-1 focus:ring-[#B88E4F] transition"
                 />
               </div>
 
               {/* Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-[11px]">
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar text-[10.5px]">
                 <button
                   type="button"
                   onClick={() => setFilterTag('ALL')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md font-bold transition whitespace-nowrap cursor-pointer ${
                     filterTag === 'ALL'
-                      ? 'bg-[#EBD08C] text-white shadow-xs'
+                      ? 'bg-[#C59B58] text-white shadow-2xs'
                       : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:bg-[#F3EFE6]'
                   }`}
                 >
@@ -931,21 +969,21 @@ export default function ShopKolHubPage() {
                 <button
                   type="button"
                   onClick={() => setFilterTag('PENDING_SAMPLE')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                  className={`px-2 py-0.5 rounded-md font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
                     filterTag === 'PENDING_SAMPLE'
-                      ? 'bg-[#EBD08C] text-white shadow-xs'
+                      ? 'bg-[#C59B58] text-white shadow-2xs'
                       : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:bg-[#F3EFE6]'
                   }`}
                 >
-                  Chờ duyệt mẫu
+                  <span>Mẫu mới</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setFilterTag('ACTIVE_CHAT')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md font-bold transition whitespace-nowrap cursor-pointer ${
                     filterTag === 'ACTIVE_CHAT'
-                      ? 'bg-[#EBD08C] text-white shadow-xs'
+                      ? 'bg-[#C59B58] text-white shadow-2xs'
                       : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:bg-[#F3EFE6]'
                   }`}
                 >
@@ -954,9 +992,9 @@ export default function ShopKolHubPage() {
                 <button
                   type="button"
                   onClick={() => setFilterTag('TOP_REVENUE')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md font-bold transition whitespace-nowrap cursor-pointer ${
                     filterTag === 'TOP_REVENUE'
-                      ? 'bg-[#EBD08C] text-white shadow-xs'
+                      ? 'bg-[#C59B58] text-white shadow-2xs'
                       : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:bg-[#F3EFE6]'
                   }`}
                 >
@@ -965,8 +1003,8 @@ export default function ShopKolHubPage() {
               </div>
             </div>
 
-            {/* KOL items list */}
-            <div className="flex-1 overflow-y-auto divide-y divide-[#EAE4D7]/60">
+            {/* KOL items list - Compact, High-Density Shopee/Slack Style */}
+            <div className="flex-1 overflow-y-auto divide-y divide-[#EAE4D7]/50">
               {filteredKols.length === 0 ? (
                 <div className="p-8 text-center text-[#7D715E] text-xs">
                   Không tìm thấy nhà sáng tạo nào phù hợp.
@@ -976,27 +1014,39 @@ export default function ShopKolHubPage() {
                   const isSelected = kol.id === selectedKol.id;
                   const kolSamples = samplesMap[kol.id] || [];
                   const pendingSamples = kolSamples.filter((s) => s.status === 'PENDING').length;
+                  const cleanHandle = kol.handle ? kol.handle.replace(/^@+/, '@') : kol.email;
 
                   return (
                     <div
                       key={kol.id}
                       onClick={() => handleSelectKol(kol.id)}
-                      className={`p-3.5 flex items-start gap-3 cursor-pointer transition relative group ${
+                      className={`px-3 py-2.5 flex items-center gap-2.5 cursor-pointer transition relative group ${
                         isSelected
-                          ? 'bg-[#FBF5EB] border-l-4 border-l-[#B88E4F]'
-                          : 'hover:bg-[#FAF8F5] border-l-4 border-l-transparent'
+                          ? 'bg-[#FBF5EB] border-l-[3px] border-l-[#C59B58]'
+                          : 'hover:bg-[#FAF8F5] border-l-[3px] border-l-transparent'
                       }`}
                     >
                       {/* Avatar */}
                       <div className="relative flex-shrink-0">
-                        <img
-                          src={kol.avatarUrl}
-                          alt={kol.fullName}
-                          className="w-11 h-11 rounded-full object-cover border border-[#EAE4D7]"
-                        />
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openKolProfile(kol.id);
+                          }}
+                          title={`Xem hồ sơ ${kol.fullName}`}
+                          aria-label={`Xem hồ sơ ${kol.fullName}`}
+                          className="rounded-lg border-0 bg-transparent p-0 cursor-pointer block"
+                        >
+                          <KolAvatar
+                            src={kol.avatarUrl}
+                            name={kol.fullName}
+                            className="w-9 h-9 rounded-lg border border-[#EAE4D7] text-xs object-cover"
+                          />
+                        </button>
                         {kol.kycStatus === 'VERIFIED' && (
                           <span
-                            className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#15803d] text-white flex items-center justify-center text-[9px]"
+                            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#059669] text-white flex items-center justify-center text-[8px] font-bold border border-white"
                             title="Đã xác minh KYC"
                           >
                             ✓
@@ -1004,51 +1054,45 @@ export default function ShopKolHubPage() {
                         )}
                       </div>
 
-                      {/* Info */}
+                      {/* Info - Clean 2-Row Compact Layout */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <h4
-                            className={`text-xs font-extrabold truncate ${
-                              isSelected ? 'text-[#B88E4F]' : 'text-[#1A1612]'
-                            }`}
-                          >
-                            {kol.fullName}
-                          </h4>
-                          <span className="text-[10px] font-bold text-[#7D715E] whitespace-nowrap">
+                        {/* Row 1: Name + Tier + Time */}
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <h4
+                              className={`text-xs font-bold truncate ${
+                                isSelected ? 'text-[#B88E4F]' : 'text-[#1A1612]'
+                              }`}
+                            >
+                              {kol.fullName}
+                            </h4>
+                            <span className="px-1 py-0.2 rounded text-[8px] font-black uppercase bg-[#FAF8F5] text-[#B88E4F] border border-[#EAE4D7] shrink-0">
+                              {kol.tier === 'DIAMOND' ? 'KC' : kol.tier === 'GOLD' ? 'Vàng' : 'Bạc'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-[#7D715E] shrink-0 font-medium">
                             {kol.lastMessageTime || 'Hôm nay'}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-[11px] text-[#7D715E] font-medium truncate">
-                            {kol.handle || kol.email}
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#FAF8F5] text-[#B88E4F] border border-[#EAE4D7]">
-                            {kol.tier === 'DIAMOND'
-                              ? '💎 Kim Cương'
-                              : kol.tier === 'GOLD'
-                              ? '🥇 Vàng'
-                              : '🥈 Bạc'}
-                          </span>
-                        </div>
+                        {/* Row 2: Message preview or Handle */}
+                        <p className="text-[11px] text-[#7D715E] truncate leading-tight mt-0.5">
+                          {kol.lastMessage || cleanHandle}
+                        </p>
 
-                        {kol.lastMessage && (
-                          <p className="text-[11px] text-[#7D715E] truncate mb-1 line-clamp-1 italic">
-                            "{kol.lastMessage}"
-                          </p>
-                        )}
-
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-[#7D715E]">
-                            Doanh số:{' '}
-                            <strong className="text-[#1A1612]">
-                              {(kol.stats.totalRevenue / 1000000).toFixed(1)}M
-                            </strong>
+                        {/* Row 3: Revenue & Pending sample chip */}
+                        <div className="flex items-center justify-between gap-1 mt-1 text-[10px] text-[#7D715E]">
+                          <span>
+                            DS: <strong className="text-[#1A1612] font-bold">{(kol.stats.totalRevenue / 1000000).toFixed(1)}M</strong>
                           </span>
 
-                          {pendingSamples > 0 && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                              {pendingSamples} đơn mẫu mới
+                          {pendingSamples > 0 ? (
+                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                              {pendingSamples} mẫu mới
+                            </span>
+                          ) : (
+                            <span className="text-[#B88E4F] font-semibold text-[9.5px]">
+                              VIP {kol.commissionRate || 20}%
                             </span>
                           )}
                         </div>
@@ -1060,11 +1104,11 @@ export default function ShopKolHubPage() {
             </div>
 
             {/* Quick footer invite CTA */}
-            <div className="p-3 border-t border-[#EAE4D7] bg-[#FAF8F5]">
+            <div className="p-2.5 border-t border-[#EAE4D7] bg-[#FAF8F5]">
               <button
                 type="button"
                 onClick={handleCopyInviteLink}
-                className="w-full py-2 px-3 rounded-xl bg-white border border-[#EAE4D7] hover:border-[#B88E4F] text-[11px] font-bold text-[#1A1612] flex items-center justify-center gap-1.5 transition cursor-pointer"
+                className="w-full py-1.5 px-3 rounded-lg bg-white border border-[#EAE4D7] hover:border-[#B88E4F] text-[11px] font-bold text-[#1A1612] flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
               >
                 {copiedLink ? (
                   <>
@@ -1083,179 +1127,211 @@ export default function ShopKolHubPage() {
 
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
           <div className="flex-1 flex flex-col min-w-0 bg-[#FAF8F5]/30">
-            {/* 1. Header of Selected KOL */}
-            <div className="p-4 sm:p-6 border-b border-[#EAE4D7] bg-white">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                {/* Left: KOL Info */}
-                <div className="flex items-start gap-4">
-                  <div className="relative flex-shrink-0">
-                    <img
+            {/* 1. Header of Selected KOL (Ultra-Compact Single-Row Shopee / TikTok Creator Style) */}
+            <div className="h-14 px-4 bg-white border-b border-[#EAE4D7] flex items-center justify-between gap-3 shrink-0">
+              {/* Left: Avatar + (Name & Badges on top) + (TikTok & Followers below) */}
+              <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openKolProfile(selectedKol.id)}
+                    title={`Xem hồ sơ ${selectedKol.fullName}`}
+                    aria-label={`Xem hồ sơ ${selectedKol.fullName}`}
+                    className="rounded-lg border border-[#E8D4B0] bg-gradient-to-br from-[#FAF0DD] to-[#F3EFE6] p-0.5 cursor-pointer shadow-2xs transition hover:scale-105"
+                  >
+                    <KolAvatar
                       src={selectedKol.avatarUrl}
-                      alt={selectedKol.fullName}
-                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border border-[#EAE4D7] shadow-xs"
+                      name={selectedKol.fullName}
+                      className="w-9 h-9 rounded-md object-cover text-xs font-black text-[#8C6226]"
                     />
-                    <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-[#EBD08C] text-white">
-                      {selectedKol.tier}
+                  </button>
+                  <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-2xs border border-white">
+                    {selectedKol.tier === 'DIAMOND'
+                      ? 'KC'
+                      : selectedKol.tier === 'GOLD'
+                      ? 'Vàng'
+                      : selectedKol.tier === 'SILVER'
+                      ? 'Bạc'
+                      : 'Đồng'}
+                  </span>
+                </div>
+
+                <div className="min-w-0 flex flex-col justify-center gap-0.5">
+                  {/* Row 1: Full Name + Badges */}
+                  <div className="flex items-center gap-2 flex-nowrap overflow-hidden">
+                    <h2
+                      onClick={() => openKolProfile(selectedKol.id)}
+                      className="text-sm font-black text-[#1A1612] tracking-tight truncate max-w-[200px] sm:max-w-[280px] cursor-pointer hover:text-[#B88E4F] transition-colors shrink-0"
+                      title={selectedKol.fullName}
+                    >
+                      {selectedKol.fullName}
+                    </h2>
+
+                    {selectedKol.kycStatus === 'VERIFIED' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] shrink-0 whitespace-nowrap">
+                        <CheckCircle2 className="w-3 h-3 text-[#059669]" />
+                        <span>Đã xác thực</span>
+                      </span>
+                    )}
+
+                    <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-extrabold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap">
+                      <Sparkles className="w-2.5 h-2.5 text-[#B88E4F]" />
+                      <span>VIP: {selectedKol.commissionRate || 20}%</span>
                     </span>
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-base sm:text-lg font-extrabold text-[#1A1612]">
-                        {selectedKol.fullName}
-                      </h2>
-                      {selectedKol.kycStatus === 'VERIFIED' && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" /> Đã xác thực KYC
+                  {/* Row 2: TikTok Handle & Followers Count (Clear, no clipping or overlapping behind buttons!) */}
+                  {selectedKol.handle && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E] truncate">
+                      <span>TikTok: <strong className="text-[#1A1612] font-semibold">{selectedKol.handle.replace(/^@+/, '@')}</strong></span>
+                      {selectedKol.primaryChannel?.followers && (
+                        <span>
+                          • {selectedKol.primaryChannel.followers >= 1000
+                            ? `${(selectedKol.primaryChannel.followers / 1000).toLocaleString('vi-VN')}K`
+                            : selectedKol.primaryChannel.followers}{' '}
+                          người theo dõi
                         </span>
                       )}
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                        Hoa hồng VIP: {selectedKol.commissionRate || 20}%
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-xs text-[#7D715E] mt-1 flex-wrap">
-                      {selectedKol.handle && (
-                        <span className="font-semibold text-[#1A1612]">TikTok: {selectedKol.handle}</span>
+                      {selectedKol.primaryChannel?.engagementRate && (
+                        <span className="text-[#059669] font-medium hidden lg:inline">
+                          • Tương tác: {selectedKol.primaryChannel.engagementRate}
+                        </span>
                       )}
-                      <span>Email: {selectedKol.email}</span>
-                      {selectedKol.phone && <span>SĐT: {selectedKol.phone}</span>}
                     </div>
-
-                    {selectedKol.primaryChannel && (
-                      <div className="flex items-center gap-3 text-xs mt-1.5">
-                        <span className="text-[#7D715E]">
-                          Người theo dõi:{' '}
-                          <strong className="text-[#1A1612]">
-                            {selectedKol.primaryChannel.followers.toLocaleString('vi-VN')}
-                          </strong>
-                        </span>
-                        <span className="text-[#7D715E]">
-                          Tương tác trung bình:{' '}
-                          <strong className="text-[#1A1612]">
-                            {selectedKol.primaryChannel.engagementRate}
-                          </strong>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Quick Action Buttons */}
-                <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewCommissionRate(selectedKol.commissionRate || 22);
-                      setShowCommissionModal(true);
-                    }}
-                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FBF5EB] text-[#B88E4F] hover:bg-[#F3EFE6] border border-[#EAE4D7] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <DollarSign className="w-3.5 h-3.5" />
-                    Cấp Hoa Hồng VIP
-                  </button>
-
-                  {selectedKol.primaryChannel?.url && (
-                    <a
-                      href={selectedKol.primaryChannel.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-[#1A1612] hover:bg-[#FAF8F5] border border-[#EAE4D7] transition flex items-center gap-1.5 shadow-xs"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-[#7D715E]" />
-                      Xem Kênh MXH
-                    </a>
                   )}
                 </div>
               </div>
 
-              {/* Quick KPI stats row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[#EAE4D7]/60">
-                <div className="bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7]">
-                  <div className="text-[11px] text-[#7D715E] font-medium">Doanh thu mang lại</div>
-                  <div className="text-sm font-extrabold text-[#1A1612] mt-0.5">
-                    {selectedKol.stats.totalRevenue.toLocaleString('vi-VN')} ₫
-                  </div>
-                </div>
-                <div className="bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7]">
-                  <div className="text-[11px] text-[#7D715E] font-medium">Đơn hàng affiliate</div>
-                  <div className="text-sm font-extrabold text-[#1A1612] mt-0.5">
-                    {selectedKol.stats.totalOrders} đơn chốt
-                  </div>
-                </div>
-                <div className="bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7]">
-                  <div className="text-[11px] text-[#7D715E] font-medium">Đơn hàng mẫu</div>
-                  <div className="text-sm font-extrabold text-[#1A1612] mt-0.5">
-                    {selectedKol.stats.sampleRequestsCount} yêu cầu
-                  </div>
-                </div>
-                <div className="bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7]">
-                  <div className="text-[11px] text-[#7D715E] font-medium">Video review hoàn thành</div>
-                  <div className="text-sm font-extrabold text-[#1A1612] mt-0.5">
-                    {selectedKol.stats.completedVideosCount} video lên bài
-                  </div>
-                </div>
+              {/* Right: Quick Action Buttons & Discovery CTAs */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {/* 1. Nút AI Tìm Kiếm KOL Mới */}
+                <button
+                  type="button"
+                  id="btn-toggle-ai-mode"
+                  onClick={() => {
+                    const nextMode = !isAiMatchingMode;
+                    setIsAiMatchingMode(nextMode);
+                    setSearchParams(
+                      nextMode ? { mode: 'ai-matching' } : { kol: selectedKolId, tab: activeTab },
+                      { replace: true }
+                    );
+                  }}
+                  className="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs bg-[#FBF5EB] text-[#B88E4F] hover:bg-[#F3EFE6] border border-[#EEDFC6] active:scale-95 shrink-0 whitespace-nowrap"
+                  title="Sử dụng AI phân tích sản phẩm và tìm kiếm KOL phù hợp"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span className="hidden xl:inline">AI Tìm Kiếm KOL Mới</span>
+                  <span className="xl:hidden">AI Tìm KOL</span>
+                </button>
+
+                {/* 2. Nút Khám Phá & Mời KOL */}
+                <button
+                  type="button"
+                  id="btn-open-creator-directory"
+                  onClick={() => setShowDiscoveryModal(true)}
+                  className="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs bg-[#C59B58] text-white hover:bg-[#B88E4F] active:scale-95 shrink-0 whitespace-nowrap"
+                  title="Khám phá danh bạ và gửi lời mời đến KOL trên sàn"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span className="hidden xl:inline">Khám Phá & Mời KOL</span>
+                  <span className="xl:hidden">Khám Phá KOL</span>
+                </button>
               </div>
             </div>
 
-            {/* 2. Sub-Tabs Header */}
-            <div className="px-4 sm:px-6 bg-white border-b border-[#EAE4D7] flex items-center justify-between overflow-x-auto no-scrollbar">
-              <div className="flex items-center gap-2">
+            {/* 2. Sub-Tabs Header (Compact Shopee / Lazada Style) */}
+            <div className="h-10 px-4 bg-[#FAF8F5] border-b border-[#EAE4D7] flex items-center justify-between overflow-x-auto no-scrollbar shrink-0">
+              <div className="flex items-center h-full gap-1 sm:gap-2">
                 <button
                   type="button"
                   id="tab-btn-messages"
                   onClick={() => handleTabChange('messages')}
-                  className={`py-3.5 px-3 text-xs font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     activeTab === 'messages'
-                      ? 'border-[#B88E4F] text-[#B88E4F]'
+                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
                       : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
                   }`}
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  Trao đổi tin nhắn
+                  <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Trao đổi tin nhắn</span>
                 </button>
 
                 <button
                   type="button"
                   id="tab-btn-samples"
                   onClick={() => handleTabChange('samples')}
-                  className={`py-3.5 px-3 text-xs font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     activeTab === 'samples'
-                      ? 'border-[#B88E4F] text-[#B88E4F]'
+                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
                       : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
                   }`}
                 >
-                  <Package className="w-4 h-4" />
-                  Duyệt hàng mẫu ({currentKolSamples.length})
+                  <Package className={`w-3.5 h-3.5 ${activeTab === 'samples' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Duyệt hàng mẫu</span>
+                  {currentKolSamples.length > 0 && (
+                    <span className="min-w-4 h-4 px-1 rounded-full text-[10px] font-black bg-[#C59B58] text-white inline-flex items-center justify-center shadow-2xs">
+                      {currentKolSamples.length}
+                    </span>
+                  )}
                 </button>
 
                 <button
                   type="button"
                   id="tab-btn-performance"
                   onClick={() => handleTabChange('performance')}
-                  className={`py-3.5 px-3 text-xs font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     activeTab === 'performance'
-                      ? 'border-[#B88E4F] text-[#B88E4F]'
+                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
                       : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
                   }`}
                 >
-                  <BarChart3 className="w-4 h-4" />
-                  Hiệu suất doanh số
+                  <BarChart3 className={`w-3.5 h-3.5 ${activeTab === 'performance' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Hiệu suất doanh số</span>
                 </button>
 
                 <button
                   type="button"
                   id="tab-btn-profile"
                   onClick={() => handleTabChange('profile')}
-                  className={`py-3.5 px-3 text-xs font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     activeTab === 'profile'
-                      ? 'border-[#B88E4F] text-[#B88E4F]'
+                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
                       : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
                   }`}
                 >
-                  <UserCheck className="w-4 h-4" />
-                  Hồ sơ & Mạng xã hội
+                  <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Hồ sơ & Mạng xã hội</span>
                 </button>
+              </div>
+
+              {/* Right: Nút Cấp VIP & Kênh MXH (Đem từ Ảnh 1 xuống theo yêu cầu) */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+                <button
+                  type="button"
+                  id="btn-quick-cap-vip"
+                  onClick={() => {
+                    setNewCommissionRate(selectedKol.commissionRate || 22);
+                    setShowCommissionModal(true);
+                  }}
+                  className="px-2.5 py-1 rounded-md text-xs font-bold bg-white hover:bg-[#F3EFE6] text-[#1A1612] border border-[#EAE4D7] transition flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 shrink-0 whitespace-nowrap"
+                  title="Cấp mức hoa hồng độc quyền VIP cho KOL này"
+                >
+                  <DollarSign className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Cấp VIP</span>
+                </button>
+
+                {selectedKol.primaryChannel?.url && (
+                  <a
+                    href={selectedKol.primaryChannel.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 rounded-md text-xs font-bold bg-white text-[#1A1612] hover:bg-[#FAF8F5] border border-[#EAE4D7] transition flex items-center gap-1 shadow-2xs cursor-pointer shrink-0 whitespace-nowrap"
+                    title="Mở kênh TikTok / YouTube của KOL"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-[#7D715E]" />
+                    <span>Kênh MXH</span>
+                  </a>
+                )}
               </div>
             </div>
 
@@ -1263,16 +1339,18 @@ export default function ShopKolHubPage() {
             <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
               {/* TAB 1: MESSAGES (Full height seamless embedded ChatBox) */}
               {activeTab === 'messages' && (
-                <div className="h-full w-full overflow-hidden animate-in fade-in-50 duration-200">
-                  <ChatBoxPage
-                    embedded
-                    targetCollaboratorId={selectedKol.id}
-                    targetCollaboratorName={selectedKol.fullName}
-                    targetCollaboratorAvatar={selectedKol.avatarUrl}
-                    hideSidebar
-                    hideHeaderInChat
-                    className="h-full w-full border-0 rounded-none shadow-none bg-white"
-                  />
+                <div className="h-full min-h-0 w-full overflow-hidden animate-in fade-in-50 duration-200">
+                  <div className="h-full min-h-0 overflow-hidden">
+                    <ChatBoxPage
+                      embedded
+                      targetCollaboratorId={selectedKol.id}
+                      targetCollaboratorName={selectedKol.fullName}
+                      targetCollaboratorAvatar={selectedKol.avatarUrl}
+                      hideSidebar
+                      hideHeaderInChat
+                      className="h-full w-full border-0 rounded-none shadow-none bg-white"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -1312,7 +1390,7 @@ export default function ShopKolHubPage() {
                         onClick={() => setSampleFilter('SHIPPED')}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                           sampleFilter === 'SHIPPED'
-                            ? 'bg-blue-600 text-white shadow-xs'
+                            ? 'bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6] shadow-xs'
                             : 'bg-white text-blue-800 border border-blue-200 hover:bg-blue-50'
                         }`}
                       >
@@ -1323,7 +1401,7 @@ export default function ShopKolHubPage() {
                         onClick={() => setSampleFilter('COMPLETED')}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                           sampleFilter === 'COMPLETED'
-                            ? 'bg-emerald-600 text-white shadow-xs'
+                            ? 'bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6] shadow-xs'
                             : 'bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50'
                         }`}
                       >
@@ -1559,9 +1637,9 @@ export default function ShopKolHubPage() {
                               <td className="p-3.5 font-bold text-[#B88E4F]">
                                 +{ord.commissionEarned.toLocaleString('vi-VN')} ₫
                               </td>
-                              <td className="p-3.5">
+                              <td className="p-3.5 whitespace-nowrap">
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  className={`inline-flex items-center whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                                     ord.status === 'DELIVERED'
                                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                       : ord.status === 'SHIPPING'
@@ -1686,7 +1764,7 @@ export default function ShopKolHubPage() {
                         ) : (
                           <div className="p-4 rounded-2xl border border-[#EAE4D7] bg-[#FBF5EB]/50 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-[#1A1612] text-white flex items-center justify-center font-bold text-xs">
+                              <div className="w-10 h-10 rounded-xl bg-[#F3EFE6] text-[#8F682E] flex items-center justify-center font-bold text-xs">
                                 TK
                               </div>
                               <div>
@@ -2080,9 +2158,9 @@ export default function ShopKolHubPage() {
                                   {creator.fullName}
                                 </h4>
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                                  {profile.tier === 'DIAMOND'
+                                  {normalizePartnerTier(profile.tier) === 'DIAMOND'
                                     ? '💎 Kim Cương'
-                                    : profile.tier === 'GOLD'
+                                    : normalizePartnerTier(profile.tier) === 'GOLD'
                                     ? '🥇 Vàng'
                                     : '🥈 Bạc'}
                                 </span>

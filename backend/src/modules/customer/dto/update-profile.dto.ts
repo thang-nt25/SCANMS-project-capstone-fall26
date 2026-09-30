@@ -13,4 +13,9 @@ export class UpdateCustomerProfileDto {
   @IsString()
   @MaxLength(20)
   phoneNumber?: string;
+
+  @ApiPropertyOptional({ example: 'https://res.cloudinary.com/.../avatar.jpg' })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
 }

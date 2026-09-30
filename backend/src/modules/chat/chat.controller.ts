@@ -10,18 +10,24 @@ import {
   Query,
   ParseIntPipe,
   DefaultValuePipe,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ChatService } from './chat.service';
 import { CreateConversationDto } from './dto/send-message.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { MAX_CHAT_ATTACHMENT_BYTES } from './chat-attachment.utils';
 
 @ApiTags('Chat')
 @ApiBearerAuth('JWT-auth')
@@ -40,6 +46,31 @@ export class ChatController {
   @ApiOperation({ summary: 'Lấy danh sách hội thoại của user hiện tại' })
   getMyConversations(@CurrentUser() user: any) {
     return this.chatService.getConversationsByUser(user.id);
+  }
+
+  @Post('conversations/:conversationId/attachments')
+  @ApiOperation({ summary: 'Tải ảnh, video hoặc tài liệu lên hội thoại chat' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_CHAT_ATTACHMENT_BYTES },
+    }),
+  )
+  uploadAttachment(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.chatService.uploadAttachment(conversationId, userId, file);
   }
 
   @Get('conversations/:conversationId/messages')
