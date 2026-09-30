@@ -27,7 +27,7 @@ export default function SamplesPage() {
       channel: 'TikTok (@nhat_skincare) • 128K Followers',
       format: 'Video review 9:16 (Routine buổi sáng, 45 giây)',
       deadline: '15/09/2026',
-      image: '/assets/serum-hero-optimized.jpg',
+      image: '/assets/products/real/vitamin-c-15-serum.jpg',
     },
     {
       id: 'SMP-9810',
@@ -38,7 +38,7 @@ export default function SamplesPage() {
       statusLabel: 'Chờ Shop duyệt',
       statusColor: '#B88E4F',
       date: '05/09/2026',
-      image: '/assets/sunscreen-product.jpg',
+      image: '/assets/products/real/spf50-oil-control.jpg',
     },
     {
       id: 'SMP-9795',
@@ -49,7 +49,7 @@ export default function SamplesPage() {
       statusLabel: 'Đã nhận hàng',
       statusColor: '#15803d',
       date: '20/08/2026',
-      image: '/assets/toner-bha-product.jpg',
+      image: '/assets/products/real/bha-toner-2pct.png',
     },
     {
       id: 'SMP-9780',
@@ -60,7 +60,7 @@ export default function SamplesPage() {
       statusLabel: 'Shop đã duyệt',
       statusColor: '#2563EB',
       date: '06/09/2026',
-      image: '/assets/cica-mask-product.jpg',
+      image: '/assets/products/real/centella-sheet-mask.jpg',
     },
     {
       id: 'SMP-9755',
@@ -71,7 +71,7 @@ export default function SamplesPage() {
       statusLabel: 'Từ chối duyệt',
       statusColor: '#991B1B',
       date: '15/08/2026',
-      image: '/assets/cleanser-product.jpg',
+      image: '/assets/products/real/amino-cleanser-ph55.jpg',
     },
   ];
 
@@ -86,15 +86,7 @@ export default function SamplesPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {toastMsg && <div className="toast show">{toastMsg}</div>}
 
-      <header className="page-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-        <div>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 4px', color: 'var(--ink)' }}>
-            Hàng mẫu dùng thử
-          </h1>
-          <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--muted)' }}>
-            Gửi yêu cầu nhận mẫu và theo dõi quá trình giao hàng.
-          </p>
-        </div>
+      <header className="page-head" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button

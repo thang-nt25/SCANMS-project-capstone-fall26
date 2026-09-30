@@ -48,6 +48,9 @@ export class LandingStoreDto {
   @ApiProperty({ example: 'sora-skin', description: 'Slug định danh gian hàng' })
   slug: string;
 
+  @ApiPropertyOptional({ example: 'https://cdn.scanms.vn/logos/shop.jpg', description: 'Logo của gian hàng' })
+  logoUrl?: string | null;
+
   @ApiProperty({ example: true, description: 'Trạng thái xác minh gian hàng chính hãng' })
   isVerified: boolean;
 }

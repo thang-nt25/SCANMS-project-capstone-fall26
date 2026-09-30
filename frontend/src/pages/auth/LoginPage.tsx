@@ -289,12 +289,20 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Google Button */}
-            <div className="w-full">
+            {/* Social sign-in options */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <GoogleOfficialButton
                 onSuccess={onGoogleTokenSuccess}
                 onError={(err) => setError(err)}
               />
+              <button
+                type="button"
+                onClick={() => toast.info('Cổng đăng nhập TikTok Open API đang chuẩn bị tích hợp.')}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
+              >
+                <span className="font-extrabold text-sm" aria-hidden="true">🎵</span>
+                <span>TikTok Shop</span>
+              </button>
             </div>
 
             {/* Divider */}

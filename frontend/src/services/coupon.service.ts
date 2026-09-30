@@ -13,6 +13,21 @@ export type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT';
 export type CouponScope = 'STORE_WIDE' | 'PRODUCTS' | 'CATEGORIES' | 'CAMPAIGN';
 export type CouponFundingSource = 'SHOP_FUNDED' | 'CO_FUNDED' | 'PLATFORM_FUNDED';
 
+export interface PublicStoreCoupon {
+  id: string;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  minimumOrderAmount: number | null;
+  maximumDiscountAmount: number | null;
+  remainingUses: number | null;
+  expiresAt: string | null;
+  scopeType: CouponScope;
+  products: Array<{ id: string; title: string }>;
+  categories: string[];
+  storeName: string;
+}
+
 export interface CouponItem {
   id: string;
   codeNormalized: string;
@@ -140,6 +155,13 @@ export interface CouponFilterParams {
 }
 
 export const couponService = {
+
+  getPublicStoreCoupons: async (storeId: string): Promise<PublicStoreCoupon[]> => {
+    const res: any = await api.get(`/coupons/stores/${storeId}/available`);
+    const payload = res?.data?.data ?? res?.data ?? res;
+    if (Array.isArray(payload)) return payload;
+    return Array.isArray(payload?.items) ? payload.items : [];
+  },
 
 
 

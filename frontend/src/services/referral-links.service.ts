@@ -97,6 +97,8 @@ export interface ExclusiveDealProposal {
   conversationId: string;
   proposedCommissionRate: number;
   approvedCommissionRate?: number | null;
+  currentCommissionRate?: number | null;
+  isCurrentDeal?: boolean;
   salesCommitment: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   shopResponse?: string | null;

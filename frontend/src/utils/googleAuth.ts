@@ -1,5 +1,3 @@
-import { toast } from './toast';
-
 declare global {
   interface Window {
     google?: any;
@@ -8,10 +6,107 @@ declare global {
 
 let isGoogleInitialized = false;
 let activeClientId: string | null = null;
+let activeSuccessHandler: ((idToken: string) => void) | null = null;
+let activeErrorHandler: ((errorMsg: string) => void) | null = null;
 
 const DEFAULT_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID ||
   '1028788240521-ujoshj82g60v811p5fkqv3hh4iirqbt3.apps.googleusercontent.com';
+const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services-sdk';
+const GOOGLE_IDENTITY_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
+let googleIdentityScriptPromise: Promise<void> | null = null;
+
+export function loadGoogleIdentityScript(forceReload = false) {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Trình duyệt không khả dụng'));
+  if (window.google?.accounts?.id && !forceReload) return Promise.resolve();
+
+  if (forceReload) {
+    document.getElementById(GOOGLE_IDENTITY_SCRIPT_ID)?.remove();
+    googleIdentityScriptPromise = null;
+    isGoogleInitialized = false;
+    activeClientId = null;
+  }
+
+  if (googleIdentityScriptPromise) return googleIdentityScriptPromise;
+
+  googleIdentityScriptPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.getElementById(GOOGLE_IDENTITY_SCRIPT_ID) as HTMLScriptElement | null;
+    const script = existingScript || document.createElement('script');
+    let timeoutId = 0;
+
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      script.removeEventListener('load', handleLoad);
+      script.removeEventListener('error', handleError);
+    };
+    const handleLoad = () => {
+      cleanup();
+      if (window.google?.accounts?.id) {
+        resolve();
+      } else {
+        googleIdentityScriptPromise = null;
+        reject(new Error('Google Identity SDK không khởi tạo được'));
+      }
+    };
+    const handleError = () => {
+      cleanup();
+      googleIdentityScriptPromise = null;
+      reject(new Error('Không tải được Google Identity SDK'));
+    };
+
+    script.addEventListener('load', handleLoad, { once: true });
+    script.addEventListener('error', handleError, { once: true });
+
+    if (!existingScript) {
+      script.id = GOOGLE_IDENTITY_SCRIPT_ID;
+      script.src = GOOGLE_IDENTITY_SCRIPT_URL;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    timeoutId = window.setTimeout(handleError, 12000);
+  });
+
+  return googleIdentityScriptPromise;
+}
+
+export async function requestGoogleAccessToken(
+  onSuccess: (accessToken: string) => void,
+  onError?: (message: string) => void,
+  onCancel?: () => void,
+) {
+  try {
+    await loadGoogleIdentityScript();
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: DEFAULT_CLIENT_ID,
+      scope: 'openid email profile',
+      callback: (response: { access_token?: string; error?: string }) => {
+        if (response?.access_token) {
+          onSuccess(response.access_token);
+          return;
+        }
+        if (response?.error === 'access_denied') {
+          onCancel?.();
+          return;
+        }
+        onError?.(`Đăng nhập Google thất bại: ${response?.error || 'không nhận được Access Token'}`);
+      },
+      error_callback: (error: { type?: string }) => {
+        if (error?.type === 'popup_closed') {
+          onCancel?.();
+        } else if (error?.type === 'popup_blocked_by_browser') {
+          onError?.('Trình duyệt đang chặn cửa sổ Google. Vui lòng cho phép popup rồi thử lại.');
+        } else {
+          onError?.('Không thể mở cửa sổ đăng nhập Google. Vui lòng thử lại.');
+        }
+      },
+    });
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
+  } catch {
+    onError?.('Không tải được Google Identity. Hãy kiểm tra mạng hoặc tắt tiện ích chặn quảng cáo rồi thử lại.');
+  }
+}
 
 /**
  * Khởi tạo Google Identity Services (dành cho ID Token & renderButton)
@@ -21,6 +116,9 @@ export function initGoogleIdentity(
   onError?: (errorMsg: string) => void,
 ) {
   if (typeof window === 'undefined') return false;
+
+  activeSuccessHandler = onSuccess;
+  activeErrorHandler = onError || null;
 
   if (!window.google?.accounts?.id) {
     return false;
@@ -32,9 +130,9 @@ export function initGoogleIdentity(
         client_id: DEFAULT_CLIENT_ID,
         callback: (response: { credential?: string }) => {
           if (response?.credential) {
-            onSuccess(response.credential);
+            activeSuccessHandler?.(response.credential);
           } else {
-            onError?.('Không nhận được mã xác thực (credential) từ Google.');
+            activeErrorHandler?.('Không nhận được mã xác thực (credential) từ Google.');
           }
         },
         auto_select: false,
@@ -58,6 +156,10 @@ export function renderGoogleButton(
   container: HTMLElement,
   onSuccess: (idToken: string) => void,
   onError?: (errorMsg: string) => void,
+  options?: {
+    width?: number;
+    text?: 'signin_with' | 'signup_with' | 'continue_with';
+  },
 ) {
   const initialized = initGoogleIdentity(onSuccess, onError);
   if (!initialized || !container) return false;
@@ -69,111 +171,13 @@ export function renderGoogleButton(
       size: 'large',
       type: 'standard',
       shape: 'pill',
-      text: 'continue_with',
+      text: options?.text || 'continue_with',
       logo_alignment: 'left',
-      width: '100%',
+      width: Math.min(400, Math.max(200, Math.floor(options?.width || 200))),
     });
     return true;
   } catch (err) {
     console.warn('Không thể render nút Google Sign-In:', err);
     return false;
   }
-}
-
-/**
- * Kích hoạt popup đăng nhập Google (Hỗ trợ chuẩn OAuth2 Popup & One Tap fallback)
- */
-export function triggerGoogleSignIn(
-  onSuccess: (token: string) => void,
-  onError?: (errorMsg: string) => void,
-  onCancel?: () => void,
-) {
-  if (typeof window === 'undefined') return;
-
-  // 1. ƯU TIÊN HÀNG ĐẦU: Sử dụng Google OAuth2 Token Client (Mở cửa sổ Popup chuẩn chọn tài khoản Gmail)
-  if (window.google?.accounts?.oauth2) {
-    try {
-      const tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: DEFAULT_CLIENT_ID,
-        scope: 'email profile openid',
-        callback: (response: any) => {
-          if (response?.error) {
-            if (response.error === 'access_denied') {
-              console.log('Người dùng bấm Hủy hoặc đóng Popup chọn tài khoản Google');
-              onCancel?.();
-            } else {
-              onError?.(`Đăng nhập Google thất bại: ${response.error}`);
-            }
-            return;
-          }
-          if (response?.access_token) {
-            onSuccess(response.access_token);
-          } else {
-            onError?.('Không nhận được mã truy cập từ Google.');
-          }
-        },
-        error_callback: (err: any) => {
-          console.warn('Sự kiện cửa sổ Google OAuth Popup:', err);
-          if (err?.type === 'popup_closed') {
-            // Người dùng chủ động đóng popup Google -> Hủy nhẹ nhàng, không báo lỗi đỏ
-            onCancel?.();
-          } else if (err?.type === 'popup_blocked_by_browser') {
-            onError?.('Trình duyệt chặn cửa sổ popup. Vui lòng bật cho phép popup để đăng nhập Google.');
-          } else {
-            onCancel?.();
-          }
-        },
-      });
-
-      tokenClient.requestAccessToken({ prompt: 'select_account' });
-      return;
-    } catch (err: any) {
-      console.warn('Lỗi mở Google OAuth2 Token Client:', err);
-    }
-  }
-
-  // 2. Dự phòng: Google One Tap Prompt
-  if (window.google?.accounts?.id) {
-    const initialized = initGoogleIdentity(onSuccess, onError);
-    if (!initialized) return;
-
-    try {
-      window.google.accounts.id.prompt((notification: any) => {
-        if (notification.isNotDisplayed()) {
-          const reason = notification.getNotDisplayedReason?.() || 'unknown';
-          console.warn('Google prompt không hiển thị:', reason);
-          if (reason === 'suppressed_by_user' || reason === 'opt_out_or_no_session' || reason === 'cool_down_phase') {
-            onCancel?.();
-            return;
-          }
-          onError?.(
-            `Google Sign-In prompt không thể hiển thị (${reason}). Bạn có thể đăng ký trực tiếp bằng biểu mẫu.`
-          );
-        } else if (notification.isSkippedMoment() || notification.isDismissedMoment()) {
-          onCancel?.();
-        }
-      });
-      return;
-    } catch (err: any) {
-      console.error('Google One Tap error:', err);
-    }
-  }
-
-  // 3. Nếu script Google chưa load xong
-  const msg =
-    'Thư viện Google Identity Services đang tải hoặc bị chặn. Bạn có thể đăng ký trực tiếp bằng biểu mẫu.';
-  if (onError) onError(msg);
-  else toast.error(msg);
-}
-
-/**
- * Chế độ Dev Bypass: Giúp lập trình viên / Hội đồng kiểm thử nghiệm nhanh luồng Google
- * mà không bị chặn bởi Authorized JavaScript Origins của Google Cloud Console trên localhost.
- */
-export function devBypassGoogleSignIn(
-  onSuccess: (idToken: string) => void,
-  testEmail: string = 'customer.google@scanms.vn',
-) {
-  toast.info('Đang giả lập xác thực nhanh bằng tài khoản Google...');
-  onSuccess(`mock-google-token:${testEmail}`);
 }

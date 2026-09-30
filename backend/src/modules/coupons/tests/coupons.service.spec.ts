@@ -97,6 +97,61 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     jest.clearAllMocks();
   });
 
+  describe('Public store coupon list', () => {
+    it('returns only shareable fields and converts monetary values for customers', async () => {
+      mockPrisma.coupon.findMany.mockResolvedValue([
+        {
+          id: 'coupon-uuid-1',
+          displayCode: 'SORA15',
+          discountType: DiscountType.PERCENTAGE,
+          discountValue: new Prisma.Decimal(15),
+          minimumOrderAmount: new Prisma.Decimal(200000),
+          maximumDiscountAmount: new Prisma.Decimal(80000),
+          usageLimitTotal: 20,
+          usageCount: 3,
+          expiresAt: new Date('2026-12-31T00:00:00.000Z'),
+          scopeType: CouponScope.STORE_WIDE,
+          couponProducts: [],
+          couponCategories: [],
+          store: { name: 'Sora Skin' },
+        },
+        {
+          id: 'coupon-uuid-full',
+          usageLimitTotal: 2,
+          usageCount: 2,
+        },
+      ]);
+
+      const result = await service.getPublicStoreCoupons('store-uuid-1');
+
+      expect(result).toEqual([
+        {
+          id: 'coupon-uuid-1',
+          code: 'SORA15',
+          discountType: DiscountType.PERCENTAGE,
+          discountValue: 15,
+          minimumOrderAmount: 200000,
+          maximumDiscountAmount: 80000,
+          remainingUses: 17,
+          expiresAt: new Date('2026-12-31T00:00:00.000Z'),
+          scopeType: CouponScope.STORE_WIDE,
+          products: [],
+          categories: [],
+          storeName: 'Sora Skin',
+        },
+      ]);
+      expect(mockPrisma.coupon.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            storeId: 'store-uuid-1',
+            status: CouponStatus.ACTIVE,
+            deletedAt: null,
+          }),
+        }),
+      );
+    });
+  });
+
   describe('Section 8 & 9: normalizeAndValidateCode', () => {
     it('should trim and uppercase valid alphanumeric code', () => {
       expect(service.normalizeAndValidateCode('  thangvip10  ')).toBe(

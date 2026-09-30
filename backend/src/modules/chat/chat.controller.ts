@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   ParseUUIDPipe,
@@ -10,25 +11,39 @@ import {
   Query,
   ParseIntPipe,
   DefaultValuePipe,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ChatService } from './chat.service';
+import { ChatGateway } from './chat.gateway';
 import { CreateConversationDto } from './dto/send-message.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { MAX_CHAT_ATTACHMENT_BYTES } from './chat-attachment.utils';
 
 @ApiTags('Chat')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService, private readonly chatGateway: ChatGateway) {}
+
+  @Patch('conversations/:conversationId/read')
+  async markRead(@Param('conversationId', ParseUUIDPipe) conversationId: string, @CurrentUser() user: any) {
+    const result = await this.chatService.markRead(conversationId, user.id);
+    if (result.count) this.chatGateway.broadcastToConversation(conversationId, 'messages_read', { conversationId, readerId: user.id });
+    return result;
+  }
 
   @Post('conversations')
   @ApiOperation({ summary: 'Tạo hoặc lấy hội thoại giữa Shop và KOL' })
@@ -40,6 +55,31 @@ export class ChatController {
   @ApiOperation({ summary: 'Lấy danh sách hội thoại của user hiện tại' })
   getMyConversations(@CurrentUser() user: any) {
     return this.chatService.getConversationsByUser(user.id);
+  }
+
+  @Post('conversations/:conversationId/attachments')
+  @ApiOperation({ summary: 'Tải ảnh, video hoặc tài liệu lên hội thoại chat' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_CHAT_ATTACHMENT_BYTES },
+    }),
+  )
+  uploadAttachment(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.chatService.uploadAttachment(conversationId, userId, file);
   }
 
   @Get('conversations/:conversationId/messages')

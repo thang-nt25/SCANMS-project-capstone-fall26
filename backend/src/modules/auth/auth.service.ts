@@ -472,29 +472,17 @@ export class AuthService {
   ) {
     let payload: any;
 
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      dto.idToken &&
-      dto.idToken.startsWith('mock-google-token:')
-    ) {
-      const email = dto.idToken.split(':')[1] || 'customer.google@scanms.vn';
-      payload = {
-        email,
-        name: 'Khách Hàng Google (Xác Thực)',
-        picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&h=120&fit=crop',
-      };
-    } else if (dto.idToken && (dto.idToken.startsWith('ya29.') || !dto.idToken.includes('.'))) {
+    if (dto.idToken.startsWith('ya29.') || dto.idToken.split('.').length !== 3) {
       try {
-        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${dto.idToken}` },
         });
-        if (!userInfoRes.ok) {
-          throw new Error(`Google userinfo HTTP status ${userInfoRes.status}`);
-        }
-        payload = await userInfoRes.json();
+        if (!userInfoResponse.ok) throw new Error(`Google HTTP ${userInfoResponse.status}`);
+        payload = await userInfoResponse.json();
       } catch (err: any) {
+        this.logger.warn(`Google Access Token verification failed: ${err.message}`);
         throw new UnauthorizedException(
-          `Xác thực Google Access Token thất bại: ${err.message}`,
+          'Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.',
         );
       }
     } else {
@@ -505,24 +493,14 @@ export class AuthService {
         });
         payload = ticket.getPayload();
       } catch (err: any) {
-        try {
-          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${dto.idToken}` },
-          });
-          if (userInfoRes.ok) {
-            payload = await userInfoRes.json();
-          } else {
-            throw new Error(`Google status ${userInfoRes.status}`);
-          }
-        } catch {
-          throw new UnauthorizedException(
-            `Xác thực Google OAuth thất bại: ${err.message}`,
-          );
-        }
+        this.logger.warn(`Google ID Token verification failed: ${err.message}`);
+        throw new UnauthorizedException(
+          'Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.',
+        );
       }
     }
 
-    if (!payload || !payload.email) {
+    if (!payload || !payload.email || payload.email_verified === false) {
       throw new BadRequestException('Thông tin tài khoản Google không hợp lệ');
     }
 
@@ -739,7 +717,57 @@ export class AuthService {
     const { passwordHash: _, ...safeUser } = user;
     return {
       ...safeUser,
+      avatarUrl: user.avatarUrl || user.collaboratorProfile?.avatarUrl || null,
       storeId: user.stores?.[0]?.id || null,
+    };
+  }
+
+  /**
+   * Cập nhật ảnh đại diện (Avatar) cho mọi vai trò (User, KOL, Shop, Admin)
+   */
+  async updateAvatar(userId: string, avatarUrl: string) {
+    if (!userId) {
+      throw new UnauthorizedException('Không tìm thấy định danh người dùng');
+    }
+    const cleanUrl = avatarUrl?.trim();
+    if (!cleanUrl) {
+      throw new BadRequestException('Đường dẫn ảnh đại diện không hợp lệ');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { collaboratorProfile: true },
+    });
+
+    if (!user || user.isDeleted || !user.isActive) {
+      throw new NotFoundException('Không tìm thấy tài khoản người dùng');
+    }
+
+    // 1. Cập nhật avatar_url trực tiếp trên User table
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: cleanUrl },
+    });
+
+    // 2. Nếu là KOL / CTV, đồng bộ luôn sang collaborator_profiles.avatar_url
+    if (user.collaboratorProfile) {
+      await this.prisma.collaboratorProfile.update({
+        where: { userId },
+        data: { avatarUrl: cleanUrl },
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Cập nhật ảnh đại diện thành công',
+      avatarUrl: cleanUrl,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        role: updatedUser.role,
+        avatarUrl: cleanUrl,
+      },
     };
   }
 

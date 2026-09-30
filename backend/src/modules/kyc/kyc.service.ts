@@ -64,6 +64,12 @@ export class KycService {
       ...existingMeta,
       ...(dto.frontCardUrl ? { frontCardUrl: dto.frontCardUrl } : {}),
       ...(dto.backCardUrl ? { backCardUrl: dto.backCardUrl } : {}),
+      ...(dto.channelProofUrl ? { channelProofUrl: dto.channelProofUrl } : {}),
+      ...(dto.platform ? { platform: dto.platform } : {}),
+      ...(dto.channelName ? { channelName: dto.channelName.trim() } : {}),
+      ...(dto.channelUrl ? { channelUrl: dto.channelUrl.trim() } : {}),
+      ...(dto.followerCount !== undefined ? { followerCount: Number(dto.followerCount) } : {}),
+      submittedAt: new Date().toISOString(),
     };
 
     if (!profile) {
@@ -77,10 +83,12 @@ export class KycService {
           bankAccountName: dto.bankAccountName.trim().toUpperCase(),
           bio: dto.bio?.trim() || null,
           socialLinksJson: updatedMeta,
+          totalFollowers: dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
           kycStatus: KycStatus.UNVERIFIED,
         },
       });
     } else {
+      const targetStatus = profile.kycStatus === KycStatus.VERIFIED ? KycStatus.VERIFIED : KycStatus.UNVERIFIED;
       profile = await this.prisma.collaboratorProfile.update({
         where: { userId },
         data: {
@@ -91,9 +99,41 @@ export class KycService {
           bankAccountName: dto.bankAccountName.trim().toUpperCase(),
           bio: dto.bio?.trim(),
           socialLinksJson: updatedMeta,
-          kycStatus: KycStatus.UNVERIFIED,
+          ...(dto.followerCount !== undefined ? { totalFollowers: Number(dto.followerCount) } : {}),
+          kycStatus: targetStatus,
         },
       });
+    }
+
+    // Tự động đồng bộ vào danh mục Kênh Mạng Xã Hội (FR-07)
+    if (dto.platform && dto.channelUrl) {
+      const platformEnum = dto.platform as SocialPlatform;
+      const existingChannel = await this.prisma.collaboratorSocialChannel.findFirst({
+        where: { collaboratorId: userId, platformName: platformEnum },
+      });
+
+      if (existingChannel) {
+        await this.prisma.collaboratorSocialChannel.update({
+          where: { id: existingChannel.id },
+          data: {
+            channelName: dto.channelName?.trim() || existingChannel.channelName,
+            channelUrl: dto.channelUrl.trim(),
+            followerCount: dto.followerCount !== undefined ? Number(dto.followerCount) : existingChannel.followerCount,
+            isPrimary: true,
+          },
+        });
+      } else {
+        await this.prisma.collaboratorSocialChannel.create({
+          data: {
+            collaboratorId: userId,
+            platformName: platformEnum,
+            channelName: dto.channelName?.trim() || `${dto.platform} Creator`,
+            channelUrl: dto.channelUrl.trim(),
+            followerCount: dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
+            isPrimary: true,
+          },
+        });
+      }
     }
 
     return {
@@ -208,6 +248,12 @@ export class KycService {
     const legalDocs = {
       businessType: dto.businessType,
       taxCode: dto.taxCode.trim(),
+      bankName: dto.bankName.trim(),
+      bankAccountNumber: dto.bankAccountNumber.trim(),
+      bankAccountName: dto.bankAccountName.trim().toUpperCase(),
+      idCardNumber: dto.idCardNumber?.trim() || null,
+      frontCardUrl: dto.frontCardUrl || null,
+      backCardUrl: dto.backCardUrl || null,
       businessLicenseUrl: dto.businessLicenseUrl || null,
       brandAuthorizationUrl: dto.brandAuthorizationUrl || null,
       contactPhone: dto.contactPhone.trim(),

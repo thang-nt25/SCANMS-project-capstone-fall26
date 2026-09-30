@@ -26,6 +26,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
 import { toast } from '../../utils/toast';
+import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 
 export default function MediaHubBrowserPage() {
   const currentUser = authService.getCurrentUser();
@@ -204,7 +205,7 @@ export default function MediaHubBrowserPage() {
   return (
     <div className="flex flex-col gap-6 text-left">
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 bg-[#1A1612] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2">
+        <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 border border-[#EEDFC6]">
           <Sparkles className="w-4 h-4 text-[#B88E4F]" />
           <span>{toastMsg}</span>
         </div>
@@ -212,14 +213,7 @@ export default function MediaHubBrowserPage() {
 
 
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1612] tracking-tight m-0">
-            Kho nội dung bán hàng (Media Hub)
-          </h1>
-          <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0 max-w-3xl">
-            Tài nguyên hình ảnh, video review và kịch bản tiếp thị do các gian hàng đối tác cung cấp, sẵn sàng quảng bá trên mạng xã hội chỉ với 1 cú click.
-          </p>
-        </div>
+        <div className="flex-1" />
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {!isShopOrAdmin && (
@@ -451,8 +445,8 @@ export default function MediaHubBrowserPage() {
 
             const displayImage =
               isVideo || isText
-                ? '/assets/product-placeholder.svg'
-                : m.urlOrContent || '/assets/product-placeholder.svg';
+                ? 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop&q=80'
+                : getSafeProductImageUrl(m.urlOrContent, m.title);
 
             return (
               <Card
@@ -477,7 +471,11 @@ export default function MediaHubBrowserPage() {
                       alt={m.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       onError={(e) => {
-                        e.currentTarget.src = '/assets/product-placeholder.svg';
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (!target.dataset.hasFallback) {
+                          target.dataset.hasFallback = 'true';
+                          target.src = getSafeProductImageUrl(null, m.title);
+                        }
                       }}
                     />
                   )}
@@ -666,11 +664,15 @@ export default function MediaHubBrowserPage() {
                   </div>
                 ) : (
                   <img
-                    src={previewAsset.urlOrContent || '/assets/product-placeholder.svg'}
+                    src={getSafeProductImageUrl(previewAsset.urlOrContent, previewAsset.title)}
                     alt={previewAsset.title}
                     className="max-h-80 object-contain"
                     onError={(e) => {
-                      e.currentTarget.src = '/assets/product-placeholder.svg';
+                      const target = e.currentTarget as HTMLImageElement;
+                      if (!target.dataset.hasFallback) {
+                        target.dataset.hasFallback = 'true';
+                        target.src = getSafeProductImageUrl(null, previewAsset.title);
+                      }
                     }}
                   />
                 )}

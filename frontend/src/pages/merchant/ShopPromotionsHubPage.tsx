@@ -37,8 +37,7 @@ export default function ShopPromotionsHubPage() {
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}
-        title="Khuyến Mãi & Hoa Hồng"
-        subtitle="Quản lý chiến lược chiết khấu tiếp thị: phát hành mã giảm giá, thiết lập chính sách hoa hồng lũy tiến và giám sát link tiếp thị"
+        compact
       />
 
       <div className="w-full min-h-[500px]">

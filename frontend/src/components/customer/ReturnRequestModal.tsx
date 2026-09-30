@@ -25,9 +25,9 @@ export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const daysLeft = useMemo(() => {
-    const anchor = new Date(order.completedAt || order.updatedAt).getTime();
+    const anchor = new Date(order.deliveredAt || order.completedAt || 0).getTime();
     return Math.max(0, Math.ceil((anchor + 14 * 24 * 60 * 60 * 1000 - Date.now()) / 86400000));
-  }, [order.completedAt, order.updatedAt]);
+  }, [order.deliveredAt, order.completedAt]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

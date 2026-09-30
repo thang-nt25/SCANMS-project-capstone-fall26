@@ -54,5 +54,32 @@ describe('ProfanityFilter (FR-25)', () => {
       expect(checkProfanity('Sản phẩm dung tích 50 cc').isProfane).toBe(false);
       expect(checkProfanity('Gửi kèm 100 cc dung dịch').isProfane).toBe(false);
     });
+
+    it('should allow a verified product card with a high product price but still check its note', () => {
+      const productCard = JSON.stringify({
+        type: 'PRODUCT_INQUIRY',
+        productTitle: 'Thiết bị gia dụng',
+        productPrice: 125000000,
+        message: 'Mình muốn hỏi thêm về sản phẩm này.',
+      });
+      expect(checkProfanity(productCard).isProfane).toBe(false);
+      expect(
+        checkProfanity(
+          JSON.stringify({ ...JSON.parse(productCard), message: 'Địt mẹ mày' }),
+        ).isProfane,
+      ).toBe(true);
+    });
+
+    it('should allow a verified coupon card whose code or amount contains digits', () => {
+      expect(
+        checkProfanity(
+          JSON.stringify({
+            type: 'COUPON_VOUCHER',
+            couponCode: 'SAVE12000000',
+            discountValue: 12000000,
+          }),
+        ).isProfane,
+      ).toBe(false);
+    });
   });
 });

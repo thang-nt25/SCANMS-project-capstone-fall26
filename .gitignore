@@ -63,6 +63,7 @@ dump.rdb
 *.tmp
 *.bak
 scratch/
+artifacts/
 .dev-runtime/
 /idea project/
 # Large reference docx files (>100MB)

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Trophy,
   Plus,
   Edit2,
   Trash2,
@@ -444,48 +443,29 @@ export const CommissionRulesPage: React.FC = () => {
         }
       `}</style>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ background: '#ECE1CD', border: '1.5px solid #DEBE85', padding: '12px 14px', borderRadius: 14, color: '#B88E4F', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(201, 163, 99, 0.2)' }}>
-              <Trophy size={28} />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 28, fontWeight: 850, color: '#1A1612', letterSpacing: '-0.5px' }}>
-                Cấu Hình Mốc Thưởng Doanh Số Tháng
-              </h1>
-              <p style={{ margin: '4px 0 0 0', color: '#7D715E', fontSize: 15.5, lineHeight: 1.4 }}>
-                Thưởng cố định đạt KPI + Thưởng phần vượt lũy tiến từng khoảng doanh số.
-              </p>
-            </div>
-          </div>
-        </div>
-
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            onClick={() => {
-              loadRules();
-              loadHistory(settleYearMonth);
-            }}
-            style={{
-              background: '#F6EFE3',
-              border: '1px solid #EAE4D7',
-              borderRadius: 10,
-              padding: '10px 20px',
-              color: '#1A1612',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontWeight: 700,
-              fontSize: 14.5,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(110, 84, 39, 0.06)',
-            }}
-          >
-            <RefreshCw size={16} /> Làm mới dữ liệu
-          </button>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 16 }}>
+        <button
+          onClick={() => {
+            loadRules();
+            loadHistory(settleYearMonth);
+          }}
+          style={{
+            background: '#F6EFE3',
+            border: '1px solid #EAE4D7',
+            borderRadius: 10,
+            padding: '10px 20px',
+            color: '#1A1612',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontWeight: 700,
+            fontSize: 14.5,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(110, 84, 39, 0.06)',
+          }}
+        >
+          <RefreshCw size={16} /> Làm mới dữ liệu
+        </button>
       </div>
 
 
