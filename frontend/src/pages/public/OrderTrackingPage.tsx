@@ -23,6 +23,7 @@ import api from "../../services/api";
 import { Button } from "../../components/ui/Button";
 import { PublicHeader } from "../../components/layout/PublicHeader";
 import { Card } from "../../components/ui/Card";
+import { getSafeProductImageUrl } from "../../features/marketplace/marketplaceUtils";
 
 interface OrderItem {
   id: string;
@@ -263,7 +264,7 @@ export default function OrderTrackingPage() {
     <div className="min-h-screen bg-[#FAF8F5] text-left flex flex-col font-sans overflow-x-clip relative">
       {/* Toast alert */}
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 bg-[#231D15] text-white px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 border border-[#C59B58]">
+        <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 border border-[#EEDFC6]">
           <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
           <span>{toastMsg}</span>
         </div>
@@ -284,7 +285,7 @@ export default function OrderTrackingPage() {
             <span className="text-[#D8D0C3]">/</span>
             <span className="text-[#1A1612] font-extrabold">Theo dõi hành trình đơn hàng</span>
           </nav>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide text-[#8A662C] bg-[#FBF5EB] border border-[#EEDFC6]">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7]">
             <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
             HỆ THỐNG TRA CỨU ĐƠN HÀNG & ĐÁNH GIÁ 5 SAO (FR-17 & FR-18)
           </span>
@@ -349,7 +350,7 @@ export default function OrderTrackingPage() {
 
 
           {initialSn && (
-            <p className="text-[11px] font-semibold text-[#8A662C] bg-[#FBF5EB] border border-[#EEDFC6] px-3 py-1.5 rounded-xl m-0">
+            <p className="text-[11px] font-semibold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] px-3 py-1.5 rounded-xl m-0">
               Mã đơn gần nhất đã được tự động điền và tra cứu. Bạn không cần nhớ hoặc nhập lại.
             </p>
           )}
@@ -411,13 +412,11 @@ export default function OrderTrackingPage() {
 
               <div className="p-4 sm:p-5 border-b border-[#EAE4D7] bg-[#FAF8F5]/80 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center">
                     <Store className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold text-[#7D715E] block">
-                      {order.store?.name || "Sora Skin Flagship"}
-                    </span>
+                    {order.store?.id ? <Link to={`/shops/${order.store.id}`} className="text-[11px] font-bold text-[#7D715E] block hover:text-[#B88E4F]">{order.store.name}</Link> : <span className="text-[11px] font-bold text-[#7D715E] block">Gian hàng đối tác</span>}
                     <strong className="text-sm sm:text-base font-black text-[#1A1612]">
                       #{order.externalOrderSn}
                     </strong>
@@ -451,7 +450,7 @@ export default function OrderTrackingPage() {
                     >
                       <div
                         className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition ${st.done
-                            ? "bg-[#B88E4F] text-white shadow-xs"
+                            ? "bg-[#EBD08C] text-white shadow-xs"
                             : "bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]"
                           }`}
                       >
@@ -481,7 +480,7 @@ export default function OrderTrackingPage() {
                       Sản phẩm trong đơn ({order.items.length})
                     </span>
                     {canReview && (
-                      <span className="text-[11px] font-bold text-[#8A662C] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
+                      <span className="text-[11px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
                         ✓ Đủ điều kiện đánh giá 5 sao
                       </span>
                     )}
@@ -505,12 +504,16 @@ export default function OrderTrackingPage() {
                               title="Xem chi tiết sản phẩm"
                             >
                               <img
-                                src={
-                                  item.imageUrl ||
-                                  "/assets/serum-hero-optimized.jpg"
-                                }
+                                src={getSafeProductImageUrl(item.imageUrl, item.productTitle)}
                                 alt={item.productTitle}
                                 className="w-full h-full object-contain hover:scale-105 transition-transform"
+                                onError={(e) => {
+                                  const target = e.currentTarget as HTMLImageElement;
+                                  if (!target.dataset.hasFallback) {
+                                    target.dataset.hasFallback = 'true';
+                                    target.src = getSafeProductImageUrl(null, item.productTitle);
+                                  }
+                                }}
                               />
                             </Link>
                             <div className="min-w-0 flex-1">
@@ -595,8 +598,8 @@ export default function OrderTrackingPage() {
                                 )}
                               </div>
                             ) : canReview ? (
-                              <div className="w-full flex items-center justify-between gap-2 bg-white p-2 rounded-xl border border-[#EEDFC6]">
-                                <div className="flex items-center gap-1.5 text-xs text-[#8A662C]">
+                              <div className="w-full flex items-center justify-between gap-2 bg-white p-2 rounded-xl border border-[#EAE4D7]">
+                                <div className="flex items-center gap-1.5 text-xs text-[#B88E4F]">
                                   <Star className="w-4 h-4 text-amber-500" />
                                   <span className="text-[11.5px]">
                                     Bạn đã nhận sản phẩm này?
@@ -616,7 +619,7 @@ export default function OrderTrackingPage() {
                                 </Button>
                               </div>
                             ) : (
-                              <span className="text-[10.5px] text-[#A49B8B] italic">
+                              <span className="text-[10.5px] text-[#7D715E] italic">
                                 Đánh giá sẽ mở sau khi đơn hàng được giao thành
                                 công.
                               </span>
@@ -629,7 +632,7 @@ export default function OrderTrackingPage() {
 
 
                   {order.attributedCollaborator && (
-                    <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center gap-2.5 text-xs text-[#8A662C]">
+                    <div className="p-3 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-center gap-2.5 text-xs text-[#B88E4F]">
                       <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0" />
                       <span>
                         Đơn hàng nhận được ưu đãi độc quyền từ Đối tác Tiếp thị:{" "}

@@ -1,7 +1,6 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Link2,
-  Store,
   ShieldAlert,
   Search,
   User,
@@ -20,14 +19,12 @@ export default function StoreReferralLinksPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string>('');
-  const [storeName, setStoreName] = useState<string>('Gian Hàng Của Bạn');
 
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [totalLinks, setTotalLinks] = useState(0);
 
 
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
@@ -47,14 +44,12 @@ export default function StoreReferralLinksPage() {
 
         if (user?.stores && user.stores.length > 0) {
           setStoreId(user.stores[0].id);
-          setStoreName(user.stores[0].name);
         } else {
 
           const storeRes: any = await api.get('/collaborator/stores');
           const stores = storeRes?.data || storeRes || [];
           if (stores.length > 0) {
             setStoreId(stores[0].id);
-            setStoreName(stores[0].name);
           }
         }
       } catch (err: any) {
@@ -77,7 +72,6 @@ export default function StoreReferralLinksPage() {
         search: search.trim() || undefined,
       });
       setLinks(res.data);
-      setTotalLinks(res.meta.total);
     } catch (err: any) {
       setErrorMsg(err.message || 'Lỗi khi tải danh sách liên kết tiếp thị');
     } finally {
@@ -138,22 +132,7 @@ export default function StoreReferralLinksPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] font-sans pb-16">
 
-      <div className="bg-[#F3EFE6] border-b border-[#EAE4D7]">
-        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-[#B88E4F] text-sm font-bold mb-1">
-            <Store className="w-4 h-4" />
-            <span>Dành cho Chủ Cửa hàng (Shop Manager)</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#1A1612] flex items-center gap-3">
-            Quản Lý Liên Kết Tiếp Thị Sản Phẩm
-          </h1>
-          <p className="mt-1 text-sm text-[#7D715E] max-w-2xl">
-            Theo dõi tất cả KOL đang quảng bá sản phẩm của gian hàng <strong className="text-[#1A1612]">{storeName}</strong> ({totalLinks} liên kết). Bạn có quyền tạm khóa các liên kết vi phạm nội dung hoặc chính sách giá.
-          </p>
-        </div>
-      </div>
-
-      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 pt-2">
 
         <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 shadow-xs mb-6">
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
@@ -194,7 +173,7 @@ export default function StoreReferralLinksPage() {
 
             <button
               type="submit"
-              className="px-5 py-2.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white rounded-xl text-sm font-bold transition-colors shadow-xs cursor-pointer"
+              className="px-5 py-2.5 bg-[#EBD08C] hover:bg-[#DEC07A] text-white rounded-xl text-sm font-bold transition-colors shadow-xs cursor-pointer"
             >
               Lọc kết quả
             </button>
@@ -251,6 +230,14 @@ export default function StoreReferralLinksPage() {
                         </div>
                         <div className="text-xs text-emerald-600 font-semibold">
                           {Number(link.product?.price || 0).toLocaleString('vi-VN')} đ
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${link.commissionType === 'EXCLUSIVE_DEAL' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]' : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'}`}>
+                            {link.commissionType === 'EXCLUSIVE_DEAL' ? 'Exclusive Deal' : link.commissionType === 'CAMPAIGN' ? 'Chiến dịch' : 'Open Offer'}
+                          </span>
+                          {link.commissionRate != null && (
+                            <span className="text-[11px] font-bold text-[#1A1612]">Hoa hồng {link.commissionRate}%</span>
+                          )}
                         </div>
                       </td>
 

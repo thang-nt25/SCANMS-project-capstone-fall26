@@ -36,6 +36,8 @@ export interface PartnerStore {
   name: string;
   slug?: string;
   logoUrl?: string;
+  ownerAvatarUrl?: string;
+  ownerName?: string;
   category?: string;
   commissionRange?: string;
   rating?: number;
@@ -45,12 +47,53 @@ export interface PartnerStore {
   pendingSamplesCount?: number;
 }
 
+const getShopLogoUrl = (logoUrl?: string | null) => {
+  const normalized = logoUrl?.trim();
+  if (!normalized || /unsplash\.com/i.test(normalized)) return undefined;
+  return normalized;
+};
+
+function StoreAvatar({
+  name,
+  logoUrl,
+  className,
+}: {
+  name: string;
+  logoUrl?: string;
+  className: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [logoUrl]);
+
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'S';
+
+  return (
+    <span className={`${className} relative inline-flex items-center justify-center overflow-hidden bg-[#F3EFE6] text-[#B88E4F] font-extrabold`}>
+      {logoUrl && !imageFailed ? (
+        <img
+          src={logoUrl}
+          alt={`Logo ${name}`}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <span aria-hidden="true">{initials}</span>
+      )}
+    </span>
+  );
+}
+
 const REAL_STORES: PartnerStore[] = [
   {
     id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
     name: 'Sora Skin Official Store',
     slug: 'sora-skin',
-    logoUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=150&auto=format&fit=crop&q=80',
     category: 'Dược mỹ phẩm & Phục hồi da',
     commissionRange: '20% - 32%',
     rating: 4.9,
@@ -62,7 +105,6 @@ const REAL_STORES: PartnerStore[] = [
     id: '461bdfe3-2260-4ac7-b93b-6a6da5c45535',
     name: 'Aura Bio Cosmetics Vietnam',
     slug: 'aura-bio-cosmetics',
-    logoUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80',
     category: 'Mỹ phẩm sinh học & Thuần chay',
     commissionRange: '25% - 35%',
     rating: 4.8,
@@ -74,7 +116,6 @@ const REAL_STORES: PartnerStore[] = [
     id: 'c4444444-4444-4444-8444-444444444444',
     name: 'GreenBio Health & Herbs',
     slug: 'greenbio-health',
-    logoUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=150&auto=format&fit=crop&q=80',
     category: 'Thực phẩm chức năng & Trà',
     commissionRange: '18% - 25%',
     rating: 4.7,
@@ -86,7 +127,6 @@ const REAL_STORES: PartnerStore[] = [
     id: 'd5555555-5555-4555-8555-555555555555',
     name: 'Lumière Lab Vietnam',
     slug: 'lumiere-lab',
-    logoUrl: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=150&auto=format&fit=crop&q=80',
     category: 'Serum & Chăm sóc chuyên sâu',
     commissionRange: '22% - 35%',
     rating: 5.0,
@@ -231,7 +271,9 @@ export default function ShopCollaborationPage() {
             id: storeId,
             name: st.name || 'Gian hàng đối tác',
             slug: st.slug || '',
-            logoUrl: st.logoUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80',
+            logoUrl: getShopLogoUrl(st.logoUrl),
+            ownerAvatarUrl: st.owner?.avatarUrl || undefined,
+            ownerName: st.owner?.fullName || undefined,
             category: 'Thương mại điện tử & Mỹ phẩm',
             commissionRange: `${st.defaultCommissionRate || 20}% - 35%`,
             rating: 4.9,
@@ -247,7 +289,9 @@ export default function ShopCollaborationPage() {
             id: ms.id,
             name: ms.name,
             slug: ms.slug || '',
-            logoUrl: ms.logoUrl || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=150&auto=format&fit=crop&q=80',
+            logoUrl: getShopLogoUrl(ms.logoUrl),
+            ownerAvatarUrl: ms.owner?.avatarUrl || undefined,
+            ownerName: ms.owner?.fullName || undefined,
             category: ms.description?.slice(0, 30) || 'Mỹ phẩm & Chăm sóc da',
             commissionRange: `${ms.defaultCommissionRate || 20}% - 30%`,
             rating: 4.8,
@@ -278,6 +322,14 @@ export default function ShopCollaborationPage() {
   const selectedStore = useMemo(() => {
     return stores.find((s) => s.id === selectedStoreId) || stores[0] || REAL_STORES[0];
   }, [stores, selectedStoreId]);
+
+  const openStorefront = useCallback((store: PartnerStore) => {
+    if (store.slug) {
+      navigate(`/shop/${encodeURIComponent(store.slug)}`);
+      return;
+    }
+    navigate(`/marketplace?shop=${encodeURIComponent(store.id)}`);
+  }, [navigate]);
 
   // Load products (chỉ hiện spinner nếu chưa có sản phẩm)
   const loadStoreProducts = useCallback(async (storeId: string) => {
@@ -508,8 +560,8 @@ export default function ShopCollaborationPage() {
     >
       {/* Top Warning Banner nếu KOL chưa xác minh */}
       {!loadingKyc && !canRequestSample && (
-        <div className="shrink-0 bg-[#FBF5EB] border border-[#EEDFC6] px-4 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-[#8A662C]">
+        <div className="shrink-0 bg-[#FBF5EB] border border-[#EAE4D7] px-4 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-[#B88E4F]">
             <ShieldAlert className="w-4 h-4 text-[#B88E4F] shrink-0" />
             <span>
               <strong>Lưu ý:</strong> Bạn cần hoàn tất định danh KYC (CCCD &amp; Kênh TikTok/YouTube) để mở khóa quyền <strong>Xin Hàng Mẫu</strong> và <strong>Nhận Deal Hoa Hồng VIP</strong>.
@@ -518,7 +570,7 @@ export default function ShopCollaborationPage() {
           <button
             type="button"
             onClick={() => navigate('/collaborator/profile?tab=kyc')}
-            className="px-3 py-1 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-extrabold rounded-xl transition shadow-2xs shrink-0 cursor-pointer"
+            className="px-3 py-1 bg-[#EBD08C] hover:bg-[#DEC07A] text-white font-extrabold rounded-xl transition shadow-2xs shrink-0 cursor-pointer"
           >
             Hoàn tất KYC ngay →
           </button>
@@ -557,7 +609,7 @@ export default function ShopCollaborationPage() {
                   onClick={() => setShopFilter(f.id as any)}
                   className={`py-1 rounded-lg text-[10.5px] font-bold text-center transition cursor-pointer ${
                     shopFilter === f.id
-                      ? 'bg-[#C59B58] text-white shadow-2xs'
+                      ? 'bg-[#EBD08C] text-white shadow-2xs'
                       : 'bg-[#F3EFE6] text-[#7D715E] hover:text-[#1A1612] hover:bg-[#EAE4D7]'
                   }`}
                 >
@@ -574,7 +626,7 @@ export default function ShopCollaborationPage() {
                 setShowDiscoverModal(true);
                 loadMarketplaceStores();
               }}
-              className="w-full py-1.5 px-3 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-[#8A662C] hover:text-[#6F4E1D] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+              className="w-full py-1.5 px-3 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#B88E4F] hover:text-[#B88E4F] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
             >
               <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
               <span>Khám phá gian hàng trên Sàn</span>
@@ -594,40 +646,37 @@ export default function ShopCollaborationPage() {
                   <div
                     key={st.id}
                     id={`shop-item-${st.id}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      setSelectedStoreId(st.id);
-                      updateUrl(st.id, activeTab);
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && setSelectedStoreId(st.id)}
-                    className={`px-3.5 py-3 flex items-center gap-3 cursor-pointer transition-all ${
+                    className={`px-3.5 py-3 flex items-center gap-3 transition-all ${
                       isSelected
                         ? 'bg-[#FBF5EB] border-l-4 border-l-[#C59B58] text-[#1A1612]'
-                        : 'hover:bg-[#FAF8F5] text-[#4A3E2D] border-l-4 border-l-transparent'
+                        : 'hover:bg-[#FAF8F5] text-[#1A1612] border-l-4 border-l-transparent'
                     }`}
                   >
-                    {/* Logo Gian hàng */}
                     <div className="relative shrink-0">
-                      {st.logoUrl ? (
-                        <img
-                          src={st.logoUrl}
-                          alt={st.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-[#EAE4D7] bg-white shadow-2xs"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white font-black flex items-center justify-center text-xs shadow-2xs">
-                          {st.name[0]}
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => openStorefront(st)}
+                        title={`Mở gian hàng ${st.name}`}
+                        aria-label={`Mở gian hàng ${st.name}`}
+                        className="rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]"
+                      >
+                        <StoreAvatar name={st.ownerName || st.name} logoUrl={st.ownerAvatarUrl || st.logoUrl} className="w-10 h-10 rounded-xl border border-[#EAE4D7] bg-white shadow-2xs text-xs" />
+                      </button>
                       {/* Chấm tròn báo tin nhắn mới nếu có unread */}
                       {st.unreadCount ? (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#C59B58] border-2 border-white ring-1 ring-[#C59B58]/30 animate-pulse" />
+                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#EBD08C] border-2 border-white ring-1 ring-[#C59B58]/30 animate-pulse" />
                       ) : null}
                     </div>
 
-                    {/* Tên Shop & Thông Tin (Đã bỏ hoàn toàn text lastMessage) */}
-                    <div className="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStoreId(st.id);
+                        updateUrl(st.id, activeTab);
+                      }}
+                      className="flex-1 min-w-0 text-left cursor-pointer bg-transparent border-0 p-0"
+                      aria-label={`Mở cuộc trò chuyện với ${st.name}`}
+                    >
                       <div className="flex items-center justify-between gap-1">
                         <strong className="text-xs font-bold truncate text-[#1A1612] leading-snug">
                           {st.name}
@@ -638,20 +687,28 @@ export default function ShopCollaborationPage() {
                         <span className="text-[10.5px] text-[#7D715E] truncate">
                           {st.category}
                         </span>
-                        <span className="text-[10px] font-extrabold text-[#B88E4F] bg-white px-1.5 py-0.2 rounded border border-[#EEDFC6] shrink-0">
+                        <span className="text-[10px] font-extrabold text-[#B88E4F] bg-white px-1.5 py-0.2 rounded border border-[#EAE4D7] shrink-0">
                           {st.commissionRange || '20%'}
                         </span>
                       </div>
-                    </div>
+                    </button>
 
-                    {/* Icon Tin Nhắn Trực Quan bên phải */}
-                    <div className="shrink-0 text-stone-300">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStoreId(st.id);
+                        updateUrl(st.id, activeTab);
+                      }}
+                      title={`Mở chat với ${st.name}`}
+                      aria-label={`Mở chat với ${st.name}`}
+                      className="shrink-0 bg-transparent border-0 p-1 cursor-pointer"
+                    >
                       <MessageSquare
                         className={`w-3.5 h-3.5 transition ${
                           isSelected || st.unreadCount ? 'text-[#B88E4F]' : 'text-stone-300'
                         }`}
                       />
-                    </div>
+                    </button>
                   </div>
                 );
               })
@@ -664,31 +721,38 @@ export default function ShopCollaborationPage() {
           {/* Shop Context Header Bar */}
           <div className="shrink-0 px-5 py-2.5 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-3 min-w-0">
-              {selectedStore.logoUrl ? (
-                <img
-                  src={selectedStore.logoUrl}
-                  alt={selectedStore.name}
-                  className="w-10 h-10 rounded-xl object-cover border border-[#EEDFC6] shadow-2xs shrink-0"
+              <button
+                type="button"
+                onClick={() => openStorefront(selectedStore)}
+                title={`Mở gian hàng ${selectedStore.name}`}
+                aria-label={`Mở gian hàng ${selectedStore.name}`}
+                className="rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] shrink-0"
+              >
+                <StoreAvatar
+                  name={selectedStore.ownerName || selectedStore.name}
+                  logoUrl={selectedStore.ownerAvatarUrl || selectedStore.logoUrl}
+                  className="w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm"
                 />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C59B58] to-[#B88E4F] text-white font-extrabold text-sm flex items-center justify-center shadow-xs shrink-0">
-                  {selectedStore.name[0]}
-                </div>
-              )}
+              </button>
 
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-sm font-extrabold text-[#1A1612] truncate m-0">
+                  <button
+                    type="button"
+                    onClick={() => openStorefront(selectedStore)}
+                    className="text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
+                    title={`Mở gian hàng ${selectedStore.name}`}
+                  >
                     {selectedStore.name}
-                  </h2>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                  </button>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                     <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> Gian Hàng Xác Minh
                   </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#7D715E] mt-0.5">
                   <span className="flex items-center gap-1 text-[#B88E4F] font-semibold">
-                    <Star className="w-3 h-3 fill-[#C59B58] text-[#C59B58]" />
+                    <Star className="w-3 h-3 fill-[#C59B58] text-[#B88E4F]" />
                     <span>{selectedStore.rating || 4.9}</span>
                   </span>
                   <span>•</span>
@@ -708,7 +772,9 @@ export default function ShopCollaborationPage() {
             {/* Nút Xem Trang Gian Hàng Trên Sàn nhẹ nhàng */}
             <div className="flex items-center gap-2 shrink-0">
               <a
-                href={`/marketplace?shop=${selectedStore.id}`}
+                href={selectedStore.slug
+                  ? `/shop/${encodeURIComponent(selectedStore.slug)}`
+                  : `/marketplace?shop=${encodeURIComponent(selectedStore.id)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="px-3 py-1.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] text-xs font-bold text-[#1A1612] flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
@@ -745,7 +811,7 @@ export default function ShopCollaborationPage() {
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 select-none ${
                     isActive
-                      ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EEDFC6]'
+                      ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
                       : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
                   }`}
                 >
@@ -762,8 +828,8 @@ export default function ShopCollaborationPage() {
             {activeTab === 'messages' && (
               <div className="h-full w-full overflow-hidden animate-in fade-in-50 duration-200 flex flex-col">
                 {/* Thanh Deal Bar Đàm Phán Hoa Hồng VIP Tinh Tế */}
-                <div className="bg-[#FBF5EB] border-b border-[#EEDFC6] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
-                  <div className="flex items-center gap-2 text-[#8A662C]">
+                <div className="bg-[#FBF5EB] border-b border-[#EAE4D7] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
+                  <div className="flex items-center gap-2 text-[#B88E4F]">
                     <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0" />
                     <span>
                       <strong>Đàm Phán Hoa Hồng VIP:</strong> Thỏa thuận mức chiết khấu riêng trực tiếp với Chủ Shop.
@@ -774,7 +840,7 @@ export default function ShopCollaborationPage() {
                     onClick={() => {
                       toast.info('Đã gửi đề xuất hoa hồng đối tác VIP 30% vào khung chat!');
                     }}
-                    className="px-3 py-1 rounded-lg bg-white border border-[#EEDFC6] text-[#8A662C] font-extrabold hover:bg-[#FAF8F5] transition shadow-2xs shrink-0 cursor-pointer"
+                    className="px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] font-extrabold hover:bg-[#FAF8F5] transition shadow-2xs shrink-0 cursor-pointer"
                   >
                     + Đề xuất deal VIP 30%
                   </button>
@@ -884,8 +950,8 @@ export default function ShopCollaborationPage() {
                                 </div>
 
                                 {/* Commission box */}
-                                <div className="p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-between text-xs">
-                                  <span className="text-[#8A662C] font-semibold text-[11px]">Hoa hồng:</span>
+                                <div className="p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-center justify-between text-xs">
+                                  <span className="text-[#B88E4F] font-semibold text-[11px]">Hoa hồng:</span>
                                   <span className="font-extrabold text-[#B88E4F]">
                                     {commRate}% (~{commAmount.toLocaleString('vi-VN')} ₫/đơn)
                                   </span>
@@ -896,7 +962,7 @@ export default function ShopCollaborationPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleOpenLinkModal(prod)}
-                                    className="py-2 px-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
+                                    className="py-2 px-2.5 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
                                   >
                                     <Link2 className="w-3.5 h-3.5" />
                                     <span>Lấy Link Tiếp Thị</span>
@@ -949,7 +1015,7 @@ export default function ShopCollaborationPage() {
                             setActiveTab('products');
                             updateUrl(selectedStore.id, 'products');
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-[#C59B58] text-white text-xs font-bold hover:bg-[#B88E4F] transition self-start sm:self-auto"
+                          className="px-3 py-1.5 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition self-start sm:self-auto"
                         >
                           + Xin Thêm Mẫu Mới
                         </button>
@@ -1012,7 +1078,7 @@ export default function ShopCollaborationPage() {
                                     {samp.product?.title || 'Sản phẩm mẫu'}
                                   </strong>
                                   <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
-                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
+                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F]">
                                       {isReceived
                                         ? '✅ Đã nhận hàng'
                                         : isShipped
@@ -1038,7 +1104,7 @@ export default function ShopCollaborationPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleConfirmReceivedSample(samp.id)}
-                                    className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer"
+                                    className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer"
                                   >
                                     Đã nhận được hàng
                                   </button>
@@ -1047,7 +1113,7 @@ export default function ShopCollaborationPage() {
                                   <button
                                     type="button"
                                     onClick={() => setSubmitVideoSample(samp)}
-                                    className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition"
+                                    className="px-3.5 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition"
                                   >
                                     <Video className="w-3.5 h-3.5" />
                                     <span>Nộp Link Video Review</span>
@@ -1088,7 +1154,7 @@ export default function ShopCollaborationPage() {
                             onClick={() => setMediaTab(sub.id as any)}
                             className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                               mediaTab === sub.id
-                                ? 'bg-[#C59B58] text-white shadow-2xs'
+                                ? 'bg-[#EBD08C] text-white shadow-2xs'
                                 : 'text-[#7D715E] hover:text-[#1A1612]'
                             }`}
                           >
@@ -1137,7 +1203,7 @@ export default function ShopCollaborationPage() {
                             <div className="relative aspect-[9/10] bg-stone-900 flex items-center justify-center overflow-hidden">
                               <img src={item.url} alt={item.title} className="w-full h-full object-cover opacity-80" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3 text-white">
-                                <span className="text-[10px] font-bold bg-[#C59B58] px-2 py-0.5 rounded w-fit mb-1">
+                                <span className="text-[10px] font-bold bg-[#EBD08C] px-2 py-0.5 rounded w-fit mb-1">
                                   VIDEO DỌC 9:16
                                 </span>
                                 <span className="text-xs font-bold">{item.duration}</span>
@@ -1206,7 +1272,7 @@ export default function ShopCollaborationPage() {
 
                     {mediaTab === 'USP' && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-[#FAF8F5] border border-[#EEDFC6] rounded-2xl p-5 flex flex-col gap-3">
+                        <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col gap-3">
                           <h4 className="text-xs font-extrabold text-[#1A1612] uppercase tracking-wider flex items-center gap-1.5 m-0">
                             <Sparkles className="w-4 h-4 text-[#B88E4F]" />
                             <span>Top 3 Điểm Mạnh Cốt Lõi (USPs)</span>
@@ -1259,7 +1325,7 @@ export default function ShopCollaborationPage() {
                           <div key={idx} className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-[10px] font-extrabold bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] px-2 py-0.5 rounded-full">
+                                <span className="text-[10px] font-extrabold bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] px-2 py-0.5 rounded-full">
                                   {hk.views}
                                 </span>
                               </div>
@@ -1348,7 +1414,7 @@ export default function ShopCollaborationPage() {
                       onClick={() => handleChannelChange(ch.id as any)}
                       className={`py-2 px-1 rounded-xl text-xs font-bold transition cursor-pointer text-center ${
                         selectedChannel === ch.id
-                          ? 'bg-[#C59B58] text-white shadow-2xs'
+                          ? 'bg-[#EBD08C] text-white shadow-2xs'
                           : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-[#F3EFE6]'
                       }`}
                     >
@@ -1372,7 +1438,7 @@ export default function ShopCollaborationPage() {
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     <span>Sao chép</span>
@@ -1439,17 +1505,17 @@ export default function ShopCollaborationPage() {
             </div>
 
             <form onSubmit={handleSubmitSampleRequest} className="p-5 flex flex-col gap-3.5">
-              <div className="p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-2xl flex items-center gap-3">
+              <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-2xl flex items-center gap-3">
                 <img
                   src={requestSampleModalProduct.imageUrl}
                   alt={requestSampleModalProduct.title}
-                  className="w-12 h-12 rounded-xl object-cover border border-[#EEDFC6] bg-white shrink-0"
+                  className="w-12 h-12 rounded-xl object-cover border border-[#EAE4D7] bg-white shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <strong className="text-xs font-bold text-[#1A1612] line-clamp-1 block">
                     {requestSampleModalProduct.title}
                   </strong>
-                  <span className="text-[11px] text-[#8A662C] font-semibold block mt-0.5">
+                  <span className="text-[11px] text-[#B88E4F] font-semibold block mt-0.5">
                     Tài trợ 100% miễn phí • Giá trị gốc: {Number(requestSampleModalProduct.price).toLocaleString('vi-VN')} ₫
                   </span>
                 </div>
@@ -1531,7 +1597,7 @@ export default function ShopCollaborationPage() {
                 <button
                   type="submit"
                   disabled={submittingSample}
-                  className="px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-2xs cursor-pointer"
                 >
                   {submittingSample && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Gửi Cam Kết &amp; Xin Mẫu</span>
@@ -1568,7 +1634,7 @@ export default function ShopCollaborationPage() {
           >
             <div className="p-6 border-b border-[#EAE4D7] flex items-center justify-between bg-[#FAF8F5]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center">
                   <Store className="w-5 h-5" />
                 </div>
                 <div>
@@ -1629,15 +1695,15 @@ export default function ShopCollaborationPage() {
                         className="pt-3 first:pt-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/50 hover:bg-white transition"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <img
-                            src={ms.logoUrl || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=100&auto=format&fit=crop&q=80'}
-                            alt={ms.name}
-                            className="w-12 h-12 rounded-xl object-cover border border-[#EAE4D7] shrink-0"
+                          <StoreAvatar
+                            name={ms.name}
+                            logoUrl={getShopLogoUrl(ms.logoUrl)}
+                            className="w-12 h-12 rounded-xl border border-[#EAE4D7] shrink-0 text-sm"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <h4 className="text-sm font-extrabold text-[#1A1612] truncate m-0">{ms.name}</h4>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F]">
                                 Chính Hãng
                               </span>
                             </div>
@@ -1666,7 +1732,7 @@ export default function ShopCollaborationPage() {
                               type="button"
                               disabled={connectingStoreId === ms.id}
                               onClick={() => handleConnectStore(ms)}
-                              className="px-4 py-2 rounded-xl text-xs font-bold bg-[#C59B58] hover:bg-[#B88E4F] text-white transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                              className="px-4 py-2 rounded-xl text-xs font-bold bg-[#EBD08C] hover:bg-[#DEC07A] text-white transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                             >
                               <Plus className="w-3.5 h-3.5" />
                               <span>{connectingStoreId === ms.id ? 'Đang kết nối...' : 'Bắt đầu hợp tác'}</span>

@@ -4,6 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { MailService } from '../mail.service';
+import { UserRole } from '@prisma/client';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -22,12 +24,16 @@ describe('AuthService', () => {
   const mockPrismaService = {
     user: {
       findUnique: jest.fn(),
+      create: jest.fn(),
     },
   };
 
   const mockJwtService = {
     sign: jest.fn().mockReturnValue('mock-jwt-token'),
     verify: jest.fn(),
+  };
+  const mockMailService = {
+    sendLoginSecurityAlert: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -43,6 +49,10 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: MailService,
+          useValue: mockMailService,
         },
       ],
     }).compile();
@@ -68,6 +78,44 @@ describe('AuthService', () => {
         role: 'SHOP_MANAGER',
       }),
     );
+  });
+
+  it('returns the login response without waiting for the security email', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(mockUser);
+    mockMailService.sendLoginSecurityAlert.mockImplementationOnce(
+      () => new Promise<void>(() => undefined),
+    );
+
+    const result = await authService.login({
+      email: 'shop@techstore.vn',
+      password: 'Password@123',
+    });
+
+    expect(result.accessToken).toBe('mock-jwt-token');
+    expect(result.securityAlertQueued).toBe(true);
+    expect(mockMailService.sendLoginSecurityAlert).toHaveBeenCalledTimes(1);
+  });
+
+  it('registers a customer without issuing a login token', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+    mockPrismaService.user.create.mockResolvedValueOnce({
+      id: 'new-customer',
+      email: 'new@example.com',
+      fullName: 'New Customer',
+      role: UserRole.CUSTOMER,
+    });
+
+    const result = await authService.register({
+      email: 'new@example.com',
+      password: 'Password@123',
+      fullName: 'New Customer',
+      role: UserRole.CUSTOMER,
+      otp: '123456',
+    });
+
+    expect(result.user.email).toBe('new@example.com');
+    expect(result).not.toHaveProperty('accessToken');
+    expect(mockJwtService.sign).not.toHaveBeenCalled();
   });
 
   it('should throw UnauthorizedException for wrong password', async () => {

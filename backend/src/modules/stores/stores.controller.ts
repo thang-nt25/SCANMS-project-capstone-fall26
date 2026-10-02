@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Delete, Body, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StoresService } from './stores.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -12,6 +12,29 @@ import { UserRole } from '@prisma/client';
 @Controller('stores')
 export class StoresController {
   constructor(private readonly storesService: StoresService) {}
+
+  @Get('public/id/:storeId')
+  getPublicStoreById(@Param('storeId', ParseUUIDPipe) storeId: string) {
+    return this.storesService.getPublicStoreById(storeId);
+  }
+
+  @Get('public/id/:storeId/follow')
+  @UseGuards(JwtAuthGuard)
+  getFollowStatus(@Param('storeId', ParseUUIDPipe) storeId: string, @CurrentUser('id') userId: string) {
+    return this.storesService.getFollowStatus(storeId, userId);
+  }
+
+  @Post('public/id/:storeId/follow')
+  @UseGuards(JwtAuthGuard)
+  follow(@Param('storeId', ParseUUIDPipe) storeId: string, @CurrentUser('id') userId: string) {
+    return this.storesService.setFollow(storeId, userId, true);
+  }
+
+  @Delete('public/id/:storeId/follow')
+  @UseGuards(JwtAuthGuard)
+  unfollow(@Param('storeId', ParseUUIDPipe) storeId: string, @CurrentUser('id') userId: string) {
+    return this.storesService.setFollow(storeId, userId, false);
+  }
 
   @Get('my-store')
   @UseGuards(JwtAuthGuard, RolesGuard)

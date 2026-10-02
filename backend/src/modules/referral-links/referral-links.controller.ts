@@ -58,14 +58,20 @@ export class CollaboratorReferralLinksController {
     status: 200,
     description: 'Danh sách sản phẩm kèm mức hoa hồng dự kiến',
   })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 50, maximum: 100 })
   async getEligibleProducts(
     @CurrentUser('id') collaboratorId: string,
     @Query('search') search?: string,
     @Query('storeId') storeId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.service.getEligibleProducts(collaboratorId, {
       search,
       storeId,
+      page: page === undefined ? undefined : Number(page),
+      limit: limit === undefined ? undefined : Number(limit),
     });
   }
 

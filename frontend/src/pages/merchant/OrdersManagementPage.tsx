@@ -41,6 +41,7 @@ import {
   generateTrackingCode,
   printShippingLabel,
 } from "../../components/orders/ShippingLabel";
+import { CustomSelect } from "../../components/ui/CustomSelect";
 
 type OrderAction = "manual" | "excel";
 interface Props {
@@ -129,6 +130,9 @@ export default function OrdersManagementPage({
 
   // Modals for order fulfillment & viewing
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<StoreOrderRecord | null>(null);
+  const [returnResponse, setReturnResponse] = useState('');
+  const [returnError, setReturnError] = useState('');
+  const [respondingReturn, setRespondingReturn] = useState(false);
   const [shippingModalOrder, setShippingModalOrder] = useState<StoreOrderRecord | null>(null);
   const [shippingCarrier, setShippingCarrier] = useState("GHTK");
   const [shippingTrackingNumber, setShippingTrackingNumber] = useState("");
@@ -266,6 +270,34 @@ export default function OrdersManagementPage({
       );
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleReturnDecision = async (decision: 'APPROVE' | 'REJECT') => {
+    if (!selectedOrderDetails?.returnRequest || returnResponse.trim().length < 10) {
+      setReturnError('Vui lòng ghi rõ hướng xử lý (ít nhất 10 ký tự).');
+      return;
+    }
+    if (!window.confirm(decision === 'APPROVE'
+      ? 'Duyệt yêu cầu đổi trả? Thao tác này chưa chuyển hoặc hoàn tiền cho khách.'
+      : 'Từ chối yêu cầu đổi trả và gửi lý do cho khách?')) return;
+    setRespondingReturn(true);
+    setReturnError('');
+    try {
+      const result = await orderService.respondReturnRequest(selectedOrderDetails.id, {
+        decision,
+        response: returnResponse.trim(),
+      });
+      setActionSuccessMsg(result.message);
+      setSelectedOrderDetails(null);
+      setReturnResponse('');
+      setOrdersRefreshCount((count) => count + 1);
+    } catch (error) {
+      setReturnError(messageOf(error));
+    } finally {
+      setRespondingReturn(false);
+    }
+  };
     }
   };
 
@@ -591,32 +623,22 @@ export default function OrdersManagementPage({
     <div className="space-y-6 text-ink text-left">
       {!initialAction && (
         <>
-          {/* Header & Quick Actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] tracking-tight m-0">
-                Quản lý Đơn hàng Gian hàng
-              </h1>
-              <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-                Theo dõi đơn hàng từ khách mua, cập nhật vận đơn bưu cục và kiểm soát hoa hồng KOL.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#EAE4D7] bg-white text-[#4A3E2D] font-bold text-xs sm:text-sm hover:bg-[#F3EFE6] transition shadow-2xs"
-                onClick={() => open("excel")}
-              >
-                <FileSpreadsheet className="w-4 h-4 text-[#C59B58]" />
-                <span>Import Excel (FR-20)</span>
-              </button>
-              <button
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C59B58] text-white font-bold text-xs sm:text-sm hover:bg-[#B88E4F] transition shadow-xs"
-                onClick={() => open("manual")}
-              >
-                <PackagePlus className="w-4 h-4" />
-                <span>Tạo đơn thủ công</span>
-              </button>
-            </div>
+          {/* Quick Actions (Compact without bulky headers) */}
+          <div className="flex items-center justify-end gap-2.5">
+            <button
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] font-bold text-xs hover:bg-[#F3EFE6] transition shadow-2xs cursor-pointer"
+              onClick={() => open("excel")}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
+              <span>Import Excel (FR-20)</span>
+            </button>
+            <button
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition shadow-xs cursor-pointer"
+              onClick={() => open("manual")}
+            >
+              <PackagePlus className="w-3.5 h-3.5" />
+              <span>Tạo đơn thủ công</span>
+            </button>
           </div>
 
           {/* Success Alert Banner */}
@@ -636,8 +658,8 @@ export default function OrdersManagementPage({
               </strong>
             </div>
             <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <span className="text-xs font-bold text-[#D97706] block">Chờ xử lý / Đóng gói</span>
-              <strong className="text-xl sm:text-2xl font-black text-[#D97706] mt-1 block">
+              <span className="text-xs font-bold text-[#B88E4F] block">Chờ xử lý / Đóng gói</span>
+              <strong className="text-xl sm:text-2xl font-black text-[#B88E4F] mt-1 block">
                 {orders.filter((o) => o.status === "PENDING").length}
               </strong>
             </div>
@@ -676,8 +698,8 @@ export default function OrdersManagementPage({
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                       active
-                        ? "bg-[#C59B58] text-white shadow-2xs"
-                        : "bg-[#F3EFE6] text-[#4A3E2D] hover:bg-[#EAE4D7]"
+                        ? "bg-[#EBD08C] text-white shadow-2xs"
+                        : "bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EAE4D7]"
                     }`}
                   >
                     {tab.label}
@@ -689,7 +711,7 @@ export default function OrdersManagementPage({
             {/* Search Input */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1 sm:w-72">
-                <Search className="w-4 h-4 text-[#A49B8B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Tìm mã đơn, tên, SĐT..."
@@ -719,7 +741,7 @@ export default function OrdersManagementPage({
               </div>
             ) : orders.length === 0 ? (
               <div className="p-12 text-center flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#C59B58] grid place-items-center">
+                <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] grid place-items-center">
                   <ShoppingBag className="w-6 h-6" />
                 </div>
                 <div>
@@ -754,6 +776,8 @@ export default function OrdersManagementPage({
                         DELIVERED: "bg-emerald-50 text-emerald-700 border-emerald-200",
                         COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200",
                         CANCELLED: "bg-rose-50 text-rose-700 border-rose-200",
+                        RETURN_REQUESTED: "bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]",
+                        DISPUTED: "bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]",
                         RETURNED: "bg-purple-50 text-purple-700 border-purple-200",
                       }[order.status] || "bg-gray-50 text-gray-700 border-gray-200";
 
@@ -763,6 +787,8 @@ export default function OrdersManagementPage({
                         DELIVERED: "Đã giao",
                         COMPLETED: "Hoàn tất",
                         CANCELLED: "Đã hủy",
+                        RETURN_REQUESTED: "Yêu cầu đổi trả",
+                        DISPUTED: "Đang khiếu nại",
                         RETURNED: "Trả hàng",
                       }[order.status] || order.status;
 
@@ -773,7 +799,7 @@ export default function OrdersManagementPage({
                             <strong className="text-[#1A1612] font-mono text-xs block">
                               #{order.externalOrderSn}
                             </strong>
-                            <span className="text-[11px] text-[#A49B8B] block mt-0.5">
+                            <span className="text-[11px] text-[#7D715E] block mt-0.5">
                               {new Date(order.createdAt).toLocaleDateString("vi-VN", {
                                 day: "2-digit",
                                 month: "2-digit",
@@ -792,7 +818,7 @@ export default function OrdersManagementPage({
                             <span className="text-[11px] text-[#7D715E] block mt-0.5">
                               {order.customerPhone}
                             </span>
-                            <span className="text-[10.5px] text-[#A49B8B] block truncate max-w-[180px]" title={order.shippingAddress}>
+                            <span className="text-[10.5px] text-[#7D715E] block truncate max-w-[180px]" title={order.shippingAddress}>
                               {order.shippingAddress}
                             </span>
                           </td>
@@ -802,7 +828,7 @@ export default function OrdersManagementPage({
                             <div className="flex flex-col gap-1 max-w-[200px]">
                               {order.items.slice(0, 2).map((item, idx) => (
                                 <div key={idx} className="flex items-center gap-1.5">
-                                  <span className="w-4 h-4 rounded bg-[#F3EFE6] text-[10px] font-bold text-[#8A662C] flex items-center justify-center shrink-0">
+                                  <span className="w-4 h-4 rounded bg-[#F3EFE6] text-[10px] font-bold text-[#B88E4F] flex items-center justify-center shrink-0">
                                     {item.quantity}
                                   </span>
                                   <span className="truncate text-xs text-[#1A1612]" title={item.title}>
@@ -811,7 +837,7 @@ export default function OrdersManagementPage({
                                 </div>
                               ))}
                               {order.items.length > 2 && (
-                                <span className="text-[10px] text-[#A49B8B] font-semibold">
+                                <span className="text-[10px] text-[#7D715E] font-semibold">
                                   +{order.items.length - 2} sản phẩm khác
                                 </span>
                               )}
@@ -849,7 +875,7 @@ export default function OrdersManagementPage({
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-[#A49B8B] italic">Chưa tạo vận đơn</span>
+                              <span className="text-[11px] text-[#7D715E] italic">Chưa tạo vận đơn</span>
                             )}
                           </td>
 
@@ -857,7 +883,7 @@ export default function OrdersManagementPage({
                           <td className="p-3.5 align-top">
                             {order.totalCommission > 0 ? (
                               <div>
-                                <strong className="text-xs font-bold text-[#C59B58] block">
+                                <strong className="text-xs font-bold text-[#B88E4F] block">
                                   +{order.totalCommission.toLocaleString("vi-VN")} ₫
                                 </strong>
                                 <span className="text-[10px] text-[#7D715E] block truncate max-w-[120px]">
@@ -865,7 +891,7 @@ export default function OrdersManagementPage({
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-[#A49B8B]">—</span>
+                              <span className="text-[11px] text-[#7D715E]">—</span>
                             )}
                           </td>
 
@@ -875,7 +901,7 @@ export default function OrdersManagementPage({
                               {order.status === "PENDING" && (
                                 <button
                                   onClick={() => handleOpenShippingModal(order)}
-                                  className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                                  className="px-2.5 py-1.5 rounded-lg bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
                                   title="Nhập mã vận đơn & chuyển sang Đang giao"
                                 >
                                   <Truck className="w-3.5 h-3.5" />
@@ -902,7 +928,7 @@ export default function OrdersManagementPage({
                                 <button
                                   onClick={() => handleConfirmDelivered(order)}
                                   disabled={updatingFulfillment}
-                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50"
+                                  className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50"
                                   title="Xác nhận khách đã nhận được hàng"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -911,7 +937,7 @@ export default function OrdersManagementPage({
                               )}
 
                               <button
-                                onClick={() => setSelectedOrderDetails(order)}
+                                  onClick={() => { setSelectedOrderDetails(order); setReturnResponse(''); setReturnError(''); }}
                                 className="p-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#7D715E] hover:text-[#1A1612] transition"
                                 title="Xem chi tiết đơn"
                               >
@@ -1017,7 +1043,7 @@ export default function OrdersManagementPage({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#4A3E2D] block mb-1">
+                <label className="text-xs font-bold text-[#1A1612] block mb-1">
                   Đơn vị vận chuyển *
                 </label>
                 <select
@@ -1036,7 +1062,7 @@ export default function OrdersManagementPage({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#4A3E2D] block mb-1">
+                <label className="text-xs font-bold text-[#1A1612] block mb-1">
                   Mã vận đơn bưu cục *
                 </label>
                 <input
@@ -1049,7 +1075,7 @@ export default function OrdersManagementPage({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#4A3E2D] block mb-1">
+                <label className="text-xs font-bold text-[#1A1612] block mb-1">
                   Ghi chú đóng gói / giao hàng
                 </label>
                 <input
@@ -1154,7 +1180,7 @@ export default function OrdersManagementPage({
                     printPreviewOrder.store?.name,
                   );
                 }}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-md transition"
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-md transition cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 In Phiếu Giao Hàng A6
@@ -1292,12 +1318,12 @@ export default function OrdersManagementPage({
 
             {/* Sản phẩm trong đơn */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-[#4A3E2D]">Sản phẩm ({selectedOrderDetails.items.length}):</span>
+              <span className="text-xs font-bold text-[#1A1612]">Sản phẩm ({selectedOrderDetails.items.length}):</span>
               <div className="divide-y divide-[#EAE4D7] border border-[#EAE4D7] rounded-xl overflow-hidden">
                 {selectedOrderDetails.items.map((item, idx) => (
                   <div key={idx} className="p-3 flex items-center justify-between gap-3 text-xs bg-white">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-[#F3EFE6] text-[#C59B58] grid place-items-center font-bold text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#F3EFE6] text-[#B88E4F] grid place-items-center font-bold text-xs shrink-0">
                         {item.quantity}x
                       </div>
                       <div>
@@ -1313,8 +1339,40 @@ export default function OrdersManagementPage({
               </div>
             </div>
 
+            {selectedOrderDetails.returnRequest && (
+              <section className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 space-y-3 text-xs">
+                <h4 className="font-bold text-[#1A1612]">Hồ sơ đổi trả / hoàn tiền</h4>
+                <p>Trạng thái: <strong>{selectedOrderDetails.returnRequest.status}</strong> · Gửi lúc {new Date(selectedOrderDetails.returnRequest.submittedAt).toLocaleString('vi-VN')}</p>
+                <p>Lý do: <strong>{selectedOrderDetails.returnRequest.reason}</strong></p>
+                {selectedOrderDetails.returnRequest.details && <p>{selectedOrderDetails.returnRequest.details}</p>}
+                <div className="flex flex-wrap gap-2">
+                  {selectedOrderDetails.returnRequest.imageUrls.map((url, index) => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Ảnh {index + 1}</a>
+                  ))}
+                  <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Video mở hộp</a>
+                </div>
+                {selectedOrderDetails.returnRequest.shopResponse && <p>Phản hồi của Shop: {selectedOrderDetails.returnRequest.shopResponse}</p>}
+                {selectedOrderDetails.returnRequest.status === 'REQUESTED' && (
+                  <div className="space-y-2">
+                    <label className="block font-bold">Hướng xử lý gửi khách
+                      <textarea value={returnResponse} onChange={(event) => setReturnResponse(event.target.value)} maxLength={1000} rows={3}
+                        className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal outline-none focus:border-[#C59B58]" />
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('APPROVE')}
+                        className="rounded-xl bg-[#C59B58] px-4 py-2 font-bold text-white disabled:opacity-50">Duyệt yêu cầu</button>
+                      <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('REJECT')}
+                        className="rounded-xl border border-[#DC2626] px-4 py-2 font-bold text-[#DC2626] disabled:opacity-50">Từ chối</button>
+                    </div>
+                    {returnError && <p role="alert" className="text-[#DC2626]">{returnError}</p>}
+                    <p className="text-[#7D715E]">Duyệt yêu cầu không đồng nghĩa tiền đã được hoàn; cần đối soát thanh toán riêng.</p>
+                  </div>
+                )}
+              </section>
+            )}
+
             {/* Tài chính & Hoa hồng */}
-            <div className="p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl flex flex-col gap-1.5 text-xs">
+            <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl flex flex-col gap-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-[#7D715E]">Tiền hàng:</span>
                 <span className="font-bold">{selectedOrderDetails.subtotalAmount.toLocaleString("vi-VN")} ₫</span>
@@ -1329,9 +1387,9 @@ export default function OrdersManagementPage({
                   <span className="font-bold">-{selectedOrderDetails.discountAmount.toLocaleString("vi-VN")} ₫</span>
                 </div>
               )}
-              <div className="flex justify-between border-t border-[#EEDFC6] pt-1.5 text-sm font-black text-[#1A1612]">
+              <div className="flex justify-between border-t border-[#EAE4D7] pt-1.5 text-sm font-black text-[#1A1612]">
                 <span>Tổng thanh toán:</span>
-                <span className="text-[#C59B58]">{selectedOrderDetails.finalAmount.toLocaleString("vi-VN")} ₫</span>
+                <span className="text-[#B88E4F]">{selectedOrderDetails.finalAmount.toLocaleString("vi-VN")} ₫</span>
               </div>
               <div className="flex justify-between pt-1 text-[11px] text-[#7D715E]">
                 <span>Hoa hồng KOL ghi nhận:</span>
@@ -1345,7 +1403,7 @@ export default function OrdersManagementPage({
               <button
                 type="button"
                 onClick={() => setSelectedOrderDetails(null)}
-                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs"
+                className="px-4 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition shadow-xs"
               >
                 Đóng
               </button>
@@ -1477,64 +1535,45 @@ export default function OrdersManagementPage({
                         </label>
                         <label className="text-sm">
                           Tỉnh/Thành phố *
-                          <select
+                          <CustomSelect
+                            className="mt-1"
                             required
                             disabled={loadingAddresses}
-                            className={inputClass}
                             value={provinceCode}
-                            onChange={(e) => {
-                              setProvinceCode(e.target.value);
+                            onChange={(code) => {
+                              setProvinceCode(code);
                               setDistrictCode("");
                               setWardCode("");
                             }}
-                          >
-                            <option value="">
-                              {loadingAddresses
-                                ? "Đang tải địa chỉ..."
-                                : "Chọn tỉnh/thành phố"}
-                            </option>
-                            {addresses.map((p) => (
-                              <option key={p.code} value={p.code}>
-                                {p.name}
-                              </option>
-                            ))}
-                          </select>
+                            placeholder={loadingAddresses ? "Đang tải địa chỉ..." : "Chọn tỉnh/thành phố"}
+                            options={addresses.map((p) => ({ value: String(p.code), label: p.name }))}
+                          />
                         </label>
                         <label className="text-sm">
                           Quận/Huyện *
-                          <select
+                          <CustomSelect
+                            className="mt-1"
                             required
                             disabled={!province}
-                            className={inputClass}
                             value={districtCode}
-                            onChange={(e) => {
-                              setDistrictCode(e.target.value);
+                            onChange={(code) => {
+                              setDistrictCode(code);
                               setWardCode("");
                             }}
-                          >
-                            <option value="">Chọn quận/huyện</option>
-                            {province?.districts.map((d) => (
-                              <option key={d.code} value={d.code}>
-                                {d.name}
-                              </option>
-                            ))}
-                          </select>
+                            placeholder="Chọn quận/huyện"
+                            options={(province?.districts || []).map((d) => ({ value: String(d.code), label: d.name }))}
+                          />
                         </label>
                         <label className="text-sm">
                           Phường/Xã
-                          <select
+                          <CustomSelect
+                            className="mt-1"
                             disabled={!district}
-                            className={inputClass}
                             value={wardCode}
-                            onChange={(e) => setWardCode(e.target.value)}
-                          >
-                            <option value="">Chọn phường/xã (tùy chọn)</option>
-                            {district?.wards.map((w) => (
-                              <option key={w.code} value={w.code}>
-                                {w.name}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={setWardCode}
+                            placeholder="Chọn phường/xã (tùy chọn)"
+                            options={(district?.wards || []).map((w) => ({ value: String(w.code), label: w.name }))}
+                          />
                         </label>
                         <p className="self-center text-xs text-muted">
                           Danh mục địa chỉ giao hàng 3 cấp (v1, trước sắp xếp

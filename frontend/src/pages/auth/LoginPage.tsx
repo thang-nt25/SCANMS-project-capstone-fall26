@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, type FormEvent } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   Store,
   Sparkles,
@@ -11,6 +11,8 @@ import {
   ChevronDown,
   Check,
   ArrowLeft,
+  Mail,
+  Lock,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
@@ -38,15 +40,35 @@ const ROLES: RoleOption[] = [
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Nhận redirect và email sau khi đăng ký
+  const requestedRedirect = searchParams.get('redirect');
+  const registeredProvider = searchParams.get('registered');
+  const registeredEmail = searchParams.get('email');
+  const returnTo =
+    requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\')
+      ? requestedRedirect
+      : null;
+  const registerUrl = returnTo ? `/register?redirect=${encodeURIComponent(returnTo)}` : '/register';
+
   const [role, setRole] = useState<RoleType>('customer');
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const [email, setEmail] = useState('customer@scanms.vn');
-  const [password, setPassword] = useState('Password@123');
+  const [email, setEmail] = useState(registeredEmail || 'customer@scanms.vn');
+  const [password, setPassword] = useState(registeredEmail ? '' : 'Password@123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+
+  useEffect(() => {
+    if (registeredProvider === 'email' && registeredEmail) {
+      setEmail(registeredEmail);
+      setPassword('');
+      toast.success(`Đăng ký tài khoản ${registeredEmail} thành công! Vui lòng nhập mật khẩu để đăng nhập.`);
+    }
+  }, [registeredProvider, registeredEmail]);
 
   const activeRole = ROLES.find((x) => x.id === role) || ROLES[0];
   const ActiveRoleIcon = activeRole.icon;
@@ -62,6 +84,24 @@ export default function LoginPage() {
     setIsRoleDropdownOpen(false);
   };
 
+  const navigateAfterLogin = (userRole?: string) => {
+    if (returnTo) {
+      navigate(returnTo);
+      return;
+    }
+    if (userRole === 'SHOP_MANAGER') {
+      navigate('/merchant/dashboard');
+    } else if (userRole === 'SYSTEM_ADMIN') {
+      navigate('/admin/analytics');
+    } else if (userRole === 'SYSTEM_MANAGER') {
+      navigate('/admin/users');
+    } else if (userRole === 'CUSTOMER') {
+      navigate('/customer/orders');
+    } else {
+      navigate('/collaborator/dashboard');
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -73,17 +113,7 @@ export default function LoginPage() {
       toast.success(`Đăng nhập thành công! Chào mừng ${user?.fullName || user?.email}`);
 
       setTimeout(() => {
-        if (user?.role === 'SHOP_MANAGER') {
-          navigate('/merchant/dashboard');
-        } else if (user?.role === 'SYSTEM_ADMIN') {
-          navigate('/admin/analytics');
-        } else if (user?.role === 'SYSTEM_MANAGER') {
-          navigate('/admin/users');
-        } else if (user?.role === 'CUSTOMER') {
-          navigate('/customer/orders');
-        } else {
-          navigate('/collaborator/dashboard');
-        }
+        navigateAfterLogin(user?.role);
       }, 350);
     } catch (err: any) {
       const errorMsg =
@@ -114,17 +144,7 @@ export default function LoginPage() {
       const res: any = await authService.googleLogin(idToken, apiRole);
       const user = res?.data?.user || res?.user;
       toast.success(`Đăng nhập Google thành công! Chào mừng ${user?.fullName || user?.email}`);
-      if (user?.role === 'SHOP_MANAGER') {
-        navigate('/merchant/dashboard');
-      } else if (user?.role === 'SYSTEM_ADMIN') {
-        navigate('/admin/analytics');
-      } else if (user?.role === 'SYSTEM_MANAGER') {
-        navigate('/admin/users');
-      } else if (user?.role === 'CUSTOMER') {
-        navigate('/customer/orders');
-      } else {
-        navigate('/collaborator/dashboard');
-      }
+      navigateAfterLogin(user?.role);
     } catch (err: any) {
       setError(err.message || 'Đăng nhập Google thất bại');
     } finally {
@@ -148,94 +168,47 @@ export default function LoginPage() {
         </Link>
       </header>
 
-      <main className="max-w-[1160px] mx-auto w-full my-auto py-2 sm:py-3">
-        <div className="w-full rounded-[28px] sm:rounded-[32px] border border-[#EAE4D7] bg-white shadow-[0_24px_65px_rgba(26,22,18,0.07)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[610px] relative">
-          
-          <div className="relative w-full h-[340px] sm:h-[400px] lg:h-full lg:col-span-5 bg-[#231D15] overflow-hidden flex flex-col justify-end p-7 sm:p-9 group">
-            <img
-              src="/assets/marketplace_luxury_hero.jpg"
-              alt="Hệ sinh thái thương mại đa gian hàng SCANMS"
-              className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105"
-            />
+      <main className="max-w-[1180px] mx-auto w-full my-auto py-2 sm:py-3">
+        <div
+          className="w-full rounded-[28px] sm:rounded-[32px] border-2 border-[#EEDFC6] shadow-[0_24px_70px_rgba(197,155,88,0.16),0_10px_30px_rgba(26,22,18,0.06)] ring-1 ring-[#C59B58]/20 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[620px] relative bg-[#FAF8F5]"
+          style={{
+            backgroundImage: "url('/assets/auth_luxury_card_inner.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          {/* CỘT TRÁI: MỞ RỘNG (7 COLS = ~58%) - KHÔNG GIAN SẢN PHẨM & SLOGAN HOÀNG GIA */}
+          <div className="relative w-full h-[280px] sm:h-[340px] lg:h-full lg:col-span-7 overflow-hidden flex flex-col justify-between p-6 sm:p-8 lg:p-12">
+            {/* Top-Left Section: Glassmorphic Badge & Slogan */}
+            <div className="relative z-20 space-y-3.5 max-w-md">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-[#EEDFC6] text-[#1A1612] text-xs font-bold shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-[#C59B58]" />
+                <span>Sàn Thương Mại Đối Tác</span>
+              </div>
 
-            <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/45 to-transparent pointer-events-none" />
-
-            <div className="hidden lg:block absolute inset-y-0 right-0 w-36 bg-gradient-to-r from-transparent via-[#C59B58]/20 to-[#ECC272]/35 pointer-events-none z-10" />
-
-            <div className="relative z-10 space-y-1">
-              <h1
-                className="font-display italic text-2xl sm:text-3xl lg:text-[38px] leading-[1.18] tracking-tight drop-shadow-xl"
-                style={{ color: '#FFFFFF' }}
-              >
+              <h1 className="font-display italic text-2xl sm:text-3xl lg:text-[36px] leading-[1.18] tracking-tight drop-shadow-xs text-[#1A1612]">
                 Kết nối gian hàng,<br />
-                <span className="font-display italic" style={{ color: '#ECC272' }}>
+                <span className="font-display italic text-[#B88E4F]">
                   lan tỏa giá trị.
                 </span>
               </h1>
             </div>
 
-            <svg
-              className="lg:hidden absolute -bottom-[1px] left-0 right-0 w-full h-8 pointer-events-none z-20"
-              viewBox="0 0 400 32"
-              preserveAspectRatio="none"
-            >
-              <path
-                d="M0,32 C90,12 170,28 260,12 C330,-1 370,24 400,20 L400,32 L0,32 Z"
-                fill="#FFFFFF"
-              />
-              <path
-                d="M0,32 C70,18 150,30 240,16 C310,4 360,26 400,24 L400,32 L0,32 Z"
-                fill="rgba(238, 223, 198, 0.45)"
-              />
-            </svg>
+            {/* Dưới chân để thoáng cho các sản phẩm và hộp quà travertine */}
+            <div className="relative z-20" />
           </div>
 
-          <div
-            className="relative w-full h-full lg:col-span-7 p-6 sm:p-8 lg:p-9 flex flex-col justify-between text-left overflow-hidden bg-white"
-            style={{
-              background: 'radial-gradient(ellipse 95% 75% at 0% 40%, rgba(238, 223, 198, 0.42) 0%, rgba(251, 245, 235, 0.25) 36%, rgba(255, 255, 255, 1) 72%)',
-            }}
-          >
-            <svg
-              className="hidden lg:block absolute -top-[1px] -bottom-[1px] -left-[1px] h-[calc(100%+2px)] w-20 xl:w-24 pointer-events-none z-10"
-              viewBox="0 0 100 620"
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <linearGradient id="waveBleedGrad1" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#C59B58" stopOpacity="0.35" />
-                  <stop offset="50%" stopColor="#EEDFC6" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-                </linearGradient>
-                <linearGradient id="waveBleedGrad2" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#ECC272" stopOpacity="0.28" />
-                  <stop offset="60%" stopColor="#FAF8F5" stopOpacity="0.38" />
-                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0,0 C32,95 76,170 56,260 C36,350 86,435 66,525 C50,580 24,605 0,620 Z"
-                fill="url(#waveBleedGrad1)"
-              />
-              <path
-                d="M0,0 C22,110 54,195 40,285 C24,375 66,455 48,545 C34,592 16,612 0,620 Z"
-                fill="url(#waveBleedGrad2)"
-              />
-              <path
-                d="M0,0 C12,125 34,205 24,295 C14,385 40,470 28,555 C18,598 6,615 0,620 Z"
-                fill="rgba(255, 255, 255, 0.45)"
-              />
-            </svg>
-
-            <div className="relative z-20">
-              <h2 className="text-2xl font-black text-[#1A1612] tracking-tight">
-                Đăng nhập
+          {/* CỘT PHẢI: FORM ĐĂNG NHẬP GIAO DIỆN SANG TRỌNG (5 COLS = ~42%) */}
+          <div className="relative w-full h-full lg:col-span-5 p-6 sm:p-8 lg:py-7 lg:pr-8 lg:pl-10 xl:pl-12 flex flex-col justify-between text-left">
+            {/* Header: Tiêu đề căn giữa, phong cách hoàng gia như mockup */}
+            <div className="relative z-20 text-center">
+              <h2 className="font-display text-3xl sm:text-[34px] font-black tracking-tight text-[#1A1612]">
+                Đăng <span className="font-display text-[#B88E4F]">nhập</span>
               </h2>
-              <p className="text-xs text-[#7D715E] mt-1 font-medium">
-                Chọn vai trò để truy cập bảng điều khiển tương ứng
-              </p>
             </div>
 
+            {/* Role Dropdown */}
             <div className="relative">
               <label className="block text-xs font-bold text-[#1A1612] mb-1">
                 Vai trò đăng nhập:
@@ -243,7 +216,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                className="w-full h-11 px-3 bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-3 focus:ring-[#C59B58]/12 rounded-xl flex items-center justify-between transition shadow-2xs cursor-pointer text-left"
+                className="w-full h-11 px-3.5 bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-3 focus:ring-[#C59B58]/12 rounded-xl flex items-center justify-between transition shadow-2xs cursor-pointer text-left"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-white border border-[#EAE4D7] flex items-center justify-center text-[#C59B58] shadow-2xs shrink-0">
@@ -271,7 +244,7 @@ export default function LoginPage() {
                     className="fixed inset-0 z-40"
                     onClick={() => setIsRoleDropdownOpen(false)}
                   />
-                  <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-[#EAE4D7] rounded-2xl shadow-[0_16px_40px_rgba(26,22,18,0.12)] p-1.5 space-y-1">
+                  <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-[#EAE4D7] rounded-xl shadow-[0_16px_40px_rgba(26,22,18,0.12)] p-1.5 space-y-1">
                     {ROLES.map((r) => {
                       const isSelected = role === r.id;
                       const Icon = r.icon;
@@ -280,7 +253,7 @@ export default function LoginPage() {
                           key={r.id}
                           type="button"
                           onClick={() => handleRoleSelect(r.id)}
-                          className={`w-full px-3 py-2 rounded-xl flex items-center justify-between transition cursor-pointer text-left ${
+                          className={`w-full px-3 py-2 rounded-lg flex items-center justify-between transition cursor-pointer text-left ${
                             isSelected
                               ? 'bg-[#FBF5EB] text-[#1A1612] font-bold border border-[#EEDFC6]'
                               : 'hover:bg-[#FAF8F5] text-[#1A1612] font-medium'
@@ -316,13 +289,23 @@ export default function LoginPage() {
               )}
             </div>
 
-            <div className="w-full">
+            {/* Social sign-in options */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <GoogleOfficialButton
                 onSuccess={onGoogleTokenSuccess}
                 onError={(err) => setError(err)}
               />
+              <button
+                type="button"
+                onClick={() => toast.info('Cổng đăng nhập TikTok Open API đang chuẩn bị tích hợp.')}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-white hover:bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
+              >
+                <span className="font-extrabold text-sm" aria-hidden="true">🎵</span>
+                <span>TikTok Shop</span>
+              </button>
             </div>
 
+            {/* Divider */}
             <div className="relative flex items-center justify-center my-0.5">
               <div className="border-t border-[#EAE4D7] w-full" />
               <span className="bg-white px-3 text-[11px] font-medium text-[#7D715E] uppercase tracking-wider absolute">
@@ -336,16 +319,18 @@ export default function LoginPage() {
               </div>
             )}
 
+            {/* Form inputs */}
             <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
+              <div className="relative flex items-center">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="Email tài khoản"
-                  className="w-full h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-4 text-sm text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                  className="w-full h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
                 />
+                <Mail className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
 
               <div className="relative flex items-center">
@@ -355,8 +340,9 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="Mật khẩu"
-                  className="w-full h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-4 pr-11 text-sm text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                  className="w-full h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-11 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
                 />
+                <Lock className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -372,32 +358,34 @@ export default function LoginPage() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                    className="w-3.5 h-3.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
                   />
-                  <span>Ghi nhớ đăng nhập</span>
+                  <span>Ghi nhớ</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsForgotPasswordOpen(true)}
-                  className="font-semibold text-[#B88E4F] hover:text-[#9E7933] hover:underline cursor-pointer"
+                  className="font-medium text-[#B88E4F] hover:text-[#C59B58] hover:underline cursor-pointer"
                 >
                   Quên mật khẩu?
                 </button>
               </div>
 
+              {/* Submit button: Exact match to user mockup */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-sm rounded-xl transition shadow-[0_4px_16px_rgba(197,155,88,0.28)] hover:shadow-[0_6px_20px_rgba(197,155,88,0.38)] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                className="w-full h-11 btn-gold-glossy disabled:opacity-50"
               >
-                {loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}
+                <span>{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
               </button>
             </form>
 
+            {/* Bottom switch link */}
             <div className="text-center pt-2 border-t border-[#EAE4D7] text-xs text-[#7D715E]">
-              Chưa có tài khoản?{' '}
-              <Link to="/register" className="font-bold text-[#B88E4F] hover:underline">
-                Đăng ký thành viên ngay →
+              Chưa có tài khoản đối tác?{' '}
+              <Link to={registerUrl} className="font-bold text-[#B88E4F] hover:underline">
+                Đăng ký ngay →
               </Link>
             </div>
           </div>

@@ -4,6 +4,7 @@ import {
   Post,
   Patch,
   Delete,
+  ParseUUIDPipe,
   Body,
   Param,
   Query,
@@ -43,6 +44,18 @@ import { QueryCouponsDto } from './dto/query-coupons.dto';
 @Controller('coupons')
 export class PublicCouponsController {
   constructor(private readonly service: CouponsService) {}
+
+  @Get('stores/:storeId/available')
+  @ApiOperation({
+    summary: 'Lấy các mã giảm giá đang áp dụng công khai của một gian hàng',
+  })
+  @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
+  @ApiResponse({ status: 200, description: 'Danh sách mã giảm giá còn hiệu lực' })
+  async getAvailableStoreCoupons(
+    @Param('storeId', new ParseUUIDPipe({ version: '4' })) storeId: string,
+  ) {
+    return this.service.getPublicStoreCoupons(storeId);
+  }
 
   @Post('validate')
   @HttpCode(HttpStatus.OK)

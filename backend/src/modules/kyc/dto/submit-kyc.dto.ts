@@ -62,4 +62,43 @@ export class SubmitKycDto {
   @IsOptional()
   @IsString()
   backCardUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://res.cloudinary.com/.../channel_proof.jpg',
+    description: 'Ảnh chụp màn hình trang quản trị kênh',
+  })
+  @IsOptional()
+  @IsString()
+  channelProofUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'TIKTOK',
+    description: 'Nền tảng mạng xã hội chính',
+  })
+  @IsOptional()
+  @IsString()
+  platform?: string;
+
+  @ApiPropertyOptional({
+    example: 'Thành Thắng Reviews',
+    description: 'Tên kênh hiển thị',
+  })
+  @IsOptional()
+  @IsString()
+  channelName?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://tiktok.com/@thangtechreview',
+    description: 'Đường dẫn liên kết kênh',
+  })
+  @IsOptional()
+  @IsString()
+  channelUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 15000,
+    description: 'Số lượng người theo dõi (Followers)',
+  })
+  @IsOptional()
+  followerCount?: number;
 }

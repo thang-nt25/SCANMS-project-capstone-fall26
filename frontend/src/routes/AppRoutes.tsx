@@ -13,7 +13,9 @@ const RedirectHandlerPage = lazy(() => import('../pages/RedirectHandlerPage'));
 
 const UiReferencePage = lazy(() => import('../pages/UiReferencePage'));
 const MarketplacePage = lazy(() => import('../pages/public/MarketplacePage'));
+const ShopPage = lazy(() => import('../pages/public/ShopPage'));
 const SearchPage = lazy(() => import('../pages/public/SearchPage'));
+const PayosReturnPage = lazy(() => import('../pages/public/PayosReturnPage'));
 
 const ProductManagementPage = lazy(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazy(() => import('../pages/merchant/ShopDashboardPage'));
@@ -49,21 +51,66 @@ const DisputeResolutionPage = lazy(() => import('../pages/admin/DisputeResolutio
 
 // Shop Return Requests (Merchant - Tiếp nhận đổi trả 14 ngày)
 const ShopReturnRequestsPage = lazy(() => import('../pages/merchant/ShopReturnRequestsPage').then(m => ({ default: m.ShopReturnRequestsPage })));
+const ShopStorefrontPage = lazy(() => import('../pages/public/ShopStorefrontPage'));
 
 import { RouteContent } from './RouteContent';
+import { CartProvider, useCart } from '../context/CartContext';
+import { ShopeeChatProvider } from '../context/ShopeeChatContext';
+import { ShopeeFloatingChatWidget } from '../components/chat/ShopeeFloatingChatWidget';
+import { CartDrawer } from '../components/cart/CartDrawer';
+import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
+import { PublicHeader } from '../components/layout/PublicHeader';
+import { authService } from '../services/auth.service';
+
+function GlobalCheckoutModal() {
+  const { isCheckoutOpen, closeCheckout, checkoutItems } = useCart();
+  if (!isCheckoutOpen) return null;
+  return (
+    <GuestCheckoutModal
+      isOpen={isCheckoutOpen}
+      onClose={closeCheckout}
+      checkoutItems={checkoutItems}
+    />
+  );
+}
+
+function PublicLeaderboardPage() {
+  const user = authService.getCurrentUser();
+  const isCustomerWorkspace = Boolean(
+    user && (user.role === 'CUSTOMER' || authService.getActiveWorkspace() === 'customer'),
+  );
+
+  if (isCustomerWorkspace) {
+    return <Navigate to="/customer/orders" replace />;
+  }
+
+  return (
+    <>
+      <PublicHeader />
+      <LeaderboardPage />
+    </>
+  );
+}
 
 function AppRoutes() {
   return (
     <Router>
-      <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>
-      <Routes>
-        <Route path="/" element={<MarketplacePage />} />
-        <Route path="/marketplace" element={<MarketplacePage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/marketplace/search" element={<SearchPage />} />
-        <Route path="/store" element={<MarketplacePage />} />
-        <Route path="/storefront" element={<MarketplacePage />} />
-        <Route path="/shop" element={<MarketplacePage />} />
+      <CartProvider>
+        <ShopeeChatProvider>
+          <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>
+            <Routes>
+              <Route path="/" element={<MarketplacePage />} />
+              <Route path="/marketplace" element={<MarketplacePage />} />
+              <Route path="/shops/:shopId" element={<ShopPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/marketplace/search" element={<SearchPage />} />
+              <Route path="/payment/payos-return" element={<PayosReturnPage />} />
+              <Route path="/store" element={<MarketplacePage />} />
+              <Route path="/storefront" element={<MarketplacePage />} />
+              <Route path="/shop" element={<ShopStorefrontPage />} />
+              <Route path="/shop/:slug" element={<ShopStorefrontPage />} />
+              <Route path="/stores/:slug" element={<ShopStorefrontPage />} />
+              <Route path="/leaderboard" element={<PublicLeaderboardPage />} />
 
         <Route path="/prototype" element={<UiReferencePage />} />
         <Route path="/ui-reference" element={<UiReferencePage />} />
@@ -78,11 +125,15 @@ function AppRoutes() {
         <Route path="/customer/portal" element={<CustomerPortalPage />} />
         <Route path="/customer/orders" element={<CustomerPortalPage />} />
         <Route path="/customer/profile" element={<CustomerPortalPage />} />
+        <Route path="/customer/identity" element={<CustomerPortalPage />} />
         <Route path="/customer/addresses" element={<CustomerPortalPage />} />
         <Route path="/customer/wishlist" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/kol" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/shop" element={<CustomerPortalPage />} />
+        <Route path="/customer/vouchers" element={<CustomerPortalPage />} />
+        <Route path="/customer/notifications" element={<CustomerPortalPage />} />
+        <Route path="/customer/security" element={<CustomerPortalPage />} />
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -106,6 +157,7 @@ function AppRoutes() {
 
             {/* Merchant Consolidated Hubs */}
             <Route path="merchant/kol-hub" element={<ShopKolHubPage />} />
+            <Route path="merchant/customer-messages" element={<ChatBoxPage />} />
             <Route path="merchant/promotions" element={<ShopPromotionsHubPage />} />
             <Route path="merchant/fraud-sentinel" element={<AiFraudSentinelPage />} />
             <Route path="merchant/ai-fraud" element={<AiFraudSentinelPage />} />
@@ -180,13 +232,17 @@ function AppRoutes() {
           </Route>
 
           <Route path="analytics" element={<RealtimeAnalyticsPage />} />
-          <Route path="leaderboard" element={<LeaderboardPage />} />
           <Route path="chat" element={<ChatBoxPage />} />
           <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
           <Route path="merchant/messages" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
         </Route>
-      </Routes>
-      </Suspense>
+            </Routes>
+          </Suspense>
+          <CartDrawer />
+          <GlobalCheckoutModal />
+          <ShopeeFloatingChatWidget />
+        </ShopeeChatProvider>
+      </CartProvider>
     </Router>
   );
 }

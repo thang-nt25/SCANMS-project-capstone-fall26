@@ -200,10 +200,7 @@ export default function WalletPage() {
           <div className="w-8 h-8 rounded-xl bg-brand-soft border border-brand-border flex items-center justify-center text-brand-strong">
             <Wallet className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-xs font-black text-ink uppercase tracking-wider">VÍ HOA HỒNG & HỒ SƠ CÁ NHÂN</div>
-            <div className="text-[11px] text-muted">Quản lý dòng tiền, rút doanh thu, định danh KYC & mạng xã hội</div>
-          </div>
+          <div className="text-xs font-bold text-ink">Ví hoa hồng & Rút tiền</div>
         </div>
 
         <div className="flex items-center bg-surface-sand p-1.5 rounded-xl border border-line w-full sm:w-auto overflow-x-auto">
@@ -252,15 +249,7 @@ export default function WalletPage() {
       {activeTab === 'social' && <SocialChannelsPage />}
       {activeTab === 'wallet' && (
         <>
-          <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">
-            Ví tiền & rút tiền
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            Quản lý số dư hoa hồng và yêu cầu rút tiền của bạn trên SCANMS.
-          </p>
-        </div>
+          <div className="flex items-center justify-end gap-2">
         <button
           type="button"
           aria-label="Tải lại ví"
@@ -271,7 +260,7 @@ export default function WalletPage() {
           <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Tải
           lại
         </button>
-      </header>
+      </div>
 
       {error && (
         <div

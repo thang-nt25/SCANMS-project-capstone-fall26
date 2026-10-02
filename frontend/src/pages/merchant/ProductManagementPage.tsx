@@ -36,6 +36,7 @@ import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
+import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -63,6 +64,8 @@ export default function ProductManagementPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<any | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
 
   const [selectedVideoProduct, setSelectedVideoProduct] = useState<Product | null>(null);
@@ -264,6 +267,7 @@ export default function ProductManagementPage() {
   const [formPrice, setFormPrice] = useState<number>(350000);
   const [formCommission, setFormCommission] = useState<number>(20);
   const [formCommissionAmount, setFormCommissionAmount] = useState<number>(70000);
+  const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(false);
   const [formStock, setFormStock] = useState<number>(100);
   const [formImage, setFormImage] = useState('');
   const [formSubImages, setFormSubImages] = useState<string[]>([]);
@@ -511,6 +515,7 @@ export default function ProductManagementPage() {
   };
 
   const openCreateModal = () => {
+    setSaveError(null);
     setEditingProduct(null);
     setFormSku('SKIN-' + Math.random().toString(36).substring(2, 7).toUpperCase());
     setFormTitle('');
@@ -520,6 +525,7 @@ export default function ProductManagementPage() {
     setFormPrice(350000);
     setFormCommission(20);
     setFormCommissionAmount(70000);
+    setFormAffiliateEnabled(false);
     setFormStock(100);
     setFormImage('');
     setFormSubImages([]);
@@ -527,6 +533,7 @@ export default function ProductManagementPage() {
   };
 
   const openEditModal = (p: any) => {
+    setSaveError(null);
     setEditingProduct(p);
     setFormSku(p.sku || '');
     setFormTitle(p.title || p.name);
@@ -544,6 +551,7 @@ export default function ProductManagementPage() {
     const commRate = Number(p.customCommissionRate || p.commissionRate || 10);
     setFormCommission(commRate);
     setFormCommissionAmount(Math.round((currentPrice * commRate) / 100));
+    setFormAffiliateEnabled(p.isAffiliateEnabled !== false);
     setFormStock(p.stockQuantity || p.stock || 0);
     setFormImage(p.imageUrl || '');
 
@@ -673,24 +681,34 @@ export default function ProductManagementPage() {
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
+    if (savingProduct) return;
+    setSaveError(null);
 
     if (!formImage) {
-      showToast('⚠️ Vui lòng tải lên Ảnh chính (Ảnh bìa) cho sản phẩm!');
+      const message = 'Vui lòng tải lên ảnh chính (ảnh bìa) cho sản phẩm.';
+      setSaveError(message);
+      showToast(message);
       return;
     }
 
     if (!formTitle.trim()) {
-      showToast('⚠️ Vui lòng nhập Tên sản phẩm!');
+      const message = 'Vui lòng nhập tên sản phẩm.';
+      setSaveError(message);
+      showToast(message);
       return;
     }
 
     if (!formSku.trim()) {
-      showToast('⚠️ Vui lòng nhập Mã SKU sản phẩm!');
+      const message = 'Vui lòng nhập mã SKU sản phẩm.';
+      setSaveError(message);
+      showToast(message);
       return;
     }
 
     if (Number(formPrice) <= 0) {
-      showToast('⚠️ Giá bán lẻ phải lớn hơn 0 ₫!');
+      const message = 'Giá bán lẻ phải lớn hơn 0 ₫.';
+      setSaveError(message);
+      showToast(message);
       return;
     }
 
@@ -699,6 +717,7 @@ export default function ProductManagementPage() {
         ? formCustomCategory.trim() || 'Khác'
         : formCategory;
 
+    setSavingProduct(true);
     try {
       if (editingProduct) {
         await productService.updateProduct(editingProduct.id, {
@@ -707,6 +726,7 @@ export default function ProductManagementPage() {
           description: formDescription.trim() || undefined,
           price: Number(formPrice),
           customCommissionRate: Number(formCommission),
+          isAffiliateEnabled: formAffiliateEnabled,
           stockQuantity: Number(formStock),
           imageUrl: formImage,
           subImages: formSubImages.filter(Boolean),
@@ -721,16 +741,23 @@ export default function ProductManagementPage() {
           description: formDescription.trim() || undefined,
           price: Number(formPrice),
           customCommissionRate: Number(formCommission),
+          isAffiliateEnabled: formAffiliateEnabled,
           stockQuantity: Number(formStock),
           imageUrl: formImage,
           subImages: formSubImages.filter(Boolean),
         });
         showToast('Đã thêm sản phẩm mới vào danh mục gian hàng!');
       }
+      setSaveError(null);
       setShowModal(false);
       loadProducts();
     } catch (err: any) {
-      showToast(err.message || 'Lỗi khi lưu sản phẩm');
+      const message = err?.response?.data?.message || err?.message || 'Lỗi khi lưu sản phẩm.';
+      const readableMessage = Array.isArray(message) ? message.join(', ') : String(message);
+      setSaveError(readableMessage);
+      showToast(readableMessage);
+    } finally {
+      setSavingProduct(false);
     }
   };
 
@@ -749,7 +776,7 @@ export default function ProductManagementPage() {
             commissionRate: 8,
             stockQuantity: 120,
             status: 'active',
-            images: ['/assets/serum-hero-optimized.jpg'],
+            images: ['/assets/products/real/vitamin-c-15-serum.jpg'],
           },
           {
             id: 'p-2',
@@ -760,7 +787,7 @@ export default function ProductManagementPage() {
             commissionRate: 10,
             stockQuantity: 84,
             status: 'active',
-            images: ['/assets/sunscreen-product.jpg'],
+            images: ['/assets/products/real/spf50-oil-control.jpg'],
           },
           {
             id: 'p-3',
@@ -771,7 +798,7 @@ export default function ProductManagementPage() {
             commissionRate: 12,
             stockQuantity: 0,
             status: 'out_of_stock',
-            images: ['/assets/serum-hero-optimized.jpg'],
+            images: ['/assets/products/real/tea-tree-cleanser.jpg'],
           },
           {
             id: 'p-4',
@@ -782,7 +809,7 @@ export default function ProductManagementPage() {
             commissionRate: 7,
             stockQuantity: 45,
             status: 'active',
-            images: ['/assets/serum-hero-optimized.jpg'],
+            images: ['/assets/products/real/bha-toner-2pct.png'],
           },
           {
             id: 'p-5',
@@ -793,7 +820,7 @@ export default function ProductManagementPage() {
             commissionRate: 15,
             stockQuantity: 15,
             status: 'paused',
-            images: ['/assets/serum-hero-optimized.jpg'],
+            images: ['/assets/products/real/centella-sheet-mask.jpg'],
           },
         ];
 
@@ -818,8 +845,8 @@ export default function ProductManagementPage() {
   return (
     <div className="flex flex-col gap-6 text-left max-w-[1520px] mx-auto w-full p-4 sm:p-6 min-h-screen">
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 p-3.5 bg-slate-900 text-white rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border border-[#EEDFC6] rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -871,20 +898,9 @@ export default function ProductManagementPage() {
       })()}
 
 
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight m-0">
-            {isKol ? 'Kho Sản Phẩm & Mức Hoa Hồng' : 'Danh mục sản phẩm'}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 m-0">
-            {isKol
-              ? 'Duyệt các sản phẩm có hoa hồng cao để lấy link tiếp thị hoặc đăng ký nhận hàng mẫu.'
-              : 'Cập nhật tồn kho, giá bán và mức hoa hồng riêng cho từng sản phẩm.'}
-          </p>
-        </div>
-
+      <div className="flex items-center justify-end gap-2.5">
         {!isKol ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="amber"
               size="md"
@@ -925,7 +941,7 @@ export default function ProductManagementPage() {
             Tạo link tiếp thị
           </Button>
         )}
-      </header>
+      </div>
 
 
       <Card className="p-3.5 sm:p-4 bg-white">
@@ -988,7 +1004,7 @@ export default function ProductManagementPage() {
               const price = p.price || 0;
               const rate = p.customCommissionRate ?? p.commissionRate ?? 10;
               const stock = p.stockQuantity ?? p.stock ?? 0;
-              const img = p.imageUrl || p.images?.[0] || p.image || '';
+              const img = getSafeProductImageUrl(p.imageUrl || p.images?.[0] || p.image, title, p.categoryName);
               const status =
                 p.status || (p.isActive === false ? 'paused' : stock === 0 ? 'out_of_stock' : 'active');
 
@@ -1131,8 +1147,14 @@ export default function ProductManagementPage() {
         className="max-h-[90vh] overflow-y-auto"
       >
         <form onSubmit={handleSave} className="flex flex-col gap-5">
+          {saveError && (
+            <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm font-medium text-rose-800">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{saveError}</span>
+            </div>
+          )}
           {/* SECTION 1: PHÂN LOẠI & MÃ SKU */}
-          <div className="bg-[#FAF8F5] border border-[#E8DAC4] rounded-2xl p-4 flex flex-col gap-3">
+          <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#1A1612] uppercase tracking-wider flex items-center gap-1.5">
                 <FolderTree className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -1150,7 +1172,7 @@ export default function ProductManagementPage() {
                   <select
                     value={formCategory}
                     onChange={(e) => handleCategoryChange(e.target.value)}
-                    className="w-full bg-white border border-[#E8DAC4] rounded-xl px-3 py-2 text-sm text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition cursor-pointer appearance-none"
+                    className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-sm text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition cursor-pointer appearance-none"
                   >
                     {STANDARD_CATEGORIES.map((cat) => (
                       <option key={cat.id} value={cat.name}>
@@ -1190,7 +1212,7 @@ export default function ProductManagementPage() {
                     onChange={(e) => setFormSku(e.target.value.toUpperCase())}
                     placeholder="VD: SKIN-A109"
                     required
-                    className="w-full bg-white border border-[#E8DAC4] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition font-mono"
+                    className="w-full bg-white border border-[#EAE4D7] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition font-mono"
                   />
                 </div>
               </div>
@@ -1207,7 +1229,7 @@ export default function ProductManagementPage() {
                   onChange={(e) => setFormCustomCategory(e.target.value)}
                   placeholder="VD: Mẹ & Bé, Đồ gia dụng thông minh..."
                   required
-                  className="w-full bg-white border border-[#E8DAC4] rounded-xl px-3 py-2 text-sm text-[#1A1612] font-medium focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
+                  className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-sm text-[#1A1612] font-medium focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
                 />
               </div>
             )}
@@ -1224,14 +1246,14 @@ export default function ProductManagementPage() {
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="VD: Serum Dưỡng Trắng Mờ Thâm Vitamin C 15% Sora Skin (30ml)"
                   required
-                  className="w-full bg-white border border-[#E8DAC4] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
+                  className="w-full bg-white border border-[#EAE4D7] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
                 />
               </div>
             </div>
           </div>
 
           {/* SECTION 2: BỘ SƯU TẬP 5 ẢNH (1 CHÍNH + 4 PHỤ) */}
-          <div className="bg-[#FAF8F5] border border-[#E8DAC4] rounded-2xl p-4 flex flex-col gap-3">
+          <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <span className="text-xs font-bold text-[#1A1612] uppercase tracking-wider flex items-center gap-1.5">
@@ -1260,7 +1282,7 @@ export default function ProductManagementPage() {
                   type="button"
                   onClick={() => document.getElementById('bulk-images-input')?.click()}
                   disabled={uploadingImage}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-white hover:bg-[#F3EFE6] border border-[#E8DAC4] shadow-2xs transition cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-white hover:bg-[#F3EFE6] border border-[#EAE4D7] shadow-2xs transition cursor-pointer disabled:opacity-50"
                 >
                   <UploadCloud size={13} className="text-[#B88E4F]" />
                   <span>{uploadingSlot === 'bulk' ? 'Đang tải hàng loạt...' : 'Tải lên nhiều ảnh'}</span>
@@ -1304,7 +1326,7 @@ export default function ProductManagementPage() {
                         alt="Ảnh chính sản phẩm"
                         className="w-full h-full object-cover transition duration-200 group-hover:scale-105"
                       />
-                      <div className="absolute top-1.5 left-1.5 bg-[#C59B58] text-white text-[9.5px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-1">
+                      <div className="absolute top-1.5 left-1.5 bg-[#EBD08C] text-white text-[9.5px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-1">
                         <span>⭐</span>
                         <span>CHÍNH</span>
                       </div>
@@ -1333,10 +1355,10 @@ export default function ProductManagementPage() {
                     </>
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-1">
-                      <div className="w-8 h-8 rounded-xl bg-[#FDE68A]/60 flex items-center justify-center text-[#92400E]">
+                      <div className="w-8 h-8 rounded-xl bg-[#EBD08C]/60 flex items-center justify-center text-[#991B1B]">
                         <ImagePlus size={16} />
                       </div>
-                      <span className="text-[10px] font-extrabold text-[#92400E] leading-tight">
+                      <span className="text-[10px] font-extrabold text-[#991B1B] leading-tight">
                         ⭐ ẢNH CHÍNH
                       </span>
                       <span className="text-[9px] text-[#A89066] font-medium leading-tight">
@@ -1345,7 +1367,7 @@ export default function ProductManagementPage() {
                     </div>
                   )}
                 </div>
-                <span className="text-[10.5px] font-bold text-center text-[#C59B58]">Ảnh bìa chính</span>
+                <span className="text-[10.5px] font-bold text-center text-[#B88E4F]">Ảnh bìa chính</span>
               </div>
 
               {/* SLOTS 1 TO 4: SUB IMAGES */}
@@ -1372,7 +1394,7 @@ export default function ProductManagementPage() {
                     <div
                       className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all flex flex-col items-center justify-center text-center p-2 group ${
                         subUrl
-                          ? 'border-[#E8DAC4] bg-white shadow-xs hover:border-[#C59B58]'
+                          ? 'border-[#EAE4D7] bg-white shadow-xs hover:border-[#C59B58]'
                           : 'border-dashed border-slate-200 bg-white hover:border-[#C59B58]/60 hover:bg-[#FAF8F5] cursor-pointer'
                       }`}
                       onClick={() => {
@@ -1398,7 +1420,7 @@ export default function ProductManagementPage() {
                                 e.stopPropagation();
                                 handleSetAsMain(subIdx);
                               }}
-                              className="w-full py-1 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[9.5px] font-bold text-white shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                              className="w-full py-1 rounded-lg bg-[#EBD08C] hover:bg-[#DEC07A] text-[9.5px] font-bold text-white shadow-xs flex items-center justify-center gap-1 cursor-pointer"
                               title="Chuyển ảnh này thành ảnh bìa chính"
                             >
                               <Crown size={11} />
@@ -1448,7 +1470,7 @@ export default function ProductManagementPage() {
           </div>
 
           {/* SECTION 3: ĐỊNH GIÁ BÁN SẢN PHẨM & TỒN KHO */}
-          <div className="bg-[#FAF8F5] border border-[#E8DAC4] rounded-2xl p-4 flex flex-col gap-3">
+          <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-4 flex flex-col gap-3">
             <span className="text-xs font-bold text-[#1A1612] uppercase tracking-wider flex items-center gap-1.5">
               <Coins className="w-3.5 h-3.5 text-[#B88E4F]" />
               3. Giá bán sản phẩm & Số lượng kho
@@ -1469,7 +1491,7 @@ export default function ProductManagementPage() {
                     onChange={(e) => handlePriceChange(Number(e.target.value))}
                     required
                     placeholder="VD: 350000"
-                    className="w-full bg-white border border-[#E8DAC4] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-extrabold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
+                    className="w-full bg-white border border-[#EAE4D7] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-extrabold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
                   />
                 </div>
                 <span className="text-[10.5px] text-[#B88E4F] font-bold mt-0.5 block">
@@ -1489,7 +1511,7 @@ export default function ProductManagementPage() {
                     value={formStock}
                     onChange={(e) => setFormStock(Number(e.target.value))}
                     required
-                    className="w-full bg-white border border-[#E8DAC4] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
+                    className="w-full bg-white border border-[#EAE4D7] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
                   />
                 </div>
                 <span className="text-[10.5px] text-[#7D715E] mt-0.5 block">Số lượng sản phẩm sẵn sàng cung ứng</span>
@@ -1498,13 +1520,13 @@ export default function ProductManagementPage() {
           </div>
 
           {/* SECTION 4: THIẾT LẬP HOA HỒNG KOL/CTV (QUY ĐỔI 2 CHIỀU % ⇄ VNĐ) */}
-          <div className="bg-gradient-to-br from-[#FFFDF9] via-[#FAF6F0] to-[#F5EFE6] border-2 border-[#D6BC8C] rounded-2xl p-4 flex flex-col gap-3 shadow-2xs">
+          <div className="bg-gradient-to-br from-[#FAF8F5] via-[#FAF8F5] to-[#F3EFE6] border-2 border-[#EAE4D7] rounded-2xl p-4 flex flex-col gap-3 shadow-2xs">
             <div className="flex flex-wrap items-center justify-between gap-1">
-              <span className="text-xs font-extrabold text-[#92400E] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-xs font-extrabold text-[#991B1B] uppercase tracking-wider flex items-center gap-1.5">
                 <Percent className="w-3.5 h-3.5 text-[#B88E4F]" />
                 4. Chính sách hoa hồng cho KOL/CTV (Quy đổi 2 chiều)
               </span>
-              <span className="text-[11px] font-bold text-[#B88E4F] bg-[#FAF0DC] px-2 py-0.5 rounded-full">
+              <span className="text-[11px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-full">
                 Nhập % hoặc nhập số tiền VNĐ
               </span>
             </div>
@@ -1519,14 +1541,14 @@ export default function ProductManagementPage() {
                   onClick={() => handleCommissionRateChange(pct)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                     formCommission === pct
-                      ? 'bg-[#C59B58] text-white shadow-xs'
-                      : 'bg-white border border-[#E8DAC4] text-[#1A1612] hover:bg-[#F3EFE6]'
+                      ? 'bg-[#EBD08C] text-white shadow-xs'
+                      : 'bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#F3EFE6]'
                   }`}
                 >
                   {pct}%
                 </button>
               ))}
-              <div className="h-4 w-px bg-[#E8DAC4] mx-1" />
+              <div className="h-4 w-px bg-[#EAE4D7] mx-1" />
               {[50000, 100000, 150000].map((amt) => (
                 <button
                   key={amt}
@@ -1534,8 +1556,8 @@ export default function ProductManagementPage() {
                   onClick={() => handleCommissionAmountChange(amt)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                     formCommissionAmount === amt
-                      ? 'bg-[#231D15] text-white shadow-xs'
-                      : 'bg-white border border-[#E8DAC4] text-[#1A1612] hover:bg-[#F3EFE6]'
+                      ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#C59B58] ring-2 ring-[#C59B58]/20 font-black shadow-xs'
+                      : 'bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#F3EFE6]'
                   }`}
                 >
                   {(amt / 1000).toLocaleString()}k
@@ -1559,13 +1581,13 @@ export default function ProductManagementPage() {
                     value={formCommission}
                     onChange={(e) => handleCommissionRateChange(Number(e.target.value))}
                     required
-                    className="w-full bg-white border border-[#E8DAC4] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-bold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
+                    className="w-full bg-white border border-[#EAE4D7] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-bold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
                   />
                 </div>
               </div>
 
               <div className="hidden sm:flex flex-col items-center justify-center pt-5">
-                <div className="w-8 h-8 rounded-full bg-[#FAF0DC] border border-[#DEBE85] flex items-center justify-center text-[#92400E]">
+                <div className="w-8 h-8 rounded-full bg-[#FBF5EB] border border-[#DEBE85] flex items-center justify-center text-[#991B1B]">
                   <ArrowLeftRight size={14} />
                 </div>
               </div>
@@ -1579,18 +1601,18 @@ export default function ProductManagementPage() {
                   <input
                     type="number"
                     min={0}
-                    step={1000}
+                    step={1}
                     value={formCommissionAmount}
                     onChange={(e) => handleCommissionAmountChange(Number(e.target.value))}
                     required
-                    className="w-full bg-white border border-[#E8DAC4] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-bold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
+                    className="w-full bg-white border border-[#EAE4D7] rounded-xl pl-9 pr-3 py-2 text-sm text-[#1A1612] font-bold focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
                   />
                 </div>
               </div>
             </div>
 
             {/* REAL-TIME COMMISSIONS SUMMARY BANNER */}
-            <div className="bg-white border border-[#E8DAC4] rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="bg-white border border-[#EAE4D7] rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-base">💰</span>
                 <div>
@@ -1612,6 +1634,21 @@ export default function ProductManagementPage() {
             </div>
           </div>
 
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3.5">
+            <input
+              type="checkbox"
+              checked={formAffiliateEnabled}
+              onChange={(event) => setFormAffiliateEnabled(event.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[#C59B58]"
+            />
+            <span>
+              <span className="block text-sm font-bold text-[#1A1612]">Mở Open Offer cho KOL/CTV</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-[#7D715E]">
+                Khi bật, KOL đã xác thực có thể lấy link theo tỷ lệ công khai ở trên. Khi tắt, link hiện tại ngừng nhận đơn mới; đơn đã ghi nhận vẫn giữ nguyên.
+              </span>
+            </span>
+          </label>
+
           {/* SECTION 5: MÔ TẢ CHI TIẾT SẢN PHẨM */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -1625,12 +1662,12 @@ export default function ProductManagementPage() {
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
               placeholder="Giới thiệu công dụng chính, thành phần nổi bật, loại da phù hợp, hướng dẫn sử dụng và thông điệp truyền thông chính để KOL dễ dàng sáng tạo nội dung và chốt đơn..."
-              className="w-full bg-[#FAF8F5] border border-[#E8DAC4] rounded-xl p-3 text-xs text-[#1A1612] font-medium focus:bg-white focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
+              className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 text-xs text-[#1A1612] font-medium focus:bg-white focus:border-[#B88E4F] focus:ring-2 focus:ring-[#B88E4F]/20 outline-none transition"
             />
           </div>
 
           {/* FOOTER ACTIONS */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E8DAC4]/60">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#EAE4D7]/60">
             <button
               type="button"
               onClick={() => setShowModal(false)}
@@ -1640,10 +1677,12 @@ export default function ProductManagementPage() {
             </button>
             <button
               type="submit"
-              disabled={uploadingImage}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#9E783D] shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              disabled={uploadingImage || savingProduct}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#231D15] bg-gradient-to-r from-[#EBD08C] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#D4B26F] shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
-              {uploadingImage ? (
+              {savingProduct ? (
+                <span>Đang lưu sản phẩm...</span>
+              ) : uploadingImage ? (
                 <>
                   <UploadCloud size={14} className="animate-spin" />
                   <span>Đang xử lý ảnh...</span>
@@ -1662,7 +1701,7 @@ export default function ProductManagementPage() {
 
       {deleteConfirmProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-[1.5px] animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-xl border border-[#E8DAC4] w-full max-w-sm p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl shadow-xl border border-[#EAE4D7] w-full max-w-sm p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-rose-600 mb-3.5">
               <div className="w-10 h-10 bg-rose-50 border border-rose-200/60 rounded-xl flex items-center justify-center flex-shrink-0 text-rose-600">
                 <AlertCircle className="w-5 h-5" />
@@ -1673,7 +1712,7 @@ export default function ProductManagementPage() {
               </div>
             </div>
 
-            <div className="bg-[#FAF8F5] p-3 rounded-xl border border-[#E8DAC4] text-xs text-[#7D6D55] space-y-1.5 mb-5">
+            <div className="bg-[#FAF8F5] p-3 rounded-xl border border-[#EAE4D7] text-xs text-[#7D715E] space-y-1.5 mb-5">
               <div className="truncate">• <strong>Tên:</strong> {deleteConfirmProduct.title || deleteConfirmProduct.name}</div>
               <div>• <strong>Mã SKU:</strong> <span className="font-mono font-bold text-[#B88E4F]">{deleteConfirmProduct.sku}</span></div>
             </div>
@@ -1715,12 +1754,12 @@ export default function ProductManagementPage() {
           onClick={() => setSelectedVideoProduct(null)}
         >
           <div
-            className="bg-[#FAF8F5] rounded-2xl shadow-2xl border border-[#EEDFC6] w-full max-w-4xl text-left animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-hidden flex flex-col"
+            className="bg-[#FAF8F5] rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-4xl text-left animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 sm:px-6 py-4 bg-white border-b border-[#EAE4D7]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl flex items-center justify-center text-[#B88E4F] shrink-0">
+                <div className="w-10 h-10 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl flex items-center justify-center text-[#B88E4F] shrink-0">
                   <Video className="w-5 h-5" />
                 </div>
                 <div>
@@ -1776,7 +1815,7 @@ export default function ProductManagementPage() {
                       className="overflow-hidden bg-white rounded-2xl border border-[#EAE4D7] shadow-[0_5px_18px_rgba(95,74,43,0.06)] text-xs"
                     >
                       <div className="grid lg:grid-cols-[minmax(300px,1.05fr)_minmax(0,1fr)]">
-                        <div className="bg-[#231D15] min-h-[210px] flex items-center justify-center relative">
+                        <div className="bg-[#1A1612] min-h-[210px] flex items-center justify-center relative">
                           <video
                             src={v.urlOrContent}
                             poster={v.posterUrl || undefined}
@@ -1804,7 +1843,7 @@ export default function ProductManagementPage() {
                           {isRejected && <Badge variant="danger">Bị từ chối</Badge>}
                           {isHidden && <Badge variant="neutral">Đã ẩn</Badge>}
                           {v.isFeatured && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C59B58] text-white">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EBD08C] text-white">
                               <Star className="w-2.5 h-2.5 fill-current" /> Nổi bật Landing
                             </span>
                           )}
@@ -1851,7 +1890,7 @@ export default function ProductManagementPage() {
                               type="button"
                               disabled={reviewingMediaId === v.id}
                               onClick={() => handleApproveVideo(v.id, false)}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition cursor-pointer disabled:opacity-50"
+                              className="px-2.5 py-1.5 rounded-lg bg-[#EBD08C] text-white font-bold text-xs hover:bg-[#DEC07A] transition cursor-pointer disabled:opacity-50"
                             >
                               Duyệt
                             </button>
@@ -1859,7 +1898,7 @@ export default function ProductManagementPage() {
                               type="button"
                               disabled={reviewingMediaId === v.id}
                               onClick={() => handleApproveVideo(v.id, true)}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold text-xs hover:bg-[#F3EFE6] transition cursor-pointer disabled:opacity-50"
+                              className="px-2.5 py-1.5 rounded-lg bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] font-bold text-xs hover:bg-[#F3EFE6] transition cursor-pointer disabled:opacity-50"
                               title="Duyệt và đặt làm video nổi bật nhất trên Landing"
                             >
                               ⭐ Duyệt & Ghim
@@ -1882,7 +1921,7 @@ export default function ProductManagementPage() {
                                 type="button"
                                 disabled={reviewingMediaId === v.id}
                                 onClick={() => handleApproveVideo(v.id, true)}
-                                className="px-2.5 py-1.5 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold text-xs hover:bg-[#F3EFE6] transition cursor-pointer"
+                                className="px-2.5 py-1.5 rounded-lg bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] font-bold text-xs hover:bg-[#F3EFE6] transition cursor-pointer"
                               >
                                 Ghim nổi bật
                               </button>
@@ -1986,11 +2025,11 @@ export default function ProductManagementPage() {
 
 
       {showReviewModeration && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#231D15]/45 backdrop-blur-[3px] animate-fadeIn">
-          <section className="bg-[#FAF8F5] rounded-2xl shadow-[0_24px_80px_rgba(77,57,31,0.24)] border border-[#EEDFC6] w-full max-w-4xl max-h-[88vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#1A1612]/45 backdrop-blur-[3px] animate-fadeIn">
+          <section className="bg-[#FAF8F5] rounded-2xl shadow-[0_24px_80px_rgba(77,57,31,0.24)] border border-[#EAE4D7] w-full max-w-4xl max-h-[88vh] overflow-hidden flex flex-col">
             <header className="flex items-start justify-between gap-4 bg-white border-b border-[#EAE4D7] px-5 sm:px-6 py-5">
               <div className="flex items-start gap-3.5 min-w-0">
-                <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center shrink-0">
                   <MessageSquareText className="w-5 h-5" />
                 </div>
                 <div>
@@ -2045,7 +2084,7 @@ export default function ProductManagementPage() {
                   onClick={() => setReviewFilterStatus(tab.key as any)}
                   className={`h-9 px-3 rounded-xl text-xs font-bold transition cursor-pointer inline-flex items-center gap-2 whitespace-nowrap border ${
                     reviewFilterStatus === tab.key
-                      ? 'bg-[#C59B58] text-white border-[#C59B58] shadow-sm'
+                      ? 'bg-[#EBD08C] text-white border-[#C59B58] shadow-sm'
                       : 'bg-[#FAF8F5] text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] border-[#EAE4D7]'
                   }`}
                 >

@@ -1,10 +1,18 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, type FormEvent } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Eye,
   EyeOff,
   KeyRound,
   ArrowLeft,
+  Sparkles,
+  User,
+  Mail,
+  Phone,
+  Lock,
+  Gift,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton';
@@ -14,6 +22,15 @@ import { toast } from '../../utils/toast';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const requestedRedirect = searchParams.get('redirect');
+  const initialRef = searchParams.get('ref') || '';
+  const returnTo =
+    requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\')
+      ? requestedRedirect
+      : null;
+  const loginUrl = returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login';
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -21,15 +38,57 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [referralCode, setReferralCode] = useState(initialRef);
+  const [showReferralInput, setShowReferralInput] = useState(Boolean(initialRef));
   const [agreeTerms, setAgreeTerms] = useState(true);
 
+  // OTP Modal states
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState('');
   const [mockOtpHint, setMockOtpHint] = useState<string | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [otpCountdown, setOtpCountdown] = useState(60);
+  const [canResendOtp, setCanResendOtp] = useState(false);
+  const [resendingOtp, setResendingOtp] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let timer: any;
+    if (showOtpModal && otpCountdown > 0) {
+      timer = setInterval(() => {
+        setOtpCountdown((prev) => {
+          if (prev <= 1) {
+            setCanResendOtp(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [showOtpModal, otpCountdown]);
+
+  const handleResendOtp = async () => {
+    if (!canResendOtp || resendingOtp) return;
+    try {
+      setResendingOtp(true);
+      const res: any = await authService.sendOtp(registeredEmail);
+      const otpCode = res?.data?.debugOtp || res?.data?.mockOtp;
+      if (otpCode) {
+        setMockOtpHint(otpCode);
+      }
+      setOtpCountdown(60);
+      setCanResendOtp(false);
+      toast.success('Mã OTP mới đã được gửi tới email của bạn!');
+    } catch {
+      toast.error('Không thể gửi lại mã OTP. Vui lòng thử lại sau.');
+    } finally {
+      setResendingOtp(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -58,6 +117,8 @@ export default function RegisterPage() {
       if (otpCode) {
         setMockOtpHint(otpCode);
       }
+      setOtpCountdown(60);
+      setCanResendOtp(false);
       setShowOtpModal(true);
     } catch (err: any) {
       const errorMsg =
@@ -90,9 +151,16 @@ export default function RegisterPage() {
 
       try {
         await authService.login(registeredEmail, password);
-        navigate('/customer/orders');
+        if (returnTo) {
+          navigate(returnTo);
+        } else {
+          navigate('/customer/orders');
+        }
       } catch {
-        navigate('/login');
+        const dest = returnTo
+          ? `/login?registered=email&email=${encodeURIComponent(registeredEmail)}&redirect=${encodeURIComponent(returnTo)}`
+          : `/login?registered=email&email=${encodeURIComponent(registeredEmail)}`;
+        navigate(dest);
       }
     } catch (err: any) {
       const errorMsg =
@@ -112,7 +180,11 @@ export default function RegisterPage() {
       setError(null);
       await authService.googleLogin(idToken, 'CUSTOMER');
       toast.success('Đăng ký & xác thực Google thành công!');
-      navigate('/customer/orders');
+      if (returnTo) {
+        navigate(returnTo);
+      } else {
+        navigate('/customer/orders');
+      }
     } catch (err: any) {
       setError(err.message || 'Đăng ký qua Google thất bại');
     } finally {
@@ -136,94 +208,47 @@ export default function RegisterPage() {
         </Link>
       </header>
 
-      <main className="max-w-[1160px] mx-auto w-full my-auto py-2 sm:py-3">
-        <div className="w-full rounded-[28px] sm:rounded-[32px] border border-[#EAE4D7] bg-white shadow-[0_24px_65px_rgba(26,22,18,0.07)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[610px] relative">
-          
-          <div className="relative w-full h-[340px] sm:h-[400px] lg:h-full lg:col-span-5 bg-[#231D15] overflow-hidden flex flex-col justify-end p-7 sm:p-9 group">
-            <img
-              src="/assets/marketplace_luxury_hero.jpg"
-              alt="Hệ sinh thái thương mại đa gian hàng SCANMS"
-              className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105"
-            />
+      <main className="max-w-[1180px] mx-auto w-full my-auto py-2 sm:py-3">
+        <div
+          className="w-full rounded-[28px] sm:rounded-[32px] border-2 border-[#EEDFC6] shadow-[0_24px_70px_rgba(197,155,88,0.16),0_10px_30px_rgba(26,22,18,0.06)] ring-1 ring-[#C59B58]/20 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[620px] relative bg-[#FAF8F5]"
+          style={{
+            backgroundImage: "url('/assets/auth_luxury_card_inner.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          {/* CỘT TRÁI: MỞ RỘNG (7 COLS = ~58%) - KHÔNG GIAN SẢN PHẨM & SLOGAN HOÀNG GIA */}
+          <div className="relative w-full h-[280px] sm:h-[340px] lg:h-full lg:col-span-7 overflow-hidden flex flex-col justify-between p-6 sm:p-8 lg:p-12">
+            {/* Top-Left Section: Glassmorphic Badge & Slogan */}
+            <div className="relative z-20 space-y-3.5 max-w-md">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-[#EEDFC6] text-[#1A1612] text-xs font-bold shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-[#C59B58]" />
+                <span>Sàn Thương Mại Đối Tác</span>
+              </div>
 
-            <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/45 to-transparent pointer-events-none" />
-
-            <div className="hidden lg:block absolute inset-y-0 right-0 w-36 bg-gradient-to-r from-transparent via-[#C59B58]/20 to-[#ECC272]/35 pointer-events-none z-10" />
-
-            <div className="relative z-10 space-y-1">
-              <h1
-                className="font-display italic text-2xl sm:text-3xl lg:text-[38px] leading-[1.18] tracking-tight drop-shadow-xl"
-                style={{ color: '#FFFFFF' }}
-              >
+              <h1 className="font-display italic text-2xl sm:text-3xl lg:text-[36px] leading-[1.18] tracking-tight drop-shadow-xs text-[#1A1612]">
                 Kết nối gian hàng,<br />
-                <span className="font-display italic" style={{ color: '#ECC272' }}>
+                <span className="font-display italic text-[#B88E4F]">
                   lan tỏa giá trị.
                 </span>
               </h1>
             </div>
 
-            <svg
-              className="lg:hidden absolute -bottom-[1px] left-0 right-0 w-full h-8 pointer-events-none z-20"
-              viewBox="0 0 400 32"
-              preserveAspectRatio="none"
-            >
-              <path
-                d="M0,32 C90,12 170,28 260,12 C330,-1 370,24 400,20 L400,32 L0,32 Z"
-                fill="#FFFFFF"
-              />
-              <path
-                d="M0,32 C70,18 150,30 240,16 C310,4 360,26 400,24 L400,32 L0,32 Z"
-                fill="rgba(238, 223, 198, 0.45)"
-              />
-            </svg>
+            {/* Dưới chân để thoáng cho các sản phẩm và hộp quà travertine */}
+            <div className="relative z-20" />
           </div>
 
-          <div
-            className="relative w-full h-full lg:col-span-7 p-6 sm:p-8 lg:p-9 flex flex-col justify-between text-left overflow-hidden bg-white"
-            style={{
-              background: 'radial-gradient(ellipse 95% 75% at 0% 40%, rgba(238, 223, 198, 0.42) 0%, rgba(251, 245, 235, 0.25) 36%, rgba(255, 255, 255, 1) 72%)',
-            }}
-          >
-            <svg
-              className="hidden lg:block absolute -top-[1px] -bottom-[1px] -left-[1px] h-[calc(100%+2px)] w-20 xl:w-24 pointer-events-none z-10"
-              viewBox="0 0 100 620"
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <linearGradient id="waveBleedRegGrad1" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#C59B58" stopOpacity="0.35" />
-                  <stop offset="50%" stopColor="#EEDFC6" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-                </linearGradient>
-                <linearGradient id="waveBleedRegGrad2" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#ECC272" stopOpacity="0.28" />
-                  <stop offset="60%" stopColor="#FAF8F5" stopOpacity="0.38" />
-                  <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0,0 C32,95 76,170 56,260 C36,350 86,435 66,525 C50,580 24,605 0,620 Z"
-                fill="url(#waveBleedRegGrad1)"
-              />
-              <path
-                d="M0,0 C22,110 54,195 40,285 C24,375 66,455 48,545 C34,592 16,612 0,620 Z"
-                fill="url(#waveBleedRegGrad2)"
-              />
-              <path
-                d="M0,0 C12,125 34,205 24,295 C14,385 40,470 28,555 C18,598 6,615 0,620 Z"
-                fill="rgba(255, 255, 255, 0.45)"
-              />
-            </svg>
-
-            <div className="relative z-20">
-              <h2 className="text-2xl font-black text-[#1A1612] tracking-tight">
-                Tạo tài khoản mới
+          {/* CỘT PHẢI: FORM ĐĂNG KÝ GIAO DIỆN SANG TRỌNG (5 COLS = ~42%) */}
+          <div className="relative w-full h-full lg:col-span-5 p-6 sm:p-8 lg:py-7 lg:pr-8 lg:pl-10 xl:pl-12 flex flex-col justify-between text-left">
+            {/* Header: Tiêu đề căn giữa, phong cách hoàng gia như mockup */}
+            <div className="relative z-20 text-center">
+              <h2 className="font-display text-3xl sm:text-[34px] font-black tracking-tight text-[#1A1612]">
+                Đăng <span className="font-display text-[#B88E4F]">ký</span>
               </h2>
-              <p className="text-xs text-[#7D715E] mt-1 font-medium">
-                Nhanh chóng, an toàn và hoàn toàn miễn phí
-              </p>
             </div>
 
+            {/* Google Button */}
             <div className="w-full">
               <GoogleOfficialButton
                 onSuccess={onGoogleRegisterSuccess}
@@ -231,6 +256,7 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* Divider */}
             <div className="relative flex items-center justify-center my-0.5">
               <div className="border-t border-[#EAE4D7] w-full" />
               <span className="bg-white px-3 text-[11px] font-medium text-[#7D715E] uppercase tracking-wider absolute">
@@ -244,39 +270,47 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {/* Form inputs */}
             <form onSubmit={handleSubmit} className="space-y-2.5">
-              <div>
+              {/* Họ và tên */}
+              <div className="relative flex items-center">
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   placeholder="Họ và tên của bạn"
-                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-4 text-sm text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
                 />
+                <User className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
 
-              <div>
+              {/* Email */}
+              <div className="relative flex items-center">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="Địa chỉ Email"
-                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-4 text-sm text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
                 />
+                <Mail className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
 
-              <div>
+              {/* Số điện thoại */}
+              <div className="relative flex items-center">
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Số điện thoại (tùy chọn)"
-                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-4 text-sm text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
                 />
+                <Phone className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
 
+              {/* Password & Confirm Password */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="relative flex items-center">
                   <input
@@ -285,29 +319,64 @@ export default function RegisterPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="Mật khẩu"
-                    className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-3 pr-8 text-xs text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                    className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-8 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
                   />
+                  <Lock className="w-3.5 h-3.5 text-[#A69986] absolute left-3 pointer-events-none" />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 text-[#A69986] p-1 cursor-pointer"
+                    className="absolute right-2.5 text-[#A69986] hover:text-[#1A1612] p-0.5 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
 
-                <div>
+                <div className="relative flex items-center">
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     placeholder="Nhập lại mật khẩu"
-                    className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl px-3 text-xs text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
+                    className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-8 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
                   />
+                  <Lock className="w-3.5 h-3.5 text-[#A69986] absolute left-3 pointer-events-none" />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-2.5 text-[#A69986] hover:text-[#1A1612] p-0.5 cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
 
+              {/* Mã giới thiệu đối tác (Collapsible) */}
+              <div className="pt-0.5">
+                {!showReferralInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowReferralInput(true)}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#B88E4F] hover:text-[#C59B58] transition cursor-pointer"
+                  >
+                    <Gift className="w-3.5 h-3.5" />
+                    <span>Có mã giới thiệu đối tác?</span>
+                  </button>
+                ) : (
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                      placeholder="Mã giới thiệu đối tác (Tùy chọn)"
+                      className="w-full h-9 bg-[#FBF5EB] border border-[#EEDFC6] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:bg-white focus:ring-3 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-3 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
+                    />
+                    <Gift className="w-3.5 h-3.5 text-[#C59B58] absolute left-3 pointer-events-none" />
+                  </div>
+                )}
+              </div>
+
+              {/* Điều khoản sử dụng */}
               <div className="text-[11px] text-[#7D715E] pt-0.5 flex items-start gap-2">
                 <input
                   type="checkbox"
@@ -318,23 +387,25 @@ export default function RegisterPage() {
                 />
                 <label htmlFor="agreeTerms" className="cursor-pointer leading-snug">
                   Tôi đồng ý với{' '}
-                  <Link to="/terms" className="text-[#B88E4F] hover:underline font-semibold">Điều khoản dịch vụ</Link> và{' '}
-                  <Link to="/privacy" className="text-[#B88E4F] hover:underline font-semibold">Chính sách bảo mật</Link> của SCANMS.
+                  <Link to="/terms" className="text-[#B88E4F] hover:underline font-semibold">Điều khoản</Link> và{' '}
+                  <Link to="/privacy" className="text-[#B88E4F] hover:underline font-semibold">Chính sách</Link> của SCANMS.
                 </label>
               </div>
 
+              {/* Submit button: Exact match to user mockup */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-sm rounded-xl transition shadow-[0_4px_16px_rgba(197,155,88,0.28)] hover:shadow-[0_6px_20px_rgba(197,155,88,0.38)] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                className="w-full h-11 btn-gold-glossy disabled:opacity-50"
               >
-                {loading ? 'Đang gửi mã xác thực...' : 'Đăng ký tài khoản'}
+                <span>{loading ? 'Đang gửi mã xác thực...' : 'Đăng ký tài khoản'}</span>
               </button>
             </form>
 
-            <div className="border-t border-[#EAE4D7] pt-2 text-center text-xs text-[#7D715E]">
+            {/* Bottom switch link */}
+            <div className="text-center pt-2 border-t border-[#EAE4D7] text-xs text-[#7D715E]">
               Đã có tài khoản?{' '}
-              <Link to="/login" className="font-bold text-[#B88E4F] hover:underline">
+              <Link to={loginUrl} className="font-bold text-[#B88E4F] hover:underline">
                 Đăng nhập ngay →
               </Link>
             </div>
@@ -342,6 +413,7 @@ export default function RegisterPage() {
         </div>
       </main>
 
+      {/* Modal Xác thực OTP */}
       <Modal
         isOpen={showOtpModal}
         onClose={() => setShowOtpModal(false)}
@@ -353,9 +425,18 @@ export default function RegisterPage() {
           </div>
 
           {mockOtpHint && (
-            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center gap-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>Mã kiểm thử (Demo): <strong className="font-mono text-sm tracking-wider text-amber-900">{mockOtpHint}</strong></span>
+            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Mã kiểm thử (Demo): <strong className="font-mono text-sm tracking-wider text-amber-900">{mockOtpHint}</strong></span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOtp(mockOtpHint)}
+                className="text-[11px] font-bold text-amber-900 underline hover:text-amber-700 cursor-pointer"
+              >
+                Điền nhanh
+              </button>
             </div>
           )}
 
@@ -374,12 +455,33 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* Đếm ngược 60s và Gửi lại mã */}
+          <div className="flex items-center justify-between text-xs pt-1">
+            <span className="text-[#7D715E] flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[#B88E4F]" />
+              {otpCountdown > 0 ? (
+                <span>Gửi lại mã sau <strong className="font-mono text-[#1A1612]">{otpCountdown}s</strong></span>
+              ) : (
+                <span className="text-[#059669] font-medium">Bạn có thể gửi lại mã ngay</span>
+              )}
+            </span>
+            <button
+              type="button"
+              disabled={!canResendOtp || resendingOtp}
+              onClick={handleResendOtp}
+              className="font-bold text-[#B88E4F] hover:text-[#C59B58] disabled:opacity-40 disabled:cursor-not-allowed hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${resendingOtp ? 'animate-spin' : ''}`} />
+              <span>Gửi lại mã OTP</span>
+            </button>
+          </div>
+
           <button
             type="submit"
             disabled={loading || otp.length < 6}
-            className="w-full h-11 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+            className="w-full h-11 btn-gold-glossy flex items-center justify-center gap-2 text-sm tracking-wide disabled:opacity-50"
           >
-            <span>{loading ? 'Đang xác thực...' : 'Hoàn tất & Đăng nhập'}</span>
+            <span className="relative z-10">{loading ? 'Đang xác thực...' : 'Hoàn tất & Đăng nhập'}</span>
           </button>
         </form>
       </Modal>

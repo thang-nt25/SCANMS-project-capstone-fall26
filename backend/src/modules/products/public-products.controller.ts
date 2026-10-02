@@ -1,5 +1,6 @@
-﻿import {
+import {
   Controller,
+  ExecutionContext,
   Get,
   Post,
   Body,
@@ -9,7 +10,11 @@
   Res,
   HttpStatus,
   HttpCode,
+  Injectable,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { UserRole } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ProductsService } from './products.service';
@@ -18,6 +23,19 @@ import { TrackAnalyticsEventDto } from './dto/track-event.dto';
 import { ConfigService } from '@nestjs/config';
 import { extractTrustedClientIp } from '../referral-links/utils/client-ip.util';
 import { escapeHtml } from '../referral-links/utils/short-code.generator';
+
+@Injectable()
+class OptionalJwtAuthGuard extends AuthGuard('jwt') {
+  handleRequest<TUser = any>(
+    _error: any,
+    user: TUser,
+    _info: any,
+    _context: ExecutionContext,
+    _status?: any,
+  ): TUser {
+    return (user ?? null) as TUser;
+  }
+}
 
 @ApiTags('Public Product Landing Page (FR-15)')
 @Controller('public/products')
@@ -28,7 +46,8 @@ export class PublicProductsController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Marketplace cÃ´ng khai chá»‰ tráº£ dá»¯ liá»‡u sáº£n pháº©m an toÃ n vá»›i bá»™ lá»c thá»±c táº¿' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: 'Marketplace công khai chỉ trả dữ liệu sản phẩm an toàn với bộ lọc thực tế' })
   async getMarketplace(
     @Query('search') search = '',
     @Query('category') category?: string,
@@ -38,7 +57,9 @@ export class PublicProductsController {
     @Query('sortBy') sortBy?: string,
     @Query('page') page = '1',
     @Query('limit') limit = '24',
+    @Req() req?: Request,
   ) {
+    const role = (req as (Request & { user?: { role?: UserRole } }) | undefined)?.user?.role;
     return this.productsService.findPublicMarketplace({
       search,
       category,
@@ -48,17 +69,17 @@ export class PublicProductsController {
       sortBy,
       page: Number(page) || 1,
       limit: Number(limit) || 24,
-    });
+    }, 1, 24, role === UserRole.COLLABORATOR);
   }
 
   @Get('categories')
-  @ApiOperation({ summary: 'Láº¥y danh sÃ¡ch cÃ¡c danh má»¥c ngÃ nh hÃ ng cÃ³ sáº£n pháº©m thá»±c táº¿' })
+  @ApiOperation({ summary: 'Lấy danh sách các danh mục ngành hàng có sản phẩm thực tế' })
   async getCategories() {
     return this.productsService.getPublicCategories();
   }
 
   @Get('stores')
-  @ApiOperation({ summary: 'Láº¥y danh sÃ¡ch cÃ¡c gian hÃ ng Ä‘á»‘i tÃ¡c Ä‘ang hoáº¡t Ä‘á»™ng trÃªn sÃ n' })
+  @ApiOperation({ summary: 'Lấy danh sách các gian hàng đối tác đang hoạt động trên sàn' })
   async getStores() {
     return this.productsService.getPublicStores();
   }
@@ -66,39 +87,39 @@ export class PublicProductsController {
   @Get(':idOrSlug/landing')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Láº¥y dá»¯ liá»‡u Landing Page mua hÃ ng cÃ´ng khai & Video Review (FR-15)',
+    summary: 'Lấy dữ liệu Landing Page mua hàng công khai & Video Review (FR-15)',
     description:
-      'Cung cáº¥p dá»¯ liá»‡u cÃ´ng khai an toÃ n cho khÃ¡ch vÃ£ng lai: ThÃ´ng tin sáº£n pháº©m, tá»“n kho, chÃ­nh sÃ¡ch Shop, video review KOL Ä‘Ã£ APPROVED (Æ°u tiÃªn Ä‘Ãºng KOL referral), thá»‘ng kÃª sao vÃ  Ä‘Ã¡nh giÃ¡ Ä‘Ã£ duyá»‡t cÃ³ huy hiá»‡u ÄÃ£ mua hÃ ng. KhÃ´ng lá»™ PII, commission hay thÃ´ng tin ná»™i bá»™.',
+      'Cung cấp dữ liệu công khai an toàn cho khách vãng lai: Thông tin sản phẩm, tồn kho, chính sách Shop, video review KOL đã APPROVED (ưu tiên đúng KOL referral), thống kê sao và đánh giá đã duyệt có huy hiệu Đã mua hàng. Không lộ PII, commission hay thông tin nội bộ.',
   })
   @ApiParam({
     name: 'idOrSlug',
-    description: 'UUID hoáº·c SKU cá»§a sáº£n pháº©m (VD: TECH-001 hoáº·c UUID)',
+    description: 'UUID hoặc SKU của sản phẩm (VD: TECH-001 hoặc UUID)',
     example: 'TECH-001',
   })
   @ApiResponse({
     status: 200,
-    description: 'Tráº£ vá» dá»¯ liá»‡u Landing Page an toÃ n cá»§a sáº£n pháº©m & video review',
+    description: 'Trả về dữ liệu Landing Page an toàn của sản phẩm & video review',
     type: ProductLandingResponseDto,
   })
   @ApiResponse({
     status: 400,
-    description: 'YÃªu cáº§u khÃ´ng há»£p lá»‡ (mÃ£ sáº£n pháº©m rá»—ng hoáº·c sai Ä‘á»‹nh dáº¡ng)',
+    description: 'Yêu cầu không hợp lệ (mã sản phẩm rỗng hoặc sai định dạng)',
   })
   @ApiResponse({
     status: 404,
-    description: 'Sáº£n pháº©m khÃ´ng tá»“n táº¡i, Ä‘Ã£ bá»‹ xÃ³a má»m hoáº·c gian hÃ ng táº¡m Ä‘Ã³ng/bá»‹ khÃ³a',
+    description: 'Sản phẩm không tồn tại, đã bị xóa mềm hoặc gian hàng tạm đóng/bị khóa',
   })
   @ApiResponse({
     status: 410,
-    description: 'Sáº£n pháº©m Ä‘Ã£ ngá»«ng kinh doanh vÄ©nh viá»…n',
+    description: 'Sản phẩm đã ngừng kinh doanh vĩnh viễn',
   })
   @ApiResponse({
     status: 429,
-    description: 'QuÃ¡ nhiá»u yÃªu cáº§u truy cáº­p tá»« cÃ¹ng Ä‘á»‹a chá»‰ IP (Rate Limit)',
+    description: 'Quá nhiều yêu cầu truy cập từ cùng địa chỉ IP (Rate Limit)',
   })
   @ApiResponse({
     status: 500,
-    description: 'Lá»—i mÃ¡y chá»§ ná»™i bá»™ khi tá»•ng há»£p dá»¯ liá»‡u landing page',
+    description: 'Lỗi máy chủ nội bộ khi tổng hợp dữ liệu landing page',
   })
   async getLandingPage(
     @Param('idOrSlug') idOrSlug: string,
@@ -112,15 +133,15 @@ export class PublicProductsController {
   @Post('analytics/events')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Tiáº¿p nháº­n sá»± kiá»‡n tÆ°Æ¡ng tÃ¡c ngÆ°á»i dÃ¹ng trÃªn Landing Page (FR-15 Analytics)',
+    summary: 'Tiếp nhận sự kiện tương tác người dùng trên Landing Page (FR-15 Analytics)',
     description:
-      'Ghi nháº­n cÃ¡c sá»± kiá»‡n page_view, video_start, video_complete, cta_click, checkout_start phá»¥c vá»¥ thá»‘ng kÃª chuyá»ƒn Ä‘á»•i tiáº¿p thá»‹.',
+      'Ghi nhận các sự kiện page_view, video_start, video_complete, cta_click, checkout_start phục vụ thống kê chuyển đổi tiếp thị.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Ghi nháº­n sá»± kiá»‡n thÃ nh cÃ´ng',
+    description: 'Ghi nhận sự kiện thành công',
   })
-  @ApiResponse({ status: 429, description: 'VÆ°á»£t giá»›i háº¡n sá»± kiá»‡n theo IP' })
+  @ApiResponse({ status: 429, description: 'Vượt giới hạn sự kiện theo IP' })
   async trackAnalytics(
     @Body() dto: TrackAnalyticsEventDto,
     @Req() req?: Request,
@@ -144,7 +165,7 @@ export class PublicProductsController {
 
   @Get([':idOrSlug/seo', 'preview/:idOrSlug', 'p/:idOrSlug'])
   @ApiOperation({
-    summary: 'Server-Side Render Open Graph Meta Tags cho máº¡ng xÃ£ há»™i (Facebook, Zalo, Twitter) (FR-15 SEO)',
+    summary: 'Server-Side Render Open Graph Meta Tags cho mạng xã hội (Facebook, Zalo, Twitter) (FR-15 SEO)',
   })
   async getSeoPreview(
     @Param('idOrSlug') idOrSlug: string,
@@ -157,17 +178,24 @@ export class PublicProductsController {
         this.configService.get<string>('FRONTEND_URL') ||
         process.env.FRONTEND_URL ||
         'http://localhost:5173';
+      const normalizedFrontendUrl = frontendBaseUrl.replace(/\/+$/, '');
       const targetSlug = landingData.product.sku || landingData.product.id;
-      const targetUrl = `${frontendBaseUrl}/products/${encodeURIComponent(targetSlug)}`;
-      const title = `${escapeHtml(landingData.product.title)} | SCANMS SÃ n Äá»‘i TÃ¡c`;
+      const targetUrl = new URL(
+        `/products/${encodeURIComponent(targetSlug)}`,
+        `${normalizedFrontendUrl}/`,
+      ).toString();
+      const title = `${escapeHtml(landingData.product.title)} | SCANMS Sàn Đối Tác`;
       const description = escapeHtml(
         landingData.product.description?.slice(0, 160) ||
-          'KhÃ¡m phÃ¡ sáº£n pháº©m chÃ­nh hÃ£ng vá»›i má»©c chiáº¿t kháº¥u vÃ  Æ°u Ä‘Ã£i tá»‘t nháº¥t trÃªn SCANMS.',
+          'Khám phá sản phẩm chính hãng với mức chiết khấu và ưu đãi tốt nhất trên SCANMS.',
       );
-      const imageUrl =
+      const imagePath =
         landingData.product.imageUrl ||
         landingData.images?.[0] ||
-        `${frontendBaseUrl}/banner-placeholder.jpg`;
+        `${normalizedFrontendUrl}/banner-placeholder.jpg`;
+      const imageUrl = new URL(imagePath, `${normalizedFrontendUrl}/`).toString();
+      const safeTargetUrl = escapeHtml(targetUrl);
+      const safeImageUrl = escapeHtml(imageUrl);
       const price = landingData.product.price;
       const storeName = escapeHtml(landingData.store?.name || 'SCANMS Official');
 
@@ -181,11 +209,11 @@ export class PublicProductsController {
 
   <!-- Open Graph / Facebook / Zalo -->
   <meta property="og:type" content="product">
-  <meta property="og:url" content="${targetUrl}">
+  <meta property="og:url" content="${safeTargetUrl}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
-  <meta property="og:image" content="${imageUrl}">
-  <meta property="og:site_name" content="SCANMS - SÃ n ThÆ°Æ¡ng Máº¡i Äá»‘i TÃ¡c">
+  <meta property="og:image" content="${safeImageUrl}">
+  <meta property="og:site_name" content="SCANMS - Sàn Thương Mại Đối Tác">
   <meta property="og:price:amount" content="${price}">
   <meta property="og:price:currency" content="VND">
   <meta property="product:brand" content="${storeName}">
@@ -195,15 +223,15 @@ export class PublicProductsController {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">
-  <meta name="twitter:image" content="${imageUrl}">
+  <meta name="twitter:image" content="${safeImageUrl}">
 
   <!-- Fallback Client Redirection -->
-  <meta http-equiv="refresh" content="0;url=${targetUrl}">
+  <meta http-equiv="refresh" content="0;url=${safeTargetUrl}">
   <script>window.location.replace(${JSON.stringify(targetUrl)});</script>
 </head>
 <body style="font-family: system-ui, sans-serif; background: #FAF8F5; color: #1A1612; padding: 2rem; text-align: center;">
-  <p>Äang chuyá»ƒn hÆ°á»›ng tá»›i sáº£n pháº©m trÃªn <strong>SCANMS</strong>...</p>
-  <p><a href="${targetUrl}" style="color: #B88E4F; font-weight: 600;">Nháº¥n vÃ o Ä‘Ã¢y náº¿u khÃ´ng tá»± Ä‘á»™ng chuyá»ƒn hÆ°á»›ng</a></p>
+  <p>Đang chuyển hướng tới sản phẩm trên <strong>SCANMS</strong>...</p>
+  <p><a href="${safeTargetUrl}" style="color: #B88E4F; font-weight: 600;">Nhấn vào đây nếu không tự động chuyển hướng</a></p>
 </body>
 </html>`;
 
@@ -218,16 +246,5 @@ export class PublicProductsController {
       return res.redirect(`${frontendBaseUrl}/marketplace`);
     }
   }
-  @Get(':idOrSlug/stock')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Lay so ton kho tuc thoi cua san pham (Realtime Inventory)',
-    description: 'Tra ve stockQuantity, inStock, lowStock (canh bao khi <= 5), status. Dung de polling cap nhat UI.',
-  })
-  @ApiParam({ name: 'idOrSlug', description: 'UUID hoac SKU cua san pham', example: 'SR-VTC-15' })
-  @ApiResponse({ status: 200, description: 'Tra ve thong tin ton kho tuc thoi' })
-  @ApiResponse({ status: 404, description: 'San pham khong ton tai' })
-  async getRealtimeStock(@Param('idOrSlug') idOrSlug: string) {
-    return this.productsService.getRealtimeStock(idOrSlug);
-  }
 }
+

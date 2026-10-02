@@ -45,7 +45,6 @@ function saveWorkbook(blob: Blob, filename: string) {
 export default function PayoutApprovalPage() {
   const { storeId: routeStoreId } = useParams<{ storeId: string }>();
   const [storeId, setStoreId] = useState(routeStoreId ?? "");
-  const [storeName, setStoreName] = useState("Gian hàng của bạn");
   const [history, setHistory] = useState<MerchantPayoutHistory | null>(null);
   const [batches, setBatches] = useState<MerchantPayoutBatch[]>([]);
   const [page, setPage] = useState(1);
@@ -90,7 +89,6 @@ export default function PayoutApprovalPage() {
       .then((store) => {
         if (active) {
           setStoreId(store.id);
-          setStoreName(store.name);
         }
       })
       .catch((err: unknown) => {
@@ -201,13 +199,7 @@ export default function PayoutApprovalPage() {
     ) ?? [];
   return (
     <div className="space-y-6 text-ink">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Duyệt chi trả KOL</h1>
-          <p className="mt-1 text-sm text-muted">
-            {storeName} · Chỉ quản lý payout thuộc shop của bạn.
-          </p>
-        </div>
+      <div className="flex items-center justify-end gap-2.5">
         <button
           type="button"
           onClick={() => void load()}
@@ -218,7 +210,7 @@ export default function PayoutApprovalPage() {
           <RefreshCw size={16} />
           Tải lại
         </button>
-      </header>
+      </div>
       {error && (
         <p
           role="alert"

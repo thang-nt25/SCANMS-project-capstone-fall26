@@ -223,6 +223,7 @@ export class ProductsService {
         },
     pageArg = 1,
     limitArg = 24,
+    includeCommission = false,
   ) {
     let search = '';
     let category: string | undefined;
@@ -301,7 +302,7 @@ export class ProductsService {
           imageUrl: true,
           price: true,
           originalPrice: true,
-          customCommissionRate: true,
+          ...(includeCommission ? { customCommissionRate: true } : {}),
           stockQuantity: true,
           variants: {
             where: { isActive: true },
@@ -322,6 +323,7 @@ export class ProductsService {
               slug: true,
               logoUrl: true,
               isVerified: true,
+              ...(includeCommission ? { defaultCommissionRate: true } : {}),
             },
           },
           mediaAssets: {
@@ -566,6 +568,7 @@ export class ProductsService {
         originalPrice: dto.originalPrice || null,
         customCommissionRate: dto.customCommissionRate || null,
         stockQuantity: dto.stockQuantity || 0,
+        isAffiliateEnabled: dto.isAffiliateEnabled ?? false,
       },
     });
 
@@ -644,6 +647,9 @@ export class ProductsService {
           stockQuantity: dto.stockQuantity,
         }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        ...(dto.isAffiliateEnabled !== undefined && {
+          isAffiliateEnabled: dto.isAffiliateEnabled,
+        }),
       },
     });
 
@@ -1126,7 +1132,7 @@ export class ProductsService {
 
       const isVerifiedBuyer = Boolean(
         (r.orderId || (r as any).order?.id) &&
-          (r.order?.status === 'DELIVERED' || r.order?.status === 'COMPLETED'),
+          r.order?.status === 'COMPLETED',
       );
 
       return {
@@ -1205,6 +1211,10 @@ export class ProductsService {
         id: product.store.id,
         name: product.store.name,
         slug: product.store.slug,
+        logoUrl:
+          product.store.logoUrl && !product.store.logoUrl.includes('unsplash.com')
+            ? product.store.logoUrl
+            : null,
         isVerified: isStoreVerified,
       },
       images: galleryImages,

@@ -9,6 +9,8 @@ import {
   ArrowRight,
   RefreshCw,
   Box,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { storeService } from '../../services/store.service';
 import {
@@ -20,24 +22,23 @@ import { productService, type Product } from '../../services/product.service';
 import { orderService, type StoreOrderRecord } from '../../services/order.service';
 
 export default function ShopDashboardPage() {
-  const [store, setStore] = useState<any>(null);
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
   const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
   const [topProducts, setTopProducts] = useState<Product[]>([]);
   const [recentOrders, setRecentOrders] = useState<StoreOrderRecord[]>([]);
+  const [isOrdersExpanded, setIsOrdersExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const currentStore = await storeService.getMyStore().catch(() => null);
-      setStore(currentStore);
 
       const [overviewData, seriesData, productsData, ordersData] = await Promise.all([
         analyticsService.getRealtimeOverview({ days: 30, storeId: currentStore?.id }).catch(() => null),
         analyticsService.getTimeSeries({ days: 7, interval: 'day', storeId: currentStore?.id }).catch(() => []),
         productService.getProducts({ storeId: currentStore?.id, page: 1, limit: 5 }).catch(() => ({ items: [] })),
-        orderService.getMyStoreOrders({ storeId: currentStore?.id, page: 1, limit: 5 }).catch(() => ({ items: [] })),
+        orderService.getMyStoreOrders({ storeId: currentStore?.id, page: 1, limit: 10 }).catch(() => ({ items: [] })),
       ]);
 
       if (overviewData) setOverview(overviewData);
@@ -59,42 +60,25 @@ export default function ShopDashboardPage() {
   const maxRevenue = Math.max(...(timeSeries.map((t) => t.revenue) || [1]), 1);
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] tracking-tight m-0">
-              Tổng quan {store?.name || 'Gian hàng của bạn'}
-            </h1>
-            {store?.slug && (
-              <span className="text-xs px-2 py-0.5 rounded-md bg-[#F3EFE6] border border-[#EAE4D7] text-[#7D715E] font-mono">
-                @{store.slug}
-              </span>
-            )}
-          </div>
-          <p className="text-xs sm:text-sm text-[#7D715E] mt-1 m-0">
-            Theo dõi doanh thu liên kết, chi phí hoa hồng và sức khỏe đơn hàng thực tế từ sàn tiếp thị.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadData}
-            title="Tải lại dữ liệu"
-            className="p-2.5 rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <Link
-            to="/merchant/campaigns"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C59B58] text-white font-bold text-xs sm:text-sm hover:bg-[#B88E4F] transition shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tạo chiến dịch</span>
-          </Link>
-        </div>
-      </header>
+    <div className="flex flex-col gap-5 text-left">
+      {/* Top Action Bar (Compact without bulky title texts) */}
+      <div className="flex items-center justify-end gap-2.5">
+        <button
+          onClick={loadData}
+          title="Tải lại dữ liệu"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition shadow-2xs text-xs font-bold cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#B88E4F]' : ''}`} />
+          <span>Làm mới</span>
+        </button>
+        <Link
+          to="/merchant/promotions?tab=coupons"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition shadow-xs cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Tạo chiến dịch</span>
+        </Link>
+      </div>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -102,7 +86,7 @@ export default function ShopDashboardPage() {
         <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-[#7D715E]">Doanh thu liên kết (30 ngày)</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
@@ -120,7 +104,7 @@ export default function ShopDashboardPage() {
         <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-[#7D715E]">Hoa hồng KOL ghi nhận</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
               <Coins className="w-4 h-4" />
             </div>
           </div>
@@ -138,7 +122,7 @@ export default function ShopDashboardPage() {
         <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-[#7D715E]">Đơn chốt thành công</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
               <ShoppingBag className="w-4 h-4" />
             </div>
           </div>
@@ -228,7 +212,7 @@ export default function ShopDashboardPage() {
             <h3 className="text-base font-extrabold text-[#1A1612] m-0">Đơn hàng mới nhất</h3>
             <Link
               to="/merchant/orders"
-              className="text-xs font-bold text-[#B88E4F] hover:text-[#9A7032]"
+              className="text-xs font-bold text-[#B88E4F] hover:text-[#B88E4F]"
             >
               Xem tất cả
             </Link>
@@ -240,12 +224,12 @@ export default function ShopDashboardPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2.5">
-              {recentOrders.map((order) => (
+              {(isOrdersExpanded ? recentOrders : recentOrders.slice(0, 3)).map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]"
+                  className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] transition-all hover:bg-[#F3EFE6]/50"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center shrink-0">
                     <ShoppingBag className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -261,6 +245,26 @@ export default function ShopDashboardPage() {
                   </strong>
                 </div>
               ))}
+
+              {recentOrders.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setIsOrdersExpanded(!isOrdersExpanded)}
+                  className="w-full py-2.5 px-3 mt-0.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  {isOrdersExpanded ? (
+                    <>
+                      <span>Thu gọn danh sách</span>
+                      <ChevronUp className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Xem thêm ({recentOrders.length - 3} đơn khác)</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -275,7 +279,7 @@ export default function ShopDashboardPage() {
           </div>
           <Link
             to="/merchant/products"
-            className="text-xs font-bold text-[#B88E4F] hover:text-[#9A7032] flex items-center gap-1"
+            className="text-xs font-bold text-[#B88E4F] hover:text-[#B88E4F] flex items-center gap-1"
           >
             <span>Quản lý danh mục</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -311,7 +315,7 @@ export default function ShopDashboardPage() {
                             className="w-9 h-9 rounded-xl object-cover border border-[#EAE4D7] shrink-0"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-xs shrink-0">
                             <Box className="w-4 h-4" />
                           </div>
                         )}
@@ -326,7 +330,7 @@ export default function ShopDashboardPage() {
                     </td>
                     <td className="p-3.5 font-semibold text-[#1A1612]">{p.stockQuantity}</td>
                     <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded-md bg-[#FBF5EB] text-[#8A662C] font-bold border border-[#EEDFC6]">
+                      <span className="px-2 py-0.5 rounded-md bg-[#FBF5EB] text-[#B88E4F] font-bold border border-[#EAE4D7]">
                         {p.customCommissionRate ?? p.store?.defaultCommissionRate ?? 10}%
                       </span>
                     </td>
