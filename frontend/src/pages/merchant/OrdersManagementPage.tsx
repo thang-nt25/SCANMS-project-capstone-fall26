@@ -298,8 +298,6 @@ export default function OrdersManagementPage({
       setRespondingReturn(false);
     }
   };
-    }
-  };
 
   useEffect(() => {
     let active = true;

@@ -6,8 +6,6 @@ import {
   RefreshCw,
   Search,
   CheckCircle2,
-  XCircle,
-  Clock,
   AlertTriangle,
   Send,
   ChevronRight,

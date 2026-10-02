@@ -232,11 +232,6 @@ export const couponService = {
     return res.data;
   },
 
-  getPublicStoreCoupons: async (storeId: string) => {
-    const res = await api.get(`/coupons/store/${storeId}`);
-    return res.data;
-  },
-
   getStoreCoupons: async (storeId: string, params?: CouponFilterParams) => {
     const res = await api.get(`/stores/${storeId}/coupons`, { params });
     return res.data;

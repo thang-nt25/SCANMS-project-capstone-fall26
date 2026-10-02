@@ -1799,44 +1799,6 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
               )}
-                    <input
-                      type="text"
-                      role="spinbutton"
-                      aria-valuenow={quantity}
-                      value={quantity}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value.replace(/\D/g, ''), 10);
-                        if (!isNaN(val) && val >= 1) {
-                          setQuantity(Math.min(currentStock > 0 ? currentStock : 1, val));
-                        } else if (e.target.value === '') {
-                          setQuantity(1);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!quantity || quantity < 1) setQuantity(1);
-                      }}
-                      className="w-[50px] h-8 text-center text-sm font-normal text-[#1A1612] bg-transparent outline-none border-0"
-                    />
-                    <button
-                      type="button"
-                      disabled={quantity >= currentStock || currentStock <= 0}
-                      onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}
-                      className="w-8 h-8 flex items-center justify-center text-[#555555] hover:bg-black/[0.02] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition border-l border-black/10 select-none"
-                      aria-label="Tăng số lượng"
-                    >
-                      <Plus className="w-3 h-3 stroke-[1.5]" />
-                    </button>
-                  </div>
-
-                  <span className="text-sm text-[#757575] font-normal">
-                    {currentStock > 0 ? (
-                      `${currentStock} sản phẩm có sẵn`
-                    ) : (
-                      <span className="text-[#DC2626]">Hết hàng</span>
-                    )}
-                  </span>
-                </div>
-              </div>
 
               {/* Coupon Voucher Input (Compact) */}
               <div className="py-2.5 border-t border-[#EAE4D7]/80">
