@@ -76,6 +76,7 @@ export class CouponsService {
       select: {
         id: true,
         displayCode: true,
+        codeNormalized: true,
         discountType: true,
         discountValue: true,
         minimumOrderAmount: true,
@@ -84,6 +85,7 @@ export class CouponsService {
         usageCount: true,
         expiresAt: true,
         scopeType: true,
+        fundingSource: true,
         couponProducts: {
           where: { product: { isDeleted: false, isActive: true } },
           select: { product: { select: { id: true, title: true } } },
@@ -101,25 +103,28 @@ export class CouponsService {
           coupon.usageCount < coupon.usageLimitTotal,
       )
       .map((coupon) => ({
-      id: coupon.id,
-      code: coupon.displayCode,
-      discountType: coupon.discountType,
-      discountValue: Number(coupon.discountValue),
-      minimumOrderAmount: coupon.minimumOrderAmount
-        ? Number(coupon.minimumOrderAmount)
-        : null,
-      maximumDiscountAmount: coupon.maximumDiscountAmount
-        ? Number(coupon.maximumDiscountAmount)
-        : null,
-      remainingUses:
-        coupon.usageLimitTotal === null
-          ? null
-          : Math.max(0, coupon.usageLimitTotal - coupon.usageCount),
-      expiresAt: coupon.expiresAt,
-      scopeType: coupon.scopeType,
-      products: coupon.couponProducts.map((item) => item.product),
-      categories: coupon.couponCategories.map((item) => item.categoryName),
-      storeName: coupon.store.name,
+        id: coupon.id,
+        code: coupon.displayCode,
+        displayCode: coupon.displayCode,
+        codeNormalized: coupon.codeNormalized,
+        discountType: coupon.discountType,
+        discountValue: Number(coupon.discountValue),
+        minimumOrderAmount: coupon.minimumOrderAmount
+          ? Number(coupon.minimumOrderAmount)
+          : null,
+        maximumDiscountAmount: coupon.maximumDiscountAmount
+          ? Number(coupon.maximumDiscountAmount)
+          : null,
+        remainingUses:
+          coupon.usageLimitTotal === null
+            ? null
+            : Math.max(0, coupon.usageLimitTotal - coupon.usageCount),
+        expiresAt: coupon.expiresAt,
+        scopeType: coupon.scopeType,
+        fundingSource: coupon.fundingSource,
+        products: coupon.couponProducts.map((item) => item.product),
+        categories: coupon.couponCategories.map((item) => item.categoryName),
+        storeName: coupon.store.name,
       }));
   }
 
@@ -1036,53 +1041,6 @@ export class CouponsService {
     );
 
     return newCoupon;
-  }
-
-  /**
-   * Public: Lấy danh sách các voucher đang kích hoạt của Gian hàng để khách hàng thu thập / áp dụng
-   */
-  async getPublicStoreCoupons(storeId: string) {
-    const now = new Date();
-    const coupons = await this.prisma.coupon.findMany({
-      where: {
-        storeId,
-        status: CouponStatus.ACTIVE,
-        OR: [
-          { startsAt: null },
-          { startsAt: { lte: now } },
-        ],
-        AND: [
-          {
-            OR: [
-              { expiresAt: null },
-              { expiresAt: { gt: now } },
-            ],
-          },
-        ],
-      },
-      select: {
-        id: true,
-        displayCode: true,
-        codeNormalized: true,
-        discountType: true,
-        discountValue: true,
-        minimumOrderAmount: true,
-        maximumDiscountAmount: true,
-        usageLimitTotal: true,
-        usageLimitPerCustomer: true,
-        usageCount: true,
-        startsAt: true,
-        expiresAt: true,
-        scopeType: true,
-        fundingSource: true,
-        stackableWithProductDiscount: true,
-        stackableWithPlatformVoucher: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
-
-    return coupons;
   }
 
   /**
