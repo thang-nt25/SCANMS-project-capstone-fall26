@@ -1346,6 +1346,64 @@ export class ProductsService {
   }
 
   /**
+   * Lấy số tồn kho tức thời của sản phẩm (không cache) — dùng cho polling realtime (FR-16 / Inventory)
+   * Trả về: stockQuantity, inStock, lowStock (cảnh báo khi <= 5)
+   */
+  async getRealtimeStock(idOrSlug: string): Promise<{
+    productId: string;
+    sku: string;
+    stockQuantity: number;
+    inStock: boolean;
+    lowStock: boolean;
+    lowStockThreshold: number;
+    status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+  }> {
+    const trimmed = idOrSlug.trim();
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed);
+
+    const product = await this.prisma.product.findFirst({
+      where: {
+        isDeleted: false,
+        OR: isUuid
+          ? [{ id: trimmed }, { sku: { equals: trimmed, mode: 'insensitive' } }]
+          : [{ sku: { equals: trimmed, mode: 'insensitive' } }],
+      },
+      select: {
+        id: true,
+        sku: true,
+        stockQuantity: true,
+        isActive: true,
+        isDeleted: true,
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Sản phẩm không tồn tại hoặc đã bị xóa.');
+    }
+
+    const LOW_STOCK_THRESHOLD = 5;
+    const qty = product.stockQuantity ?? 0;
+    const inStock = qty > 0 && product.isActive && !product.isDeleted;
+    const lowStock = inStock && qty <= LOW_STOCK_THRESHOLD;
+
+    let status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+    if (!inStock) status = 'OUT_OF_STOCK';
+    else if (lowStock) status = 'LOW_STOCK';
+    else status = 'IN_STOCK';
+
+    return {
+      productId: product.id,
+      sku: product.sku,
+      stockQuantity: qty,
+      inStock,
+      lowStock,
+      lowStockThreshold: LOW_STOCK_THRESHOLD,
+      status,
+    };
+  }
+
+  /**
    * Helper che tên khách hàng để bảo vệ quyền riêng tư (FR-15 Mục 19 & 46)
    * Ví dụ: "Nguyễn Đình Tuấn" -> "Nguyễn Đ*** T***"
    */

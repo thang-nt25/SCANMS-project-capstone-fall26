@@ -24,6 +24,10 @@ import {
   RotateCcw,
   Sparkles,
   Home,
+  Scale,
+  Video,
+  Send,
+  AlertTriangle,
 } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
 import {
@@ -42,8 +46,9 @@ import { toast } from '../../utils/toast';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
+import api from '../../services/api';
 
-type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'upgrade';
+type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'upgrade' | 'returns';
 type OrderFilterStatus = 'ALL' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';
 
 export default function CustomerPortalPage() {
@@ -74,6 +79,18 @@ export default function CustomerPortalPage() {
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+
+  // Return request modal state
+  const [returnModalOrder, setReturnModalOrder] = useState<CustomerOrder | null>(null);
+  const [returnReason, setReturnReason] = useState('');
+  const [returnVideoUrl, setReturnVideoUrl] = useState('');
+  const [returnImagesStr, setReturnImagesStr] = useState('');
+  const [returnNotes, setReturnNotes] = useState('');
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+
+  // My disputes state
+  const [myDisputes, setMyDisputes] = useState<any[]>([]);
+  const [disputesLoading, setDisputesLoading] = useState(false);
 
   // Tab 2: Addresses State
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -541,6 +558,31 @@ export default function CustomerPortalPage() {
                 </span>
               </button>
 
+              {/* Returns tab */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setTab('returns');
+                  setDisputesLoading(true);
+                  try {
+                    const res: any = await api.get('/orders/admin/disputes');
+                    const data = res?.data || res || [];
+                    setMyDisputes(Array.isArray(data) ? data : []);
+                  } catch { /* no disputes */ } finally { setDisputesLoading(false); }
+                }}
+                className={`flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                  currentTab === 'returns'
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs'
+                    : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Scale className="w-4 h-4" />
+                  <span>Yêu cầu đổi trả / Hoàn hàng</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 opacity-50" />
+              </button>
+
               <div className="pt-4 mt-2 border-t border-[#EAE4D7] flex flex-col gap-2">
                 <Link
                   to="/marketplace"
@@ -784,6 +826,28 @@ export default function CustomerPortalPage() {
                                 >
                                   <span>Đánh giá 5★</span>
                                 </Link>
+                              )}
+
+                              {/* Return request button — only for DELIVERED within 14 days */}
+                              {isDelivered && (() => {
+                                const completedAt = order.completedAt || order.updatedAt;
+                                const daysSince = Math.floor((Date.now() - new Date(completedAt).getTime()) / 86_400_000);
+                                return daysSince <= 14;
+                              })() && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReturnModalOrder(order);
+                                    setReturnReason('');
+                                    setReturnVideoUrl('');
+                                    setReturnImagesStr('');
+                                    setReturnNotes('');
+                                  }}
+                                  className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-bold text-rose-700 transition cursor-pointer flex items-center gap-1"
+                                >
+                                  <Scale className="w-3 h-3" />
+                                  <span>Đổi trả 14 ngày</span>
+                                </button>
                               )}
 
                               <button
@@ -1195,9 +1259,252 @@ export default function CustomerPortalPage() {
             {/* TAB 5: NÂNG CẤP ĐỐI TÁC (KOL / SHOP MANAGER) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'upgrade' && <PartnerUpgradeTab />}
+
+            {/* ── TAB: YÊU CẦU ĐỔI TRẢ 14 NGÀY ── */}
+            {currentTab === 'returns' && (
+              <div className="bg-white border border-[#EAE4D7] rounded-3xl p-6 shadow-sm flex flex-col gap-5">
+                <div className="pb-4 border-b border-[#EAE4D7]">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700 mb-2">
+                    <Scale className="w-3.5 h-3.5" />
+                    SCANMS RETURN CENTER • BẢO VỆ NGUỚI MUA
+                  </div>
+                  <h1 className="text-xl font-black text-[#1A1612] m-0">Yêu cầu Đổi trả / Hoàn hàng</h1>
+                  <p className="text-xs text-[#7D715E] mt-1 m-0">
+                    Chính sách đổi trả 14 ngày kể từ ngày nhận hàng — Yêu cầu không cần lý do — Hoàn 100% nếu đủ điều kiện
+                  </p>
+                </div>
+
+                {/* How it works */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { step: '01', title: 'Gửi yêu cầu', desc: 'Chọn đơn hàng và gửi video mở hộp + lý do', icon: Video },
+                    { step: '02', title: 'Shop giải trình', desc: 'Shop có 24h gửi bằng chứng đóng gói xuất kho', icon: Package },
+                    { step: '03', title: 'Trọng tài phân xử', desc: 'SCANMS ban hành phán quyết trong 24h', icon: Scale },
+                  ].map(({ step, title, desc, icon: Icon }) => (
+                    <div key={step} className="flex items-start gap-3 p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]">
+                      <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 font-black text-xs flex items-center justify-center shrink-0">{step}</div>
+                      <div>
+                        <div className="text-xs font-bold text-[#1A1612]">{title}</div>
+                        <div className="text-[10px] text-[#7D715E] mt-0.5">{desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Active disputes */}
+                {disputesLoading ? (
+                  <div className="flex items-center gap-2 py-6 justify-center text-[#7D715E] text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Đang tải...
+                  </div>
+                ) : myDisputes.length > 0 ? (
+                  <div>
+                    <div className="text-xs font-bold text-[#4A3E2D] mb-2">Yêu cầu đang xử lý ({myDisputes.length})</div>
+                    <div className="space-y-2">
+                      {myDisputes.map((d: any) => (
+                        <div key={d.orderId} className="p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-between text-xs">
+                          <div>
+                            <div className="font-mono font-bold text-[#1A1612]">#{d.externalOrderSn}</div>
+                            <div className="text-[10px] text-[#7D715E] mt-0.5">{d.dispute?.reason}</div>
+                          </div>
+                          <div className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                            d.dispute?.status === 'OPENED' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            d.dispute?.status === 'RESOLVED_REFUND' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                            'bg-green-50 text-green-700 border-green-200'
+                          }`}>
+                            {d.dispute?.status === 'OPENED' ? 'Chờ xử lý' :
+                             d.dispute?.status === 'RESOLVED_REFUND' ? 'Hoàn tiền' : 'Từ chối'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-[#7D715E] text-xs">
+                    <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-400" />
+                    Không có yêu cầu đang xử lý
+                  </div>
+                )}
+
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                  <div className="font-bold mb-1">📌 Hướng dẫn gửi yêu cầu đổi trả:</div>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Quay video mở hộp <strong>liên tục từ khi cầm gói</strong> (không cắt chỉnh)</li>
+                    <li>Upload video lên YouTube/Drive rồi paste link vào form</li>
+                    <li>Chụp ảnh sản phẩm hư hỏng + nhãn mác rõ ràng</li>
+                    <li>Yêu cầu phải gửi trong vòng <strong>14 ngày</strong> từ ngày nhận hàng</li>
+                  </ul>
+                </div>
+
+                <div className="pt-3 border-t border-[#EAE4D7] text-center">
+                  <p className="text-xs text-[#7D715E] mb-3">Muốn gửi yêu cầu đổi trả? Hãy vào tab <strong>"Đơn mua của tôi"</strong> và nhấn nút <strong>"Đổi trả 14 ngày"</strong> trên đơn hàng đã nhận.</p>
+                  <button
+                    type="button"
+                    onClick={() => setTab('orders')}
+                    className="px-5 py-2.5 rounded-xl bg-[#B88E4F] text-white text-xs font-bold transition hover:bg-[#8C6226] shadow-xs"
+                  >
+                    Đi đến Đơn mua của tôi
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
+
+      {/* ══ RETURN REQUEST MODAL ══ */}
+      {returnModalOrder && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-rose-200 rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 shadow-2xl flex flex-col gap-4 text-left animate-in fade-in zoom-in-95">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-rose-100">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[10px] font-bold text-rose-700 mb-1.5">
+                  <Scale className="w-3 h-3" /> CHÍNH SÁCH ĐỔI TRẢ 14 NGÀY
+                </div>
+                <h2 className="text-base font-black text-[#1A1612] m-0">Gửi Yêu cầu Đổi trả / Hoàn hàng</h2>
+                <p className="text-xs text-[#7D715E] mt-0.5 m-0">
+                  Đơn <span className="font-mono font-bold text-[#1A1612]">#{returnModalOrder.externalOrderSn}</span>
+                  {' — '}{returnModalOrder.store?.name}
+                </p>
+              </div>
+              <button onClick={() => setReturnModalOrder(null)} className="p-1 rounded-lg text-[#7D715E] hover:bg-rose-50 shrink-0">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Warning banner */}
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 flex gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <strong>Lưu ý quan trọng:</strong> Video mở hộp phải quay <strong>liên tục từ khi cầm gói đến khi mở ra</strong>, không cắt chỉnh. Thiếu video có thể dẫn đến từ chối yêu cầu.
+              </div>
+            </div>
+
+            {/* Form */}
+            <div className="flex flex-col gap-3">
+              {/* Reason */}
+              <div>
+                <label className="text-[10px] font-bold text-[#4A3E2D] block mb-1">
+                  Lý do đổi trả <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    'Hàng không đúng mô tả',
+                    'Hàng bị hư hỏng / vỡ',
+                    'Thiếu phụ kiện / phụ kiện sai',
+                    'Nhận sai sản phẩm / sai màu',
+                    'Hàng kém chất lượng',
+                    'Lý do khác',
+                  ].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setReturnReason(r)}
+                      className={`text-left px-3 py-2 rounded-xl border text-xs font-medium transition ${
+                        returnReason === r
+                          ? 'border-rose-400 bg-rose-50 text-rose-800 font-bold ring-2 ring-rose-300/40'
+                          : 'border-[#EAE4D7] bg-white text-[#4A3E2D] hover:border-rose-300 hover:bg-rose-50'
+                      }`}
+                    >
+                      {returnReason === r ? '✓ ' : ''}{r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Video URL */}
+              <div>
+                <label className="text-[10px] font-bold text-[#4A3E2D] block mb-1 flex items-center gap-1">
+                  <Video className="w-3 h-3 text-blue-500" />
+                  Link Video mở hộp <span className="text-rose-500">*</span>
+                  <span className="text-[#7D715E] font-normal">(YouTube, Google Drive, TikTok...)</span>
+                </label>
+                <input
+                  type="url"
+                  value={returnVideoUrl}
+                  onChange={(e) => setReturnVideoUrl(e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] focus:outline-none focus:border-rose-400"
+                />
+                {returnVideoUrl && (
+                  <a href={returnVideoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:underline mt-1">
+                    <ExternalLink className="w-3 h-3" /> Xem trước link video
+                  </a>
+                )}
+              </div>
+
+              {/* Proof images */}
+              <div>
+                <label className="text-[10px] font-bold text-[#4A3E2D] block mb-1">
+                  URL ảnh bằng chứng (phân cách bằng dấu phẩy)
+                </label>
+                <textarea
+                  value={returnImagesStr}
+                  onChange={(e) => setReturnImagesStr(e.target.value)}
+                  placeholder="https://cdn.example.com/anh1.jpg, https://cdn.example.com/anh2.jpg"
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] focus:outline-none focus:border-rose-400 resize-none"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-[10px] font-bold text-[#4A3E2D] block mb-1">Ghi chú thêm</label>
+                <textarea
+                  value={returnNotes}
+                  onChange={(e) => setReturnNotes(e.target.value)}
+                  placeholder="Mô tả chi tiết vấn đề bạn gặp phải..."
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] focus:outline-none focus:border-rose-400 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EAE4D7]">
+              <button
+                type="button"
+                disabled={isSubmittingReturn}
+                onClick={() => setReturnModalOrder(null)}
+                className="px-4 py-2 rounded-xl border border-[#EAE4D7] text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] disabled:opacity-50"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingReturn || !returnReason || !returnVideoUrl.trim()}
+                onClick={async () => {
+                  if (!returnReason) { alert('Vui lòng chọn lý do đổi trả!'); return; }
+                  if (!returnVideoUrl.trim()) { alert('Vui lòng cung cấp link video mở hộp!'); return; }
+                  setIsSubmittingReturn(true);
+                  try {
+                    const images = returnImagesStr.split(',').map(s => s.trim()).filter(Boolean);
+                    await api.post(`/orders/${returnModalOrder.id}/dispute`, {
+                      reason: returnReason,
+                      customerProofVideoUrl: returnVideoUrl.trim(),
+                      customerProofImages: images,
+                      notes: returnNotes.trim() || undefined,
+                    });
+                    toast.success('✅ Yêu cầu đổi trả đã được tiếp nhận! Shop và Trọng tài SCANMS sẽ xem xét trong 24h.');
+                    setReturnModalOrder(null);
+                  } catch (err: any) {
+                    alert(err?.response?.data?.message || err?.message || 'Gửi yêu cầu thất bại. Thử lại.');
+                  } finally {
+                    setIsSubmittingReturn(false);
+                  }
+                }}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition disabled:opacity-50"
+              >
+                {isSubmittingReturn ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang gửi...</>
+                ) : (
+                  <><Send className="w-3.5 h-3.5" /> Gửi Yêu cầu Đổi trả</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* MODAL: CHI TIẾT ĐƠN HÀNG & TIMELINE VẬN CHUYỂN */}

@@ -47,6 +47,9 @@ const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m =
 // Dispute Arbitration Portal (Leader Thắng - Nhiệm vụ 4)
 const DisputeResolutionPage = lazy(() => import('../pages/admin/DisputeResolutionPage').then(m => ({ default: m.DisputeResolutionPage })));
 
+// Shop Return Requests (Merchant - Tiếp nhận đổi trả 14 ngày)
+const ShopReturnRequestsPage = lazy(() => import('../pages/merchant/ShopReturnRequestsPage').then(m => ({ default: m.ShopReturnRequestsPage })));
+
 import { RouteContent } from './RouteContent';
 
 function AppRoutes() {
@@ -107,6 +110,8 @@ function AppRoutes() {
             <Route path="merchant/fraud-sentinel" element={<AiFraudSentinelPage />} />
             <Route path="merchant/ai-fraud" element={<AiFraudSentinelPage />} />
             <Route path="merchant/audit-logs" element={<AuditLogsPage />} />
+            <Route path="merchant/returns" element={<ShopReturnRequestsPage />} />
+            <Route path="merchant/return-requests" element={<ShopReturnRequestsPage />} />
 
             {/* Merchant Backward Compatibility Redirects */}
             <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=commission-rules" replace />} />
