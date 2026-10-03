@@ -125,6 +125,25 @@ export interface CreateCouponPayload {
   campaignId?: string;
 }
 
+export interface CreateStoreCouponPayload {
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  minimumOrderAmount?: number;
+  maximumDiscountAmount?: number;
+  usageLimitTotal?: number;
+  usageLimitPerCustomer?: number;
+  budgetTotal?: number;
+  startsAt?: string;
+  expiresAt?: string;
+  scopeType?: CouponScope;
+  productIds?: string[];
+  categoryNames?: string[];
+  stackableWithProductDiscount?: boolean;
+  stackableWithShopVoucher?: boolean;
+  stackableWithPlatformVoucher?: boolean;
+}
+
 export interface ApproveCouponPayload {
   discountType: DiscountType;
   discountValue: number;
@@ -204,6 +223,14 @@ export const couponService = {
 
 
 
+
+  createStoreCoupon: async (
+    storeId: string,
+    payload: CreateStoreCouponPayload,
+  ) => {
+    const res = await api.post(`/stores/${storeId}/coupons`, payload);
+    return res.data;
+  },
 
   getStoreCoupons: async (storeId: string, params?: CouponFilterParams) => {
     const res = await api.get(`/stores/${storeId}/coupons`, { params });
