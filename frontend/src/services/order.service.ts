@@ -227,4 +227,19 @@ export const orderService = {
     })) as unknown as ApiEnvelope<ExcelImportResult>;
     return response.data;
   },
+
+  /**
+   * Shop chủ động hủy đơn hàng (chỉ PENDING) — gọi POST /orders/:id/cancel
+   * Backend tự động: hoàn kho, thu hồi coupon, clawback hoa hồng KOL.
+   */
+  async shopCancelOrder(
+    orderId: string,
+    reason: string,
+  ): Promise<{ message: string; order: any }> {
+    const response = (await api.post(
+      `/orders/${orderId}/cancel`,
+      { reason },
+    )) as unknown as ApiEnvelope<{ message: string; order: any }>;
+    return response.data;
+  },
 };
