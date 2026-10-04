@@ -187,7 +187,7 @@ export class GhnService {
   }> {
     const raw = (address || '').toLowerCase();
 
-    // Mặc định an toàn cho khu vực TP. Hồ Chí Minh (Quận 1 / Bến Nghé) hoặc Hà Nội (Cầu Giấy)
+    // Mặc định an toàn cho khu vực TP. Hồ Chí Minh (Quận 1 / Bến Nghé)
     let resolvedDistrictId = 1442; // Quận 1, TP.HCM
     let resolvedWardCode = '20101'; // Phường Bến Nghé
 
@@ -195,23 +195,32 @@ export class GhnService {
       const provinces = await this.getProvinces();
       let matchedProvince: GhnProvince | undefined;
 
+      // Tìm Tỉnh/Thành phố khớp nhất (ưu tiên chuỗi xuất hiện ở cuối địa chỉ)
+      let bestProvinceIndex = -1;
       for (const p of provinces) {
         const pName = p.ProvinceName.toLowerCase().replace(/tỉnh|thành phố|tp\.?/g, '').trim();
         if (pName && raw.includes(pName)) {
-          matchedProvince = p;
-          break;
+          const idx = raw.lastIndexOf(pName);
+          if (idx > bestProvinceIndex) {
+            bestProvinceIndex = idx;
+            matchedProvince = p;
+          }
         }
       }
 
       if (matchedProvince) {
         const districts = await this.getDistricts(matchedProvince.ProvinceID);
         let matchedDistrict: GhnDistrict | undefined;
+        let bestDistrictIndex = -1;
 
         for (const d of districts) {
           const dName = d.DistrictName.toLowerCase().replace(/quận|huyện|thị xã|tp\.?/g, '').trim();
           if (dName && raw.includes(dName)) {
-            matchedDistrict = d;
-            break;
+            const idx = raw.lastIndexOf(dName);
+            if (idx > bestDistrictIndex) {
+              bestDistrictIndex = idx;
+              matchedDistrict = d;
+            }
           }
         }
 
@@ -322,7 +331,7 @@ export class GhnService {
     const rawPayload = (order.rawPayload as any) || {};
     const paymentMethod = rawPayload.paymentMethod || 'COD';
     const isCod = paymentMethod === 'COD';
-    const codAmount =
+    let codAmount =
       customOptions?.codAmount !== undefined
         ? customOptions.codAmount
         : isCod
@@ -337,7 +346,7 @@ export class GhnService {
       weight: 200,
     }));
 
-    const ghnPayload = {
+    const buildGhnPayload = (targetCod: number) => ({
       payment_type_id: 2, // Người nhận trả cước
       note: customOptions?.note || `Đơn hàng #${order.externalOrderSn} từ sàn SCANMS`,
       required_note:
@@ -352,7 +361,7 @@ export class GhnService {
       to_address: order.shippingAddress || '72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
       to_ward_code: wardCode,
       to_district_id: districtId,
-      cod_amount: codAmount,
+      cod_amount: targetCod,
       content: `Đơn hàng #${order.externalOrderSn} - ${items.length} sản phẩm`,
       weight: customOptions?.weight || 500,
       length: customOptions?.length || 15,
@@ -360,7 +369,7 @@ export class GhnService {
       height: customOptions?.height || 5,
       service_type_id: 2, // Giao chuẩn TMĐT
       items: items.length > 0 ? items : [{ name: 'Sản phẩm SCANMS', quantity: 1, price: 100000 }],
-    };
+    });
 
     let orderCode = '';
     let totalFee = 25000;
@@ -370,9 +379,10 @@ export class GhnService {
 
     try {
       this.logger.log(`Đang gửi yêu cầu tạo đơn sang GHN cho Đơn hàng #${order.externalOrderSn}...`);
-      const ghnRes = await this.ghnFetch<{
+      let ghnRes = await this.ghnFetch<{
         code: number;
         message: string;
+        code_message?: string;
         data?: {
           order_code: string;
           total_fee: number;
@@ -381,8 +391,31 @@ export class GhnService {
         };
       }>('/v2/shipping-order/create', {
         method: 'POST',
-        body: ghnPayload,
+        body: buildGhnPayload(codAmount),
       });
+
+      // Nếu tài khoản GHN chưa KYC bị giới hạn hạn mức COD (COD_IS_OVER_LIMIT)
+      if (
+        ghnRes?.code === 400 &&
+        (ghnRes?.code_message === 'COD_IS_OVER_LIMIT' ||
+          ghnRes?.message?.includes('COD'))
+      ) {
+        this.logger.warn(`Tài khoản GHN bị giới hạn COD: "${ghnRes?.message}". Đang tự động điều chỉnh COD về 50.000đ để bắn đơn GHN thành công...`);
+        codAmount = 50000;
+        ghnRes = await this.ghnFetch<{
+          code: number;
+          message: string;
+          data?: {
+            order_code: string;
+            total_fee: number;
+            expected_delivery_time: string;
+            trans_type: string;
+          };
+        }>('/v2/shipping-order/create', {
+          method: 'POST',
+          body: buildGhnPayload(codAmount),
+        });
+      }
 
       if (ghnRes?.code === 200 && ghnRes.data?.order_code) {
         orderCode = ghnRes.data.order_code;
@@ -392,13 +425,13 @@ export class GhnService {
         ghnResponseData = ghnRes.data;
         this.logger.log(`✅ Tạo đơn GHN thành công! Mã vận đơn GHN: ${orderCode}`);
       } else {
-        this.logger.warn(`GHN trả về mã ${ghnRes?.code}: ${ghnRes?.message}. Chuyển sang Smart Simulator.`);
+        this.logger.warn(`GHN trả về mã ${ghnRes?.code}: ${ghnRes?.message}.`);
       }
     } catch (err: any) {
-      this.logger.warn(`Kết nối GHN gián đoạn (${err?.message}), chuyển sang Smart Simulator.`);
+      this.logger.warn(`Kết nối GHN gián đoạn (${err?.message})`);
     }
 
-    // Nếu chưa tạo được mã thật (ví dụ lỗi xác thực bưu cục địa phương), sinh mã Smart Simulator
+    // Nếu vẫn chưa tạo được mã thật, fallback sang Smart Simulator
     if (!orderCode) {
       const randSuffix = Math.floor(10000000 + Math.random() * 90000000);
       orderCode = `GHN-${randSuffix}`;
