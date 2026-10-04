@@ -338,13 +338,18 @@ export class GhnService {
     }));
 
     const ghnPayload = {
-      payment_type_id: 2, // Người nhận trả phí (hoặc tính theo quy định sàn)
+      payment_type_id: 2, // Người nhận trả cước
       note: customOptions?.note || `Đơn hàng #${order.externalOrderSn} từ sàn SCANMS`,
       required_note:
         customOptions?.requiredNote || GhnRequiredNote.CHOXEMHANGKHONGTHU,
+      from_name: order.store?.name || 'Gian hàng SCANMS',
+      from_phone: '0766824448',
+      from_address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+      from_ward_code: '20101',
+      from_district_id: 1442,
       to_name: order.customerName || 'Khách hàng SCANMS',
       to_phone: order.customerPhone || '0987654321',
-      to_address: order.shippingAddress || 'Việt Nam',
+      to_address: order.shippingAddress || '72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
       to_ward_code: wardCode,
       to_district_id: districtId,
       cod_amount: codAmount,
@@ -353,7 +358,7 @@ export class GhnService {
       length: customOptions?.length || 15,
       width: customOptions?.width || 10,
       height: customOptions?.height || 5,
-      service_type_id: 2, // Giao chuẩn
+      service_type_id: 2, // Giao chuẩn TMĐT
       items: items.length > 0 ? items : [{ name: 'Sản phẩm SCANMS', quantity: 1, price: 100000 }],
     };
 
