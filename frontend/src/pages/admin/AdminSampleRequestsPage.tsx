@@ -42,23 +42,23 @@ const STATUS_CONFIGS: Record<string, StatusConfig> = {
   },
   APPROVED: {
     label: 'Shop đã duyệt',
-    badgeBg: 'bg-[#EFF6FF]',
-    badgeText: 'text-[#2563EB]',
-    badgeBorder: 'border-[#BFDBFE]',
+    badgeBg: 'bg-[#FBF5EB]',
+    badgeText: 'text-[#8C6226]',
+    badgeBorder: 'border-[#EEDFC6]',
     icon: CheckCircle2,
   },
   SHIPPED: {
     label: 'Đang giao mẫu',
-    badgeBg: 'bg-[#F0FDF4]',
-    badgeText: 'text-[#16A34A]',
-    badgeBorder: 'border-[#BBF7D0]',
+    badgeBg: 'bg-[#FBF5EB]',
+    badgeText: 'text-[#8C6226]',
+    badgeBorder: 'border-[#EEDFC6]',
     icon: Truck,
   },
   RECEIVED: {
     label: 'Đã nhận mẫu',
-    badgeBg: 'bg-[#F5F3FF]',
-    badgeText: 'text-[#7C3AED]',
-    badgeBorder: 'border-[#DDD6FE]',
+    badgeBg: 'bg-[#FBF5EB]',
+    badgeText: 'text-[#8C6226]',
+    badgeBorder: 'border-[#EEDFC6]',
     icon: Package,
   },
   VIDEO_SUBMITTED: {
@@ -91,23 +91,23 @@ const STATUS_CONFIGS: Record<string, StatusConfig> = {
   },
   COMPLETED: {
     label: 'Đã hoàn tất',
-    badgeBg: 'bg-[#ECFDF5]',
-    badgeText: 'text-[#059669]',
-    badgeBorder: 'border-[#A7F3D0]',
+    badgeBg: 'bg-[#FBF5EB]',
+    badgeText: 'text-[#8C6226]',
+    badgeBorder: 'border-[#EEDFC6]',
     icon: CheckCircle2,
   },
   REJECTED: {
     label: 'Shop từ chối',
-    badgeBg: 'bg-[#F8FAFC]',
-    badgeText: 'text-[#64748B]',
-    badgeBorder: 'border-[#CBD5E1]',
+    badgeBg: 'bg-[#FBF5EB]',
+    badgeText: 'text-[#8C6226]',
+    badgeBorder: 'border-[#EEDFC6]',
     icon: X,
   },
   CANCELLED: {
     label: 'Đã hủy bỏ',
-    badgeBg: 'bg-[#F8FAFC]',
-    badgeText: 'text-[#64748B]',
-    badgeBorder: 'border-[#CBD5E1]',
+    badgeBg: 'bg-[#FBF5EB]',
+    badgeText: 'text-[#8C6226]',
+    badgeBorder: 'border-[#EEDFC6]',
     icon: X,
   },
 };
@@ -190,7 +190,7 @@ export default function AdminSampleRequestsPage() {
   // Statistics calculation for Executive Bar
   const stats = useMemo(() => {
     const total = requests.length;
-    const shipping = requests.filter((r) => ['SHIPPED', 'RECEIVED'].includes(r.status)).length;
+    const shipping = requests.filter((r) => ['APPROVED', 'SHIPPED', 'RECEIVED'].includes(r.status)).length;
     const videoReview = requests.filter((r) => r.status === 'VIDEO_SUBMITTED').length;
     const risk = requests.filter((r) => ['OVERDUE', 'DELIVERY_ISSUE', 'REVISION_REQUIRED'].includes(r.status)).length;
     const completed = requests.filter((r) => r.status === 'COMPLETED').length;
@@ -302,130 +302,47 @@ export default function AdminSampleRequestsPage() {
       : 'Mở lại xuất gửi bù hàng mẫu';
 
   return (
-    <main className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] p-4 sm:p-6 text-[#1A1612]">
-      <div className="mx-auto max-w-7xl space-y-5">
-        {/* Header */}
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#B88E4F] bg-[#FBF5EB] px-2.5 py-0.5 rounded-md border border-[#EEDFC6]">
-                Quản trị rủi ro hàng mẫu
-              </span>
-              <span className="text-xs text-[#7D715E]">• SCANMS Platform Admin</span>
-            </div>
-            <h1 className="mt-1 text-2xl font-black text-[#1A1612]">
-              Quản Trị Hàng Mẫu KOL & Cam Kết Video
-            </h1>
-            <p className="mt-1 text-xs sm:text-sm text-[#7D715E] max-w-3xl leading-relaxed">
-              Theo dõi chu trình gửi mẫu 4 bước (Duyệt mẫu → Giao nhận bưu cục → Nộp video nghiệm thu → Đối soát hoa hồng). Can thiệp xử lý quá hạn và giải quyết tranh chấp giữa Shop và Nhà sáng tạo.
-            </p>
-          </div>
-          <button
-            onClick={() => void loadData()}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2 text-xs sm:text-sm font-bold text-[#1A1612] hover:bg-[#FBF5EB] shadow-2xs transition active:scale-95 cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Đang tải...' : 'Làm mới dữ liệu'}</span>
-          </button>
-        </header>
-
-        {/* Executive KPI Stats Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div
-            onClick={() => { setView('requests'); setStatusFilter('ALL'); }}
-            className={`p-3.5 rounded-2xl border transition cursor-pointer ${statusFilter === 'ALL' && view === 'requests' ? 'bg-[#FBF5EB] border-[#B88E4F] shadow-sm' : 'bg-white border-[#EAE4D7] hover:border-[#C59B58]/60'}`}
-          >
-            <div className="flex items-center justify-between text-xs font-bold text-[#7D715E]">
-              <span>Tổng yêu cầu</span>
-              <Package className="w-4 h-4 text-[#C59B58]" />
-            </div>
-            <div className="mt-2 text-xl font-black text-[#1A1612]">{stats.total}</div>
-            <div className="text-[10px] text-[#7D715E] mt-0.5">Toàn bộ sàn</div>
-          </div>
-
-          <div
-            onClick={() => { setView('requests'); setStatusFilter('IN_PROGRESS'); }}
-            className={`p-3.5 rounded-2xl border transition cursor-pointer ${statusFilter === 'IN_PROGRESS' && view === 'requests' ? 'bg-[#FBF5EB] border-[#B88E4F] shadow-sm' : 'bg-white border-[#EAE4D7] hover:border-[#C59B58]/60'}`}
-          >
-            <div className="flex items-center justify-between text-xs font-bold text-[#7D715E]">
-              <span>Đang gửi / Nhận</span>
-              <Truck className="w-4 h-4 text-[#16A34A]" />
-            </div>
-            <div className="mt-2 text-xl font-black text-[#16A34A]">{stats.shipping}</div>
-            <div className="text-[10px] text-[#7D715E] mt-0.5">KOL đang quay</div>
-          </div>
-
-          <div
-            onClick={() => { setView('requests'); setStatusFilter('VIDEO_SUBMITTED'); }}
-            className={`p-3.5 rounded-2xl border transition cursor-pointer ${statusFilter === 'VIDEO_SUBMITTED' && view === 'requests' ? 'bg-[#FBF5EB] border-[#B88E4F] shadow-sm' : 'bg-white border-[#EAE4D7] hover:border-[#C59B58]/60'}`}
-          >
-            <div className="flex items-center justify-between text-xs font-bold text-[#7D715E]">
-              <span>Chờ duyệt video</span>
-              <Video className="w-4 h-4 text-[#B88E4F]" />
-            </div>
-            <div className="mt-2 text-xl font-black text-[#B88E4F]">{stats.videoReview}</div>
-            <div className="text-[10px] text-[#7D715E] mt-0.5">KOL đã gửi video</div>
-          </div>
-
-          <div
-            onClick={() => { setView('requests'); setStatusFilter('RISK_GROUP'); }}
-            className={`p-3.5 rounded-2xl border transition cursor-pointer ${statusFilter === 'RISK_GROUP' && view === 'requests' ? 'bg-[#FEF2F2] border-[#DC2626] shadow-sm' : 'bg-white border-[#EAE4D7] hover:border-rose-400'}`}
-          >
-            <div className="flex items-center justify-between text-xs font-bold text-[#DC2626]">
-              <span>Cảnh báo rủi ro</span>
-              <AlertTriangle className="w-4 h-4 text-[#DC2626]" />
-            </div>
-            <div className="mt-2 text-xl font-black text-[#DC2626]">{stats.risk}</div>
-            <div className="text-[10px] text-[#DC2626] mt-0.5">Quá hạn / Sửa video</div>
-          </div>
-
-          <div
-            onClick={() => { setView('requests'); setStatusFilter('COMPLETED'); }}
-            className={`p-3.5 rounded-2xl border transition cursor-pointer ${statusFilter === 'COMPLETED' && view === 'requests' ? 'bg-[#ECFDF5] border-[#059669] shadow-sm' : 'bg-white border-[#EAE4D7] hover:border-[#059669]/60'}`}
-          >
-            <div className="flex items-center justify-between text-xs font-bold text-[#059669]">
-              <span>Đã hoàn tất</span>
-              <CheckCircle2 className="w-4 h-4 text-[#059669]" />
-            </div>
-            <div className="mt-2 text-xl font-black text-[#059669]">{stats.completed}</div>
-            <div className="text-[10px] text-[#7D715E] mt-0.5">Nghiệm thu thành công</div>
-          </div>
-
-          <div
-            onClick={() => setView('blocked')}
-            className={`p-3.5 rounded-2xl border transition cursor-pointer ${view === 'blocked' ? 'bg-[#FEF2F2] border-[#DC2626] shadow-sm' : 'bg-white border-[#EAE4D7] hover:border-rose-400'}`}
-          >
-            <div className="flex items-center justify-between text-xs font-bold text-[#DC2626]">
-              <span>KOL bị khóa</span>
-              <Ban className="w-4 h-4 text-[#DC2626]" />
-            </div>
-            <div className="mt-2 text-xl font-black text-[#DC2626]">{stats.blocked}</div>
-            <div className="text-[10px] text-[#DC2626] mt-0.5">Khóa quyền nhận mẫu</div>
-          </div>
+    <main className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-3 py-5 sm:px-5 text-[#1A1612]">
+      <div className="mx-auto w-full min-w-0 max-w-[1480px] space-y-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            {label:'Tổng yêu cầu',value:stats.total,filter:'ALL',icon:Package},
+            {label:'Đang xử lý',value:stats.shipping,filter:'IN_PROGRESS',icon:Truck},
+            {label:'Chờ duyệt video',value:stats.videoReview,filter:'VIDEO_SUBMITTED',icon:Video},
+            {label:'Cần xử lý',value:stats.risk,filter:'RISK_GROUP',icon:AlertTriangle},
+            {label:'Hoàn tất',value:stats.completed,filter:'COMPLETED',icon:CheckCircle2},
+            {label:'KOL bị khóa',value:stats.blocked,filter:'BLOCKED',icon:Ban},
+          ].map((item) => {
+            const Icon = item.icon;
+            const active = item.filter === 'BLOCKED' ? view === 'blocked' : view === 'requests' && statusFilter === item.filter;
+            return <button key={item.filter} type="button" aria-pressed={active} onClick={() => { setView(item.filter === 'BLOCKED' ? 'blocked' : 'requests'); if(item.filter !== 'BLOCKED')setStatusFilter(item.filter); }} className={'rounded-xl border bg-white px-3 py-3 text-left transition cursor-pointer ' + (active ? 'border-[#C59B58] ring-1 ring-[#EEDFC6]' : 'border-[#EAE4D7] hover:border-[#C59B58]')}>
+              <div className="flex items-center justify-between gap-2 text-[11px] text-[#7D715E]"><span>{item.label}</span><Icon className={'h-3.5 w-3.5 ' + (['RISK_GROUP','BLOCKED'].includes(item.filter) && item.value > 0 ? 'text-[#DC2626]' : 'text-[#B88E4F]')} /></div>
+              <div className="mt-2 text-xl font-semibold text-[#1A1612]">{item.value}</div>
+            </button>;
+          })}
         </div>
 
         {/* Toolbar: Tabs, Search & Status Dropdown */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setView('requests')}
-              className={`rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer ${view === 'requests' ? 'bg-[#C59B58] text-[#231D15] shadow-xs' : 'text-[#7D715E] hover:bg-[#FAF8F5]'}`}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition flex items-center gap-2 cursor-pointer ${view === 'requests' ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]'}`}
             >
               <Package className="h-4 w-4" />
               <span>Yêu cầu hàng mẫu</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[11px] font-extrabold ${view === 'requests' ? 'bg-[#231D15] text-[#C59B58]' : 'bg-[#F3EFE6] text-[#7D715E]'}`}>
+              <span className={`px-1.5 py-0.2 rounded-full text-[11px] font-extrabold ${view === 'requests' ? 'bg-white text-[#8C6226]' : 'bg-[#F3EFE6] text-[#7D715E]'}`}>
                 {requests.length}
               </span>
             </button>
             <button
               type="button"
               onClick={() => setView('blocked')}
-              className={`rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer ${view === 'blocked' ? 'bg-[#DC2626] text-white shadow-xs' : 'text-[#7D715E] hover:bg-[#FAF8F5]'}`}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition flex items-center gap-2 cursor-pointer ${view === 'blocked' ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]'}`}
             >
               <ShieldAlert className="h-4 w-4" />
-              <span>KOL bị khóa quyền</span>
+              <span>KOL bị khóa</span>
               {blockedCreators.length > 0 && (
                 <span className={`px-1.5 py-0.2 rounded-full text-[11px] font-extrabold ${view === 'blocked' ? 'bg-white text-[#DC2626]' : 'bg-rose-100 text-[#DC2626]'}`}>
                   {blockedCreators.length}
@@ -434,46 +351,60 @@ export default function AdminSampleRequestsPage() {
             </button>
           </div>
 
-          {view === 'requests' && (
-            <div className="flex flex-wrap items-center gap-2.5 flex-1 justify-end">
-              {/* Search input */}
-              <div className="relative min-w-[220px] sm:min-w-[280px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7D715E]" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm sản phẩm, KOL, Shop, mã vận đơn..."
-                  className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-semibold text-[#1A1612] outline-none focus:border-[#C59B58] focus:bg-white transition"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#7D715E] hover:text-[#1A1612]"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2.5 lg:w-auto lg:justify-end">
+            {view === 'requests' && (
+              <>
+                {/* Search input */}
+                <div className="relative w-full min-w-0 sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7D715E]" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label="Tìm yêu cầu hàng mẫu" placeholder="Tìm sản phẩm, KOL, Shop, vận đơn…"
+                    className="h-9 w-full pl-9 pr-8 py-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-semibold text-[#1A1612] outline-none focus:border-[#C59B58] focus:bg-white transition"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#7D715E] hover:text-[#1A1612]"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
 
-              {/* Status filter dropdown */}
-              <Select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className="w-56 text-xs font-semibold"
-              >
-                <option value="ALL">Tất cả trạng thái ({requests.length})</option>
-                <option value="IN_PROGRESS">Đang gửi / Đã nhận ({stats.shipping})</option>
-                <option value="VIDEO_SUBMITTED">Chờ duyệt video ({stats.videoReview})</option>
-                <option value="RISK_GROUP">Cảnh báo rủi ro &amp; Quá hạn ({stats.risk})</option>
-                {Object.entries(STATUS_CONFIGS).map(([status, config]) => (
-                  <option key={status} value={status}>
-                    {config.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
+                {/* Status filter dropdown */}
+                <div className="w-full min-w-0 sm:w-52">
+                  <Select
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                    aria-label="Lọc trạng thái hàng mẫu" className="h-9 w-full text-xs font-medium"
+                  >
+                    <option value="ALL">Tất cả trạng thái ({requests.length})</option>
+                    <option value="IN_PROGRESS">Đang xử lý ({stats.shipping})</option>
+                    <option value="VIDEO_SUBMITTED">Chờ duyệt video ({stats.videoReview})</option>
+                    <option value="RISK_GROUP">Cảnh báo rủi ro &amp; Quá hạn ({stats.risk})</option>
+                    {Object.entries(STATUS_CONFIGS).map(([status, config]) => (
+                      <option key={status} value={status}>
+                        {config.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => void loadData()}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] transition disabled:opacity-50 cursor-pointer shadow-2xs"
+            >
+              <RefreshCw className={'h-3.5 w-3.5 text-[#B88E4F] ' + (loading ? 'animate-spin' : '')} />
+              {loading ? 'Đang tải…' : 'Làm mới'}
+            </button>
+          </div>
         </div>
 
         {/* Content View */}
@@ -488,9 +419,9 @@ export default function AdminSampleRequestsPage() {
             {blockedCreators.length === 0 ? (
               <div className="rounded-2xl border border-[#EAE4D7] bg-white p-14 text-center">
                 <ShieldCheck className="w-12 h-12 text-[#059669] mx-auto mb-2" />
-                <h3 className="text-base font-extrabold text-[#1A1612]">Không có KOL nào bị khóa</h3>
+                <h3 className="text-sm font-semibold text-[#1A1612]">Không có KOL nào bị khóa</h3>
                 <p className="text-xs text-[#7D715E] mt-1 max-w-md mx-auto">
-                  Hiện tại toàn bộ Nhà sáng tạo đều tuân thủ tốt nghĩa vụ gửi video nghiệm thu mẫu đúng hạn.
+                  Hiện không có nhà sáng tạo nào bị khóa quyền nhận hàng mẫu.
                 </p>
               </div>
             ) : (
@@ -499,16 +430,16 @@ export default function AdminSampleRequestsPage() {
                 return (
                   <article
                     key={creator.id}
-                    className="rounded-2xl border border-rose-200 bg-white p-5 shadow-xs transition hover:shadow-sm"
+                    className="rounded-xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.025)]"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div className="flex items-start gap-3.5">
-                        <div className="w-11 h-11 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0 text-rose-600 font-bold text-base">
+                        <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0 text-rose-600 font-bold text-base">
                           {(creator.fullName || 'K')[0].toUpperCase()}
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h2 className="text-base font-extrabold text-[#1A1612]">
+                            <h2 className="text-sm font-semibold text-[#1A1612]">
                               {creator.fullName || 'Nhà sáng tạo'}
                             </h2>
                             <span className="text-[11px] font-bold text-[#DC2626] bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -570,7 +501,7 @@ export default function AdminSampleRequestsPage() {
           /* EMPTY STATE */
           <div className="rounded-2xl border border-[#EAE4D7] bg-white p-14 text-center">
             <Package className="w-12 h-12 text-[#C59B58] mx-auto mb-2 opacity-60" />
-            <h3 className="text-base font-extrabold text-[#1A1612]">Không tìm thấy yêu cầu phù hợp</h3>
+            <h3 className="text-sm font-semibold text-[#1A1612]">Không tìm thấy yêu cầu phù hợp</h3>
             <p className="text-xs text-[#7D715E] mt-1 max-w-md mx-auto">
               Không có yêu cầu hàng mẫu nào khớp với bộ lọc trạng thái hoặc từ khóa tìm kiếm của bạn.
             </p>
@@ -606,224 +537,37 @@ export default function AdminSampleRequestsPage() {
               const tierName = kolProfile?.tier?.name || 'KOL Tiếp thị';
 
               return (
-                <article
-                  key={request.id}
-                  className="rounded-2xl border border-[#EAE4D7] bg-white shadow-xs hover:shadow-md transition p-4 sm:p-5 text-left"
-                >
-                  {/* Top Bar of the Card: Status, Created At, Sample Value */}
-                  <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-[#EAE4D7]">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusCfg.badgeBg} ${statusCfg.badgeText} ${statusCfg.badgeBorder}`}
-                      >
-                        <StatusIcon className="w-3.5 h-3.5" />
-                        <span>{statusCfg.label}</span>
-                      </span>
-
-                      <span className="text-[11px] text-[#7D715E] font-medium">
-                        Tạo lúc: {new Date(request.createdAt).toLocaleString('vi-VN')}
-                      </span>
-
-                      <span className="text-[11px] font-mono text-[#7D715E] bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#EAE4D7]">
-                        Mã: {request.id.slice(0, 8).toUpperCase()}
-                      </span>
+                <article key={request.id} className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white p-4 text-left shadow-[0_2px_8px_rgba(35,29,21,0.025)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ' + statusCfg.badgeBg + ' ' + statusCfg.badgeText + ' ' + statusCfg.badgeBorder}><StatusIcon className="h-3 w-3" />{statusCfg.label}</span>
+                      <span className="text-[11px] text-[#7D715E]">{new Date(request.createdAt).toLocaleDateString('vi-VN')}</span>
+                      <code className="text-[10px] text-[#7D715E]" title={request.id}>#{request.id.slice(0,8).toUpperCase()}</code>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#7D715E]">Trị giá mẫu:</span>
-                      <span className="text-xs sm:text-sm font-black text-[#1A1612] bg-[#FAF8F5] px-2.5 py-1 rounded-xl border border-[#EAE4D7]">
-                        {formatMoney(request.productVariant?.price ?? request.product?.price)}
-                      </span>
+                    <span className="text-xs text-[#7D715E]">Giá mẫu <strong className="ml-1 text-sm font-semibold text-[#1A1612]">{formatMoney(request.productVariant?.price ?? request.product?.price)}</strong></span>
+                  </div>
+                  <div className="mt-3 grid min-w-0 grid-cols-1 gap-4 border-t border-[#EAE4D7] pt-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[#EAE4D7] bg-[#FAF8F5]"><Package className="absolute inset-0 m-auto h-5 w-5 text-[#C59B58]" /><img src={prodImage} alt={request.product?.title || 'Sản phẩm mẫu'} className="relative h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none'; }} /></div>
+                      <div className="min-w-0"><h2 className="text-sm font-semibold leading-5 text-[#1A1612] line-clamp-2" title={request.product?.title}>{request.product?.title || 'Sản phẩm mẫu'}</h2>{request.productVariant?.name && <p className="mt-1 text-[11px] text-[#8C6226]">{request.productVariant.name}</p>}<p className="mt-1 flex items-center gap-1 text-[11px] text-[#7D715E]"><Store className="h-3 w-3 shrink-0" /><span className="truncate" title={request.product?.store?.name}>{request.product?.store?.name || 'Gian hàng SCANMS'}</span></p></div>
+                    </div>
+                    <div className="min-w-0 lg:border-l lg:border-[#EAE4D7] lg:pl-4"><p className="text-[11px] text-[#7D715E]">Nhà sáng tạo</p><p className="mt-1 text-xs font-semibold leading-5 text-[#1A1612]">{request.collaborator?.fullName || 'KOL tiếp thị'}</p><p className="mt-0.5 truncate text-[11px] text-[#7D715E]" title={request.collaborator?.email}>{request.collaborator?.email || 'Chưa có email'}</p><span className="mt-1 inline-block text-[10px] text-[#8C6226]">{tierName}</span></div>
+                    <div className="min-w-0 md:col-span-2 lg:col-span-1 lg:border-l lg:border-[#EAE4D7] lg:pl-4">
+                      <dl className="space-y-1.5 text-xs"><div className="flex flex-wrap justify-between gap-2"><dt className="text-[#7D715E]">Dự kiến đăng</dt><dd className="font-medium">{request.expectedVideoAt ? new Date(request.expectedVideoAt).toLocaleDateString('vi-VN') : 'Chưa thiết lập'}</dd></div><div className="flex flex-wrap justify-between gap-2"><dt className="text-[#7D715E]">{revisionStage ? 'Hạn sửa video' : 'Hạn nộp video'}</dt><dd className={request.status === 'OVERDUE' ? 'font-semibold text-[#DC2626]' : 'font-medium'}>{activeDeadline ? new Date(activeDeadline).toLocaleDateString('vi-VN') : 'Chưa xác lập'}</dd></div></dl>
+                      {request.videoUrl && <a href={request.videoUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[#8C6226] hover:underline"><Video className="h-3.5 w-3.5" />Xem video<ExternalLink className="h-3 w-3" /></a>}
+                      {request.status === 'OVERDUE' && <p className="mt-2 text-[11px] text-[#DC2626]">Quá hạn nộp video · Cần xử lý</p>}
                     </div>
                   </div>
-
-                  {/* Main Grid: 3 Clean Structured Columns */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-4">
-                    {/* Column 1 (4 cols): Product & Store Info */}
-                    <div className="lg:col-span-4 flex gap-3.5">
-                      <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl border border-[#EAE4D7] overflow-hidden bg-[#FAF8F5] shrink-0 relative shadow-2xs">
-                        <img
-                          src={prodImage}
-                          alt={request.product?.title || 'Sản phẩm mẫu'}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                        <div className="absolute inset-0 -z-10 flex items-center justify-center text-xs text-[#7D715E]">
-                          <Package className="w-8 h-8 text-[#C59B58] opacity-40" />
-                        </div>
-                      </div>
-
-                      <div className="min-w-0 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h3
-                            className="text-sm font-extrabold text-[#1A1612] line-clamp-2 leading-snug"
-                            title={request.product?.title}
-                          >
-                            {request.product?.title || 'Sản phẩm mẫu'}
-                          </h3>
-
-                          {request.productVariant?.name && (
-                            <span className="inline-block mt-1 text-[11px] font-semibold text-[#8C6226] bg-[#FBF5EB] border border-[#EEDFC6] px-2 py-0.5 rounded-md">
-                              Phân loại: {request.productVariant.name}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-2 pt-2 border-t border-[#EAE4D7]/70 text-xs text-[#7D715E] flex items-center gap-1.5">
-                          <Store className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                          <span className="truncate font-semibold text-[#1A1612]">
-                            {request.product?.store?.name || 'Gian hàng SCANMS'}
-                          </span>
-                        </div>
-                      </div>
+                  {(request.rejectedReason || request.videoRejectionReason) && <div className="mt-3 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs leading-5 text-[#7D715E]">{request.rejectedReason && <p>Ghi chú xử lý: {request.rejectedReason}</p>}{request.videoRejectionReason && <p>Yêu cầu sửa video: {request.videoRejectionReason}</p>}</div>}
+                  <details className="mt-3 border-t border-[#EAE4D7] pt-2.5 text-xs">
+                    <summary className="w-fit cursor-pointer font-medium text-[#8C6226]">Thông tin giao nhận & kênh cam kết</summary>
+                    <div className="mt-3 grid gap-3 rounded-lg bg-[#FAF8F5] p-3 sm:grid-cols-2 text-[#7D715E] leading-5">
+                      <div><p className="flex items-start gap-1"><MapPin className="mt-1 h-3 w-3 shrink-0" /><span>{request.recipientName || 'Người nhận'} · {request.recipientPhone || 'Chưa có số điện thoại'}</span></p><p>{request.shippingAddress || 'Chưa cung cấp địa chỉ'}</p>{request.trackingNumber && <div className="mt-1 flex flex-wrap items-center gap-2"><span className="break-all">{request.carrier || 'Vận chuyển'}: {request.trackingNumber}</span><button type="button" onClick={() => copyToClipboard(request.trackingNumber, 'mã vận đơn')} className="inline-flex items-center gap-1 text-[#8C6226]"><Copy className="h-3 w-3" />Sao chép</button></div>}</div>
+                      <div><p className="font-medium text-[#1A1612]">{platformBadge.name} · {request.socialChannelNameSnapshot || request.socialChannel?.channelName || 'Chưa định danh kênh'}</p><p>{Number(request.socialFollowerSnapshot ?? request.socialChannel?.followerCount ?? 0).toLocaleString('vi-VN')} người theo dõi</p><p>Tạo lúc: {new Date(request.createdAt).toLocaleString('vi-VN')}</p>{activeDeadline && <p>Hạn nộp: {new Date(activeDeadline).toLocaleString('vi-VN')}</p>}</div>
                     </div>
-
-                    {/* Column 2 (4 cols): Creator & Social Commitment & Delivery Info */}
-                    <div className="lg:col-span-4 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] p-3.5 space-y-2.5 text-xs text-[#1A1612]">
-                      {/* KOL Identity */}
-                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#EAE4D7]">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#C59B58] text-[#231D15] font-black text-xs flex items-center justify-center shrink-0">
-                            {(request.collaborator?.fullName || 'K')[0].toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-extrabold text-[#1A1612] truncate">
-                              {request.collaborator?.fullName || 'KOL Tiếp thị'}
-                            </div>
-                            <div className="text-[10px] text-[#7D715E]">
-                              {request.collaborator?.email}
-                            </div>
-                          </div>
-                        </div>
-
-                        <span className="text-[10px] font-bold text-[#8C6226] bg-[#FBF5EB] border border-[#EEDFC6] px-2 py-0.5 rounded-full shrink-0">
-                          {tierName}
-                        </span>
-                      </div>
-
-                      {/* Social Channel Commitment */}
-                      <div className="space-y-1">
-                        <div className="text-[11px] font-bold text-[#7D715E] flex items-center gap-1">
-                          <span>Kênh cam kết nộp video:</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2 bg-white p-2 rounded-lg border border-[#EAE4D7]">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-extrabold ${platformBadge.bg}`}>
-                              {platformBadge.name}
-                            </span>
-                            <span className="font-bold text-[#1A1612] truncate">
-                              {request.socialChannelNameSnapshot || request.socialChannel?.channelName || 'Chưa định danh'}
-                            </span>
-                          </div>
-                          <span className="text-[11px] font-extrabold text-[#8C6226] shrink-0">
-                            {Number(
-                              request.socialFollowerSnapshot ?? request.socialChannel?.followerCount ?? 0
-                            ).toLocaleString('vi-VN')}{' '}
-                            Followers
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Shipping info */}
-                      <div className="pt-1.5 border-t border-[#EAE4D7] text-[11px] text-[#7D715E] space-y-1">
-                        <div className="flex items-center gap-1 truncate text-[#1A1612] font-semibold">
-                          <MapPin className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                          <span className="truncate">{request.recipientName || 'Người nhận'} ({request.recipientPhone || '—'})</span>
-                        </div>
-                        <div className="text-[11px] text-[#7D715E] pl-4 line-clamp-1" title={request.shippingAddress}>
-                          {request.shippingAddress || 'Chưa cung cấp địa chỉ nhận'}
-                        </div>
-                        {request.trackingNumber && (
-                          <div className="flex items-center justify-between pl-4 pt-0.5 text-[#1A1612] font-mono">
-                            <span className="text-[11px] text-[#16A34A] font-bold flex items-center gap-1">
-                              <Truck className="w-3 h-3" />
-                              {request.carrier || 'Bưu cục'}: {request.trackingNumber}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(request.trackingNumber, 'mã vận đơn')}
-                              className="text-[10px] text-[#B88E4F] hover:underline flex items-center gap-0.5 font-sans cursor-pointer"
-                            >
-                              <Copy className="w-3 h-3" />
-                              Sao chép
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Column 3 (4 cols): Deadlines, Video Submission & Admin Actions */}
-                    <div className="lg:col-span-4 flex flex-col justify-between rounded-xl bg-white border border-[#EAE4D7] p-3.5 space-y-3">
-                      <div>
-                        {/* Timeline & Deadlines */}
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-[#7D715E]">Dự kiến đăng:</span>
-                            <span className="font-semibold text-[#1A1612]">
-                              {request.expectedVideoAt
-                                ? new Date(request.expectedVideoAt).toLocaleDateString('vi-VN')
-                                : 'Chưa thiết lập'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-[#7D715E]">
-                              {revisionStage ? 'Hạn sửa video:' : 'Hạn nộp nghiệm thu:'}
-                            </span>
-                            <span
-                              className={`font-bold ${
-                                request.status === 'OVERDUE'
-                                  ? 'text-[#DC2626] bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200'
-                                  : 'text-[#1A1612]'
-                              }`}
-                            >
-                              {activeDeadline
-                                ? new Date(activeDeadline).toLocaleString('vi-VN')
-                                : 'Chờ bưu cục phát'}
-                            </span>
-                          </div>
-
-                          {request.status === 'OVERDUE' && (
-                            <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-[11px] font-bold text-[#DC2626] flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                              <span>Đã quá hạn! Tài khoản KOL bị tạm khóa quyền nhận mẫu mới.</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Video Submission link if submitted */}
-                        {request.videoUrl && (
-                          <div className="mt-2.5 pt-2.5 border-t border-[#EAE4D7]">
-                            <a
-                              href={request.videoUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-xs font-bold text-[#8C6226] transition active:scale-95"
-                            >
-                              <Video className="w-4 h-4 text-[#B88E4F]" />
-                              <span>Mở video KOL đã nộp nghiệm thu</span>
-                              <ExternalLink className="w-3 h-3 text-[#B88E4F]" />
-                            </a>
-                          </div>
-                        )}
-
-                        {/* Rejection / Delivery issue notes */}
-                        {request.rejectedReason && (
-                          <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
-                            <strong>Ghi chú giao nhận:</strong> {request.rejectedReason}
-                          </div>
-                        )}
-                        {request.videoRejectionReason && (
-                          <div className="mt-2 p-2 rounded-lg bg-rose-50 border border-rose-200 text-[11px] text-rose-800">
-                            <strong>Yêu cầu chỉnh sửa video:</strong> {request.videoRejectionReason}
-                          </div>
-                        )}
-                      </div>
-
+                  </details>
                       {/* Admin Resolution Action Buttons */}
-                      <div className="pt-3 border-t border-[#EAE4D7] flex flex-wrap items-center justify-between gap-2">
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => setSelectedHistoryRequest(request)}
@@ -872,15 +616,13 @@ export default function AdminSampleRequestsPage() {
                           )}
 
                           {request.status === 'COMPLETED' && (
-                            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-[#059669] bg-[#ECFDF5] px-2.5 py-1 rounded-lg border border-[#A7F3D0]">
+                            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-[#059669] bg-white px-2.5 py-1 rounded-lg border border-[#EAE4D7]">
                               <CheckCircle2 className="h-3.5 w-3.5" />
                               <span>Hoàn tất</span>
                             </span>
                           )}
                         </div>
                       </div>
-                    </div>
-                  </div>
                 </article>
               );
             })}
@@ -905,7 +647,7 @@ export default function AdminSampleRequestsPage() {
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-extrabold text-[#1A1612] m-0">{resolutionTitle}</h2>
+                  <h2 className="text-sm font-semibold text-[#1A1612] m-0">{resolutionTitle}</h2>
                   <p className="text-xs text-[#7D715E] mt-0.5 m-0">
                     Quyết định can thiệp sẽ được lưu vết kiểm toán và gửi thông báo cho hai bên
                   </p>
@@ -997,11 +739,11 @@ export default function AdminSampleRequestsPage() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 text-[#059669]">
+                <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#059669]">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-extrabold text-[#1A1612] m-0">Mở khóa quyền nhận mẫu</h2>
+                  <h2 className="text-sm font-semibold text-[#1A1612] m-0">Mở khóa quyền nhận mẫu</h2>
                   <p className="text-xs text-[#7D715E] mt-0.5 m-0">KOL: {unblockingCreator.fullName}</p>
                 </div>
               </div>
@@ -1044,7 +786,7 @@ export default function AdminSampleRequestsPage() {
               <button
                 type="submit"
                 disabled={unblockSubmitting || !unblockReason.trim()}
-                className="rounded-xl bg-[#059669] hover:bg-[#047857] px-5 py-2 text-xs font-bold text-white disabled:opacity-50 transition shadow-xs flex items-center gap-1.5"
+                className="rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-5 py-2 text-xs font-bold text-[#231D15] disabled:opacity-50 transition shadow-xs flex items-center gap-1.5"
               >
                 {unblockSubmitting ? (
                   <>
@@ -1074,7 +816,7 @@ export default function AdminSampleRequestsPage() {
                   <History className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-extrabold text-[#1A1612] m-0">Lịch sử sự kiện & Video nộp</h2>
+                  <h2 className="text-sm font-semibold text-[#1A1612] m-0">Lịch sử sự kiện & Video nộp</h2>
                   <p className="text-xs text-[#7D715E] mt-0.5 m-0">
                     Đơn mẫu #{selectedHistoryRequest.id.slice(0, 8).toUpperCase()} • {selectedHistoryRequest.product?.title}
                   </p>
