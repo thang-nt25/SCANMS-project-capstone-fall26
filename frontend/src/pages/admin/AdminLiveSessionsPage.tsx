@@ -49,12 +49,27 @@ export default function AdminLiveSessionsPage() {
 
   return (
     <section className="space-y-4 text-[#1A1612]">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-extrabold">Giám sát phiên SCANMS Live</h2>
-          <p className="text-xs text-[#7D715E]">50 phiên gần nhất · Người xem đang hoạt động, đơn hàng và hoa hồng theo KOL.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#EAE4D7] shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-xs font-semibold text-[#1A1612]">
+            Giám sát thời gian thực ({sessions.length} phiên live)
+          </span>
+          <span className="text-[11px] text-[#7D715E]">· Tự động cập nhật mỗi 15s</span>
         </div>
-        <button type="button" onClick={() => void load(true)} className="inline-flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-bold hover:border-[#C59B58]"><RefreshCw className="h-4 w-4 text-[#B88E4F]" /> Làm mới</button>
+        <button
+          type="button"
+          onClick={() => void load(true)}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1.5 text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-50 shadow-2xs"
+          title="Làm mới dữ liệu"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+          <span>Làm mới</span>
+        </button>
       </div>
       {error && <p role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm text-[#7D715E]">{error}</p>}
       {loading && !sessions.length ? <p className="rounded-xl border border-[#EAE4D7] bg-white p-8 text-center text-sm text-[#7D715E]">Đang tải phiên live…</p> : null}
