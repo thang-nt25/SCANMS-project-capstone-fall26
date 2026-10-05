@@ -2149,7 +2149,7 @@ export class ReferralLinksService {
 
       if (rawCollab) {
         // Chỉ Quản trị viên hệ thống mới xem được email gốc đầy đủ; Chủ Shop chỉ xem email đã ẩn danh (Issue 1)
-        const isSysAdmin = userRole === UserRole.SYSTEM_ADMIN;
+        const isSysAdmin = userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
         effectiveCollaborator = {
           id: rawCollab.id,
           fullName: rawCollab.fullName,
@@ -2712,7 +2712,7 @@ export class ReferralLinksService {
           'Bạn không có quyền xem mã QR của liên kết thuộc cửa hàng khác.',
         );
       }
-    } else if (user.role === UserRole.SYSTEM_ADMIN) {
+    } else if (user.role === UserRole.SYSTEM_ADMIN || user.role === UserRole.SYSTEM_MANAGER) {
       // Cho phép tra cứu/hỗ trợ
     } else {
       throw new ForbiddenException(
@@ -2738,6 +2738,7 @@ export class ReferralLinksService {
     // Ghi Audit Log nếu Admin hoặc Shop thao tác thay KOL (Mục 24)
     if (
       user.role === UserRole.SYSTEM_ADMIN ||
+      user.role === UserRole.SYSTEM_MANAGER ||
       (user.role === UserRole.SHOP_MANAGER && link.collaboratorId !== user.id)
     ) {
       await this.prisma.auditLog

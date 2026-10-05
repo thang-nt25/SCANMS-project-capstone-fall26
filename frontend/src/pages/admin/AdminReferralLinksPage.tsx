@@ -54,7 +54,11 @@ export default function AdminReferralLinksPage() {
       setLinks(res.data);
       setTotalLinks(res.meta.total);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Lỗi khi tải danh sách liên kết tiếp thị toàn sàn');
+      if (err?.response?.status === 403 || err?.status === 403) {
+        setErrorMsg('Bạn không có quyền quản trị cấp sàn (SYSTEM_ADMIN hoặc SYSTEM_MANAGER) để truy cập dữ liệu liên kết tiếp thị này.');
+      } else {
+        setErrorMsg(err.message || 'Lỗi khi tải danh sách liên kết tiếp thị toàn sàn');
+      }
     } finally {
       setLoading(false);
     }
@@ -114,31 +118,31 @@ export default function AdminReferralLinksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#FAF8F5] py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-[1520px] mx-auto space-y-6">
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xs p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
-                System Administrator
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                Quản Trị Toàn Sàn
               </span>
-              <span className="text-xs text-slate-400">FR-10 Quản trị toàn sàn</span>
+              <span className="text-xs text-[#7D715E]">FR-10 Giám sát tiếp thị</span>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Link2 className="w-6 h-6 text-indigo-600" />
+            <h1 className="text-2xl font-bold text-[#1A1612] flex items-center gap-2">
+              <Link2 className="w-6 h-6 text-[#C59B58]" />
               Quản Trị Liên Kết Tiếp Thị Toàn Hệ Thống
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-[#7D715E] mt-1">
               Kiểm duyệt, giám sát lưu lượng click, theo dõi chuyển đổi đơn hàng và xử lý vi phạm liên kết trên toàn sàn.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => fetchAdminLinks()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#1A1612] border border-[#EAE4D7] hover:border-[#C59B58] font-medium rounded-xl text-sm transition cursor-pointer"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
               Làm mới
             </button>
           </div>
@@ -146,33 +150,33 @@ export default function AdminReferralLinksPage() {
 
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+          <div className="bg-white p-5 rounded-xl border border-[#EAE4D7] shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center font-bold">
               <Link2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-medium">Tổng liên kết toàn hệ thống</p>
-              <h3 className="text-xl font-bold text-slate-900">{totalLinks.toLocaleString()}</h3>
+              <p className="text-xs text-[#7D715E] font-medium">Tổng liên kết toàn hệ thống</p>
+              <h3 className="text-xl font-bold text-[#1A1612]">{totalLinks.toLocaleString()}</h3>
             </div>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="bg-white p-5 rounded-xl border border-[#EAE4D7] shadow-xs flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
               <TrendingUp className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-medium">Tổng lượt click ghi nhận</p>
-              <h3 className="text-xl font-bold text-slate-900">
+              <p className="text-xs text-[#7D715E] font-medium">Tổng lượt click ghi nhận</p>
+              <h3 className="text-xl font-bold text-[#1A1612]">
                 {links.reduce((acc, l) => acc + (l.totalClicks || 0), 0).toLocaleString()}
               </h3>
             </div>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="bg-white p-5 rounded-xl border border-[#EAE4D7] shadow-xs flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
               <ShoppingBag className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-medium">Tổng đơn hàng chuyển đổi</p>
-              <h3 className="text-xl font-bold text-slate-900">
+              <p className="text-xs text-[#7D715E] font-medium">Tổng đơn hàng chuyển đổi</p>
+              <h3 className="text-xl font-bold text-[#1A1612]">
                 {links.reduce((acc, l) => acc + (l.totalOrders || 0), 0).toLocaleString()}
               </h3>
             </div>
@@ -180,21 +184,21 @@ export default function AdminReferralLinksPage() {
         </div>
 
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="bg-white rounded-xl border border-[#EAE4D7] p-4 shadow-xs flex flex-col md:flex-row gap-4 justify-between items-center">
           <form onSubmit={handleSearch} className="w-full md:w-96 flex gap-2">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-3" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm mã rút gọn, tên sản phẩm, nhãn..."
-                className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 border border-[#EAE4D7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C59B58] focus:border-transparent text-[#1A1612]"
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition"
+              className="px-4 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-white rounded-xl text-sm font-semibold transition cursor-pointer"
             >
               Tìm
             </button>

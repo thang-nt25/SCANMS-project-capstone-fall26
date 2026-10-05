@@ -1,6 +1,7 @@
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Navigate } from 'react-router-dom';
 import { Link2, Tag, Radio } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
+import { authService } from '../../services/auth.service';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import AdminCouponsPage from './AdminCouponsPage';
 import AdminLiveSessionsPage from './AdminLiveSessionsPage';
@@ -8,6 +9,20 @@ import AdminLiveSessionsPage from './AdminLiveSessionsPage';
 export default function AdminOversightHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'links';
+
+  const user = authService.getCurrentUser();
+  if (user && user.role === 'SHOP_MANAGER') {
+    return <Navigate to="/merchant/promotions?tab=referral-links" replace />;
+  }
+  if (user && user.role === 'COLLABORATOR') {
+    return <Navigate to="/collaborator/marketing?tab=links" replace />;
+  }
+  if (user && user.role === 'CUSTOMER') {
+    return <Navigate to="/customer/orders" replace />;
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const handleTabChange = (tabId: string) => {
     setSearchParams({ tab: tabId }, { replace: true });
