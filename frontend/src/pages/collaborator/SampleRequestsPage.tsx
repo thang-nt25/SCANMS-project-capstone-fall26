@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import api from '../../services/api';
 import type { SampleRequest, SampleRequestStatus } from '../../types/samples';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
+import { Select } from '../../components/ui/Select';
 
 
 const STATUS_LABEL: Record<SampleRequestStatus, string> = {
@@ -10,6 +11,13 @@ const STATUS_LABEL: Record<SampleRequestStatus, string> = {
   APPROVED: 'Đã duyệt',
   REJECTED: 'Từ chối',
   SHIPPED: 'Đang giao',
+  RECEIVED: 'Đã nhận · chờ video',
+  VIDEO_SUBMITTED: 'Chờ Shop nghiệm thu',
+  REVISION_REQUIRED: 'Cần sửa video',
+  COMPLETED: 'Hoàn tất',
+  OVERDUE: 'Quá hạn',
+  CANCELLED: 'Đã hủy',
+  DELIVERY_ISSUE: 'Sự cố giao hàng',
 };
 
 const STATUS_CLASS: Record<SampleRequestStatus, string> = {
@@ -17,6 +25,13 @@ const STATUS_CLASS: Record<SampleRequestStatus, string> = {
   APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
   SHIPPED: 'bg-blue-50 text-blue-700 border border-blue-200',
+  RECEIVED: 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]',
+  VIDEO_SUBMITTED: 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]',
+  REVISION_REQUIRED: 'bg-rose-50 text-rose-700 border border-rose-200',
+  COMPLETED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  OVERDUE: 'bg-rose-50 text-rose-700 border border-rose-200',
+  CANCELLED: 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]',
+  DELIVERY_ISSUE: 'bg-rose-50 text-rose-700 border border-rose-200',
 };
 
 const STATUS_ICON: Record<SampleRequestStatus, string> = {
@@ -24,6 +39,13 @@ const STATUS_ICON: Record<SampleRequestStatus, string> = {
   APPROVED: '✅',
   REJECTED: '❌',
   SHIPPED: '🚚',
+  RECEIVED: '📦',
+  VIDEO_SUBMITTED: '🎬',
+  REVISION_REQUIRED: '📝',
+  COMPLETED: '✅',
+  OVERDUE: '⚠️',
+  CANCELLED: '—',
+  DELIVERY_ISSUE: '🚨',
 };
 
 function formatDate(d: string) {
@@ -129,9 +151,9 @@ function RequestModal({
                 Đang tải danh sách sản phẩm...
               </div>
             ) : products.length > 0 ? (
-              <select
+              <Select
                 id="sr-product-id"
-                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                className="w-full text-xs"
                 value={productId}
                 onChange={(e) => setProductId(e.target.value)}
                 required
@@ -141,7 +163,7 @@ function RequestModal({
                     {p.title} - {p.store?.name || 'Shop'} ({Number(p.price).toLocaleString('vi-VN')} đ)
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
               <input
                 id="sr-product-id"
@@ -401,7 +423,7 @@ export default function SampleRequestsPage() {
                         {receivedIds[req.id] ? 'Đã nhận mẫu trải nghiệm thành công' : 'Mẫu sản phẩm đang được bưu cục vận chuyển'}
                       </div>
                       <div className="text-[11px] text-[#7D715E]">
-                        Quy chế: Nộp liên kết bài Review trong vòng 7 ngày kể từ khi nhận mẫu
+                        Quy chế: Nộp link video review trong vòng 14 ngày kể từ khi xác nhận nhận mẫu
                       </div>
                     </div>
                   </div>

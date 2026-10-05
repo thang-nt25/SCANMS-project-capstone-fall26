@@ -21,6 +21,26 @@ export class CartItemValidateDto {
   @IsUUID('4', { message: 'productId phải là UUID hợp lệ' })
   productId: string;
 
+  @ApiPropertyOptional({ description: 'ID SKU/biến thể trong giỏ nếu sản phẩm có phân loại' })
+  @IsOptional()
+  @IsUUID('4', { message: 'variantId phải là UUID hợp lệ' })
+  variantId?: string;
+
+  // Backward compatibility for product-detail clients that include these
+  // values per item. Coupon validation still resolves ownership and price
+  // from the database; these client-supplied values are never trusted.
+  @ApiPropertyOptional({ description: 'ID gian hàng từ client cũ; chỉ để tương thích, backend tự xác định gian hàng' })
+  @IsOptional()
+  @IsUUID('4', { message: 'storeId phải là UUID hợp lệ' })
+  storeId?: string;
+
+  @ApiPropertyOptional({ description: 'Giá từ client cũ; chỉ để tương thích, backend luôn lấy giá từ database' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
+
   @ApiProperty({
     description: 'Số lượng mua',
     example: 2,

@@ -132,7 +132,7 @@ export class CollaboratorReferralLinksController {
   }
 
   @Get([':id/qr', 'by-code/:id/qr'])
-  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary: 'Xem trước hoặc tải về ảnh mã QR Code động (FR-11)',
   })
@@ -276,7 +276,7 @@ export class CollaboratorReferralLinksController {
 @ApiTags('Store Manager - Referral Links (FR-10)')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
+@Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
 @Controller('stores/:storeId/referral-links')
 export class StoreReferralLinksController {
   constructor(private readonly service: ReferralLinksService) {}
@@ -479,7 +479,7 @@ export class StoreReferralLinksController {
 @ApiTags('System Admin - Referral Links (FR-10)')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SYSTEM_ADMIN)
+@Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
 @Controller('admin/referral-links')
 export class AdminReferralLinksController {
   constructor(private readonly service: ReferralLinksService) {}
@@ -631,7 +631,7 @@ export class AdminReferralLinksController {
   }
 
   @Get('orders/:orderId/effective-attribution')
-  @Roles(UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary:
       'Quản trị viên tra cứu KOL hiệu lực và thông tin điều chỉnh của đơn hàng (FR-13 - Issue 3)',
@@ -652,7 +652,7 @@ export class AdminReferralLinksController {
   }
 
   @Get('rate-limit/dashboard')
-  @Roles(UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary: 'Quản trị viên xem Dashboard giám sát Rate Limit & Redis Realtime (FR-14)',
     description:

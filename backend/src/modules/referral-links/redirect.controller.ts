@@ -453,9 +453,9 @@ export class RedirectController {
     );
   }
 
-  @Get(['products/:idOrSlug', 'p/:idOrSlug'])
+  @Get('p/:idOrSlug')
   @ApiOperation({
-    summary: 'Chuyển hướng URL sản phẩm: Bot mạng xã hội vào SEO HTML, người dùng vào React SPA (FR-15)',
+    summary: 'Chuyển hướng URL sản phẩm rút gọn: Bot mạng xã hội vào SEO HTML, người dùng vào React SPA (FR-15)',
   })
   async handleDirectProductUrl(
     @Param('idOrSlug') idOrSlug: string,

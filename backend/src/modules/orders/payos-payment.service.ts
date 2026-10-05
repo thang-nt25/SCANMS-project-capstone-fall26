@@ -11,6 +11,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { OrderStatus } from '@prisma/client';
 import { PayOS, type Webhook } from '@payos/node';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
 
 type PayosDetails = {
@@ -101,6 +102,42 @@ export class PayosPaymentService {
     return Number.parseInt(orderId.replace(/-/g, '').slice(0, 12), 16) + 1;
   }
 
+  newPaymentOrderCode(): number {
+    return Number.parseInt(randomBytes(6).toString('hex'), 16) + 1;
+  }
+
+  async cancelPendingLinkForLivePriceReset(orderId: string): Promise<boolean> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { rawPayload: true },
+    });
+    const raw = (order?.rawPayload || {}) as Record<string, any>;
+    if (raw.paymentStatus === 'PAID') return false;
+    if (raw.paymentMethod !== 'PAYOS') return true;
+
+    const details = raw.payos as PayosDetails | undefined;
+    if (!details?.paymentLinkId && !details?.orderCode) return true;
+
+    try {
+      const payos = this.client();
+      const link = details.paymentLinkId
+        ? await payos.paymentRequests.cancel(
+            details.paymentLinkId,
+            'Livestream ended; the unpaid order was repriced.',
+          )
+        : await payos.paymentRequests.cancel(
+            details.orderCode!,
+            'Livestream ended; the unpaid order was repriced.',
+          );
+      return link.status === 'CANCELLED' || link.status === 'EXPIRED';
+    } catch (error) {
+      this.logger.warn(
+        `Could not cancel PayOS link before repricing order ${orderId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return false;
+    }
+  }
+
   private async ownedOrder(publicCode: string, userId: string) {
     const order = await this.prisma.order.findFirst({
       where: { externalOrderSn: publicCode, customerId: userId, sourcePlatform: 'INTERNAL' },
@@ -119,16 +156,27 @@ export class PayosPaymentService {
     const { order, raw } = await this.ownedOrder(publicCode, userId);
     if (order.status === OrderStatus.CANCELLED) throw new BadRequestException('Đơn hàng đã hủy');
     if (raw.paymentStatus === 'PAID') throw new ConflictException('Đơn hàng đã thanh toán');
-    const existing = raw.payos as PayosDetails | undefined;
-    if (existing?.checkoutUrl && existing.qrCode) {
-      return { ...existing, paymentStatus: raw.paymentStatus };
-    }
-
     const amount = Number(order.finalAmount);
     if (!Number.isSafeInteger(amount) || amount <= 0) {
       throw new BadRequestException('Số tiền thanh toán PayOS phải là số nguyên VND dương');
     }
-    const orderCode = this.numericCode(order.id);
+    let existing = raw.payos as PayosDetails | undefined;
+    if (existing?.checkoutUrl && existing.qrCode && existing.amount === amount) {
+      return { ...existing, paymentStatus: raw.paymentStatus };
+    }
+    let orderCode = existing?.orderCode || this.numericCode(order.id);
+    if (existing?.paymentLinkId && existing.amount !== amount) {
+      const cancelled = await this.cancelPendingLinkForLivePriceReset(order.id);
+      if (!cancelled) {
+        throw new ConflictException('Liên kết thanh toán cũ đang được xử lý. Vui lòng tải lại sau ít phút.');
+      }
+      orderCode = this.newPaymentOrderCode();
+      existing = undefined;
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { rawPayload: { ...raw, payos: { orderCode } } },
+      });
+    }
     const base = this.storefrontBaseUrl();
     const resultPath = `/payment/payos-return?order=${encodeURIComponent(publicCode)}`;
     const returnUrl = `${base}${resultPath}`;

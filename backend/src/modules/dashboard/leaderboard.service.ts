@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import {
   LeaderboardQueryDto,
@@ -95,18 +95,29 @@ export class LeaderboardService {
       attributedCollaboratorId: { not: null },
     };
 
-    if (dto.scope === LeaderboardScope.STORE && dto.storeId) {
-      baseOrderWhere.storeId = dto.storeId;
-      prevOrderWhere.storeId = dto.storeId;
-    } else if (currentUserRole === UserRole.SHOP_MANAGER && !dto.storeId) {
-      const store = await this.prisma.store.findFirst({
-        where: { ownerId: currentUserId },
-        select: { id: true },
-      });
-      if (store) {
-        baseOrderWhere.storeId = store.id;
-        prevOrderWhere.storeId = store.id;
+    let scopedStoreId: string | undefined;
+    if (dto.scope === LeaderboardScope.STORE) {
+      scopedStoreId = dto.storeId;
+      if (currentUserRole === UserRole.SHOP_MANAGER) {
+        const store = await this.prisma.store.findFirst({
+          where: {
+            ownerId: currentUserId,
+            isDeleted: false,
+            ...(dto.storeId ? { id: dto.storeId } : {}),
+          },
+          select: { id: true },
+        });
+        if (!store) throw new NotFoundException('Không tìm thấy gian hàng của bạn.');
+        scopedStoreId = store.id;
+      } else if (currentUserRole !== UserRole.SYSTEM_ADMIN && currentUserRole !== UserRole.SYSTEM_MANAGER) {
+        throw new ForbiddenException('Bạn không có quyền xem bảng xếp hạng theo gian hàng.');
       }
+
+      if (!scopedStoreId) {
+        throw new BadRequestException('Cần chọn gian hàng để lọc bảng xếp hạng.');
+      }
+      baseOrderWhere.storeId = scopedStoreId;
+      prevOrderWhere.storeId = scopedStoreId;
     }
 
     if (dto.category) {
@@ -118,41 +129,44 @@ export class LeaderboardService {
       };
     }
 
-    // 1. Lấy tất cả đơn hàng hoàn tất trong kỳ
-    const [orders, prevOrders, clickLogs, collaborators] = await Promise.all([
-      this.prisma.order.findMany({
+    // Gom số liệu ngay trong DB để không tải toàn bộ đơn và click log về Node.
+    const metric = dto.metric || LeaderboardMetricType.REVENUE;
+    const clickWhere = {
+      createdAt: { gte: startDate, lte: endDate },
+      collaboratorId: { not: null },
+      isValid: true,
+      ...(scopedStoreId ? { storeId: scopedStoreId } : {}),
+    };
+    const [orderGroups, prevOrderGroups, clickGroups, commissionGroups, collaborators] = await Promise.all([
+      this.prisma.order.groupBy({
+        by: ['attributedCollaboratorId'],
         where: baseOrderWhere,
-        select: {
-          id: true,
-          attributedCollaboratorId: true,
-          finalAmount: true,
-          commissions: {
-            select: { commissionAmount: true },
-          },
-        },
+        _sum: { finalAmount: true },
+        _count: { _all: true },
       }),
-      this.prisma.order.findMany({
-        where: prevOrderWhere,
-        select: {
-          id: true,
-          attributedCollaboratorId: true,
-          finalAmount: true,
-        },
+      metric === LeaderboardMetricType.REVENUE
+        ? this.prisma.order.groupBy({
+            by: ['attributedCollaboratorId'],
+            where: prevOrderWhere,
+            _sum: { finalAmount: true },
+          })
+        : Promise.resolve([]),
+      this.prisma.clickTrafficLog.groupBy({
+        by: ['collaboratorId'],
+        where: clickWhere,
+        _count: { _all: true },
       }),
-      this.prisma.clickTrafficLog.findMany({
-        where: {
-          createdAt: { gte: startDate, lte: endDate },
-          collaboratorId: { not: null },
-        },
-        select: {
-          collaboratorId: true,
-        },
+      this.prisma.commission.groupBy({
+        by: ['collaboratorId'],
+        where: { order: { is: baseOrderWhere } },
+        _sum: { commissionAmount: true },
       }),
       this.prisma.user.findMany({
-        where: { role: UserRole.COLLABORATOR, isActive: true },
+        where: { role: UserRole.COLLABORATOR, isActive: true, isDeleted: false },
         select: {
           id: true,
           fullName: true,
+          avatarUrl: true,
           collaboratorProfile: {
             select: {
               avatarUrl: true,
@@ -187,7 +201,7 @@ export class LeaderboardService {
       statsMap.set(c.id, {
         collaboratorId: c.id,
         fullName: c.fullName || 'Creator SCANMS',
-        avatarUrl: c.collaboratorProfile?.avatarUrl || undefined,
+        avatarUrl: c.avatarUrl || c.collaboratorProfile?.avatarUrl || undefined,
         primaryChannelHandle: primarySocial?.channelName ? `@${primarySocial.channelName}` : undefined,
         primaryPlatform: primarySocial?.platformName || undefined,
         tierName: c.collaboratorProfile?.tier?.name || 'Cấp Bạc',
@@ -198,30 +212,31 @@ export class LeaderboardService {
       });
     }
 
-    // Tính tổng Clicks
-    for (const log of clickLogs) {
-      if (log.collaboratorId && statsMap.has(log.collaboratorId)) {
-        statsMap.get(log.collaboratorId)!.totalClicks += 1;
+    // Gán số liệu đã được gom nhóm từ DB.
+    for (const group of clickGroups) {
+      if (group.collaboratorId && statsMap.has(group.collaboratorId)) {
+        statsMap.get(group.collaboratorId)!.totalClicks = group._count._all;
       }
     }
 
-    // Tính Doanh thu, Đơn hàng, Hoa hồng kỳ này
-    for (const ord of orders) {
-      if (ord.attributedCollaboratorId && statsMap.has(ord.attributedCollaboratorId)) {
-        const item = statsMap.get(ord.attributedCollaboratorId)!;
-        item.totalOrders += 1;
-        item.grossRevenue += Number(ord.finalAmount || 0);
-        const commTotal = ord.commissions?.reduce((sum, c) => sum + Number(c.commissionAmount || 0), 0) || 0;
-        item.totalCommission += commTotal;
+    for (const group of orderGroups) {
+      if (group.attributedCollaboratorId && statsMap.has(group.attributedCollaboratorId)) {
+        const item = statsMap.get(group.attributedCollaboratorId)!;
+        item.totalOrders = group._count._all;
+        item.grossRevenue = Number(group._sum.finalAmount || 0);
+      }
+    }
+    for (const group of commissionGroups) {
+      if (statsMap.has(group.collaboratorId)) {
+        statsMap.get(group.collaboratorId)!.totalCommission = Number(group._sum.commissionAmount || 0);
       }
     }
 
     // Gom nhóm kỳ trước để tính thứ hạng quá khứ
     const prevRevenueMap = new Map<string, number>();
-    for (const pOrd of prevOrders) {
-      if (pOrd.attributedCollaboratorId) {
-        const current = prevRevenueMap.get(pOrd.attributedCollaboratorId) || 0;
-        prevRevenueMap.set(pOrd.attributedCollaboratorId, current + Number(pOrd.finalAmount || 0));
+    for (const group of prevOrderGroups) {
+      if (group.attributedCollaboratorId) {
+        prevRevenueMap.set(group.attributedCollaboratorId, Number(group._sum.finalAmount || 0));
       }
     }
 
@@ -232,7 +247,6 @@ export class LeaderboardService {
     });
 
     // 3. Sắp xếp danh sách theo Metric được chọn
-    const metric = dto.metric || LeaderboardMetricType.REVENUE;
     const sortedList = Array.from(statsMap.values()).sort((a, b) => {
       switch (metric) {
         case LeaderboardMetricType.ORDERS:
@@ -332,6 +346,8 @@ export class LeaderboardService {
         rankDelta: myItem.rankDelta,
         myRevenue: myItem.grossRevenue,
         myOrders: myItem.totalOrders,
+        myConversionRate: myItem.conversionRate,
+        myCommission: myItem.totalCommission,
         gapToTop10Revenue: gapToTop10,
         gapToNextRankRevenue: gapToNextRank,
         currentPeriodLabel: label,
@@ -364,6 +380,8 @@ export class LeaderboardService {
         rankDelta: 0,
         myRevenue: 0,
         myOrders: 0,
+        myConversionRate: 0,
+        myCommission: 0,
         gapToTop10Revenue: 5000000,
         gapToNextRankRevenue: 1000000,
         currentPeriodLabel: full.periodLabel,
@@ -433,7 +451,7 @@ export class LeaderboardService {
       creatorId: creator.id,
       fullName: creator.fullName,
       email: creator.email,
-      avatarUrl: creator.collaboratorProfile?.avatarUrl,
+      avatarUrl: creator.avatarUrl || creator.collaboratorProfile?.avatarUrl || undefined,
       bio: creator.collaboratorProfile?.bio || 'Top Creator chuyên nghiệp hệ sinh thái SCANMS',
       tierName: creator.collaboratorProfile?.tier?.name || 'Cấp Bạc',
       socialChannels: creator.socialChannels.map((s) => ({

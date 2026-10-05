@@ -65,6 +65,15 @@ Khi Webhook nhận đơn hàng (`POST /api/v1/orders/webhook`), hệ thống ph�
 - **Chuyển trạng thái:** `PENDING` $\xrightarrow{\text{Shop duyệt}}$ `APPROVED` $\xrightarrow{\text{Gửi bưu điện}}$ `SHIPPED`.
 - **Bắt buộc:** Shop Manager khi đổi trạng thái sang `SHIPPED` phải cập nhật Mã vận đơn (`tracking_number`).
 
+### BR-CATALOG-003: Cam kết video và xử lý quá hạn hàng mẫu
+- Điều kiện gửi: KYC đã xác minh, có kênh mạng xã hội liên kết, chọn kênh đăng, nhập ngày dự kiến và xác nhận cam kết.
+- Luồng chính: PENDING → APPROVED → SHIPPED → RECEIVED → VIDEO_SUBMITTED → COMPLETED.
+- Nhánh xử lý: REJECTED, CANCELLED, DELIVERY_ISSUE, REVISION_REQUIRED, OVERDUE.
+- Hạn nộp video là 14 ngày kể từ lúc KOL xác nhận nhận mẫu. Ngày dự kiến đăng là cam kết bổ sung trong yêu cầu.
+- Quá hạn chưa nộp link thì khóa quyền xin mẫu mới. KOL vẫn có thể nộp video muộn để xử lý nghĩa vụ; mở khóa khi Shop nghiệm thu các yêu cầu quá hạn hoặc Admin xử lý khiếu nại.
+- Video phải gắn đúng yêu cầu mẫu và được Shop kiểm duyệt qua Media. Shop chấp nhận video thì yêu cầu hoàn tất; Shop yêu cầu sửa thì KOL nộp lại.
+- Gửi thông báo ở các mốc duyệt, gửi hàng, nhận hàng, nộp video, nhắc hạn, quá hạn, nghiệm thu; ghi AuditLog cho thao tác trọng yếu.
+
 ---
 
 ## 💵 4. MODULE 4: MULTI-ITEM COMMISSION ENGINE (BR-COMM)

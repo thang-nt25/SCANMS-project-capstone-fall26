@@ -186,6 +186,12 @@ export class MyRankStatusDto {
   @ApiProperty({ description: 'Tổng số đơn hàng của tôi trong kỳ', example: 64 })
   myOrders: number;
 
+  @ApiProperty({ description: 'Tỷ lệ đơn hàng trên lượt nhấp hợp lệ của tôi', example: 3.25 })
+  myConversionRate: number;
+
+  @ApiProperty({ description: 'Tổng hoa hồng của tôi trong kỳ (VNĐ)', example: 2845000 })
+  myCommission: number;
+
   @ApiProperty({ description: 'Khoảng cách doanh thu để vào Top 10 (VNĐ)', example: 6550000 })
   gapToTop10Revenue: number;
 

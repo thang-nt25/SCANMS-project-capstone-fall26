@@ -41,6 +41,7 @@ import {
 import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
+import { Select } from '../../components/ui/Select';
 import {
   customerService,
   type CustomerProfileResponse,
@@ -59,7 +60,7 @@ import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } 
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
 import { CustomSelect } from '../../components/ui/CustomSelect';
-import { useShopeeChat, type ChatProductInfo } from '../../context/ShopeeChatContext';
+import { useScanmsChat, type ChatProductInfo } from '../../context/ScanmsChatContext';
 import {
   notificationsService,
   type AppNotification,
@@ -128,14 +129,14 @@ export default function CustomerPortalPage() {
   const activeNotifCategory: NotificationCategory =
     (searchParams.get('cat') as NotificationCategory) || 'ALL';
 
-  // Submenu open states (Shopee Accordion)
+  // Submenu open states (SCANMS Accordion)
   const [isAccountSubmenuOpen, setIsAccountSubmenuOpen] = useState(
     currentTab === 'profile' || currentTab === 'identity' || currentTab === 'addresses' || currentTab === 'security'
   );
   const [isNotificationSubmenuOpen, setIsNotificationSubmenuOpen] = useState(true);
 
   // Floating Chat hook
-  const { openChat } = useShopeeChat();
+  const { openChat } = useScanmsChat();
 
   // Notifications State
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -190,7 +191,7 @@ export default function CustomerPortalPage() {
   const [wishlist, setWishlist] = useState<CustomerWishlistItem[]>([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  // Tab 4: Profile & Password Form (Shopee Style)
+  // Tab 4: Profile & Password Form (SCANMS Standard)
   const [nameInput, setNameInput] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER'>('MALE');
@@ -204,7 +205,7 @@ export default function CustomerPortalPage() {
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
-  // Security / Password Setting Flow (Shopee Style)
+  // Security / Password Setting Flow (SCANMS Standard)
   const [securityMode, setSecurityMode] = useState<'VERIFY_METHOD' | 'AWAIT_OTP' | 'SET_NEW_PASSWORD' | 'DIRECT_CHANGE'>('VERIFY_METHOD');
   const [securityOtp, setSecurityOtp] = useState('');
   const [otpCountdown, setOtpCountdown] = useState(0);
@@ -213,7 +214,7 @@ export default function CustomerPortalPage() {
   const [verifyingSecurityOtp, setVerifyingSecurityOtp] = useState(false);
   const [settingNewPassword, setSettingNewPassword] = useState(false);
 
-  // Identity CCCD State (Shopee Style)
+  // Identity CCCD State (SCANMS Standard)
   const [cccdFullName, setCccdFullName] = useState('');
   const [cccdIdNumber, setCccdIdNumber] = useState('');
   const [cccdAddress, setCccdAddress] = useState('');
@@ -230,7 +231,7 @@ export default function CustomerPortalPage() {
     return () => clearTimeout(timer);
   }, [otpCountdown]);
 
-  // Masking helpers for Shopee Profile Display
+  // Masking helpers for SCANMS Profile Display
   const maskEmail = (email?: string) => {
     if (!email) return 'chua-co-email@scanms.vn';
     const parts = email.split('@');
@@ -901,13 +902,13 @@ export default function CustomerPortalPage() {
       <main className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
         <div className="flex flex-col lg:flex-row gap-5 items-start">
           {/* ========================================================= */}
-          {/* LEFT SIDEBAR - USER CARD & SHOPEE-STYLE NAVIGATION MENU */}
+          {/* LEFT SIDEBAR - USER CARD & SCANMS Standard NAVIGATION MENU */}
           {/* ========================================================= */}
           {/* ========================================================= */}
-          {/* LEFT SIDEBAR - USER CARD & SHOPEE-STYLE NAVIGATION MENU (IMAGE 3) */}
+          {/* LEFT SIDEBAR - USER CARD & SCANMS Standard NAVIGATION MENU (IMAGE 3) */}
           {/* ========================================================= */}
           <aside className="w-full lg:w-[240px] shrink-0 bg-transparent flex flex-col gap-3.5 text-left sticky top-20 self-start">
-            {/* User Identity Header (Shopee Image 3 Style) */}
+            {/* User Identity Header (SCANMS UI Reference Style) */}
             <div className="flex items-center gap-3 px-1 py-1">
               {/* Hidden file input for avatar upload */}
               <input
@@ -965,7 +966,7 @@ export default function CustomerPortalPage() {
 
             <div className="border-t border-[#EAE4D7] my-0.5" />
 
-            {/* Shopee-style Minimalist Menu Navigation */}
+            {/* SCANMS Standard Minimalist Menu Navigation */}
             <nav className="flex flex-col space-y-1 text-xs sm:text-[13px]">
               {/* 1. Tài Khoản Của Tôi (Nằm trên cùng, Expandable) */}
               <div>
@@ -985,7 +986,7 @@ export default function CustomerPortalPage() {
                   <ChevronDown className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${isAccountSubmenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
                 </button>
 
-                {/* Sub-menu items (indented Shopee style) */}
+                {/* Sub-menu items (indented SCANMS Standard) */}
                 {isAccountSubmenuOpen && (
                   <div className="pl-10 pr-2 py-1 flex flex-col space-y-1.5">
                     <button
@@ -1028,7 +1029,7 @@ export default function CustomerPortalPage() {
                 )}
               </div>
 
-              {/* 2. Đơn Mua (Active Shopee Style) */}
+              {/* 2. Đơn Mua (Active SCANMS Standard) */}
               <button
                 type="button"
                 onClick={() => setTab('orders')}
@@ -1049,7 +1050,7 @@ export default function CustomerPortalPage() {
                 )}
               </button>
 
-              {/* 3. Thông Báo (Shopee Image 2 Style with Sub-items) */}
+              {/* 3. Thông Báo (SCANMS UI Reference Style with Sub-items) */}
               <div>
                 <button
                   type="button"
@@ -1229,11 +1230,11 @@ export default function CustomerPortalPage() {
           {/* ========================================================= */}
           <div className="flex-1 min-w-0 flex flex-col gap-4 text-left">
             {/* ------------------------------------------------------------- */}
-            {/* TAB 1: ĐƠN MUA CỦA TÔI (SHOPEE STYLE - IMAGE 1) */}
+            {/* TAB 1: ĐƠN MUA CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'orders' && (
               <div className="flex flex-col gap-3">
-                {/* 1. Shopee-Style Top Status Filter Tabs Bar (Image 1) */}
+                {/* 1. SCANMS Standard Top Status Filter Tabs Bar (Image 1) */}
                 <div className="bg-white border border-[#EAE4D7] rounded-xl shadow-2xs overflow-hidden">
                   <div className="flex items-center overflow-x-auto scrollbar-none border-b border-[#EAE4D7]">
                     {[
@@ -1266,7 +1267,7 @@ export default function CustomerPortalPage() {
                     })}
                   </div>
 
-                  {/* 2. Shopee-Style Search Bar (Image 1) */}
+                  {/* 2. SCANMS Standard Search Bar (Image 1) */}
                   <div className="p-3 sm:p-3.5 bg-[#FAF8F5]">
                     <form
                       onSubmit={(e) => {
@@ -1306,7 +1307,7 @@ export default function CustomerPortalPage() {
                   </div>
                 </div>
 
-                {/* 3. Orders List (Shopee Image 1 Cards) */}
+                {/* 3. Orders List (SCANMS UI Reference Cards) */}
                 {ordersLoading ? (
                   <div className="py-16 bg-white border border-[#EAE4D7] rounded-xl flex flex-col items-center justify-center gap-3 text-[#7D715E]">
                     <Loader2 className="w-8 h-8 text-[#B88E4F] animate-spin" />
@@ -1374,7 +1375,7 @@ export default function CustomerPortalPage() {
                           key={order.id}
                           className="bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 rounded-xl shadow-2xs hover:shadow-xs transition flex flex-col overflow-hidden"
                         >
-                          {/* Order Card Header (Shopee Style) */}
+                          {/* Order Card Header (SCANMS Standard) */}
                           <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:px-5 sm:py-3.5 border-b border-[#F0EBE0]">
                             <div className="flex items-center flex-wrap gap-2">
                               <span className="px-1.5 py-0.5 rounded-[2px] bg-[#C59B58] text-white text-[10.5px] font-bold tracking-tight">
@@ -1477,7 +1478,7 @@ export default function CustomerPortalPage() {
                             </div>
                           )}
 
-                          {/* Order Items List (Shopee Style) */}
+                          {/* Order Items List (SCANMS Standard) */}
                           <div className="divide-y divide-[#F5EFE6] px-3.5 sm:px-5">
                             {order.orderItems.map((item) => (
                               <div key={item.id} className="py-3.5 flex items-start gap-3.5">
@@ -1604,7 +1605,7 @@ export default function CustomerPortalPage() {
                               </div>
                             </div>
 
-                            {/* Action Buttons Row (Shopee Style) */}
+                            {/* Action Buttons Row (SCANMS Standard) */}
                             <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2 border-t border-[#EAE4D7]/70">
                               {/* Primary Button: Mua Lại */}
                               <button
@@ -1962,7 +1963,7 @@ export default function CustomerPortalPage() {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* TAB 4: HỒ SƠ CỦA TÔI (SHOPEE STYLE - IMAGE 1) */}
+            {/* TAB 4: HỒ SƠ CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'profile' && (
               <div className="bg-white border border-[#EAE4D7] rounded-xl p-6 sm:p-8 shadow-2xs text-left">
@@ -1978,7 +1979,7 @@ export default function CustomerPortalPage() {
 
                 {/* Form & Avatar Body */}
                 <div className="pt-6 flex flex-col-reverse md:flex-row items-start gap-8 lg:gap-12">
-                  {/* Left Column: Form Fields (Shopee Image 1) */}
+                  {/* Left Column: Form Fields (SCANMS UI Reference) */}
                   <form onSubmit={handleUpdateProfile} className="flex-1 w-full space-y-5">
                     {/* 1. Tên đăng nhập */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
@@ -2119,43 +2120,43 @@ export default function CustomerPortalPage() {
                         <HelpCircle className="w-3 h-3 text-[#A89D8E]" />
                       </label>
                       <div className="flex items-center gap-2">
-                        <select
+                        <Select
                           value={birthDay}
                           onChange={(e) => setBirthDay(e.target.value)}
-                          className="bg-white border border-[#EAE4D7] rounded-md px-2.5 py-1.5 text-xs text-[#1A1612] outline-none focus:border-[#C59B58] cursor-pointer"
+                          className="w-28 text-xs font-semibold"
                         >
                           {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => (
                             <option key={d} value={d}>
                               Ngày {d}
                             </option>
                           ))}
-                        </select>
-                        <select
+                        </Select>
+                        <Select
                           value={birthMonth}
                           onChange={(e) => setBirthMonth(e.target.value)}
-                          className="bg-white border border-[#EAE4D7] rounded-md px-2.5 py-1.5 text-xs text-[#1A1612] outline-none focus:border-[#C59B58] cursor-pointer"
+                          className="w-28 text-xs font-semibold"
                         >
                           {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
                             <option key={m} value={m}>
                               Tháng {m}
                             </option>
                           ))}
-                        </select>
-                        <select
+                        </Select>
+                        <Select
                           value={birthYear}
                           onChange={(e) => setBirthYear(e.target.value)}
-                          className="bg-white border border-[#EAE4D7] rounded-md px-2.5 py-1.5 text-xs text-[#1A1612] outline-none focus:border-[#C59B58] cursor-pointer"
+                          className="w-28 text-xs font-semibold"
                         >
                           {Array.from({ length: 70 }, (_, i) => String(2015 - i)).map((y) => (
                             <option key={y} value={y}>
                               Năm {y}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     </div>
 
-                    {/* 7. Nút Lưu (Shopee Style) */}
+                    {/* 7. Nút Lưu (SCANMS Standard) */}
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 pt-3">
                       <div className="sm:w-32 shrink-0" />
                       <button
@@ -2172,7 +2173,7 @@ export default function CustomerPortalPage() {
                   {/* Vertical Divider */}
                   <div className="hidden md:block w-px bg-[#EAE4D7] self-stretch mx-2" />
 
-                  {/* Right Column: Avatar Upload (Shopee Image 1) */}
+                  {/* Right Column: Avatar Upload (SCANMS UI Reference) */}
                   <div className="w-full md:w-64 flex flex-col items-center justify-center py-4 px-2">
                     <div className="relative group">
                       <button
@@ -2225,7 +2226,7 @@ export default function CustomerPortalPage() {
 
             {currentTab === 'identity' && (
               <section className="bg-white border border-[#EAE4D7] rounded-2xl p-6 sm:p-10 shadow-2xs text-left max-w-4xl">
-                {/* Header (Chuẩn Shopee) */}
+                {/* Header (Chuẩn SCANMS) */}
                 <div className="pb-4 border-b border-[#EAE4D7]">
                   <div className="flex items-center justify-between gap-3">
                     <h1 className="text-lg sm:text-xl font-bold text-[#1A1612] m-0 font-display">
@@ -2243,7 +2244,7 @@ export default function CustomerPortalPage() {
                   </p>
                 </div>
 
-                {/* Form căn chỉnh 2 cột ngang chuẩn Shopee */}
+                {/* Form căn chỉnh 2 cột ngang Chuẩn SCANMS */}
                 {loadingIdentity ? (
                   <div className="py-16 flex flex-col items-center justify-center text-[#7D715E] text-xs gap-3">
                     <Loader2 className="w-6 h-6 animate-spin text-[#C59B58]" />
@@ -2447,7 +2448,7 @@ export default function CustomerPortalPage() {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* TAB: THÔNG BÁO (SHOPEE STYLE NOTIFICATION CENTER) */}
+            {/* TAB: THÔNG BÁO (SCANMS Standard NOTIFICATION CENTER) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'notifications' && (
               <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 sm:p-6 shadow-2xs flex flex-col gap-5 text-left">
@@ -2494,7 +2495,7 @@ export default function CustomerPortalPage() {
                   )}
                 </div>
 
-                {/* 2. Horizontal Category Filter Tabs Bar (Shopee Style) */}
+                {/* 2. Horizontal Category Filter Tabs Bar (SCANMS Standard) */}
                 <div className="flex items-center overflow-x-auto scrollbar-none border-b border-[#EAE4D7] -mt-2">
                   {[
                     { key: 'ALL', label: 'Tất Cả', unread: unreadNotifCount },
@@ -2725,11 +2726,11 @@ export default function CustomerPortalPage() {
             {/* TAB: ĐỔI MẬT KHẨU & BẢO MẬT */}
             {/* ------------------------------------------------------------- */}
             {/* ------------------------------------------------------------- */}
-            {/* TAB: ĐỔI MẬT KHẨU & BẢO MẬT (CHUẨN SHOPEE XÁC THỰC EMAIL) */}
+            {/* TAB: ĐỔI MẬT KHẨU & BẢO MẬT (Chuẩn SCANMS XÁC THỰC EMAIL) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'security' && (
               <div className="flex flex-col gap-6 w-full max-w-xl">
-                {/* 1. MÀN HÌNH CHỌN PHƯƠNG THỨC XÁC MINH (Chuẩn Shopee Ảnh 2) */}
+                {/* 1. MÀN HÌNH CHỌN PHƯƠNG THỨC XÁC MINH (Chuẩn SCANMS Ảnh 2) */}
                 {securityMode === 'VERIFY_METHOD' && (
                   <div className="flex flex-col gap-6">
                     <div className="bg-white border border-[#EAE4D7] rounded-2xl p-6 sm:p-8 shadow-2xs text-center flex flex-col items-center">
@@ -2742,7 +2743,7 @@ export default function CustomerPortalPage() {
                         Để tăng cường bảo mật cho tài khoản của bạn, hãy xác minh thông tin bằng phương thức sau.
                       </h2>
 
-                      {/* Nút gửi link/mã qua Email (Shopee Style) */}
+                      {/* Nút gửi link/mã qua Email (SCANMS Standard) */}
                       <button
                         type="button"
                         onClick={handleSendSecurityOtp}
@@ -2770,7 +2771,7 @@ export default function CustomerPortalPage() {
                       </div>
                     </div>
 
-                    {/* Câu hỏi thường gặp FAQs (Y hệt Shopee Ảnh 2) */}
+                    {/* Câu hỏi thường gặp FAQs (Theo chuẩn SCANMS Ảnh 2) */}
                     <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col gap-4 text-xs text-left">
                       <div>
                         <strong className="text-[#1A1612] font-bold block mb-1">
@@ -2792,7 +2793,7 @@ export default function CustomerPortalPage() {
                   </div>
                 )}
 
-                {/* 2. MÀN HÌNH CHỜ NHẬP MÃ OTP GỬI QUA EMAIL (Chuẩn Shopee Ảnh 3) */}
+                {/* 2. MÀN HÌNH CHỜ NHẬP MÃ OTP GỬI QUA EMAIL (Chuẩn SCANMS Ảnh 3) */}
                 {securityMode === 'AWAIT_OTP' && (
                   <div className="bg-white border border-[#EAE4D7] rounded-2xl p-6 sm:p-8 shadow-2xs text-center flex flex-col items-center relative">
                     <button
@@ -2814,7 +2815,7 @@ export default function CustomerPortalPage() {
                       {maskedSecurityEmail || maskEmail(currentUser?.email)}
                     </strong>
 
-                    {/* Envelope Icon Circle (Shopee Image 3) */}
+                    {/* Envelope Icon Circle (SCANMS UI Reference) */}
                     <div className="w-16 h-16 rounded-full bg-[#FAF5EB] border border-[#EEDFC6] text-[#C59B58] flex items-center justify-center my-6 shadow-xs">
                       <Mail className="w-8 h-8 text-[#C59B58]" />
                     </div>
@@ -2851,7 +2852,7 @@ export default function CustomerPortalPage() {
                         )}
                       </div>
 
-                      {/* Clean Security Notice (Shopee Style) */}
+                      {/* Clean Security Notice (SCANMS Standard) */}
                       <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-left text-xs text-[#7D715E] flex items-start gap-2.5 shadow-2xs">
                         <Mail className="w-4 h-4 text-[#C59B58] shrink-0 mt-0.5" />
                         <span className="text-[11px] leading-relaxed text-[#7D715E]">

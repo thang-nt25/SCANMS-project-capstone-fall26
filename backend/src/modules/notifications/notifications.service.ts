@@ -26,6 +26,7 @@ const PROMOTION_TYPES = [
   'CAMPAIGN_INVITE',
   'PROMO_DISCOUNT',
   'VOUCHER_EXPIRED',
+  'LIVE_SESSION_BROADCAST',
 ];
 
 const SYSTEM_TYPES = [
@@ -43,6 +44,33 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Tự động dọn dẹp các thông báo phiên live đã kết thúc để không còn hiện trong danh sách và chuông của user
+   */
+  private async cleanupExpiredLiveBroadcasts() {
+    try {
+      const nowIso = new Date().toISOString();
+      await this.prisma.notification.deleteMany({
+        where: {
+          OR: [
+            {
+              type: 'LIVE_SESSION_BROADCAST',
+              data: {
+                path: ['endsAt'],
+                lte: nowIso,
+              },
+            },
+            {
+              type: 'LIVE_SESSION_ENDED',
+            },
+          ],
+        },
+      });
+    } catch (e) {
+      this.logger.debug('Cleanup expired live broadcast notifications error (non-fatal):', e);
+    }
+  }
 
   /**
    * Khởi tạo thông báo chào mừng thực tế cho người dùng mới đăng ký
@@ -82,6 +110,7 @@ export class NotificationsService {
    * Lấy danh sách thông báo của người dùng kèm bộ lọc 3 danh mục (Đơn Hàng, Khuyến Mãi, SCANMS)
    */
   async getUserNotifications(userId: string, query?: GetNotificationsQuery) {
+    await this.cleanupExpiredLiveBroadcasts();
     await this.ensureSeedNotifications(userId);
 
     const page = Math.max(1, Number(query?.page) || 1);
@@ -137,6 +166,7 @@ export class NotificationsService {
    * Đếm nhanh số lượng thông báo chưa đọc (phục vụ hiển thị badge chuông báo)
    */
   async getUnreadCount(userId: string) {
+    await this.cleanupExpiredLiveBroadcasts();
     const [unreadCount, orderUnread, promotionUnread, systemUnread] = await Promise.all([
       this.prisma.notification.count({ where: { userId, isRead: false } }),
       this.prisma.notification.count({ where: { userId, isRead: false, type: { in: ORDER_TYPES } } }),

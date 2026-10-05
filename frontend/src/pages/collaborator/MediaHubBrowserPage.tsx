@@ -10,7 +10,6 @@ import {
   X,
   Sparkles,
   FileCheck,
-  ChevronDown,
   Tag,
   Loader2,
   FolderOpen,
@@ -24,7 +23,9 @@ import { couponService, type CouponItem } from '../../services/coupon.service';
 import { mediaService, type MediaAsset } from '../../services/media.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { Select } from '../../components/ui/Select';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 
@@ -116,23 +117,23 @@ export default function MediaHubBrowserPage() {
 
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [assetToDelete, setAssetToDelete] = useState<MediaAsset | null>(null);
 
-  const handleDeleteSubmission = async (asset: MediaAsset) => {
-    const isPending = asset.status === 'PENDING';
-    const confirmMsg = isPending
-      ? `Bạn có chắc chắn muốn hủy nộp và xóa video review "${asset.title}" không?`
-      : `Bạn có chắc chắn muốn xóa video review "${asset.title}" khỏi danh sách không?`;
+  const handleDeleteSubmission = (asset: MediaAsset) => {
+    setAssetToDelete(asset);
+  };
 
-    if (!window.confirm(confirmMsg)) return;
-
-    setDeletingId(asset.id);
+  const handleConfirmDeleteAsset = async () => {
+    if (!assetToDelete) return;
+    setDeletingId(assetToDelete.id);
     try {
-      await mediaService.deleteMediaAsset(asset.id);
-      setMediaList((prev) => prev.filter((x) => x.id !== asset.id));
+      await mediaService.deleteMediaAsset(assetToDelete.id);
+      setMediaList((prev) => prev.filter((x) => x.id !== assetToDelete.id));
       showToast('Đã xóa video review thành công!');
-      if (previewAsset?.id === asset.id) {
+      if (previewAsset?.id === assetToDelete.id) {
         setPreviewAsset(null);
       }
+      setAssetToDelete(null);
     } catch (err: any) {
       showToast(
         err?.response?.data?.message || err?.message || 'Không thể xóa video lúc này. Vui lòng thử lại.'
@@ -352,36 +353,30 @@ export default function MediaHubBrowserPage() {
         </div>
 
         {availableProducts.length > 0 && (
-          <div className="relative">
-            <select
-              value={selectedProduct}
-              onChange={(e) => setSelectedProduct(e.target.value)}
-              className="bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-[#1A1612] appearance-none outline-none cursor-pointer hover:bg-[#EAE4D7] transition"
-            >
-              <option value="ALL">Tất cả sản phẩm ({availableProducts.length})</option>
-              {availableProducts.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#7D715E] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+          <Select
+            value={selectedProduct}
+            onChange={(e) => setSelectedProduct(e.target.value)}
+            className="w-56 text-xs font-semibold"
+          >
+            <option value="ALL">Tất cả sản phẩm ({availableProducts.length})</option>
+            {availableProducts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </Select>
         )}
 
-        <div className="relative">
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-2 text-xs font-semibold text-[#1A1612] appearance-none outline-none cursor-pointer hover:bg-[#EAE4D7] transition"
-          >
-            <option value="ALL">Tất cả định dạng</option>
-            <option value="IMAGE">Ảnh chụp / Banner</option>
-            <option value="VIDEO">Video Review / Shorts</option>
-            <option value="COPYWRITE_TEXT">Kịch bản bài viết mẫu</option>
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-[#7D715E] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
+        <Select
+          value={selectedType}
+          onChange={(e) => setSelectedType(e.target.value)}
+          className="w-48 text-xs font-semibold"
+        >
+          <option value="ALL">Tất cả định dạng</option>
+          <option value="IMAGE">Ảnh chụp / Banner</option>
+          <option value="VIDEO">Video Review / Shorts</option>
+          <option value="COPYWRITE_TEXT">Kịch bản bài viết mẫu</option>
+        </Select>
       </Card>
 
 
@@ -724,17 +719,17 @@ export default function MediaHubBrowserPage() {
                       <Tag className="w-3.5 h-3.5 text-[#B88E4F]" />
                       Mã ưu đãi áp dụng trong kịch bản:
                     </span>
-                    <select
+                    <Select
                       value={selectedCouponId}
                       onChange={(e) => setSelectedCouponId(e.target.value)}
-                      className="bg-white border border-[#EAE4D7] rounded-lg px-2 py-1 text-xs font-bold text-[#B88E4F] outline-none cursor-pointer"
+                      className="w-52 text-xs font-bold"
                     >
                       {activeCoupons.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.displayCode} ({c.discountType === 'PERCENTAGE' ? `-${c.discountValue}%` : `-${Number(c.discountValue).toLocaleString('vi-VN')} ₫`})
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 ) : (
                   <div className="text-[11px] text-[#7D715E] bg-[#FAF8F5] px-3 py-1.5 rounded-xl border border-[#EAE4D7]">
@@ -803,6 +798,22 @@ export default function MediaHubBrowserPage() {
           setViewMode('MY_SUBMISSIONS');
           showToast('Nộp video review thành công! Đang chờ Shop phê duyệt.');
         }}
+      />
+
+      {/* Modal Xác nhận Xóa video review chuẩn SCANMS */}
+      <ConfirmModal
+        isOpen={Boolean(assetToDelete)}
+        onClose={() => !deletingId && setAssetToDelete(null)}
+        onConfirm={handleConfirmDeleteAsset}
+        isLoading={Boolean(deletingId)}
+        title={assetToDelete?.status === 'PENDING' ? "Hủy nộp & Xóa video review" : "Xóa video review"}
+        message={
+          assetToDelete?.status === 'PENDING'
+            ? `Bạn có chắc chắn muốn hủy nộp và xóa video review "${assetToDelete?.title}" không?`
+            : `Bạn có chắc chắn muốn xóa video review "${assetToDelete?.title}" khỏi danh sách tài nguyên không?`
+        }
+        confirmText="Xác nhận xóa"
+        variant="danger"
       />
     </div>
   );

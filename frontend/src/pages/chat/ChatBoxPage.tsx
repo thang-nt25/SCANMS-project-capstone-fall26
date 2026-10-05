@@ -26,6 +26,8 @@ import {
   FileText,
   Ticket,
   Copy,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
@@ -984,6 +986,7 @@ export default function ChatBoxPage({
   const [hasMore, setHasMore] = useState(false);
   const [oldestMsgId, setOldestMsgId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showVipModal, setShowVipModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -1380,161 +1383,283 @@ export default function ChatBoxPage({
     (currentUser?.role === 'SHOP_MANAGER' && Boolean(conv.collaborator?.id));
 
   return (
-    <div
-      className={`flex ${embedded ? 'h-full w-full' : 'h-[calc(100vh-5.5rem)]'} bg-white rounded-2xl border border-[#EAE4D7] shadow-sm overflow-hidden ${className}`}
-      id="chat-page"
-    >
+    <div className={embedded ? 'h-full w-full' : 'mx-auto flex w-full max-w-[1520px] flex-col pt-3 pb-4 sm:pt-4'}>
+      <div
+        className={`flex min-h-0 min-w-0 ${embedded ? 'h-full w-full' : 'h-[calc(100dvh-130px)] min-h-[460px] sm:min-h-[560px]'} overflow-hidden rounded-3xl border border-[#EAE4D7] bg-white shadow-[0_12px_36px_rgba(35,29,21,0.08)] ${className}`}
+        id="chat-page"
+      >
       {!hideSidebar && (
       <aside
-        className={`${activeConvId ? 'hidden sm:flex' : 'flex'} w-full sm:w-80 flex-shrink-0 flex-col border-r border-[#EAE4D7] bg-[#FAF8F5]/60`}
+        className={`${activeConvId ? 'hidden sm:flex' : 'flex'} ${
+          isSidebarCollapsed ? 'w-[72px]' : 'w-full sm:w-[300px] lg:w-[320px] xl:w-[350px]'
+        } min-h-0 flex-shrink-0 flex-col border-r border-[#EAE4D7] bg-[#FAF8F5] transition-[width] duration-300 ease-in-out`}
         aria-label="Danh sách hội thoại"
       >
 
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-stone-200/60 bg-white/50">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4" />
-            </div>
-            <h1 className="text-base font-bold text-stone-900">Tin nhắn</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              id="btn-new-conversation"
-              className="w-8 h-8 rounded-lg bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center transition-colors shadow-xs"
-              title="Tạo cuộc trò chuyện mới"
-              onClick={() => setShowNewChat(true)}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            <div
-              className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 shadow-xs ring-2 ring-emerald-200' : 'bg-rose-500'
-                }`}
-              title={isConnected ? 'Đang kết nối Realtime' : 'Mất kết nối'}
-            />
-          </div>
-        </div>
-
-
-        <div className="p-3 border-b border-stone-200/60">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-            <input
-              id="chat-search-input"
-              type="text"
-              className="w-full pl-9 pr-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-              placeholder="Tìm kiếm hội thoại..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-
-        <div className="flex-1 overflow-y-auto divide-y divide-stone-100" role="list">
-          {filteredConversations.length === 0 && (
-            <div className="py-16 text-center text-stone-400 text-xs space-y-2">
-              <MessageSquare className="w-8 h-8 mx-auto text-stone-300 stroke-1" />
-              <p>Chưa có cuộc trò chuyện nào</p>
+        {isSidebarCollapsed ? (
+          /* COLLAPSED VIEW: Only Avatars & Expand Toggle */
+          <div className="flex flex-col h-full items-center">
+            {/* Header with Expand Button */}
+            <div className="h-12 w-full border-b border-[#EAE4D7] bg-white flex items-center justify-center">
               <button
-                className="text-amber-600 hover:underline font-bold"
-                onClick={() => setShowNewChat(true)}
+                type="button"
+                onClick={() => setIsSidebarCollapsed(false)}
+                className="w-8 h-8 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#B88E4F] hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#B88E4F] flex items-center justify-center transition cursor-pointer shadow-2xs"
+                title="Mở rộng danh sách hội thoại"
+                aria-label="Mở rộng danh sách hội thoại"
               >
-                + Bắt đầu chat ngay
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-          )}
 
-          {filteredConversations.map(conv => {
-            const lastMsg = conv.chatMessages?.[0];
-            const isActive = conv.id === activeConvId;
-            const unread = (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id);
+            {/* Collapsed List: Avatars only */}
+            <div className="flex-1 w-full overflow-y-auto py-2.5 px-2 space-y-2.5 no-scrollbar flex flex-col items-center">
+              {filteredConversations.map((conv) => {
+                const lastMsg = conv.chatMessages?.[0];
+                const isActive = conv.id === activeConvId;
+                const unread = (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id);
+                const otherParty = getOtherParty(conv);
 
-            return (
-              <div
-                key={conv.id}
-                id={`conv-item-${conv.id}`}
-                className={`flex items-center gap-3 p-3.5 cursor-pointer transition-all ${isActive
-                    ? 'bg-amber-50/90 border-l-4 border-amber-600 text-stone-900'
-                    : 'hover:bg-stone-100/70 text-stone-700'
-                  }`}
-                role="listitem"
-                onClick={() => openConversation(conv)}
-                tabIndex={0}
-                onKeyDown={e => e.key === 'Enter' && openConversation(conv)}
-              >
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openOtherProfile(conv);
-                  }}
-                  disabled={!canOpenOtherProfile(conv)}
-                  title={`Xem hồ sơ ${getOtherParty(conv)}`}
-                  aria-label={`Xem hồ sơ ${getOtherParty(conv)}`}
-                  className="rounded-full border-0 bg-transparent p-0 flex-shrink-0 cursor-pointer disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]"
-                >
-                  <ChatAvatar
-                    src={getOtherAvatarUrl(conv)}
-                    name={getOtherParty(conv)}
-                    className="w-10 h-10 rounded-full text-sm shadow-xs"
-                  />
-                </button>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <span className="font-bold text-stone-900 text-sm truncate">
-                      {getOtherParty(conv)}
-                    </span>
-                    {lastMsg && (
-                      <span className="text-[10px] text-stone-400 flex-shrink-0">
-                        {formatConvTime(lastMsg.createdAt)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between gap-1">
-                    <span
-                      className={`text-xs truncate ${unread ? 'font-bold text-stone-900' : 'text-stone-500'
-                        }`}
+                return (
+                  <div key={conv.id} className="relative group">
+                    <button
+                      type="button"
+                      onClick={() => openConversation(conv)}
+                      className={`relative p-1 rounded-2xl transition cursor-pointer block ${
+                        isActive
+                          ? 'bg-[#FBF5EB] ring-2 ring-[#C59B58] shadow-sm'
+                          : 'hover:bg-[#FAF8F5]'
+                      }`}
                     >
-                      {lastMsg
-                        ? lastMsg.mediaType
-                          ? `📎 ${lastMsg.mediaName || 'Tệp đính kèm'}`
-                          : lastMsg.messageText.startsWith('{')
-                          ? lastMsg.messageText.includes('EXCLUSIVE_DEAL_')
-                            ? canSeeAffiliateDeals
-                              ? '🤝 [Đề xuất Exclusive Deal]'
-                              : 'Shop đã gửi tin nhắn.'
-                            : lastMsg.messageText.includes('PRODUCT_INQUIRY')
-                              ? '🛍️ [Trao đổi về sản phẩm]'
-                              : lastMsg.messageText.includes('COUPON_VOUCHER')
-                                ? '🎟️ [Mã giảm giá]'
-                                : lastMsg.messageText.includes('CAMPAIGN_')
-                                ? '👑 [Chiến dịch hợp tác VIP]'
-                                : '💬 [Tin nhắn đính kèm]'
-                          : lastMsg.messageText
-                        : 'Bắt đầu cuộc trò chuyện...'}
-                    </span>
-                    {unread && (
-                      <span className="w-2 h-2 rounded-full bg-amber-600 flex-shrink-0" />
-                    )}
+                      <div className="relative">
+                        <ChatAvatar
+                          src={getOtherAvatarUrl(conv)}
+                          name={otherParty}
+                          className="w-9 h-9 rounded-xl border border-[#EAE4D7] text-xs shadow-2xs"
+                        />
+                        {unread && (
+                          <span
+                            className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#DC2626] text-white flex items-center justify-center text-[8px] font-black border-2 border-white shadow-2xs animate-pulse"
+                            title="Tin nhắn mới"
+                          />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Floating Tooltip Card on Hover */}
+                    <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 hidden group-hover:flex z-50 flex-col min-w-[200px] max-w-[260px] p-2.5 bg-white border border-[#EAE4D7] rounded-xl shadow-xl pointer-events-none whitespace-nowrap animate-in fade-in duration-150 text-left">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-[#1A1612] truncate">
+                          {otherParty}
+                        </span>
+                        {lastMsg && (
+                          <span className="text-[9.5px] text-[#7D715E]/70 shrink-0 font-medium">
+                            {formatConvTime(lastMsg.createdAt)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10.5px] text-[#7D715E] truncate mt-1">
+                        {lastMsg?.messageText || 'Bắt đầu cuộc trò chuyện...'}
+                      </span>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* EXPANDED VIEW: Clean, Compact, Warm Sand & Gold */
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] bg-white px-4 py-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shadow-2xs shrink-0">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <h1 className="truncate text-sm font-extrabold tracking-tight text-[#1A1612]">
+                    Tin nhắn
+                  </h1>
+                  <div
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      isConnected ? 'bg-emerald-500 ring-2 ring-emerald-200' : 'bg-rose-500'
+                    }`}
+                    title={isConnected ? 'Đang kết nối Realtime' : 'Mất kết nối'}
+                  />
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  id="btn-new-conversation"
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                  title="Tạo cuộc trò chuyện mới"
+                  onClick={() => setShowNewChat(true)}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Button to collapse sidebar */}
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarCollapsed(true)}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                  title="Thu gọn danh sách (chỉ hiện icon)"
+                  aria-label="Thu gọn danh sách"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="border-b border-[#EAE4D7] bg-[#FAF8F5] p-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
+                <input
+                  id="chat-search-input"
+                  type="text"
+                  className="w-full rounded-xl border border-[#EAE4D7] bg-white py-2.5 pl-9 pr-8 text-sm font-medium text-[#1A1612] shadow-2xs transition placeholder:text-[#7D715E]/60 focus:border-[#C59B58] focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
+                  placeholder="Tìm kiếm hội thoại..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#7D715E] hover:text-[#1A1612] text-xs font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Conversation List */}
+            <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2.5 py-2 no-scrollbar" role="list">
+              {filteredConversations.length === 0 && (
+                <div className="py-12 text-center text-[#7D715E] text-xs space-y-2">
+                  <MessageSquare className="w-7 h-7 mx-auto text-[#C59B58]/40 stroke-1" />
+                  <p className="font-medium">Chưa có cuộc trò chuyện nào</p>
+                  <button
+                    className="text-[#B88E4F] hover:underline font-bold text-xs"
+                    onClick={() => setShowNewChat(true)}
+                  >
+                    + Bắt đầu chat ngay
+                  </button>
+                </div>
+              )}
+
+              {filteredConversations.map((conv) => {
+                const lastMsg = conv.chatMessages?.[0];
+                const isActive = conv.id === activeConvId;
+                const unread = (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id);
+                const otherParty = getOtherParty(conv);
+
+                return (
+                  <div
+                    key={conv.id}
+                    id={`conv-item-${conv.id}`}
+                    className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition-all duration-150 ${
+                      isActive
+                        ? 'border-[#EEDFC6] bg-[#FBF5EB] shadow-xs'
+                        : 'hover:bg-[#FAF8F5] border border-transparent'
+                    }`}
+                    role="listitem"
+                    onClick={() => openConversation(conv)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && openConversation(conv)}
+                  >
+                    {/* Active gold left indicator bar */}
+                    {isActive && (
+                      <div className="absolute left-0 top-2 bottom-2 w-1 bg-[#C59B58] rounded-r-full" />
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openOtherProfile(conv);
+                      }}
+                      disabled={!canOpenOtherProfile(conv)}
+                      title={`Xem hồ sơ ${otherParty}`}
+                      aria-label={`Xem hồ sơ ${otherParty}`}
+                      className="rounded-full border-0 bg-transparent p-0 flex-shrink-0 cursor-pointer disabled:cursor-default"
+                    >
+                      <ChatAvatar
+                        src={getOtherAvatarUrl(conv)}
+                        name={otherParty}
+                        className={`h-10 w-10 rounded-full text-xs shadow-2xs transition-transform group-hover:scale-105 ${
+                          isActive ? 'border border-[#C59B58] ring-2 ring-[#C59B58]/20' : 'border border-[#EAE4D7]'
+                        }`}
+                      />
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <span
+                          className={`truncate text-[13px] font-bold transition-colors ${
+                            isActive ? 'text-[#B88E4F]' : 'text-[#1A1612] group-hover:text-[#B88E4F]'
+                          }`}
+                          title={otherParty}
+                        >
+                          {otherParty}
+                        </span>
+                        {lastMsg && (
+                          <span className="shrink-0 text-[10px] font-medium text-[#7D715E]/80">
+                            {formatConvTime(lastMsg.createdAt)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className={`truncate text-[11px] leading-snug ${
+                            unread ? 'font-bold text-[#1A1612]' : 'text-[#7D715E]'
+                          }`}
+                        >
+                          {lastMsg
+                            ? lastMsg.mediaType
+                              ? `📎 ${lastMsg.mediaName || 'Tệp đính kèm'}`
+                              : lastMsg.messageText.startsWith('{')
+                              ? lastMsg.messageText.includes('EXCLUSIVE_DEAL_')
+                                ? canSeeAffiliateDeals
+                                  ? '🤝 [Đề xuất Exclusive Deal]'
+                                  : 'Shop đã gửi tin nhắn.'
+                                : lastMsg.messageText.includes('PRODUCT_INQUIRY')
+                                ? '🛍️ [Trao đổi về sản phẩm]'
+                                : lastMsg.messageText.includes('COUPON_VOUCHER')
+                                  ? '🎟️ [Mã giảm giá]'
+                                  : lastMsg.messageText.includes('CAMPAIGN_')
+                                    ? '👑 [Chiến dịch hợp tác VIP]'
+                                    : '💬 [Tin nhắn đính kèm]'
+                              : lastMsg.messageText
+                            : 'Bắt đầu cuộc trò chuyện...'}
+                        </span>
+                        {unread && (
+                          <span className="w-2 h-2 rounded-full bg-[#C59B58] flex-shrink-0 animate-pulse" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </aside>
       )}
 
 
-      <main className={`${activeConvId ? 'flex' : 'hidden sm:flex'} flex-1 flex-col bg-[#FAF8F5]/30 relative min-w-0`} aria-label="Khung chat">
+      <main className={`${activeConvId ? 'flex' : 'hidden sm:flex'} relative min-w-0 flex-1 flex-col bg-[#FAF8F5]/60`} aria-label="Khung chat">
         {!activeConv ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-amber-100/80 text-amber-700 flex items-center justify-center shadow-xs">
-              <MessageSquare className="w-8 h-8" />
+          <div className="flex flex-1 flex-col items-center justify-center space-y-3 p-6 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] shadow-xs">
+              <MessageSquare className="h-7 w-7" />
             </div>
-            <h2 className="text-lg font-bold text-stone-800">Chọn một hội thoại</h2>
-            <p className="text-xs text-stone-500 max-w-sm">
+            <h2 className="text-lg font-bold text-[#1A1612]">Chọn một hội thoại</h2>
+            <p className="max-w-sm text-sm text-[#7D715E]">
               Chọn cuộc trò chuyện ở cột bên trái hoặc bấm dấu <strong>+</strong> để bắt đầu trao đổi trực tiếp
             </p>
           </div>
@@ -1542,9 +1667,9 @@ export default function ChatBoxPage({
           <>
 
             {!hideHeaderInChat && (
-            <header className="px-6 py-3.5 bg-white border-b border-[#EAE4D7] flex items-center justify-between shadow-xs">
-              <div className="flex items-center gap-3">
-                <button type="button" className="sm:hidden rounded-lg p-1 text-[#7D715E] cursor-pointer" onClick={() => { setActiveConvId(null); activeConvIdRef.current = null; }} aria-label="Về danh sách hội thoại"><ArrowLeft size={20} /></button>
+            <header className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3 shadow-xs sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <button type="button" className="rounded-xl p-2 text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] sm:hidden" onClick={() => { setActiveConvId(null); activeConvIdRef.current = null; }} aria-label="Về danh sách hội thoại"><ArrowLeft size={20} /></button>
                 <button
                   type="button"
                   onClick={() => openOtherProfile(activeConv)}
@@ -1556,21 +1681,21 @@ export default function ChatBoxPage({
                   <ChatAvatar
                     src={getOtherAvatarUrl(activeConv)}
                     name={getOtherParty(activeConv)}
-                    className="w-10 h-10 rounded-full text-sm shadow-xs"
+                    className="h-11 w-11 rounded-full border border-[#EEDFC6] text-sm shadow-xs"
                   />
                 </button>
-                <div>
-                  <div className="font-bold text-stone-900 text-sm">{getOtherParty(activeConv)}</div>
-                  <div className="text-xs text-stone-500 flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-bold text-[#1A1612] sm:text-base">{getOtherParty(activeConv)}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[#7D715E]">
                     {typingUser ? (
-                      <span className="text-amber-600 font-medium flex items-center gap-1">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-600 animate-bounce" />
+                      <span className="flex items-center gap-1 font-medium text-[#B88E4F]">
+                        <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-[#C59B58]" />
                         {typingUser} đang nhập...
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1.5">
                         <span
-                          className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-rose-500'
+                          className={`h-2 w-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-rose-500'
                             }`}
                         />
                         {isConnected ? 'Đang hoạt động' : 'Ngoại tuyến'}
@@ -1584,11 +1709,12 @@ export default function ChatBoxPage({
               {isShop && (
                 <button
                   id="btn-open-vip-invite"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer border border-[#EAE4D7]"
+                  type="button"
+                  className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
                   onClick={() => setShowVipModal(true)}
                   title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-100 animate-pulse" />
+                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
                   <span>Mời Chiến Dịch VIP</span>
                 </button>
               )}
@@ -1597,7 +1723,7 @@ export default function ChatBoxPage({
 
 
             <div
-              className={`flex-1 overflow-y-auto ${embedded ? 'p-3 sm:p-4 space-y-3' : 'p-3 sm:p-6 space-y-4'}`}
+              className={`min-h-0 flex-1 overflow-y-auto ${embedded ? 'space-y-3 p-3 sm:p-4' : 'space-y-5 p-4 sm:p-7 lg:p-8'}`}
               ref={messagesContainerRef}
               onScroll={e => {
                 if ((e.target as HTMLElement).scrollTop < 60 && hasMore) {
@@ -1608,7 +1734,7 @@ export default function ChatBoxPage({
               {hasMore && (
                 <div className="text-center">
                   <button
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-stone-200/70 hover:bg-stone-300 text-stone-700 text-xs font-semibold rounded-full transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#EAE4D7] bg-white px-3 py-1.5 text-xs font-semibold text-[#7D715E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB]"
                     onClick={loadMore}
                   >
                     <ArrowUp className="w-3 h-3" /> Tải thêm tin nhắn cũ hơn
@@ -1617,8 +1743,8 @@ export default function ChatBoxPage({
               )}
 
               {isLoadingMsgs && (
-                <div className="py-12 text-center text-stone-400 text-xs flex flex-col items-center gap-2">
-                  <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="flex flex-col items-center gap-2 py-12 text-xs text-[#7D715E]">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#C59B58] border-t-transparent" />
                   <span>Đang tải tin nhắn...</span>
                 </div>
               )}
@@ -1633,8 +1759,8 @@ export default function ChatBoxPage({
                 return (
                   <div key={msg.id} className="space-y-2">
                     {showDate && (
-                      <div className="flex items-center justify-center my-3">
-                        <span className="bg-stone-200/80 text-stone-600 text-[11px] font-semibold px-3 py-0.5 rounded-full shadow-2xs">
+                      <div className="my-4 flex items-center justify-center">
+                        <span className="rounded-full border border-[#EAE4D7] bg-white px-3 py-1 text-[11px] font-semibold text-[#7D715E] shadow-2xs">
                           {isToday(new Date(msg.createdAt))
                             ? 'Hôm nay'
                             : isYesterday(new Date(msg.createdAt))
@@ -1666,9 +1792,9 @@ export default function ChatBoxPage({
                         </button>
                       )}
 
-                      <div className={`max-w-[72%] space-y-1 ${isMine ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[78%] space-y-1 sm:max-w-[72%] lg:max-w-[68%] ${isMine ? 'items-end' : 'items-start'}`}>
                         {!isMine && (
-                          <div className="text-[11px] text-stone-500 font-medium pl-1">
+                          <div className="pl-1 text-xs font-medium text-[#7D715E]">
                             {msg.sender.fullName}
                           </div>
                         )}
@@ -1697,9 +1823,9 @@ export default function ChatBoxPage({
 
                           return (
                             <div
-                              className={`p-3.5 text-sm shadow-xs ${isMine
-                                  ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-white rounded-2xl rounded-tr-xs'
-                                  : 'bg-white text-stone-900 border border-stone-200/80 rounded-2xl rounded-tl-xs'
+                              className={`rounded-2xl p-3.5 text-sm leading-relaxed shadow-xs ${isMine
+                                  ? 'rounded-tr-md border border-[#B88E4F] bg-[#C59B58] text-[#231D15]'
+                                  : 'rounded-tl-md border border-[#EAE4D7] bg-white text-[#1A1612]'
                                 }`}
                             >
                               {msg.mediaUrl && msg.mediaType === 'IMAGE' && (
@@ -1742,7 +1868,7 @@ export default function ChatBoxPage({
                         })()}
 
                         <div
-                          className={`flex items-center gap-1 text-[10px] text-stone-400 px-1 ${isMine ? 'justify-end' : 'justify-start'
+                          className={`flex items-center gap-1 px-1 text-[10px] text-[#7D715E]/80 ${isMine ? 'justify-end' : 'justify-start'
                             }`}
                         >
                           <span>{formatMsgTime(msg.createdAt)}</span>
@@ -1764,13 +1890,13 @@ export default function ChatBoxPage({
 
               {typingUser && (
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-stone-200 text-stone-700 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-[#EAE4D7] bg-[#F3EFE6] text-xs font-bold text-[#7D715E]">
                     {typingUser[0]?.toUpperCase()}
                   </div>
-                  <div className="px-3.5 py-2 bg-white border border-stone-200 rounded-2xl rounded-tl-xs shadow-xs flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" />
+                  <div className="flex items-center gap-1 rounded-2xl rounded-tl-md border border-[#EAE4D7] bg-white px-3.5 py-2 shadow-xs">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#C59B58] [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#C59B58] [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#C59B58]" />
                   </div>
                 </div>
               )}
@@ -1779,7 +1905,7 @@ export default function ChatBoxPage({
             </div>
 
 
-            <div className="bg-white border-t border-stone-200 shadow-xs">
+            <div className="border-t border-[#EAE4D7] bg-white">
               {/* PINNED PRODUCT INQUIRY BANNER */}
               {pinnedProduct && (
                 <div className="mx-4 mt-3 p-3 bg-gradient-to-r from-[#FBF5EB] to-[#FAF8F5] border border-[#EAE4D7] rounded-2xl shadow-2xs">
@@ -1860,9 +1986,11 @@ export default function ChatBoxPage({
                 </div>
               )}
 
-              <div className={`${embedded ? 'p-2.5 sm:p-3' : 'p-4'} flex items-center gap-2.5`}>
+              <div className={`${embedded ? 'p-2.5 sm:p-3' : 'px-4 py-3 sm:px-6 sm:py-4'}`}>
+                <div className="flex items-end gap-2 sm:gap-2.5">
                 <button
-                  className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-xl transition-colors"
+                  type="button"
+                  className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
                   id="chat-attach-btn"
                   title="Đính kèm ảnh"
                   onClick={() => fileInputRef.current?.click()}
@@ -1871,8 +1999,9 @@ export default function ChatBoxPage({
                 </button>
                 {isShop && (
                   <button
+                    type="button"
                     id="btn-composer-vip-invite"
-                    className="p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                    className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
                     title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
                     onClick={() => setShowVipModal(true)}
                   >
@@ -1892,8 +2021,8 @@ export default function ChatBoxPage({
                 />
                 <textarea
                   id="chat-message-input"
-                  className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white resize-none max-h-24 transition-all"
-                  placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)"
+                  className="min-h-10 max-h-28 flex-1 resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2.5 text-sm text-[#1A1612] transition-all placeholder:text-[#7D715E]/70 focus:border-[#C59B58] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
+                  placeholder="Nhập tin nhắn..."
                   value={inputText}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
@@ -1901,9 +2030,10 @@ export default function ChatBoxPage({
                 />
                 <button
                   id="chat-send-btn"
-                  className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${inputText.trim() && !isSending
-                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
-                      : 'bg-stone-100 text-stone-300 cursor-not-allowed'
+                  type="button"
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${inputText.trim() && !isSending
+                      ? 'cursor-pointer bg-[#C59B58] text-[#231D15] shadow-xs hover:bg-[#B88E4F]'
+                      : 'cursor-not-allowed bg-[#F3EFE6] text-[#B8AE9D]'
                     }`}
                   onClick={sendMessage}
                   disabled={!inputText.trim() || isSending}
@@ -1911,6 +2041,12 @@ export default function ChatBoxPage({
                 >
                   <Send className="w-4 h-4" />
                 </button>
+                </div>
+                {!embedded && (
+                  <p className="mt-2 pl-1 text-[11px] text-[#7D715E]">
+                    Enter để gửi <span className="px-1 text-[#C8BDAA]">·</span> Shift + Enter để xuống dòng
+                  </p>
+                )}
               </div>
             </div>
           </>
@@ -1985,6 +2121,7 @@ export default function ChatBoxPage({
           }}
         />
       )}
+      </div>
     </div>
   );
 }

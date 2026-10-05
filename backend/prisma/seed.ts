@@ -163,7 +163,11 @@ async function main() {
 
   await prisma.collaboratorProfile.upsert({
     where: { userId: kol1.id },
-    update: {},
+    update: {
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: 'VERIFIED',
+    },
     create: {
       userId: kol1.id,
       tierId: goldTier.id,
@@ -259,7 +263,9 @@ async function main() {
       websiteUrl: 'https://techstore.vn',
       defaultCommissionRate: 10.0,
       attributionWindowDays: 30,
-      minPayoutAmount: 200000,
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: 'VERIFIED',
     },
   });
 
@@ -288,6 +294,10 @@ async function main() {
     where: { id: soraStoreId },
     update: {
       ownerId: shopOwner.id,
+      websiteUrl: '',
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: 'VERIFIED',
     },
     create: {
       id: soraStoreId,
@@ -296,10 +306,12 @@ async function main() {
       slug: 'sora-skin-official',
       logoUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200',
       description: 'Gian hàng phân phối chính hãng dòng sản phẩm chăm sóc da chuyên sâu Sora Skin Flagship.',
-      websiteUrl: 'https://soraskin.vn',
+      websiteUrl: '',
       defaultCommissionRate: 15.0,
       attributionWindowDays: 30,
-      minPayoutAmount: 200000,
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: 'VERIFIED',
     },
   });
 
@@ -354,6 +366,7 @@ async function main() {
         customCommissionRate: 12.0,
         stockQuantity: 150,
         isActive: true,
+        moderationStatus: 'APPROVED',
       },
     });
   }
@@ -375,6 +388,7 @@ async function main() {
         customCommissionRate: 15.0,
         stockQuantity: 80,
         isActive: true,
+        moderationStatus: 'APPROVED',
       },
     });
   }
@@ -606,6 +620,7 @@ async function main() {
         customCommissionRate: 15.0,
         stockQuantity: 200,
         isActive: true,
+        moderationStatus: 'APPROVED',
       },
     });
   }

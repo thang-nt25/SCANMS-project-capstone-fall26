@@ -4,6 +4,9 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
+  ArrayMaxSize,
+  IsInt,
   Max,
   Min,
 } from 'class-validator';
@@ -41,6 +44,49 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ description: 'Thành phần sản phẩm hoặc mỹ phẩm' })
+  @IsOptional()
+  @IsString()
+  ingredients?: string;
+
+  @ApiPropertyOptional({ description: 'Quốc gia hoặc nơi sản xuất/xuất xứ' })
+  @IsOptional()
+  @IsString()
+  origin?: string;
+
+  @ApiPropertyOptional({ description: 'Thông tin nhãn mác, cảnh báo và hướng dẫn trên bao bì' })
+  @IsOptional()
+  @IsString()
+  labelInfo?: string;
+
+  @ApiPropertyOptional({ description: 'Đường dẫn tài liệu chứng minh xuất xứ sản phẩm', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  originProofLinks?: string[];
+
+  @ApiPropertyOptional({ description: 'Ảnh chứng từ/xuất xứ sản phẩm đã tải lên', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  originProofImages?: string[];
+
+  @ApiPropertyOptional({ description: 'Đường dẫn chứng minh nhãn mác và thông tin công bố', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  labelProofLinks?: string[];
+
+  @ApiPropertyOptional({ description: 'Ảnh nhãn mác, cảnh báo và hướng dẫn sử dụng đã tải lên', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  labelProofImages?: string[];
 
   @ApiPropertyOptional({
     example:
@@ -108,4 +154,15 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   isAffiliateEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Cho phép KOL đăng ký nhận sản phẩm mẫu' })
+  @IsOptional()
+  @IsBoolean()
+  sampleEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Số lượng mẫu tối đa Shop cấp cho sản phẩm' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sampleQuota?: number;
 }

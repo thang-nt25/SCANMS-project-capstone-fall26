@@ -116,7 +116,7 @@ export class AiRecommendationController {
     description:
       'Trả về biểu đồ radar 4 chiều và khuyến nghị hành động hợp tác cho Shop.',
   })
-  analyzeMatch(@Body() dto: MatchAnalysisRequestDto) {
-    return this.aiRecommendationService.analyzeMatch(dto);
+  analyzeMatch(@Body() dto: MatchAnalysisRequestDto, @CurrentUser() user: any) {
+    return this.aiRecommendationService.analyzeMatch(dto, user.id, user.role);
   }
 }

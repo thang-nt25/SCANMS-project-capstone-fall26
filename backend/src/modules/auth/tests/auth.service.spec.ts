@@ -26,6 +26,9 @@ describe('AuthService', () => {
       findUnique: jest.fn(),
       create: jest.fn(),
     },
+    store: {
+      create: jest.fn(),
+    },
   };
 
   const mockJwtService = {
@@ -116,6 +119,46 @@ describe('AuthService', () => {
     expect(result.user.email).toBe('new@example.com');
     expect(result).not.toHaveProperty('accessToken');
     expect(mockJwtService.sign).not.toHaveBeenCalled();
+  });
+
+  it('keeps a new Shop applicant as a customer until KYC approval', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+    mockPrismaService.user.create.mockResolvedValueOnce({
+      id: 'new-shop-owner',
+      email: 'new-shop@example.vn',
+      fullName: 'New Shop Owner',
+      role: UserRole.CUSTOMER,
+    });
+    mockPrismaService.store.create.mockResolvedValueOnce({
+      id: 'draft-store',
+      onboardingStatus: 'DRAFT',
+    });
+
+    const result = await authService.register({
+      email: 'new-shop@example.vn',
+      password: 'Password@123',
+      fullName: 'New Shop Owner',
+      role: UserRole.SHOP_MANAGER,
+      storeName: 'New Shop',
+      logoUrl: 'https://cdn.scanms.vn/shop-logo.jpg',
+      otp: '123456',
+    });
+
+    expect(result.user.role).toBe(UserRole.CUSTOMER);
+    expect(mockPrismaService.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ role: UserRole.CUSTOMER }),
+      }),
+    );
+    expect(mockPrismaService.store.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          isVerified: false,
+          isActive: false,
+          onboardingStatus: 'DRAFT',
+        }),
+      }),
+    );
   });
 
   it('should throw UnauthorizedException for wrong password', async () => {
