@@ -118,36 +118,8 @@ export default function AdminReferralLinksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-[1520px] mx-auto space-y-6">
-
-        <div className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xs p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
-                Quản Trị Toàn Sàn
-              </span>
-              <span className="text-xs text-[#7D715E]">FR-10 Giám sát tiếp thị</span>
-            </div>
-            <h1 className="text-2xl font-bold text-[#1A1612] flex items-center gap-2">
-              <Link2 className="w-6 h-6 text-[#C59B58]" />
-              Quản Trị Liên Kết Tiếp Thị Toàn Hệ Thống
-            </h1>
-            <p className="text-sm text-[#7D715E] mt-1">
-              Kiểm duyệt, giám sát lưu lượng click, theo dõi chuyển đổi đơn hàng và xử lý vi phạm liên kết trên toàn sàn.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => fetchAdminLinks()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#1A1612] border border-[#EAE4D7] hover:border-[#C59B58] font-medium rounded-xl text-sm transition cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-              Làm mới
-            </button>
-          </div>
-        </div>
-
+    <div className="min-h-screen bg-[#FAF8F5] px-0 py-8">
+      <div className="mx-0 w-full max-w-none space-y-6">
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white p-5 rounded-xl border border-[#EAE4D7] shadow-xs flex items-center gap-4">
@@ -239,6 +211,17 @@ export default function AdminReferralLinksPage() {
               <option value="ZALO">Zalo</option>
               <option value="OTHER">Khác</option>
             </Select>
+
+            <button
+              type="button"
+              onClick={() => fetchAdminLinks()}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#1A1612] border border-[#EAE4D7] hover:border-[#C59B58] font-medium rounded-xl text-sm transition cursor-pointer disabled:opacity-50 shrink-0"
+              title="Làm mới dữ liệu"
+            >
+              <RefreshCw className={`w-4 h-4 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
           </div>
         </div>
 
@@ -512,4 +495,3 @@ export default function AdminReferralLinksPage() {
     </div>
   );
 }
-
