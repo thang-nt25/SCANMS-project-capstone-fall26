@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { productService, type Product } from '../../services/product.service';
 import { toast } from '../../utils/toast';
+import './ProductModerationPage.css';
 
 type ModerationProduct = Product & {
   createdAt?: string;
@@ -108,34 +109,28 @@ export default function ProductModerationPage() {
     : [];
 
   return (
-    <main className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#B88E4F]">Kiểm soát chất lượng sàn</p>
-            <h1 className="mt-1 text-2xl font-extrabold">Kiểm duyệt sản phẩm mới</h1>
-            <p className="mt-1 max-w-3xl text-sm text-[#7D715E]">Rà soát thành phần, xuất xứ, nhãn mác và hình ảnh trước khi sản phẩm được hiển thị cho khách hàng và KOL.</p>
-          </div>
-          <Button variant="outline" onClick={() => void loadProducts()} loading={loading} icon={<RefreshCw className="h-4 w-4" />}>Làm mới</Button>
-        </header>
-
-        <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm">
+    <main className="product-moderation min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-0 py-5 text-[#1A1612]">
+      <div className="mx-0 w-full min-w-0 max-w-none space-y-4">
+        <section className="rounded-xl border border-[#EAE4D7] bg-white p-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="Lọc trạng thái kiểm duyệt">
               {FILTERS.map((item) => (
                 <button key={item.value} type="button" role="tab" aria-selected={filter === item.value} onClick={() => setFilter(item.value)}
-                  className={filter === item.value ? 'rounded-xl bg-[#C59B58] px-4 py-2 text-sm font-bold text-[#231D15]' : 'rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm font-semibold text-[#7D715E] hover:bg-[#FBF5EB]'}>
+                  className={'rounded-lg px-3 py-2 text-xs font-semibold transition cursor-pointer ' + (filter === item.value ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]')}>
                   {item.label}
                 </button>
               ))}
             </div>
-            <label className="relative min-w-[240px] flex-1 sm:max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm sản phẩm, SKU, Shop..." className="w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] py-2 pl-9 pr-3 text-sm outline-none focus:border-[#C59B58]" />
-            </label>
+            <div className="flex items-center gap-2.5">
+              <label className="relative w-full min-w-0 sm:w-72 sm:shrink-0">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
+                <input aria-label="Tìm sản phẩm, SKU hoặc Shop" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm sản phẩm, SKU, Shop…" className="h-9 w-full rounded-lg border border-[#EAE4D7] bg-white py-2 pl-9 pr-3 text-xs outline-none focus:border-[#C59B58]" />
+              </label>
+              <Button size="sm" variant="outline" onClick={() => void loadProducts()} loading={loading} icon={<RefreshCw className="h-3.5 w-3.5" />}>Làm mới</Button>
+            </div>
           </div>
-          <p className="mt-3 text-xs text-[#7D715E]">{loading ? 'Đang tải danh sách...' : filteredProducts.length + ' sản phẩm'}</p>
         </section>
+        <p role="status" className="text-xs text-[#7D715E]">{loading ? 'Đang tải danh sách…' : filteredProducts.length + ' sản phẩm'}</p>
 
         {loading ? (
           <div className="rounded-2xl border border-[#EAE4D7] bg-white p-12 text-center text-sm text-[#7D715E]">Đang tải hồ sơ sản phẩm...</div>
@@ -146,36 +141,36 @@ export default function ProductModerationPage() {
             <p className="mt-1 text-sm text-[#7D715E]">Sản phẩm Shop vừa tạo sẽ xuất hiện ở mục “Chờ duyệt”.</p>
           </div>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="moderation-grid">
             {filteredProducts.map((product) => {
               const pending = product.moderationStatus === 'DRAFT';
               const rejected = product.moderationStatus === 'REJECTED';
               return (
-                <article key={product.id} className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-sm">
-                  <div className="flex gap-4 p-4">
-                    <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#EAE4D7] bg-[#F3EFE6]">
-                      {imageUrl(product) ? <img src={imageUrl(product)} alt={product.title} className="h-full w-full object-cover" /> : <ImageIcon className="h-8 w-8 text-[#B88E4F]" />}
+                <article key={product.id} className="moderation-card min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-[0_2px_8px_rgba(35,29,21,0.025)]">
+                  <div className="flex gap-3 p-4">
+                    <div className="grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EAE4D7] bg-white">
+                      {imageUrl(product) ? <img src={imageUrl(product)} alt={product.title} className="h-full w-full object-contain" /> : <ImageIcon className="h-6 w-6 text-[#B88E4F]" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant={pending ? 'warning' : rejected ? 'danger' : 'amber'}>{pending ? 'Chờ duyệt' : rejected ? 'Đã từ chối' : 'Đã duyệt'}</Badge>
-                        <span className="text-xs text-[#7D715E]">SKU: {product.sku || '—'}</span>
+                        <span className="break-all text-[11px] text-[#7D715E]">SKU: {product.sku || '—'}</span>
                         {product.variants?.length ? <span className="rounded-full bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-semibold text-[#8C6226]">{product.variants.length} SKU</span> : null}
                       </div>
-                      <h2 className="mt-2 line-clamp-2 font-bold">{product.title}</h2>
-                      <p className="mt-1 text-sm text-[#7D715E]">Shop: {product.store?.name || '—'}{product.store?.owner?.fullName ? ' · ' + product.store.owner.fullName : ''}</p>
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                        <span className="font-bold text-[#8C6226]">{money(product.price)}</span>
-                        <span className="text-[#7D715E]">Tồn kho: {Number(product.stockQuantity || 0).toLocaleString('vi-VN')}</span>
-                        {product.createdAt && <span className="text-xs text-[#7D715E]">Gửi ngày {new Date(product.createdAt).toLocaleDateString('vi-VN')}</span>}
+                      <h2 title={product.title} className="mt-2 line-clamp-2 break-words text-sm font-semibold leading-5">{product.title}</h2>
+                      <p title={product.store?.name} className="mt-1 truncate text-xs text-[#7D715E]">{product.store?.name || 'Chưa có thông tin Shop'}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                        <span className="text-sm font-semibold tabular-nums text-[#1A1612]">{money(product.price)}</span>
+                        <span className="text-[#7D715E]">Tồn: {Number(product.stockQuantity || 0).toLocaleString('vi-VN')}</span>
+                        {product.createdAt && <span className="text-[11px] text-[#7D715E]">Gửi {new Date(product.createdAt).toLocaleDateString('vi-VN')}</span>}
                       </div>
                     </div>
                   </div>
                   {rejected && product.moderationReason && <p className="mx-4 mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Lý do từ chối: {product.moderationReason}</p>}
-                  <div className="flex flex-wrap justify-end gap-2 border-t border-[#EAE4D7] bg-[#FAF8F5] p-3">
+                  <div className="moderation-actions mx-4 flex flex-wrap items-center gap-2 border-t border-[#EAE4D7] py-3">
                     <Button size="sm" variant="outline" icon={<Eye className="h-4 w-4" />} onClick={() => setSelected(product)}>Xem hồ sơ</Button>
                     {pending && <>
-                      <Button size="sm" variant="danger" icon={<XCircle className="h-4 w-4" />} onClick={() => { setRejectionTarget(product); setRejectionReason(''); }}>Từ chối</Button>
+                      <Button className="moderation-reject" size="sm" variant="outline" disabled={savingId === product.id} icon={<XCircle className="h-4 w-4" />} onClick={() => { setRejectionTarget(product); setRejectionReason(''); }}>Từ chối</Button>
                       <Button size="sm" variant="dark" icon={<BadgeCheck className="h-4 w-4" />} loading={savingId === product.id} onClick={() => void moderate(product, 'APPROVED')}>Phê duyệt</Button>
                     </>}
                   </div>
