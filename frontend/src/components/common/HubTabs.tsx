@@ -20,7 +20,7 @@ export interface HubTabsProps {
   compact?: boolean;
   stretchTabs?: boolean;
   variant?: 'default' | 'pills';
-  tone?: 'default' | 'light';
+  tone?: 'default' | 'light' | 'white';
 }
 
 export function HubTabs({
@@ -112,7 +112,7 @@ export function HubTabs({
           {actions && <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">{actions}</div>}
         </div>
       ) : (
-        <div className={`w-full ${tone === 'light' ? 'bg-[#FAF8F5]' : 'bg-[#F3EFE6]'} ${compact ? 'p-1 rounded-xl' : 'p-1.5 rounded-2xl'} border border-[#EAE4D7] shadow-2xs ${stretchTabs ? 'flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between' : 'flex flex-wrap items-center justify-between gap-2'}`}>
+        <div className={`w-full ${tone === 'white' ? 'bg-white' : tone === 'light' ? 'bg-[#FAF8F5]' : 'bg-[#F3EFE6]'} ${compact ? 'p-1 rounded-xl' : 'p-1.5 rounded-2xl'} border border-[#EAE4D7] shadow-2xs ${stretchTabs ? 'flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between' : 'flex flex-wrap items-center justify-between gap-2'}`}>
           <div
             className={stretchTabs
               ? 'grid w-full min-w-0 flex-1 grid-cols-2 gap-1.5 xl:grid-cols-4'
@@ -133,8 +133,10 @@ export function HubTabs({
                   onClick={() => onChange(tab.id)}
                   className={`group relative flex items-center ${stretchTabs ? 'w-full justify-center gap-1.5 px-2 py-2 sm:gap-2 sm:px-3' : ''} ${compact ? 'gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-[13px]' : 'gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm'} font-bold transition-all duration-200 cursor-pointer shrink-0 select-none ${
                     isActive
-                      ? 'bg-white text-[#1A1612] shadow-[0_2px_8px_rgba(91,65,28,0.08)] border border-[#EAE4D7]'
-                      : `text-[#7D715E] hover:text-[#1A1612] ${tone === 'light' ? 'hover:bg-[#FBF5EB]' : 'hover:bg-white/60'} border border-transparent`
+                      ? tone === 'white'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] shadow-2xs border border-[#EEDFC6]'
+                        : 'bg-white text-[#1A1612] shadow-[0_2px_8px_rgba(91,65,28,0.08)] border border-[#EAE4D7]'
+                      : `text-[#7D715E] hover:text-[#1A1612] ${tone === 'default' ? 'hover:bg-white/60' : 'hover:bg-[#FBF5EB]'} border border-transparent`
                   }`}
                 >
                   <span

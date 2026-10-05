@@ -47,11 +47,12 @@ export default function AdminOversightHubPage() {
   ];
 
   return (
-    <div className="w-full flex flex-col" id="admin-oversight-hub">
+    <div className="w-full min-w-0 flex flex-col pt-4 text-[#1A1612] sm:pt-5" id="admin-oversight-hub">
       <HubTabs
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}
+        tone="white"
       />
 
       <div className="w-full min-h-[500px]">

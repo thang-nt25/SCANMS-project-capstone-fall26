@@ -121,12 +121,21 @@ export default function ProductModerationPage() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2.5 sm:w-auto sm:justify-end">
               <label className="relative w-full min-w-0 sm:w-72 sm:shrink-0">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
                 <input aria-label="Tìm sản phẩm, SKU hoặc Shop" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm sản phẩm, SKU, Shop…" className="h-9 w-full rounded-lg border border-[#EAE4D7] bg-white py-2 pl-9 pr-3 text-xs outline-none focus:border-[#C59B58]" />
               </label>
-              <Button size="sm" variant="outline" onClick={() => void loadProducts()} loading={loading} icon={<RefreshCw className="h-3.5 w-3.5" />}>Làm mới</Button>
+              <button
+                type="button"
+                onClick={() => void loadProducts()}
+                disabled={loading}
+                aria-label={loading ? 'Đang tải danh sách sản phẩm' : 'Làm mới danh sách sản phẩm'}
+                className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-[#7D715E] transition hover:text-[#8C6226] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 disabled:cursor-wait disabled:opacity-50"
+              >
+                <RefreshCw className={'h-3.5 w-3.5 text-[#B88E4F]' + (loading ? ' animate-spin' : '')} />
+                <span>{loading ? 'Đang tải…' : 'Làm mới'}</span>
+              </button>
             </div>
           </div>
         </section>

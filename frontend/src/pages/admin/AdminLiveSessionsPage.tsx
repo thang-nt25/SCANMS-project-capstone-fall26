@@ -32,6 +32,11 @@ const statusNames: Record<string, string> = {
   ENDED: 'Đã kết thúc',
   CANCELLED: 'Đã hủy',
 };
+const statusTone = (status: string) => status === 'LIVE'
+  ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]'
+  : status === 'CANCELLED' || status === 'ENDED'
+    ? 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'
+    : 'border-[#EEDFC6] bg-white text-[#8F682E]';
 
 export default function AdminLiveSessionsPage() {
   const [sessions, setSessions] = useState<AdminLiveSession[]>([]);
@@ -82,93 +87,93 @@ export default function AdminLiveSessionsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] px-0 py-8 text-[#1A1612]">
-      <div className="mx-0 w-full max-w-none space-y-6">
+    <div className="min-h-screen bg-[#FAF8F5] px-0 py-4 text-[#1A1612] sm:py-5">
+      <div className="mx-0 w-full max-w-none space-y-4">
         {/* KPI Stats Cards - Matching AdminReferralLinksPage styling */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-[#EAE4D7] shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center font-bold shrink-0">
-              <Radio className="w-6 h-6" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+              <Radio className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-[#7D715E] font-medium truncate">Tổng phiên live toàn sàn</p>
-              <h3 className="text-xl font-bold text-[#1A1612]">{totalSessions.toLocaleString()}</h3>
+              <p className="truncate text-xs font-medium text-[#7D715E]">Tổng phiên livestream</p>
+              <h3 className="text-lg font-bold text-[#1A1612]">{totalSessions.toLocaleString()}</h3>
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-[#EAE4D7] shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold shrink-0">
-              <PlayCircle className="w-6 h-6" />
+          <div className="flex items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+              <PlayCircle className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-[#7D715E] font-medium truncate">Đang phát sóng (LIVE)</p>
-              <h3 className="text-xl font-bold text-emerald-600 flex items-center gap-2">
+              <p className="truncate text-xs font-medium text-[#7D715E]">Đang phát sóng</p>
+              <h3 className="flex items-center gap-2 text-lg font-bold text-[#8F682E]">
                 {liveCount}
                 {liveCount > 0 && (
-                  <span className="flex h-2.5 w-2.5 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#C59B58] opacity-40"></span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C59B58]"></span>
                   </span>
                 )}
               </h3>
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-[#EAE4D7] shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center font-bold shrink-0">
-              <TrendingUp className="w-6 h-6" />
+          <div className="flex items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+              <TrendingUp className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-[#7D715E] font-medium truncate">Tổng doanh số chốt live</p>
-              <h3 className="text-xl font-bold text-[#1A1612] truncate">{money(totalGross)}</h3>
+              <p className="truncate text-xs font-medium text-[#7D715E]">Doanh số đã chốt</p>
+              <h3 className="truncate text-lg font-bold text-[#1A1612]">{money(totalGross)}</h3>
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-[#EAE4D7] shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] flex items-center justify-center font-bold shrink-0">
-              <Award className="w-6 h-6" />
+          <div className="flex items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+              <Award className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-[#7D715E] font-medium truncate">Hoa hồng KOL đã chốt</p>
-              <h3 className="text-xl font-bold text-[#1A1612] truncate">{money(totalCommission)}</h3>
+              <p className="truncate text-xs font-medium text-[#7D715E]">Hoa hồng KOL</p>
+              <h3 className="truncate text-lg font-bold text-[#1A1612]">{money(totalCommission)}</h3>
             </div>
           </div>
         </div>
 
         {/* Filter and Action Toolbar - Exactly matching AdminReferralLinksPage */}
-        <div className="bg-white rounded-xl border border-[#EAE4D7] p-4 shadow-xs flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex flex-col items-stretch justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-sm md:flex-row md:items-center">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               void load(true);
             }}
-            className="w-full md:w-96 flex gap-2"
+            className="flex w-full gap-2 md:max-w-md"
           >
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-3" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm mã phiên, tên live, KOL, shop..."
-                className="w-full pl-9 pr-4 py-2 border border-[#EAE4D7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C59B58] focus:border-transparent text-[#1A1612]"
+                className="h-10 w-full rounded-xl border border-[#EAE4D7] py-2 pl-9 pr-3 text-xs text-[#1A1612] placeholder:text-[#A89D8B] focus:border-[#C59B58] focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15 sm:text-sm"
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-medium rounded-xl text-sm transition cursor-pointer shrink-0"
+              className="shrink-0 cursor-pointer rounded-xl bg-[#C59B58] px-4 py-2 text-xs font-semibold text-[#1A1612] transition hover:bg-[#B88E4F]"
             >
               Tìm
             </button>
           </form>
 
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+            <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-none">
               <Filter className="w-4 h-4 text-[#7D715E]" />
               <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-40 text-sm"
+                className="w-36 text-xs sm:w-40 sm:text-sm"
               >
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="LIVE">Đang live (LIVE)</option>
@@ -182,7 +187,7 @@ export default function AdminLiveSessionsPage() {
             <Select
               value={platformFilter}
               onChange={(e) => setPlatformFilter(e.target.value)}
-              className="w-40 text-sm"
+              className="w-36 text-xs sm:w-40 sm:text-sm"
             >
               <option value="ALL">Tất cả nền tảng</option>
               <option value="SCANMS">SCANMS Live</option>
@@ -195,65 +200,67 @@ export default function AdminLiveSessionsPage() {
               type="button"
               onClick={() => void load(true)}
               disabled={loading}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#1A1612] border border-[#EAE4D7] hover:border-[#C59B58] font-medium rounded-xl text-sm transition cursor-pointer disabled:opacity-50 shrink-0"
+              className="inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs font-medium text-[#7D715E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612] disabled:opacity-50"
               title="Làm mới dữ liệu"
             >
               <RefreshCw className={`w-4 h-4 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Làm mới</span>
+              <span>Làm mới</span>
             </button>
           </div>
         </div>
 
         {error && (
-          <p role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">
+          <p role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-3 text-sm text-[#7D715E]">
             {error}
           </p>
         )}
 
         {loading && !sessions.length ? (
-          <div className="rounded-xl border border-[#EAE4D7] bg-white p-12 text-center text-sm text-[#7D715E] flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F]" />
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-8 text-center text-sm text-[#7D715E]">
+            <Loader2 className="h-6 w-6 animate-spin text-[#B88E4F]" />
             <span>Đang tải danh sách phiên livestream…</span>
           </div>
         ) : null}
 
         {!loading && !filteredSessions.length && !error ? (
-          <p className="rounded-xl border border-[#EAE4D7] bg-white p-12 text-center text-sm text-[#7D715E]">
+          <p className="rounded-2xl border border-[#EAE4D7] bg-white p-8 text-center text-sm text-[#7D715E]">
             {searchTerm || statusFilter !== 'ALL' || platformFilter !== 'ALL'
               ? 'Không tìm thấy phiên live nào phù hợp với bộ lọc.'
               : 'Chưa có phiên livestream nào trên hệ thống.'}
           </p>
         ) : null}
 
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {filteredSessions.map((session) => (
-            <article key={session.id} className="rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xs transition hover:border-[#C59B58]">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <article key={session.id} className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm transition-colors hover:border-[#C59B58]">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Radio className="h-4 w-4 text-[#B88E4F]" />
-                    <h3 className="font-extrabold text-[#1A1612]">{session.title}</h3>
-                    <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-0.5 text-[11px] font-bold text-[#B88E4F]">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Radio className="h-4 w-4" /></span>
+                    <h3 className="text-sm font-bold text-[#1A1612]">{session.title}</h3>
+                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusTone(session.status)}`}>
                       {statusNames[session.status] || session.status}
                     </span>
+                    <span className="rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-1 text-[10px] font-medium text-[#7D715E]">{session.platform}</span>
                   </div>
-                  <p className="mt-1.5 text-xs text-[#7D715E]">
-                    {session.store.name} · KOL: <strong className="text-[#1A1612]">{session.creator.fullName}</strong> · Mã KOL{' '}
-                    {session.creator.id.replace(/-/g, '').slice(0, 8).toUpperCase()} · {session.platform}
-                    {shortLiveCode(session.liveUrl) ? ` · Mã phiên ${shortLiveCode(session.liveUrl)}` : ''} ·{' '}
-                    {new Date(session.startsAt).toLocaleString('vi-VN')}
+                  <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#7D715E]">
+                    <span>{session.store.name}</span><span aria-hidden="true">·</span>
+                    <span>KOL <strong className="font-semibold text-[#1A1612]">{session.creator.fullName}</strong></span><span aria-hidden="true">·</span>
+                    <span>Mã {session.creator.id.replace(/-/g, '').slice(0, 8).toUpperCase()}</span>
+                    {shortLiveCode(session.liveUrl) && <><span aria-hidden="true">·</span><span>Phiên {shortLiveCode(session.liveUrl)}</span></>}
+                    <span aria-hidden="true">·</span><span>{new Date(session.startsAt).toLocaleString('vi-VN')}</span>
                   </p>
                 </div>
                 <a
                   href={session.liveUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2 text-xs font-bold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition"
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] sm:self-auto"
                 >
                   <ExternalLink className="h-4 w-4 text-[#B88E4F]" /> Mở link live
                 </a>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#EAE4D7] pt-4 text-xs sm:grid-cols-3 lg:grid-cols-6">
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[#EAE4D7] pt-3 text-xs sm:grid-cols-3 lg:grid-cols-6">
                 {[
                   ['Đang xem', session.platform === 'SCANMS' ? String(session.report.currentViewers ?? 0) : '—'],
                   ['Tổng lượt xem', session.platform === 'SCANMS' ? String(session.report.totalViewers ?? 0) : '—'],
@@ -262,9 +269,9 @@ export default function AdminLiveSessionsPage() {
                   ['Doanh số đã chốt', money(session.report.grossSales)],
                   ['Hoa hồng KOL đã chốt', money(session.report.commission)],
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl bg-[#FAF8F5] p-3 border border-[#EAE4D7]/50">
-                    <p className="text-[#7D715E]">{label}</p>
-                    <p className="mt-1 font-extrabold text-[#1A1612]">{value}</p>
+                  <div key={label} className="min-w-0 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2.5">
+                    <p className="truncate text-[11px] text-[#7D715E]">{label}</p>
+                    <p className="mt-0.5 truncate text-sm font-bold text-[#1A1612]">{value}</p>
                   </div>
                 ))}
               </div>

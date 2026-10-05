@@ -184,8 +184,8 @@ export const AdminCouponsPage: React.FC = () => {
   const totalRedemptions = coupons.reduce((acc, curr) => acc + (curr.usageCount || 0), 0);
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
-      <div className="max-w-[1520px] mx-auto mb-8">
+    <div className="min-h-screen w-full min-w-0 bg-[#FAF8F5] px-0 py-4 text-[#1A1612] sm:py-6 lg:py-8">
+      <div className="w-full min-w-0 mx-auto mb-8">
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
@@ -569,4 +569,3 @@ export const AdminCouponsPage: React.FC = () => {
 };
 
 export default AdminCouponsPage;
-

@@ -57,7 +57,7 @@ export default function KolRecommendationPage() {
   const [analyzingKol, setAnalyzingKol] = useState<KolMatchResult | null>(null);
 
   const [productsReady, setProductsReady] = useState(false);
-  const [autoScan, setAutoScan] = useState(true);
+  const [autoScan, setAutoScan] = useState(false);
   const [calculatedAt, setCalculatedAt] = useState('');
   const [scanError, setScanError] = useState('');
   const scanVersion = useRef(0);
@@ -142,16 +142,23 @@ export default function KolRecommendationPage() {
     }
   }, [selectedProductId, selectedCategory, selectedPriceRange, selectedMinTier, minConversionRate, limit]);
 
+  const latestRecommendationScan = useRef(fetchRecommendations);
+
   useEffect(() => {
     if (!productsReady) return;
     const debounce = setTimeout(() => { void fetchRecommendations(); }, 300);
-    const timer = autoScan ? setInterval(() => {
-      if (document.visibilityState === 'visible' && !scanBusy.current) void fetchRecommendations();
-    }, 60000) : undefined;
-    const onVisible = () => { if (autoScan && document.visibilityState === 'visible' && !scanBusy.current) void fetchRecommendations(); };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => { clearTimeout(debounce); clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); scanVersion.current += 1; scanBusy.current = false; };
-  }, [productsReady, autoScan, fetchRecommendations]);
+    return () => { clearTimeout(debounce); scanVersion.current += 1; scanBusy.current = false; };
+  }, [productsReady, fetchRecommendations]);
+
+  useEffect(() => { latestRecommendationScan.current = fetchRecommendations; }, [fetchRecommendations]);
+
+  useEffect(() => {
+    if (!productsReady || !autoScan) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible' && !scanBusy.current) void latestRecommendationScan.current();
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [productsReady, autoScan]);
 
   // Filtered KOLs by search
   const displayedKols = useMemo(() => {
@@ -165,6 +172,7 @@ export default function KolRecommendationPage() {
         k.lifetimeStats?.primaryCategory?.toLowerCase().includes(q)
     );
   }, [kols, searchQuery]);
+  const selectedProduct = products.find((product) => String(product.id) === selectedProductId);
 
   // Handle VIP Invitation Submission
   const handleSendVipInvite = async () => {
@@ -198,28 +206,36 @@ export default function KolRecommendationPage() {
     : { ring: 'text-[#C59B58]', bg: 'bg-[#FAF8F5]', text: 'text-[#7D715E]', badge: 'bg-[#FAF8F5] text-[#7D715E] border-[#EAE4D7]' };
 
   return (
-    <div className="space-y-6 pb-12">
-
-
-      <div className="rounded-xl border border-[#EAE4D7] bg-white px-4 py-3 text-xs text-[#7D715E] flex flex-wrap items-center justify-between gap-3">
-        <div><p className="font-semibold text-[#1A1612]">Tự động đối sánh KOL từ dữ liệu thật trên SCANMS</p><p className="mt-1">Hồ sơ KYC, đơn đã giao/hoàn tất và lượt nhấp hợp lệ. Điểm /100 là xếp hạng tham khảo; không quét trực tiếp TikTok/YouTube.</p>{calculatedAt && <p className="mt-1">Lần quét gần nhất: {new Date(calculatedAt).toLocaleString('vi-VN')}</p>}</div>
-        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={autoScan} onChange={(event) => setAutoScan(event.target.checked)} className="accent-[#C59B58]" />Tự cập nhật mỗi 60 giây khi mở trang</label>
-      </div>
-      {scanError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm text-[#DC2626]">{scanError}<button type="button" onClick={() => void fetchRecommendations()} className="ml-3 text-[#B88E4F] underline">Thử quét lại</button></div>}
+    <div className="space-y-4 pb-24">
+      <section className="flex flex-col gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Sparkles className="h-4 w-4" /></span>
+          <div className="min-w-0 text-xs text-[#7D715E]">
+            <p className="font-semibold text-[#1A1612]">Đối sánh KOL từ dữ liệu SCANMS</p>
+            <p className="mt-0.5 leading-relaxed">Dựa trên hồ sơ KYC, đơn hoàn tất và lượt nhấp hợp lệ. Điểm số tham khảo; không quét trực tiếp TikTok/YouTube.</p>
+            {calculatedAt && <p className="mt-0.5 text-[11px]">Cập nhật: {new Date(calculatedAt).toLocaleString('vi-VN')}</p>}
+          </div>
+        </div>
+        <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg bg-[#FAF8F5] px-3 py-2 text-xs font-medium text-[#7D715E]">
+          <input type="checkbox" checked={autoScan} onChange={(event) => setAutoScan(event.target.checked)} className="h-4 w-4 accent-[#C59B58]" />
+          Tự cập nhật mỗi 60 giây
+        </label>
+      </section>
+      {scanError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-[#DC2626]">{scanError}<button type="button" onClick={() => void fetchRecommendations()} className="font-medium text-[#B88E4F] underline">Thử quét lại</button></div>}
       {/* 2. Target Product Selector & Profile Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-12">
         {/* Left: Product Dropdown & Quick Config */}
-        <div className="lg:col-span-1 rounded-2xl bg-white p-5 border border-slate-200/80 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 font-semibold text-slate-800 text-sm">
-            <ShoppingBag className="h-4 w-4 text-[#B88E4F] " />
-            <span>Chọn sản phẩm mục tiêu cần đẩy mạnh:</span>
+        <div className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm lg:col-span-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#1A1612]">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><ShoppingBag className="h-4 w-4" /></span>
+            <span>Sản phẩm cần đẩy mạnh</span>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <Select
               value={selectedProductId}
               onChange={(e) => setSelectedProductId(e.target.value)}
-              className="w-full text-sm font-medium"
+              className="w-full text-xs sm:text-sm"
             >
               <option value="">{productsReady ? "Quét hồ sơ KOL chung" : "Đang tải sản phẩm…"}</option>
               {products.map((p) => (
@@ -230,33 +246,22 @@ export default function KolRecommendationPage() {
             </Select>
           </div>
 
-          {targetProduct && (
-            <div className="rounded-xl bg-gradient-to-br from-[#FBF5EB] to-white p-4 border border-[#EEDFC6] space-y-3">
-              <div className="flex min-h-[52px] items-start gap-3">
-                <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-white border border-[#EEDFC6] shadow-sm flex items-center justify-center">
-                  {targetProduct.imageUrl ? (
-                    <img src={targetProduct.imageUrl} alt={targetProduct.title} className="h-full w-full object-cover" />
+          {(targetProduct || selectedProduct) && (
+            <div className="flex min-w-0 items-center gap-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-2.5">
+              <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EAE4D7] bg-white">
+                  {(targetProduct?.imageUrl || selectedProduct?.imageUrl) ? (
+                    <img src={targetProduct?.imageUrl || selectedProduct?.imageUrl} alt={targetProduct?.title || selectedProduct?.title || selectedProduct?.name || 'Sản phẩm'} className="h-full w-full object-cover" />
                   ) : (
-                    <ShoppingBag className="h-8 w-8 text-[#B88E4F]" />
+                    <ShoppingBag className="h-5 w-5 text-[#B88E4F]" />
                   )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-bold text-slate-900 truncate" title={targetProduct.title}>
-                    {targetProduct.title}
-                  </h4>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="rounded-md bg-[#FBF5EB] px-2 py-0.5 text-xs font-semibold text-[#B88E4F]">
-                      {targetProduct.category || 'Mặc định'}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-xs">
-                    <span className="font-bold text-rose-600">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(targetProduct.price)}
-                    </span>
-                    <span className="font-medium text-slate-600">
-                      Hoa hồng: <strong className="text-[#B88E4F]">{targetProduct.commissionRate}%</strong>
-                    </span>
-                  </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="truncate text-xs font-semibold text-[#1A1612]" title={targetProduct?.title || selectedProduct?.title || selectedProduct?.name}>
+                  {targetProduct?.title || selectedProduct?.title || selectedProduct?.name}
+                </h4>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-[#7D715E]">
+                  {(targetProduct?.price ?? selectedProduct?.price) != null && <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(targetProduct?.price ?? selectedProduct?.price)}</span>}
+                  {(targetProduct?.commissionRate ?? selectedProduct?.commissionRate) != null && <span>Hoa hồng <strong className="text-[#8F682E]">{targetProduct?.commissionRate ?? selectedProduct?.commissionRate}%</strong></span>}
                 </div>
               </div>
             </div>
@@ -264,25 +269,25 @@ export default function KolRecommendationPage() {
         </div>
 
         {/* Right: Smart Filter Toolbar */}
-        <div className="lg:col-span-2 rounded-2xl bg-white p-5 border border-slate-200/80 shadow-sm space-y-4">
+        <div className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm lg:col-span-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-semibold text-slate-800 text-sm">
-              <Filter className="h-4 w-4 text-[#B88E4F]" />
-              <span>Điều kiện tìm KOL:</span>
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#1A1612]">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Filter className="h-4 w-4" /></span>
+              <span>Điều kiện tìm KOL</span>
             </div>
             <button
               onClick={() => void fetchRecommendations()}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#FBF5EB] px-3 py-1.5 text-xs font-semibold text-[#B88E4F] hover:bg-[#FBF5EB] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#8F682E] transition-colors hover:bg-[#F3EFE6] disabled:opacity-50"
             >
               <Sparkles className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Quét & Tính Điểm Lại
+              Quét lại
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+          <div className="grid grid-cols-1 gap-x-3 gap-y-2.5 text-xs sm:grid-cols-2 xl:grid-cols-3">
             <div>
-              <label className="block text-slate-500 font-medium mb-1">Ngành hàng lọc thêm</label>
+              <label className="mb-1 block font-medium text-[#7D715E]">Ngành hàng</label>
               <Select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
@@ -297,7 +302,7 @@ export default function KolRecommendationPage() {
             </div>
 
             <div>
-              <label className="block text-slate-500 font-medium mb-1">Khoảng giá phù hợp</label>
+              <label className="mb-1 block font-medium text-[#7D715E]">Khoảng giá</label>
               <Select
                 value={selectedPriceRange}
                 onChange={(e) => setSelectedPriceRange(e.target.value)}
@@ -312,7 +317,7 @@ export default function KolRecommendationPage() {
             </div>
 
             <div>
-              <label className="block text-slate-500 font-medium mb-1">Hạng KOL tối thiểu</label>
+              <label className="mb-1 block font-medium text-[#7D715E]">Hạng KOL tối thiểu</label>
               <Select
                 value={selectedMinTier}
                 onChange={(e) => setSelectedMinTier(e.target.value)}
@@ -327,7 +332,7 @@ export default function KolRecommendationPage() {
             </div>
 
             <div>
-              <label className="block text-slate-500 font-medium mb-1">
+              <label className="mb-1 block font-medium text-[#7D715E]">
                 Tỷ lệ chuyển đổi CR% tối thiểu: <span className="font-bold text-[#B88E4F]">{minConversionRate}%</span>
               </label>
               <input
@@ -337,12 +342,12 @@ export default function KolRecommendationPage() {
                 step="0.5"
                 value={minConversionRate}
                 onChange={(e) => setMinConversionRate(parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#EAE4D7] accent-[#C59B58]"
               />
             </div>
 
             <div>
-              <label className="block text-slate-500 font-medium mb-1">Số lượng gợi ý hiển thị</label>
+              <label className="mb-1 block font-medium text-[#7D715E]">Số lượng gợi ý</label>
               <Select
                 value={String(limit)}
                 onChange={(e) => setLimit(parseInt(e.target.value))}
@@ -356,15 +361,15 @@ export default function KolRecommendationPage() {
             </div>
 
             <div>
-              <label className="block text-slate-500 font-medium mb-1">Tìm nhanh theo tên / bio</label>
+              <label className="mb-1 block font-medium text-[#7D715E]">Tìm theo tên / bio</label>
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7D715E]" />
                 <input
                   type="text"
                   placeholder="Gõ tên KOL..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-2 py-1.5 text-slate-700 focus:border-[#EEDFC6] focus:outline-none"
+                  className="h-10 w-full rounded-xl border border-[#EAE4D7] bg-white py-2 pl-9 pr-3 text-xs text-[#1A1612] placeholder:text-[#A89D8B] focus:border-[#C59B58] focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
                 />
               </div>
             </div>
@@ -373,51 +378,53 @@ export default function KolRecommendationPage() {
       </div>
 
       {/* 3. Results Section */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2 border-b border-[#EAE4D7] pb-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="flex items-center gap-2 text-base font-bold text-[#1A1612]">
               <span>Nhà sáng tạo được gợi ý</span>
-              <span className="rounded-full bg-[#FBF5EB] px-2.5 py-0.5 text-xs font-semibold text-[#B88E4F]">
+              <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-semibold text-[#8F682E]">
                 {displayedKols.length} kết quả
               </span>
             </h2>
-            <p className="text-xs text-slate-500">
-              Đã quét qua {totalScanned} hồ sơ KOL đang hoạt động trên hệ thống SCANMS
+            <p className="mt-0.5 text-xs text-[#7D715E]">
+              Đã đối sánh {totalScanned} hồ sơ KOL đang hoạt động trên SCANMS
+            {loading && kols.length > 0 && <span className="ml-2 text-[#8F682E]">· Đang cập nhật…</span>}
             </p>
           </div>
 
-          <p className="text-[11px] text-[#7D715E]">Điểm /100 · Chỉ dùng để tham khảo</p>
+          <p className="text-[11px] text-[#7D715E]">Điểm /100 · Dùng để tham khảo</p>
 
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {loading && kols.length === 0 ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm animate-pulse space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-full bg-slate-200"></div>
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-                    <div className="h-3 bg-slate-200 rounded w-1/3"></div>
+              <div key={n} className="animate-pulse space-y-3 rounded-xl border border-[#EAE4D7] bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-[#F3EFE6]"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-1/2 rounded bg-[#F3EFE6]"></div>
+                    <div className="h-3 w-1/3 rounded bg-[#F3EFE6]"></div>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-slate-200"></div>
+                  <div className="h-9 w-12 rounded-lg bg-[#FBF5EB]"></div>
                 </div>
-                <div className="h-16 bg-slate-100 rounded-xl"></div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="h-8 bg-slate-100 rounded"></div>
-                  <div className="h-8 bg-slate-100 rounded"></div>
+                <div className="h-10 rounded-lg bg-[#FAF8F5]"></div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="h-11 rounded-lg bg-[#FAF8F5]"></div>
+                  <div className="h-11 rounded-lg bg-[#FAF8F5]"></div>
+                  <div className="h-11 rounded-lg bg-[#FAF8F5]"></div>
                 </div>
               </div>
             ))}
           </div>
         ) : displayedKols.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
-            <div className="mx-auto h-12 w-12 rounded-full bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center">
+          <div className="space-y-3 rounded-2xl border border-dashed border-[#EAE4D7] bg-white p-8 text-center">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]">
               <Search className="h-6 w-6" />
             </div>
-            <h3 className="text-base font-semibold text-slate-800">Không tìm thấy KOL phù hợp tiêu chí</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
+            <h3 className="text-sm font-semibold text-[#1A1612]">Không tìm thấy KOL phù hợp tiêu chí</h3>
+            <p className="mx-auto max-w-md text-xs text-[#7D715E]">
               Hãy thử nới lỏng bộ lọc (giảm tỷ lệ CR% hoặc mở rộng ngành hàng) để AI tiếp cận thêm nhiều nhà sáng tạo tiềm năng.
             </p>
             <button
@@ -428,13 +435,13 @@ export default function KolRecommendationPage() {
                 setMinConversionRate(0);
                 setSearchQuery('');
               }}
-              className="mt-2 rounded-xl bg-[#C59B58] px-4 py-2 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] transition"
+              className="mt-1 rounded-lg bg-[#C59B58] px-4 py-2 text-xs font-semibold text-[#231D15] transition hover:bg-[#B88E4F]"
             >
               Đặt lại toàn bộ bộ lọc
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 items-start gap-3">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {displayedKols.map((kol, idx) => {
               const colorInfo = getScoreColor(kol.matchScore);
               const breakdown = [
@@ -490,41 +497,41 @@ export default function KolRecommendationPage() {
       {/* 4. VIP Invitation Modal */}
       {invitingKol && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="relative w-full max-w-lg space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xl animate-in fade-in zoom-in duration-150 sm:p-6">
+            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">
               <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FBF5EB] text-[#8F682E]">
                   <Award className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Mời KOL hợp tác</h3>
-                  <p className="text-xs text-slate-500">Lời mời gửi trong SCANMS, chờ KOL xác nhận</p>
+                  <h3 className="text-base font-bold text-[#1A1612]">Mời KOL hợp tác</h3>
+                  <p className="text-xs text-[#7D715E]">Lời mời gửi trong SCANMS, chờ KOL xác nhận</p>
                 </div>
               </div>
               <button
                 onClick={() => setInvitingKol(null)}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-full p-1 text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3.5 text-xs">
-              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200/80 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-[#FBF5EB] text-[#B88E4F] font-bold flex items-center justify-center flex-shrink-0">
+              <div className="flex items-center gap-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] font-bold text-[#B88E4F]">
                   {invitingKol.fullName.charAt(0)}
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900">{invitingKol.fullName}</h4>
-                  <p className="text-slate-500 text-[11px]">{invitingKol.bio || 'Nhà sáng tạo tiềm năng'}</p>
+                  <h4 className="font-bold text-[#1A1612]">{invitingKol.fullName}</h4>
+                  <p className="text-[11px] text-[#7D715E]">{invitingKol.bio || 'Nhà sáng tạo tiềm năng'}</p>
                 </div>
                 <div className="ml-auto text-right">
-                  <span className="font-bold text-[#B88E4F]">{invitingKol.matchScore}/100 Phù hợp</span>
+                  <span className="font-bold text-[#8F682E]">{invitingKol.matchScore}/100 phù hợp</span>
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="mb-1 block font-semibold text-[#7D715E]">
                   Thông điệp cá nhân hóa gửi KOL:
                 </label>
                 <textarea
@@ -533,22 +540,22 @@ export default function KolRecommendationPage() {
                   value={inviteMessage}
                   onChange={(e) => setInviteMessage(e.target.value)}
                   placeholder={`Chào ${invitingKol.fullName}, shop rất ấn tượng với phong cách nội dung của bạn và muốn gửi lời mời hợp tác cho sản phẩm…`}
-                  className="w-full rounded-xl border border-slate-200 p-3 text-slate-800 placeholder-slate-400 focus:border-[#EEDFC6] focus:outline-none"
+                  className="w-full rounded-xl border border-[#EAE4D7] p-3 text-[#1A1612] placeholder:text-[#A89D8B] focus:border-[#C59B58] focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
                 />
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 border-t border-[#EAE4D7] pt-3">
               <button
                 onClick={() => setInvitingKol(null)}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                className="rounded-lg px-4 py-2 text-xs font-semibold text-[#7D715E] hover:bg-[#FAF8F5]"
               >
                 Hủy bỏ
               </button>
               <button
                 onClick={handleSendVipInvite}
                 disabled={isSendingInvite}
-                className="flex items-center gap-1.5 rounded-xl bg-[#FBF5EB] px-4 py-2 text-xs font-semibold text-white hover:bg-[#FBF5EB] transition shadow-sm disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-[#C59B58] px-4 py-2 text-xs font-semibold text-[#1A1612] transition-colors hover:bg-[#B88E4F] disabled:opacity-50"
               >
                 <Send className="h-3.5 w-3.5" />
                 {isSendingInvite ? 'Đang gửi...' : 'Gửi lời mời hợp tác'}
@@ -561,20 +568,20 @@ export default function KolRecommendationPage() {
       {/* 5. Detailed 1-on-1 Analysis Modal */}
       {analyzingKol && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white p-6 md:p-8 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="relative max-h-[90vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-xl md:p-6">
+            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="h-10 w-10 rounded-2xl bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
                   <BarChart3 className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-lg">Báo Cáo Đối Sánh Chuyên Sâu 1-1</h3>
-                  <p className="text-xs text-slate-500">Phân tích mức độ tương thích giữa Sản phẩm & Nhà sáng tạo</p>
+                  <h3 className="text-base font-bold text-[#1A1612]">Báo cáo đối sánh 1-1</h3>
+                  <p className="text-xs text-[#7D715E]">Mức độ phù hợp giữa sản phẩm và nhà sáng tạo</p>
                 </div>
               </div>
               <button
                 onClick={() => setAnalyzingKol(null)}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-full p-1 text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -584,18 +591,18 @@ export default function KolRecommendationPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-2xl bg-[#FBF5EB] p-4 border border-[#EEDFC6] space-y-2">
                 <span className="text-[11px] font-bold text-[#B88E4F] uppercase tracking-wider">Sản Phẩm Mục Tiêu</span>
-                <h4 className="font-bold text-slate-900 text-sm">{targetProduct?.title || 'Sản phẩm đang chọn'}</h4>
-                <div className="text-xs text-slate-600 space-y-1">
+                <h4 className="text-sm font-bold text-[#1A1612]">{targetProduct?.title || 'Sản phẩm đang chọn'}</h4>
+                <div className="space-y-1 text-xs text-[#7D715E]">
                   <div>Ngành hàng: <strong>{targetProduct?.category}</strong></div>
                   <div>Giá bán: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(targetProduct?.price || 0)}</strong></div>
                   <div>Hoa hồng: <strong>{targetProduct?.commissionRate}%</strong></div>
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-purple-50/60 p-4 border border-purple-100 space-y-2">
-                <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Hồ Sơ Nhà Sáng Tạo</span>
-                <h4 className="font-bold text-slate-900 text-sm">{analyzingKol.fullName}</h4>
-                <div className="text-xs text-slate-600 space-y-1">
+              <div className="space-y-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-4">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8F682E]">Hồ sơ nhà sáng tạo</span>
+                <h4 className="text-sm font-bold text-[#1A1612]">{analyzingKol.fullName}</h4>
+                <div className="space-y-1 text-xs text-[#7D715E]">
                   <div>Cấp bậc: <strong>{analyzingKol.tierName}</strong></div>
                   <div>Ngành thế mạnh: <strong>{analyzingKol.lifetimeStats?.primaryCategory}</strong></div>
                   <div>Tỷ lệ CR%: <strong className="text-[#B88E4F]">{analyzingKol.lifetimeStats?.conversionRate}%</strong></div>
@@ -605,44 +612,44 @@ export default function KolRecommendationPage() {
 
             {/* Deep Metric Analysis Breakdown */}
             <div className="space-y-3">
-              <h4 className="font-bold text-slate-900 text-sm">Điểm số chi tiết từng tiêu chuẩn thuật toán:</h4>
+              <h4 className="text-sm font-bold text-[#1A1612]">Điểm chi tiết theo từng tiêu chí</h4>
               <div className="space-y-2.5 text-xs">
-                <div className="rounded-xl border border-slate-200 p-3 space-y-1.5">
+                <div className="space-y-1.5 rounded-xl border border-[#EAE4D7] p-3">
                   <div className="flex justify-between font-semibold">
-                    <span className="text-slate-700">1. Độ tương đồng ngành hàng (Category Affinity - 35%):</span>
+                    <span className="text-[#1A1612]">1. Độ tương đồng ngành hàng (35%)</span>
                     <span className="text-[#B88E4F] font-bold">{analyzingKol.scoreBreakdown?.categoryScore}%</span>
                   </div>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-[#7D715E]">
                     Đối chiếu ngành hàng từng bán trên SCANMS với ngành của sản phẩm.
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 p-3 space-y-1.5">
+                <div className="space-y-1.5 rounded-xl border border-[#EAE4D7] p-3">
                   <div className="flex justify-between font-semibold">
-                    <span className="text-slate-700">2. Năng lực chuyển đổi đơn hàng (Conversion Rate - 25%):</span>
+                    <span className="text-[#1A1612]">2. Năng lực chuyển đổi đơn hàng (25%)</span>
                     <span className="text-[#B88E4F] font-bold">{analyzingKol.scoreBreakdown?.conversionRateScore}%</span>
                   </div>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-[#7D715E]">
                     Dựa trên đơn đã giao/hoàn tất và lượt nhấp hợp lệ duy nhất trên SCANMS; giảm trọng số khi dữ liệu ít.
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 p-3 space-y-1.5">
+                <div className="space-y-1.5 rounded-xl border border-[#EAE4D7] p-3">
                   <div className="flex justify-between font-semibold">
-                    <span className="text-slate-700">3. Cấp bậc danh hiệu & Quy mô người theo dõi (20%):</span>
-                    <span className="text-purple-600 font-bold">{analyzingKol.scoreBreakdown?.tierAndSocialScore}%</span>
+                    <span className="text-[#1A1612]">3. Cấp bậc & quy mô người theo dõi (20%)</span>
+                    <span className="font-bold text-[#8F682E]">{analyzingKol.scoreBreakdown?.tierAndSocialScore}%</span>
                   </div>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-[#7D715E]">
                     Dựa trên tổng followers trên các nền tảng TikTok, YouTube, Instagram và cấp bậc hệ thống.
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 p-3 space-y-1.5">
+                <div className="space-y-1.5 rounded-xl border border-[#EAE4D7] p-3">
                   <div className="flex justify-between font-semibold">
-                    <span className="text-slate-700">4. Mức độ phù hợp phân khúc giá (Price Fit - 20%):</span>
-                    <span className="text-amber-600 font-bold">{analyzingKol.scoreBreakdown?.priceFitScore}%</span>
+                    <span className="text-[#1A1612]">4. Mức độ phù hợp phân khúc giá (20%)</span>
+                    <span className="font-bold text-[#8F682E]">{analyzingKol.scoreBreakdown?.priceFitScore}%</span>
                   </div>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-[#7D715E]">
                     So sánh giá sản phẩm với giá trị sản phẩm KOL từng bán trên SCANMS.
                   </p>
                 </div>
@@ -663,7 +670,7 @@ export default function KolRecommendationPage() {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setAnalyzingKol(null)}
-                className="rounded-xl bg-slate-100 px-5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                className="rounded-lg bg-[#F3EFE6] px-5 py-2.5 text-xs font-semibold text-[#7D715E] hover:bg-[#EAE4D7]"
               >
                 Đóng báo cáo
               </button>

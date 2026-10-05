@@ -14,6 +14,7 @@ import {
   Shield,
   Layers,
   X,
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -29,6 +30,7 @@ import './AiFraudSentinelPage.css';
 export default function AiFraudSentinelPage() {
   const [summary, setSummary] = useState<FraudScanSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<'ALL' | 'CRITICAL' | 'SUSPICIOUS' | 'LOW' | 'FROZEN'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeIncident, setActiveIncident] = useState<FraudIncident | null>(null);
@@ -38,12 +40,15 @@ export default function AiFraudSentinelPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await aiFraudService.scanTraffic({ timeframe });
       setSummary(data);
     } catch (err: any) {
       console.error(err);
-      toast.error('Không thể tải dữ liệu quét gian lận AI. Vui lòng thử lại.');
+      const message = 'Không thể tải dữ liệu quét gian lận AI. Vui lòng thử lại.';
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -138,6 +143,12 @@ export default function AiFraudSentinelPage() {
     if (selectedTab === 'FROZEN') return inc.status === 'FROZEN';
     return true;
   });
+  const isInitialLoading = loading && summary === null;
+  const countLabel = (count?: number) => {
+    if (isInitialLoading) return '…';
+    if (!summary && loadError) return '—';
+    return (count ?? 0).toLocaleString('vi-VN');
+  };
 
   return (
     <div className="sentinel-page w-full min-w-0 space-y-4 pb-8 pt-4 sm:pt-5">
@@ -153,12 +164,14 @@ export default function AiFraudSentinelPage() {
           </div>
           <div className="mt-2">
             <div className="text-xl font-semibold tracking-tight text-[#1A1612]">
-              {(summary?.totalScannedClicks || 0).toLocaleString('vi-VN')}{' '}
-              <span className="text-xs font-semibold text-[#7D715E]">clicks</span>
+              {isInitialLoading ? (
+                <span aria-hidden="true" className="inline-block h-7 w-20 animate-pulse rounded bg-[#F3EFE6] align-middle" />
+              ) : !summary && loadError ? '—' : <>{(summary?.totalScannedClicks ?? 0).toLocaleString('vi-VN')}{' '}<span className="text-xs font-semibold text-[#7D715E]">clicks</span></>}
             </div>
             <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-[#7D715E] truncate">
-              <Layers className="h-3.5 w-3.5 text-[#B88E4F] shrink-0" />
-              <span>Trên <strong className="font-bold text-[#1A1612]">{summary?.totalScannedLinks || 0}</strong> link tiếp thị</span>
+              {isInitialLoading ? (
+                <span aria-hidden="true" className="inline-block h-3.5 w-32 animate-pulse rounded bg-[#F3EFE6]" />
+              ) : !summary && loadError ? 'Chưa tải được số liệu' : <><Layers className="h-3.5 w-3.5 text-[#B88E4F] shrink-0" /><span>Trên <strong className="font-bold text-[#1A1612]">{summary?.totalScannedLinks ?? 0}</strong> link tiếp thị</span></>}
             </div>
           </div>
         </div>
@@ -173,11 +186,12 @@ export default function AiFraudSentinelPage() {
           </div>
           <div className="mt-2.5">
             <div className="text-xl font-semibold tracking-tight text-[#B91C1C]">
-              {summary?.criticalCount || 0}{' '}
-              <span className="text-xs font-semibold text-[#B91C1C]">sự vụ</span>
+              {isInitialLoading ? (
+                <span aria-hidden="true" className="inline-block h-7 w-12 animate-pulse rounded bg-[#F3EFE6] align-middle" />
+              ) : !summary && loadError ? '—' : <>{summary?.criticalCount ?? 0}{' '}<span className="text-xs font-semibold text-[#B91C1C]">sự vụ</span></>}
             </div>
             <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">
-              <span className="font-bold text-[#8A642C]">{summary?.suspiciousCount || 0}</span> sự vụ mức độ nghi vấn
+              {isInitialLoading ? <span aria-hidden="true" className="inline-block h-3.5 w-36 animate-pulse rounded bg-[#F3EFE6]" /> : !summary && loadError ? 'Chưa tải được số liệu' : <><span className="font-bold text-[#8A642C]">{summary?.suspiciousCount ?? 0}</span> sự vụ mức độ nghi vấn</>}
             </div>
           </div>
         </div>
@@ -192,10 +206,11 @@ export default function AiFraudSentinelPage() {
           </div>
           <div className="mt-2.5">
             <div className="text-xl font-semibold tracking-tight text-[#8A642C]">
-              {((summary?.potentialSavedAmount || 0) / 1000).toLocaleString('vi-VN')}k{' '}
-              <span className="text-xs font-semibold text-[#7D715E]">VND</span>
+              {isInitialLoading ? (
+                <span aria-hidden="true" className="inline-block h-7 w-16 animate-pulse rounded bg-[#F3EFE6] align-middle" />
+              ) : !summary && loadError ? '—' : <>{((summary?.potentialSavedAmount ?? 0) / 1000).toLocaleString('vi-VN')}k{' '}<span className="text-xs font-semibold text-[#7D715E]">VND</span></>}
             </div>
-            <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">Hoa hồng chờ đang được cách ly</div>
+            <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">{isInitialLoading ? 'Đang tổng hợp dữ liệu…' : !summary && loadError ? 'Chưa tải được số liệu' : 'Hoa hồng chờ đang được cách ly'}</div>
           </div>
         </div>
 
@@ -209,11 +224,13 @@ export default function AiFraudSentinelPage() {
           </div>
           <div className="mt-2.5">
             <div className="text-xl font-semibold tracking-tight text-[#1A1612]">
-              {summary && summary.totalScannedLinks > 0
+              {isInitialLoading ? (
+                <span aria-hidden="true" className="inline-block h-7 w-16 animate-pulse rounded bg-[#F3EFE6] align-middle" />
+              ) : !summary && loadError ? '—' : summary && summary.totalScannedLinks > 0
                 ? `${Math.round(((summary.cleanCount + summary.lowRiskCount) / summary.totalScannedLinks) * 100)}%`
                 : '100%'}
             </div>
-            <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">Lưu lượng tự nhiên đạt chuẩn an toàn</div>
+            <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">{isInitialLoading ? 'Đang phân tích lưu lượng…' : !summary && loadError ? 'Chưa tải được số liệu' : 'Lưu lượng tự nhiên đạt chuẩn an toàn'}</div>
           </div>
         </div>
       </div>
@@ -221,8 +238,9 @@ export default function AiFraudSentinelPage() {
       {/* Main Table & Filter Container */}
       <div className="sentinel-panel min-w-0 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
         {/* Filter Navigation Bar */}
-        <div className="sentinel-toolbar flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3">
-          <div className="sentinel-tabs flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto pb-0.5">
+        <div className="sentinel-toolbar flex min-w-0 flex-col gap-2 border-b border-[#EAE4D7] bg-white p-3">
+          <div className="sentinel-toolbar-main flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <div className="sentinel-tabs flex min-w-0 max-w-full flex-1 items-center gap-1.5 overflow-x-auto pb-0.5">
             <button
               type="button"
               onClick={() => setSelectedTab('ALL')}
@@ -233,7 +251,7 @@ export default function AiFraudSentinelPage() {
               }`}
             >
               <Layers className="h-3.5 w-3.5" />
-              Tất cả ({summary?.incidents.length || 0})
+              Tất cả ({countLabel(summary?.incidents.length)})
             </button>
             <button
               type="button"
@@ -245,7 +263,7 @@ export default function AiFraudSentinelPage() {
               }`}
             >
               <Flame className="h-3.5 w-3.5" />
-              Nguy cơ cao ({summary?.criticalCount || 0})
+              Nguy cơ cao ({countLabel(summary?.criticalCount)})
             </button>
             <button
               type="button"
@@ -257,7 +275,7 @@ export default function AiFraudSentinelPage() {
               }`}
             >
               <AlertTriangle className="h-3.5 w-3.5" />
-              Nghi vấn ({summary?.suspiciousCount || 0})
+              Nghi vấn ({countLabel(summary?.suspiciousCount)})
             </button>
             <button
               type="button"
@@ -269,7 +287,7 @@ export default function AiFraudSentinelPage() {
               }`}
             >
               <Info className="h-3.5 w-3.5" />
-              Theo dõi ({summary?.lowRiskCount || 0})
+              Theo dõi ({countLabel(summary?.lowRiskCount)})
             </button>
             <button
               type="button"
@@ -281,11 +299,41 @@ export default function AiFraudSentinelPage() {
               }`}
             >
               <Lock className="h-3.5 w-3.5" />
-              Đã đóng băng ({summary?.incidents.filter((i) => i.status === 'FROZEN').length || 0})
+              Đã đóng băng ({countLabel(summary?.incidents.filter((i) => i.status === 'FROZEN').length)})
             </button>
+            </div>
+
+            <div className="sentinel-toolbar-actions flex shrink-0 items-center justify-end gap-1">
+              <div className="sentinel-timeframe relative w-[156px] shrink-0">
+                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#8A642C]" />
+                <Select
+                  id="timeframe-select"
+                  value={timeframe}
+                  onChange={(e) => setTimeframe(e.target.value as any)}
+                  aria-label="Chọn khoảng thời gian quét"
+                  className="h-9 w-full pl-9 pr-1 text-xs"
+                >
+                  <option value="24h">24 giờ qua</option>
+                  <option value="7d">7 ngày gần nhất</option>
+                  <option value="30d">30 ngày qua</option>
+                  <option value="all">Toàn thời gian</option>
+                </Select>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadData}
+                disabled={loading}
+                aria-label={loading ? 'Đang quét lại toàn sàn' : 'Quét lại toàn sàn'}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-[#8C6226] transition hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 disabled:cursor-wait disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                Quét lại toàn sàn
+              </button>
+            </div>
           </div>
 
-          <div className="sentinel-controls flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+          <div className="sentinel-controls flex min-w-0 items-center justify-end gap-2">
             <div className="relative min-w-0">
               <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
               <input
@@ -299,38 +347,6 @@ export default function AiFraudSentinelPage() {
               />
             </div>
 
-            <button
-              type="button"
-              onClick={loadData}
-              disabled={loading}
-              aria-label={loading ? 'Đang quét lại toàn sàn' : 'Quét lại toàn sàn'}
-              className="ml-auto inline-flex h-9 shrink-0 items-center justify-self-end gap-1.5 rounded-md px-2 text-xs font-semibold text-[#8C6226] transition hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 disabled:cursor-wait disabled:opacity-50 sm:ml-0"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>Quét lại toàn sàn</span>
-            </button>
-
-            <Select
-              id="timeframe-select"
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value as any)}
-              aria-label="Chọn khoảng thời gian quét" className="h-9 w-full text-xs sm:w-40"
-            >
-              <option value="24h">24 giờ qua</option>
-              <option value="7d">7 ngày gần nhất</option>
-              <option value="30d">30 ngày qua</option>
-              <option value="all">Toàn thời gian</option>
-            </Select>
-
-            <button
-              type="button"
-              onClick={loadData}
-              disabled={loading}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#8C6226] transition hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer shadow-2xs"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Quét lại
-            </button>
           </div>
         </div>
 
@@ -364,7 +380,27 @@ export default function AiFraudSentinelPage() {
                 </tr>
               )}
 
-              {!loading && filteredIncidents.length === 0 && (
+              {!loading && !summary && loadError && (
+                <tr className="sentinel-state-row">
+                  <td colSpan={8} className="py-14 text-center">
+                    <div role="alert" className="flex flex-col items-center gap-2 text-[#7D715E]">
+                      <AlertTriangle className="h-8 w-8 text-[#B88E4F]" />
+                      <p className="font-semibold text-[#1A1612]">Không tải được dữ liệu quét</p>
+                      <p className="text-xs">Kiểm tra kết nối rồi thử lại.</p>
+                      <button
+                        type="button"
+                        onClick={loadData}
+                        className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-[#8C6226] hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Thử lại
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {!loading && summary && filteredIncidents.length === 0 && (
                 <tr className="sentinel-state-row">
                   <td colSpan={8} className="py-14 text-center font-semibold text-[#7D715E]">
                     <div className="flex flex-col items-center gap-2">

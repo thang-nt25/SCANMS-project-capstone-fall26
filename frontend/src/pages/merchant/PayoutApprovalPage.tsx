@@ -1,3 +1,4 @@
+import './PayoutApprovalPage.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useParams } from "react-router-dom";
@@ -727,7 +728,7 @@ export default function PayoutApprovalPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1480px] space-y-5 pb-10 pt-4 text-ink lg:-mx-3 lg:w-[calc(100%+24px)] sm:pt-5">
+    <div className="mx-auto w-full min-w-0 max-w-[1480px] space-y-5 pb-10 pt-4 text-ink sm:pt-5">
 
       {error && (
         <p
@@ -1191,7 +1192,7 @@ export default function PayoutApprovalPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
+      <section className="payout-approval-table min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
         {/* Toolbar điều hướng & tìm kiếm */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3.5 sm:p-4">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -1282,14 +1283,28 @@ export default function PayoutApprovalPage() {
         {loading && <p className="p-5 text-sm text-[#7D715E]">Đang tải dữ liệu payout…</p>}
 
         {/* Bảng danh sách chi trả hoa hồng */}
-          <div className="max-w-full overflow-x-auto overscroll-x-contain">
+          <div className="relative isolate max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Danh sách chi trả hoa hồng" tabIndex={0}>
+            <label className="payout-select-all items-center gap-2 border-b border-[#EAE4D7] px-4 py-3 text-xs text-[#7D715E]">
+              <input type="checkbox" aria-label="Chọn tất cả payout chờ" checked={eligible.length > 0 && eligible.every((request) => selected.includes(request.id))} disabled={busy || loading || eligible.length === 0} onChange={(event) => setSelected(event.target.checked ? eligible.map((request) => request.id) : [])} className="accent-[#C59B58]" />
+              Chọn tất cả yêu cầu chờ trên trang
+            </label>
             <table
               aria-label="Danh sách payout"
-              className="w-full min-w-[1280px] table-fixed text-left text-xs sm:text-sm"
+              className="w-full min-w-[1040px] table-fixed text-left text-xs"
             >
+            <colgroup>
+              <col className="w-[42px]" />
+              <col className="w-[20%]" />
+              <col />
+              <col className="w-[115px]" />
+              <col className="w-[105px]" />
+              <col className="w-[115px]" />
+              <col className="w-[165px]" />
+              <col className="w-[145px]" />
+            </colgroup>
             <thead className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
               <tr>
-                <th className="w-11 px-2.5 py-3 text-center">
+                <th className="px-2.5 py-3 text-center">
                   <input
                     type="checkbox"
                     aria-label="Chọn tất cả payout chờ trên trang"
@@ -1308,13 +1323,13 @@ export default function PayoutApprovalPage() {
                     className="accent-[#C59B58] rounded cursor-pointer"
                   />
                 </th>
-                <th scope="col" className="w-[245px] px-3 py-3">KOL / Mã payout</th>
-                <th scope="col" className="w-[230px] px-3 py-3">Người thụ hưởng</th>
-                <th scope="col" className="w-[140px] px-2.5 py-3 text-right">Yêu cầu</th>
-                <th scope="col" className="w-[120px] px-2.5 py-3 text-right">Thuế</th>
-                <th scope="col" className="w-[140px] px-2.5 py-3 text-right">Thực nhận</th>
-                <th scope="col" className="w-[190px] px-2.5 py-3 text-center">Trạng thái</th>
-                <th scope="col" className="w-[150px] px-2.5 py-3 text-center">Thao tác</th>
+                <th scope="col" className="px-3 py-3">KOL / Mã payout</th>
+                <th scope="col" className="px-3 py-3">Người thụ hưởng</th>
+                <th scope="col" className="px-2.5 py-3 text-right">Yêu cầu</th>
+                <th scope="col" className="px-2.5 py-3 text-right">Thuế</th>
+                <th scope="col" className="px-2.5 py-3 text-right">Thực nhận</th>
+                <th scope="col" className="px-2.5 py-3 text-center">Trạng thái</th>
+                <th scope="col" className="sticky right-0 z-20 bg-[#FAF8F5] px-2.5 py-3 text-center shadow-[-1px_0_0_#EAE4D7]">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -1342,7 +1357,7 @@ export default function PayoutApprovalPage() {
                     />
                   </td>
                   <td className="px-3 py-2.5 align-middle">
-                    <div className="truncate font-bold text-xs sm:text-sm text-[#1A1612]" title={request.collaboratorName}>
+                    <div className="truncate font-bold text-xs text-[#1A1612]" title={request.collaboratorName}>
                       {request.collaboratorName}
                     </div>
                     {request.kycStatus && (
@@ -1367,7 +1382,7 @@ export default function PayoutApprovalPage() {
                         </span>
                       </div>
                     )}
-                    <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] text-[#7D715E]">
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-[#7D715E]">
                       <span className="max-w-[135px] truncate whitespace-nowrap font-mono font-semibold text-[#8A642C]" title={request.id}>{request.id}</span>
                       <span className="shrink-0">·</span>
                       <span className="shrink-0 whitespace-nowrap">{new Date(request.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</span>
@@ -1377,17 +1392,17 @@ export default function PayoutApprovalPage() {
                     <div className="max-w-full truncate text-xs font-bold uppercase text-[#1A1612]" title={request.bankAccountName ?? "Thiếu thông tin"}>
                       {request.bankAccountName ?? "Thiếu thông tin"}
                     </div>
-                    <div className="mt-1 flex min-w-0 items-center justify-between gap-2 text-[11px] text-[#7D715E]">
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#7D715E]">
                       <span className="min-w-0 truncate">{request.bankName}</span>
                       <span className="shrink-0 font-mono font-medium text-[#1A1612]">{maskBankAccount(request.bankAccountNumber)}</span>
                     </div>
                   </td>
-                  <td className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
-                    <div className="font-bold text-xs sm:text-sm text-[#1A1612]">
+                  <td data-label="Yêu cầu" className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
+                    <div className="font-bold text-xs text-[#1A1612]">
                       {money(request.amount)}
                     </div>
                   </td>
-                  <td className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
+                  <td data-label="Thuế" className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
                     {Number(request.taxAmount) > 0 ? (
                       <span className="font-semibold text-xs text-[#DC2626]">
                         -{money(request.taxAmount)}
@@ -1396,14 +1411,14 @@ export default function PayoutApprovalPage() {
                       <span className="text-xs text-[#7D715E]">0 ₫</span>
                     )}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
-                    <div className="font-bold text-xs sm:text-sm text-[#B88E4F]">
+                  <td data-label="Thực nhận" className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
+                    <div className="font-bold text-xs text-[#B88E4F]">
                       {Number(request.netAmount) > 0 ? money(request.netAmount) : "Cần đối soát"}
                     </div>
                   </td>
-                  <td className="px-2.5 py-2.5 text-center align-middle whitespace-nowrap">
+                  <td className="px-2.5 py-2.5 text-center align-middle">
                     <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      className={`inline-block max-w-full rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                         request.status === "APPROVED"
                           ? "border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]"
                           : request.status === "REJECTED"
@@ -1429,14 +1444,14 @@ export default function PayoutApprovalPage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-2.5 py-2.5 align-middle">
+                  <td className="sticky right-0 z-10 bg-white px-2.5 py-2.5 align-middle shadow-[-1px_0_0_#EAE4D7]">
                     <div className="mx-auto flex w-full max-w-[130px] flex-col gap-1.5">
                       {(request.status === "PENDING" || request.status === "PROCESSING") && (
                         <button
                           type="button"
                           disabled={busy || loading}
                           onClick={() => openDialog(request, "approve")}
-                          className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] px-2.5 text-xs font-semibold text-white shadow-2xs transition hover:brightness-105 cursor-pointer whitespace-nowrap"
+                          className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-[#C59B58] px-2.5 text-xs font-semibold text-[#231D15] shadow-2xs transition hover:brightness-105 cursor-pointer whitespace-nowrap"
                         >
                           Duyệt &amp; tải bill
                         </button>

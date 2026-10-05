@@ -1277,7 +1277,7 @@ export class ReferralLinksService {
         include: {
           collaborator: { select: { id: true, fullName: true, email: true } },
           store: { select: { id: true, name: true } },
-          product: { select: { id: true, title: true, price: true } },
+          product: { select: { id: true, title: true, imageUrl: true, price: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,

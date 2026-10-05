@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
+import { ArrowLeft, LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
-import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface SidebarProps {
   currentUser: UserProfile | null;
@@ -265,15 +264,13 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       <div className="p-3 border-t border-[#EAE4D7] flex flex-col gap-1.5 bg-[#FAF8F5]">
         {currentUser ? (
           <>
-            {/* Workspace Switcher */}
-            <WorkspaceSwitcher variant="sidebar" />
-
             {/* Sàn Mua Sắm Link */}
             <Link
               to="/marketplace"
               className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium text-[#1A1612] hover:text-[#B88E4F] hover:bg-white transition cursor-pointer group"
               title="Quay lại Sàn Mua Sắm SCANMS"
             >
+              <ArrowLeft className="w-4 h-4 text-[#B88E4F] shrink-0" aria-hidden="true" />
               <Store className="w-4 h-4 text-[#7D715E] group-hover:text-[#B88E4F] shrink-0" />
               <span>Sàn Mua Sắm</span>
             </Link>

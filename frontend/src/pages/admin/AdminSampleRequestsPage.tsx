@@ -302,8 +302,8 @@ export default function AdminSampleRequestsPage() {
       : 'Mở lại xuất gửi bù hàng mẫu';
 
   return (
-    <main className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-3 py-5 sm:px-5 text-[#1A1612]">
-      <div className="mx-auto w-full min-w-0 max-w-[1480px] space-y-4">
+    <main className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-0 py-5 text-[#1A1612]">
+      <div className="mx-0 w-full min-w-0 max-w-none space-y-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
             {label:'Tổng yêu cầu',value:stats.total,filter:'ALL',icon:Package},
@@ -399,7 +399,7 @@ export default function AdminSampleRequestsPage() {
               type="button"
               onClick={() => void loadData()}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] transition disabled:opacity-50 cursor-pointer shadow-2xs"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-[#7D715E] transition hover:text-[#8C6226] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 disabled:cursor-wait disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={'h-3.5 w-3.5 text-[#B88E4F] ' + (loading ? 'animate-spin' : '')} />
               {loading ? 'Đang tải…' : 'Làm mới'}

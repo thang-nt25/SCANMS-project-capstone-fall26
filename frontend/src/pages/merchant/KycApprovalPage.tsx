@@ -261,7 +261,7 @@ export default function KycApprovalPage() {
   const verifiedShopCount = displayShops.filter((s: any) => s.isVerified).length;
 
   return (
-    <div className="flex flex-col gap-6 text-left">
+    <div className="flex flex-col gap-6 pt-4 text-left sm:pt-5">
       {toastMsg && (
         <div
           className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center gap-2 border ${
@@ -301,38 +301,19 @@ export default function KycApprovalPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-3">
-        <Button
-          variant="outline"
-          size="md"
-          icon={<Download className="w-4 h-4 text-[#B88E4F]" />}
-          onClick={() => showToast('Đang xuất báo cáo thẩm định...')}
-          className="border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5]"
-        >
-          Xuất báo cáo
-        </Button>
-        <Button
-          variant="gold"
-          size="md"
-          icon={<RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
-          onClick={() => loadApplications()}
-        >
-          Làm mới
-        </Button>
-      </div>
-
       {/* TOP TABS: KOL VS SHOP */}
-      <div className="flex border-b border-[#EAE4D7] gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => {
             setActiveTab('kol');
             setFilterStatus('ALL');
           }}
-          className={`pb-3 px-3 text-xs font-bold transition cursor-pointer flex items-center gap-2 border-b-2 ${
+          className={`rounded-lg border px-3 py-2 text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
             activeTab === 'kol'
-              ? 'border-[#B88E4F] text-[#B88E4F]'
-              : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
+              : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
           }`}
         >
           <Sparkles className="w-4 h-4" />
@@ -345,15 +326,26 @@ export default function KycApprovalPage() {
             setActiveTab('shop');
             setFilterStatus('ALL');
           }}
-          className={`pb-3 px-3 text-xs font-bold transition cursor-pointer flex items-center gap-2 border-b-2 ${
+          className={`rounded-lg border px-3 py-2 text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
             activeTab === 'shop'
-              ? 'border-[#B88E4F] text-[#B88E4F]'
-              : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
+              : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
           }`}
         >
           <Store className="w-4 h-4" />
           <span>Thẩm định Gian Hàng ({pendingShopCount} chờ duyệt)</span>
         </button>
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-5">
+          <button type="button" onClick={() => showToast('Đang xuất báo cáo thẩm định...')} className="inline-flex items-center gap-2 bg-transparent p-0 text-xs font-semibold text-[#7D715E] transition hover:text-[#B88E4F] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C59B58]">
+            <Download className="h-4 w-4 text-[#B88E4F]" />
+            <span>Xuất báo cáo</span>
+          </button>
+          <button type="button" onClick={() => loadApplications()} disabled={loading} className="inline-flex items-center gap-2 bg-transparent p-0 text-xs font-semibold text-[#7D715E] transition hover:text-[#B88E4F] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C59B58] disabled:opacity-50">
+            <RefreshCw className={'h-4 w-4 text-[#B88E4F] ' + (loading ? 'animate-spin' : '')} />
+            <span>Làm mới</span>
+          </button>
+        </div>
       </div>
 
       {/* THẺ THỐNG KÊ */}

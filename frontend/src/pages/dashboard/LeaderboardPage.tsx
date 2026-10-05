@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import {
   Trophy,
   Crown,
@@ -20,46 +20,86 @@ import {
 import { leaderboardService } from '../../services/leaderboard.service';
 import type {
   LeaderboardFullResponse,
+  LeaderboardItem,
   LeaderboardMetric,
+  LeaderboardScope,
   LeaderboardTimeRange,
   CreatorHallOfFameProfile,
 } from '../../services/leaderboard.service';
 import { toast } from '../../utils/toast';
+import api from '../../services/api';
+import { authService } from '../../services/auth.service';
 
-export default function LeaderboardPage() {
+export default function LeaderboardPage({ alignToContainer = false }: { alignToContainer?: boolean } = {}) {
   const [data, setData] = useState<LeaderboardFullResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState('');
+  const requestSequence = useRef(0);
 
   // Filters
   const [metric, setMetric] = useState<LeaderboardMetric>('REVENUE');
   const [timeRange, setTimeRange] = useState<LeaderboardTimeRange>('this_month');
-  const [scope, setScope] = useState<'GLOBAL' | 'STORE'>('GLOBAL');
+  const [scope, setScope] = useState<LeaderboardScope>('GLOBAL');
+  const [stores, setStores] = useState<Array<{ id: string; name: string }>>([]);
+  const [storesLoading, setStoresLoading] = useState(false);
+  const [selectedStoreId, setSelectedStoreId] = useState('');
+  const currentUser = authService.getCurrentUser();
+  const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'SYSTEM_MANAGER';
+  const canChangeScope = isAdmin || currentUser?.role === 'SHOP_MANAGER';
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let active = true;
+    setStoresLoading(true);
+    api.get('/stores/marketplace', { headers: { 'x-skip-cache': 'true' } }).then((response: any) => {
+      const body = response?.data?.data || response?.data || response;
+      const list = Array.isArray(body) ? body : Array.isArray(body?.items) ? body.items : [];
+      if (!active) return;
+      setStores(list.filter((store: any) => store?.id && store?.name).map((store: any) => ({ id: store.id, name: store.name })));
+      setSelectedStoreId((current) => current || list[0]?.id || '');
+    }).catch((error: any) => {
+      if (active) toast.error(error?.message || 'Không tải được danh sách gian hàng.');
+    }).finally(() => { if (active) setStoresLoading(false); });
+    return () => { active = false; };
+  }, [isAdmin]);
 
   // Creator Modal
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
   const [creatorProfile, setCreatorProfile] = useState<CreatorHallOfFameProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState<boolean>(false);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
+    const requestId = ++requestSequence.current;
+    if (scope === 'STORE' && isAdmin && !selectedStoreId) {
+      setLoadError(stores.length ? 'Vui lòng chọn gian hàng để xem bảng xếp hạng.' : 'Chưa có gian hàng khả dụng để lọc.');
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
+      setLoadError('');
       const res = await leaderboardService.getLeaderboard({
         metric,
         timeRange,
         scope,
+        ...(scope === 'STORE' && isAdmin ? { storeId: selectedStoreId } : {}),
         limit: 20,
       });
+      if (requestId !== requestSequence.current) return;
       setData(res);
-    } catch (err) {
-      console.error('Lỗi khi tải bảng vinh danh Leaderboard:', err);
+    } catch (err: any) {
+      if (requestId !== requestSequence.current) return;
+      setLoadError(err?.message || 'Không tải được bảng xếp hạng.');
+      toast.error(err?.message || 'Không tải được bảng xếp hạng.');
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) setLoading(false);
     }
-  };
+  }, [isAdmin, metric, scope, selectedStoreId, stores.length, timeRange]);
 
   useEffect(() => {
-    fetchLeaderboard();
-  }, [metric, timeRange, scope]);
+    void fetchLeaderboard();
+    return () => { requestSequence.current += 1; };
+  }, [fetchLeaderboard]);
 
   const handleOpenCreatorModal = async (creatorId: string) => {
     try {
@@ -89,171 +129,107 @@ export default function LeaderboardPage() {
     return new Intl.NumberFormat('vi-VN').format(val);
   };
 
+  const metricLabels: Record<LeaderboardMetric, string> = {
+    REVENUE: 'Doanh thu',
+    ORDERS: 'Đơn hàng',
+    CONVERSION_RATE: 'Tỷ lệ chốt',
+    COMMISSION: 'Hoa hồng',
+  };
+  const formatMetricValue = (item?: LeaderboardItem | null) => {
+    if (!item) return '—';
+    switch (metric) {
+      case 'ORDERS': return `${formatNumber(item.totalOrders)} đơn`;
+      case 'CONVERSION_RATE': return `${formatNumber(item.conversionRate)}%`;
+      case 'COMMISSION': return formatVND(item.totalCommission);
+      case 'REVENUE':
+      default: return formatVND(item.grossRevenue);
+    }
+  };
+
   const podium = data?.podium;
   const rankings = data?.rankings || [];
   const myRank = data?.myRankStatus;
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] p-4 sm:p-6 lg:p-8 space-y-8 antialiased pb-28">
-      {/* ─── 1. TOP HEADER & GAMIFICATION BANNER ──────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#FBF5EB] via-white to-[#F3EFE6] border border-[#EEDFC6] p-6 sm:p-8 shadow-2xl shadow-amber-500/5">
-        <div className="absolute -right-10 -bottom-10 w-80 h-80 bg-[#FBF5EB] rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute top-0 right-1/4 w-40 h-40 bg-yellow-500/10 rounded-full blur-2xl pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-yellow-400 text-[#1A1612] shadow-md shadow-amber-500/20">
-                <Trophy className="w-3.5 h-3.5" />
-                <span>FR-29 GAMIFIED LEADERBOARD</span>
-              </span>
-              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6]">
-                <Sparkles className="w-3.5 h-3.5 text-[#8F682E]" />
-                <span>{data?.periodLabel || 'Tháng 9/2026'}</span>
-              </span>
-              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#059669]/10 text-[#059669] border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                <span>{data?.totalParticipants || 0} Creators đang đua top</span>
-              </span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#1A1612] tracking-tight">
-              Bảng Vinh Danh Top Creators & Đối Tác Xuất Sắc
-            </h1>
-            <p className="text-sm text-[#7D715E] max-w-2xl leading-relaxed">
-              Vinh danh những nhà sáng tạo nội dung dẫn đầu hệ sinh thái SCANMS. Đạt Top 1-3 nhận thưởng nóng tiền mặt lên đến{' '}
-              <strong className="text-[#8F682E] font-semibold">+5.000.000 ₫</strong> và đặc quyền nhận mẫu thử VIP không giới hạn.
-            </p>
+    <div className={`w-full min-w-0 space-y-4 bg-[#FAF8F5] text-[#1A1612] antialiased ${alignToContainer ? 'px-0 pt-3 pb-24' : 'p-4 pb-24 sm:p-5 sm:pb-24 lg:p-6 lg:pb-24'}`}>
+      {/* Gọn phần bộ lọc, bỏ banner giới thiệu để tập trung vào bảng xếp hạng */}
+      <section className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-sm">
+        <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1 sm:grid-cols-4 sm:flex-1 sm:max-w-2xl">
+            <button onClick={() => setTimeRange('this_month')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'this_month' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
+              Tháng này
+            </button>
+            <button onClick={() => setTimeRange('last_month')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'last_month' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
+              Tháng trước
+            </button>
+            <button onClick={() => setTimeRange('this_quarter')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'this_quarter' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
+              Quý này
+            </button>
+            <button onClick={() => setTimeRange('all_time')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'all_time' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
+              Toàn thời gian
+            </button>
           </div>
-
-          {/* Quick Filters */}
-          <div className="flex flex-wrap items-center gap-2 bg-white border border-[#EAE4D7] p-2 rounded-2xl shadow-lg self-start lg:self-center">
-            <div className="flex bg-[#FAF8F5] rounded-xl p-1 border border-[#EAE4D7] text-xs font-semibold">
-              <button
-                onClick={() => setTimeRange('this_month')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  timeRange === 'this_month' ? 'bg-amber-500 text-[#1A1612] font-bold shadow-md' : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                Tháng này
-              </button>
-              <button
-                onClick={() => setTimeRange('last_month')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  timeRange === 'last_month' ? 'bg-amber-500 text-[#1A1612] font-bold shadow-md' : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                Tháng trước
-              </button>
-              <button
-                onClick={() => setTimeRange('this_quarter')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  timeRange === 'this_quarter' ? 'bg-amber-500 text-[#1A1612] font-bold shadow-md' : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                Quý này
-              </button>
-              <button
-                onClick={() => setTimeRange('all_time')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  timeRange === 'all_time' ? 'bg-amber-500 text-[#1A1612] font-bold shadow-md' : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                Toàn thời gian
-              </button>
-            </div>
-
-            <button
-              onClick={fetchLeaderboard}
-              disabled={loading}
-              className="p-2 bg-[#F3EFE6] hover:bg-[#F3EFE6] text-[#1A1612] rounded-xl transition-transform active:scale-95 disabled:opacity-50"
-              title="Làm mới bảng xếp hạng"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#8F682E]' : ''}`} />
+          <div className="flex items-center justify-end gap-2">
+            {loading && <span role="status" aria-live="polite" className="text-[11px] text-[#7D715E]">Đang cập nhật…</span>}
+            <button onClick={fetchLeaderboard} disabled={loading} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#7D715E] transition-colors hover:bg-[#FBF5EB] hover:text-[#8F682E] disabled:opacity-50 sm:w-auto" title="Làm mới bảng xếp hạng">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-[#8F682E]' : ''}`} />
+              <span className="sm:hidden">Làm mới</span>
             </button>
           </div>
         </div>
 
-        {/* Metric Selector Tabs */}
-        <div className="mt-6 pt-6 border-t border-[#EAE4D7] flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-[#7D715E] uppercase tracking-wider mr-1 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5 text-[#8F682E]" />
-              <span>Xếp hạng theo:</span>
+        <div className="flex flex-col gap-3 border-t border-[#EAE4D7] px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#7D715E]">
+              <Filter className="h-3.5 w-3.5 text-[#8F682E]" />
+              <span>Xếp hạng theo</span>
             </span>
-            <button
-              onClick={() => setMetric('REVENUE')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
-                metric === 'REVENUE'
-                  ? 'bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6] shadow-sm'
-                  : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:text-[#1A1612]'
-              }`}
-            >
-              <DollarSign className="w-3.5 h-3.5" />
-              <span>Doanh Thu (GMV)</span>
+            <button type="button" aria-pressed={metric === 'REVENUE'} onClick={() => setMetric('REVENUE')} className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${metric === 'REVENUE' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]' : 'border-transparent bg-white text-[#7D715E] hover:border-[#EAE4D7] hover:bg-[#FAF8F5]'}`}>
+              <DollarSign className="h-3.5 w-3.5" /><span>Doanh thu</span>
             </button>
-            <button
-              onClick={() => setMetric('ORDERS')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
-                metric === 'ORDERS'
-                  ? 'bg-[#FBF5EB] text-[#8F682E] border border-blue-500/40 shadow-sm'
-                  : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:text-[#1A1612]'
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Số Lượng Đơn Hàng</span>
+            <button type="button" aria-pressed={metric === 'ORDERS'} onClick={() => setMetric('ORDERS')} className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${metric === 'ORDERS' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]' : 'border-transparent bg-white text-[#7D715E] hover:border-[#EAE4D7] hover:bg-[#FAF8F5]'}`}>
+              <ShoppingBag className="h-3.5 w-3.5" /><span>Đơn hàng</span>
             </button>
-            <button
-              onClick={() => setMetric('CONVERSION_RATE')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
-                metric === 'CONVERSION_RATE'
-                  ? 'bg-[#059669]/10 text-[#059669] border border-emerald-500/40 shadow-sm'
-                  : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:text-[#1A1612]'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Tỷ Lệ Chốt Đơn (CR%)</span>
+            <button type="button" aria-pressed={metric === 'CONVERSION_RATE'} onClick={() => setMetric('CONVERSION_RATE')} className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${metric === 'CONVERSION_RATE' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]' : 'border-transparent bg-white text-[#7D715E] hover:border-[#EAE4D7] hover:bg-[#FAF8F5]'}`}>
+              <Zap className="h-3.5 w-3.5" /><span>Tỷ lệ chốt</span>
             </button>
-            <button
-              onClick={() => setMetric('COMMISSION')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
-                metric === 'COMMISSION'
-                  ? 'bg-purple-500/20 text-[#8F682E] border border-purple-500/40 shadow-sm'
-                  : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:text-[#1A1612]'
-              }`}
-            >
-              <Award className="w-3.5 h-3.5" />
-              <span>Hoa Hồng Thực Nhận</span>
+            <button type="button" aria-pressed={metric === 'COMMISSION'} onClick={() => setMetric('COMMISSION')} className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${metric === 'COMMISSION' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]' : 'border-transparent bg-white text-[#7D715E] hover:border-[#EAE4D7] hover:bg-[#FAF8F5]'}`}>
+              <Award className="h-3.5 w-3.5" /><span>Hoa hồng</span>
             </button>
           </div>
-
-          <div className="flex items-center space-x-2 text-xs">
-            <span className="text-[#7D715E]">Phạm vi:</span>
-            <button
-              onClick={() => setScope(scope === 'GLOBAL' ? 'STORE' : 'GLOBAL')}
-              className="px-3 py-1 bg-[#F3EFE6] hover:bg-[#F3EFE6] text-[#1A1612] rounded-lg border border-[#EAE4D7] font-medium transition-colors"
-            >
-              {scope === 'GLOBAL' ? '🌐 Toàn Sàn SCANMS' : '🏪 Gian Hàng Của Tôi'}
-            </button>
-          </div>
+          {canChangeScope && (
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              <button type="button" aria-pressed={scope === 'STORE'} onClick={() => setScope(scope === 'GLOBAL' ? 'STORE' : 'GLOBAL')} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs font-medium text-[#7D715E] transition-colors hover:bg-[#FBF5EB] hover:text-[#8F682E]">
+                <Shield className="h-3.5 w-3.5 text-[#8F682E]" />
+                <span>{scope === 'GLOBAL' ? 'Toàn sàn SCANMS' : isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</span>
+              </button>
+              {scope === 'STORE' && isAdmin && (
+                <select aria-label="Chọn gian hàng để xếp hạng" value={selectedStoreId} onChange={(event) => setSelectedStoreId(event.target.value)} className="h-9 max-w-[220px] rounded-lg border border-[#EAE4D7] bg-white px-3 text-xs text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/15" disabled={!stores.length}>
+                  {stores.length ? stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>) : <option value="">{storesLoading ? 'Đang tải gian hàng…' : 'Không có gian hàng'}</option>}
+                </select>
+              )}
+            </div>
+          )}
         </div>
-      </div>
+      </section>
+
+      {loadError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white px-3 py-2 text-xs text-[#DC2626]">{loadError}</div>}
 
       {/* ─── 2. BỤC VINH DANH PODIUM TOP 1 - 2 - 3 ──────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-6">
+      <div className="grid grid-cols-1 items-stretch gap-4 pt-1 md:auto-rows-fr md:grid-cols-3">
         {/* RANK 2: Á QUÂN 1 (SILVER MEDAL) */}
         <div
           onClick={() => podium?.rank2 && handleOpenCreatorModal(podium.rank2.collaboratorId)}
-          className={`cursor-pointer group relative bg-gradient-to-b from-white to-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] rounded-3xl p-6 text-center space-y-4 shadow-xl transition-all hover:-translate-y-2 order-2 md:order-1 ${
+          className={`cursor-pointer group relative bg-white border border-[#EAE4D7] hover:border-[#C59B58] rounded-2xl p-4 text-center space-y-3 shadow-sm transition-colors order-2 md:order-1 ${
             podium?.rank2?.isCurrentUser ? 'ring-2 ring-[#C59B58] bg-white' : ''
           }`}
         >
-          <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-tr from-slate-400 to-slate-200 text-[#1A1612] font-black text-lg shadow-lg">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center justify-center w-8 h-8 rounded-xl bg-[#F3EFE6] text-[#7D715E] font-bold text-sm border border-[#EAE4D7]">
             2
           </div>
 
-          <div className="pt-3">
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-tr from-slate-600 to-slate-300 p-1 shadow-md">
+          <div className="pt-2">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[#F3EFE6] p-1">
               <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden text-2xl font-bold text-[#1A1612]">
                 {podium?.rank2?.avatarUrl ? (
                   <img src={podium.rank2.avatarUrl} alt={podium.rank2.fullName} className="w-full h-full object-cover" />
@@ -266,21 +242,21 @@ export default function LeaderboardPage() {
 
           <div className="space-y-1">
             <h3 className="font-bold text-base text-[#1A1612] group-hover:text-[#1A1612] flex items-center justify-center gap-1.5">
-              <span>{podium?.rank2?.fullName || 'Chưa có đối tác'}</span>
+              <span>{podium?.rank2?.fullName || (loading && !data ? 'Đang tải KOL…' : 'Chưa có đối tác')}</span>
               {podium?.rank2?.isCurrentUser && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6]">Bạn</span>
               )}
             </h3>
-            <p className="text-xs text-[#7D715E]">{podium?.rank2?.primaryChannelHandle || '@creator • TikTok'}</p>
+            <p className="text-xs text-[#7D715E]">{podium?.rank2?.primaryChannelHandle || (loading && !data ? 'Đang tải hồ sơ…' : '@creator • TikTok')}</p>
           </div>
 
-          <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7] space-y-1">
-            <span className="text-[11px] text-[#7D715E] font-medium">Doanh Số Ghi Nhận</span>
-            <div className="text-xl font-extrabold text-[#1A1612]">{formatVND(podium?.rank2?.grossRevenue)}</div>
+          <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] space-y-1">
+            <span className="text-[11px] text-[#7D715E] font-medium">{metricLabels[metric]} · xếp hạng</span>
+            <div className="text-xl font-extrabold text-[#1A1612]">{formatMetricValue(podium?.rank2)}</div>
             <div className="flex items-center justify-center gap-2 text-[11px] text-[#7D715E] pt-1 border-t border-[#EAE4D7]">
               <span>{podium?.rank2?.totalOrders || 0} đơn</span>
               <span>•</span>
-              <span className="text-[#059669]">{podium?.rank2?.conversionRate || 0}% CR</span>
+              <span className="text-[#8F682E]">{podium?.rank2?.conversionRate || 0}% CR</span>
             </div>
           </div>
 
@@ -289,7 +265,7 @@ export default function LeaderboardPage() {
             <span>{podium?.rank2?.tierName || 'Cấp Bạc'}</span>
           </div>
 
-          <div className="p-2.5 bg-[#F3EFE6] rounded-xl border border-[#EAE4D7] text-xs font-semibold text-[#7D715E]">
+          <div className="p-2 bg-[#FBF5EB] rounded-lg border border-[#EEDFC6] text-xs font-medium text-[#7D715E]">
             🎁 Thưởng nóng: <strong className="text-[#8F682E]">+2.500.000 ₫</strong>
           </div>
         </div>
@@ -297,20 +273,20 @@ export default function LeaderboardPage() {
         {/* RANK 1: QUÁN QUÂN (GOLD CROWN / DIAMOND GLOW) */}
         <div
           onClick={() => podium?.rank1 && handleOpenCreatorModal(podium.rank1.collaboratorId)}
-          className={`cursor-pointer group relative bg-gradient-to-b from-[#FBF5EB] via-white to-[#F3EFE6] border-2 border-[#C59B58] hover:border-[#B88E4F] rounded-3xl p-6 lg:p-8 text-center space-y-4 shadow-2xl shadow-amber-500/20 transition-all hover:-translate-y-3 order-1 md:order-2 ${
+          className={`cursor-pointer group relative bg-[#FBF5EB] border border-[#EEDFC6] hover:border-[#C59B58] rounded-2xl p-4 sm:p-5 text-center space-y-3 shadow-sm transition-colors order-1 md:order-2 ${
             podium?.rank1?.isCurrentUser ? 'ring-4 ring-amber-400/50' : ''
           }`}
         >
           {/* Crown & Floating Badge */}
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center">
-            <Crown className="w-8 h-8 text-[#8F682E] drop-shadow-[0_0_12px_rgba(245,158,11,0.8)] animate-bounce" />
-            <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 text-[#1A1612] font-black text-xl shadow-xl shadow-amber-500/40 border-2 border-yellow-200">
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex flex-col items-center">
+            <Crown className="w-5 h-5 text-[#8F682E]" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#C59B58] text-[#1A1612] font-bold text-sm border border-white">
               1
             </div>
           </div>
 
-          <div className="pt-6">
-            <div className="w-28 h-28 mx-auto rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 p-1.5 shadow-2xl shadow-amber-500/30">
+          <div className="pt-3">
+            <div className="w-20 h-20 mx-auto rounded-full bg-[#C59B58] p-1">
               <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden text-3xl font-extrabold text-[#8F682E]">
                 {podium?.rank1?.avatarUrl ? (
                   <img src={podium.rank1.avatarUrl} alt={podium.rank1.fullName} className="w-full h-full object-cover" />
@@ -323,51 +299,51 @@ export default function LeaderboardPage() {
 
           <div className="space-y-1">
             <h3 className="font-extrabold text-lg text-[#1A1612] group-hover:text-[#8F682E] flex items-center justify-center gap-1.5">
-              <span>{podium?.rank1?.fullName || 'Chưa có Quán Quân'}</span>
+              <span>{podium?.rank1?.fullName || (loading && !data ? 'Đang tải KOL…' : 'Chưa có Quán Quân')}</span>
               {podium?.rank1?.isCurrentUser && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-[#1A1612] font-bold">BẠN</span>
               )}
             </h3>
-            <p className="text-xs text-[#7D715E] font-medium">{podium?.rank1?.primaryChannelHandle || '@top.creator • YouTube/TikTok'}</p>
+            <p className="text-xs text-[#7D715E] font-medium">{podium?.rank1?.primaryChannelHandle || (loading && !data ? 'Đang tải hồ sơ…' : '@top.creator • YouTube/TikTok')}</p>
           </div>
 
-          <div className="p-4 bg-[#FBF5EB] rounded-2xl border border-[#EEDFC6] space-y-1 shadow-inner">
-            <span className="text-xs text-[#8F682E] font-semibold uppercase tracking-wider">Quán Quân Doanh Số</span>
-            <div className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
-              {formatVND(podium?.rank1?.grossRevenue)}
+          <div className="p-3 bg-white/80 rounded-xl border border-[#EEDFC6] space-y-1">
+            <span className="text-xs text-[#8F682E] font-semibold uppercase tracking-wider">Đứng đầu theo {metricLabels[metric]}</span>
+            <div className="text-xl sm:text-2xl font-extrabold text-[#8F682E]">
+              {formatMetricValue(podium?.rank1)}
             </div>
             <div className="flex items-center justify-center gap-3 text-xs text-[#7D715E] pt-2 border-t border-[#EAE4D7]">
               <span><strong>{podium?.rank1?.totalOrders || 0}</strong> đơn</span>
               <span>•</span>
               <span><strong>{formatNumber(podium?.rank1?.totalClicks)}</strong> clicks</span>
               <span>•</span>
-              <span className="text-[#059669] font-bold">{podium?.rank1?.conversionRate || 0}% CR</span>
+              <span className="text-[#8F682E] font-bold">{podium?.rank1?.conversionRate || 0}% CR</span>
             </div>
           </div>
 
-          <div className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6] shadow-md">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white text-[#8F682E] border border-[#EEDFC6]">
             <Sparkles className="w-3.5 h-3.5 text-[#8F682E]" />
             <span>{podium?.rank1?.tierName || 'Cấp Kim Cương'}</span>
           </div>
 
-          <div className="p-3 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 rounded-xl border border-[#EEDFC6] text-xs font-bold text-[#8F682E] shadow-md">
-            👑 Thưởng nóng: <span className="text-[#1A1612]">+5.000.000 ₫</span> &amp; <span className="text-[#059669]">+5% Thưởng VIP</span>
+          <div className="p-2 bg-white/80 rounded-lg border border-[#EEDFC6] text-xs font-semibold text-[#8F682E]">
+            👑 Thưởng nóng: <span className="text-[#1A1612]">+5.000.000 ₫</span> &amp; <span className="text-[#8F682E]">+5% Thưởng VIP</span>
           </div>
         </div>
 
         {/* RANK 3: Á QUÂN 2 (BRONZE SHIELD) */}
         <div
           onClick={() => podium?.rank3 && handleOpenCreatorModal(podium.rank3.collaboratorId)}
-          className={`cursor-pointer group relative bg-gradient-to-b from-white to-[#FAF8F5] border border-[#EEDFC6] hover:border-[#B88E4F] rounded-3xl p-6 text-center space-y-4 shadow-xl transition-all hover:-translate-y-2 order-3 ${
+          className={`cursor-pointer group relative bg-white border border-[#EAE4D7] hover:border-[#C59B58] rounded-2xl p-4 text-center space-y-3 shadow-sm transition-colors order-3 ${
             podium?.rank3?.isCurrentUser ? 'ring-2 ring-[#C59B58] bg-white' : ''
           }`}
         >
-          <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#C59B58] to-[#B88E4F] text-[#1A1612] font-black text-lg shadow-lg">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center justify-center w-8 h-8 rounded-xl bg-[#F3EFE6] text-[#8F682E] font-bold text-sm border border-[#EEDFC6]">
             3
           </div>
 
-          <div className="pt-3">
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-tr from-[#C59B58] to-[#B88E4F] p-1 shadow-md">
+          <div className="pt-2">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[#EEDFC6] p-1">
               <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden text-2xl font-bold text-[#8F682E]">
                 {podium?.rank3?.avatarUrl ? (
                   <img src={podium.rank3.avatarUrl} alt={podium.rank3.fullName} className="w-full h-full object-cover" />
@@ -380,21 +356,21 @@ export default function LeaderboardPage() {
 
           <div className="space-y-1">
             <h3 className="font-bold text-base text-[#1A1612] group-hover:text-[#8F682E] flex items-center justify-center gap-1.5">
-              <span>{podium?.rank3?.fullName || 'Chưa có đối tác'}</span>
+              <span>{podium?.rank3?.fullName || (loading && !data ? 'Đang tải KOL…' : 'Chưa có đối tác')}</span>
               {podium?.rank3?.isCurrentUser && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6]">Bạn</span>
               )}
             </h3>
-            <p className="text-xs text-[#7D715E]">{podium?.rank3?.primaryChannelHandle || '@creator • Facebook'}</p>
+            <p className="text-xs text-[#7D715E]">{podium?.rank3?.primaryChannelHandle || (loading && !data ? 'Đang tải hồ sơ…' : '@creator • Facebook')}</p>
           </div>
 
-          <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7] space-y-1">
-            <span className="text-[11px] text-[#7D715E] font-medium">Doanh Số Ghi Nhận</span>
-            <div className="text-xl font-extrabold text-[#8F682E]">{formatVND(podium?.rank3?.grossRevenue)}</div>
+          <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] space-y-1">
+            <span className="text-[11px] text-[#7D715E] font-medium">{metricLabels[metric]} · xếp hạng</span>
+            <div className="text-xl font-extrabold text-[#8F682E]">{formatMetricValue(podium?.rank3)}</div>
             <div className="flex items-center justify-center gap-2 text-[11px] text-[#7D715E] pt-1 border-t border-[#EAE4D7]">
               <span>{podium?.rank3?.totalOrders || 0} đơn</span>
               <span>•</span>
-              <span className="text-[#059669]">{podium?.rank3?.conversionRate || 0}% CR</span>
+              <span className="text-[#8F682E]">{podium?.rank3?.conversionRate || 0}% CR</span>
             </div>
           </div>
 
@@ -403,74 +379,74 @@ export default function LeaderboardPage() {
             <span>{podium?.rank3?.tierName || 'Cấp Đồng'}</span>
           </div>
 
-          <div className="p-2.5 bg-[#F3EFE6] rounded-xl border border-[#EAE4D7] text-xs font-semibold text-[#7D715E]">
+          <div className="p-2 bg-[#FBF5EB] rounded-lg border border-[#EEDFC6] text-xs font-medium text-[#7D715E]">
             🎁 Thưởng nóng: <strong className="text-[#8F682E]">+1.000.000 ₫</strong>
           </div>
         </div>
       </div>
 
       {/* ─── 3. BẢNG XẾP HẠNG TOP 4 - 20 (RANKING TABLE) ───────────────── */}
-      <div className="bg-white border border-[#EAE4D7] rounded-3xl overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-[#EAE4D7] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-[#EAE4D7] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-[#1A1612] flex items-center gap-2">
               <Award className="w-5 h-5 text-[#8F682E]" />
               <span>Bảng Xếp Hạng Top 4 — Top 20</span>
             </h2>
-            <p className="text-xs text-[#7D715E]">Danh sách các đối tác tiếp thị xuất sắc nhất theo số liệu xác thực từ CSDL.</p>
+            <p className="text-xs text-[#7D715E]">Danh sách đối tác theo kết quả đã ghi nhận.</p>
           </div>
-          <span className="text-xs text-[#7D715E]">Tự động cập nhật mỗi 30 giây</span>
+              <span className="text-xs text-[#7D715E]">Xếp hạng theo {metricLabels[metric]} · {scope === 'GLOBAL' ? 'Toàn sàn' : isAdmin ? (stores.find((store) => store.id === selectedStoreId)?.name || 'Gian hàng') : 'Gian hàng của bạn'}</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-[#F3EFE6] text-[#7D715E] border-b border-[#EAE4D7] font-semibold">
-                <th className="py-4 px-6 text-center w-20">Hạng</th>
-                <th className="py-4 px-6">Creator / Đối Tác</th>
-                <th className="py-4 px-6">Cấp Bậc</th>
-                <th className="py-4 px-6 text-right">Lượt Click</th>
-                <th className="py-4 px-6 text-right">Đơn Hàng</th>
-                <th className="py-4 px-6 text-right">Tỷ Lệ Chốt (CR%)</th>
-                <th className="py-4 px-6 text-right font-bold text-[#1A1612]">Doanh Số (GMV)</th>
-                <th className="py-4 px-6 text-right">Hoa Hồng</th>
-                <th className="py-4 px-6 text-center">Thao Tác</th>
+              <tr className="bg-[#FAF8F5] text-[#7D715E] border-b border-[#EAE4D7] font-semibold">
+                <th className="py-3 px-4 text-center w-20">Hạng</th>
+                <th className="py-3 px-4">Creator / Đối Tác</th>
+                <th className="py-3 px-4">Cấp Bậc</th>
+                <th className="py-3 px-4 text-right">Lượt Click</th>
+                <th className={`py-3 px-4 text-right ${metric === 'ORDERS' ? 'bg-[#FBF5EB] text-[#8F682E]' : ''}`}>Đơn Hàng</th>
+                <th className={`py-3 px-4 text-right ${metric === 'CONVERSION_RATE' ? 'bg-[#FBF5EB] text-[#8F682E]' : ''}`}>Tỷ Lệ Chốt (CR%)</th>
+                <th className={`py-3 px-4 text-right ${metric === 'REVENUE' ? 'bg-[#FBF5EB] text-[#8F682E]' : ''}`}>Doanh Số (GMV)</th>
+                <th className={`py-3 px-4 text-right ${metric === 'COMMISSION' ? 'bg-[#FBF5EB] text-[#8F682E]' : ''}`}>Hoa Hồng</th>
+                <th className="py-3 px-4 text-center">Thao Tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80">
+            <tbody className="divide-y divide-[#EAE4D7]">
               {rankings.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[#7D715E]">
-                    Chưa có thêm đối tác trong khoảng thời gian này.
+                  <td colSpan={9} className="py-10 text-center text-[#7D715E]">
+                    {loading && !data ? 'Đang tải danh sách KOL…' : 'Chưa có thêm đối tác trong khoảng thời gian này.'}
                   </td>
                 </tr>
               ) : (
                 rankings.map((item) => (
                   <tr
                     key={item.collaboratorId}
-                    className={`hover:bg-[#F3EFE6] transition-colors group ${
+                    className={`hover:bg-[#FAF8F5] transition-colors group ${
                       item.isCurrentUser ? 'bg-[#FBF5EB] hover:bg-amber-500/15' : ''
                     }`}
                   >
                     {/* Rank Number & Delta */}
-                    <td className="py-4 px-6 text-center">
+                    <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center space-x-1.5">
                         <span className="font-extrabold text-sm text-[#7D715E]">
                           #{item.rank < 10 ? `0${item.rank}` : item.rank}
                         </span>
-                        {item.rankDelta > 0 && (
-                          <span className="flex items-center text-[10px] text-[#059669] font-bold" title={`Tăng ${item.rankDelta} bậc`}>
+                        {metric === 'REVENUE' && item.rankDelta > 0 && (
+                          <span className="flex items-center text-[10px] text-[#8F682E] font-bold" title={`Tăng ${item.rankDelta} bậc`}>
                             <TrendingUp className="w-3 h-3" />
                             <span>{item.rankDelta}</span>
                           </span>
                         )}
-                        {item.rankDelta < 0 && (
+                        {metric === 'REVENUE' && item.rankDelta < 0 && (
                           <span className="flex items-center text-[10px] text-[#DC2626] font-bold" title={`Giảm ${Math.abs(item.rankDelta)} bậc`}>
                             <TrendingDown className="w-3 h-3" />
                             <span>{Math.abs(item.rankDelta)}</span>
                           </span>
                         )}
-                        {item.rankDelta === 0 && (
+                        {metric === 'REVENUE' && item.rankDelta === 0 && (
                           <span className="text-[#7D715E] text-[10px]">
                             <Minus className="w-3 h-3" />
                           </span>
@@ -479,7 +455,7 @@ export default function LeaderboardPage() {
                     </td>
 
                     {/* Creator Info */}
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-9 h-9 rounded-full bg-[#F3EFE6] flex items-center justify-center text-xs font-bold text-[#7D715E] border border-[#EAE4D7] overflow-hidden flex-shrink-0">
                           {item.avatarUrl ? (
@@ -501,39 +477,39 @@ export default function LeaderboardPage() {
                     </td>
 
                     {/* Tier */}
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]">
                         {item.tierName}
                       </span>
                     </td>
 
                     {/* Clicks */}
-                    <td className="py-4 px-6 text-right font-medium text-[#7D715E]">
+                    <td className="py-3 px-4 text-right font-medium text-[#7D715E]">
                       {formatNumber(item.totalClicks)}
                     </td>
 
                     {/* Orders */}
-                    <td className="py-4 px-6 text-right font-medium text-[#7D715E]">
+                    <td className={`py-3 px-4 text-right ${metric === 'ORDERS' ? 'bg-[#FBF5EB] font-bold text-[#8F682E]' : 'font-medium text-[#7D715E]'}`}>
                       {item.totalOrders} đơn
                     </td>
 
                     {/* Conversion Rate */}
-                    <td className="py-4 px-6 text-right">
-                      <span className="font-bold text-[#059669]">{item.conversionRate}%</span>
+                    <td className={`py-3 px-4 text-right ${metric === 'CONVERSION_RATE' ? 'bg-[#FBF5EB]' : ''}`}>
+                      <span className={`font-bold ${metric === 'CONVERSION_RATE' ? 'text-[#8F682E]' : 'text-[#7D715E]'}`}>{item.conversionRate}%</span>
                     </td>
 
                     {/* GMV */}
-                    <td className="py-4 px-6 text-right font-extrabold text-[#8F682E] text-sm">
+                    <td className={`py-3 px-4 text-right text-sm ${metric === 'REVENUE' ? 'bg-[#FBF5EB] font-extrabold text-[#8F682E]' : 'font-semibold text-[#7D715E]'}`}>
                       {formatVND(item.grossRevenue)}
                     </td>
 
                     {/* Commission */}
-                    <td className="py-4 px-6 text-right font-semibold text-[#7D715E]">
+                    <td className={`py-3 px-4 text-right ${metric === 'COMMISSION' ? 'bg-[#FBF5EB] font-bold text-[#8F682E]' : 'font-semibold text-[#7D715E]'}`}>
                       {formatVND(item.totalCommission)}
                     </td>
 
                     {/* Action */}
-                    <td className="py-4 px-6 text-center">
+                    <td className="py-3 px-4 text-center">
                       <button
                         onClick={() => handleOpenCreatorModal(item.collaboratorId)}
                         className="px-3 py-1.5 bg-[#F3EFE6] hover:bg-amber-500 hover:text-[#1A1612] text-[#7D715E] font-semibold rounded-xl text-xs transition-all flex items-center space-x-1 mx-auto"
@@ -553,41 +529,41 @@ export default function LeaderboardPage() {
       {/* ─── 4. THANH VỊ TRÍ CỦA TÔI (MY RANK STICKY BAR) ──────────────── */}
       {myRank && (
         <div className="fixed bottom-4 left-4 right-4 max-w-5xl mx-auto z-40">
-          <div className="bg-gradient-to-r from-[#FBF5EB] via-white to-[#F3EFE6] border-2 border-[#EEDFC6] rounded-2xl p-4 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500 text-[#1A1612] font-black text-xl shadow-lg shadow-amber-500/30 flex-shrink-0">
+          <div className="bg-white border border-[#EEDFC6] rounded-2xl p-3 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E] font-bold text-base flex-shrink-0">
                 #{myRank.myRank}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-[#1A1612] text-sm">Vị Trí Của Bạn Trong {myRank.currentPeriodLabel}</h4>
-                  {myRank.rankDelta > 0 && (
-                    <span className="text-[#059669] text-xs font-bold">↑ Tăng {myRank.rankDelta} bậc</span>
+                  <h4 className="font-bold text-[#1A1612] text-sm">Hạng của bạn theo {metricLabels[metric]} · {myRank.currentPeriodLabel}</h4>
+                  {metric === 'REVENUE' && myRank.rankDelta > 0 && (
+                    <span className="text-[#8F682E] text-xs font-semibold">↑ Tăng {myRank.rankDelta} bậc</span>
                   )}
                 </div>
                 <p className="text-xs text-[#7D715E]">
-                  Doanh số hiện tại: <strong className="text-[#8F682E] font-bold">{formatVND(myRank.myRevenue)}</strong> ({myRank.myOrders} đơn)
+                  {metricLabels[metric]} hiện tại: <strong className="text-[#8F682E] font-bold">{metric === 'REVENUE' ? formatVND(myRank.myRevenue) : metric === 'ORDERS' ? `${formatNumber(myRank.myOrders)} đơn` : metric === 'CONVERSION_RATE' ? `${formatNumber(myRank.myConversionRate)}%` : formatVND(myRank.myCommission)}</strong>
                 </p>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              {myRank.myRank > 10 ? (
+              {metric === 'REVENUE' && myRank.myRank > 10 ? (
                 <div className="text-right">
                   <span className="text-[11px] text-[#7D715E]">Cần thêm để vào Top 10:</span>
                   <div className="text-sm font-bold text-[#8F682E]">+{formatVND(myRank.gapToTop10Revenue)}</div>
                 </div>
-              ) : (
-                <div className="px-3 py-1 bg-[#059669]/10 text-[#059669] border border-emerald-500/30 rounded-xl text-xs font-bold">
+              ) : metric === 'REVENUE' ? (
+                <div className="px-3 py-1 bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6] rounded-lg text-xs font-semibold">
                   ✓ ĐANG NẰM TRONG TOP 10
                 </div>
-              )}
+              ) : null}
 
               <button
                 onClick={() => {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="px-4 py-2 bg-amber-500 hover:bg-yellow-400 text-[#1A1612] font-bold rounded-xl text-xs shadow-md transition-transform active:scale-95"
+                className="px-3 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] font-semibold rounded-lg text-xs transition-colors"
               >
                 Đua Top Ngay
               </button>
@@ -599,7 +575,7 @@ export default function LeaderboardPage() {
       {/* ─── 5. MODAL HỒ SƠ VINH DANH CREATOR (CREATOR HALL OF FAME) ─────── */}
       {selectedCreatorId && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white border border-[#EEDFC6] rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl shadow-amber-500/10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border border-[#EEDFC6] rounded-2xl max-w-2xl w-full p-5 sm:p-6 space-y-5 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-4">
               <div className="flex items-center space-x-2">
                 <Trophy className="w-6 h-6 text-[#8F682E]" />
@@ -655,7 +631,7 @@ export default function LeaderboardPage() {
                   </div>
                   <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7] text-center">
                     <span className="text-[11px] text-[#7D715E]">Tổng Hoa Hồng</span>
-                    <div className="text-base font-bold text-[#059669]">{formatVND(creatorProfile.lifetimeStats.totalCommission)}</div>
+                    <div className="text-base font-bold text-[#8F682E]">{formatVND(creatorProfile.lifetimeStats.totalCommission)}</div>
                   </div>
                   <div className="p-3 bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7] text-center">
                     <span className="text-[11px] text-[#7D715E]">Mẫu Thử Đã Nhận</span>
@@ -712,7 +688,7 @@ export default function LeaderboardPage() {
                       });
                       handleCloseModal();
                     }}
-                    className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-[#1A1612] text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-transform active:scale-95 cursor-pointer"
+                    className="px-5 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                   >
                     👑 Mời Vào Chiến Dịch VIP (FR-27)
                   </button>

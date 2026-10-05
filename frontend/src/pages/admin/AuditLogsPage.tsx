@@ -201,7 +201,7 @@ export const AuditLogsPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-w-0 pt-4 text-[#1A1612] sm:pt-5 lg:-mx-3 lg:w-[calc(100%+24px)]">
+    <div className="w-full min-w-0 pt-4 text-[#1A1612] sm:pt-5">
       <div className="mb-8 w-full min-w-0">
         {/* 4 KPI Cards - Nhỏ gọn, cân xứng, chuẩn 4 cột trên desktop */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">

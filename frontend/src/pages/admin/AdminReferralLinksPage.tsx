@@ -249,17 +249,27 @@ export default function AdminReferralLinksPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-600">
+              <table className="w-full min-w-[1180px] table-fixed text-left text-sm text-slate-600">
+                <colgroup>
+                  <col style={{ width: '19%' }} />
+                  <col style={{ width: '22%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '8%' }} />
+                </colgroup>
                 <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <tr>
-                    <th className="px-6 py-4">Mã & Liên kết rút gọn</th>
-                    <th className="px-6 py-4">Sản phẩm & Cửa hàng</th>
-                    <th className="px-6 py-4">Cộng tác viên (KOL)</th>
-                    <th className="px-6 py-4">Kênh / UTM</th>
-                    <th className="px-6 py-4 text-center">Lượt Click</th>
-                    <th className="px-6 py-4 text-center">Đơn Hàng</th>
-                    <th className="px-6 py-4">Trạng thái</th>
-                    <th className="px-6 py-4 text-right">Thao tác</th>
+                    <th className="px-3 py-4 sm:px-4">Mã & Liên kết rút gọn</th>
+                    <th className="px-3 py-4 sm:px-4">Sản phẩm & Cửa hàng</th>
+                    <th className="px-3 py-4 sm:px-4">Cộng tác viên (KOL)</th>
+                    <th className="px-3 py-4 sm:px-4">Kênh / UTM</th>
+                    <th className="px-2 py-4 text-center">Lượt Click</th>
+                    <th className="px-2 py-4 text-center">Đơn Hàng</th>
+                    <th className="px-2 py-4 sm:px-3">Trạng thái</th>
+                    <th className="px-2 py-4 text-right sm:px-3">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -267,7 +277,7 @@ export default function AdminReferralLinksPage() {
                     const fullUrl = `${window.location.origin}/r/${link.shortCode}`;
                     return (
                       <tr key={link.id} className="hover:bg-slate-50/80 transition">
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-4 sm:px-4">
                           <div className="flex items-center gap-2 font-mono font-bold text-slate-900">
                             <span className="px-2 py-0.5 bg-slate-100 rounded text-xs border border-slate-200">
                               {link.shortCode}
@@ -303,19 +313,22 @@ export default function AdminReferralLinksPage() {
                           </p>
                         </td>
 
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-4 sm:px-4">
                           <div className="flex items-center gap-3">
                             {link.product?.imageUrl ? (
                               <img
                                 src={link.product.imageUrl}
                                 alt={link.product.title}
                                 className="w-10 h-10 rounded-lg object-cover border border-slate-200 flex-shrink-0"
+                                onError={(event) => {
+                                  event.currentTarget.classList.add('hidden');
+                                  event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
                               />
-                            ) : (
-                              <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0 text-slate-400">
+                            ) : null}
+                            <div className={`${link.product?.imageUrl ? 'hidden ' : ''}w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0 text-slate-400`}>
                                 <ShoppingBag className="w-5 h-5" />
-                              </div>
-                            )}
+                            </div>
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-slate-800 line-clamp-1">
                                 {link.product?.title || 'Sản phẩm không rõ'}
@@ -328,7 +341,7 @@ export default function AdminReferralLinksPage() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-4 sm:px-4">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-semibold text-xs">
                               {link.collaborator?.fullName?.charAt(0) || <User className="w-3.5 h-3.5" />}
@@ -344,7 +357,7 @@ export default function AdminReferralLinksPage() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-4 sm:px-4">
                           <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
                             {link.channel || 'Chưa định danh'}
                           </span>
@@ -355,18 +368,18 @@ export default function AdminReferralLinksPage() {
                           )}
                         </td>
 
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-2 py-4 text-center">
                           <span className="font-semibold text-slate-900">{link.totalClicks}</span>
                           <p className="text-[11px] text-slate-400">({link.uniqueClicks} unique)</p>
                         </td>
 
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-2 py-4 text-center">
                           <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
                             {link.totalOrders || 0}
                           </span>
                         </td>
 
-                        <td className="px-6 py-4">
+                        <td className="px-2 py-4 sm:px-3">
                           {link.status === 'BLOCKED' ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
                               <ShieldAlert className="w-3.5 h-3.5" />
@@ -392,7 +405,7 @@ export default function AdminReferralLinksPage() {
                           )}
                         </td>
 
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-2 py-4 text-right sm:px-3">
                           {link.status === 'BLOCKED' ? (
                             <button
                               onClick={() => handleUnblock(link)}
