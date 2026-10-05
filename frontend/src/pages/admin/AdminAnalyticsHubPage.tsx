@@ -37,8 +37,6 @@ export default function AdminAnalyticsHubPage() {
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}
-        title="Giám Sát & Hiệu Suất Toàn Sàn"
-        subtitle="Theo dõi biến động doanh thu theo thời gian thực, bảng xếp hạng các nhà sáng tạo hàng đầu và điều phối AI matching"
       />
 
       <div className="w-full min-h-[500px]">
