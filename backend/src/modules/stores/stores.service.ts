@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class StoresService {
@@ -13,20 +14,38 @@ export class StoresService {
 
   async getPublicStoreById(storeId: string) {
     const store = await this.prisma.store.findFirst({
-      where: { id: storeId, isDeleted: false, isActive: true, owner: { isActive: true } },
+      where: {
+        id: storeId,
+        isDeleted: false,
+        isActive: true,
+        isVerified: true,
+        onboardingStatus: 'VERIFIED',
+        owner: { isActive: true },
+      },
       select: {
         id: true, name: true, slug: true, logoUrl: true, description: true,
         isActive: true, isVerified: true, createdAt: true,
         policyReturn: true, policyWarranty: true, policyShipping: true,
         _count: { select: {
-          products: { where: { isDeleted: false, isActive: true } },
+          products: {
+            where: {
+              isDeleted: false,
+              isActive: true,
+              moderationStatus: 'APPROVED',
+            },
+          },
           follows: true,
         } },
       },
     });
     if (!store) throw new NotFoundException('Không tìm thấy Shop');
     const categories = await this.prisma.product.findMany({
-      where: { storeId, isDeleted: false, isActive: true },
+      where: {
+        storeId,
+        isDeleted: false,
+        isActive: true,
+        moderationStatus: 'APPROVED',
+      },
       distinct: ['categoryName'],
       select: { categoryName: true },
       orderBy: { categoryName: 'asc' },
@@ -68,6 +87,9 @@ export class StoresService {
             campaigns: true,
           },
         },
+        owner: {
+          select: { fullName: true, email: true, phoneNumber: true },
+        },
       },
     });
 
@@ -92,7 +114,6 @@ export class StoresService {
           slug,
           defaultCommissionRate: 10.0,
           attributionWindowDays: 30,
-          minPayoutAmount: 200000.0,
         },
         include: {
           _count: {
@@ -101,6 +122,9 @@ export class StoresService {
               orders: true,
               campaigns: true,
             },
+          },
+          owner: {
+            select: { fullName: true, email: true, phoneNumber: true },
           },
         },
       });
@@ -125,6 +149,40 @@ export class StoresService {
       throw new BadRequestException('Logo gian hàng không được để trống');
     }
 
+    const ownerProfileUpdates = {
+      ...(dto.representativeName !== undefined && {
+        representativeName: dto.representativeName.trim(),
+      }),
+      ...(dto.businessType !== undefined && { businessType: dto.businessType }),
+      ...(dto.taxCode !== undefined && { taxCode: dto.taxCode.trim() }),
+      ...(dto.contactPhone !== undefined && { contactPhone: dto.contactPhone.trim() }),
+      ...(dto.contactEmail !== undefined && { contactEmail: dto.contactEmail.trim() }),
+      ...(dto.warehouseAddress !== undefined && {
+        warehouseAddress: dto.warehouseAddress.trim(),
+      }),
+    };
+    const payoutBankUpdates = {
+      ...(dto.payoutBankName !== undefined && {
+        payoutBankName: dto.payoutBankName?.trim() || null,
+      }),
+      ...(dto.payoutBankAccountNumber !== undefined && {
+        payoutBankAccountNumber: dto.payoutBankAccountNumber?.trim() || null,
+      }),
+      ...(dto.payoutBankAccountName !== undefined && {
+        payoutBankAccountName: dto.payoutBankAccountName?.trim() || null,
+      }),
+    };
+    const onboardingUpdates = {
+      ...ownerProfileUpdates,
+      ...payoutBankUpdates,
+    };
+    const existingOnboardingData =
+      store.onboardingData &&
+      typeof store.onboardingData === 'object' &&
+      !Array.isArray(store.onboardingData)
+        ? (store.onboardingData as Prisma.JsonObject)
+        : {};
+
     const updated = await this.prisma.store.update({
       where: { id: store.id },
       data: {
@@ -145,8 +203,11 @@ export class StoresService {
         ...(dto.attributionWindowDays !== undefined && {
           attributionWindowDays: dto.attributionWindowDays,
         }),
-        ...(dto.minPayoutAmount !== undefined && {
-          minPayoutAmount: dto.minPayoutAmount,
+        ...(Object.keys(onboardingUpdates).length > 0 && {
+          onboardingData: {
+            ...existingOnboardingData,
+            ...onboardingUpdates,
+          },
         }),
       },
     });
@@ -161,8 +222,15 @@ export class StoresService {
    * Xem thông tin public của Store theo Slug
    */
   async getStoreBySlug(slug: string) {
-    const store = await this.prisma.store.findUnique({
-      where: { slug, isDeleted: false },
+    const store = await this.prisma.store.findFirst({
+      where: {
+        slug,
+        isDeleted: false,
+        isActive: true,
+        isVerified: true,
+        onboardingStatus: 'VERIFIED',
+        owner: { isActive: true },
+      },
       select: {
         id: true,
         name: true,
@@ -173,12 +241,19 @@ export class StoresService {
         defaultCommissionRate: true,
         isVerified: true,
         policyShipping: true,
+        onboardingData: true,
         policyReturn: true,
         policyWarranty: true,
         createdAt: true,
         _count: {
           select: {
-            products: { where: { isDeleted: false, isActive: true } },
+            products: {
+              where: {
+                isDeleted: false,
+                isActive: true,
+                moderationStatus: 'APPROVED',
+              },
+            },
             orders: true,
             storeCollaborators: true,
           },
@@ -196,7 +271,15 @@ export class StoresService {
 
     // Enrich with realistic shop business profile info (Company Name, Address, Followers, Rating)
     let companyName = `CÔNG TY TNHH ${store.name.toUpperCase()} VIỆT NAM`;
-    let address = 'Phường Bến Nghé, Quận 1, TP. HCM';
+    const onboardingData =
+      store.onboardingData && typeof store.onboardingData === 'object'
+        ? (store.onboardingData as Prisma.JsonObject)
+        : {};
+    const registeredWarehouseAddress =
+      typeof onboardingData.warehouseAddress === 'string'
+        ? onboardingData.warehouseAddress
+        : '';
+    let address = registeredWarehouseAddress || 'Phường Bến Nghé, Quận 1, TP. HCM';
     let followers = 125000;
     let following = 3;
     let rating = 4.9;
@@ -253,7 +336,7 @@ export class StoresService {
       chatResponseRate = '100% (Trong Vài Phút)';
       joinDuration = '6 Tháng Trước';
     } else {
-      if (store.policyShipping && store.policyShipping.length > 5 && !store.policyShipping.toLowerCase().includes('giao')) {
+      if (!registeredWarehouseAddress && store.policyShipping && store.policyShipping.length > 5 && !store.policyShipping.toLowerCase().includes('giao')) {
         address = store.policyShipping;
       }
       companyName = store.name.toUpperCase().startsWith('CÔNG TY') || store.name.toUpperCase().startsWith('HỘ KINH DOANH')
@@ -267,8 +350,15 @@ export class StoresService {
       joinDuration = '12 Tháng Trước';
     }
 
+    if (registeredWarehouseAddress) {
+      address = registeredWarehouseAddress;
+    }
+
+    const { onboardingData: privateOnboardingData, ...publicStore } = store;
+    void privateOnboardingData;
+
     return {
-      ...store,
+      ...publicStore,
       totalProducts,
       companyName,
       address,
@@ -286,7 +376,13 @@ export class StoresService {
    */
   async getMarketplaceStores() {
     const stores = await this.prisma.store.findMany({
-      where: { isDeleted: false, isActive: true },
+      where: {
+        isDeleted: false,
+        isActive: true,
+        isVerified: true,
+        onboardingStatus: 'VERIFIED',
+        owner: { isActive: true },
+      },
       select: {
         id: true,
         name: true,
@@ -301,7 +397,13 @@ export class StoresService {
         createdAt: true,
         _count: {
           select: {
-            products: { where: { isDeleted: false, isActive: true } },
+            products: {
+              where: {
+                isDeleted: false,
+                isActive: true,
+                moderationStatus: 'APPROVED',
+              },
+            },
           },
         },
       },

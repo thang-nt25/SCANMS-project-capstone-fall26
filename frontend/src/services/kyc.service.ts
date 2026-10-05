@@ -13,6 +13,7 @@ export interface KycProfile {
   tier?: {
     id: string;
     name: string;
+    description?: string | null;
     extraBonusPercentage: number;
   };
   socialLinksJson?: {
@@ -51,6 +52,11 @@ export interface StoreApplication {
   slug: string;
   description?: string;
   isVerified: boolean;
+  onboardingStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'NEEDS_INFO' | 'VERIFIED' | 'REJECTED';
+  onboardingData?: Partial<ApplyShopData>;
+  onboardingSubmittedAt?: string;
+  onboardingReviewedAt?: string;
+  onboardingReviewNote?: string | null;
   policyShipping?: string; // Địa chỉ kho hàng
   policyReturn?: string;   // JSON giấy tờ pháp lý
   createdAt?: string;
@@ -112,8 +118,12 @@ export interface UpgradeStatusResponse {
   shopApplication: {
     id: string;
     name: string;
+    description?: string | null;
     slug: string;
     isVerified: boolean;
+    onboardingStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'NEEDS_INFO' | 'VERIFIED' | 'REJECTED';
+    onboardingData?: Partial<ApplyShopData>;
+    onboardingReviewNote?: string | null;
     warehouseAddress?: string;
     submittedAt: string;
     updatedAt: string;
@@ -183,7 +193,11 @@ export const kycService = {
     return res.data;
   },
 
-  async reviewShopApplication(storeId: string, status: 'VERIFIED' | 'REJECTED', note?: string) {
+  async reviewShopApplication(
+    storeId: string,
+    status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED',
+    note?: string,
+  ) {
     const res: any = await api.patch(`/kyc/admin/shop/${storeId}/review`, { status, note });
     return res.data;
   },

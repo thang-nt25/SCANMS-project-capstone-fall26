@@ -582,7 +582,11 @@ export class CustomerService {
           imageUrl: product.imageUrl || '/assets/product-placeholder.svg',
           quantity: Math.min(row.quantity, Math.max(stockQuantity, 1)),
           stockQuantity,
-          isActive: product.isActive && !product.isDeleted && (variant?.isActive ?? true),
+          isActive:
+            product.isActive &&
+            product.moderationStatus === 'APPROVED' &&
+            !product.isDeleted &&
+            (variant?.isActive ?? true),
           store: {
             id: product.store.id,
             name: product.store.name,
@@ -624,7 +628,12 @@ export class CustomerService {
       const variant = item.variantId
         ? product?.variants.find((entry) => entry.id === item.variantId)
         : undefined;
-      if (!product || !product.isActive || (item.variantId && !variant)) {
+      if (
+        !product ||
+        !product.isActive ||
+        product.moderationStatus !== 'APPROVED' ||
+        (item.variantId && !variant)
+      ) {
         warnings.push('Một sản phẩm không còn khả dụng và đã được bỏ khỏi giỏ hàng.');
         return [];
       }
@@ -791,7 +800,14 @@ export class CustomerService {
    */
   async getWishlist(userId: string) {
     const items = await this.prisma.customerWishlist.findMany({
-      where: { userId },
+      where: {
+        userId,
+        product: {
+          isDeleted: false,
+          isActive: true,
+          moderationStatus: 'APPROVED',
+        },
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         product: {
@@ -817,6 +833,10 @@ export class CustomerService {
 
     if (!product) {
       throw new NotFoundException('Không tìm thấy sản phẩm');
+    }
+
+    if (product.moderationStatus !== 'APPROVED' || !product.isActive || product.isDeleted) {
+      throw new NotFoundException('Sản phẩm chưa được công khai trên sàn');
     }
 
     const existing = await this.prisma.customerWishlist.findUnique({

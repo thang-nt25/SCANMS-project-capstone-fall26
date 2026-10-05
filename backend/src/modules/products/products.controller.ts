@@ -23,6 +23,9 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { ModerateProductReviewDto } from './dto/moderate-product-review.dto';
+import { ModerateProductDto } from './dto/moderate-product.dto';
+import { UpdateVariantSamplePolicyDto } from './dto/update-variant-sample-policy.dto';
+import { SyncProductVariantsDto } from './dto/sync-product-variants.dto';
 
 @ApiTags('Products Management')
 @Controller('products')
@@ -112,6 +115,28 @@ export class ProductsController {
     return this.productsService.moderateReview(userId, role, reviewId, dto);
   }
 
+  @Get('moderation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Danh sách sản phẩm chờ Ban Quản Trị kiểm duyệt' })
+  async listProductsForModeration(@Query('status') status = 'DRAFT') {
+    return this.productsService.listProductsForModeration(status);
+  }
+
+  @Patch(':id/moderation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Phê duyệt hoặc từ chối sản phẩm đăng tải mới' })
+  async moderateProduct(
+    @CurrentUser('id') userId: string,
+    @Param('id') productId: string,
+    @Body() dto: ModerateProductDto,
+  ) {
+    return this.productsService.moderateProduct(userId, productId, dto);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(
@@ -155,6 +180,35 @@ export class ProductsController {
     @Body() dto: UpdateProductDto,
   ) {
     return this.productsService.update(ownerId, role, id, dto);
+  }
+
+  @Patch(':id/variants/:variantId/sample-policy')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cập nhật hạn mức mẫu riêng cho SKU hoặc kế thừa chính sách sản phẩm' })
+  async updateVariantSamplePolicy(
+    @CurrentUser('id') ownerId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id') productId: string,
+    @Param('variantId') variantId: string,
+    @Body() dto: UpdateVariantSamplePolicyDto,
+  ) {
+    return this.productsService.updateVariantSamplePolicy(ownerId, role, productId, variantId, dto);
+  }
+
+  @Put(':id/variants')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tạo/cập nhật phân loại SKU và ảnh riêng cho từng SKU' })
+  async syncVariants(
+    @CurrentUser('id') ownerId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id') productId: string,
+    @Body() dto: SyncProductVariantsDto,
+  ) {
+    return this.productsService.syncProductVariants(ownerId, role, productId, dto);
   }
 
   @Delete(':id')

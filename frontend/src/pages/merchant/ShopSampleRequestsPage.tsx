@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import api from '../../services/api';
 import type { SampleRequest, SampleRequestStatus, ShopStats } from '../../types/samples';
+import { Select } from '../../components/ui/Select';
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: 'Chờ duyệt',
@@ -105,18 +106,18 @@ function TrackingModal({
             <label htmlFor="sr-carrier" className="text-xs font-bold text-[#1A1612] block mb-1.5">
               Đơn vị vận chuyển
             </label>
-            <select
+            <Select
               id="sr-carrier"
-              className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
               value={carrier}
               onChange={(e) => setCarrier(e.target.value)}
+              className="w-full text-xs"
             >
               <option value="GHTK">GHTK — Giao Hàng Tiết Kiệm</option>
               <option value="GHN">GHN — Giao Hàng Nhanh</option>
               <option value="VNPOST">VN Post</option>
               <option value="VIETTELPOST">Viettel Post</option>
               <option value="OTHER">Khác</option>
-            </select>
+            </Select>
           </div>
 
           <div>

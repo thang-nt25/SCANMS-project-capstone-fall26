@@ -497,6 +497,7 @@ export class ManualOrdersService {
         storeId,
         isDeleted: false,
         isActive: true,
+        moderationStatus: 'APPROVED',
         OR: [
           ...(productIds.length > 0 ? [{ id: { in: productIds } }] : []),
           ...skus.map((sku) => ({

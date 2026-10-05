@@ -38,6 +38,7 @@ export default function KycApprovalPage() {
 
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const [shopReviewIntent, setShopReviewIntent] = useState<'NEEDS_INFO' | 'REJECTED' | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -93,16 +94,23 @@ export default function KycApprovalPage() {
       reason,
     }: {
       storeId: string;
-      status: 'VERIFIED' | 'REJECTED';
+      status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED';
       reason?: string;
     }) => {
       return kycService.reviewShopApplication(storeId, status, reason);
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['upgrade-applications'] });
-      showToast(`Đã ${status === 'VERIFIED' ? 'phê duyệt & cấp Tích Xanh Gian Hàng' : 'từ chối'} thành công!`);
+      showToast(
+        status === 'VERIFIED'
+          ? 'Đã xác minh và kích hoạt gian hàng.'
+          : status === 'NEEDS_INFO'
+            ? 'Đã gửi yêu cầu bổ sung hồ sơ cho Shop.'
+            : 'Đã từ chối hồ sơ gian hàng.',
+      );
       setInspectStore(null);
       setShowRejectInput(false);
+      setShopReviewIntent(null);
       setRejectReason('');
     },
     onError: (err: any) => {
@@ -118,9 +126,18 @@ export default function KycApprovalPage() {
     reviewKolMutation.mutate({ profileId, status, reason: rejectReason.trim() || undefined });
   };
 
-  const handleReviewShop = async (storeId: string, status: 'VERIFIED' | 'REJECTED') => {
-    if (status === 'REJECTED' && !showRejectInput) {
+  const handleReviewShop = async (
+    storeId: string,
+    status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED',
+  ) => {
+    if (status !== 'VERIFIED' && (!showRejectInput || shopReviewIntent !== status)) {
       setShowRejectInput(true);
+      setShopReviewIntent(status);
+      setRejectReason('');
+      return;
+    }
+    if (status !== 'VERIFIED' && !rejectReason.trim()) {
+      showToast('Vui lòng ghi nội dung cần bổ sung hoặc lý do từ chối.', 'error');
       return;
     }
     reviewShopMutation.mutate({ storeId, status, reason: rejectReason.trim() || undefined });
@@ -168,22 +185,35 @@ export default function KycApprovalPage() {
   const rawShops = applicationsData?.shopApplications || [];
   const displayShops = rawShops.map((s: any) => {
     let legalDocs: any = {};
-    try {
-      if (s.policyReturn && s.policyReturn.startsWith('{')) {
-        legalDocs = JSON.parse(s.policyReturn);
+    if (s.onboardingData && typeof s.onboardingData === 'object') {
+      legalDocs = s.onboardingData;
+    } else {
+      try {
+        if (s.policyReturn && s.policyReturn.startsWith('{')) {
+          legalDocs = JSON.parse(s.policyReturn);
+        }
+      } catch {
+        legalDocs = {};
       }
-    } catch {
-      legalDocs = {};
     }
+
+    const onboardingStatus = s.onboardingStatus || (s.isVerified ? 'VERIFIED' : 'PENDING_APPROVAL');
+    const statusLabels: Record<string, string> = {
+      DRAFT: 'Bản nháp',
+      PENDING_APPROVAL: 'Chờ duyệt hồ sơ',
+      NEEDS_INFO: 'Cần Shop bổ sung',
+      VERIFIED: 'Đã xác minh',
+      REJECTED: 'Đã từ chối',
+    };
 
     return {
       id: s.id,
       name: s.name,
       slug: s.slug,
-      ownerName: s.owner?.fullName || 'Chủ gian hàng',
+      ownerName: legalDocs.representativeName || s.owner?.fullName || 'Chủ gian hàng',
       ownerEmail: s.owner?.email || 'shop@scanms.vn',
       ownerPhone: s.owner?.phoneNumber || legalDocs.contactPhone || 'Chưa cập nhật',
-      warehouseAddress: s.policyShipping || 'Chưa cung cấp địa chỉ kho',
+      warehouseAddress: legalDocs.warehouseAddress || s.policyShipping || 'Chưa cung cấp địa chỉ kho',
       businessType: legalDocs.businessType || 'DOANH NGHIỆP',
       taxCode: legalDocs.taxCode || 'Chưa nộp',
       businessLicenseUrl: legalDocs.businessLicenseUrl || null,
@@ -195,8 +225,12 @@ export default function KycApprovalPage() {
       frontCardUrl: legalDocs.frontCardUrl || null,
       backCardUrl: legalDocs.backCardUrl || null,
       isVerified: s.isVerified,
-      statusLabel: s.isVerified ? 'Đã xác minh (Tích Xanh)' : 'Chờ thẩm định GPKD',
-      createdAt: new Date(s.createdAt || Date.now()).toLocaleDateString('vi-VN'),
+      onboardingStatus,
+      reviewNote: s.onboardingReviewNote || null,
+      reviewerName: s.onboardingReviewer?.fullName || null,
+      reviewedAt: s.onboardingReviewedAt ? new Date(s.onboardingReviewedAt).toLocaleString('vi-VN') : null,
+      statusLabel: statusLabels[onboardingStatus] || 'Chờ duyệt hồ sơ',
+      createdAt: new Date(s.onboardingSubmittedAt || s.createdAt || Date.now()).toLocaleDateString('vi-VN'),
     };
   });
 
@@ -217,18 +251,17 @@ export default function KycApprovalPage() {
       s.taxCode.includes(search);
     const matchStatus =
       filterStatus === 'ALL' ||
-      (filterStatus === 'VERIFIED' && s.isVerified) ||
-      (filterStatus === 'UNVERIFIED' && !s.isVerified);
+      filterStatus === s.onboardingStatus;
     return matchSearch && matchStatus;
   });
 
   const pendingKolCount = displayKols.filter((u: any) => u.kycStatus === 'UNVERIFIED').length;
   const verifiedKolCount = displayKols.filter((u: any) => u.kycStatus === 'VERIFIED').length;
-  const pendingShopCount = displayShops.filter((s: any) => !s.isVerified).length;
+  const pendingShopCount = displayShops.filter((s: any) => ['PENDING_APPROVAL', 'NEEDS_INFO'].includes(s.onboardingStatus)).length;
   const verifiedShopCount = displayShops.filter((s: any) => s.isVerified).length;
 
   return (
-    <div className="flex flex-col gap-6 text-left">
+    <div className="flex flex-col gap-6 pt-4 text-left sm:pt-5">
       {toastMsg && (
         <div
           className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center gap-2 border ${
@@ -268,35 +301,19 @@ export default function KycApprovalPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-3">
-        <Button
-          variant="outline"
-          size="md"
-          icon={<Download className="w-4 h-4 text-[#B88E4F]" />}
-          onClick={() => showToast('Đang xuất báo cáo thẩm định...')}
-          className="border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5]"
-        >
-          Xuất báo cáo
-        </Button>
-        <Button
-          variant="gold"
-          size="md"
-          icon={<RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
-          onClick={() => loadApplications()}
-        >
-          Làm mới
-        </Button>
-      </div>
-
       {/* TOP TABS: KOL VS SHOP */}
-      <div className="flex border-b border-[#EAE4D7] gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => setActiveTab('kol')}
-          className={`pb-3 px-3 text-xs font-bold transition cursor-pointer flex items-center gap-2 border-b-2 ${
+          onClick={() => {
+            setActiveTab('kol');
+            setFilterStatus('ALL');
+          }}
+          className={`rounded-lg border px-3 py-2 text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
             activeTab === 'kol'
-              ? 'border-[#B88E4F] text-[#B88E4F]'
-              : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
+              : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
           }`}
         >
           <Sparkles className="w-4 h-4" />
@@ -305,16 +322,30 @@ export default function KycApprovalPage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab('shop')}
-          className={`pb-3 px-3 text-xs font-bold transition cursor-pointer flex items-center gap-2 border-b-2 ${
+          onClick={() => {
+            setActiveTab('shop');
+            setFilterStatus('ALL');
+          }}
+          className={`rounded-lg border px-3 py-2 text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
             activeTab === 'shop'
-              ? 'border-[#B88E4F] text-[#B88E4F]'
-              : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
+              : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
           }`}
         >
           <Store className="w-4 h-4" />
           <span>Thẩm định Gian Hàng ({pendingShopCount} chờ duyệt)</span>
         </button>
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-5">
+          <button type="button" onClick={() => showToast('Đang xuất báo cáo thẩm định...')} className="inline-flex items-center gap-2 bg-transparent p-0 text-xs font-semibold text-[#7D715E] transition hover:text-[#B88E4F] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C59B58]">
+            <Download className="h-4 w-4 text-[#B88E4F]" />
+            <span>Xuất báo cáo</span>
+          </button>
+          <button type="button" onClick={() => loadApplications()} disabled={loading} className="inline-flex items-center gap-2 bg-transparent p-0 text-xs font-semibold text-[#7D715E] transition hover:text-[#B88E4F] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C59B58] disabled:opacity-50">
+            <RefreshCw className={'h-4 w-4 text-[#B88E4F] ' + (loading ? 'animate-spin' : '')} />
+            <span>Làm mới</span>
+          </button>
+        </div>
       </div>
 
       {/* THẺ THỐNG KÊ */}
@@ -370,12 +401,20 @@ export default function KycApprovalPage() {
         <Select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          options={[
-            { value: 'ALL', label: 'Tất cả trạng thái' },
-            { value: 'VERIFIED', label: 'Đã xác minh (Tích Xanh)' },
-            { value: 'UNVERIFIED', label: 'Chờ duyệt hồ sơ' },
-            { value: 'REJECTED', label: 'Bị từ chối' },
-          ]}
+          options={activeTab === 'shop'
+            ? [
+                { value: 'ALL', label: 'Tất cả trạng thái' },
+                { value: 'PENDING_APPROVAL', label: 'Chờ duyệt hồ sơ' },
+                { value: 'NEEDS_INFO', label: 'Cần Shop bổ sung' },
+                { value: 'VERIFIED', label: 'Đã xác minh' },
+                { value: 'REJECTED', label: 'Đã từ chối' },
+              ]
+            : [
+                { value: 'ALL', label: 'Tất cả trạng thái' },
+                { value: 'VERIFIED', label: 'Đã xác minh (Tích Xanh)' },
+                { value: 'UNVERIFIED', label: 'Chờ duyệt hồ sơ' },
+                { value: 'REJECTED', label: 'Bị từ chối' },
+              ]}
         />
       </Card>
 
@@ -538,8 +577,8 @@ export default function KycApprovalPage() {
                       </td>
 
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <Badge variant={s.isVerified ? 'success' : 'warning'}>
-                          {s.statusLabel}
+                          <Badge variant={s.onboardingStatus === 'VERIFIED' ? 'amber' : s.onboardingStatus === 'REJECTED' ? 'danger' : 'warning'}>
+                            {s.statusLabel}
                         </Badge>
                       </td>
 
@@ -553,6 +592,7 @@ export default function KycApprovalPage() {
                           onClick={() => {
                             setInspectStore(s);
                             setShowRejectInput(false);
+                            setShopReviewIntent(null);
                             setRejectReason('');
                           }}
                         >
@@ -710,8 +750,26 @@ export default function KycApprovalPage() {
           onClose={() => setInspectStore(null)}
           title={`Thẩm định Gian Hàng: ${inspectStore.name}`}
           maxWidth="lg"
+          className="max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain"
         >
           <div className="space-y-5 text-left text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={inspectStore.onboardingStatus === 'VERIFIED' ? 'amber' : inspectStore.onboardingStatus === 'REJECTED' ? 'danger' : 'warning'}>
+                {inspectStore.statusLabel}
+              </Badge>
+              <span className="text-[#7D715E]">Ngày gửi hồ sơ: {inspectStore.createdAt}</span>
+            </div>
+            {inspectStore.reviewNote && (
+              <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+                <strong className="mb-1 block text-[#8F682E]">Ghi chú xử lý trước đó</strong>
+                {inspectStore.reviewNote}
+              </div>
+            )}
+            {inspectStore.reviewedAt && (
+              <div className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-xs text-[#7D715E]">
+                Quyết định gần nhất bởi <strong className="text-[#1A1612]">{inspectStore.reviewerName || 'Quản trị viên'}</strong> · {inspectStore.reviewedAt}
+              </div>
+            )}
             {/* 1. Pháp nhân & Kho hàng (Nghị định 85) */}
             <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-3">
               <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
@@ -756,117 +814,40 @@ export default function KycApprovalPage() {
             {/* 2. Tài liệu chứng từ pháp lý & Định danh */}
             <div className="p-3.5 bg-white border border-[#EAE4D7] rounded-2xl space-y-3">
               <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
-                2. Chứng từ pháp lý &amp; {inspectStore.businessType === 'INDIVIDUAL' ? 'Căn cước công dân định danh' : 'Giấy phép kinh doanh'}
+                2. Đối chiếu CCCD người đại diện &amp; giấy phép kinh doanh
               </strong>
-
-              {inspectStore.businessType === 'INDIVIDUAL' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
-                    <span className="font-bold text-[#1A1612] block">CCCD Mặt trước:</span>
-                    {inspectStore.frontCardUrl ? (
-                      <div
-                        onClick={() => setPreviewImage(inspectStore.frontCardUrl)}
-                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { label: 'CCCD — mặt trước', url: inspectStore.frontCardUrl },
+                  { label: 'CCCD — mặt sau', url: inspectStore.backCardUrl },
+                  { label: 'Giấy phép đăng ký kinh doanh', url: inspectStore.businessLicenseUrl },
+                ].map((document) => (
+                  <div key={document.label} className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
+                    <span className="font-bold text-[#1A1612] block">{document.label}</span>
+                    {document.url ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewImage(document.url)}
+                        className="w-full h-32 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-zoom-in relative group"
+                        title="Mở ảnh lớn để đối chiếu"
                       >
-                        <img
-                          src={inspectStore.frontCardUrl}
-                          alt="CCCD mặt trước"
-                          className="w-full h-full object-cover group-hover:scale-105 transition"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
-                          Xem ảnh gốc
-                        </div>
-                      </div>
+                        <img src={document.url} alt={document.label} className="w-full h-full object-contain group-hover:scale-105 transition" />
+                        <span className="absolute inset-x-0 bottom-0 bg-black/55 px-2 py-1 text-center text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition">Mở ảnh lớn</span>
+                      </button>
                     ) : (
-                      <span className="text-[#7D715E] italic">Chưa tải lên</span>
+                      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-[#EAE4D7] bg-white text-[#7D715E]">Chưa tải lên</div>
                     )}
                   </div>
-
+                ))}
+                {inspectStore.brandAuthorizationUrl && (
                   <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
-                    <span className="font-bold text-[#1A1612] block">CCCD Mặt sau:</span>
-                    {inspectStore.backCardUrl ? (
-                      <div
-                        onClick={() => setPreviewImage(inspectStore.backCardUrl)}
-                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
-                      >
-                        <img
-                          src={inspectStore.backCardUrl}
-                          alt="CCCD mặt sau"
-                          className="w-full h-full object-cover group-hover:scale-105 transition"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
-                          Xem ảnh gốc
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-[#7D715E] italic">Chưa tải lên</span>
-                    )}
+                    <span className="font-bold text-[#1A1612] block">Ủy quyền thương hiệu / nguồn gốc</span>
+                    <button type="button" onClick={() => setPreviewImage(inspectStore.brandAuthorizationUrl)} className="w-full h-32 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-zoom-in">
+                      <img src={inspectStore.brandAuthorizationUrl} alt="Ủy quyền thương hiệu" className="w-full h-full object-contain" />
+                    </button>
                   </div>
-
-                  {inspectStore.brandAuthorizationUrl && (
-                    <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2 sm:col-span-2">
-                      <span className="font-bold text-[#1A1612] block">Ủy quyền thương hiệu / Nguồn gốc xuất xứ:</span>
-                      <div
-                        onClick={() => setPreviewImage(inspectStore.brandAuthorizationUrl)}
-                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
-                      >
-                        <img
-                          src={inspectStore.brandAuthorizationUrl}
-                          alt="Ủy quyền thương hiệu"
-                          className="w-full h-full object-cover group-hover:scale-105 transition"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
-                          Xem tài liệu
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
-                    <span className="font-bold text-[#1A1612] block">Giấy phép ĐKKD:</span>
-                    {inspectStore.businessLicenseUrl ? (
-                      <div
-                        onClick={() => setPreviewImage(inspectStore.businessLicenseUrl)}
-                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
-                      >
-                        <img
-                          src={inspectStore.businessLicenseUrl}
-                          alt="Giấy phép kinh doanh"
-                          className="w-full h-full object-cover group-hover:scale-105 transition"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
-                          Xem tài liệu
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-[#7D715E] italic">Chưa tải lên</span>
-                    )}
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
-                    <span className="font-bold text-[#1A1612] block">Ủy quyền thương hiệu / Nguồn gốc:</span>
-                    {inspectStore.brandAuthorizationUrl ? (
-                      <div
-                        onClick={() => setPreviewImage(inspectStore.brandAuthorizationUrl)}
-                        className="w-full h-28 bg-white border border-[#EAE4D7] rounded-lg overflow-hidden cursor-pointer relative group"
-                      >
-                        <img
-                          src={inspectStore.brandAuthorizationUrl}
-                          alt="Ủy quyền thương hiệu"
-                          className="w-full h-full object-cover group-hover:scale-105 transition"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
-                          Xem tài liệu
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-[#7D715E] italic">Chưa tải lên</span>
-                    )}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* 3. Tài khoản ngân hàng nhận tiền doanh thu */}
@@ -891,38 +872,54 @@ export default function KycApprovalPage() {
             </div>
 
             {/* Ô từ chối */}
-            {showRejectInput && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-1.5">
-                <label className="font-bold text-rose-800 block">Lý do từ chối cấp phép gian hàng:</label>
+            {showRejectInput && shopReviewIntent && (
+              <div className={`p-3 rounded-xl space-y-1.5 ${shopReviewIntent === 'NEEDS_INFO' ? 'bg-[#FBF5EB] border border-[#EEDFC6]' : 'bg-rose-50 border border-rose-200'}`}>
+                <label className={`font-bold block ${shopReviewIntent === 'NEEDS_INFO' ? 'text-[#8F682E]' : 'text-rose-800'}`}>
+                  {shopReviewIntent === 'NEEDS_INFO' ? 'Nội dung Shop cần bổ sung:' : 'Lý do từ chối cấp phép gian hàng:'}
+                </label>
                 <textarea
                   rows={2}
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="VD: Giấy phép kinh doanh hết hạn hoặc địa chỉ kho hàng không rõ ràng..."
-                  className="w-full bg-white border border-rose-300 rounded-lg p-2 text-xs outline-none"
+                  placeholder={shopReviewIntent === 'NEEDS_INFO' ? 'VD: Tải lại CCCD mặt trước rõ nét, bổ sung giấy phép còn hiệu lực...' : 'Ghi rõ lý do hồ sơ không được chấp thuận...'}
+                  className="w-full bg-white border border-[#EAE4D7] rounded-lg p-2 text-xs outline-none focus:border-[#C59B58]"
                 />
               </div>
             )}
 
             {/* Actions */}
-            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[#EAE4D7]">
-              <Button
-                variant="outline"
-                size="md"
-                className="border-rose-300 text-rose-700 hover:bg-rose-50"
-                onClick={() => handleReviewShop(inspectStore.id, 'REJECTED')}
-              >
-                {showRejectInput ? 'Xác nhận Từ chối' : 'Từ chối gian hàng'}
-              </Button>
-              <Button
-                variant="gold"
-                size="md"
-                icon={<BadgeCheck className="w-4 h-4" />}
-                onClick={() => handleReviewShop(inspectStore.id, 'VERIFIED')}
-              >
-                Cấp Tích Xanh &amp; Kích Hoạt Gian Hàng
-              </Button>
-            </div>
+            {['PENDING_APPROVAL', 'NEEDS_INFO'].includes(inspectStore.onboardingStatus) ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#EAE4D7]">
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="border-[#C59B58] text-[#8F682E] hover:bg-[#FBF5EB]"
+                  onClick={() => handleReviewShop(inspectStore.id, 'NEEDS_INFO')}
+                >
+                  {shopReviewIntent === 'NEEDS_INFO' && showRejectInput ? 'Gửi yêu cầu bổ sung' : 'Yêu cầu bổ sung'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="border-rose-300 text-rose-700 hover:bg-rose-50"
+                  onClick={() => handleReviewShop(inspectStore.id, 'REJECTED')}
+                >
+                  {shopReviewIntent === 'REJECTED' && showRejectInput ? 'Xác nhận từ chối' : 'Từ chối hồ sơ'}
+                </Button>
+                <Button
+                  variant="gold"
+                  size="md"
+                  icon={<BadgeCheck className="w-4 h-4" />}
+                  onClick={() => handleReviewShop(inspectStore.id, 'VERIFIED')}
+                >
+                  Duyệt &amp; kích hoạt
+                </Button>
+              </div>
+            ) : (
+              <div className="border-t border-[#EAE4D7] pt-3 text-xs text-[#7D715E]">
+                Hồ sơ đã xử lý. Trạng thái hiện tại: <strong className="text-[#1A1612]">{inspectStore.statusLabel}</strong>.
+              </div>
+            )}
           </div>
         </Modal>
       )}

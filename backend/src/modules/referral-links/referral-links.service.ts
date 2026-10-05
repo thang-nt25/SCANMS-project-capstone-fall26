@@ -176,6 +176,7 @@ export class ReferralLinksService {
     const where: Prisma.ProductWhereInput = {
       isActive: true,
       isAffiliateEnabled: true,
+      moderationStatus: 'APPROVED',
       deletedAt: null,
       store: {
         deletedAt: null,
@@ -312,6 +313,10 @@ export class ReferralLinksService {
       throw new BadRequestException(
         'Cửa hàng sở hữu sản phẩm này không còn hoạt động.',
       );
+    }
+
+    if (product.moderationStatus !== 'APPROVED') {
+      throw new ForbiddenException('Sản phẩm chưa được SCANMS kiểm duyệt để làm tiếp thị.');
     }
 
     // Kiểm tra sản phẩm có cho affiliate không
@@ -1272,7 +1277,7 @@ export class ReferralLinksService {
         include: {
           collaborator: { select: { id: true, fullName: true, email: true } },
           store: { select: { id: true, name: true } },
-          product: { select: { id: true, title: true, price: true } },
+          product: { select: { id: true, title: true, imageUrl: true, price: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -2144,7 +2149,7 @@ export class ReferralLinksService {
 
       if (rawCollab) {
         // Chỉ Quản trị viên hệ thống mới xem được email gốc đầy đủ; Chủ Shop chỉ xem email đã ẩn danh (Issue 1)
-        const isSysAdmin = userRole === UserRole.SYSTEM_ADMIN;
+        const isSysAdmin = userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
         effectiveCollaborator = {
           id: rawCollab.id,
           fullName: rawCollab.fullName,
@@ -2707,7 +2712,7 @@ export class ReferralLinksService {
           'Bạn không có quyền xem mã QR của liên kết thuộc cửa hàng khác.',
         );
       }
-    } else if (user.role === UserRole.SYSTEM_ADMIN) {
+    } else if (user.role === UserRole.SYSTEM_ADMIN || user.role === UserRole.SYSTEM_MANAGER) {
       // Cho phép tra cứu/hỗ trợ
     } else {
       throw new ForbiddenException(
@@ -2733,6 +2738,7 @@ export class ReferralLinksService {
     // Ghi Audit Log nếu Admin hoặc Shop thao tác thay KOL (Mục 24)
     if (
       user.role === UserRole.SYSTEM_ADMIN ||
+      user.role === UserRole.SYSTEM_MANAGER ||
       (user.role === UserRole.SHOP_MANAGER && link.collaboratorId !== user.id)
     ) {
       await this.prisma.auditLog

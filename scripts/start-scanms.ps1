@@ -59,8 +59,8 @@ $services = @(
 )
 
 foreach ($service in $services) {
-  $argStr = "-NoProfile -ExecutionPolicy Bypass -File `"$watcherScript`" -ServiceName $($service.Name) -ServiceDirectory `"$($service.Directory)`" -Port $($service.Port) -LogPath `"$($service.Log)`""
-  Start-Process -FilePath 'powershell.exe' -ArgumentList $argStr -WindowStyle Hidden
+  $argStr = "-NoProfile -ExecutionPolicy Bypass -File .\scripts\watch-dev-service.ps1 -ServiceName $($service.Name) -Port $($service.Port)"
+  Start-Process -FilePath 'powershell.exe' -ArgumentList $argStr -WorkingDirectory $projectRoot -WindowStyle Hidden
 }
 
 $deadline = (Get-Date).AddSeconds(45)

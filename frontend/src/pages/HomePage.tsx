@@ -12,7 +12,6 @@ import {
   TrendingUp,
   ArrowUpRight,
   Sparkles,
-  ChevronDown,
   RefreshCw,
 } from 'lucide-react';
 import { tierService, type TierStatus } from '../services/tier.service';
@@ -24,6 +23,7 @@ import {
 } from '../services/analytics.service';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { Select } from '../components/ui/Select';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export default function HomePage() {
         walletService.getMyWallet().catch(() => null),
         walletService.getMyLedger(1).catch(() => null),
         analyticsService.getRealtimeOverview({ days }).catch(() => null),
-        analyticsService.getTimeSeries({ days, interval: 'day' }).catch(() => []),
+        analyticsService.getTimeSeries({ days, interval: 'daily' }).catch(() => []),
         tierService.getMyTierStatus().catch(() => null),
       ]);
 
@@ -81,62 +81,60 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-6 text-left">
-      {/* Filter & Action Card */}
-      <Card className="p-4 bg-white border border-[#EAE4D7]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold text-[#7D715E] flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-[#B88E4F]" />
-                Khoảng thời gian phân tích
-              </label>
-              <div className="relative">
-                <select
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                  className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-[#1A1612] appearance-none outline-none cursor-pointer hover:border-[#C59B58] transition"
-                >
-                  <option value="7">7 ngày gần nhất</option>
-                  <option value="30">30 ngày gần nhất</option>
-                  <option value="90">90 ngày gần nhất</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-[#7D715E] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="text-xs font-semibold text-[#7D715E]">
-              {overview?.period ? (
-                <span>
-                  Dữ liệu: {new Date(overview.period.startDate).toLocaleDateString('vi-VN')} – {new Date(overview.period.endDate).toLocaleDateString('vi-VN')}
-                </span>
-              ) : (
-                <span>Dữ liệu thực tế từ ví &amp; giao dịch sàn</span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={<RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />}
-                onClick={loadData}
-              >
-                Làm mới
-              </Button>
-              <Button
-                variant="gold"
-                size="sm"
-                icon={<PlusCircle className="w-3.5 h-3.5" />}
-                onClick={() => navigate('/collaborator/referral-links')}
-              >
-                Tạo link tiếp thị
-              </Button>
-            </div>
+      {/* Filter & Action Bar - Không khung bọc ngoài, chừa icon và tên sạch đẹp */}
+      <div className="flex flex-wrap items-center justify-between gap-4 py-1 px-0.5">
+        <div className="flex items-center gap-2.5">
+          <label className="text-xs font-bold text-[#7D715E] flex items-center gap-1.5 shrink-0 select-none">
+            <Calendar className="w-3.5 h-3.5 text-[#B88E4F]" />
+            <span>Khoảng thời gian phân tích:</span>
+          </label>
+          <div className="shrink-0 min-w-[170px]">
+            <Select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              aria-label="Khoảng thời gian phân tích"
+            >
+              <option value="7">7 ngày gần nhất</option>
+              <option value="30">30 ngày gần nhất</option>
+              <option value="90">90 ngày gần nhất</option>
+            </Select>
           </div>
         </div>
-      </Card>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="text-xs font-semibold text-[#7D715E]">
+            {overview?.period ? (
+              <span>
+                Dữ liệu: {new Date(overview.period.startDate).toLocaleDateString('vi-VN')} – {new Date(overview.period.endDate).toLocaleDateString('vi-VN')}
+              </span>
+            ) : (
+              <span>Dữ liệu thực tế từ ví &amp; giao dịch sàn</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={loadData}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer select-none"
+              title="Làm mới dữ liệu"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/collaborator/referral-links')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#B88E4F] hover:text-[#A47B3E] transition cursor-pointer select-none"
+              title="Tạo link tiếp thị"
+            >
+              <PlusCircle className="w-3.5 h-3.5 text-[#B88E4F]" />
+              <span>Tạo link tiếp thị</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Real Wallet Balance Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-[#FAF5EB] border border-[#EEDFC6] text-[#1A1612] p-6 sm:p-7 shadow-2xs">
@@ -164,10 +162,11 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => navigate('/collaborator/wallet')}
-            className="px-5 py-2.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shadow-xs shrink-0 flex items-center justify-center gap-2"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#B88E4F] hover:text-[#9A7233] transition cursor-pointer shrink-0 group select-none"
+            title="Quản lý ví & Rút tiền"
           >
-            <span>Quản lý ví &amp; Rút tiền</span>
-            <ArrowUpRight className="w-4 h-4 text-white" />
+            <span className="group-hover:underline">Quản lý ví &amp; Rút tiền</span>
+            <ArrowUpRight className="w-4 h-4 text-[#B88E4F] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </button>
         </div>
 
@@ -295,19 +294,17 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="relative">
-              <select
+            <div className="min-w-[190px]">
+              <Select
                 value={metric}
                 onChange={(e) => setMetric(e.target.value as any)}
                 aria-label="Chọn chỉ số biểu đồ"
-                className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-[#1A1612] appearance-none outline-none cursor-pointer hover:border-[#C59B58] transition"
               >
                 <option value="clicks">Lượt nhấp (Traffic)</option>
                 <option value="orders">Đơn hàng (Orders)</option>
                 <option value="revenue">Doanh thu GMV (₫)</option>
                 <option value="commission">Hoa hồng ghi nhận (₫)</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-[#7D715E] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </Select>
             </div>
           </div>
 

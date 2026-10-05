@@ -12,7 +12,7 @@ Tạo tài khoản Shop, tạo tài khoản KOL
 -> Shop gửi thẻ mời chiến dịch VIP hoa hồng cao (nếu có) 
 -> KOL nộp yêu cầu xin hàng mẫu dùng thử 
 -> Shop duyệt và nhập mã vận đơn bưu cục (GHTK/GHN) gửi hàng mẫu 
--> KOL nhận hàng mẫu, trải nghiệm thực tế và nộp cam kết link review trong 7 ngày 
+-> KOL xác nhận nhận mẫu, trải nghiệm thực tế và nộp link video review trong 14 ngày
 -> KOL vào Media Hub tải banner HD, video gốc, kịch bản SEO 
 -> Shop và KOL thống nhất hợp tác 
 -> Tạo link tiếp thị định danh, mã QR Canvas và mã giảm giá (Coupon) riêng của KOL 
@@ -55,7 +55,7 @@ Tạo tài khoản Shop, tạo tài khoản KOL
 > -> KOL gửi yêu cầu xin sản phẩm mẫu dùng thử 
 > -> Shop duyệt xuất kho và nhập mã vận đơn bưu cục (GHTK/GHN) 
 > -> Bưu tá giao hàng mẫu cho KOL 
-> -> KOL nhận hàng mẫu trải nghiệm và kích hoạt hạn mức nộp link video review trong 7 ngày 
+> -> KOL xác nhận nhận hàng mẫu và kích hoạt hạn nộp link video review trong 14 ngày
 > -> KOL truy cập Media Hub tải ảnh HD, video review gốc, kịch bản SEO 1-click copy 
 > -> Shop và KOL thống nhất hợp tác.
 

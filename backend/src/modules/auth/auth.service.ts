@@ -144,7 +144,10 @@ export class AuthService {
 
     // Băm mật khẩu bằng Argon2id
     const passwordHash = await this.hashPassword(dto.password);
-    const role = dto.role || UserRole.COLLABORATOR;
+    const requestedShopRole = dto.role === UserRole.SHOP_MANAGER;
+    const role = requestedShopRole
+      ? UserRole.CUSTOMER
+      : dto.role || UserRole.COLLABORATOR;
 
     // Tạo User
     const user = await this.prisma.user.create({
@@ -199,7 +202,7 @@ export class AuthService {
     }
 
     // Nếu là Shop: Tạo Cửa hàng mặc định
-    if (role === UserRole.SHOP_MANAGER) {
+    if (requestedShopRole) {
       const logoUrl = dto.logoUrl?.trim();
       if (!logoUrl) {
         throw new BadRequestException(
@@ -224,7 +227,9 @@ export class AuthService {
           logoUrl,
           defaultCommissionRate: 10.0,
           attributionWindowDays: 30,
-          minPayoutAmount: 200000.0,
+          isActive: false,
+          isVerified: false,
+          onboardingStatus: 'DRAFT',
         },
       });
     }
@@ -518,9 +523,10 @@ export class AuthService {
 
     // Nếu người dùng chưa tồn tại -> Tự động khởi tạo tài khoản mới (Mặc định: CUSTOMER)
     if (!user) {
+      const requestedShopRole = dto.role === 'SHOP_MANAGER';
       const desiredRole =
-        dto.role === 'SHOP_MANAGER'
-          ? UserRole.SHOP_MANAGER
+        requestedShopRole
+          ? UserRole.CUSTOMER
           : dto.role === 'COLLABORATOR'
           ? UserRole.COLLABORATOR
           : UserRole.CUSTOMER;
@@ -571,7 +577,7 @@ export class AuthService {
             pendingBalance: 0,
           },
         });
-      } else if (desiredRole === UserRole.SHOP_MANAGER) {
+      } else if (requestedShopRole) {
         // Nếu là Shop: Tạo store mặc định
         const storeName =
           dto.storeName?.trim() || `${createdUser.fullName} Store`;
@@ -595,7 +601,9 @@ export class AuthService {
             logoUrl,
             defaultCommissionRate: 10.0,
             attributionWindowDays: 30,
-            minPayoutAmount: 200000.0,
+            isActive: false,
+            isVerified: false,
+            onboardingStatus: 'DRAFT',
           },
         });
       }

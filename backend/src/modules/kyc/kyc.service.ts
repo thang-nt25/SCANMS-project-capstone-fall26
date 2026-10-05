@@ -10,8 +10,9 @@ import {
   ApplyKolUpgradeDto,
   ApplyShopUpgradeDto,
   ReviewUpgradeApplicationDto,
+  ReviewShopApplicationDto,
 } from './dto/apply-upgrade.dto';
-import { KycStatus, UserRole, SocialPlatform } from '@prisma/client';
+import { KycStatus, UserRole, SocialPlatform, ShopOnboardingStatus } from '@prisma/client';
 
 function slugify(text: string): string {
   return text
@@ -78,9 +79,9 @@ export class KycService {
           userId,
           idCardNumber: dto.idCardNumber.trim(),
           taxCode: dto.taxCode?.trim() || null,
-          bankName: dto.bankName.trim(),
-          bankAccountNumber: dto.bankAccountNumber.trim(),
-          bankAccountName: dto.bankAccountName.trim().toUpperCase(),
+          bankName: dto.bankName?.trim() || '',
+          bankAccountNumber: dto.bankAccountNumber?.trim() || '',
+          bankAccountName: dto.bankAccountName?.trim().toUpperCase() || '',
           bio: dto.bio?.trim() || null,
           socialLinksJson: updatedMeta,
           totalFollowers: dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
@@ -94,9 +95,9 @@ export class KycService {
         data: {
           idCardNumber: dto.idCardNumber.trim(),
           taxCode: dto.taxCode?.trim() || null,
-          bankName: dto.bankName.trim(),
-          bankAccountNumber: dto.bankAccountNumber.trim(),
-          bankAccountName: dto.bankAccountName.trim().toUpperCase(),
+          bankName: dto.bankName !== undefined ? dto.bankName.trim() : profile.bankName,
+          bankAccountNumber: dto.bankAccountNumber !== undefined ? dto.bankAccountNumber.trim() : profile.bankAccountNumber,
+          bankAccountName: dto.bankAccountName !== undefined ? dto.bankAccountName.trim().toUpperCase() : profile.bankAccountName,
           bio: dto.bio?.trim(),
           socialLinksJson: updatedMeta,
           ...(dto.followerCount !== undefined ? { totalFollowers: Number(dto.followerCount) } : {}),
@@ -242,10 +243,39 @@ export class KycService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
+    if (
+      !dto.idCardNumber?.trim() ||
+      !dto.frontCardUrl?.trim() ||
+      !dto.backCardUrl?.trim() ||
+      !dto.businessLicenseUrl?.trim()
+    ) {
+      throw new BadRequestException(
+        'Hồ sơ bắt buộc có số CCCD, ảnh hai mặt CCCD người đại diện và giấy phép đăng ký kinh doanh.',
+      );
+    }
+
+    const existingStore = user.stores.find((item) => !item.isDeleted);
+    if (
+      existingStore &&
+      !(<ShopOnboardingStatus[]>[
+        ShopOnboardingStatus.DRAFT,
+        ShopOnboardingStatus.NEEDS_INFO,
+        ShopOnboardingStatus.REJECTED,
+      ]).includes(existingStore.onboardingStatus)
+    ) {
+      throw new BadRequestException(
+        existingStore.onboardingStatus === ShopOnboardingStatus.VERIFIED
+          ? 'Gian hàng đã được xác minh.'
+          : 'Hồ sơ đang chờ Ban Quản Trị xử lý, vui lòng chờ kết quả trước khi gửi lại.',
+      );
+    }
+
     const baseSlug = slugify(dto.shopName) || 'shop';
     const uniqueSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+    const submittedAt = new Date();
 
     const legalDocs = {
+      representativeName: user.fullName?.trim() || dto.bankAccountName.trim().toUpperCase(),
       businessType: dto.businessType,
       taxCode: dto.taxCode.trim(),
       bankName: dto.bankName.trim(),
@@ -258,34 +288,39 @@ export class KycService {
       brandAuthorizationUrl: dto.brandAuthorizationUrl || null,
       contactPhone: dto.contactPhone.trim(),
       contactEmail: dto.contactEmail.trim(),
-      submittedAt: new Date().toISOString(),
+      warehouseAddress: dto.warehouseAddress.trim(),
+      submittedAt: submittedAt.toISOString(),
     };
 
     let store;
-    if (user.stores && user.stores.length > 0) {
-      // Update existing store
+    if (existingStore) {
       store = await this.prisma.store.update({
-        where: { id: user.stores[0].id },
+        where: { id: existingStore.id },
         data: {
           name: dto.shopName.trim(),
           description: dto.description?.trim() || null,
-          policyShipping: dto.warehouseAddress.trim(),
-          policyReturn: JSON.stringify(legalDocs),
+          onboardingData: legalDocs,
+          onboardingStatus: ShopOnboardingStatus.PENDING_APPROVAL,
+          onboardingSubmittedAt: submittedAt,
+          onboardingReviewedAt: null,
+          onboardingReviewedById: null,
+          onboardingReviewNote: null,
           isVerified: false,
+          isActive: false,
         },
       });
     } else {
-      // Create new store
       store = await this.prisma.store.create({
         data: {
           ownerId: userId,
           name: dto.shopName.trim(),
           slug: uniqueSlug,
           description: dto.description?.trim() || null,
-          policyShipping: dto.warehouseAddress.trim(),
-          policyReturn: JSON.stringify(legalDocs),
+          onboardingData: legalDocs,
+          onboardingStatus: ShopOnboardingStatus.PENDING_APPROVAL,
+          onboardingSubmittedAt: submittedAt,
           isVerified: false,
-          isActive: true,
+          isActive: false,
         },
       });
     }
@@ -338,10 +373,19 @@ export class KycService {
           ? {
               id: userStores[0].id,
               name: userStores[0].name,
+              description: userStores[0].description,
               slug: userStores[0].slug,
               isVerified: userStores[0].isVerified,
-              warehouseAddress: userStores[0].policyShipping,
-              submittedAt: userStores[0].createdAt,
+              onboardingStatus: userStores[0].onboardingStatus,
+              onboardingData: userStores[0].onboardingData,
+              onboardingSubmittedAt: userStores[0].onboardingSubmittedAt,
+              onboardingReviewedAt: userStores[0].onboardingReviewedAt,
+              onboardingReviewNote: userStores[0].onboardingReviewNote,
+              warehouseAddress:
+                ((userStores[0].onboardingData as Record<string, any> | null)?.warehouseAddress as string | undefined) ||
+                userStores[0].policyShipping,
+              submittedAt:
+                userStores[0].onboardingSubmittedAt || userStores[0].createdAt,
               updatedAt: userStores[0].updatedAt,
             }
           : null,
@@ -397,7 +441,10 @@ export class KycService {
         orderBy: { updatedAt: 'desc' },
       }),
       this.prisma.store.findMany({
-        where: { isDeleted: false },
+        where: {
+          isDeleted: false,
+          onboardingStatus: { not: ShopOnboardingStatus.DRAFT },
+        },
         include: {
           owner: {
             select: {
@@ -409,6 +456,7 @@ export class KycService {
               createdAt: true,
             },
           },
+          onboardingReviewer: { select: { id: true, fullName: true, email: true } },
         },
         orderBy: { updatedAt: 'desc' },
       }),
@@ -493,7 +541,11 @@ export class KycService {
   /**
    * Admin duyệt hồ sơ Gian Hàng (Shop)
    */
-  async reviewShopApplication(storeId: string, dto: ReviewUpgradeApplicationDto) {
+  async reviewShopApplication(
+    reviewerId: string,
+    storeId: string,
+    dto: ReviewShopApplicationDto,
+  ) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       include: { owner: true },
@@ -503,78 +555,104 @@ export class KycService {
       throw new NotFoundException('Không tìm thấy gian hàng');
     }
 
-    const updatedStore = await this.prisma.store.update({
-      where: { id: storeId },
-      data: {
-        isVerified: dto.status === 'VERIFIED',
-      },
-    });
-
-    if (dto.status === 'VERIFIED') {
-      // 1. Nâng quyền chủ shop nếu đang là CUSTOMER
-      if (store.owner.role === UserRole.CUSTOMER) {
-        await this.prisma.user.update({
-          where: { id: store.ownerId },
-          data: { role: UserRole.SHOP_MANAGER },
-        });
-      }
-
-      // 2. Đảm bảo tạo ví chủ sở hữu & ví gian hàng
-      let ownerWallet = await this.prisma.wallet.findUnique({
-        where: { collaboratorId: store.ownerId },
-      });
-      if (!ownerWallet) {
-        ownerWallet = await this.prisma.wallet.create({
-          data: {
-            collaboratorId: store.ownerId,
-            availableBalance: 0,
-            pendingBalance: 0,
-          },
-        });
-      }
-
-      const existingStoreWallet = await this.prisma.storeWallet.findUnique({
-        where: {
-          walletId_storeId: {
-            walletId: ownerWallet.id,
-            storeId: store.id,
-          },
-        },
-      });
-      if (!existingStoreWallet) {
-        await this.prisma.storeWallet.create({
-          data: {
-            walletId: ownerWallet.id,
-            storeId: store.id,
-            availableBalance: 0,
-            pendingBalance: 0,
-          },
-        });
-      }
-
-      // 3. Thông báo cho chủ shop
-      await this.prisma.notification.create({
-        data: {
-          userId: store.ownerId,
-          title: 'Gian Hàng của bạn đã được chứng thực!',
-          message: `Gian hàng "${store.name}" đã được Ban Quản Trị SCANMS cấp Tích Xanh & kích hoạt giấy phép kinh doanh theo quy định.`,
-          type: 'SHOP_APPROVED',
-        },
-      });
-    } else {
-      await this.prisma.notification.create({
-        data: {
-          userId: store.ownerId,
-          title: 'Hồ sơ mở Gian Hàng cần bổ sung',
-          message: dto.note || 'Giấy phép đăng ký kinh doanh hoặc địa chỉ kho hàng chưa đạt yêu cầu theo Nghị định 85/2021/NĐ-CP.',
-          type: 'SHOP_REJECTED',
-        },
-      });
+    if (
+      !(<ShopOnboardingStatus[]>[
+        ShopOnboardingStatus.PENDING_APPROVAL,
+        ShopOnboardingStatus.NEEDS_INFO,
+      ]).includes(store.onboardingStatus)
+    ) {
+      throw new BadRequestException(
+        'Chỉ có thể xử lý hồ sơ đang chờ duyệt hoặc chờ bổ sung.',
+      );
     }
+
+    if (dto.status !== 'VERIFIED' && !dto.note?.trim()) {
+      throw new BadRequestException(
+        'Vui lòng ghi rõ lý do từ chối hoặc nội dung cần Shop bổ sung.',
+      );
+    }
+
+    const updatedStore = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM stores WHERE id = ${storeId}::uuid FOR UPDATE`;
+      const current = await tx.store.findUnique({ where: { id: storeId }, include: { owner: true } });
+      if (!current) throw new NotFoundException('Không tìm thấy gian hàng');
+      if (!(<ShopOnboardingStatus[]>[ShopOnboardingStatus.PENDING_APPROVAL, ShopOnboardingStatus.NEEDS_INFO]).includes(current.onboardingStatus)) {
+        throw new BadRequestException('Hồ sơ đã được xử lý bởi một quản trị viên khác.');
+      }
+
+      const reviewedAt = new Date();
+      const updated = await tx.store.update({
+        where: { id: storeId },
+        data: {
+          isVerified: dto.status === 'VERIFIED',
+          isActive: dto.status === 'VERIFIED',
+          onboardingStatus: dto.status as ShopOnboardingStatus,
+          onboardingReviewedAt: reviewedAt,
+          onboardingReviewedById: reviewerId,
+          onboardingReviewNote: dto.note?.trim() || null,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: reviewerId,
+          action: 'SHOP_ONBOARDING_REVIEWED',
+          details: {
+            storeId,
+            ownerId: current.ownerId,
+            previousStatus: current.onboardingStatus,
+            status: dto.status,
+            note: dto.note?.trim() || null,
+          },
+        },
+      });
+
+      if (dto.status === 'VERIFIED') {
+        if (current.owner.role === UserRole.CUSTOMER) {
+          await tx.user.update({ where: { id: current.ownerId }, data: { role: UserRole.SHOP_MANAGER } });
+        }
+        let ownerWallet = await tx.wallet.findUnique({ where: { collaboratorId: current.ownerId } });
+        if (!ownerWallet) {
+          ownerWallet = await tx.wallet.create({
+            data: { collaboratorId: current.ownerId, availableBalance: 0, pendingBalance: 0 },
+          });
+        }
+        const existingStoreWallet = await tx.storeWallet.findUnique({
+          where: { walletId_storeId: { walletId: ownerWallet.id, storeId: current.id } },
+        });
+        if (!existingStoreWallet) {
+          await tx.storeWallet.create({
+            data: { walletId: ownerWallet.id, storeId: current.id, availableBalance: 0, pendingBalance: 0 },
+          });
+        }
+        await tx.notification.create({
+          data: {
+            userId: current.ownerId,
+            title: 'Gian hàng của bạn đã được chứng thực!',
+            message: `Gian hàng "${current.name}" đã được Ban Quản Trị SCANMS xác minh và kích hoạt.`,
+            type: 'SHOP_APPROVED',
+          },
+        });
+      } else {
+        await tx.notification.create({
+          data: {
+            userId: current.ownerId,
+            title: dto.status === 'NEEDS_INFO' ? 'Hồ sơ gian hàng cần bổ sung' : 'Hồ sơ gian hàng chưa được duyệt',
+            message: dto.note!.trim(),
+            type: dto.status === 'NEEDS_INFO' ? 'SHOP_NEEDS_INFO' : 'SHOP_REJECTED',
+          },
+        });
+      }
+      return updated;
+    });
 
     return {
       success: true,
-      message: `Đã ${dto.status === 'VERIFIED' ? 'chứng thực Tích Xanh' : 'từ chối'} gian hàng thành công`,
+      message:
+        dto.status === 'VERIFIED'
+          ? 'Gian hàng đã được xác minh và kích hoạt.'
+          : dto.status === 'NEEDS_INFO'
+            ? 'Đã yêu cầu Shop bổ sung hồ sơ.'
+            : 'Đã từ chối hồ sơ gian hàng.',
       store: updatedStore,
     };
   }

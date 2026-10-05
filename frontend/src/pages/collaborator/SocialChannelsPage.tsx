@@ -12,11 +12,12 @@ import {
   X,
   Link2,
   Video,
-  ChevronDown,
 } from 'lucide-react';
 import { socialService, type SocialChannel } from '../../services/social.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { Select } from '../../components/ui/Select';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 export default function SocialChannelsPage() {
 
@@ -25,6 +26,8 @@ export default function SocialChannelsPage() {
   const [search, setSearch] = useState('');
   const [filterPlatform, setFilterPlatform] = useState('ALL');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [channelToDelete, setChannelToDelete] = useState<SocialChannel | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [platformName, setPlatformName] = useState('TIKTOK');
   const [channelName, setChannelName] = useState('');
@@ -72,14 +75,18 @@ export default function SocialChannelsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn ngắt kết nối kênh này?')) return;
+  const handleConfirmDelete = async () => {
+    if (!channelToDelete?.id) return;
+    setIsDeleting(true);
     try {
-      await socialService.deleteChannel(id);
-      showToast('Đã xóa kênh mạng xã hội.');
+      await socialService.deleteChannel(channelToDelete.id);
+      showToast('Đã ngắt kết nối kênh mạng xã hội thành công.');
+      setChannelToDelete(null);
       loadChannels();
     } catch (err: any) {
-      showToast(err.message || 'Lỗi khi xóa kênh');
+      showToast(err.message || 'Lỗi khi ngắt kết nối kênh');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -215,20 +222,17 @@ export default function SocialChannelsPage() {
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-[#7D715E]">Nền tảng:</span>
-          <div className="relative">
-            <select
-              value={filterPlatform}
-              onChange={(e) => setFilterPlatform(e.target.value)}
-              className="bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-[#1A1612] appearance-none outline-none cursor-pointer hover:bg-[#EAE4D7] transition"
-            >
-              <option value="ALL">Tất cả nền tảng</option>
-              <option value="TIKTOK">TikTok</option>
-              <option value="FACEBOOK">Facebook</option>
-              <option value="YOUTUBE">YouTube</option>
-              <option value="INSTAGRAM">Instagram</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#7D715E] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+          <Select
+            value={filterPlatform}
+            onChange={(e) => setFilterPlatform(e.target.value)}
+            className="w-44 text-xs font-bold"
+          >
+            <option value="ALL">Tất cả nền tảng</option>
+            <option value="TIKTOK">TikTok</option>
+            <option value="FACEBOOK">Facebook</option>
+            <option value="YOUTUBE">YouTube</option>
+            <option value="INSTAGRAM">Instagram</option>
+          </Select>
         </div>
       </Card>
 
@@ -330,9 +334,9 @@ export default function SocialChannelsPage() {
                 {c.id && (
                   <button
                     type="button"
-                    onClick={() => handleDelete(c.id)}
+                    onClick={() => setChannelToDelete(c)}
                     className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                    title="Xóa kênh"
+                    title="Ngắt kết nối kênh"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -364,10 +368,10 @@ export default function SocialChannelsPage() {
                 <label className="text-xs font-bold text-[#1A1612] mb-1.5 block">
                   Nền tảng truyền thông
                 </label>
-                <select
+                <Select
                   value={platformName}
                   onChange={(e) => setPlatformName(e.target.value)}
-                  className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs font-semibold text-[#1A1612] outline-none"
+                  className="w-full text-xs font-semibold"
                 >
                   <option value="TIKTOK">TikTok (Khuyên dùng cho video ngắn)</option>
                   <option value="FACEBOOK">Facebook (Fanpage / Group)</option>
@@ -375,7 +379,7 @@ export default function SocialChannelsPage() {
                   <option value="INSTAGRAM">Instagram (Reels / Story)</option>
                   <option value="THREADS">Threads</option>
                   <option value="ZALO">Zalo Official Account</option>
-                </select>
+                </Select>
               </div>
 
               <div>
@@ -453,6 +457,18 @@ export default function SocialChannelsPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Xác nhận Ngắt kết nối kênh mạng xã hội chuẩn SCANMS */}
+      <ConfirmModal
+        isOpen={Boolean(channelToDelete)}
+        onClose={() => !isDeleting && setChannelToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Ngắt kết nối kênh mạng xã hội"
+        message={`Bạn có chắc chắn muốn ngắt kết nối kênh "${channelToDelete?.channelName || 'này'}"? Các link tiếp thị liên kết đã tạo vẫn tiếp tục được ghi nhận hoa hồng đơn hàng bình thường.`}
+        confirmText="Ngắt kết nối"
+        variant="danger"
+      />
     </div>
   );
 }

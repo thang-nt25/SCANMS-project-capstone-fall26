@@ -510,6 +510,7 @@ export class CouponsService {
 
     const where: Prisma.CouponWhereInput = {
       collaboratorId,
+      liveSessionId: null,
       status: query.status ? query.status : { not: CouponStatus.DELETED },
     };
 
@@ -690,6 +691,10 @@ export class CouponsService {
       where: { id, collaboratorId },
     });
 
+    if (coupon?.liveSessionId) {
+      throw new BadRequestException('Hãy quản lý voucher này trong trang Phiên Livestream.');
+    }
+
     if (!coupon || coupon.status === CouponStatus.DELETED) {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
@@ -845,6 +850,7 @@ export class CouponsService {
 
     const where: Prisma.CouponWhereInput = {
       storeId,
+      liveSessionId: null,
       status: query.status ? query.status : { not: CouponStatus.DELETED },
     };
 
@@ -1604,6 +1610,15 @@ export class CouponsService {
         },
         couponProducts: true,
         couponCategories: true,
+        liveSession: {
+          select: {
+            id: true,
+            status: true,
+            inviteStatus: true,
+            commissionRate: true,
+            products: { select: { productId: true, variantId: true } },
+          },
+        },
       },
     });
 
@@ -1654,11 +1669,22 @@ export class CouponsService {
       });
     }
 
-    if (coupon.expiresAt && now > coupon.expiresAt) {
+    if (coupon.expiresAt && now >= coupon.expiresAt) {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
         errorCode: 'COUPON_EXPIRED',
         message: 'Mã giảm giá đã hết hạn sử dụng.',
+      });
+    }
+    if (
+      coupon.liveSession &&
+      (coupon.liveSession.inviteStatus !== 'ACCEPTED' ||
+        !['SCHEDULED', 'LIVE'].includes(coupon.liveSession.status))
+    ) {
+      await this.recordValidationFailure(rateLimitKey);
+      throw new BadRequestException({
+        errorCode: 'LIVE_SESSION_NOT_ACTIVE',
+        message: 'Voucher của phiên live hiện không được mở.',
       });
     }
 
@@ -1724,12 +1750,21 @@ export class CouponsService {
         id: { in: productIds },
         isDeleted: false,
         isActive: true,
+        moderationStatus: 'APPROVED',
       },
     });
 
     const dbProductMap = new Map<string, any>(
       dbProducts.map((p: any) => [p.id, p]),
     );
+    const variantIds = dto.items.map((item) => item.variantId).filter(Boolean) as string[];
+    const dbVariants = variantIds.length
+      ? await this.prisma.productVariant.findMany({
+          where: { id: { in: variantIds }, isActive: true },
+          select: { id: true, productId: true, price: true },
+        })
+      : [];
+    const dbVariantMap = new Map(dbVariants.map((variant) => [variant.id, variant]));
 
     // Filter items that belong to the coupon's store
     const storeItems = dto.items.filter((item) => {
@@ -1767,6 +1802,8 @@ export class CouponsService {
 
     for (const item of storeItems) {
       const prod = dbProductMap.get(item.productId)!;
+      const variant = item.variantId ? dbVariantMap.get(item.variantId) : undefined;
+      if (item.variantId && (!variant || variant.productId !== prod.id)) continue;
       let isEligible = false;
 
       if (coupon.scopeType === CouponScope.STORE_WIDE) {
@@ -1782,9 +1819,16 @@ export class CouponsService {
           campaignProductIds.size > 0 ? campaignProductIds.has(prod.id) : true;
       }
 
+      if (isEligible && coupon.liveSession) {
+        isEligible = coupon.liveSession.products.some(
+          (liveProduct) => liveProduct.productId === prod.id &&
+            (!liveProduct.variantId || liveProduct.variantId === item.variantId),
+        );
+      }
+
       if (isEligible) {
         eligibleProductIds.push(prod.id);
-        eligibleSubtotal += Number(prod.price) * item.quantity;
+        eligibleSubtotal += Number(variant?.price ?? prod.price) * item.quantity;
       }
     }
 
@@ -1899,6 +1943,7 @@ export class CouponsService {
       eligibleSubtotal,
       eligibleProductIds,
       collaboratorId: coupon.collaboratorId,
+      sessionCommissionRate: coupon.liveSession ? Number(coupon.liveSession.commissionRate) : null,
       message: 'Áp dụng mã giảm giá thành công',
     };
   }

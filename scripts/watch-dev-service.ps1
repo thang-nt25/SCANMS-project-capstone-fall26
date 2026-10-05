@@ -1,11 +1,24 @@
 param(
   [Parameter(Mandatory = $true)][string]$ServiceName,
-  [Parameter(Mandatory = $true)][string]$ServiceDirectory,
+  [Parameter(Mandatory = $false)][string]$ServiceDirectory,
   [Parameter(Mandatory = $true)][int]$Port,
-  [Parameter(Mandatory = $true)][string]$LogPath
+  [Parameter(Mandatory = $false)][string]$LogPath
 )
 
 $ErrorActionPreference = 'Continue'
+
+$projectRoot = Split-Path -Parent $PSScriptRoot
+if (-not $ServiceDirectory -or -not (Test-Path -LiteralPath $ServiceDirectory)) {
+  $ServiceDirectory = Join-Path $projectRoot $ServiceName
+}
+if (-not $LogPath) {
+  $runtimeDir = Join-Path $projectRoot '.dev-runtime'
+  if (-not (Test-Path -LiteralPath $runtimeDir)) {
+    New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+  }
+  $LogPath = Join-Path $runtimeDir "$ServiceName.log"
+}
+
 $mutexName = "Local\SCANMS-$ServiceName-dev-watcher"
 $mutex = [System.Threading.Mutex]::new($false, $mutexName)
 

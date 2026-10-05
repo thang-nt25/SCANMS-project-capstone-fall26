@@ -91,11 +91,12 @@
 
 ---
 
-## 📌 PHẦN 8: CAM KẾT NỘP VIDEO REVIEW HÀNG MẪU TRONG 7 NGÀY
+## 📌 PHẦN 8: CAM KẾT NỘP VIDEO REVIEW HÀNG MẪU TRONG 14 NGÀY
 
 * Khi KOL nhận được sản phẩm mẫu từ bưu tá $\rightarrow$ Bấm nút "Đã nhận hàng mẫu".
-* Hệ thống đếm ngược **7 ngày (168 giờ)**.
-* KOL phải nộp đường link video review (TikTok/Reels/Shorts) vào hệ thống để hoàn tất cam kết $\rightarrow$ Mở khóa quyền được xin tiếp các sản phẩm mẫu khác.
+* Hệ thống đếm ngược **14 ngày (336 giờ)** kể từ khi KOL xác nhận đã nhận mẫu.
+* KOL phải nộp đường link video review (TikTok/YouTube/Facebook) để Shop nghiệm thu.
+* Nếu quá hạn mà chưa nộp link hợp lệ, hệ thống khóa quyền xin mẫu mới cho đến khi Shop nghiệm thu hoặc Admin xử lý.
 
 ---
 *(Sổ tay ghi nhớ chính thức của Nhóm Đồ án Tốt nghiệp SCANMS - FA26SE032. Lưu trữ tại: `docs/CAC_DIEU_CAN_NHO_DE_LAM_TIEP.md`)*

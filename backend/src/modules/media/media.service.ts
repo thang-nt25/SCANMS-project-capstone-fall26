@@ -24,6 +24,11 @@ export class MediaService {
     'youtube.com',
     'www.youtube.com',
     'youtu.be',
+    'facebook.com',
+    'www.facebook.com',
+    'fb.watch',
+    'instagram.com',
+    'www.instagram.com',
     'tiktok.com',
     'www.tiktok.com',
     'v.douyin.com',
@@ -214,6 +219,12 @@ export class MediaService {
       );
     }
 
+    if (asset.sampleRequestId && isOwnerCollaborator && !isStoreOwner && !isSystemAdminOrManager) {
+      throw new ForbiddenException(
+        'Video gắn với yêu cầu nhận mẫu cần được Shop hoặc Admin xử lý trước khi xóa.',
+      );
+    }
+
     await this.prisma.mediaAsset.update({
       where: { id },
       data: {
@@ -244,7 +255,7 @@ export class MediaService {
     }
 
     const product = await this.prisma.product.findFirst({
-      where: { id: dto.productId, isDeleted: false },
+      where: { id: dto.productId, isDeleted: false, moderationStatus: 'APPROVED' },
       include: { store: true },
     });
 
@@ -404,6 +415,78 @@ export class MediaService {
         },
       });
 
+      if (asset.sampleRequestId) {
+        const sampleRequest = await tx.sampleProductRequest.findUnique({
+          where: { id: asset.sampleRequestId },
+          select: { id: true, collaboratorId: true, videoUrl: true, status: true, deadlineAt: true, product: { select: { title: true } } },
+        });
+        if (
+          sampleRequest &&
+          sampleRequest.videoUrl === asset.urlOrContent &&
+          sampleRequest.status === 'VIDEO_SUBMITTED'
+        ) {
+          const isApproved = dto.status === ReviewActionStatus.APPROVED;
+          const now = new Date();
+          const revisionDeadlineAt = new Date(
+            Math.max(
+              sampleRequest.deadlineAt?.getTime() ?? 0,
+              now.getTime() + 7 * 24 * 60 * 60 * 1000,
+            ),
+          );
+          await tx.sampleProductRequest.update({
+            where: { id: sampleRequest.id },
+            data: {
+              status: isApproved ? 'COMPLETED' : 'REVISION_REQUIRED',
+              videoRejectionReason: isApproved ? null : dto.rejectionReason?.trim() || 'Shop yêu cầu chỉnh sửa video.',
+              revisionDeadlineAt: isApproved ? null : revisionDeadlineAt,
+              revisionReminderSentAt: null,
+              revisionShopReminderSentAt: null,
+            },
+          });
+          if (isApproved) {
+            const otherOverdue = await tx.sampleProductRequest.count({
+              where: {
+                collaboratorId: sampleRequest.collaboratorId,
+                status: 'OVERDUE',
+              },
+            });
+            if (otherOverdue === 0) {
+              await tx.collaboratorProfile.updateMany({
+                where: { userId: sampleRequest.collaboratorId },
+                data: {
+                  sampleRequestsBlockedAt: null,
+                  sampleRequestsBlockReason: null,
+                },
+              });
+            }
+          }
+          await tx.sampleRequestEvent.create({
+            data: {
+              sampleRequestId: sampleRequest.id,
+              actorId: reviewerId,
+              action: isApproved ? 'SAMPLE_VIDEO_APPROVED' : 'SAMPLE_VIDEO_REVISION_REQUIRED',
+              details: {
+                mediaAssetId: asset.id,
+                videoUrl: asset.urlOrContent,
+                revisionDeadlineAt: isApproved ? null : revisionDeadlineAt.toISOString(),
+                reason: isApproved ? null : dto.rejectionReason?.trim() || null,
+              },
+            },
+          });
+          await tx.notification.create({
+            data: {
+              userId: sampleRequest.collaboratorId,
+              title: isApproved ? 'Video mẫu đã được nghiệm thu' : 'Shop yêu cầu chỉnh sửa video mẫu',
+              message: isApproved
+                ? `Shop đã nghiệm thu video cho ${sampleRequest.product.title}. Nghĩa vụ nhận mẫu đã hoàn tất.`
+                : `Shop yêu cầu chỉnh sửa video cho ${sampleRequest.product.title}: ${dto.rejectionReason?.trim() || 'Vui lòng kiểm tra và nộp lại.'}`,
+              type: isApproved ? 'SAMPLE_VIDEO_APPROVED' : 'SAMPLE_VIDEO_REVISION_REQUIRED',
+              data: { sampleRequestId: sampleRequest.id, mediaAssetId: asset.id },
+            },
+          });
+        }
+      }
+
       // 3. Ghi vết AuditLog theo chuẩn kiểm toán sàn SCANMS
       await tx.auditLog.create({
         data: {
@@ -430,6 +513,30 @@ export class MediaService {
 
       return updatedAsset;
     });
+
+    if (asset.sampleRequestId && dto.status === ReviewActionStatus.APPROVED && asset.collaboratorId) {
+      const unresolvedOverdueCount = await this.prisma.sampleProductRequest.count({
+        where: {
+          collaboratorId: asset.collaboratorId,
+          overdueAt: { not: null },
+          status: { not: 'COMPLETED' },
+        },
+      });
+      if (unresolvedOverdueCount === 0) {
+        await this.prisma.collaboratorProfile.updateMany({
+          where: { userId: asset.collaboratorId },
+          data: { sampleRequestsBlockedAt: null, sampleRequestsBlockReason: null },
+        });
+        await this.prisma.notification.create({
+          data: {
+            userId: asset.collaboratorId,
+            title: 'Đã mở lại quyền xin sản phẩm mẫu',
+            message: 'Shop đã nghiệm thu các video mẫu quá hạn của bạn. Bạn có thể gửi yêu cầu xin mẫu mới.',
+            type: 'SAMPLE_REQUESTS_UNBLOCKED',
+          },
+        }).catch(() => undefined);
+      }
+    }
 
     // 4. Giải phóng cache landing page cho sản phẩm liên quan
     if (asset.productId) {

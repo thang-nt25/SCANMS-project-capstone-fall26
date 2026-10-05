@@ -8,8 +8,6 @@ import {
   Check,
   Filter,
   BadgeCheck,
-  Radio,
-  Sparkles,
   Zap,
   MessageSquare,
   ChevronDown,
@@ -25,6 +23,8 @@ import { formatMoney, getSafeProductImageUrl } from '../../features/marketplace/
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
+import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
+import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 
 interface CategoryItem {
   name: string;
@@ -400,6 +400,7 @@ export default function SearchPage() {
     }
     return list;
   }, [filteredProducts, sortBy]);
+  const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals(displayedProducts.map((product) => product.id));
 
   // Active filter count
   const activeFilterCount = useMemo(() => {
@@ -426,10 +427,10 @@ export default function SearchPage() {
   };
 
 
-  // Filter content renderer (shared by Desktop Sidebar and Mobile Drawer) - Shopee E-Commerce Layout
+  // Filter content renderer (shared by Desktop Sidebar and Mobile Drawer) - SCANMS E-Commerce Layout
   const renderFilterContent = () => (
     <div className="space-y-3.5 text-left">
-      {/* Category Section - Shopee Style */}
+      {/* Category Section - SCANMS Standard */}
       <div>
         <div className="space-y-1">
           {/* Tất cả sản phẩm (Toàn sàn & Mọi gian hàng) */}
@@ -477,7 +478,7 @@ export default function SearchPage() {
             );
           })}
 
-          {/* Shopee-style "Thêm ▾" / "Thu gọn ▴" */}
+          {/* SCANMS Standard "Thêm ▾" / "Thu gọn ▴" */}
           {categories.length > 4 && (
             <button
               type="button"
@@ -495,7 +496,7 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* Partner Store Section - Shopee Style */}
+      {/* Partner Store Section - SCANMS Standard */}
       <div className="pt-3 border-t border-[#EAE4D7]">
         <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-[#EAE4D7]/70">
           <label className="text-xs font-bold uppercase tracking-wider text-[#1A1612]">
@@ -551,7 +552,7 @@ export default function SearchPage() {
             );
           })}
 
-          {/* Shopee-style "Thêm ▾" / "Thu gọn ▴" */}
+          {/* SCANMS Standard "Thêm ▾" / "Thu gọn ▴" */}
           {stores.length > 3 && (
             <button
               type="button"
@@ -569,13 +570,13 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* Price Range Section - Shopee Style */}
+      {/* Price Range Section - SCANMS Standard */}
       <div className="pt-3 border-t border-[#EAE4D7]">
         <label className="block text-xs font-bold uppercase tracking-wider text-[#1A1612] mb-1.5 pb-1 border-b border-[#EAE4D7]/70">
           Khoảng giá
         </label>
 
-        {/* Shopee Price Inputs: Từ ₫ - Đến ₫ & Áp Dụng Button */}
+        {/* SCANMS Price Inputs: Từ ₫ - Đến ₫ & Áp Dụng Button */}
         <div className="mb-2">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 mb-2">
             <input
@@ -644,7 +645,7 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* Partner Privilege Toggles / Service & Promotion - Shopee Style */}
+      {/* Partner Privilege Toggles / Service & Promotion - SCANMS Standard */}
       <div className="pt-3 border-t border-[#EAE4D7] space-y-1.5">
         <label className="block text-xs font-bold uppercase tracking-wider text-[#1A1612] mb-1 pb-1 border-b border-[#EAE4D7]/70">
           Dịch vụ & Khuyến mãi
@@ -732,12 +733,12 @@ export default function SearchPage() {
         }}
       />
 
-      {/* Main Content Area - 1200px Centered Shopee Standard Container */}
+      {/* Main Content Area - 1200px Centered SCANMS Standard Container */}
       <main className="flex-1 max-w-[1200px] w-full mx-auto px-3 sm:px-4 py-4 sm:py-5 text-left">
         {/* 2-Column Responsive Layout: Left Sidebar Filters (190px) + Right Product Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-[190px_1fr] gap-4 sm:gap-5 items-start">
           
-          {/* DESKTOP FILTER SIDEBAR (Flat Shopee Style - No outer wrapping frame) */}
+          {/* DESKTOP FILTER SIDEBAR (Flat SCANMS Standard - No outer wrapping frame) */}
           <aside id="search-filter-sidebar" className="hidden lg:block text-left sticky top-24">
             {/* Sidebar Header: Exact matching 52px height and alignment with Sort Bar */}
             <div className="h-[52px] flex items-center gap-2 min-w-0 border-b border-[#EAE4D7] pb-1 mb-2">
@@ -760,7 +761,7 @@ export default function SearchPage() {
           {/* RIGHT PRODUCT GRID COLUMN */}
           <div className="flex-1 min-w-0 space-y-3.5">
             
-            {/* Shopee-style Sort Bar: Exact matching 52px height and alignment with Bộ lọc sản phẩm */}
+            {/* SCANMS Standard Sort Bar: Exact matching 52px height and alignment with Bộ lọc sản phẩm */}
             <div className="h-[52px] bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl px-4 flex items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 {/* Mobile Filter Button */}
@@ -833,7 +834,7 @@ export default function SearchPage() {
                   Bán Chạy
                 </button>
 
-                {/* Shopee-style Giá Dropdown */}
+                {/* SCANMS Standard Giá Dropdown */}
                 <div
                   ref={priceDropdownRef}
                   className="relative"
@@ -1025,7 +1026,7 @@ export default function SearchPage() {
               </div>
             )}
 
-            {/* Product Cards Grid - Shopee 5-Column Grid on Desktop */}
+            {/* Product Cards Grid - SCANMS 5-Column Grid on Desktop */}
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3">
                 {[...Array(10)].map((_, i) => (
@@ -1070,7 +1071,7 @@ export default function SearchPage() {
                       key={p.id}
                       className="bg-white border border-[#EAE4D7] rounded-xl overflow-hidden hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(75,57,34,0.12)] hover:border-[#C59B58] transition-all duration-200 flex flex-col justify-between group text-left relative"
                     >
-                      {/* Entire Card Clickable Area -> Product Details (Shopee Standard) */}
+                      {/* Entire Card Clickable Area -> Product Details (SCANMS Standard) */}
                       <Link
                         to={productDetailUrl}
                         className="block flex-1 flex flex-col cursor-pointer"
@@ -1078,6 +1079,7 @@ export default function SearchPage() {
                       >
                         {/* Image Container with Discount Badge & Wishlist Heart */}
                         <div className="relative aspect-square bg-[#F3EFE6] overflow-hidden">
+                          <LiveSessionDealBadge deal={liveDeals[p.id]} now={liveDealsNow} />
                           <img
                             src={p.image}
                             alt={p.name}
@@ -1116,7 +1118,7 @@ export default function SearchPage() {
                           </button>
                         </div>
 
-{/* Card Content - Shopee Compact Proportions */}
+{/* Card Content - SCANMS Compact Proportions */}
                         <div className="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
                           <div>
                             {/* Row 1: Store Icon & Shop Name • Chính hãng */}
@@ -1145,7 +1147,7 @@ export default function SearchPage() {
                               {p.name}
                             </h3>
 
-                            {/* Row 3: Shopee Badge Row - "Rẻ Vô Địch" / "Hoa hồng" (Fixed height h-5 to keep all cards uniform) */}
+                            {/* Row 3: SCANMS Badge Row - "Rẻ Vô Địch" / "Hoa hồng" (Fixed height h-5 to keep all cards uniform) */}
                             <div className="flex items-center gap-1 h-5 mb-1.5 min-w-0">
                               <span
                                 className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[9px] font-black text-[#B88E4F] shrink-0 shadow-2xs tracking-tight"
@@ -1163,7 +1165,7 @@ export default function SearchPage() {
                             </div>
                           </div>
 
-                          {/* Row 4: Shopee Standard Bottom Bar: Big Bold Price on Left, Sold Count on Right */}
+                          {/* Row 4: SCANMS Standard Bottom Bar: Big Bold Price on Left, Sold Count on Right */}
                           <div className="pt-1.5 border-t border-[#EAE4D7]/60 flex items-center justify-between gap-1">
                             <span className="text-xs sm:text-sm font-black text-[#B88E4F] tracking-tight truncate">
                               {formatMoney(p.price)}
@@ -1244,69 +1246,10 @@ export default function SearchPage() {
       )}
 
       {/* KOC LIVE COMMERCE PREVIEW MODAL */}
-      {isLiveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setIsLiveModalOpen(false)}
-          />
-          <div className="relative w-full max-w-2xl bg-white border border-[#EAE4D7] rounded-3xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200 text-left">
-            <div className="px-6 py-4 bg-gradient-to-r from-[#1A1612] to-[#1A1612] text-white flex items-center justify-between border-b border-[#7D715E]">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#E11D48] to-[#9F1239] flex items-center justify-center text-white shadow-xs">
-                  <Radio className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <strong className="text-sm font-black tracking-tight">KOC Live Commerce Hub</strong>
-                  <p className="text-[11px] text-[#EAE4D7] m-0">Phòng phát sóng bán hàng & tiếp thị liên kết đa gian hàng</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsLiveModalOpen(false)}
-                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-[#EAE4D7] hover:text-white transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 max-h-[75vh] overflow-y-auto space-y-4 bg-[#FAF8F5]">
-              <div className="p-4 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-start gap-3">
-                <Sparkles className="w-5 h-5 text-[#B88E4F] shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-xs font-black text-[#1A1612] block">
-                    Đặc quyền Live Commerce dành cho KOC & Gian Hàng ScanMS
-                  </strong>
-                  <p className="text-[11px] text-[#7D715E] mt-0.5 m-0 leading-relaxed">
-                    KOC có thể ghim sản phẩm trực tiếp từ các gian hàng đối tác đã kiểm duyệt KYC, khách mua ngay trong lúc xem live với chiết khấu độc quyền.
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="px-2 py-0.5 rounded-full bg-[#FFE4E6] text-[#E11D48] text-[10px] font-black animate-pulse">
-                      ĐANG PHÁT
-                    </span>
-                    <strong className="text-xs font-bold text-[#1A1612]">KOC Linh Trương • Review Mỹ Phẩm Sora Skin</strong>
-                  </div>
-                  <span className="text-[11px] text-[#7D715E]">
-                    1.2k người đang xem{isKolUser ? ' • Hoa hồng CTV 28%' : ''}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toast.success('Đã kết nối luồng Live KOC demo!')}
-                  className="px-4 py-2 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition"
-                >
-                  Xem Live
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <LiveCommerceHubModal
+        isOpen={isLiveModalOpen}
+        onClose={() => setIsLiveModalOpen(false)}
+      />
     </div>
   );
 }

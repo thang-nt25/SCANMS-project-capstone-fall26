@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   ParseUUIDPipe,
@@ -128,5 +129,27 @@ export class ChatController {
   @ApiQuery({ name: 'q', required: false, type: String })
   searchStores(@Query('q') q?: string) {
     return this.chatService.searchStores(q);
+  }
+
+  // Xóa cuộc trò chuyện
+  @Delete('conversations/:conversationId')
+  @ApiOperation({ summary: 'Xóa hoàn toàn cuộc trò chuyện và lịch sử chat' })
+  @ApiParam({ name: 'conversationId', type: 'string', format: 'uuid' })
+  deleteConversation(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.chatService.deleteConversation(conversationId, userId);
+  }
+
+  // Xóa lịch sử tin nhắn trong cuộc trò chuyện
+  @Delete('conversations/:conversationId/messages')
+  @ApiOperation({ summary: 'Xóa toàn bộ lịch sử tin nhắn trong cuộc trò chuyện' })
+  @ApiParam({ name: 'conversationId', type: 'string', format: 'uuid' })
+  clearMessages(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.chatService.clearConversationMessages(conversationId, userId);
   }
 }

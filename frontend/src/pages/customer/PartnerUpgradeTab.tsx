@@ -16,7 +16,7 @@ import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { ImageUploadDropzone } from '../../components/ui/ImageUploadDropzone';
-import { VIETNAM_BANK_OPTIONS } from '../../constants/vietnamBanks';
+import { BankSelectTrigger } from '../../components/bank/BankSelectTrigger';
 
 export const PartnerUpgradeTab: React.FC = () => {
   const navigate = useNavigate();
@@ -66,6 +66,26 @@ export const PartnerUpgradeTab: React.FC = () => {
     try {
       const data = await kycService.getMyUpgradeStatus();
       setStatusData(data);
+      if (data.shopApplication) {
+        const documents = data.shopApplication.onboardingData || ({} as Partial<ApplyShopData>);
+        setShopForm({
+          shopName: data.shopApplication.name,
+          description: data.shopApplication.description || documents.description || '',
+          warehouseAddress: data.shopApplication.warehouseAddress || '',
+          businessType: documents.businessType || 'ENTERPRISE',
+          taxCode: documents.taxCode || '',
+          businessLicenseUrl: documents.businessLicenseUrl || '',
+          brandAuthorizationUrl: documents.brandAuthorizationUrl || '',
+          contactPhone: documents.contactPhone || '',
+          contactEmail: documents.contactEmail || '',
+          bankName: documents.bankName || '',
+          bankAccountNumber: documents.bankAccountNumber || '',
+          bankAccountName: documents.bankAccountName || '',
+          idCardNumber: documents.idCardNumber || '',
+          frontCardUrl: documents.frontCardUrl || '',
+          backCardUrl: documents.backCardUrl || '',
+        });
+      }
     } catch (err: any) {
       console.error('Failed to load upgrade status:', err);
     } finally {
@@ -139,11 +159,17 @@ export const PartnerUpgradeTab: React.FC = () => {
       toast.error('Vui lòng nhập email đối soát thanh toán');
       return;
     }
-    if (shopForm.businessType === 'INDIVIDUAL') {
-      if (!shopForm.idCardNumber?.trim() || shopForm.idCardNumber.length < 9) {
-        toast.error('Cá nhân kinh doanh bắt buộc nhập số CCCD chính chủ (9 - 12 số)');
-        return;
-      }
+    if (!shopForm.idCardNumber?.trim() || !/^\d{9,12}$/.test(shopForm.idCardNumber)) {
+      toast.error('Vui lòng nhập số CCCD người đại diện hợp lệ (9 - 12 số)');
+      return;
+    }
+    if (!shopForm.frontCardUrl || !shopForm.backCardUrl) {
+      toast.error('Vui lòng tải lên ảnh CCCD mặt trước và mặt sau của người đại diện');
+      return;
+    }
+    if (!shopForm.businessLicenseUrl) {
+      toast.error('Vui lòng tải lên giấy phép đăng ký kinh doanh');
+      return;
     }
     if (!shopForm.bankName?.trim()) {
       toast.error('Vui lòng chọn ngân hàng nhận tiền doanh thu bán hàng');
@@ -219,6 +245,8 @@ export const PartnerUpgradeTab: React.FC = () => {
 
   const kolApp = statusData?.kolApplication;
   const shopApp = statusData?.shopApplication;
+  const shopStatus = shopApp?.onboardingStatus || (shopApp?.isVerified ? 'VERIFIED' : shopApp ? 'PENDING_APPROVAL' : null);
+  const canSubmitShopApplication = !shopStatus || ['DRAFT', 'NEEDS_INFO', 'REJECTED'].includes(shopStatus);
 
   return (
     <div className="flex flex-col gap-3 text-left">
@@ -334,12 +362,24 @@ export const PartnerUpgradeTab: React.FC = () => {
             {shopApp ? (
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                  shopApp.isVerified
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                  shopStatus === 'VERIFIED'
+                    ? 'bg-[#FBF5EB] text-[#8F682E] border-[#EEDFC6]'
+                    : shopStatus === 'REJECTED'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : shopStatus === 'NEEDS_INFO'
+                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                    : 'bg-[#F3EFE6] text-[#7D715E] border-[#EAE4D7]'
                 }`}
               >
-                {shopApp.isVerified ? '✓ Gian Hàng Xác Minh' : '⏳ Chờ thẩm định GPKD'}
+                {shopStatus === 'VERIFIED'
+                  ? 'Đã xác minh'
+                  : shopStatus === 'NEEDS_INFO'
+                  ? 'Cần bổ sung hồ sơ'
+                  : shopStatus === 'REJECTED'
+                  ? 'Hồ sơ bị từ chối'
+                  : shopStatus === 'DRAFT'
+                  ? 'Bản nháp — chưa nộp'
+                  : 'Chờ duyệt hồ sơ'}
               </span>
             ) : (
               <span className="text-[10px] text-[#7D715E] bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#EAE4D7]">
@@ -348,13 +388,19 @@ export const PartnerUpgradeTab: React.FC = () => {
             )}
           </div>
           <p className="text-[11px] text-[#7D715E] mb-2 leading-relaxed line-clamp-2">
-            {shopApp?.isVerified
-              ? `Gian hàng "${shopApp.name}" đã được cấp Tích Xanh & sẵn sàng đăng bán sản phẩm, mở chiến dịch hoa hồng cho KOL.`
+            {shopStatus === 'VERIFIED'
+              ? `Gian hàng "${shopApp?.name || 'của bạn'}" đã được cấp Tích Xanh & sẵn sàng đăng bán sản phẩm, mở chiến dịch hoa hồng cho KOL.`
+              : shopStatus === 'NEEDS_INFO'
+              ? `Gian hàng "${shopApp?.name || 'của bạn'}" cần bổ sung hồ sơ theo ghi chú của Ban Quản Trị.`
+              : shopStatus === 'REJECTED'
+              ? `Hồ sơ gian hàng "${shopApp?.name || 'của bạn'}" đã bị từ chối. Bạn có thể chỉnh sửa và gửi lại.`
+              : shopStatus === 'DRAFT'
+              ? `Gian hàng "${shopApp?.name || 'của bạn'}" đang là bản nháp. Hoàn thiện thông tin và giấy tờ để gửi Ban Quản Trị duyệt.`
               : shopApp
-              ? `Gian hàng "${shopApp.name}" đã nộp địa chỉ kho và giấy phép. Admin đang thẩm định tính xác thực theo Nghị định 85/2021/NĐ-CP.`
+              ? `Hồ sơ gian hàng "${shopApp.name}" đã được gửi. Shop chỉ được đăng sản phẩm sau khi Ban Quản Trị xác minh.`
               : 'Dành cho các doanh nghiệp, hộ kinh doanh, nhà phân phối chính hãng muốn tiếp cận hàng ngàn KOL để bùng nổ doanh số.'}
           </p>
-          {shopApp?.isVerified ? (
+          {shopStatus === 'VERIFIED' ? (
             <button
               type="button"
               onClick={(e) => {
@@ -379,7 +425,7 @@ export const PartnerUpgradeTab: React.FC = () => {
                   : 'bg-white text-[#1A1612] border border-[#EAE4D7] hover:border-[#C59B58]/60 hover:bg-[#FAF8F5]'
               }`}
             >
-              <span>{shopApp ? 'Xem & Cập nhật đơn Shop' : 'Đăng ký mở Gian Hàng'}</span>
+              <span>{shopStatus === 'DRAFT' ? 'Hoàn thiện hồ sơ Shop' : shopApp ? 'Xem & Cập nhật đơn Shop' : 'Đăng ký mở Gian Hàng'}</span>
             </button>
           )}
         </div>
@@ -549,13 +595,11 @@ export const PartnerUpgradeTab: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Tên ngân hàng *</label>
-                <CustomSelect
+                <BankSelectTrigger
                   value={kolForm.bankName}
                   onChange={(val) => setKolForm({ ...kolForm, bankName: val })}
-                  options={VIETNAM_BANK_OPTIONS}
                   placeholder="-- Chọn ngân hàng thụ hưởng --"
                   required
-                  searchable
                 />
               </div>
 
@@ -611,7 +655,16 @@ export const PartnerUpgradeTab: React.FC = () => {
 
       {/* TAB 2: FORM MỞ GIAN HÀNG (SHOP MANAGER) */}
       {activePartnerType === 'shop' && (
+        canSubmitShopApplication ? (
         <form onSubmit={handleShopSubmit} className="bg-white border border-[#EAE4D7] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+          {(shopStatus === 'NEEDS_INFO' || shopStatus === 'REJECTED') && shopApp?.onboardingReviewNote && (
+            <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+              <strong className="mb-1 block text-[#8F682E]">
+                {shopStatus === 'NEEDS_INFO' ? 'Ban Quản Trị yêu cầu bạn bổ sung:' : 'Lý do hồ sơ bị từ chối:'}
+              </strong>
+              {shopApp.onboardingReviewNote}
+            </div>
+          )}
           <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] shadow-2xs">
@@ -750,76 +803,62 @@ export const PartnerUpgradeTab: React.FC = () => {
               2. Chứng từ pháp lý &amp; Định danh chủ thể kinh doanh
             </h4>
 
-            {shopForm.businessType === 'INDIVIDUAL' ? (
-              <div className="space-y-3.5">
-                <div className="py-2.5 px-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#7D715E] leading-relaxed">
-                  💡 <strong className="text-[#1A1612]">Dành cho Cá nhân kinh doanh:</strong> Theo quy chuẩn sàn thương mại điện tử, cá nhân chưa đăng ký thành lập doanh nghiệp/hộ kinh doanh bắt buộc cung cấp số và ảnh 2 mặt Căn cước công dân (CCCD) gắn chip chính chủ để định danh và đối soát thuế vãng lai.
-                </div>
+            <div className="py-2.5 px-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#7D715E] leading-relaxed">
+              <strong className="text-[#1A1612]">Hồ sơ bắt buộc:</strong> CCCD của người đại diện (đối với doanh nghiệp/hộ kinh doanh là người đại diện pháp luật), giấy phép đăng ký kinh doanh, mã số thuế và tài khoản ngân hàng nhận doanh thu.
+            </div>
 
-                <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                    Số Căn cước công dân (CCCD 12 số) *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="VD: 001201012345"
-                    maxLength={12}
-                    value={shopForm.idCardNumber || ''}
-                    onChange={(e) => setShopForm({ ...shopForm, idCardNumber: e.target.value.replace(/\D/g, '') })}
-                    required
-                    className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] font-mono outline-none focus:border-[#C59B58] transition"
-                  />
-                </div>
+            <div>
+              <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
+                Số CCCD người đại diện (9 - 12 số) *
+              </label>
+              <input
+                type="text"
+                placeholder="VD: 001201012345"
+                maxLength={12}
+                value={shopForm.idCardNumber || ''}
+                onChange={(e) => setShopForm({ ...shopForm, idCardNumber: e.target.value.replace(/\D/g, '') })}
+                required
+                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] font-mono outline-none focus:border-[#C59B58] transition"
+              />
+            </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <ImageUploadDropzone
-                    label="Ảnh CCCD mặt trước *"
-                    helperText="Chụp rõ họ tên, số CCCD và ảnh chân dung"
-                    value={shopForm.frontCardUrl || ''}
-                    onChange={(url) => setShopForm({ ...shopForm, frontCardUrl: url })}
-                    iconType="idcard"
-                    folder="scanms/kyc/shop_idcards"
-                  />
-                  <ImageUploadDropzone
-                    label="Ảnh CCCD mặt sau *"
-                    helperText="Chụp rõ đặc điểm nhận dạng và ngày cấp"
-                    value={shopForm.backCardUrl || ''}
-                    onChange={(url) => setShopForm({ ...shopForm, backCardUrl: url })}
-                    iconType="idcard"
-                    folder="scanms/kyc/shop_idcards"
-                  />
-                </div>
-
-                <ImageUploadDropzone
-                  label="Giấy ủy quyền thương hiệu / Hóa đơn nguồn gốc (Tùy chọn)"
-                  helperText="Hóa đơn VAT đầu vào hoặc chứng từ đại lý phân phối chính hãng"
-                  value={shopForm.brandAuthorizationUrl || ''}
-                  onChange={(url) => setShopForm({ ...shopForm, brandAuthorizationUrl: url })}
-                  iconType="file"
-                  folder="scanms/kyc/authorizations"
-                />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <ImageUploadDropzone
-                  label="Ảnh Giấy phép ĐKKD / Giấy chứng nhận ĐKDN *"
-                  helperText="Bản chụp rõ nét GPKD hoặc file ảnh scan"
-                  value={shopForm.businessLicenseUrl || ''}
-                  onChange={(url) => setShopForm({ ...shopForm, businessLicenseUrl: url })}
-                  iconType="file"
-                  folder="scanms/kyc/licenses"
-                />
-
-                <ImageUploadDropzone
-                  label="Giấy ủy quyền thương hiệu / Hợp đồng NPP (Tùy chọn)"
-                  helperText="Chứng nhận đại lý hoặc hợp đồng phân phối (nếu có)"
-                  value={shopForm.brandAuthorizationUrl || ''}
-                  onChange={(url) => setShopForm({ ...shopForm, brandAuthorizationUrl: url })}
-                  iconType="file"
-                  folder="scanms/kyc/authorizations"
-                />
-              </div>
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ImageUploadDropzone
+                label="Ảnh CCCD người đại diện — mặt trước *"
+                helperText="Ảnh rõ nét, đủ bốn góc, tối đa 5MB"
+                value={shopForm.frontCardUrl || ''}
+                onChange={(url) => setShopForm({ ...shopForm, frontCardUrl: url })}
+                iconType="idcard"
+                folder="scanms/kyc/shop_idcards"
+                required
+              />
+              <ImageUploadDropzone
+                label="Ảnh CCCD người đại diện — mặt sau *"
+                helperText="Ảnh rõ nét, đủ bốn góc, tối đa 5MB"
+                value={shopForm.backCardUrl || ''}
+                onChange={(url) => setShopForm({ ...shopForm, backCardUrl: url })}
+                iconType="idcard"
+                folder="scanms/kyc/shop_idcards"
+                required
+              />
+              <ImageUploadDropzone
+                label="Giấy phép đăng ký kinh doanh *"
+                helperText="Ảnh chụp hoặc bản scan rõ nét"
+                value={shopForm.businessLicenseUrl || ''}
+                onChange={(url) => setShopForm({ ...shopForm, businessLicenseUrl: url })}
+                iconType="file"
+                folder="scanms/kyc/licenses"
+                required
+              />
+              <ImageUploadDropzone
+                label="Giấy ủy quyền thương hiệu / Hợp đồng NPP (Tùy chọn)"
+                helperText="Chứng từ đại lý phân phối hoặc nguồn gốc hàng hóa (nếu có)"
+                value={shopForm.brandAuthorizationUrl || ''}
+                onChange={(url) => setShopForm({ ...shopForm, brandAuthorizationUrl: url })}
+                iconType="file"
+                folder="scanms/kyc/authorizations"
+              />
+            </div>
           </div>
 
           {/* TÀI KHOẢN NGÂN HÀNG THỤ HƯỞNG DOANH THU */}
@@ -841,13 +880,11 @@ export const PartnerUpgradeTab: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Tên ngân hàng thụ hưởng *</label>
-                <CustomSelect
+                <BankSelectTrigger
                   value={shopForm.bankName}
                   onChange={(val) => setShopForm({ ...shopForm, bankName: val })}
-                  options={VIETNAM_BANK_OPTIONS}
                   placeholder="-- Chọn ngân hàng --"
                   required
-                  searchable
                 />
               </div>
 
@@ -905,6 +942,32 @@ export const PartnerUpgradeTab: React.FC = () => {
             </button>
           </div>
         </form>
+        ) : (
+          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 text-sm font-black text-[#1A1612]">
+              <Store className="h-4 w-4 text-[#B88E4F]" />
+              {shopStatus === 'VERIFIED' ? 'Gian hàng đã được xác minh' : 'Hồ sơ đang chờ Ban Quản Trị duyệt'}
+            </div>
+            <p className="text-xs text-[#7D715E]">
+              {shopStatus === 'VERIFIED'
+                ? 'Gian hàng đã được kích hoạt. Bạn có thể vào cổng quản lý để đăng sản phẩm.'
+                : 'Bạn sẽ nhận thông báo khi hồ sơ được duyệt hoặc cần bổ sung. Trong thời gian chờ, chưa thể đăng sản phẩm hay nhập kho.'}
+            </p>
+            {shopApp?.onboardingReviewNote && shopStatus !== 'VERIFIED' && (
+              <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+                <strong className="mb-1 block text-[#8F682E]">Ghi chú từ Ban Quản Trị</strong>
+                {shopApp.onboardingReviewNote}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => loadStatus()}
+              className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-xs font-bold text-[#7D715E] hover:border-[#C59B58]"
+            >
+              Làm mới trạng thái
+            </button>
+          </div>
+        )
       )}
     </div>
   );

@@ -32,13 +32,13 @@ import {
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
 
-interface CustomSandSelectOption<T extends string> {
+export interface CustomSandSelectOption<T extends string> {
   value: T;
   label: string;
   icon?: React.ReactNode;
 }
 
-function CustomSandSelect<T extends string>({
+export function CustomSandSelect<T extends string>({
   value,
   onChange,
   options,
@@ -140,6 +140,7 @@ export const ShopCouponsPage: React.FC = () => {
   const [storeId, setStoreId] = useState<string>('');
   const [storeName, setStoreName] = useState<string>('Gian Hàng Của Bạn');
   const [storesList, setStoresList] = useState<any[]>([]);
+  void storesList;
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -591,10 +592,10 @@ export const ShopCouponsPage: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen h-full overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
-      <div className="max-w-[1520px] mx-auto mb-8">
+    <div className="w-full text-[#1A1612]">
+      <div className="max-w-[1520px] mx-auto space-y-6 pt-1 pb-8">
         {/* Header with Title & "+ Phát hành Voucher Mới" Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE4D7] pb-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE4D7] pb-6">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
@@ -640,8 +641,8 @@ export const ShopCouponsPage: React.FC = () => {
         </div>
 
         {/* Top 4 Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
                 Yêu cầu chờ duyệt
@@ -655,12 +656,12 @@ export const ShopCouponsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
+          <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
                 Mã đang hoạt động
               </span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
             </div>
@@ -669,7 +670,7 @@ export const ShopCouponsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
+          <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
                 Lượt dùng thành công
@@ -683,7 +684,7 @@ export const ShopCouponsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
+          <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
                 Ngân sách đã chi
@@ -710,7 +711,7 @@ export const ShopCouponsPage: React.FC = () => {
             <div>
               <h3 className="text-sm sm:text-base font-bold text-[#1A1612] flex items-center gap-2">
                 <span>Kích cầu doanh số: Tạo Voucher độc quyền cho gian hàng</span>
-                <span className="px-2 py-0.5 text-[10px] font-extrabold bg-emerald-100 text-emerald-800 rounded-md border border-emerald-200">
+                <span className="px-2 py-0.5 text-[10px] font-extrabold bg-[#ECFDF5] text-[#059669] rounded-md border border-[#A7F3D0]">
                   TỰ ĐỘNG KÍCH HOẠT
                 </span>
               </h3>
@@ -798,7 +799,7 @@ export const ShopCouponsPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             {/* Filter by Voucher Source */}
             <div className="flex items-center bg-[#FAF8F5] p-1 rounded-xl border border-[#EAE4D7] shrink-0 text-xs">
               <button

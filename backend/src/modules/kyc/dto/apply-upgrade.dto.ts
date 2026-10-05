@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsNumber, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsNumber, IsEnum, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SocialPlatform } from '@prisma/client';
 
@@ -96,10 +96,10 @@ export class ApplyShopUpgradeDto {
   @IsNotEmpty({ message: 'Mã số thuế là bắt buộc để phát hành hóa đơn' })
   taxCode: string;
 
-  @ApiPropertyOptional({ description: 'Link ảnh/tài liệu Giấy phép đăng ký kinh doanh GPKD hoặc CCCD đại diện' })
-  @IsOptional()
+  @ApiProperty({ description: 'Link ảnh/file Giấy phép đăng ký kinh doanh' })
   @IsString()
-  businessLicenseUrl?: string;
+  @IsNotEmpty()
+  businessLicenseUrl: string;
 
   @ApiPropertyOptional({ description: 'Link giấy ủy quyền phân phối thương hiệu chính hãng hoặc hóa đơn VAT đầu vào' })
   @IsOptional()
@@ -131,28 +131,41 @@ export class ApplyShopUpgradeDto {
   @IsNotEmpty({ message: 'Tên chủ tài khoản là bắt buộc' })
   bankAccountName: string;
 
-  @ApiPropertyOptional({ example: '001201012345', description: 'Số CCCD chủ shop / người đại diện (bắt buộc với Cá nhân kinh doanh)' })
-  @IsOptional()
+  @ApiProperty({ example: '001201012345', description: 'Số CCCD của người đại diện' })
   @IsString()
-  idCardNumber?: string;
+  @IsNotEmpty()
+  idCardNumber: string;
 
-  @ApiPropertyOptional({ description: 'Ảnh CCCD mặt trước (với Cá nhân kinh doanh)' })
-  @IsOptional()
+  @ApiProperty({ description: 'Ảnh CCCD mặt trước của người đại diện' })
   @IsString()
-  frontCardUrl?: string;
+  @IsNotEmpty()
+  frontCardUrl: string;
 
-  @ApiPropertyOptional({ description: 'Ảnh CCCD mặt sau (với Cá nhân kinh doanh)' })
-  @IsOptional()
+  @ApiProperty({ description: 'Ảnh CCCD mặt sau của người đại diện' })
   @IsString()
-  backCardUrl?: string;
+  @IsNotEmpty()
+  backCardUrl: string;
 }
 
 export class ReviewUpgradeApplicationDto {
   @ApiProperty({ enum: ['VERIFIED', 'REJECTED'], example: 'VERIFIED' })
+  @IsIn(['VERIFIED', 'REJECTED'])
   @IsNotEmpty()
   status: 'VERIFIED' | 'REJECTED';
 
   @ApiPropertyOptional({ example: 'Hồ sơ đã được xác minh đầy đủ giấy phép kinh doanh và chứng từ xuất xứ.' })
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+export class ReviewShopApplicationDto {
+  @ApiProperty({ enum: ['VERIFIED', 'NEEDS_INFO', 'REJECTED'], example: 'VERIFIED' })
+  @IsIn(['VERIFIED', 'NEEDS_INFO', 'REJECTED'])
+  @IsNotEmpty()
+  status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED';
+
+  @ApiPropertyOptional({ example: 'Vui lòng tải lại ảnh CCCD rõ nét, đủ bốn góc.' })
   @IsOptional()
   @IsString()
   note?: string;

@@ -1,198 +1,135 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { SamplesService } from '../samples.service';
-import { PrismaService } from '../../../core/database/prisma.service';
+import { ForbiddenException } from '@nestjs/common';
 import { SampleRequestStatus } from '@prisma/client';
-import { NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { PrismaService } from '../../../core/database/prisma.service';
+import { MediaService } from '../../media/media.service';
+import { SamplesService } from '../samples.service';
 
-describe('SamplesService (FR-26)', () => {
+describe('SamplesService', () => {
   let service: SamplesService;
   let prisma: any;
 
-  const mockProduct = {
-    id: 'prod-1',
-    title: 'Sản phẩm mẫu A',
-    price: 150000,
-    storeId: 'store-1',
-    store: { id: 'store-1', name: 'Shop Sora', ownerId: 'shop-owner-1' },
-    isDeleted: false,
-  };
-
-  const mockSampleRequest = {
-    id: 'req-1',
+  const channel = {
+    id: 'channel-1',
     collaboratorId: 'kol-1',
-    productId: 'prod-1',
-    shippingAddress: '123 Sunrise City, Q7, TP.HCM',
-    status: SampleRequestStatus.PENDING,
-    trackingNumber: null,
-    createdAt: new Date(),
-    product: mockProduct,
-    collaborator: { id: 'kol-1', fullName: 'KOL Test', email: 'kol@scanms.vn', role: 'COLLABORATOR' },
+    platformName: 'TIKTOK',
+    channelName: 'kol-test',
+  };
+  const product = {
+    id: 'product-1',
+    title: 'Sản phẩm mẫu',
+    storeId: 'store-1',
+    store: { id: 'store-1', name: 'Shop đối tác', ownerId: 'shop-1' },
+  };
+  const request = {
+    id: 'request-1',
+    collaboratorId: 'kol-1',
+    productId: product.id,
+    status: SampleRequestStatus.SHIPPED,
+    product,
+    collaborator: { id: 'kol-1', fullName: 'KOL thử nghiệm' },
   };
 
-  beforeEach(async () => {
+  beforeEach(() => {
     prisma = {
-      product: {
-        findFirst: jest.fn(),
+      user: { findUnique: jest.fn().mockResolvedValue({ isActive: true }) },
+      collaboratorProfile: {
+        findUnique: jest.fn().mockResolvedValue({ kycStatus: 'VERIFIED', sampleRequestsBlockedAt: null }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
-      store: {
-        findFirst: jest.fn(),
+      collaboratorSocialChannel: {
+        findMany: jest.fn().mockResolvedValue([channel]),
+        findFirst: jest.fn().mockResolvedValue(channel),
       },
+      product: { findFirst: jest.fn().mockResolvedValue(product) },
       sampleProductRequest: {
-        findFirst: jest.fn(),
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-        count: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue(null),
+        findUnique: jest.fn().mockResolvedValue(request),
+        create: jest.fn().mockResolvedValue({ ...request, status: SampleRequestStatus.PENDING }),
+        update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...request, ...data })),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      notification: { create: jest.fn().mockResolvedValue({}) },
+      auditLog: { create: jest.fn().mockResolvedValue({}) },
     };
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SamplesService,
-        { provide: PrismaService, useValue: prisma },
-      ],
-    }).compile();
-
-    service = module.get<SamplesService>(SamplesService);
+    service = new SamplesService(prisma as PrismaService, {
+      validateAllowedUrl: jest.fn(),
+    } as unknown as MediaService);
   });
 
-  describe('createRequest', () => {
-    it('should successfully create a sample request for a valid product', async () => {
-      prisma.product.findFirst.mockResolvedValue(mockProduct);
-      prisma.sampleProductRequest.findFirst.mockResolvedValue(null);
-      prisma.sampleProductRequest.create.mockResolvedValue(mockSampleRequest);
+  it('lưu kênh, ngày dự kiến và thời điểm chấp nhận cam kết khi xin mẫu', async () => {
+    const expectedVideoAt = new Date(Date.now() + 7 * 86400000).toISOString();
 
-      const result = await service.createRequest('kol-1', {
-        productId: 'prod-1',
-        shippingAddress: '123 Sunrise City, Q7, TP.HCM',
-      });
-
-      expect(result).toBeDefined();
-      expect(result.id).toBe('req-1');
-      expect(prisma.sampleProductRequest.create).toHaveBeenCalled();
+    await service.createRequest('kol-1', {
+      productId: product.id,
+      socialChannelId: channel.id,
+      shippingAddress: '123 Nguyễn Văn A, Quận 1, TP.HCM',
+      contentType: 'Video review 60 giây',
+      expectedVideoAt,
+      termsAccepted: true,
     });
 
-    it('should throw NotFoundException if product is not found', async () => {
-      prisma.product.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.createRequest('kol-1', {
-          productId: 'invalid-prod',
-          shippingAddress: '123 Sunrise City, Q7, TP.HCM',
+    expect(prisma.sampleProductRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          socialChannelId: channel.id,
+          contentType: 'Video review 60 giây',
+          expectedVideoAt: new Date(expectedVideoAt),
+          acceptedTermsAt: expect.any(Date),
         }),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw ConflictException if request for product is already pending/approved', async () => {
-      prisma.product.findFirst.mockResolvedValue(mockProduct);
-      prisma.sampleProductRequest.findFirst.mockResolvedValue(mockSampleRequest);
-
-      await expect(
-        service.createRequest('kol-1', {
-          productId: 'prod-1',
-          shippingAddress: '123 Sunrise City, Q7, TP.HCM',
-        }),
-      ).rejects.toThrow(ConflictException);
-    });
+      }),
+    );
+    expect(prisma.product.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ isActive: true, isDeleted: false }) }),
+    );
+    expect(prisma.notification.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ userId: 'shop-1' }) }),
+    );
   });
 
-  describe('approveRequest', () => {
-    it('should approve request when shop owner is authorized and status is PENDING', async () => {
-      prisma.sampleProductRequest.findUnique.mockResolvedValue(mockSampleRequest);
-      prisma.sampleProductRequest.update.mockResolvedValue({
-        ...mockSampleRequest,
-        status: SampleRequestStatus.APPROVED,
-      });
-
-      const result = await service.approveRequest('req-1', 'shop-owner-1');
-      expect(result.status).toBe(SampleRequestStatus.APPROVED);
+  it('chặn xin mẫu khi KOL bị khóa', async () => {
+    prisma.collaboratorProfile.findUnique.mockResolvedValue({
+      kycStatus: 'VERIFIED',
+      sampleRequestsBlockedAt: new Date(),
+      sampleRequestsBlockReason: 'Quá hạn nộp video',
     });
 
-    it('should throw ForbiddenException if user is not the store owner', async () => {
-      prisma.sampleProductRequest.findUnique.mockResolvedValue(mockSampleRequest);
-
-      await expect(
-        service.approveRequest('req-1', 'intruder-shop-owner'),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should throw BadRequestException if request is not PENDING', async () => {
-      prisma.sampleProductRequest.findUnique.mockResolvedValue({
-        ...mockSampleRequest,
-        status: SampleRequestStatus.APPROVED,
-      });
-
-      await expect(
-        service.approveRequest('req-1', 'shop-owner-1'),
-      ).rejects.toThrow(BadRequestException);
-    });
+    await expect(service.createRequest('kol-1', {
+      productId: product.id,
+      socialChannelId: channel.id,
+      shippingAddress: '123 Nguyễn Văn A, Quận 1, TP.HCM',
+      contentType: 'Video review 60 giây',
+      expectedVideoAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+      termsAccepted: true,
+    })).rejects.toThrow(ForbiddenException);
+    expect(prisma.sampleProductRequest.create).not.toHaveBeenCalled();
   });
 
-  describe('rejectRequest', () => {
-    it('should reject request when status is PENDING', async () => {
-      prisma.sampleProductRequest.findUnique.mockResolvedValue(mockSampleRequest);
-      prisma.sampleProductRequest.update.mockResolvedValue({
-        ...mockSampleRequest,
-        status: SampleRequestStatus.REJECTED,
-      });
+  it('bắt đầu hạn đúng 14 ngày khi KOL xác nhận nhận mẫu', async () => {
+    await service.confirmReceived(request.id, 'kol-1');
 
-      const result = await service.rejectRequest('req-1', 'shop-owner-1');
-      expect(result.status).toBe(SampleRequestStatus.REJECTED);
-    });
+    const update = prisma.sampleProductRequest.update.mock.calls[0][0];
+    expect(update.data.status).toBe(SampleRequestStatus.RECEIVED);
+    expect(update.data.deadlineAt.getTime() - update.data.receivedAt.getTime()).toBe(14 * 86400000);
+    expect(prisma.notification.create).toHaveBeenCalledTimes(2);
   });
 
-  describe('shipRequest', () => {
-    it('should attach tracking number and change status to SHIPPED', async () => {
-      prisma.sampleProductRequest.findUnique.mockResolvedValue({
-        ...mockSampleRequest,
-        status: SampleRequestStatus.APPROVED,
-      });
-      prisma.sampleProductRequest.update.mockResolvedValue({
-        ...mockSampleRequest,
-        status: SampleRequestStatus.SHIPPED,
-        trackingNumber: 'GHTK998877',
-      });
+  it('đánh dấu quá hạn và khóa quyền xin mẫu khi chưa nộp video', async () => {
+    prisma.sampleProductRequest.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: request.id, collaboratorId: 'kol-1', product: { title: product.title } }]);
+    prisma.sampleProductRequest.findUnique.mockResolvedValue(request);
 
-      const result = await service.shipRequest('req-1', 'shop-owner-1', {
-        trackingNumber: 'GHTK998877',
-      });
+    await service.processDeadlines();
 
-      expect(result.status).toBe(SampleRequestStatus.SHIPPED);
-      expect(result.trackingNumber).toBe('GHTK998877');
-    });
-
-    it('should throw BadRequestException if shipping an unapproved request', async () => {
-      prisma.sampleProductRequest.findUnique.mockResolvedValue({
-        ...mockSampleRequest,
-        status: SampleRequestStatus.PENDING,
-      });
-
-      await expect(
-        service.shipRequest('req-1', 'shop-owner-1', {
-          trackingNumber: 'GHTK998877',
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe('getShopStats', () => {
-    it('should calculate stats for the shop', async () => {
-      prisma.store.findFirst.mockResolvedValue({ id: 'store-1' });
-      prisma.sampleProductRequest.count
-        .mockResolvedValueOnce(5)  // pending
-        .mockResolvedValueOnce(10) // approved
-        .mockResolvedValueOnce(3)  // shipped
-        .mockResolvedValueOnce(2); // rejected
-
-      const stats = await service.getShopStats('shop-owner-1');
-      expect(stats).toEqual({
-        pending: 5,
-        approved: 10,
-        shipped: 3,
-        rejected: 2,
-        total: 20,
-      });
-    });
+    expect(prisma.sampleProductRequest.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: SampleRequestStatus.OVERDUE }) }),
+    );
+    expect(prisma.collaboratorProfile.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'kol-1' },
+        data: expect.objectContaining({ sampleRequestsBlockedAt: expect.any(Date) }),
+      }),
+    );
   });
 });

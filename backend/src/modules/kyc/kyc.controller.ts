@@ -16,6 +16,7 @@ import {
   ApplyKolUpgradeDto,
   ApplyShopUpgradeDto,
   ReviewUpgradeApplicationDto,
+  ReviewShopApplicationDto,
 } from './dto/apply-upgrade.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -106,9 +107,10 @@ export class KycController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({ summary: 'Admin duyệt đơn nâng cấp Gian Hàng (Shop)' })
   async reviewShopApplication(
+    @CurrentUser('id') reviewerId: string,
     @Param('id') storeId: string,
-    @Body() dto: ReviewUpgradeApplicationDto,
+    @Body() dto: ReviewShopApplicationDto,
   ) {
-    return this.kycService.reviewShopApplication(storeId, dto);
+    return this.kycService.reviewShopApplication(reviewerId, storeId, dto);
   }
 }

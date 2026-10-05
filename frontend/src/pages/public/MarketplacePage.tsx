@@ -22,7 +22,6 @@ import {
   Phone,
   Radio,
   BadgeCheck,
-  Calendar,
   Heart,
   Settings,
   LogOut,
@@ -43,6 +42,9 @@ import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
+import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
+import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
+import { NotificationDropdown } from '../../components/layout/NotificationDropdown';
 
 const MARKETPLACE_BANNERS = [
   {
@@ -133,6 +135,7 @@ export default function MarketplacePage() {
     },
     staleTime: 1000 * 60 * 5,
   });
+  const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals(items.map((product) => product.id));
 
   // Cart & Gateways
   const { totalCount: totalCartCount, openCart } = useCart();
@@ -529,14 +532,12 @@ export default function MarketplacePage() {
             </form>
 
             {/* Header Action Buttons */}
-<div className="flex items-center gap-2.5 sm:gap-3.5">
-              {currentUser?.role === 'CUSTOMER' && <ChatBell userId={currentUser.id} />}
-
-              {/* Shopee-style Minimalist Cart Icon Button */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* SCANMS Standard Minimalist Cart Icon Button */}
               <button
                 type="button"
                 onClick={() => openCart()}
-                className="relative p-2.5 mr-8 sm:mr-12 text-[#B88E4F] hover:text-[#C59B58] transition-colors duration-200 cursor-pointer group active:scale-95 flex items-center justify-center rounded-full hover:bg-[#FBF5EB]"
+                className="relative p-2.5 text-[#B88E4F] hover:text-[#C59B58] transition-colors duration-200 cursor-pointer group active:scale-95 flex items-center justify-center rounded-full hover:bg-[#FBF5EB]"
                 title="Giỏ hàng của bạn"
                 aria-label="Giỏ hàng"
               >
@@ -547,6 +548,11 @@ export default function MarketplacePage() {
                   </span>
                 )}
               </button>
+
+              {/* Icon Chuông Thông Báo & Live Stream Broadcast Cho Tất Cả Các Tài Khoản */}
+              <NotificationDropdown />
+
+              {currentUser?.role === 'CUSTOMER' && <ChatBell userId={currentUser.id} />}
 
               {/* Customer / Partner Gateways Dropdown */}
               {currentUser ? (
@@ -1040,7 +1046,7 @@ export default function MarketplacePage() {
       <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-4 bg-[#F3EFE6] py-7 text-left lg:py-9">
         <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
 
-        {/* Shopee-style "ĐƠN HÀNG HÔM NAY" Header */}
+        {/* SCANMS Standard "ĐƠN HÀNG HÔM NAY" Header */}
         <div className="mb-4 bg-white border border-[#EAE4D7] border-b-[4px] border-b-[#B88E4F] shadow-[0_2px_8px_rgba(75,57,34,0.04)]">
           <div className="py-3.5 sm:py-4 px-4 text-center">
             <h2
@@ -1091,14 +1097,23 @@ export default function MarketplacePage() {
                   key={p.id}
                   className="bg-white border border-[#EAE4D7] rounded-xl overflow-hidden hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(75,57,34,0.12)] hover:border-[#C59B58] transition-all duration-200 flex flex-col justify-between group text-left relative"
                 >
-                  {/* Entire Card Clickable Area -> Product Details (Shopee Standard) */}
-                  <Link
-                    to={productDetailUrl}
+                  {/* Entire Card Clickable Area -> Product Details (SCANMS Standard) */}
+                  <div
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(productDetailUrl)}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault();
+                        navigate(productDetailUrl);
+                      }
+                    }}
                     className="block flex-1 flex flex-col cursor-pointer"
                     title={p.name}
                   >
                     {/* Image Container with Discount Badge & Wishlist Heart */}
                     <div className="relative aspect-square bg-[#F3EFE6] overflow-hidden">
+                      <LiveSessionDealBadge deal={liveDeals[p.id]} now={liveDealsNow} />
                       <img
                         src={p.image}
                         alt={p.name}
@@ -1137,7 +1152,7 @@ export default function MarketplacePage() {
                       </button>
                     </div>
 
-{/* Card Content - Shopee Compact Proportions */}
+{/* Card Content - SCANMS Compact Proportions */}
                     <div className="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
                       <div>
                         {/* Row 1: Store Icon & Shop Name • Chính hãng */}
@@ -1166,7 +1181,7 @@ export default function MarketplacePage() {
                           {p.name}
                         </h3>
 
-                        {/* Row 3: Shopee Badge Row - "Rẻ Vô Địch" / "Hoa hồng" (Fixed height h-5 to keep all cards uniform) */}
+                        {/* Row 3: SCANMS Badge Row - "Rẻ Vô Địch" / "Hoa hồng" (Fixed height h-5 to keep all cards uniform) */}
                         <div className="flex items-center gap-1 h-5 mb-1.5 min-w-0">
                           <span
                             className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[9px] font-black text-[#B88E4F] shrink-0 shadow-2xs tracking-tight"
@@ -1184,7 +1199,7 @@ export default function MarketplacePage() {
                         </div>
                       </div>
 
-                      {/* Row 4: Shopee Standard Bottom Bar: Big Bold Price on Left, Sold Count on Right */}
+                      {/* Row 4: SCANMS Standard Bottom Bar: Big Bold Price on Left, Sold Count on Right */}
                       <div className="pt-1.5 border-t border-[#EAE4D7]/60 flex items-center justify-between gap-1">
                         <span className="text-xs sm:text-sm font-black text-[#B88E4F] tracking-tight truncate">
                           {formatMoney(p.price)}
@@ -1195,14 +1210,14 @@ export default function MarketplacePage() {
                         </span>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
 
-        {/* Shopee-style "Xem Thêm" Button */}
+        {/* SCANMS Standard "Xem Thêm" Button */}
         <div className="mt-7 sm:mt-9 flex justify-center">
           <Link
             to="/search"
@@ -1505,166 +1520,10 @@ export default function MarketplacePage() {
 
 
       {/* KOC LIVE COMMERCE PREVIEW MODAL */}
-      {isLiveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setIsLiveModalOpen(false)}
-          />
-          <div className="relative w-full max-w-2xl bg-white border border-[#EAE4D7] rounded-3xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200 text-left">
-            {/* Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-[#1A1612] to-[#1A1612] text-white flex items-center justify-between border-b border-[#7D715E]">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#E11D48] to-[#9F1239] flex items-center justify-center text-white shadow-xs">
-                  <Radio className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <strong className="text-sm font-black tracking-tight">KOC Live Commerce Hub</strong>
-                    <span className="px-2 py-0.5 rounded-full bg-[#E11D48] text-white text-[9px] font-black uppercase tracking-wider">
-                      LIVE STREAM
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#EAE4D7] m-0">
-                    Phòng phát sóng bán hàng & tiếp thị liên kết đa gian hàng ScanMS
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsLiveModalOpen(false)}
-                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-[#EAE4D7] hover:text-white transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Content Body */}
-            <div className="p-6 max-h-[75vh] overflow-y-auto space-y-5 bg-[#FAF8F5]">
-              {/* Feature Intro Banner */}
-              <div className="p-4 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-start gap-3">
-                <Sparkles className="w-5 h-5 text-[#B88E4F] shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-xs font-black text-[#1A1612] block">
-                    Đặc quyền Live Commerce dành cho KOC & Gian Hàng ScanMS
-                  </strong>
-                  <p className="text-[11px] text-[#7D715E] mt-0.5 m-0 leading-relaxed">
-                    KOL/KOC có thể tạo phòng live trực tiếp, ghim sản phẩm từ hàng trăm gian hàng đã duyệt KYC, nhận đơn hàng tự động và chia sẻ hoa hồng tức thì mà không cần tự nhập kho.
-                  </p>
-                </div>
-              </div>
-
-              {/* Active & Scheduled Live Sessions */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-black uppercase tracking-wider text-[#B88E4F] flex items-center gap-1.5">
-                    <Radio className="w-3.5 h-3.5 text-[#E11D48]" />
-                    Phiên Live Đang Phát Sóng & Sắp Diễn Ra
-                  </span>
-                  <span className="text-[11px] font-bold text-[#7D715E]">
-                    Hôm nay, 20/09
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Live Session 1 */}
-                  <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-2xs hover:border-[#C59B58] transition flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FFE4E6] text-[#E11D48] text-[10px] font-black">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#E11D48] animate-ping" />
-                          ĐANG PHÁT SÓNG
-                        </span>
-                        <span className="text-[10px] font-bold text-[#7D715E]">1.2k người xem</span>
-                      </div>
-                      <strong className="text-xs font-black text-[#1A1612] block mb-1">
-                        Review Siêu Phẩm Dưỡng Ẩm Hydro Boost
-                      </strong>
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-5 h-5 rounded-full bg-[#EAE4D7] text-[#B88E4F] text-[9px] font-black flex items-center justify-center">
-                          L
-                        </div>
-                        <span className="text-[11px] font-bold text-[#1A1612]">KOC Linh Trương</span>
-                        <BadgeCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                        <span className="text-[10px] text-[#7D715E]">• Sora Skin</span>
-                      </div>
-                      {currentUser?.role === 'COLLABORATOR' && (
-                        <div className="p-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-between text-xs">
-                          <span className="text-[#7D715E]">Hoa hồng KOC:</span>
-                          <span className="font-extrabold text-[#B88E4F]">28% (~95.000 ₫/đơn)</span>
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toast.success('Đã kết nối luồng Live KOC demo thành công!');
-                      }}
-                      className="mt-3 w-full py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition shadow-2xs cursor-pointer"
-                    >
-                      Vào xem phiên Live demo
-                    </button>
-                  </div>
-
-                  {/* Live Session 2 */}
-                  <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-2xs hover:border-[#C59B58] transition flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-black">
-                          <Calendar className="w-3.5 h-3.5" />
-                          20:30 HÔM NAY
-                        </span>
-                        <span className="text-[10px] font-bold text-[#7D715E]">530 đặt hẹn</span>
-                      </div>
-                      <strong className="text-xs font-black text-[#1A1612] block mb-1">
-                        Săn Deal Bàn Phím Cơ Custom & Tai Nghe ANC
-                      </strong>
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-5 h-5 rounded-full bg-[#EAE4D7] text-[#B88E4F] text-[9px] font-black flex items-center justify-center">
-                          D
-                        </div>
-                        <span className="text-[11px] font-bold text-[#1A1612]">KOC Duy Tech</span>
-                        <BadgeCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                        <span className="text-[10px] text-[#7D715E]">• TechStore</span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-between text-xs">
-                        <span className="text-[#7D715E]">Deal độc quyền:</span>
-                        <span className="font-extrabold text-[#B88E4F]">Giảm 25% + Quà tặng</span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toast.success('Đã đặt lịch nhắc hẹn! Hệ thống sẽ thông báo khi KOC Duy Tech bắt đầu phiên live.');
-                      }}
-                      className="mt-3 w-full py-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#1A1612] text-xs font-bold transition cursor-pointer"
-                    >
-                      Nhắc tôi khi lên sóng
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Callout for KOC registration */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#1A1612] to-[#1A1612] text-white flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div>
-                  <strong className="text-xs font-black block">Bạn là Nhà Sáng Tạo Nội Dung (KOL/KOC)?</strong>
-                  <p className="text-[11px] text-[#EAE4D7] mt-0.5 m-0">
-                    Đăng ký tài khoản Đối tác để tự do chọn sản phẩm và nhận link tiếp thị bán hàng trên các buổi Livestream.
-                  </p>
-                </div>
-                <Link
-                  to="/register"
-                  onClick={() => setIsLiveModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition shrink-0 whitespace-nowrap"
-                >
-                  Đăng ký làm KOC ngay
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <LiveCommerceHubModal
+        isOpen={isLiveModalOpen}
+        onClose={() => setIsLiveModalOpen(false)}
+      />
 
     </div>
   );

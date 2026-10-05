@@ -27,6 +27,7 @@ import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { ChatBell } from '../chat/ChatBell';
+import { NotificationDropdown } from './NotificationDropdown';
 
 export interface PublicHeaderProps {
   cartCount?: number;
@@ -183,7 +184,7 @@ export function PublicHeader({
           </Link>
         </div>
 
-        {/* Center: Search Form - Shopee-style Minimalist with Gold Tone */}
+        {/* Center: Search Form - SCANMS Standard Minimalist with Gold Tone */}
         <form
           onSubmit={handleSearch}
           className="hidden md:flex min-w-[280px] w-full flex-1 max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-2 sm:mx-6 items-center rounded-[3px] border border-[#EAE4D7] bg-white p-[3px] shadow-2xs transition-all duration-200 focus-within:border-[#C59B58]"
@@ -221,8 +222,7 @@ export function PublicHeader({
           </button>
         </form>
 
-        <div className="flex items-center gap-3 sm:gap-4 lg:gap-5 shrink-0">
-          {isCustomer && currentUser?.id && <ChatBell userId={currentUser.id} />}
+        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
           {/* Quick Tracking Button */}
           <button
             type="button"
@@ -242,11 +242,11 @@ export function PublicHeader({
             <span>Tra cứu đơn</span>
           </button>
 
-          {/* Quick Cart Button - Shopee-style Minimalist Cart Icon */}
+          {/* Quick Cart Button - SCANMS Standard Minimalist Cart Icon */}
           <button
             type="button"
             onClick={handleCartClick}
-            className="relative p-2.5 text-[#B88E4F] hover:text-[#C59B58] transition-colors duration-200 cursor-pointer group active:scale-95 flex items-center justify-center rounded-full hover:bg-[#FBF5EB]"
+            className="relative p-2 sm:p-2.5 text-[#B88E4F] hover:text-[#C59B58] transition-colors duration-200 cursor-pointer group active:scale-95 flex items-center justify-center rounded-full hover:bg-[#FBF5EB]"
             title="Mở giỏ hàng sàn SCANMS"
             aria-label="Giỏ hàng"
           >
@@ -257,6 +257,11 @@ export function PublicHeader({
               </span>
             )}
           </button>
+
+          {/* Trung tâm thông báo & Live stream notification cho toàn bộ Khách hàng & Người dùng */}
+          <NotificationDropdown />
+
+          {isCustomer && currentUser?.id && <ChatBell userId={currentUser.id} />}
 
           {/* AUTHENTICATION & ROLE SECTION */}
           {currentUser ? (
