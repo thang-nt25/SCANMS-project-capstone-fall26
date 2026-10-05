@@ -30,6 +30,7 @@ import {
   Flame,
   Radio,
 } from 'lucide-react';
+import { Select } from '../../components/ui/Select';
 import { analyticsService } from '../../services/analytics.service';
 import type {
   DashboardOverviewResponse,
@@ -231,17 +232,17 @@ export const RealtimeAnalyticsPage: React.FC = () => {
           </div>
 
           {/* Auto refresh dropdown */}
-          <select
+          <Select
             aria-label="Tần suất tự động làm mới"
-            value={autoRefreshInterval}
+            value={String(autoRefreshInterval)}
             onChange={(e) => setAutoRefreshInterval(Number(e.target.value))}
-            className="bg-white border border-[#EAE4D7] text-[#1A1612] text-xs px-3 py-2.5 rounded-xl font-medium focus:outline-none focus:border-[#C59B58] transition-colors cursor-pointer"
+            className="w-36 text-xs font-medium"
           >
-            <option value={0}>Làm mới: Tắt</option>
-            <option value={15}>Làm mới: 15s</option>
-            <option value={30}>Làm mới: 30s</option>
-            <option value={60}>Làm mới: 60s</option>
-          </select>
+            <option value="0">Làm mới: Tắt</option>
+            <option value="15">Làm mới: 15s</option>
+            <option value="30">Làm mới: 30s</option>
+            <option value="60">Làm mới: 60s</option>
+          </Select>
 
           {/* Manual refresh button */}
           <button

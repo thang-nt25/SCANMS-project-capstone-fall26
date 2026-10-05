@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Link2,
   ShieldAlert,
@@ -19,6 +19,7 @@ import {
 import { referralLinksService } from '../../services/referral-links.service';
 import type { ReferralLinkItem } from '../../services/referral-links.service';
 import { toast } from '../../utils/toast';
+import { Select } from '../../components/ui/Select';
 
 export default function AdminReferralLinksPage() {
   const [links, setLinks] = useState<ReferralLinkItem[]>([]);
@@ -202,29 +203,29 @@ export default function AdminReferralLinksPage() {
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-slate-400" />
-              <select
+              <Select
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
                   setPage(1);
                 }}
-                className="border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-48 text-sm"
               >
                 <option value="">Tất cả trạng thái</option>
                 <option value="ACTIVE">Đang hoạt động (ACTIVE)</option>
                 <option value="PAUSED">Tạm dừng (PAUSED)</option>
                 <option value="BLOCKED">Bị khóa vi phạm (BLOCKED)</option>
                 <option value="EXPIRED">Đã hết hạn (EXPIRED)</option>
-              </select>
+              </Select>
             </div>
 
-            <select
+            <Select
               value={channelFilter}
               onChange={(e) => {
                 setChannelFilter(e.target.value);
                 setPage(1);
               }}
-              className="border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-40 text-sm"
             >
               <option value="">Tất cả kênh</option>
               <option value="TIKTOK">TikTok</option>
@@ -233,7 +234,7 @@ export default function AdminReferralLinksPage() {
               <option value="INSTAGRAM">Instagram</option>
               <option value="ZALO">Zalo</option>
               <option value="OTHER">Khác</option>
-            </select>
+            </Select>
           </div>
         </div>
 

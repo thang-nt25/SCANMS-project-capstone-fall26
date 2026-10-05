@@ -176,6 +176,7 @@ export class ReferralLinksService {
     const where: Prisma.ProductWhereInput = {
       isActive: true,
       isAffiliateEnabled: true,
+      moderationStatus: 'APPROVED',
       deletedAt: null,
       store: {
         deletedAt: null,
@@ -312,6 +313,10 @@ export class ReferralLinksService {
       throw new BadRequestException(
         'Cửa hàng sở hữu sản phẩm này không còn hoạt động.',
       );
+    }
+
+    if (product.moderationStatus !== 'APPROVED') {
+      throw new ForbiddenException('Sản phẩm chưa được SCANMS kiểm duyệt để làm tiếp thị.');
     }
 
     // Kiểm tra sản phẩm có cho affiliate không

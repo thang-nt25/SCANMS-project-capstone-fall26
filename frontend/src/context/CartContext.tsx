@@ -106,7 +106,9 @@ interface CartContextType {
   isCheckoutOpen: boolean;
   setIsCheckoutOpen: (open: boolean) => void;
   checkoutItems: CartItem[];
-  startCheckout: (customItems?: CartItem[]) => void;
+  checkoutCouponCode?: string;
+  startCheckout: (customItems?: CartItem[], couponCode?: string) => void;
+  buyNow: (params: AddItemParams, couponCode?: string) => void;
   editCheckoutCart: (items: CartItem[]) => void;
   continueShoppingFromCheckout: (items: CartItem[]) => void;
   closeCheckout: () => void;
@@ -210,6 +212,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
+  const [checkoutCouponCode, setCheckoutCouponCode] = useState<string>('');
   const [isValidatingStock, setIsValidatingStock] = useState(false);
   const [isCartSyncing, setIsCartSyncing] = useState(false);
   const [cartSyncedAt, setCartSyncedAt] = useState<string | null>(null);
@@ -783,8 +786,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Start checkout flow (Requirement 4 & 5)
   const startCheckout = useCallback(
-    (customItems?: CartItem[]) => {
-      const itemsToCheckout = customItems || selectedItems;
+    (customItems?: CartItem[], couponCode?: string) => {
+      const itemsToCheckout = customItems && customItems.length > 0 ? customItems : selectedItems;
 
       if (!itemsToCheckout || itemsToCheckout.length === 0) {
         toast.warning('Vui lòng chọn ít nhất 1 sản phẩm để tiến hành đặt hàng.');
@@ -813,10 +816,98 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // User logged in: open checkout modal with selected items
       setCheckoutItems(itemsToCheckout);
+      if (couponCode !== undefined) {
+        setCheckoutCouponCode(couponCode);
+      }
       setIsCartOpen(false);
       setIsCheckoutOpen(true);
     },
     [selectedItems],
+  );
+
+  // Mua ngay sản phẩm trực tiếp (Instant Buy): lập tức mở thanh toán cho sản phẩm được chọn mà không cần chờ chọn checkbox
+  const buyNow = useCallback(
+    (params: AddItemParams, couponCode?: string) => {
+      const prodTitle = params.product.title || params.product.name || 'Sản phẩm';
+      const prodImage = getSafeProductImageUrl(params.product.imageUrl || params.product.image, prodTitle);
+      const availableVariants = params.product.variants || [];
+
+      let matchedVariant: CartVariantInfo | undefined;
+      let finalPrice = Number(params.product.price || 0);
+      let finalSku = params.product.sku || '';
+      let availableStock = Number(params.product.stockQuantity ?? 9999);
+
+      let variantId = params.variantId;
+      if (variantId && availableVariants.length > 0) {
+        matchedVariant = availableVariants.find((v) => v.id === variantId);
+        if (matchedVariant) {
+          if (matchedVariant.price !== null && matchedVariant.price !== undefined) {
+            finalPrice = Number(matchedVariant.price);
+          }
+          finalSku = matchedVariant.sku || finalSku;
+          availableStock = Number(matchedVariant.stockQuantity || 0);
+        }
+      } else if (availableVariants.length > 0) {
+        matchedVariant = availableVariants.find((v) => v.stockQuantity > 0) || availableVariants[0];
+        if (matchedVariant) {
+          variantId = matchedVariant.id;
+          if (matchedVariant.price !== null && matchedVariant.price !== undefined) {
+            finalPrice = Number(matchedVariant.price);
+          }
+          finalSku = matchedVariant.sku || finalSku;
+          availableStock = Number(matchedVariant.stockQuantity || 0);
+        }
+      }
+
+      if (availableStock <= 0) {
+        toast.error(`Sản phẩm "${prodTitle}" hiện đã hết hàng.`);
+        return;
+      }
+
+      const cartItemId = `${params.product.id}_${variantId || 'base'}`;
+      const qty = params.quantity || 1;
+
+      const directItem: CartItem = {
+        cartItemId,
+        productId: params.product.id,
+        variantId,
+        variantName: matchedVariant?.name,
+        title: prodTitle,
+        sku: finalSku,
+        price: finalPrice,
+        originalPrice: params.product.originalPrice ? Number(params.product.originalPrice) : (params.product.origPrice ? Number(params.product.origPrice) : undefined),
+        imageUrl: prodImage,
+        quantity: Math.min(qty, availableStock),
+        stockQuantity: availableStock,
+        isActive: params.product.isActive !== false,
+        store: {
+          id: params.store.id,
+          name: params.store.name,
+          slug: params.store.slug,
+          logoUrl: params.store.logoUrl,
+          policyReturn: params.store.policyReturn,
+          policyWarranty: params.store.policyWarranty,
+          policyShipping: params.store.policyShipping,
+        },
+        availableVariants,
+      };
+
+      // Đồng thời thêm vào giỏ hàng
+      setCart((prev) => {
+        const existingIndex = prev.findIndex((item) => item.cartItemId === cartItemId);
+        if (existingIndex >= 0) {
+          const next = [...prev];
+          next[existingIndex] = { ...next[existingIndex], quantity: Math.min(next[existingIndex].quantity + qty, availableStock) };
+          return next;
+        }
+        return [...prev, directItem];
+      });
+      setSelectedItemIds((prev) => (prev.includes(cartItemId) ? prev : [...prev, cartItemId]));
+
+      // Kích hoạt ngay thanh toán với món hàng này
+      startCheckout([directItem], couponCode);
+    },
+    [startCheckout],
   );
 
   // Preserve direct-buy items in the shared cart without doubling an existing variant.
@@ -854,6 +945,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const closeCheckout = useCallback(() => {
     setIsCheckoutOpen(false);
     setCheckoutItems([]);
+    setCheckoutCouponCode('');
   }, []);
 
   // Real-time stock & price validation (Requirement 6)
@@ -927,7 +1019,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isCheckoutOpen,
       setIsCheckoutOpen,
       checkoutItems,
+      checkoutCouponCode,
       startCheckout,
+      buyNow,
       editCheckoutCart,
       continueShoppingFromCheckout,
       closeCheckout,
@@ -959,7 +1053,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       selectedItems,
       isCheckoutOpen,
       checkoutItems,
+      checkoutCouponCode,
       startCheckout,
+      buyNow,
       editCheckoutCart,
       continueShoppingFromCheckout,
       closeCheckout,

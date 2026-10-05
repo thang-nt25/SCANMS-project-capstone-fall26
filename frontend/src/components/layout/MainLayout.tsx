@@ -57,6 +57,7 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
+  const isShopSettings = location.pathname === '/merchant/settings';
 
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
@@ -83,7 +84,7 @@ export default function MainLayout() {
           onLogout={handleLogout}
         />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-[#FAF8F5]">
+        <main className={`flex-1 overflow-y-auto overflow-x-hidden px-4 pt-2.5 pb-6 sm:px-6 sm:pt-3 sm:pb-8 lg:px-8 lg:pt-3 lg:pb-8 ${isShopSettings ? 'bg-white' : 'bg-[#FAF8F5]'}`}>
           <div className="max-w-[1520px] w-full mx-auto">
             <Outlet />
           </div>
@@ -92,4 +93,3 @@ export default function MainLayout() {
     </div>
   );
 }
-

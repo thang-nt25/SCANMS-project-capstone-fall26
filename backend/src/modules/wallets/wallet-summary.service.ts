@@ -145,4 +145,16 @@ export class WalletSummaryService {
       limit: query.limit,
     };
   }
+
+  async disconnectBankAccount(collaboratorId: string) {
+    await this.prisma.collaboratorProfile.updateMany({
+      where: { userId: collaboratorId },
+      data: {
+        bankName: '',
+        bankAccountNumber: '',
+        bankAccountName: '',
+      },
+    });
+    return { success: true, message: 'Đã ngừng sử dụng tài khoản nhận tiền.' };
+  }
 }

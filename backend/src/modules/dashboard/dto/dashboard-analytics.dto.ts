@@ -1,4 +1,4 @@
-import {
+﻿import {
   IsOptional,
   IsString,
   IsEnum,
@@ -8,7 +8,7 @@ import {
   IsDateString,
   IsUUID,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum AnalyticsTimeInterval {

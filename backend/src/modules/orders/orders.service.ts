@@ -426,6 +426,7 @@ export class OrdersService {
       where: {
         storeId,
         isDeleted: false,
+        moderationStatus: 'APPROVED',
         OR: [
           ...(productIds.length > 0 ? [{ id: { in: productIds } }] : []),
           ...skuFilters,
@@ -737,6 +738,14 @@ export class OrdersService {
     }
 
     // Đảm bảo đơn hàng thuộc các gian hàng hợp lệ (Hỗ trợ Multi-Merchant Orders tách đơn tự động)
+    for (const product of dbProducts) {
+      if (product.moderationStatus !== 'APPROVED') {
+        throw new BadRequestException(
+          'Sản phẩm "' + product.title + '" chưa được duyệt để bán.',
+        );
+      }
+    }
+
     const distinctStoreIds = Array.from(
       new Set(dbProducts.map((p) => p.storeId)),
     );
@@ -1048,6 +1057,13 @@ export class OrdersService {
         include: {
           couponProducts: true,
           couponCategories: true,
+          liveSession: {
+            select: {
+              status: true,
+              inviteStatus: true,
+              products: { select: { productId: true, variantId: true } },
+            },
+          },
         },
       });
 
@@ -1065,8 +1081,15 @@ export class OrdersService {
       if (lockedCoupon.startsAt && now < lockedCoupon.startsAt) {
         throw new ConflictException('Mã giảm giá chưa đến thời điểm áp dụng');
       }
-      if (lockedCoupon.expiresAt && now > lockedCoupon.expiresAt) {
+      if (lockedCoupon.expiresAt && now >= lockedCoupon.expiresAt) {
         throw new ConflictException('Mã giảm giá đã hết hạn sử dụng');
+      }
+      if (
+        lockedCoupon.liveSession &&
+        (lockedCoupon.liveSession.inviteStatus !== 'ACCEPTED' ||
+          !['SCHEDULED', 'LIVE'].includes(lockedCoupon.liveSession.status))
+      ) {
+        throw new ConflictException('Voucher livestream chưa được mở hoặc đã tạm dừng/kết thúc');
       }
 
       if (
@@ -1115,6 +1138,13 @@ export class OrdersService {
             campaignProductIds.size > 0
               ? campaignProductIds.has(prod.id)
               : true;
+        }
+
+        if (isItemEligible && lockedCoupon.liveSession) {
+          isItemEligible = lockedCoupon.liveSession.products.some(
+            (liveProduct) => liveProduct.productId === prod.id &&
+              (!liveProduct.variantId || liveProduct.variantId === item.variantId),
+          );
         }
 
         if (isItemEligible) {
@@ -1498,6 +1528,8 @@ export class OrdersService {
       unitPrice: number;
       appliedCommissionRate: number;
       calculatedCommissionAmount: number;
+      regularCommissionRate?: number | null;
+      regularCommissionAmount?: number | null;
     }> = [];
 
     const attributedReferralLink = referralLinkId
@@ -1574,6 +1606,14 @@ export class OrdersService {
           approvedExclusiveDeal.approvedCommissionRate,
         );
       }
+      const regularCommissionRate = finalCommissionRate;
+      if (
+        couponValidationResult?.sessionCommissionRate !== null &&
+        couponValidationResult?.sessionCommissionRate !== undefined &&
+        couponValidationResult.eligibleProductIds.includes(prod.id)
+      ) {
+        finalCommissionRate = Number(couponValidationResult.sessionCommissionRate);
+      }
       const itemSubtotal = unitPrice * quantity;
       const netItemSubtotal = itemSubtotal * txDiscountRatio;
       const calculatedCommission =
@@ -1586,6 +1626,16 @@ export class OrdersService {
         unitPrice,
         appliedCommissionRate: finalCommissionRate,
         calculatedCommissionAmount: calculatedCommission,
+        regularCommissionRate:
+          couponValidationResult?.sessionCommissionRate !== null &&
+          couponValidationResult?.sessionCommissionRate !== undefined
+            ? regularCommissionRate
+            : null,
+        regularCommissionAmount:
+          couponValidationResult?.sessionCommissionRate !== null &&
+          couponValidationResult?.sessionCommissionRate !== undefined
+            ? itemSubtotal * (regularCommissionRate / 100)
+            : null,
       });
     }
 
@@ -1711,6 +1761,8 @@ export class OrdersService {
             unitPrice: item.unitPrice,
             appliedCommissionRate: item.appliedCommissionRate,
             calculatedCommissionAmount: item.calculatedCommissionAmount,
+            regularCommissionRate: item.regularCommissionRate,
+            regularCommissionAmount: item.regularCommissionAmount,
             commissionSnapshotAt: new Date(),
           })),
         },
@@ -2297,7 +2349,7 @@ export class OrdersService {
         continue;
       }
 
-      if (!prod.isActive || prod.store?.isDeleted || !prod.store?.isActive) {
+      if (!prod.isActive || prod.moderationStatus !== 'APPROVED' || prod.store?.isDeleted || !prod.store?.isActive) {
         warnings.push(`Sản phẩm "${prod.title}" hoặc Gian hàng hiện đã tạm ngưng hoạt động.`);
         hasOutOfStock = true;
         validatedItems.push({

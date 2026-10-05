@@ -30,6 +30,7 @@ import {
   Plus,
   Store,
   MessageSquare,
+  Package,
 } from 'lucide-react';
 import api from '../services/api';
 import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
@@ -38,7 +39,8 @@ import { authService } from '../services/auth.service';
 import { customerService } from '../services/customer.service';
 import { toast } from '../utils/toast';
 import { useCart } from '../context/CartContext';
-import { useShopeeChat } from '../context/ShopeeChatContext';
+import { useScanmsChat } from '../context/ScanmsChatContext';
+import { LiveSessionDealCard } from '../components/product/LiveSessionDealCard';
 
 
 function getSmartFallbackImage(title?: string, categoryName?: string): string {
@@ -54,10 +56,14 @@ interface ProductVariantItem {
   id: string;
   sku: string;
   name: string;
+  attributes?: Record<string, string>;
   price: number;
   stockQuantity: number;
   isActive?: boolean;
   imageUrl?: string;
+  sampleEnabled?: boolean;
+  sampleAvailable?: boolean;
+  sampleQuotaRemaining?: number;
 }
 
 interface LandingProduct {
@@ -73,6 +79,9 @@ interface LandingProduct {
   canPurchase: boolean;
   status?: string;
   stockQuantity?: number;
+  sampleEnabled?: boolean;
+  sampleAvailable?: boolean;
+  sampleQuotaRemaining?: number;
   variants?: ProductVariantItem[];
 }
 
@@ -157,239 +166,13 @@ function getEstimatedDeliveryWindow() {
   return `${format(end)} – ${format(latest)}`;
 }
 
-function resolveProductVariants(product: LandingProduct): ProductVariantItem[] {
-  const fallbackImg = product.imageUrl || SCANMS_PLACEHOLDER;
-  if (product.variants && product.variants.length > 0) {
-    return product.variants.map((v) => ({
-      ...v,
-      imageUrl: v.imageUrl || fallbackImg,
+function resolveProductVariants(product: LandingProduct, _productImages: string[] = []): ProductVariantItem[] {
+  return (product.variants || [])
+    .filter((variant) => variant.isActive !== false)
+    .map((variant) => ({
+      ...variant,
+      imageUrl: variant.imageUrl?.trim() || product.imageUrl || SCANMS_PLACEHOLDER,
     }));
-  }
-  const basePrice = Number(product.price) || 111000;
-  const titleAndCat = `${product.title} ${product.categoryName || ''}`.toLowerCase();
-
-  // Technology / Chargers / Power banks / Gadgets (Chuẩn Ảnh 2 Shopee)
-  if (
-    titleAndCat.includes('sạc') ||
-    titleAndCat.includes('pin') ||
-    titleAndCat.includes('dự phòng') ||
-    titleAndCat.includes('tai nghe') ||
-    titleAndCat.includes('loa') ||
-    titleAndCat.includes('điện thoại') ||
-    titleAndCat.includes('phone') ||
-    titleAndCat.includes('cáp') ||
-    titleAndCat.includes('điện tử')
-  ) {
-    return [
-      {
-        id: `${product.id}-var-5000mah`,
-        sku: `${product.sku}-5000MAH`,
-        name: '5000mah',
-        price: basePrice,
-        stockQuantity: 45,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-desac`,
-        sku: `${product.sku}-WIRELESS`,
-        name: 'Đế Sạc Không Dây',
-        price: Math.round((basePrice * 1.15) / 1000) * 1000,
-        stockQuantity: 32,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-sac-pd-20w`,
-        sku: `${product.sku}-PD20W`,
-        name: 'Sạc PD 20W',
-        price: Math.round((basePrice * 1.08) / 1000) * 1000,
-        stockQuantity: 50,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-sac-eu-20w`,
-        sku: `${product.sku}-EU20W`,
-        name: 'Sạc EU 20W',
-        price: Math.round((basePrice * 1.08) / 1000) * 1000,
-        stockQuantity: 28,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-base-10000mah`,
-        sku: `${product.sku}-BASE10K`,
-        name: 'Base 10000mah',
-        price: Math.round((basePrice * 1.35) / 1000) * 1000,
-        stockQuantity: 20,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-10000mah`,
-        sku: `${product.sku}-10000MAH`,
-        name: '10000mah',
-        price: Math.round((basePrice * 1.4) / 1000) * 1000,
-        stockQuantity: 18,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-    ];
-  }
-
-  // Cosmetics / Skincare (Serum, Kem, Dưỡng, Dầu, Tinh chất, Mỹ phẩm)
-  if (
-    titleAndCat.includes('serum') ||
-    titleAndCat.includes('kem') ||
-    titleAndCat.includes('mỹ phẩm') ||
-    titleAndCat.includes('dưỡng') ||
-    titleAndCat.includes('da') ||
-    titleAndCat.includes('tinh chất') ||
-    titleAndCat.includes('sữa') ||
-    titleAndCat.includes('son')
-  ) {
-    return [
-      {
-        id: `${product.id}-var-30ml`,
-        sku: `${product.sku}-30ML`,
-        name: 'Dung tích 30ml (Tiêu chuẩn)',
-        price: basePrice,
-        stockQuantity: 65,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-50ml`,
-        sku: `${product.sku}-50ML`,
-        name: 'Dung tích 50ml (Tiết kiệm)',
-        price: Math.round((basePrice * 1.4) / 1000) * 1000,
-        stockQuantity: 88,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-100ml`,
-        sku: `${product.sku}-100ML`,
-        name: 'Dung tích 100ml (Cỡ lớn)',
-        price: Math.round((basePrice * 2.2) / 1000) * 1000,
-        stockQuantity: 20,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-    ];
-  }
-
-  // Cookware / Pots & Pans (Chảo, Nồi, Bếp, Gia dụng)
-  if (
-    titleAndCat.includes('chảo') ||
-    titleAndCat.includes('nồi') ||
-    titleAndCat.includes('pan') ||
-    titleAndCat.includes('pot') ||
-    titleAndCat.includes('bếp')
-  ) {
-    return [
-      {
-        id: `${product.id}-var-20cm`,
-        sku: `${product.sku}-20CM`,
-        name: 'Đường kính 20cm (Gia đình nhỏ)',
-        price: basePrice,
-        stockQuantity: 28,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-24cm`,
-        sku: `${product.sku}-24CM`,
-        name: 'Đường kính 24cm (Tiêu chuẩn)',
-        price: Math.round((basePrice * 1.2) / 1000) * 1000,
-        stockQuantity: 45,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-28cm`,
-        sku: `${product.sku}-28CM`,
-        name: 'Đường kính 28cm (Cỡ lớn)',
-        price: Math.round((basePrice * 1.45) / 1000) * 1000,
-        stockQuantity: 15,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-    ];
-  }
-
-  // Fashion / Apparel / Clothes (Áo, Quần, Váy, Thời trang)
-  if (
-    titleAndCat.includes('áo') ||
-    titleAndCat.includes('quần') ||
-    titleAndCat.includes('váy') ||
-    titleAndCat.includes('thời trang') ||
-    titleAndCat.includes('hoodie') ||
-    titleAndCat.includes('shirt') ||
-    titleAndCat.includes('polo')
-  ) {
-    return [
-      {
-        id: `${product.id}-var-s`,
-        sku: `${product.sku}-SZ-S`,
-        name: 'Size S (45kg - 55kg)',
-        price: basePrice,
-        stockQuantity: 30,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-m`,
-        sku: `${product.sku}-SZ-M`,
-        name: 'Size M (55kg - 65kg)',
-        price: basePrice,
-        stockQuantity: 50,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-l`,
-        sku: `${product.sku}-SZ-L`,
-        name: 'Size L (65kg - 75kg)',
-        price: basePrice,
-        stockQuantity: 40,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-      {
-        id: `${product.id}-var-xl`,
-        sku: `${product.sku}-SZ-XL`,
-        name: 'Size XL (75kg - 88kg)',
-        price: Math.round((basePrice * 1.08) / 1000) * 1000,
-        stockQuantity: 12,
-        isActive: true,
-        imageUrl: fallbackImg,
-      },
-    ];
-  }
-
-  // Default fallback
-  return [
-    {
-      id: `${product.id}-var-std`,
-      sku: `${product.sku}-STD`,
-      name: 'Phiên bản Tiêu chuẩn',
-      price: basePrice,
-      stockQuantity: product.stockQuantity ?? 50,
-      isActive: true,
-      imageUrl: fallbackImg,
-    },
-    {
-      id: `${product.id}-var-plus`,
-      sku: `${product.sku}-PLUS`,
-      name: 'Phiên bản Nâng cấp',
-      price: Math.round((basePrice * 1.15) / 1000) * 1000,
-      stockQuantity: 30,
-      isActive: true,
-      imageUrl: fallbackImg,
-    },
-  ];
 }
 
 function trackAnalytics(eventName: string, payload?: Record<string, any>) {
@@ -429,7 +212,7 @@ function trackAnalytics(eventName: string, payload?: Record<string, any>) {
 
 export default function ProductDetailPage() {
   const navigate = useNavigate();
-  const { openChat } = useShopeeChat();
+  const { openChat } = useScanmsChat();
   const currentUser = (() => {
     try {
       return JSON.parse(localStorage.getItem('user') || 'null');
@@ -438,14 +221,17 @@ export default function ProductDetailPage() {
     }
   })();
   const isKolUser = currentUser?.role === 'COLLABORATOR';
+  const [sampleEligibility, setSampleEligibility] = useState<any>(null);
+  const [sampleRequestStatus, setSampleRequestStatus] = useState<any>(null);
+  const [loadingSampleStatus, setLoadingSampleStatus] = useState(false);
 
-  const handleOpenShopeeChat = () => {
+  const handleOpenChat = () => {
     const storeObj = data?.store ? {
       id: data.store.id,
       name: data.store.name,
       logoUrl: data.store.logoUrl || undefined,
       slug: data.store.slug,
-      isVerified: true,
+      isVerified: Boolean(data.store.isVerified),
     } : {
       id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
       name: 'Sora Skin Official Store',
@@ -455,46 +241,60 @@ export default function ProductDetailPage() {
     };
 
     const firstImg = data?.images?.[0] || data?.product?.imageUrl || '';
+    const productPrice = Number(data?.product?.price || 0);
     const productObj = data?.product ? {
       id: data.product.id,
       title: data.product.title,
-      price: data.product.price,
-      originalPrice: (data.product as any).originalPrice || Math.round(data.product.price * 1.3),
+      price: productPrice,
+      originalPrice: (data.product as any).originalPrice ? Number((data.product as any).originalPrice) : Math.round(productPrice * 1.3),
       imageUrl: firstImg,
       soldCount: (data.product as any).soldCount || 1420,
     } : undefined;
 
     openChat(storeObj, productObj);
   };
-  void handleOpenShopeeChat;
 
-  const handleContactShop = () => {
+  const handleRequestSample = () => {
     if (!currentUser) {
-      toast.info('Vui lòng đăng nhập để trao đổi trực tiếp với gian hàng');
-      navigate(`/login?redirect=/products/${slug}`);
+      toast.info('Đăng nhập bằng tài khoản KOL để đăng ký nhận sản phẩm mẫu.');
+      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
       return;
     }
-    if (!isKolUser && currentUser.role !== 'CUSTOMER') {
-      toast.info('Tính năng liên hệ shop dành cho khách hàng và KOL / Creator.');
+    if (!isKolUser) {
+      toast.info('Chức năng nhận sản phẩm mẫu dành cho KOL / Creator.');
       return;
     }
-    const storeId = data?.store?.id;
-    if (!storeId) { toast.error('Không tìm thấy Shop của sản phẩm'); return; }
-    const firstImg = data?.images?.[0] || data?.product?.imageUrl || '';
+    if (!data?.product || !data.store?.id) {
+      toast.error('Không tìm thấy thông tin sản phẩm hoặc gian hàng.');
+      return;
+    }
+    if (!sampleFeatureEnabled || !sampleQuotaAvailable) {
+      toast.info('Shop hiện chưa nhận đăng ký mẫu hoặc đã cấp hết hạn mức cho sản phẩm này.');
+      return;
+    }
+    if (sampleEligibility && !sampleEligibility.canRequest) {
+      toast.info(sampleEligibility.blockReason || 'Hãy hoàn tất điều kiện KOL trước khi xin mẫu.');
+      navigate('/collaborator/profile?tab=kyc');
+      return;
+    }
+    if (sampleRequestStatus && !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(sampleRequestStatus.status)) {
+      toast.info(`Yêu cầu mẫu này đang ở trạng thái: ${sampleRequestStatus.statusLabel || sampleRequestStatus.status}.`);
+      navigate('/collaborator/collaboration?tab=samples');
+      return;
+    }
     const query = new URLSearchParams({
-      tab: 'messages',
-      storeId,
-      productId: data?.product?.id || '',
-      productTitle: data?.product?.title || '',
-      productImage: firstImg,
-      productPrice: String(data?.product?.price || 0),
-      productSku: data?.product?.sku || '',
+      tab: 'products',
+      storeId: data.store.id,
+      sampleRequest: '1',
+      productId: data.product.id,
+      productTitle: data.product.title,
+      productImage: data.images?.[0] || data.product.imageUrl || '',
+      productPrice: String(data.product.price || 0),
+      productSku: data.product.sku || '',
+      productVariantId:
+        selectedVariantIsReal && selectedVariant ? selectedVariant.id : '',
     });
-    navigate(
-      isKolUser
-        ? `/collaborator/collaboration?${query.toString()}`
-        : `/chat?${query.toString()}&asCustomer=1`,
-    );
+    navigate(`/collaborator/collaboration?${query.toString()}`);
   };
 
   const { slug } = useParams<{ slug: string }>();
@@ -512,6 +312,8 @@ export default function ProductDetailPage() {
 
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [hoveredImage, setHoveredImage] = useState<string | null>(null);
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariantItem | null>(null);
 
@@ -820,9 +622,12 @@ export default function ProductDetailPage() {
           });
           mergedVideos.sort((a, b) => Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)));
 
-          const resolvedVars = resolveProductVariants(landingPayload.product);
+          const resolvedVars = resolveProductVariants(landingPayload.product, landingPayload.images || []);
           const firstInStock = resolvedVars.find((v) => v.stockQuantity > 0) || resolvedVars[0] || null;
           setSelectedVariant(firstInStock);
+          if (firstInStock?.imageUrl) {
+            setSelectedImage(firstInStock.imageUrl);
+          }
 
           setData({ ...landingPayload, videos: mergedVideos });
           return;
@@ -846,6 +651,32 @@ export default function ProductDetailPage() {
     loadLanding();
   }, [slug]);
 
+  useEffect(() => {
+    let active = true;
+    if (!isKolUser || !data?.product?.id) {
+      setSampleEligibility(null);
+      setSampleRequestStatus(null);
+      setLoadingSampleStatus(false);
+      return;
+    }
+    setLoadingSampleStatus(true);
+    Promise.all([
+      api.get('/sample-requests/my/eligibility', { headers: { 'x-skip-cache': 'true' } }).catch(() => null),
+      api.get('/sample-requests/my', { headers: { 'x-skip-cache': 'true' } }).catch(() => []),
+    ]).then(([eligibility, requests]: [any, any]) => {
+      if (!active) return;
+      setSampleEligibility(eligibility?.data || eligibility);
+      const requestList = Array.isArray(requests) ? requests : requests?.data || [];
+      const currentRequest = requestList.find((request: any) =>
+        request.productId === data.product.id &&
+        !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(request.status),
+      );
+      setSampleRequestStatus(currentRequest || null);
+    }).finally(() => {
+      if (active) setLoadingSampleStatus(false);
+    });
+    return () => { active = false; };
+  }, [data?.product?.id, isKolUser]);
 
   useEffect(() => {
     if (!data) return;
@@ -1015,23 +846,23 @@ export default function ProductDetailPage() {
   };
 
 
-  const handleApplyCoupon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!couponCode.trim() || !data) return;
+  const applyCouponCode = async (rawCode: string): Promise<boolean> => {
+    if (!rawCode.trim() || !data) return false;
 
     setCouponLoading(true);
     setCouponError(null);
 
     try {
-      const codeUpper = couponCode.trim().toUpperCase();
+      const codeUpper = rawCode.trim().toUpperCase();
+      setCouponCode(codeUpper);
       const res: any = await api.post('/coupons/validate', {
         code: codeUpper,
+        storeId: data.store.id,
         items: [
           {
             productId: data.product.id,
-            storeId: data.store.id,
+            variantId: selectedVariantIsReal ? selectedVariant?.id : undefined,
             quantity: quantity,
-            unitPrice: data.product.price,
           },
         ],
       });
@@ -1050,12 +881,14 @@ export default function ProductDetailPage() {
             `Mã ${codeUpper} đã được áp dụng thành công!`,
         });
         setCouponError(null);
+        return true;
       } else {
 
         setCouponError(
           'Mã ưu đãi hợp lệ nhưng mức giảm giá bằng 0 hoặc không đủ điều kiện áp dụng.',
         );
         setAppliedCoupon(null);
+        return false;
       }
     } catch (err: any) {
       const msg =
@@ -1063,13 +896,19 @@ export default function ProductDetailPage() {
         'Mã giảm giá không tồn tại, đã hết hạn hoặc chưa đạt giá trị đơn tối thiểu.';
       setCouponError(Array.isArray(msg) ? msg.join(', ') : msg);
       setAppliedCoupon(null);
+      return false;
     } finally {
       setCouponLoading(false);
     }
   };
 
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await applyCouponCode(couponCode);
+  };
 
-  const activeVariants = data?.product ? resolveProductVariants(data.product) : [];
+
+  const activeVariants = data?.product ? resolveProductVariants(data.product, data.images || []) : [];
   const currentPrice =
     selectedVariant?.price !== undefined && selectedVariant?.price !== null
       ? Number(selectedVariant.price)
@@ -1079,6 +918,15 @@ export default function ProductDetailPage() {
       ? selectedVariant.stockQuantity
       : data?.availability?.stockQuantity ?? 0;
   const currentSku = selectedVariant?.sku || data?.product?.sku || '';
+  const selectedVariantIsReal = Boolean(
+    selectedVariant && data?.product?.variants?.some((variant) => variant.id === selectedVariant.id),
+  );
+  const sampleFeatureEnabled = selectedVariantIsReal
+    ? selectedVariant?.sampleEnabled === true
+    : data?.product?.sampleEnabled === true;
+  const sampleQuotaAvailable = selectedVariantIsReal
+    ? selectedVariant?.sampleAvailable === true
+    : data?.product?.sampleAvailable === true;
 
   const unitPrice = currentPrice;
   const subtotal = unitPrice * quantity;
@@ -1136,13 +984,18 @@ export default function ProductDetailPage() {
   const activeVideo =
     videos && videos.length > 0 ? videos[activeVideoIndex] : null;
   const fallbackImg = getSmartFallbackImage(product.title, product.categoryName);
-  const validGallery = (images || []).filter((img) => Boolean(img && img.trim() && !img.includes('data:image/svg+xml')));
-  const gallery =
-    validGallery.length > 0
-      ? validGallery
-      : product.imageUrl && !product.imageUrl.includes('data:image/svg+xml')
-        ? [product.imageUrl]
-        : [fallbackImg];
+  const candidateImages = [
+    ...(images || []),
+    product.imageUrl,
+    ...activeVariants.map((v) => v.imageUrl),
+  ].filter((img): img is string => Boolean(img && img.trim() && !img.includes('data:image/svg+xml')));
+
+  const gallery = Array.from(new Set(candidateImages));
+  if (gallery.length === 0) {
+    gallery.push(fallbackImg);
+  }
+
+  const displayImage = hoveredImage || selectedImage || (gallery[selectedImageIndex] || fallbackImg);
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] font-sans pb-28 selection:bg-[#EAE4D7]">
@@ -1150,7 +1003,7 @@ export default function ProductDetailPage() {
 
       <main className="max-w-[1200px] mx-auto px-3 sm:px-4 pt-2.5 sm:pt-3">
 
-        {/* Shopee-style Breadcrumbs Bar - Compact, Slim & Aligned */}
+        {/* SCANMS Standard Breadcrumbs Bar - Compact, Slim & Aligned */}
         <div className="py-1.5 sm:py-2 mb-2 sm:mb-2.5 flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] text-[#333333] overflow-hidden whitespace-nowrap">
           <Link
             to="/marketplace"
@@ -1185,7 +1038,7 @@ export default function ProductDetailPage() {
 
             <div className="aspect-square w-full lg:max-w-[460px] lg:mx-auto bg-[#F3EFE6] rounded-xl overflow-hidden border border-[#EAE4D7] relative group">
               <img
-                src={gallery[selectedImageIndex] || fallbackImg}
+                src={displayImage}
                 alt={product.title}
                 onError={(e) => {
                   const target = e.currentTarget as HTMLImageElement;
@@ -1211,12 +1064,17 @@ export default function ProductDetailPage() {
             </div>
 
 
-            {/* Gallery Thumbnail Row with Carousel navigation (Shopee Image 4) */}
+            {/* Gallery Thumbnail Row with Carousel navigation (SCANMS UI Reference) */}
             {gallery.length > 1 && (
               <div className="w-full lg:max-w-[460px] lg:mx-auto relative flex items-center py-2 px-1">
                 <button
                   type="button"
-                  onClick={() => setSelectedImageIndex((prev) => (prev === 0 ? gallery.length - 1 : prev - 1))}
+                  onClick={() => {
+                    const nextIdx = selectedImageIndex === 0 ? gallery.length - 1 : selectedImageIndex - 1;
+                    setSelectedImageIndex(nextIdx);
+                    setSelectedImage(gallery[nextIdx]);
+                    setHoveredImage(null);
+                  }}
                   className="w-6 h-10 bg-black/20 hover:bg-black/50 text-white rounded-r flex items-center justify-center cursor-pointer transition shrink-0 z-10 -ml-1"
                   title="Ảnh trước"
                   aria-label="Ảnh trước"
@@ -1225,37 +1083,53 @@ export default function ProductDetailPage() {
                 </button>
 
                 <div className="flex-1 flex items-center gap-2 overflow-x-auto overflow-y-hidden py-1 px-2 scrollbar-none no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                  {gallery.map((img, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onMouseEnter={() => setSelectedImageIndex(idx)}
-                      onClick={() => setSelectedImageIndex(idx)}
-                      className={`w-14 h-14 aspect-square rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
-                        selectedImageIndex === idx
-                          ? 'border-[#B88E4F] ring-2 ring-[#B88E4F]/30 scale-102'
-                          : 'border-[#EAE4D7] opacity-75 hover:opacity-100 hover:border-[#B88E4F]/60'
-                      }`}
-                    >
-                      <img
-                        src={img}
-                        alt=""
-                        onError={(e) => {
-                          const target = e.currentTarget as HTMLImageElement;
-                          if (!target.dataset.hasFallback) {
-                            target.dataset.hasFallback = 'true';
-                            target.src = fallbackImg;
-                          }
+                  {gallery.map((img, idx) => {
+                    const isImgActive = displayImage === img;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onMouseEnter={() => {
+                          setSelectedImageIndex(idx);
+                          setHoveredImage(img);
                         }}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
+                        onMouseLeave={() => setHoveredImage(null)}
+                        onClick={() => {
+                          setSelectedImageIndex(idx);
+                          setSelectedImage(img);
+                          setHoveredImage(null);
+                        }}
+                        className={`w-14 h-14 aspect-square rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                          isImgActive
+                            ? 'border-[#B88E4F] ring-2 ring-[#B88E4F]/30 scale-102'
+                            : 'border-[#EAE4D7] opacity-75 hover:opacity-100 hover:border-[#B88E4F]/60'
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt=""
+                          onError={(e) => {
+                            const target = e.currentTarget as HTMLImageElement;
+                            if (!target.dataset.hasFallback) {
+                              target.dataset.hasFallback = 'true';
+                              target.src = fallbackImg;
+                            }
+                          }}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setSelectedImageIndex((prev) => (prev === gallery.length - 1 ? 0 : prev + 1))}
+                  onClick={() => {
+                    const nextIdx = selectedImageIndex === gallery.length - 1 ? 0 : selectedImageIndex + 1;
+                    setSelectedImageIndex(nextIdx);
+                    setSelectedImage(gallery[nextIdx]);
+                    setHoveredImage(null);
+                  }}
                   className="w-6 h-10 bg-black/20 hover:bg-black/50 text-white rounded-l flex items-center justify-center cursor-pointer transition shrink-0 z-10 -mr-1"
                   title="Ảnh kế tiếp"
                   aria-label="Ảnh kế tiếp"
@@ -1265,7 +1139,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-{/* Shopee Image 4 Social Share & Wishlist Row */}
+{/* SCANMS UI Reference Social Share & Wishlist Row */}
             <div className="w-full lg:max-w-[460px] lg:mx-auto flex items-center justify-between py-2 px-1 text-sm text-[#7D715E] border-t border-[#EAE4D7]/60">
               <div className="flex items-center gap-2 text-xs sm:text-sm">
                 <span>Chia sẻ:</span>
@@ -1315,7 +1189,7 @@ export default function ProductDetailPage() {
             </div>
 
 
-            {/* Shopee Image 1: Shop Info Component */}
+            {/* SCANMS UI Reference: Shop Info Component */}
             <div className="lg:max-w-[460px] lg:mx-auto p-3.5 sm:p-4 rounded-xl bg-white border border-[#EAE4D7] shadow-xs flex items-center gap-3.5 sm:gap-4 min-w-0">
               {/* Left Column: Original Shop Avatar */}
               <Link
@@ -1361,10 +1235,10 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-2 mt-2.5">
-                  {/* Button 1: Chat Ngay (Shopee Style) */}
+                  {/* Button 1: Chat Ngay (SCANMS Marketplace Style) */}
                   <button
                     type="button"
-                    onClick={handleContactShop}
+                    onClick={handleOpenChat}
                     className="h-8 px-3 sm:px-3.5 border border-[#d0011b] bg-[#ffeeee] hover:bg-[#ffe5e5] text-[#d0011b] rounded-[2px] text-xs sm:text-[13px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none active:scale-98"
                     title="Chat Ngay với gian hàng"
                   >
@@ -1372,7 +1246,7 @@ export default function ProductDetailPage() {
                     <span>Chat Ngay</span>
                   </button>
 
-                  {/* Button 2: Xem Shop (Shopee Style) */}
+                  {/* Button 2: Xem Shop (SCANMS Standard) */}
                   <Link
                     to={`/shop/${store.slug || store.id || 'sora-skin'}`}
                     className="h-8 px-3 sm:px-3.5 border border-black/15 bg-white hover:bg-[#FAF8F5] text-[#555555] rounded-[2px] text-xs sm:text-[13px] font-normal flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none no-underline active:scale-98"
@@ -1394,7 +1268,7 @@ export default function ProductDetailPage() {
                 {product.title}
               </h1>
 
-              {/* Shopee Image 5: Rating, Review Count, Sold Count & Report */}
+              {/* SCANMS UI Reference: Rating, Review Count, Sold Count & Report */}
               <div className="flex flex-wrap items-center gap-3 text-xs text-[#7D715E] mb-3 pb-3 border-b border-[#EAE4D7]">
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-[#B88E4F] underline text-sm">
@@ -1434,7 +1308,7 @@ export default function ProductDetailPage() {
                 </button>
               </div>
 
-              {/* Shopee Image 5: Price Box with Ticket Icon & "Giá Sau Voucher" */}
+              {/* SCANMS UI Reference: Price Box with Ticket Icon & "Giá Sau Voucher" */}
               <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 sm:p-4 mb-3">
                 <div className="flex flex-wrap items-baseline gap-3">
                   <span className="text-2xl sm:text-3xl font-black text-[#B88E4F] tracking-tight">
@@ -1460,6 +1334,8 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
+              <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponCode} />
+
               {/* Shipping estimate: show a date range, then refresh with carrier data after fulfillment. */}
               <div className="flex items-start gap-4 py-3 border-t border-[#EAE4D7]/80">
                 <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-0.5">
@@ -1477,7 +1353,7 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
               </div>
-              {/* Shopee Image 2: An Tâm Mua Sắm Section */}
+              {/* SCANMS UI Reference: An Tâm Mua Sắm Section */}
               <div className="flex items-center gap-4 py-2.5 border-t border-[#EAE4D7]/80">
                 <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium leading-tight">
                   An Tâm Mua Sắm Cùng SCANMS
@@ -1489,7 +1365,7 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* Shopee Image 2: Phân Loại (Variant Selector with Thumbnails) */}
+              {/* SCANMS UI Reference: Phân Loại (Variant Selector with Thumbnails) */}
               {activeVariants.length > 0 && (
                 <div className="flex items-start gap-4 py-3.5 border-t border-[#EAE4D7]/80">
                   <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-1.5">
@@ -1497,24 +1373,41 @@ export default function ProductDetailPage() {
                   </span>
                   <div className="flex-1">
                     <div className="flex flex-wrap gap-2">
-                      {activeVariants.map((v, idx) => {
+                      {activeVariants.map((v) => {
                         const isSelected = selectedVariant?.id === v.id;
                         const isOutOfStock = v.stockQuantity <= 0;
-                        const variantImg = v.imageUrl || gallery[idx % gallery.length] || product.imageUrl || SCANMS_PLACEHOLDER;
+                        const variantImg = v.imageUrl || product.imageUrl || SCANMS_PLACEHOLDER;
+                        const attributeText = Object.values(v.attributes || {}).filter(Boolean).join(' · ');
+                        const isHovered = hoveredImage === variantImg;
                         return (
                           <button
                             key={v.id}
+                            title={attributeText && attributeText !== v.name ? `${v.name} · ${attributeText}` : v.name}
                             type="button"
                             disabled={isOutOfStock}
+                            onMouseEnter={() => {
+                              if (!isOutOfStock) {
+                                setHoveredImage(variantImg);
+                              }
+                            }}
+                            onMouseLeave={() => {
+                              setHoveredImage(null);
+                            }}
                             onClick={() => {
                               setSelectedVariant(v);
+                              setSelectedImage(variantImg);
+                              setHoveredImage(null);
                               setQuantity(1);
+                              const gIdx = gallery.indexOf(variantImg);
+                              if (gIdx >= 0) setSelectedImageIndex(gIdx);
                             }}
                             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded border text-xs transition-all relative cursor-pointer ${
                               isSelected
                                 ? 'border-[#B88E4F] bg-[#FAF8F5] text-[#B88E4F] font-bold shadow-2xs ring-1 ring-[#B88E4F]'
                                 : isOutOfStock
                                 ? 'border-[#EAE4D7] bg-[#F3EFE6]/60 text-[#7D715E]/50 line-through cursor-not-allowed'
+                                : isHovered
+                                ? 'border-[#B88E4F] text-[#B88E4F] bg-white ring-1 ring-[#B88E4F]/40'
                                 : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#B88E4F] hover:text-[#B88E4F]'
                             }`}
                           >
@@ -1523,7 +1416,10 @@ export default function ProductDetailPage() {
                               alt={v.name}
                               className="w-6 h-6 object-cover rounded-xs border border-[#EAE4D7] shrink-0"
                             />
-                            <span className="truncate max-w-[160px] sm:max-w-[220px]">{v.name}</span>
+                            <span className="max-w-[280px] break-words text-left">
+                              <span className="block">{v.name}</span>
+                              {attributeText && attributeText !== v.name && <span className="block text-[10px] opacity-70">{attributeText}</span>}
+                            </span>
                             {isSelected && (
                               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#B88E4F] [clip-path:polygon(100%_0,0_100%,100%_100%)]" />
                             )}
@@ -1535,7 +1431,7 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Shopee Image 2: Số Lượng Stepper */}
+              {/* SCANMS UI Reference: Số Lượng Stepper */}
               <div className="flex items-center gap-4 py-3.5 border-t border-[#EAE4D7]/80">
                 <span className="w-24 sm:w-28 shrink-0 text-sm text-[#757575] font-normal">
                   Số Lượng
@@ -1637,7 +1533,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Shopee Image 2: Dual Action Buttons Section */}
+            {/* SCANMS UI Reference: Dual Action Buttons Section */}
             <div>
               {(!product.isActive || product.status === 'INACTIVE') && (
                 <div className="mb-3 p-2.5 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl flex items-center gap-2 text-xs text-[#B88E4F] font-bold">
@@ -1647,7 +1543,29 @@ export default function ProductDetailPage() {
               )}
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-[#EAE4D7]">
-                {/* Button 1: Thêm Vào Giỏ Hàng (Shopee Image 2 Outline Soft Style) */}
+                {(!currentUser || isKolUser) && (
+                  <button
+                    type="button"
+                    onClick={handleRequestSample}
+                    disabled={Boolean(isKolUser && (
+                      loadingSampleStatus ||
+                      (sampleRequestStatus && !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(sampleRequestStatus.status)) ||
+                      !sampleFeatureEnabled ||
+                      !sampleQuotaAvailable ||
+                      (sampleEligibility && !sampleEligibility.canRequest)
+                    ))}
+                    className="h-12 px-5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] disabled:opacity-60 disabled:cursor-not-allowed text-[#8C6226] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition"
+                    title="Đăng ký nhận mẫu và cam kết nộp link video trong 14 ngày sau khi nhận hàng"
+                  >
+                    <Package className="w-4 h-4" />
+                    <span>
+                      {sampleRequestStatus && !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(sampleRequestStatus.status)
+                        ? 'Yêu cầu mẫu đang được xử lý'
+                        : 'Đăng ký nhận sản phẩm mẫu'}
+                    </span>
+                  </button>
+                )}
+                {/* Button 1: Thêm Vào Giỏ Hàng (SCANMS UI Reference Outline Soft Style) */}
                 <button
                   type="button"
                   disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
@@ -1659,7 +1577,7 @@ export default function ProductDetailPage() {
                         sku: currentSku || product.sku,
                         price: unitPrice,
                         originalPrice: product.originalPrice ?? undefined,
-                        imageUrl: gallery[0] || product.imageUrl || undefined,
+                        imageUrl: selectedVariant?.imageUrl || displayImage || gallery[0] || product.imageUrl || undefined,
                         stockQuantity: currentStock,
                         variants: activeVariants,
                         isActive: product.isActive,
@@ -1686,7 +1604,7 @@ export default function ProductDetailPage() {
                   <span>Thêm Vào Giỏ Hàng</span>
                 </button>
 
-                {/* Button 2: Mua Với Voucher (Shopee Image 2 Solid CTA Style) */}
+                {/* Button 2: Mua Với Voucher (SCANMS UI Reference Solid CTA Style) */}
                 <button
                   type="button"
                   disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
@@ -1707,6 +1625,26 @@ export default function ProductDetailPage() {
                   )}
                 </button>
               </div>
+
+              {(!currentUser || isKolUser) && (
+                <div className="mt-2 text-[11px] text-[#7D715E]" aria-live="polite">
+                  {!currentUser ? (
+                    'Đăng nhập tài khoản KOL/Creator để gửi cam kết nhận mẫu.'
+                  ) : loadingSampleStatus ? (
+                    'Đang kiểm tra điều kiện và trạng thái yêu cầu mẫu…'
+                  ) : sampleRequestStatus && !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(sampleRequestStatus.status) ? (
+                    <>Yêu cầu mẫu của bạn: <strong className="text-[#8C6226]">{sampleRequestStatus.status}</strong>. <Link to="/collaborator/collaboration?tab=samples" className="underline text-[#8C6226]">Xem tiến độ</Link></>
+                  ) : !sampleFeatureEnabled ? (
+                    'Shop hiện chưa bật cấp mẫu cho sản phẩm này.'
+                  ) : !sampleQuotaAvailable ? (
+                    'Sản phẩm đã hết suất mẫu được Shop cấp.'
+                  ) : sampleEligibility && !sampleEligibility.canRequest ? (
+                    sampleEligibility.blockReason || 'Hoàn tất xác minh KYC và liên kết kênh mạng xã hội để xin mẫu.'
+                  ) : (
+                    'Shop xét duyệt yêu cầu trước khi gửi; thời hạn nộp video tối đa 14 ngày sau khi bạn xác nhận đã nhận mẫu.'
+                  )}
+                </div>
+              )}
 
               {/* Policy Commitments */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3.5 pt-3.5 border-t border-[#EAE4D7] text-center text-[10px] text-[#7D715E]">
@@ -2171,7 +2109,7 @@ export default function ProductDetailPage() {
             sku: currentSku,
             price: currentPrice,
             originalPrice: product.originalPrice || undefined,
-            imageUrl: gallery[0] || product.imageUrl || undefined,
+            imageUrl: selectedVariant?.imageUrl || displayImage || gallery[0] || product.imageUrl || undefined,
             stockQuantity: currentStock,
             variants: activeVariants,
           }}

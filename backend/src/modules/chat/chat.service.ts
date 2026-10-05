@@ -324,6 +324,7 @@ export class ChatService {
           storeId,
           isDeleted: false,
           isActive: true,
+          moderationStatus: 'APPROVED',
           store: { isDeleted: false, isActive: true, owner: { isActive: true } },
         },
         select: {
@@ -389,7 +390,13 @@ export class ChatService {
           expiresAt: true,
           scopeType: true,
           couponProducts: {
-            where: { product: { isDeleted: false, isActive: true } },
+            where: {
+              product: {
+                isDeleted: false,
+                isActive: true,
+                moderationStatus: 'APPROVED',
+              },
+            },
             select: { product: { select: { id: true, title: true } } },
           },
           couponCategories: { select: { categoryName: true } },
@@ -491,7 +498,13 @@ export class ChatService {
       throw new BadRequestException('Sản phẩm hoặc nội dung chat không hợp lệ');
     }
     const product = await this.prisma.product.findFirst({
-      where: { id: card.productId, storeId, isDeleted: false, isActive: true },
+      where: {
+        id: card.productId,
+        storeId,
+        isDeleted: false,
+        isActive: true,
+        moderationStatus: 'APPROVED',
+      },
       select: { id: true, sku: true, title: true, imageUrl: true, price: true },
     });
     if (!product) throw new BadRequestException('Sản phẩm không thuộc Shop này');
@@ -726,5 +739,65 @@ export class ChatService {
       },
       take: 20,
     });
+  }
+
+  // ---- Xóa cuộc trò chuyện và lịch sử chat ----
+  async deleteConversation(conversationId: string, userId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { store: true },
+    });
+    if (!conversation) {
+      throw new NotFoundException('Cuộc trò chuyện không tồn tại hoặc đã được xóa.');
+    }
+
+    const isStoreOwner = conversation.store.ownerId === userId;
+    const isCollaborator = conversation.collaboratorId === userId;
+    const isCustomer = conversation.customerId === userId;
+
+    if (!isStoreOwner && !isCollaborator && !isCustomer) {
+      throw new ForbiddenException('Bạn không có quyền xóa cuộc trò chuyện này.');
+    }
+
+    // Xóa tin nhắn và proposal liên quan trước khi xóa hội thoại
+    await this.prisma.chatMessage.deleteMany({
+      where: { conversationId },
+    });
+
+    await this.prisma.conversation.delete({
+      where: { id: conversationId },
+    });
+
+    return { success: true, message: 'Đã xóa cuộc trò chuyện thành công.' };
+  }
+
+  // ---- Xóa sạch lịch sử tin nhắn trong cuộc trò chuyện ----
+  async clearConversationMessages(conversationId: string, userId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { store: true },
+    });
+    if (!conversation) {
+      throw new NotFoundException('Cuộc trò chuyện không tồn tại.');
+    }
+
+    const isStoreOwner = conversation.store.ownerId === userId;
+    const isCollaborator = conversation.collaboratorId === userId;
+    const isCustomer = conversation.customerId === userId;
+
+    if (!isStoreOwner && !isCollaborator && !isCustomer) {
+      throw new ForbiddenException('Bạn không có quyền xóa lịch sử tin nhắn của cuộc trò chuyện này.');
+    }
+
+    await this.prisma.chatMessage.deleteMany({
+      where: { conversationId },
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date() },
+    });
+
+    return { success: true, message: 'Đã xóa toàn bộ lịch sử tin nhắn.' };
   }
 }

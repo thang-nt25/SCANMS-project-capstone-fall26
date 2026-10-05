@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -17,6 +18,7 @@ import { UserRole } from '@prisma/client';
 import { AffiliateDealsService } from './affiliate-deals.service';
 import { CreateExclusiveDealDto } from './dto/create-exclusive-deal.dto';
 import { RejectExclusiveDealDto } from './dto/reject-exclusive-deal.dto';
+import { TerminateExclusiveDealDto } from './dto/terminate-exclusive-deal.dto';
 
 @ApiTags('Affiliate Offers & Exclusive Deals')
 @ApiBearerAuth('JWT-auth')
@@ -30,6 +32,13 @@ export class AffiliateDealsController {
   @ApiOperation({ summary: 'KOL xem trạng thái các đề xuất deal riêng của mình' })
   getMine(@CurrentUser('id') userId: string) {
     return this.service.getMyProposals(userId);
+  }
+
+  @Get('my-status')
+  @Roles(UserRole.COLLABORATOR)
+  @ApiOperation({ summary: 'KOL kiểm tra trạng thái điều kiện nhận deal độc quyền & cooldown' })
+  getMyStatus(@CurrentUser('id') userId: string) {
+    return this.service.getMyDealStatus(userId);
   }
 
   @Post('proposals')
@@ -73,5 +82,33 @@ export class AffiliateDealsController {
     @Body() dto: RejectExclusiveDealDto,
   ) {
     return this.service.rejectProposal(id, userId, role, dto.reason);
+  }
+
+  @Post(':id/terminate')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiOperation({ summary: 'Shop đóng deal độc quyền khi KOL không đạt cam kết và áp dụng chế tài 4 cấp độ' })
+  terminate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Body() dto: TerminateExclusiveDealDto,
+  ) {
+    return this.service.terminateDeal(id, userId, role, dto);
+  }
+
+  @Delete(':id')
+  @Roles(
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_MANAGER,
+  )
+  @ApiOperation({ summary: 'KOL hoặc Shop gỡ bỏ hoặc hủy đề xuất Exclusive Deal khi không còn dùng hoặc hết hạn' })
+  deleteProposal(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.deleteProposal(id, userId, role);
   }
 }

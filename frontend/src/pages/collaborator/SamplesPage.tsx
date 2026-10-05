@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from '../../utils/toast';
+import { Select } from '../../components/ui/Select';
 
 export default function SamplesPage() {
   const [selectedId, setSelectedId] = useState('SMP-9821');
@@ -131,15 +132,14 @@ export default function SamplesPage() {
         <div className="card" style={{ padding: '16px', background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: 'var(--shadow)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 600 }}>{samplesList.length} yêu cầu</span>
-            <select
-              className="select"
+            <Select
               defaultValue="all"
-              style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--surface-2)', fontSize: '11.5px', color: 'var(--ink)' }}
+              className="w-40 text-xs font-semibold"
             >
               <option value="all">Tất cả ({samplesList.length})</option>
               <option value="shipping">Đang vận chuyển (1)</option>
               <option value="pending">Chờ duyệt (1)</option>
-            </select>
+            </Select>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -333,11 +333,13 @@ export default function SamplesPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div className="field">
                 <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)', marginBottom: '4px', display: 'block' }}>Sản phẩm muốn xin mẫu</label>
-                <select className="select" style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--ink)' }}>
+                <Select
+                  className="w-full text-xs font-semibold"
+                >
                   <option>Serum vitamin C 15% (Còn 18 mẫu)</option>
                   <option>Kem chống nắng SPF50+ (Còn 12 mẫu)</option>
                   <option>Nước hoa hồng BHA 2% (Còn 8 mẫu)</option>
-                </select>
+                </Select>
               </div>
 
               <div className="field">

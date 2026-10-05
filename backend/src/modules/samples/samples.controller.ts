@@ -23,8 +23,12 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { SamplesService } from './samples.service';
 import {
+  AdminResolveSampleRequestDto,
   CreateSampleRequestDto,
+  RejectSampleRequestDto,
+  ReportSampleDeliveryIssueDto,
   ShipSampleRequestDto,
+  SubmitSampleVideoDto,
 } from './dto/sample-request.dto';
 
 @ApiTags('Sample Requests (FR-26)')
@@ -50,6 +54,49 @@ export class SamplesController {
   getMyRequests(@Request() req: any) {
     const userId = req.user?.id || req.user?.sub;
     return this.samplesService.getMyRequests(userId);
+  }
+
+  @Get('my/eligibility')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Kiểm tra quyền xin mẫu và kênh mạng xã hội đã liên kết' })
+  getMyEligibility(@Request() req: any) {
+    return this.samplesService.getMyEligibility(req.user?.id || req.user?.sub);
+  }
+
+  @Patch(':id/cancel')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Hủy yêu cầu khi Shop chưa duyệt' })
+  cancelRequest(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    return this.samplesService.cancelRequest(id, req.user?.id || req.user?.sub);
+  }
+
+  @Patch(':id/receive')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Xác nhận đã nhận mẫu và bắt đầu hạn nộp video 14 ngày' })
+  confirmReceived(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    return this.samplesService.confirmReceived(id, req.user?.id || req.user?.sub);
+  }
+
+  @Post(':id/video')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Nộp link video gắn với yêu cầu mẫu này' })
+  submitVideo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SubmitSampleVideoDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.submitVideo(id, req.user?.id || req.user?.sub, dto);
+  }
+
+  @Patch(':id/delivery-issue')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Báo sự cố giao nhận mẫu' })
+  reportDeliveryIssue(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReportSampleDeliveryIssueDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.reportDeliveryIssue(id, req.user?.id || req.user?.sub, dto);
   }
 
   // ---- Shop endpoints ----
@@ -90,11 +137,54 @@ export class SamplesController {
 
   @Patch(':id/reject')
   @Roles('SHOP_MANAGER')
-  @ApiOperation({ summary: '[Shop] Từ chối yêu cầu xin mẫu' })
-  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  rejectRequest(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  @ApiOperation({ summary: '[Shop] Từ chối yêu cầu kèm lý do' })
+  rejectRequestWithReason(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RejectSampleRequestDto,
+    @Request() req: any,
+  ) {
     const userId = req.user?.id || req.user?.sub;
-    return this.samplesService.rejectRequest(id, userId);
+    return this.samplesService.rejectRequest(id, userId, dto.rejectedReason);
+  }
+
+  @Get('admin')
+  @Roles('SYSTEM_MANAGER', 'SYSTEM_ADMIN')
+  @ApiOperation({ summary: '[Admin] Tra cứu toàn bộ yêu cầu mẫu và lịch sử xử lý' })
+  getAdminRequests(@Query('status') status?: SampleRequestStatus) {
+    return this.samplesService.getAdminRequests(status);
+  }
+
+  @Get('admin/blocked')
+  @Roles('SYSTEM_MANAGER', 'SYSTEM_ADMIN')
+  @ApiOperation({ summary: '[Admin] Danh sách KOL bị khóa quyền xin mẫu' })
+  getBlockedCollaborators() {
+    return this.samplesService.getBlockedCollaborators();
+  }
+
+  @Patch('admin/:id/resolve')
+  @Roles('SYSTEM_MANAGER', 'SYSTEM_ADMIN')
+  @ApiOperation({ summary: '[Admin] Gia hạn hạn video hoặc miễn nghĩa vụ mẫu có ghi lý do' })
+  resolveRequestAsAdmin(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminResolveSampleRequestDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.resolveRequestAsAdmin(id, req.user?.id || req.user?.sub, dto);
+  }
+
+  @Patch('admin/:collaboratorId/unblock')
+  @Roles('SYSTEM_ADMIN', 'SYSTEM_MANAGER')
+  @ApiOperation({ summary: '[Admin] Mở khóa quyền xin mẫu của KOL' })
+  unblockCollaborator(
+    @Param('collaboratorId', ParseUUIDPipe) collaboratorId: string,
+    @Body() body: { reason: string },
+    @Request() req: any,
+  ) {
+    return this.samplesService.unblockCollaborator(
+      collaboratorId,
+      req.user?.id || req.user?.sub,
+      body?.reason,
+    );
   }
 
   @Patch(':id/ship')
@@ -115,6 +205,7 @@ export class SamplesController {
   // ---- Shared ----
 
   @Get(':id')
+  @Roles('COLLABORATOR', 'SHOP_MANAGER', 'SYSTEM_MANAGER', 'SYSTEM_ADMIN')
   @ApiOperation({ summary: '[KOL/Shop] Xem chi tiết một yêu cầu' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   getById(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {

@@ -177,7 +177,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         className="hidden"
       />
 
-      {/* User Identity Header (Shopee Image 1 Style) */}
+      {/* User Identity Header (SCANMS UI Reference Style) */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <div className="relative shrink-0 group">
           <button
@@ -224,7 +224,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
 
       <div className="border-t border-[#EAE4D7] my-0.5" />
 
-      {/* Shopee Image 1 Minimalist Navigation List */}
+      {/* SCANMS UI Reference Minimalist Navigation List */}
       <nav className="flex-1 px-3 py-2 flex flex-col gap-1 overflow-y-auto" aria-label="Menu chức năng">
         {navConfig.items.map((item) => {
           const active = isLinkActive(item.path);
@@ -261,7 +261,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         })}
       </nav>
 
-      {/* Bottom Actions (Shopee Image 1 Style) */}
+      {/* Bottom Actions (SCANMS UI Reference Style) */}
       <div className="p-3 border-t border-[#EAE4D7] flex flex-col gap-1.5 bg-[#FAF8F5]">
         {currentUser ? (
           <>

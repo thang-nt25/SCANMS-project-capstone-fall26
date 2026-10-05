@@ -5,13 +5,27 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   Max,
   Min,
   IsUUID,
+  IsInt,
+  ArrayMaxSize,
+  ArrayMinSize,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductVariantInputDto } from './sync-product-variants.dto';
 
 export class CreateProductDto {
+  @ApiProperty({ description: 'Ít nhất một SKU phân loại được tạo cùng sản phẩm' })
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Sản phẩm cần có ít nhất một phân loại SKU' })
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariantInputDto)
+  variants?: ProductVariantInputDto[];
   @ApiPropertyOptional({
     description: 'Cửa hàng nhận sản phẩm khi Chủ Shop quản lý nhiều gian hàng',
   })
@@ -35,30 +49,73 @@ export class CreateProductDto {
   @IsNotEmpty({ message: 'Tên sản phẩm không được để trống' })
   title: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'Điện tử',
-    description: 'Tên danh mục sản phẩm',
+    description: 'Tên danh mục sản phẩm đã chuẩn hóa',
   })
-  @IsOptional()
   @IsString()
-  categoryName?: string;
+  @IsNotEmpty({ message: 'Danh mục sản phẩm không được để trống' })
+  categoryName: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'Chống ồn chủ động Hybrid ANC 45dB, Pin 40 giờ liên tục',
     description: 'Mô tả chi tiết sản phẩm',
   })
-  @IsOptional()
   @IsString()
-  description?: string;
+  @IsNotEmpty({ message: 'Mô tả chi tiết sản phẩm không được để trống' })
+  description: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({ description: 'Thành phần sản phẩm hoặc mỹ phẩm' })
+  @IsString()
+  @IsNotEmpty({ message: 'Thành phần sản phẩm không được để trống' })
+  ingredients: string;
+
+  @ApiProperty({ description: 'Quốc gia hoặc nơi sản xuất/xuất xứ' })
+  @IsString()
+  @IsNotEmpty({ message: 'Xuất xứ sản phẩm không được để trống' })
+  origin: string;
+
+  @ApiProperty({ description: 'Thông tin nhãn mác, cảnh báo và hướng dẫn trên bao bì' })
+  @IsString()
+  @IsNotEmpty({ message: 'Thông tin nhãn mác không được để trống' })
+  labelInfo: string;
+
+  @ApiPropertyOptional({ description: 'Đường dẫn tài liệu chứng minh xuất xứ sản phẩm', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  originProofLinks?: string[];
+
+  @ApiPropertyOptional({ description: 'Ảnh chứng từ/xuất xứ sản phẩm đã tải lên', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  originProofImages?: string[];
+
+  @ApiPropertyOptional({ description: 'Đường dẫn chứng minh nhãn mác và thông tin công bố', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  labelProofLinks?: string[];
+
+  @ApiPropertyOptional({ description: 'Ảnh nhãn mác, cảnh báo và hướng dẫn sử dụng đã tải lên', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  labelProofImages?: string[];
+
+  @ApiProperty({
     example:
       'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500',
     description: 'URL ảnh đại diện sản phẩm',
   })
-  @IsOptional()
   @IsString()
-  imageUrl?: string;
+  @IsNotEmpty({ message: 'Ảnh chính sản phẩm không được để trống' })
+  imageUrl: string;
 
   @ApiPropertyOptional({
     example: [
@@ -69,12 +126,13 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
+  @ArrayMaxSize(4, { message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ' })
   @IsString({ each: true, message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ' })
   subImages?: string[];
 
   @ApiProperty({ example: 499000, description: 'Giá bán thực tế (VNĐ)' })
   @IsNumber({}, { message: 'Giá bán phải là một số' })
-  @Min(0, { message: 'Giá bán không được âm' })
+  @Min(1, { message: 'Giá bán phải lớn hơn 0' })
   price: number;
 
   @ApiPropertyOptional({
@@ -96,11 +154,11 @@ export class CreateProductDto {
   @Max(100, { message: 'Hoa hồng tối đa là 100%' })
   customCommissionRate?: number;
 
-  @ApiPropertyOptional({ example: 100, description: 'Số lượng tồn kho' })
-  @IsOptional()
-  @IsNumber({}, { message: 'Số lượng tồn kho phải là số nguyên' })
+  @ApiProperty({ example: 100, description: 'Số lượng tồn kho' })
+  @IsNumber({}, { message: 'Số lượng tồn kho phải là số' })
+  @IsInt({ message: 'Số lượng tồn kho phải là số nguyên' })
   @Min(0, { message: 'Tồn kho không được âm' })
-  stockQuantity?: number = 0;
+  stockQuantity: number;
 
   @ApiPropertyOptional({
     example: false,
@@ -110,4 +168,15 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isAffiliateEnabled?: boolean;
+
+  @ApiPropertyOptional({ default: false, description: 'Cho phép KOL đăng ký nhận sản phẩm mẫu' })
+  @IsOptional()
+  @IsBoolean()
+  sampleEnabled?: boolean;
+
+  @ApiPropertyOptional({ default: 0, description: 'Số lượng mẫu tối đa Shop cấp cho sản phẩm' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sampleQuota?: number;
 }

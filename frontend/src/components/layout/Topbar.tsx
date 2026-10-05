@@ -135,6 +135,9 @@ export function Topbar({
     if (pathname.includes('/collaborator/marketing') || pathname.includes('/collaborator/referral-links') || pathname.includes('/collaborator/media-hub')) {
       return 'Trung tâm Tiếp thị';
     }
+    if (pathname.includes('/collaborator/live-sessions')) {
+      return 'Phiên Livestream';
+    }
     if (pathname.includes('/collaborator/collaboration') || pathname.includes('/collaborator/sample-requests') || pathname.includes('/collaborator/messages')) {
       return 'Hợp tác & Liên hệ Shop';
     }
@@ -148,16 +151,36 @@ export function Topbar({
     if (pathname.includes('/merchant/orders')) return 'Quản lý Đơn hàng Sàn';
     if (pathname.includes('/merchant/kol-hub')) return 'Mạng lưới KOL & Hợp tác';
     if (pathname.includes('/merchant/promotions')) return 'Khuyến mãi & Hoa hồng';
+    if (pathname.includes('/merchant/live-sessions')) return 'Chiến dịch Livestream & Voucher';
     if (pathname.includes('/merchant/payouts')) return 'Duyệt Chi trả Hoa hồng';
     if (pathname.includes('/merchant/settings')) return 'Cài đặt Gian hàng';
+    if (pathname.includes('/merchant/fraud-sentinel') || pathname.includes('/merchant/ai-fraud')) return 'AI Chống Gian Lận (Sentinel)';
+    if (pathname.includes('/merchant/customer-messages')) return 'Tin Nhắn Khách Hàng';
+    if (pathname.includes('/merchant/analytics') || pathname.includes('/merchant/stats')) return 'Phân Tích & Thống Kê Gian Hàng';
 
     if (pathname.includes('/admin/analytics')) return 'Giám sát Toàn sàn';
     if (pathname.includes('/admin/affiliate-oversight')) return 'Tiếp thị & Dòng tiền Sàn';
+    if (pathname.includes('/admin/sample-requests')) return 'Quản trị hàng mẫu KOL';
+    if (pathname.includes('/admin/product-moderation') || pathname.includes('/admin/products/moderation')) return 'Kiểm duyệt Sản phẩm Sàn';
+    if (pathname.includes('/admin/disputes')) return 'Giải quyết Tranh chấp Sàn';
+    if (pathname.includes('/admin/audit-logs') || pathname.includes('/merchant/audit-logs')) return 'Nhật ký Hệ thống & Kiểm toán';
     if (pathname.includes('/admin/users') || pathname.includes('/merchant/kyc-approval')) {
       return 'Quản trị Người dùng & Duyệt KYC';
     }
 
-    return 'Hệ thống Quản Trị SCANMS';
+    if (pathname.includes('/chat')) return 'Tin nhắn & Trò chuyện Trực tiếp';
+
+    if (pathname.startsWith('/customer')) {
+      if (pathname.includes('/orders')) return 'Đơn Hàng Của Tôi';
+      if (pathname.includes('/upgrade')) return 'Nâng Cấp Đối Tác (KOL / Shop)';
+      if (pathname.includes('/wishlist')) return 'Danh Sách Yêu Thích';
+      if (pathname.includes('/vouchers')) return 'Kho Mã Giảm Giá';
+      return 'Cổng Mua Sắm Khách Hàng';
+    }
+
+    if (isShop) return 'Kênh Người Bán SCANMS';
+    if (isAdmin) return 'Trung Tâm Quản Trị Toàn Sàn';
+    return 'Cổng Nhà Sáng Tạo (KOL) SCANMS';
   };
 
   return (
@@ -194,7 +217,7 @@ export function Topbar({
         </button>
 
         <NotificationDropdown />
-        {(currentUser?.role === 'CUSTOMER' || currentUser?.role === 'SHOP_MANAGER') && <ChatBell userId={currentUser.id} isShop={isShop} />}
+        {(isCustomer || isShop || currentUser?.role === 'CUSTOMER' || currentUser?.role === 'SHOP_MANAGER') && currentUser?.id && <ChatBell userId={currentUser.id} isShop={isShop} />}
 
         <div className="relative" ref={menuRef}>
           <div

@@ -423,6 +423,7 @@ async function seed() {
         ...storeProps,
         ownerId: shopOwner.id,
         isActive: true,
+        onboardingStatus: 'VERIFIED',
       },
       update: {
         name: storeProps.name,
@@ -432,6 +433,7 @@ async function seed() {
         defaultCommissionRate: storeProps.defaultCommissionRate,
         isVerified: true,
         isActive: true,
+        onboardingStatus: 'VERIFIED',
       },
     });
 
@@ -448,6 +450,7 @@ async function seed() {
           customCommissionRate: rate,
           storeId: store.id,
           isActive: true,
+          moderationStatus: 'APPROVED',
         },
         update: {
           title: prod.title,
@@ -456,6 +459,7 @@ async function seed() {
           customCommissionRate: rate,
           imageUrl: prod.imageUrl,
           isActive: true,
+          moderationStatus: 'APPROVED',
         },
       });
     }

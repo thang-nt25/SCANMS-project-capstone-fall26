@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { User, ShieldCheck, Share2, Award } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
-import CreatorShopeeProfile from './CreatorShopeeProfile';
+import CreatorAccountDetails from './CreatorAccountDetails';
 import KycSubmissionPage from './KycSubmissionPage';
 import SocialChannelsPage from './SocialChannelsPage';
 import KolTierStatusPage from './KolTierStatusPage';
@@ -48,7 +48,7 @@ export default function CreatorProfilePage() {
       <div className="w-full min-h-[500px]">
         {activeTab === 'profile' && (
           <div className="animate-in fade-in-50 duration-200">
-            <CreatorShopeeProfile />
+            <CreatorAccountDetails />
           </div>
         )}
 

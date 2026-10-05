@@ -1,8 +1,9 @@
 import { useSearchParams } from 'react-router-dom';
-import { Link2, Tag } from 'lucide-react';
+import { Link2, Tag, Radio } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import AdminCouponsPage from './AdminCouponsPage';
+import AdminLiveSessionsPage from './AdminLiveSessionsPage';
 
 export default function AdminOversightHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,6 +23,11 @@ export default function AdminOversightHubPage() {
       id: 'coupons',
       label: 'Quản trị Mã Giảm Giá Sàn',
       icon: Tag,
+    },
+    {
+      id: 'live-sessions',
+      label: 'Giám sát Livestream',
+      icon: Radio,
     },
   ];
 
@@ -47,6 +53,8 @@ export default function AdminOversightHubPage() {
             <AdminCouponsPage />
           </div>
         )}
+
+        {activeTab === 'live-sessions' && <AdminLiveSessionsPage />}
       </div>
     </div>
   );

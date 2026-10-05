@@ -29,13 +29,13 @@ import {
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
 
-interface CustomSandSelectOption<T extends string> {
+export interface CustomSandSelectOption<T extends string> {
   value: T;
   label: string;
   icon?: React.ReactNode;
 }
 
-function CustomSandSelect<T extends string>({
+export function CustomSandSelect<T extends string>({
   value,
   onChange,
   options,
@@ -136,6 +136,7 @@ export const ShopCouponsPage: React.FC = () => {
 
   const [storeId, setStoreId] = useState<string>('');
   const [storesList, setStoresList] = useState<any[]>([]);
+  void storesList;
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -308,15 +309,6 @@ export const ShopCouponsPage: React.FC = () => {
   };
   initStoreRef.current = initStore;
 
-  const handleStoreChange = (newStoreId: string) => {
-    const selected = storesList.find((s) => s.id === newStoreId);
-    if (selected) {
-      setStoreId(selected.id);
-      setSearchParams({ storeId: selected.id });
-      localStorage.setItem('current_store_id', selected.id);
-      fetchStoreCoupons(selected.id);
-    }
-  };
 
   const fetchStoreCoupons = async (currentStoreId: string) => {
     try {
@@ -470,25 +462,12 @@ export const ShopCouponsPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen h-full overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
-      <div className="max-w-[1520px] mx-auto mb-8">
-
-        {storesList.length > 1 && (
-          <div className="flex items-center justify-end gap-2 mb-4">
-            <span className="text-xs text-[#7D715E]">Chọn Shop:</span>
-            <CustomSandSelect
-              value={storeId}
-              onChange={(val) => handleStoreChange(val)}
-              options={storesList.map((s) => ({ value: s.id, label: s.name }))}
-              className="min-w-[160px]"
-              buttonClassName="py-1 px-2.5 text-xs font-semibold"
-            />
-          </div>
-        )}
+    <div className="w-full text-[#1A1612]">
+      <div className="mx-auto w-full max-w-[1520px] space-y-5 pt-1 pb-6">
 
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
                 Yêu cầu chờ duyệt
@@ -502,12 +481,12 @@ export const ShopCouponsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
+          <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
                 Mã đang hoạt động
               </span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
             </div>
@@ -516,7 +495,7 @@ export const ShopCouponsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
+          <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
                 Lượt dùng thành công
@@ -530,7 +509,7 @@ export const ShopCouponsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
+          <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
                 Ngân sách đã chi
@@ -549,8 +528,8 @@ export const ShopCouponsPage: React.FC = () => {
         </div>
 
 
-        <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 border-b md:border-b-0 pb-2 md:pb-0">
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-xs sm:p-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setActiveTab('PENDING')}
               className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2.5 ${
@@ -617,7 +596,7 @@ export const ShopCouponsPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="relative w-full md:w-80">
+          <div className="relative w-full xl:w-[320px] xl:shrink-0">
             <div className="w-6 h-6 rounded-lg bg-[#FBF5EB] border border-[#EAE4D7] absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-[#B88E4F] pointer-events-none">
               <Search className="w-3.5 h-3.5" />
             </div>
@@ -633,19 +612,19 @@ export const ShopCouponsPage: React.FC = () => {
 
 
         {loading ? (
-          <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
+          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-10 text-center sm:p-12">
             <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F] mx-auto mb-3" />
             <p className="text-sm text-[#7D715E]">Đang tải dữ liệu coupon...</p>
           </div>
         ) : displayedCoupons.length === 0 ? (
-          <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
+          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-10 text-center sm:p-12">
             <Tag className="w-8 h-8 text-[#B88E4F] mx-auto mb-2 opacity-50" />
             <p className="text-sm text-[#7D715E]">
               Không có mã giảm giá nào trong mục này.
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-[#EAE4D7] shadow-xs overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-[#7D715E] uppercase font-bold text-[10px] tracking-wider">
@@ -804,7 +783,7 @@ export const ShopCouponsPage: React.FC = () => {
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border shadow-2xs ${
                               coupon.status === 'ACTIVE'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                ? 'bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]'
                                 : coupon.status === 'PENDING_APPROVAL'
                                 ? 'bg-amber-50 text-amber-800 border-amber-200'
                                 : coupon.status === 'PAUSED'
@@ -1298,4 +1277,3 @@ export const ShopCouponsPage: React.FC = () => {
 };
 
 export default ShopCouponsPage;
-

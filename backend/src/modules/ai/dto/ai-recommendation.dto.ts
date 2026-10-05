@@ -110,6 +110,11 @@ export class KolSocialChannelSummaryDto {
 }
 
 export class KolLifetimeStatsSummaryDto {
+  @ApiProperty({ description: 'Số lượt nhấp hợp lệ, duy nhất được dùng khi chấm điểm' })
+  totalClicks: number;
+
+  @ApiProperty({ description: 'Độ đầy đủ dữ liệu để đối sánh: LOW, MEDIUM, HIGH' })
+  dataConfidence: string;
   @ApiProperty({ description: 'Tổng đơn hàng đã chốt', example: 342 })
   totalOrders: number;
 
@@ -142,7 +147,7 @@ export class KolMatchResultDto {
   @ApiProperty({ description: 'Tiểu sử / Giới thiệu', example: 'Beauty Blogger chuyên dòng dưỡng ẩm & phục hồi da' })
   bio: string;
 
-  @ApiProperty({ description: 'Điểm tương thích tổng hợp của AI (0 - 100%)', example: 94 })
+  @ApiProperty({ description: 'Điểm đối sánh có trọng số (0 - 100), không phải xác suất chốt đơn', example: 94 })
   matchScore: number;
 
   @ApiProperty({ description: 'Đánh giá mức độ phù hợp', example: 'Siêu Phù Hợp' })

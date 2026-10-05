@@ -20,9 +20,11 @@ import { socialService, type SocialChannel } from '../../services/social.service
 import { authService } from '../../services/auth.service';
 import { Card } from '../../components/ui/Card';
 import { CustomSelect } from '../../components/ui/CustomSelect';
+import { Select } from '../../components/ui/Select';
 import { ImageUploadDropzone } from '../../components/ui/ImageUploadDropzone';
-import { VIETNAM_BANK_OPTIONS } from '../../constants/vietnamBanks';
+import { BankSelectTrigger } from '../../components/bank/BankSelectTrigger';
 import { toast } from '../../utils/toast';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 export default function KycSubmissionPage() {
   const currentUser = authService.getCurrentUser();
@@ -158,14 +160,21 @@ export default function KycSubmissionPage() {
     }
   };
 
-  const handleDeleteChannel = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn xóa kênh này khỏi danh sách?')) return;
+  const [channelToDelete, setChannelToDelete] = useState<SocialChannel | null>(null);
+  const [isDeletingChannel, setIsDeletingChannel] = useState(false);
+
+  const handleConfirmDeleteChannel = async () => {
+    if (!channelToDelete?.id) return;
+    setIsDeletingChannel(true);
     try {
-      await socialService.deleteChannel(id);
-      toast.success('Đã xóa kênh');
+      await socialService.deleteChannel(channelToDelete.id);
+      toast.success('Đã xóa kênh mạng xã hội khỏi danh sách');
+      setChannelToDelete(null);
       loadSocialChannels();
     } catch (err: any) {
       toast.error(err.message || 'Lỗi xóa kênh');
+    } finally {
+      setIsDeletingChannel(false);
     }
   };
 
@@ -442,10 +451,10 @@ export default function KycSubmissionPage() {
               {showAddOtherChannel && (
                 <div className="mb-3 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl space-y-2">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <select
+                    <Select
                       value={otherPlatform}
                       onChange={(e) => setOtherPlatform(e.target.value)}
-                      className="bg-white border border-[#EAE4D7] rounded-lg px-2.5 py-1.5 text-xs text-[#1A1612] outline-none"
+                      className="w-full"
                     >
                       <option value="TIKTOK">🎵 TikTok</option>
                       <option value="YOUTUBE">▶️ YouTube</option>
@@ -453,7 +462,7 @@ export default function KycSubmissionPage() {
                       <option value="INSTAGRAM">📷 Instagram</option>
                       <option value="LEMON8">🍋 Lemon8</option>
                       <option value="OTHER">🌐 Khác</option>
-                    </select>
+                    </Select>
                     <input
                       type="text"
                       placeholder="Tên kênh / Handle"
@@ -535,7 +544,7 @@ export default function KycSubmissionPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => handleDeleteChannel(c.id)}
+                        onClick={() => setChannelToDelete(c)}
                         className="p-1 text-stone-400 hover:text-rose-600 hover:bg-white rounded cursor-pointer"
                         title="Xóa kênh"
                       >
@@ -613,13 +622,11 @@ export default function KycSubmissionPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Tên ngân hàng *</label>
-              <CustomSelect
+              <BankSelectTrigger
                 value={bankName}
                 onChange={(val) => setBankName(val)}
-                options={VIETNAM_BANK_OPTIONS}
                 placeholder="-- Chọn ngân hàng thụ hưởng --"
                 required
-                searchable
               />
             </div>
 
@@ -682,6 +689,18 @@ export default function KycSubmissionPage() {
           </button>
         </div>
       </form>
+
+      {/* Modal Xác nhận Xóa kênh mạng xã hội chuẩn SCANMS */}
+      <ConfirmModal
+        isOpen={Boolean(channelToDelete)}
+        onClose={() => !isDeletingChannel && setChannelToDelete(null)}
+        onConfirm={handleConfirmDeleteChannel}
+        isLoading={isDeletingChannel}
+        title="Xóa kênh khỏi hồ sơ KYC"
+        message={`Bạn có chắc chắn muốn xóa kênh "${channelToDelete?.channelName || 'này'}" khỏi hồ sơ định danh KYC?`}
+        confirmText="Xác nhận xóa"
+        variant="danger"
+      />
     </div>
   );
 }

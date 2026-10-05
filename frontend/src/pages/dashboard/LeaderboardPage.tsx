@@ -24,6 +24,7 @@ import type {
   LeaderboardTimeRange,
   CreatorHallOfFameProfile,
 } from '../../services/leaderboard.service';
+import { toast } from '../../utils/toast';
 
 export default function LeaderboardPage() {
   const [data, setData] = useState<LeaderboardFullResponse | null>(null);
@@ -706,10 +707,12 @@ export default function LeaderboardPage() {
                   </button>
                   <button
                     onClick={() => {
-                      alert(`Đã gửi lời mời hợp tác độc quyền tới Creator ${creatorProfile.fullName}!`);
+                      toast.success(`Đã gửi lời mời hợp tác độc quyền tới Creator ${creatorProfile.fullName}!`, {
+                        description: 'Hệ thống đã chuyển lời mời và kích hoạt đặc quyền chiến dịch VIP.',
+                      });
                       handleCloseModal();
                     }}
-                    className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-[#1A1612] text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-transform active:scale-95"
+                    className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-[#1A1612] text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-transform active:scale-95 cursor-pointer"
                   >
                     👑 Mời Vào Chiến Dịch VIP (FR-27)
                   </button>

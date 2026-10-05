@@ -49,7 +49,7 @@ import {
   type ShippingProvince,
 } from '../../services/order-address.service';
 import { useCart, type CartItem } from '../../context/CartContext';
-import { useShopeeChat } from '../../context/ShopeeChatContext';
+import { useScanmsChat } from '../../context/ScanmsChatContext';
 import { formatMoney, getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 import { CustomSelect } from '../ui/CustomSelect';
 import { resolveSavedShippingAddress } from '../../utils/checkoutAddress';
@@ -116,7 +116,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { removeItems, editCheckoutCart, continueShoppingFromCheckout } = useCart();
-  const { openChat } = useShopeeChat();
+  const { openChat } = useScanmsChat();
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const isSignedIn = Boolean(localStorage.getItem('token') && authService.getCurrentUser());
   const [currentUser, setCurrentUser] = useState<any>(() => authService.getCurrentUser());
@@ -670,7 +670,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setIsEditingAddress(true);
   };
 
-  // Quản lý xác nhận xóa địa chỉ chuẩn sàn Shopee / TikTok Shop (Chỉ xóa khi click xác nhận, tuyệt đối không đếm giờ)
+  // Quản lý xác nhận xóa địa chỉ chuẩn sàn SCANMS (Chỉ xóa khi click xác nhận, tuyệt đối không đếm giờ)
   const [addressToDelete, setAddressToDelete] = useState<CustomerAddress | null>(null);
   const [isDeletingAddress, setIsDeletingAddress] = useState(false);
 
@@ -872,8 +872,18 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
-    if (!policyAccepted || policyLoading || policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])) {
-      setErrorMessage('Bạn cần đọc và đồng ý chính sách đổi trả của các gian hàng trước khi đặt mua.');
+    if (policyLoading) {
+      setErrorMessage('Đang tải chính sách của gian hàng. Vui lòng chờ một chút rồi thử lại.');
+      return;
+    }
+
+    if (policyError || itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])) {
+      setErrorMessage(policyError || 'Chưa tải được chính sách của một gian hàng. Vui lòng tải lại trang trước khi đặt mua.');
+      return;
+    }
+
+    if (!policyAccepted) {
+      setErrorMessage('Vui lòng đọc chính sách đổi trả bên dưới và tích xác nhận trước khi đặt mua.');
       return;
     }
 
@@ -1038,7 +1048,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       aria-labelledby="guest-checkout-title"
       className="fixed inset-0 z-[80] bg-[#F5F5F5] overflow-y-auto min-h-screen text-[#1A1612] font-sans animate-in fade-in duration-150 text-left"
     >
-      {/* 1. Header chuẩn Shopee & các sàn lớn (Logo SCANMS | Thanh Toán) */}
+      {/* 1. Header Chuẩn SCANMS & các sàn lớn (Logo SCANMS | Thanh Toán) */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 py-3 sm:py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1072,7 +1082,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         </div>
       </header>
 
-      {/* 2. Dải ruy băng phong bì thư chuyển phát (Shopee Iconic Address Envelope Stripe) */}
+      {/* 2. Dải ruy băng phong bì thư chuyển phát (SCANMS Iconic Address Envelope Stripe) */}
       <div className="h-1 w-full bg-[repeating-linear-gradient(45deg,#ee4d2d_0,#ee4d2d_30px,#3b82f6_30px,#3b82f6_60px,#f59e0b_60px,#f59e0b_90px)] opacity-85" />
 
       {/* 3. Main Checkout Container */}
@@ -1226,7 +1236,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             </div>
           </div>
         ) : (
-          /* Checkout Form (Shopee / TikTok Shop Style) */
+          /* Checkout Form (SCANMS Style) */
           <form onSubmit={handleSubmitOrder} className="space-y-4">
             {/* Status alerts */}
             {isValidatingCart && (
@@ -1359,7 +1369,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             )}
 
             {/* ========================================================================= */}
-            {/* BLOCK 1: ĐỊA CHỈ NHẬN HÀNG (CHUẨN SHOPEE ẢNH 2) */}
+            {/* BLOCK 1: ĐỊA CHỈ NHẬN HÀNG (Chuẩn SCANMS ẢNH 2) */}
             {/* ========================================================================= */}
             <div className="bg-white rounded-lg p-5 sm:p-6 shadow-xs border border-gray-200 text-left">
               {/* Tiêu đề mục: 📍 Địa Chỉ Nhận Hàng */}
@@ -1368,7 +1378,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <span>Địa Chỉ Nhận Hàng</span>
               </div>
 
-              {/* Dòng tóm tắt địa chỉ người nhận chuẩn Shopee (Ảnh 2):
+              {/* Dòng tóm tắt địa chỉ người nhận Chuẩn SCANMS (Ảnh 2):
                   kim ngọc (+84) 787 664 860   43/4f, Đường Giác Đạo, Xã Bà Điểm, Hóc Môn... [Mặc Định] [Thay Đổi] */}
               <div className="pt-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
@@ -1672,7 +1682,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* BLOCK 2: SẢN PHẨM (CHUẨN SHOPEE ẢNH 2 & TIKTOK SHOP) */}
+            {/* BLOCK 2: SẢN PHẨM (Chuẩn SCANMS ẢNH 2 & TIKTOK SHOP) */}
             {/* ========================================================================= */}
             <div className="bg-white rounded-lg shadow-xs border border-gray-200 overflow-hidden text-left">
               {/* Header các cột (Chuẩn Ảnh 2: Sản phẩm | Đơn giá | Số lượng | Thành tiền) */}
@@ -1833,6 +1843,53 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </div>
             </div>
 
+            <section className="rounded-lg border border-[#EEDFC6] bg-white p-4 sm:p-5 text-left space-y-3" aria-labelledby="checkout-return-policies-title">
+              <div className="flex items-center gap-2 border-b border-[#EAE4D7] pb-3">
+                <ShieldCheck className="h-5 w-5 text-[#B88E4F]" />
+                <div>
+                  <h3 id="checkout-return-policies-title" className="text-sm font-bold text-[#1A1612]">Chính sách của gian hàng</h3>
+                  <p className="mt-0.5 text-xs text-[#7D715E]">Vui lòng đọc chính sách đổi trả trước khi đặt hàng.</p>
+                </div>
+              </div>
+
+              {policyLoading ? (
+                <p className="flex items-center gap-2 text-xs text-[#7D715E]"><Loader2 className="h-4 w-4 animate-spin" /> Đang tải chính sách Shop…</p>
+              ) : policyError ? (
+                <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{policyError}</p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {itemsGroupedByShop.map((group) => {
+                      const policy = shopPolicies[group.store.id];
+                      if (!policy) {
+                        return <p key={group.store.id} className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">Chưa tải được chính sách của {group.store.name}. Hãy tải lại trang rồi thử lại.</p>;
+                      }
+
+                      return (
+                        <article key={group.store.id} className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs text-[#1A1612]">
+                          <h4 className="font-bold">{policy.name || group.store.name}</h4>
+                          <p className="mt-1"><strong>Đổi trả / hoàn tiền:</strong> {policy.policyReturn?.trim() || 'Theo quy định SCANMS: yêu cầu đổi trả trong 14 ngày kể từ khi nhận hàng, kèm ảnh và video mở hộp.'}</p>
+                          {policy.policyWarranty?.trim() && <p className="mt-1"><strong>Bảo hành:</strong> {policy.policyWarranty}</p>}
+                          {policy.policyShipping?.trim() && <p className="mt-1"><strong>Giao hàng:</strong> {policy.policyShipping}</p>}
+                        </article>
+                      );
+                    })}
+                  </div>
+
+                  <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#1A1612]">
+                    <input
+                      type="checkbox"
+                      checked={policyAccepted}
+                      disabled={itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])}
+                      onChange={(event) => setPolicyAccepted(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-[#C59B58]"
+                    />
+                    <span>Tôi xác nhận đã đọc và đồng ý với chính sách đổi trả của tất cả gian hàng trong đơn.</span>
+                  </label>
+                </>
+              )}
+            </section>
+
             {/* ========================================================================= */}
             {/* BLOCK 3: PHƯƠNG THỨC THANH TOÁN (CHUẨN CÁC SÀN LỚN) */}
             {/* ========================================================================= */}
@@ -1910,7 +1967,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* BLOCK 4: TỔNG KẾT ĐƠN HÀNG & ĐẶT HÀNG (CHUẨN SHOPEE ẢNH 2) */}
+            {/* BLOCK 4: TỔNG KẾT ĐƠN HÀNG & ĐẶT HÀNG (Chuẩn SCANMS ẢNH 2) */}
             {/* ========================================================================= */}
             <div className="bg-white rounded-lg p-5 sm:p-6 shadow-xs border border-gray-200 text-left space-y-4">
               {/* Voucher sàn SCANMS */}
@@ -2032,7 +2089,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         )}
       </main>
 
-      {/* Modal xác nhận xóa địa chỉ - Chuẩn Shopee & các sàn lớn (Chỉ xóa khi bấm xác nhận, không bao giờ tự động đếm giờ) */}
+      {/* Modal xác nhận xóa địa chỉ - Chuẩn SCANMS & các sàn lớn (Chỉ xóa khi bấm xác nhận, không bao giờ tự động đếm giờ) */}
       {addressToDelete && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"

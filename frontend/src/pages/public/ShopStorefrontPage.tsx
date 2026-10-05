@@ -17,16 +17,29 @@ import {
   Heart,
   Zap,
   RotateCcw,
+  ExternalLink,
 } from 'lucide-react';
 import { PublicHeader } from '../../components/layout/PublicHeader';
-import { useShopeeChat } from '../../context/ShopeeChatContext';
+import { useScanmsChat } from '../../context/ScanmsChatContext';
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
+
+function getPublicWebsiteUrl(value: unknown): URL | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function ShopStorefrontPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { openChat } = useShopeeChat();
+  const { openChat } = useScanmsChat();
 
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(222300);
@@ -87,6 +100,8 @@ export default function ShopStorefrontPage() {
     staleTime: 1000 * 60 * 10,
   });
 
+  const publicWebsiteUrl = getPublicWebsiteUrl(storeData?.websiteUrl);
+
   // Fetch Store Products
   const { data: rawProducts = [] } = useQuery({
     queryKey: ['public-store-products', effectiveSlug],
@@ -127,6 +142,7 @@ export default function ShopStorefrontPage() {
     },
     staleTime: 1000 * 60 * 5,
   });
+  const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals(rawProducts.map((product: any) => product.id));
 
   // --- Dynamic 8 Shop Statistics according to each shop ---
   // 1. Metric: Sản Phẩm (Total products of this store)
@@ -240,12 +256,12 @@ export default function ShopStorefrontPage() {
     return 'CÔNG TY TNHH SORA SKIN VIỆT NAM';
   }, [storeData?.companyName, effectiveSlug]);
 
-  // 7. Metric: Địa Chỉ (Che bảo mật thông tin chuẩn Shopee: *****, [Địa chỉ])
+  // 7. Metric: Địa Chỉ (Che bảo mật thông tin Chuẩn SCANMS: *****, [Địa chỉ])
   const addressText = useMemo(() => {
     return `*****, ${fullAddress}`;
   }, [fullAddress]);
 
-  // 8. Metric: Công Ty/HKD (Che bảo mật thông tin pháp nhân chuẩn Shopee: C***********G)
+  // 8. Metric: Công Ty/HKD (Che bảo mật thông tin pháp nhân Chuẩn SCANMS: C***********G)
   const companyNameText = useMemo(() => {
     const trimmed = fullCompanyName.trim();
     const first = trimmed.charAt(0) || 'C';
@@ -441,7 +457,7 @@ export default function ShopStorefrontPage() {
       <PublicHeader />
 
       <main className="max-w-[1240px] w-full mx-auto px-3 sm:px-4 py-4 space-y-4 flex-1">
-        {/* TOP SHOPEE SHOP BANNER (Image 1 Shop Header Card) */}
+        {/* TOP STORE BANNER (Image 1 Shop Header Card) */}
         <div className="bg-white rounded-xl shadow-xs border border-[#EAE4D7] overflow-hidden">
           <div className="p-3 sm:p-5">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-stretch">
@@ -476,6 +492,19 @@ export default function ShopStorefrontPage() {
                       <span className="w-2 h-2 rounded-full bg-[#059669] inline-block animate-pulse" />
                       <span className="text-[#059669] text-[11px] font-medium">Online</span>
                     </div>
+                    {publicWebsiteUrl && (
+                      <a
+                        href={publicWebsiteUrl.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={publicWebsiteUrl.href}
+                        aria-label={`Mở website chính thức của ${storeData?.name || 'gian hàng'}`}
+                        className="mt-2 inline-flex max-w-full items-center gap-1.5 text-[11px] font-semibold text-[#8A642C] transition-colors hover:text-[#B88E4F]"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{publicWebsiteUrl.hostname.replace(/^www\./, '')}</span>
+                      </a>
+                    )}
                   </div>
                 </div>
 
@@ -514,7 +543,7 @@ export default function ShopStorefrontPage() {
                 </div>
               </div>
 
-              {/* Right Statistics Panel (Shopee Image 1 Shop Metrics - 8 Metrics) */}
+              {/* Right Statistics Panel (SCANMS UI Reference Shop Metrics - 8 Metrics) */}
               <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-xs sm:text-[13px] self-center">
                 {/* Metric 1: Sản Phẩm */}
                 <div className="flex items-center gap-1.5 py-0.5">
@@ -560,7 +589,7 @@ export default function ShopStorefrontPage() {
                   <span className="font-semibold text-[#d0011b]">{joinDurationText}</span>
                 </div>
 
-                {/* Metric 7: Địa Chỉ (Che bảo mật thông tin chuẩn Shopee) */}
+                {/* Metric 7: Địa Chỉ (Che bảo mật thông tin Chuẩn SCANMS) */}
                 <div className="flex items-center gap-1.5 py-0.5 min-w-0">
                   <MapPin className="w-4 h-4 text-[#333333] shrink-0" />
                   <span className="text-[#333333] shrink-0">Địa Chỉ:</span>
@@ -569,7 +598,7 @@ export default function ShopStorefrontPage() {
                   </span>
                 </div>
 
-                {/* Metric 8: Công Ty/HKD (Che bảo mật thông tin chuẩn Shopee) */}
+                {/* Metric 8: Công Ty/HKD (Che bảo mật thông tin Chuẩn SCANMS) */}
                 <div className="flex items-center gap-1.5 py-0.5 min-w-0">
                   <Building2 className="w-4 h-4 text-[#333333] shrink-0" />
                   <span className="text-[#333333] shrink-0">Công Ty/HKD:</span>
@@ -707,6 +736,7 @@ export default function ShopStorefrontPage() {
                   className="group bg-white rounded-lg border border-[#EAE4D7] hover:border-[#d0011b] hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between no-underline"
                 >
                   <div className="relative aspect-square overflow-hidden bg-[#FAF8F5]">
+                    <LiveSessionDealBadge deal={liveDeals[prod.id]} now={liveDealsNow} />
                     <img
                       src={getSafeProductImageUrl(prod.imageUrl, prod.title)}
                       alt={prod.title}
@@ -758,7 +788,7 @@ export default function ShopStorefrontPage() {
               ))}
             </div>
 
-            {/* Shopee-style "Xem thêm sản phẩm" button -> Chuyển sang trang tất cả sản phẩm toàn sàn (/search như Ảnh 4) */}
+            {/* SCANMS Standard "Xem thêm sản phẩm" button -> Chuyển sang trang tất cả sản phẩm toàn sàn (/search như Ảnh 4) */}
             <div className="mt-6 sm:mt-8 flex justify-center">
               <Link
                 to="/search"
@@ -774,7 +804,7 @@ export default function ShopStorefrontPage() {
           /* -> HIỂN THỊ CHUẨN ẢNH 2: BỘ LỌC BÊN TRÁI + SẮP XẾP VÀ GRID 5 CỘT BÊN PHẢI */
           /* ========================================================================= */
           <div className="flex flex-col lg:flex-row gap-5 items-start mt-2">
-            {/* LEFT SIDEBAR: BỘ LỌC SẢN PHẨM (Chuẩn Shopee Image 2) */}
+            {/* LEFT SIDEBAR: BỘ LỌC SẢN PHẨM (Chuẩn SCANMS UI Reference) */}
             <aside className="w-full lg:w-[210px] shrink-0 text-left space-y-4">
               {/* Header: BỘ LỌC SẢN PHẨM */}
               <div className="flex items-center gap-2 pb-2.5 border-b border-[#EAE4D7]">
@@ -884,9 +914,9 @@ export default function ShopStorefrontPage() {
               )}
             </aside>
 
-            {/* RIGHT COLUMN: SORT BAR + PRODUCT GRID (Chuẩn Shopee Image 2) */}
+            {/* RIGHT COLUMN: SORT BAR + PRODUCT GRID (Chuẩn SCANMS UI Reference) */}
             <div className="flex-1 min-w-0 space-y-3.5">
-              {/* Shopee-style Sort Bar (Exact Image 2) */}
+              {/* SCANMS Standard Sort Bar (Exact Image 2) */}
               <div className="bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 shadow-2xs">
                 <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-wrap">
                   <span className="text-xs sm:text-sm font-medium text-[#7D715E] shrink-0">
@@ -986,7 +1016,7 @@ export default function ShopStorefrontPage() {
                 </div>
               </div>
 
-              {/* Product Grid (5 Columns on Desktop, Exact Shopee Image 2) */}
+              {/* Product Grid (5 Columns on Desktop, Exact SCANMS UI Reference) */}
               {filteredProducts.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -1000,6 +1030,7 @@ export default function ShopStorefrontPage() {
                         >
                           {/* Thumbnail Container */}
                           <div className="relative aspect-square overflow-hidden bg-[#FAF8F5]">
+                            <LiveSessionDealBadge deal={liveDeals[prod.id]} now={liveDealsNow} />
                             <img
                               src={getSafeProductImageUrl(prod.imageUrl, prod.title)}
                               alt={prod.title}
@@ -1021,7 +1052,7 @@ export default function ShopStorefrontPage() {
                               </span>
                             )}
 
-                            {/* Heart favorite button in top-right area (Shopee Image 2) */}
+                            {/* Heart favorite button in top-right area (SCANMS UI Reference) */}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1057,7 +1088,7 @@ export default function ShopStorefrontPage() {
                               {prod.title}
                             </h3>
 
-                            {/* Badge: ⚡ Rẻ Vô Địch (Chuẩn Shopee Image 2) */}
+                            {/* Badge: ⚡ Rẻ Vô Địch (Chuẩn SCANMS UI Reference) */}
                             <div className="mb-1.5">
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[#FFF7ED] border border-[#FED7AA] text-[#EA580C] text-[9.5px] font-bold rounded-xs">
                                 <Zap className="w-2.5 h-2.5 fill-current" />

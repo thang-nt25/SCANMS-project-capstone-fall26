@@ -154,6 +154,29 @@ export const referralLinksService = {
     return res?.data?.data || res?.data || res;
   },
 
+  async terminateExclusiveDeal(id: string, payload: { reason: string; escalateDispute?: boolean }) {
+    const res: any = await api.post(`/affiliate-deals/${id}/terminate`, payload);
+    return res?.data?.data || res?.data || res;
+  },
+
+  async deleteExclusiveDeal(id: string): Promise<{ success: boolean; message: string; deletedId: string }> {
+    const res: any = await api.delete(`/affiliate-deals/${id}`);
+    return res?.data || res;
+  },
+
+  async getMyDealStatus(): Promise<{
+    isBlocked: boolean;
+    violationsCount: number;
+    cooldownUntil: string | null;
+    remainingDays: number;
+    reason: string | null;
+    sampleRequestsBlocked: boolean;
+    sampleRequestsBlockReason: string | null;
+  }> {
+    const res: any = await api.get('/affiliate-deals/my-status');
+    return res?.data?.data || res?.data || res;
+  },
+
   async getEligibleProducts(params?: { search?: string; storeId?: string; page?: number; limit?: number }): Promise<EligibleProduct[]> {
     const res: any = await api.get('/collaborator/referral-links/products', { params });
     return res?.data || res || [];
