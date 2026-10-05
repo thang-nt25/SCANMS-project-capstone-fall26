@@ -43,6 +43,7 @@ import { authService } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
 import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
 import { toast } from '../../utils/toast';
+import { apiCache } from '../../utils/apiCache';
 import {
   loadShippingAddresses,
   type ShippingProvince,
