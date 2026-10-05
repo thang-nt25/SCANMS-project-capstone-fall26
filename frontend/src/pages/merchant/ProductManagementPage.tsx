@@ -4,7 +4,6 @@ import {
   Plus,
   PlusCircle,
   Search,
-  Filter,
   Link2,
   Package,
   Pencil,
@@ -43,6 +42,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
+import './ProductManagementPage.css';
 import {
   Table,
   TableHeader,
@@ -1501,13 +1501,14 @@ export default function ProductManagementPage() {
       (filterStatus === 'APPROVED' && p.moderationStatus === 'APPROVED') ||
       (filterStatus === 'active' && (p.status === 'active' || p.isActive)) ||
       (filterStatus === 'out_of_stock' && (p.status === 'out_of_stock' || p.stockQuantity === 0)) ||
-      (filterStatus === 'paused' && (p.status === 'paused' || p.isActive === false));
+      (filterStatus === 'paused' && (p.status === 'paused' || p.isActive === false)) ||
+      (filterStatus === 'low_stock' && Number(p.stockQuantity ?? p.stock ?? 0) > 0 && Number(p.stockQuantity ?? p.stock ?? 0) <= 5);
     return matchSearch && matchStatus;
   });
 
   return (
-    <div className="space-y-4 text-left w-full pt-3 sm:pt-4">
-      {toastMsg && (
+    <div className="product-management space-y-4 text-left w-full min-w-0 pt-4">
+            {toastMsg && (
         <div className="fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border border-[#EEDFC6] rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
           <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
           <span>{toastMsg}</span>
@@ -1528,47 +1529,44 @@ export default function ProductManagementPage() {
         });
         if (lowStockProducts.length === 0 && outOfStockProducts.length === 0) return null;
         return (
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="rounded-xl border border-[#EEDFC6] bg-white px-3 py-3 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xl animate-bounce">⚠️</span>
-              <span className="font-extrabold text-amber-900 text-sm">Cảnh báo tồn kho</span>
+              <AlertCircle className="h-4 w-4 text-[#B88E4F]" />
+              <span className="font-semibold text-[#1A1612] text-xs">Lưu ý tồn kho</span>
             </div>
-            <div className="flex flex-col gap-0.5 flex-1 text-xs text-amber-800">
+            <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 flex-1 text-xs text-[#7D715E]">
               {outOfStockProducts.length > 0 && (
                 <span>
                   <strong className="text-red-700">{outOfStockProducts.length} sản phẩm đã hết hàng</strong>
-                  {': '}{outOfStockProducts.slice(0, 3).map((p: any) => p.title || p.name).join(', ')}
-                  {outOfStockProducts.length > 3 ? ` và ${outOfStockProducts.length - 3} sản phẩm khác` : ''}
                 </span>
               )}
               {lowStockProducts.length > 0 && (
                 <span>
-                  <strong className="text-amber-800">{lowStockProducts.length} sản phẩm sắp hết hàng (≤5 sản phẩm)</strong>
-                  {': '}{lowStockProducts.slice(0, 3).map((p: any) => `${p.title || p.name} (còn ${p.stockQuantity ?? p.stock ?? 0})`).join(', ')}
-                  {lowStockProducts.length > 3 ? ` và ${lowStockProducts.length - 3} sản phẩm khác` : ''}
+                  <strong className="font-medium text-[#8C6226]">{lowStockProducts.length} sản phẩm tồn thấp (1–5)</strong>
                 </span>
               )}
             </div>
             <button
               type="button"
-              onClick={() => setFilterStatus('out_of_stock')}
-              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-900 transition cursor-pointer"
+              onClick={() => setFilterStatus(outOfStockProducts.length > 0 ? 'out_of_stock' : 'low_stock')}
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] transition cursor-pointer"
             >
-              Xem sản phẩm hết hàng
+              {outOfStockProducts.length > 0 ? 'Xem hàng đã hết' : 'Xem tồn thấp'}
             </button>
           </div>
         );
       })()}
 
       {/* Unified Toolbar: Compact Search, Filters & Action Buttons in One Row */}
-      <Card className="p-3 sm:p-3.5 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs">
+      <Card className="product-toolbar p-3 bg-white border border-[#EAE4D7] rounded-xl shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Left: Compact search input & filter controls */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-1.5 text-xs text-[#1A1612] w-56 sm:w-72 focus-within:border-[#C59B58] focus-within:bg-white transition">
+          <div className="product-filter-controls flex min-w-0 flex-wrap items-center gap-2.5">
+            <div className="product-search flex items-center gap-2 bg-white border border-[#EAE4D7] rounded-lg px-3 h-9 text-xs text-[#1A1612] w-full sm:w-64 focus-within:border-[#C59B58] transition">
               <Search className="w-3.5 h-3.5 text-[#7D715E] shrink-0" />
               <input
                 type="text"
+                aria-label="Tìm tên hoặc SKU sản phẩm"
                 placeholder="Tìm tên hoặc SKU sản phẩm..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1588,7 +1586,7 @@ export default function ProductManagementPage() {
             <Select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="min-w-[160px]"
+              aria-label="Lọc trạng thái sản phẩm" className="h-9 min-w-[160px] rounded-lg text-xs"
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="DRAFT">Chờ kiểm duyệt</option>
@@ -1596,21 +1594,14 @@ export default function ProductManagementPage() {
               <option value="APPROVED">Đã được duyệt</option>
               <option value="active">Đang bán</option>
               <option value="out_of_stock">Hết hàng</option>
+              <option value="low_stock">Tồn thấp (1–5)</option>
               <option value="paused">Tạm dừng</option>
             </Select>
 
-            <Button
-              variant="outline"
-              size="sm"
-              icon={<Filter className="w-3.5 h-3.5" />}
-              className="border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5] py-1.5"
-            >
-              Bộ lọc
-            </Button>
           </div>
 
           {/* Right: Action Buttons (Duyệt video KOL, Duyệt đánh giá, Thêm sản phẩm) - Borderless Icon & Text */}
-          <div className="flex flex-wrap items-center gap-4 shrink-0">
+          <div className="product-toolbar-actions flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
             {!isKol ? (
               <>
                 {isAdminOrManager && (
@@ -1680,8 +1671,9 @@ export default function ProductManagementPage() {
       </Card>
 
 
-      <Card className="p-0 overflow-hidden shadow-xs">
-        <Table>
+      <Card className="product-table-card p-0 min-w-0 shadow-none">
+        <Table className="product-table">
+          <colgroup><col style={{width:40}} /><col /><col style={{width:120}} /><col style={{width:85}} /><col style={{width:85}} /><col style={{width:140}} /><col style={{width:270}} /></colgroup>
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">
@@ -1693,8 +1685,8 @@ export default function ProductManagementPage() {
                 />
               </TableHead>
               <TableHead>Sản phẩm</TableHead>
-              <TableHead>Giá bán lẻ</TableHead>
-              <TableHead>Hoa hồng CTV</TableHead>
+              <TableHead>Giá bán</TableHead>
+              <TableHead>Hoa hồng</TableHead>
               <TableHead>Tồn kho</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
@@ -1714,7 +1706,7 @@ export default function ProductManagementPage() {
 
               return (
                 <TableRow key={p.id}>
-                  <TableCell>
+                  <TableCell data-label="Chọn" className="product-selection">
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(p.id)}
@@ -1722,8 +1714,8 @@ export default function ProductManagementPage() {
                       className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
                     />
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
+                  <TableCell data-label="Sản phẩm" className="product-identity">
+                    <div className="flex min-w-0 items-center gap-3">
                       {img ? (
                         <img
                           src={img}
@@ -1736,7 +1728,7 @@ export default function ProductManagementPage() {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <strong className="text-xs sm:text-sm font-bold text-slate-900 block truncate">
+                        <strong title={title} className="text-sm font-semibold text-[#1A1612] block line-clamp-2 break-words">
                           {title}
                         </strong>
                         <span className="text-[11px] text-slate-500 font-mono block mt-0.5">
@@ -1745,21 +1737,20 @@ export default function ProductManagementPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-bold text-slate-900">
-                    {price.toLocaleString('vi-VN')} ₫
+                  <TableCell data-label="Giá bán" className="font-semibold text-[#1A1612] whitespace-nowrap tabular-nums">
+                    {Number(price).toLocaleString('vi-VN')} ₫
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-label="Hoa hồng">
                     <Badge variant="amber" className="font-extrabold text-xs">
                       {rate}%
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-label="Tồn kho">
                     {(() => {
                       const LOW = 5;
                       if (stock === 0) {
                         return (
                           <span className="inline-flex items-center gap-1 font-bold text-rose-600 text-xs">
-                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse inline-block" />
                             0 — Hết hàng
                           </span>
                         );
@@ -1767,8 +1758,7 @@ export default function ProductManagementPage() {
                       if (stock <= LOW) {
                         return (
                           <span className="inline-flex items-center gap-1 font-bold text-amber-600 text-xs">
-                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
-                            {stock} — <span className="text-amber-700">⚠️ Thấp</span>
+                            {stock} <span className="text-[#8C6226]">· Thấp</span>
                           </span>
                         );
                       }
@@ -1779,7 +1769,7 @@ export default function ProductManagementPage() {
                       );
                     })()}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-label="Trạng thái">
                     <div className="flex flex-col items-start gap-1">
                       {moderationStatus === 'DRAFT' && <Badge variant="warning">Chờ kiểm duyệt</Badge>}
                       {moderationStatus === 'REJECTED' && <Badge variant="danger">Bị từ chối</Badge>}
@@ -1793,7 +1783,7 @@ export default function ProductManagementPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-label="Thao tác" className="product-row-actions text-right">
                     {isKol ? (
                       <div className="flex items-center justify-end gap-1.5">
                         <Button
@@ -1827,7 +1817,7 @@ export default function ProductManagementPage() {
                                     setModeratingAction('APPROVED');
                                   }}
                                   disabled={moderationSubmitting}
-                                  className="h-8 px-2.5 rounded-lg bg-[#059669] hover:bg-[#047857] text-white text-[11px] font-bold flex items-center gap-1 transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                                  className="h-8 px-2.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                                   title="Phê duyệt sản phẩm lên sàn ngay"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1872,7 +1862,7 @@ export default function ProductManagementPage() {
                                   setModeratingProduct(p);
                                   setModeratingAction('APPROVED');
                                 }}
-                                className="h-8 px-2 rounded-lg border border-[#A7F3D0] text-[#059669] hover:bg-[#ECFDF5] text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                                className="h-8 px-2 rounded-lg border border-[#EEDFC6] text-[#8C6226] hover:bg-[#FBF5EB] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
                                 title="Xem xét và duyệt lại sản phẩm này"
                               >
                                 <ShieldCheck className="w-3.5 h-3.5" />
