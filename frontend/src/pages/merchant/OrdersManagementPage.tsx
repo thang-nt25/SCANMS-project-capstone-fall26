@@ -21,6 +21,8 @@ import {
   MapPin,
   Phone,
   Users,
+  Printer,
+  Zap,
 } from "lucide-react";
 import { toast } from "../../utils/toast";
 import { Select } from "../../components/ui/Select";
@@ -41,6 +43,12 @@ import {
   validateManualItems,
   type ManualItemForm,
 } from "../../components/orders/manualOrderValidation";
+import {
+  ShippingLabel,
+  generateTrackingCode,
+  printShippingLabel,
+} from "../../components/orders/ShippingLabel";
+import { shippingService, type GhnTrackingDetail } from "../../services/shipping.service";
 import { CustomSelect } from "../../components/ui/CustomSelect";
 
 type OrderAction = "manual" | "excel";
@@ -191,6 +199,24 @@ export default function OrdersManagementPage({
     return null;
   };
 
+  const [printPreviewOrder, setPrintPreviewOrder] = useState<StoreOrderRecord | null>(null);
+
+  // ────── SHOP CANCEL ORDER ──────
+  const [cancelModalOrder, setCancelModalOrder] = useState<StoreOrderRecord | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelCustomReason, setCancelCustomReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const CANCEL_REASONS = [
+    "Khách hàng yêu cầu hủy đơn",
+    "Sản phẩm tạm hết hàng trong kho",
+    "Địa chỉ giao hàng không hợp lệ hoặc ngoài vùng phủ",
+    "Không liên lạc được với khách hàng",
+    "Khách đặt nhầm / thay đổi ý định",
+    "Phát hiện đơn hàng nghi ngờ gian lận",
+    "Lý do khác (nhập bên dưới)",
+  ];
+
   useEffect(() => {
     let active = true;
     setOrdersLoading(true);
@@ -220,15 +246,57 @@ export default function OrdersManagementPage({
     };
   }, [storeId, statusFilter, ordersPage, ordersRefreshCount, orderSearchQuery]);
 
+  const [creatingGhnOrder, setCreatingGhnOrder] = useState(false);
+  const [trackingGhnDetail, setTrackingGhnDetail] = useState<GhnTrackingDetail | null>(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+
   const handleOpenShippingModal = (order: StoreOrderRecord) => {
     setShippingModalOrder(order);
-    setShippingCarrier(order.carrierName || "GHTK");
+    setShippingCarrier("GHN");
     setShippingTrackingNumber(order.trackingNumber || "");
     setShippingNote("");
     setShippingError(null);
     setTimeout(() => {
       trackingInputRef.current?.focus();
     }, 150);
+  };
+
+  const handleCreateGhnShippingOrder = async () => {
+    if (!shippingModalOrder) return;
+    setCreatingGhnOrder(true);
+    try {
+      const res = await shippingService.createGhnOrder(shippingModalOrder.id, {
+        note: shippingNote.trim() || undefined,
+        requiredNote: "CHOXEMHANGKHONGTHU",
+      });
+      setShippingCarrier("GHN");
+      setShippingTrackingNumber(res.trackingNumber);
+      setActionSuccessMsg(
+        res.isRealGhn
+          ? `🚀 Đã bắn đơn sang GHN Express thành công! Mã vận đơn: ${res.trackingNumber}`
+          : `⚡ Đã tạo mã vận đơn GHN: ${res.trackingNumber}`
+      );
+      setTimeout(() => setActionSuccessMsg(null), 5000);
+      setShippingModalOrder(null);
+      setOrdersRefreshCount((c) => c + 1);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || err.message || "Lỗi tạo vận đơn GHN");
+    } finally {
+      setCreatingGhnOrder(false);
+    }
+  };
+
+  const handleOpenGhnTracking = async (order: StoreOrderRecord) => {
+    const code = order.trackingNumber || order.externalOrderSn;
+    setLoadingTracking(true);
+    try {
+      const detail = await shippingService.trackOrder(code);
+      setTrackingGhnDetail(detail);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Không thể tải hành trình vận chuyển");
+    } finally {
+      setLoadingTracking(false);
+    }
   };
 
   const handleSubmitShipping = async () => {
@@ -285,6 +353,38 @@ export default function OrdersManagementPage({
       });
     } finally {
       setUpdatingFulfillment(false);
+    }
+  };
+
+  const handleShopCancelOrder = async () => {
+    if (!cancelModalOrder) return;
+    const finalReason =
+      cancelReason === "Lý do khác (nhập bên dưới)"
+        ? cancelCustomReason.trim()
+        : cancelReason;
+    if (!finalReason) {
+      alert("Vui lòng chọn hoặc nhập lý do hủy đơn!");
+      return;
+    }
+    setCancelling(true);
+    try {
+      await orderService.shopCancelOrder(cancelModalOrder.id, finalReason);
+      setActionSuccessMsg(
+        `Đã hủy đơn #${cancelModalOrder.externalOrderSn} — Kho hàng đã được hoàn lại, hoa hồng KOL đã thu hồi.`
+      );
+      setTimeout(() => setActionSuccessMsg(null), 6000);
+      setCancelModalOrder(null);
+      setCancelReason("");
+      setCancelCustomReason("");
+      setOrdersRefreshCount((c) => c + 1);
+    } catch (err: any) {
+      alert(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Không thể hủy đơn hàng. Vui lòng thử lại."
+      );
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -1068,17 +1168,76 @@ export default function OrdersManagementPage({
                                 </button>
                               )}
 
+                              {order.status === "PENDING" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeliveredOrder(order)}
+                                    disabled={updatingFulfillment}
+                                    className="px-3 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#C59B58] text-[#B88E4F] hover:text-white border border-[#EEDFC6] hover:border-[#C59B58] text-[11px] font-bold transition shadow-2xs flex items-center gap-1 disabled:opacity-50 active:scale-95 cursor-pointer whitespace-nowrap shrink-0 group/btn"
+                                    title="Xác nhận khách đã nhận được hàng"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-[#059669] group-hover/btn:text-white transition-colors" />
+                                    <span>Đã giao</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCancelModalOrder(order);
+                                      setCancelReason("");
+                                      setCancelCustomReason("");
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+                                    title="Shop hủy đơn — hoàn kho & thu hồi hoa hồng KOL"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                    <span>Hủy đơn</span>
+                                  </button>
+                                </>
+                              )}
+
                               {order.status === "SHIPPING" && (
-                                <button
-                                  type="button"
-                                  onClick={() => setConfirmDeliveredOrder(order)}
-                                  disabled={updatingFulfillment}
-                                  className="px-3 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#C59B58] text-[#B88E4F] hover:text-white border border-[#EEDFC6] hover:border-[#C59B58] text-[11px] font-bold transition shadow-2xs flex items-center gap-1 disabled:opacity-50 active:scale-95 cursor-pointer whitespace-nowrap shrink-0 group/btn"
-                                  title="Xác nhận khách đã nhận được hàng"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-[#059669] group-hover/btn:text-white transition-colors" />
-                                  <span>Đã giao</span>
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleOpenGhnTracking(order)}
+                                    disabled={loadingTracking}
+                                    className="px-2 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50"
+                                    title="Tra cứu hành trình vận chuyển GHN"
+                                  >
+                                    {loadingTracking ? (
+                                      <RefreshCw className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
+                                    ) : (
+                                      <Truck className="w-3.5 h-3.5 text-emerald-600" />
+                                    )}
+                                    <span>Tra cứu</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setPrintPreviewOrder({
+                                        ...order,
+                                        trackingNumber: order.trackingNumber || order.externalOrderSn,
+                                        carrierName: order.carrierName || "GHN",
+                                      });
+                                    }}
+                                    className="px-2 py-1.5 rounded-lg border border-[#C59B58] bg-[#FAF8F5] text-[#8C6B32] hover:bg-[#F3EFE6] text-[11px] font-bold transition flex items-center gap-1"
+                                    title="In phiếu giao hàng A6 chuẩn Barcode"
+                                  >
+                                    <Printer className="w-3.5 h-3.5 text-[#C59B58]" />
+                                    <span>In A6</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleConfirmDelivered(order)}
+                                    disabled={updatingFulfillment}
+                                    className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50"
+                                    title="Xác nhận khách đã nhận được hàng"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Đã giao</span>
+                                  </button>
+                                </>
                               )}
 
                               <button
@@ -1159,7 +1318,82 @@ export default function OrdersManagementPage({
               </button>
             </div>
 
-            <div className="flex flex-col gap-3.5">
+            <div className="flex flex-col gap-3">
+              {/* --- 1-Click GHN API Dispatch Card --- */}
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#FFF8EE] to-[#FAF3E7] border border-[#EEDFC6] flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-[#C59B58] text-white flex items-center justify-center text-xs font-black">
+                      ⚡
+                    </span>
+                    <div>
+                      <strong className="text-xs font-bold text-[#1A1612] block">
+                        GHN Express (API Live)
+                      </strong>
+                      <span className="text-[10.5px] text-[#7D715E]">Shop ID: 6706876 • Cước ước tính: ~25.000₫</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={creatingGhnOrder}
+                    onClick={handleCreateGhnShippingOrder}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] text-white text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+                    title="Bắn đơn sang máy chủ GHN Express và sinh mã vận đơn tức thì"
+                  >
+                    {creatingGhnOrder ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Đang tạo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5 fill-current" />
+                        <span>Bắn đơn GHN ngay</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-[11px] text-[#7D715E] m-0 leading-relaxed border-t border-[#EAE4D7]/80 pt-2">
+                  Hệ thống sẽ gửi địa chỉ nhận hàng và tạo đơn trên GHN Express, tự động cập nhật đơn hàng sang <b>Đang giao</b>.
+                </p>
+              </div>
+
+              {/* --- Manual / Simulator Tracking Number --- */}
+              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#4A3E2D]">Nhập mã bưu tá / Simulator:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = generateTrackingCode(shippingCarrier);
+                      setShippingTrackingNumber(code);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold transition shadow-xs cursor-pointer"
+                    title="Tự động tạo mã vận đơn chuẩn TMĐT theo đơn vị vận chuyển"
+                  >
+                    <Zap className="w-3 h-3" />
+                    Tự sinh mã
+                  </button>
+                </div>
+                {shippingTrackingNumber && (
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 font-mono text-xs font-bold text-[#1A1612] bg-white border border-[#EAE4D7] rounded-lg px-3 py-1.5 tracking-widest">{shippingTrackingNumber}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (shippingModalOrder) {
+                          setPrintPreviewOrder({ ...shippingModalOrder, trackingNumber: shippingTrackingNumber, carrierName: shippingCarrier });
+                        }
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#C59B58] bg-white text-[#B88E4F] hover:bg-[#FBF5EB] text-[11px] font-bold transition cursor-pointer"
+                      title="Xem trước và in phiếu giao hàng A6"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Xem phiếu
+                    </button>
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1">
                   Đơn vị vận chuyển <span className="text-[#DC2626]">*</span>
@@ -1220,28 +1454,109 @@ export default function OrdersManagementPage({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#EAE4D7]">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#EAE4D7]">
               <button
                 type="button"
-                onClick={() => setShippingModalOrder(null)}
-                className="px-4 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] transition active:scale-95 cursor-pointer"
+                disabled={!shippingTrackingNumber.trim()}
+                onClick={() => {
+                  if (shippingModalOrder && shippingTrackingNumber.trim()) {
+                    printShippingLabel(
+                      shippingModalOrder,
+                      shippingTrackingNumber.trim(),
+                      shippingCarrier,
+                      shippingNote.trim() || undefined,
+                      shippingModalOrder.store?.name,
+                    );
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#C59B58] bg-white text-[#B88E4F] text-xs font-bold hover:bg-[#FBF5EB] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                Hủy
+                <Printer className="w-3.5 h-3.5" />
+                In phiếu A6
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShippingModalOrder(null)}
+                  className="px-4 py-2 rounded-xl border border-[#EAE4D7] text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  disabled={updatingFulfillment}
+                  onClick={handleSubmitShipping}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                >
+                  {updatingFulfillment ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang cập nhật...</span>
+                    </>
+                  ) : (
+                    <span>Xác nhận gửi hàng</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ PRINT PREVIEW MODAL ══ */}
+      {printPreviewOrder && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] flex flex-col gap-4 p-6 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[#1A1612] m-0 flex items-center gap-2">
+                  <Printer className="w-4 h-4 text-[#B88E4F]" /> Xem trước Phiếu Giao Hàng A6
+                </h3>
+                <p className="text-xs text-[#7D715E] mt-0.5 m-0">
+                  Phiếu chuẩn 105×148mm — gồm Barcode Code-128 và QR tra cứu
+                </p>
+              </div>
+              <button
+                onClick={() => setPrintPreviewOrder(null)}
+                className="p-1 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex justify-center overflow-x-auto">
+              <ShippingLabel
+                order={printPreviewOrder}
+                trackingNumber={printPreviewOrder.trackingNumber || ""}
+                carrier={printPreviewOrder.carrierName || "SCANMS Express"}
+                note={shippingNote.trim() || undefined}
+                storeName={printPreviewOrder.store?.name}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EAE4D7]">
+              <button
+                type="button"
+                onClick={() => setPrintPreviewOrder(null)}
+                className="px-4 py-2 rounded-xl border border-[#EAE4D7] text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
+              >
+                Đóng
               </button>
               <button
                 type="button"
-                disabled={updatingFulfillment}
-                onClick={handleSubmitShipping}
-                className="px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition disabled:opacity-50 shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                onClick={() => {
+                  printShippingLabel(
+                    printPreviewOrder,
+                    printPreviewOrder.trackingNumber || "",
+                    printPreviewOrder.carrierName || "SCANMS Express",
+                    shippingNote.trim() || undefined,
+                    printPreviewOrder.store?.name,
+                  );
+                }}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] text-white text-xs font-bold shadow-md transition cursor-pointer"
               >
-                {updatingFulfillment ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Đang cập nhật...</span>
-                  </>
-                ) : (
-                  <span>Xác nhận gửi hàng</span>
-                )}
+                <Printer className="w-4 h-4" />
+                In Phiếu Giao Hàng A6
               </button>
             </div>
           </div>
@@ -1304,6 +1619,100 @@ export default function OrdersManagementPage({
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Xác nhận đã giao</span>
                   </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL HỦY ĐƠN HÀNG (Shop chủ động) ══ */}
+      {cancelModalOrder && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-rose-200 shadow-xl p-6 text-left flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex justify-between items-start border-b border-rose-100 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-rose-700 m-0 flex items-center gap-2">
+                  <X className="w-4 h-4" /> Hủy Đơn Hàng
+                </h3>
+                <p className="text-xs text-[#7D715E] mt-0.5 m-0">
+                  Đơn <strong className="font-mono text-[#1A1612]">#{cancelModalOrder.externalOrderSn}</strong>
+                  {" — "}{cancelModalOrder.customerName}
+                </p>
+              </div>
+              <button
+                onClick={() => setCancelModalOrder(null)}
+                className="p-1 rounded-lg text-[#7D715E] hover:bg-rose-50 shrink-0 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Thông tin tác động */}
+            <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800 flex flex-col gap-1">
+              <p className="font-bold m-0">⚠️ Hành động này không thể hoàn tác. Khi hủy:</p>
+              <ul className="list-disc pl-4 m-0 space-y-0.5">
+                <li>Trạng thái đơn → <strong>ĐÃ HỦY</strong></li>
+                <li>Tồn kho sản phẩm được <strong>hoàn lại tự động</strong></li>
+                <li>Mã giảm giá (nếu có) được <strong>hoàn lượt sử dụng</strong></li>
+                <li>Hoa hồng KOL đang tạm giữ bị <strong>thu hồi (Clawback)</strong></li>
+              </ul>
+            </div>
+
+            {/* Chọn lý do */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-[#4A3E2D] block">
+                Lý do hủy đơn <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex flex-col gap-1.5">
+                {CANCEL_REASONS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setCancelReason(r)}
+                    className={`text-left px-3 py-2 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                      cancelReason === r
+                        ? "border-rose-400 bg-rose-50 text-rose-800 font-bold ring-2 ring-rose-300/50"
+                        : "border-[#EAE4D7] bg-white text-[#4A3E2D] hover:border-rose-300 hover:bg-rose-50"
+                    }`}
+                  >
+                    {cancelReason === r ? "✓ " : ""}{r}
+                  </button>
+                ))}
+              </div>
+
+              {cancelReason === "Lý do khác (nhập bên dưới)" && (
+                <textarea
+                  placeholder="Mô tả chi tiết lý do hủy đơn..."
+                  value={cancelCustomReason}
+                  onChange={(e) => setCancelCustomReason(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs outline-none focus:border-rose-400 resize-none"
+                />
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={() => setCancelModalOrder(null)}
+                className="px-4 py-2 rounded-xl border border-[#EAE4D7] text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                disabled={cancelling || !cancelReason || (cancelReason === "Lý do khác (nhập bên dưới)" && !cancelCustomReason.trim())}
+                onClick={handleShopCancelOrder}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition disabled:opacity-50 shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                {cancelling ? (
+                  <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" /> Đang hủy...</>
+                ) : (
+                  <><X className="w-3.5 h-3.5" /> Xác nhận Hủy Đơn</>
                 )}
               </button>
             </div>
@@ -2090,6 +2499,81 @@ export default function OrdersManagementPage({
           </dialog>,
           document.body,
         )}
+
+      {/* ══ GHN TRACKING TIMELINE MODAL ══ */}
+      {trackingGhnDetail && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] max-w-lg w-full flex flex-col gap-4 p-6 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[#1A1612] m-0 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-emerald-600" />
+                  Hành trình đơn hàng • {trackingGhnDetail.orderCode}
+                </h3>
+                <p className="text-xs text-[#7D715E] mt-0.5 m-0">
+                  {trackingGhnDetail.carrier} • Trạng thái: <strong className="text-emerald-700">{trackingGhnDetail.statusText}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setTrackingGhnDetail(null)}
+                className="p-1 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tracking Stepper */}
+            <div className="space-y-4 py-2">
+              {trackingGhnDetail.timeline.map((step, sIdx) => (
+                <div key={sIdx} className="flex gap-3 relative">
+                  {sIdx < trackingGhnDetail.timeline.length - 1 && (
+                    <div className={`absolute left-3.5 top-7 bottom-0 w-0.5 ${step.completed ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+                  )}
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 ${
+                    step.completed ? 'bg-emerald-500 text-white shadow-xs' : 'bg-gray-100 text-gray-400 border'
+                  }`}>
+                    {step.completed ? <CheckCircle2 className="w-4 h-4" /> : <span className="text-xs font-bold">{sIdx + 1}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className={`text-xs ${step.completed ? 'text-[#1A1612] font-bold' : 'text-gray-400'}`}>
+                        {step.title}
+                      </strong>
+                      {step.time && (
+                        <span className="text-[10px] text-[#7D715E] font-mono shrink-0">
+                          {new Date(step.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} • {new Date(step.time).toLocaleDateString('vi-VN')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[#7D715E] mt-0.5 leading-relaxed m-0">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-[#EAE4D7] mt-2">
+              <a
+                href={trackingGhnDetail.trackingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+              >
+                <span>Tra cứu trực tiếp trên GHN.VN</span>
+                <span className="text-xs">↗</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setTrackingGhnDetail(null)}
+                className="px-4 py-2 rounded-xl bg-[#C59B58] text-[#1A1612] font-bold text-xs hover:bg-[#B88E4F]"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

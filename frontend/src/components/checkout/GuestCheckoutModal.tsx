@@ -39,7 +39,6 @@ function normalizeVietnameseAddress(str: string): string {
     .replace(/\s+/g, ' ');
 }
 import api from '../../services/api';
-import { apiCache } from '../../utils/apiCache';
 import { authService } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
 import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
@@ -227,10 +226,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [saveToAddressBook, setSaveToAddressBook] = useState(true);
   const [setAsDefaultAddress, setSetAsDefaultAddress] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
-  const [policyAccepted, setPolicyAccepted] = useState(false);
-  const [shopPolicies, setShopPolicies] = useState<Record<string, CheckoutStoreInfo>>({});
-  const [policyLoading, setPolicyLoading] = useState(false);
-  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [policyAccepted, setPolicyAccepted] = useState(true);
 
   // Payment Method: Default to COD (reliable & always available), with PayOS option
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS'>('COD');
@@ -358,24 +354,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
     return Array.from(map.values());
   }, [activeItems]);
-  const policyStoreIds = itemsGroupedByShop.map((group) => group.store.id).join(',');
-
-  useEffect(() => {
-    if (!isOpen || !policyStoreIds) return;
-    let active = true;
-    setPolicyLoading(true);
-    setPolicyError(null);
-    setPolicyAccepted(false);
-    apiCache.invalidate('/stores/public/id/');
-    Promise.all(policyStoreIds.split(',').map(async (id) => {
-      const response: any = await api.get(`/stores/public/id/${id}`);
-      return [id, response?.data || response] as const;
-    }))
-      .then((entries) => { if (active) setShopPolicies(Object.fromEntries(entries)); })
-      .catch(() => { if (active) setPolicyError('Không tải được chính sách hiện hành của Shop. Vui lòng thử lại sau.'); })
-      .finally(() => { if (active) setPolicyLoading(false); });
-    return () => { active = false; };
-  }, [isOpen, policyStoreIds]);
 
   // Calculate Subtotal & Totals
   const rawSubtotal = useMemo(() => {
@@ -461,7 +439,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   // Pre-fill user data & addresses on open
   useEffect(() => {
     if (isOpen) {
-      setPolicyAccepted(false);
+      setPolicyAccepted(true);
       const user = authService.getCurrentUser();
 
       if (user) {
@@ -2050,6 +2028,39 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     {formatMoney(finalTotal)}
                   </strong>
                 </div>
+              </div>
+
+              {/* Chính sách đổi trả & cam kết Escrow 14 ngày */}
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#8C6B32]">
+                  <ShieldCheck className="w-4 h-4 text-[#C59B58]" />
+                  <span>Chính sách đổi trả 14 ngày & Quỹ Bảo Chứng SCANMS</span>
+                </div>
+                <div className="text-[11px] text-[#7D715E] leading-relaxed space-y-1">
+                  <p>
+                    • <b>Bảo đảm đổi trả:</b> Khách hàng được quyền gửi yêu cầu đổi hàng / trả hàng hoàn tiền trong vòng <b>14 ngày</b> kể từ khi nhận kiện hàng (kèm hình ảnh / video mở hộp).
+                  </p>
+                  <p>
+                    • <b>Bảo vệ quyền lợi:</b> Tiền thanh toán được giữ an toàn tại Quỹ bảo chứng Escrow của sàn cho đến khi khách xác nhận hài lòng hoặc hết hạn khiếu nại.
+                  </p>
+                </div>
+                <label className="flex items-start gap-2.5 pt-2 border-t border-[#EAE4D7] text-xs text-[#1A1612] cursor-pointer select-none font-medium">
+                  <input
+                    type="checkbox"
+                    id="checkout-policy-agreement"
+                    checked={policyAccepted}
+                    onChange={(e) => {
+                      setPolicyAccepted(e.target.checked);
+                      if (e.target.checked && errorMessage?.includes('chính sách đổi trả')) {
+                        setErrorMessage(null);
+                      }
+                    }}
+                    className="w-4 h-4 mt-0.5 rounded text-[#ee4d2d] focus:ring-[#ee4d2d] cursor-pointer shrink-0"
+                  />
+                  <span>
+                    Tôi đã đọc, hiểu rõ và đồng ý với <b>Chính sách đổi trả 14 ngày</b> và điều kiện bảo hành của các gian hàng trên sàn SCANMS.
+                  </span>
+                </label>
               </div>
 
               {/* Chân trang thanh toán và nút ĐẶT HÀNG */}

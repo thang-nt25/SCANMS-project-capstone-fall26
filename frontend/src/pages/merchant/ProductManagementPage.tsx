@@ -1514,6 +1514,52 @@ export default function ProductManagementPage() {
         </div>
       )}
 
+      {/* ────── BANNER CẢNH BÁO TỒN KHO THẤP ────── */}
+      {(() => {
+        if (isKol) return null;
+        const LOW = 5;
+        const lowStockProducts = products.filter((p: any) => {
+          const s = p.stockQuantity ?? p.stock ?? 0;
+          return s > 0 && s <= LOW;
+        });
+        const outOfStockProducts = products.filter((p: any) => {
+          const s = p.stockQuantity ?? p.stock ?? 0;
+          return s === 0 && (p.isActive !== false);
+        });
+        if (lowStockProducts.length === 0 && outOfStockProducts.length === 0) return null;
+        return (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xl animate-bounce">⚠️</span>
+              <span className="font-extrabold text-amber-900 text-sm">Cảnh báo tồn kho</span>
+            </div>
+            <div className="flex flex-col gap-0.5 flex-1 text-xs text-amber-800">
+              {outOfStockProducts.length > 0 && (
+                <span>
+                  <strong className="text-red-700">{outOfStockProducts.length} sản phẩm đã hết hàng</strong>
+                  {': '}{outOfStockProducts.slice(0, 3).map((p: any) => p.title || p.name).join(', ')}
+                  {outOfStockProducts.length > 3 ? ` và ${outOfStockProducts.length - 3} sản phẩm khác` : ''}
+                </span>
+              )}
+              {lowStockProducts.length > 0 && (
+                <span>
+                  <strong className="text-amber-800">{lowStockProducts.length} sản phẩm sắp hết hàng (≤5 sản phẩm)</strong>
+                  {': '}{lowStockProducts.slice(0, 3).map((p: any) => `${p.title || p.name} (còn ${p.stockQuantity ?? p.stock ?? 0})`).join(', ')}
+                  {lowStockProducts.length > 3 ? ` và ${lowStockProducts.length - 3} sản phẩm khác` : ''}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFilterStatus('out_of_stock')}
+              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-900 transition cursor-pointer"
+            >
+              Xem sản phẩm hết hàng
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Unified Toolbar: Compact Search, Filters & Action Buttons in One Row */}
       <Card className="p-3 sm:p-3.5 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1707,10 +1753,31 @@ export default function ProductManagementPage() {
                       {rate}%
                     </Badge>
                   </TableCell>
-                  <TableCell
-                    className={`font-semibold ${stock === 0 ? 'text-rose-600 font-bold' : 'text-slate-700'}`}
-                  >
-                    {stock}
+                  <TableCell>
+                    {(() => {
+                      const LOW = 5;
+                      if (stock === 0) {
+                        return (
+                          <span className="inline-flex items-center gap-1 font-bold text-rose-600 text-xs">
+                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse inline-block" />
+                            0 — Hết hàng
+                          </span>
+                        );
+                      }
+                      if (stock <= LOW) {
+                        return (
+                          <span className="inline-flex items-center gap-1 font-bold text-amber-600 text-xs">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
+                            {stock} — <span className="text-amber-700">⚠️ Thấp</span>
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="font-semibold text-slate-700 text-xs">
+                          {stock}
+                        </span>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col items-start gap-1">

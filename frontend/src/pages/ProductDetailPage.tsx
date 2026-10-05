@@ -22,6 +22,7 @@ import {
   Subtitles,
   Gauge,
   Heart,
+  Ticket,
   ShoppingCart,
   ChevronLeft,
   ChevronRight,
@@ -37,6 +38,7 @@ import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '../components/layout/PublicHeader';
 import { authService } from '../services/auth.service';
 import { customerService } from '../services/customer.service';
+import { couponService } from '../services/coupon.service';
 import { toast } from '../utils/toast';
 import { useCart } from '../context/CartContext';
 import { useScanmsChat } from '../context/ScanmsChatContext';
@@ -225,6 +227,11 @@ export default function ProductDetailPage() {
   const [sampleRequestStatus, setSampleRequestStatus] = useState<any>(null);
   const [loadingSampleStatus, setLoadingSampleStatus] = useState(false);
 
+  // ────── REALTIME STOCK STATE ──────
+  const [realtimeStock, setRealtimeStock] = useState<number | null>(null);
+  const [stockStatus, setStockStatus] = useState<'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | null>(null);
+  const LOW_STOCK_THRESHOLD = 5;
+
   const handleOpenChat = () => {
     const storeObj = data?.store ? {
       id: data.store.id,
@@ -337,7 +344,23 @@ export default function ProductDetailPage() {
     description?: string;
   } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [availableStoreCoupons, setAvailableStoreCoupons] = useState<any[]>([]);
 
+  // Fetch active store vouchers for customers
+  useEffect(() => {
+    if (data?.store?.id) {
+      couponService
+        .getPublicStoreCoupons(data.store.id)
+        .then((coupons) => {
+          if (Array.isArray(coupons)) {
+            setAvailableStoreCoupons(coupons);
+          }
+        })
+        .catch((e) => {
+          console.warn('Cannot fetch public store coupons:', e);
+        });
+    }
+  }, [data?.store?.id]);
 
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -388,6 +411,11 @@ export default function ProductDetailPage() {
       { replace: true },
     );
   };
+
+  // ────── REALTIME STOCK STATE ──────
+  const [realtimeStock, setRealtimeStock] = useState<number | null>(null);
+  const [stockStatus, setStockStatus] = useState<'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | null>(null);
+  const LOW_STOCK_THRESHOLD = 5;
 
   useEffect(() => {
     if (data?.product?.id) {
@@ -678,6 +706,29 @@ export default function ProductDetailPage() {
     return () => { active = false; };
   }, [data?.product?.id, isKolUser]);
 
+  // ────── REALTIME STOCK POLLING (mỗi 30 giây) ──────
+  useEffect(() => {
+    if (!data?.product?.id) return;
+    const productIdOrSku = data.product.sku || data.product.id;
+
+    const fetchStock = async () => {
+      try {
+        const res = await api.get(`/public/products/${encodeURIComponent(productIdOrSku)}/stock`);
+        const d = res.data;
+        if (typeof d?.stockQuantity === 'number') {
+          setRealtimeStock(d.stockQuantity);
+          setStockStatus(d.status ?? null);
+        }
+      } catch {
+        // bỏ qua lỗi polling — không ảnh hưởng UX
+      }
+    };
+
+    fetchStock();
+    const interval = setInterval(fetchStock, 30_000);
+    return () => clearInterval(interval);
+  }, [data?.product?.id, data?.product?.sku]);
+
   useEffect(() => {
     if (!data) return;
 
@@ -900,6 +951,10 @@ export default function ProductDetailPage() {
     } finally {
       setCouponLoading(false);
     }
+  };
+
+  const applyCouponDirectly = async (codeToApply: string) => {
+    await applyCouponCode(codeToApply);
   };
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -1332,6 +1387,68 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                 </div>
+
+                {/* ══ STOCK GAUGE + CẢNH BÁO TỒN KHO THẤP ══ */}
+                {(() => {
+                  const liveStock = realtimeStock !== null ? realtimeStock : currentStock;
+                  const liveStatus = stockStatus ?? (liveStock <= 0 ? 'OUT_OF_STOCK' : liveStock <= LOW_STOCK_THRESHOLD ? 'LOW_STOCK' : 'IN_STOCK');
+                  const DISPLAY_MAX = Math.max(50, liveStock);
+                  const stockPct = Math.round((liveStock / DISPLAY_MAX) * 100);
+                  const barColor =
+                    liveStatus === 'OUT_OF_STOCK' ? '#DC2626' :
+                    liveStatus === 'LOW_STOCK'    ? '#F59E0B' :
+                                                   '#15803d';
+                  return (
+                    <div className="mt-3 pt-3 border-t border-[#EAE4D7] space-y-2">
+                      {/* Hàng trạng thái */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[#7D715E]">Tồn kho tức thời:</span>
+                        {liveStatus === 'IN_STOCK' && (
+                          <span className="font-semibold text-[#15803d] flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Còn hàng ({liveStock} sản phẩm)
+                          </span>
+                        )}
+                        {liveStatus === 'LOW_STOCK' && (
+                          <span className="font-bold text-[#F59E0B] flex items-center gap-1 animate-pulse">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            Sắp hết hàng — Còn {liveStock} sản phẩm!
+                          </span>
+                        )}
+                        {liveStatus === 'OUT_OF_STOCK' && (
+                          <span className="font-bold text-[#DC2626] flex items-center gap-1">
+                            <X className="w-3.5 h-3.5" />
+                            Tạm hết hàng
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Thanh tiến trình tồn kho */}
+                      {liveStatus !== 'OUT_OF_STOCK' && (
+                        <div className="relative w-full h-1.5 bg-[#EAE4D7] rounded-full overflow-hidden">
+                          <div
+                            className="absolute left-0 top-0 h-full rounded-full transition-all duration-700 ease-out"
+                            style={{ width: `${Math.max(4, stockPct)}%`, backgroundColor: barColor }}
+                          />
+                        </div>
+                      )}
+
+                      {/* ⚠️ Banner cảnh báo tồn kho thấp */}
+                      {liveStatus === 'LOW_STOCK' && (
+                        <div
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold"
+                          style={{ background: '#FEF3C7', border: '1px solid #FCD34D', color: '#92400E' }}
+                        >
+                          <span className="text-base animate-bounce">⚡</span>
+                          <span>
+                            Chỉ còn <strong className="text-[#DC2626]">{liveStock} sản phẩm</strong> cuối cùng —&nbsp;
+                            Đặt mua ngay trước khi hết hàng!
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponCode} />
@@ -1485,6 +1602,58 @@ export default function ProductDetailPage() {
                   </span>
                 </div>
               </div>
+
+              {/* ────── AVAILABLE SHOP VOUCHERS CAROUSEL / LIST ────── */}
+              {availableStoreCoupons.length > 0 && (
+                <div className="py-2.5 border-t border-[#EAE4D7]/80">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-[#8C6B32] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                      Voucher độc quyền của Shop:
+                    </span>
+                    <span className="text-[10px] text-[#7D715E]">Click để áp dụng</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {availableStoreCoupons.map((vc) => {
+                      const isPct = vc.discountType === 'PERCENTAGE';
+                      const label = isPct
+                        ? `Giảm ${vc.discountValue}%`
+                        : `Giảm ${Number(vc.discountValue).toLocaleString('vi-VN')}₫`;
+                      const isApplied =
+                        appliedCoupon?.code === vc.codeNormalized ||
+                        appliedCoupon?.code === vc.displayCode;
+                      return (
+                        <button
+                          key={vc.id}
+                          type="button"
+                          onClick={() => {
+                            setCouponCode(vc.displayCode);
+                            applyCouponDirectly(vc.displayCode);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
+                            isApplied
+                              ? 'bg-emerald-100 border-emerald-300 text-emerald-800 font-bold'
+                              : 'bg-white border-[#DEBE85] hover:bg-[#F3EFE6] text-[#1A1612] hover:border-[#C59B58]'
+                          }`}
+                        >
+                          <Ticket
+                            className={`w-3.5 h-3.5 ${
+                              isApplied ? 'text-emerald-600' : 'text-[#C59B58]'
+                            }`}
+                          />
+                          <span>{label}</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 bg-[#FAF8F5] border rounded text-[#8C6B32] font-bold uppercase">
+                            {vc.displayCode}
+                          </span>
+                          {isApplied && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Coupon Voucher Input (Compact) */}
               <div className="py-2.5 border-t border-[#EAE4D7]/80">
