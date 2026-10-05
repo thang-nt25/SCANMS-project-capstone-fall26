@@ -52,8 +52,6 @@ export default function AdminOversightHubPage() {
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}
-        title="Tiếp Thị & Dòng Tiền Toàn Sàn"
-        subtitle="Giám sát và kiểm soát toàn diện hệ thống link tiếp thị affiliate và các mã ưu đãi giảm giá trên toàn nền tảng"
       />
 
       <div className="w-full min-h-[500px]">
