@@ -412,11 +412,6 @@ export default function ProductDetailPage() {
     );
   };
 
-  // ────── REALTIME STOCK STATE ──────
-  const [realtimeStock, setRealtimeStock] = useState<number | null>(null);
-  const [stockStatus, setStockStatus] = useState<'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | null>(null);
-  const LOW_STOCK_THRESHOLD = 5;
-
   useEffect(() => {
     if (data?.product?.id) {
       const u = authService.getCurrentUser();

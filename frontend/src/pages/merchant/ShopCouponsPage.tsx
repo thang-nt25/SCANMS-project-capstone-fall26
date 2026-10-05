@@ -1041,7 +1041,6 @@ export const ShopCouponsPage: React.FC = () => {
                           <span className="text-[#7D715E]">Ngân sách đã chi:</span>
                           <span className="font-bold text-[#8C6B32]">
                             {Number(coupon.budgetUsed || 0).toLocaleString('vi-VN')}₫ / {Number(coupon.budgetTotal).toLocaleString('vi-VN')}₫
->>>>>>> origin/dev
                           </span>
                         </div>
                         <div className="w-full bg-[#EAE4D7] h-1.5 rounded-full overflow-hidden">

@@ -1229,9 +1229,10 @@ export default function OrdersManagementPage({
                                   </button>
 
                                   <button
-                                    onClick={() => handleConfirmDelivered(order)}
+                                    type="button"
+                                    onClick={() => setConfirmDeliveredOrder(order)}
                                     disabled={updatingFulfillment}
-                                    className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50"
+                                    className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
                                     title="Xác nhận khách đã nhận được hàng"
                                   >
                                     <CheckCircle2 className="w-3.5 h-3.5" />

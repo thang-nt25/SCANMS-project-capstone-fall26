@@ -10,7 +10,6 @@ import {
   X,
   Sparkles,
   FileCheck,
-  ChevronDown,
   Tag,
   Loader2,
   FolderOpen,

@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Coins,
   Store,
-  Calendar,
   Layers,
   ShieldCheck,
   RotateCcw,

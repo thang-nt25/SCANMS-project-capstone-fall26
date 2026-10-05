@@ -227,6 +227,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [setAsDefaultAddress, setSetAsDefaultAddress] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(true);
+  const [shopPolicies, setShopPolicies] = useState<Record<string, CheckoutStoreInfo>>({});
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
 
   // Payment Method: Default to COD (reliable & always available), with PayOS option
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS'>('COD');
@@ -354,6 +357,32 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
     return Array.from(map.values());
   }, [activeItems]);
+
+  const policyStoreIds = useMemo(
+    () => Array.from(new Set(itemsGroupedByShop.map((g) => g.store.id).filter(Boolean))).sort().join(','),
+    [itemsGroupedByShop],
+  );
+
+  useEffect(() => {
+    if (!isOpen || !policyStoreIds) {
+      setShopPolicies({});
+      setPolicyLoading(false);
+      setPolicyError(null);
+      return;
+    }
+    let active = true;
+    setPolicyLoading(true);
+    setPolicyError(null);
+    apiCache.invalidate('/stores/public/id/');
+    Promise.all(policyStoreIds.split(',').map(async (id) => {
+      const response: any = await api.get(`/stores/public/id/${id}`);
+      return [id, response?.data || response] as const;
+    }))
+      .then((entries) => { if (active) setShopPolicies(Object.fromEntries(entries)); })
+      .catch(() => { if (active) setPolicyError('Không tải được chính sách hiện hành của Shop. Vui lòng thử lại sau.'); })
+      .finally(() => { if (active) setPolicyLoading(false); });
+    return () => { active = false; };
+  }, [isOpen, policyStoreIds]);
 
   // Calculate Subtotal & Totals
   const rawSubtotal = useMemo(() => {

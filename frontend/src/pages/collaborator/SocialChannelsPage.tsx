@@ -12,7 +12,6 @@ import {
   X,
   Link2,
   Video,
-  ChevronDown,
 } from 'lucide-react';
 import { socialService, type SocialChannel } from '../../services/social.service';
 import { Button } from '../../components/ui/Button';

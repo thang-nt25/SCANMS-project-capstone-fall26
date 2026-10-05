@@ -513,9 +513,6 @@ return true;
     return list.filter((s) => s.status === sampleFilter);
   }, [samplesMap, selectedKol, sampleFilter]);
 
-  // Selected KOL Orders
-  const currentKolOrders = useMemo<AffiliateOrderItem[]>(() => [], [selectedKol]);
-
   // Handler: Select KOL
   const handleSelectKol = (kolId: string) => {
     setSelectedKolId(kolId);
