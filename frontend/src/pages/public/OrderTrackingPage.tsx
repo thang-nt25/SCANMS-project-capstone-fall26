@@ -23,7 +23,7 @@ import api from "../../services/api";
 import { Button } from "../../components/ui/Button";
 import { PublicHeader } from "../../components/layout/PublicHeader";
 import { Card } from "../../components/ui/Card";
-import { getSafeProductImageUrl } from "../../features/marketplace/marketplaceUtils";
+import { getSafeProductImageUrl } from "@/utils/marketplace.utils";
 
 interface OrderItem {
   id: string;

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { notificationsService, type AppNotification } from '../../services/notifications.service';
 import { authService } from '../../services/auth.service';
-import { liveBroadcastService } from '../../services/liveBroadcast';
+import { liveBroadcastService } from '@/services/live-broadcast.service';
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -268,20 +268,36 @@ export const NotificationDropdown: React.FC = () => {
     // 3. Deep-link routing based on notification type
     const user = authService.getCurrentUser();
     const userRole = user?.role;
+    const orderId = notif.data?.orderId || notif.data?.orderSn || notif.data?.id;
+    const returnId = notif.data?.returnId || notif.data?.returnRequestId;
+    const payoutId = notif.data?.payoutId;
 
-    if (notif.type.startsWith('ORDER_') || notif.type.startsWith('DISPUTE_')) {
+    if (notif.type.startsWith('ORDER_') || notif.type.startsWith('DISPUTE_') || notif.type.startsWith('RETURN_')) {
+      if (returnId) {
+        if (userRole === 'CUSTOMER') {
+          navigate(`/customer/returns/${encodeURIComponent(returnId)}`);
+          return;
+        } else if (userRole === 'SHOP_MANAGER') {
+          navigate(`/merchant/return-requests?returnId=${encodeURIComponent(returnId)}`);
+          return;
+        } else if (userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM_MANAGER') {
+          navigate(`/admin/disputes?returnId=${encodeURIComponent(returnId)}`);
+          return;
+        }
+      }
+
       if (userRole === 'CUSTOMER') {
-        navigate('/customer/orders');
+        navigate(orderId ? `/customer/orders?orderId=${encodeURIComponent(orderId)}` : '/customer/orders');
       } else if (userRole === 'SHOP_MANAGER') {
-        navigate('/merchant/orders');
+        navigate(orderId ? `/merchant/orders?orderId=${encodeURIComponent(orderId)}` : '/merchant/orders');
       } else if (userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM_MANAGER') {
-        navigate('/admin/disputes');
+        navigate(orderId ? `/admin/disputes?orderId=${encodeURIComponent(orderId)}` : '/admin/disputes');
       }
     } else if (notif.type.startsWith('COMMISSION_') || notif.type.startsWith('PAYOUT_')) {
       if (userRole === 'COLLABORATOR') {
-        navigate('/collaborator/wallet');
+        navigate(payoutId ? `/collaborator/wallet?payoutId=${encodeURIComponent(payoutId)}` : '/collaborator/wallet');
       } else if (userRole === 'SHOP_MANAGER') {
-        navigate('/merchant/payouts');
+        navigate(payoutId ? `/merchant/payouts?payoutId=${encodeURIComponent(payoutId)}` : '/merchant/payouts');
       }
     } else if (notif.type.startsWith('KYC_')) {
       if (userRole === 'SYSTEM_ADMIN' || userRole === 'SHOP_MANAGER') {

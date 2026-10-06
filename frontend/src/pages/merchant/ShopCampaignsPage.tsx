@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import api from '../../services/api';
-import type { Campaign } from '../../types/campaigns';
+import type { Campaign } from '@/types/campaigns.types';
 import { ExclusiveDealInbox } from '../../components/affiliate/ExclusiveDealInbox';
 import { DateTimePicker } from '../../components/common/DateTimePicker';
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
   Download,
@@ -42,7 +43,7 @@ import {
   validateExcelFile,
   validateManualItems,
   type ManualItemForm,
-} from "../../components/orders/manualOrderValidation";
+} from "@/utils/validations/manual-order.validation";
 import {
   ShippingLabel,
   generateTrackingCode,
@@ -113,6 +114,8 @@ export default function OrdersManagementPage({
   onClose,
   onCompleted,
 }: Props = {}) {
+  const [searchParams] = useSearchParams();
+  const deepLinkHandledRef = useRef<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -220,9 +223,24 @@ export default function OrdersManagementPage({
   useEffect(() => {
     let active = true;
     setOrdersLoading(true);
+
+    let queryStatus: string | undefined = undefined;
+    let queryPaymentStatus: string | undefined = undefined;
+
+    if (statusFilter === "ALL") {
+      queryStatus = undefined;
+    } else if (statusFilter === "UNPAID") {
+      queryPaymentStatus = "UNPAID";
+    } else if (statusFilter === "RETURNS") {
+      queryStatus = "RETURNS";
+    } else {
+      queryStatus = statusFilter;
+    }
+
     orderService
       .getMyStoreOrders({
-        status: statusFilter === "ALL" ? undefined : statusFilter,
+        status: queryStatus,
+        paymentStatus: queryPaymentStatus,
         search: orderSearchQuery.trim() || undefined,
         page: ordersPage,
         limit: 12,
@@ -245,6 +263,43 @@ export default function OrdersManagementPage({
       active = false;
     };
   }, [storeId, statusFilter, ordersPage, ordersRefreshCount, orderSearchQuery]);
+
+  // Deep-linking: Tự động mở chi tiết đơn hàng khi URL có ?orderId=... hoặc ?search=...
+  useEffect(() => {
+    const targetOrderId = searchParams.get('orderId') || searchParams.get('search');
+    if (!targetOrderId || deepLinkHandledRef.current === targetOrderId) return;
+
+    // Tìm trong danh sách hiện tại
+    const found = orders.find(
+      (o) => o.id === targetOrderId || o.externalOrderSn === targetOrderId
+    );
+    if (found) {
+      setSelectedOrderDetails(found);
+      deepLinkHandledRef.current = targetOrderId;
+      return;
+    }
+
+    // Nếu chưa có trong danh sách hiện tại, gọi API truy vấn trực tiếp
+    if (storeId) {
+      orderService
+        .getMyStoreOrders({
+          search: targetOrderId,
+          storeId,
+          limit: 5,
+        })
+        .then((res) => {
+          const directMatch =
+            res.items?.find(
+              (o) => o.id === targetOrderId || o.externalOrderSn === targetOrderId
+            ) || res.items?.[0];
+          if (directMatch) {
+            setSelectedOrderDetails(directMatch);
+            deepLinkHandledRef.current = targetOrderId;
+          }
+        })
+        .catch(() => {});
+    }
+  }, [searchParams, orders, storeId]);
 
   const [creatingGhnOrder, setCreatingGhnOrder] = useState(false);
   const [trackingGhnDetail, setTrackingGhnDetail] = useState<GhnTrackingDetail | null>(null);
@@ -786,9 +841,11 @@ export default function OrdersManagementPage({
             <div className="inline-flex items-center p-1 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] overflow-x-auto no-scrollbar max-w-full shrink-0">
               {[
                 { id: "ALL", label: "Tất cả" },
+                { id: "UNPAID", label: "Chờ thanh toán" },
                 { id: "PENDING", label: "Chờ lấy hàng" },
                 { id: "SHIPPING", label: "Đang giao" },
                 { id: "DELIVERED", label: "Đã giao" },
+                { id: "RETURNS", label: "Trả hàng / Hoàn tiền" },
                 { id: "CANCELLED", label: "Đã hủy" },
               ].map((tab) => {
                 const active = statusFilter === tab.id;
@@ -1360,21 +1417,21 @@ export default function OrdersManagementPage({
                 </p>
               </div>
 
-              {/* --- Manual / Simulator Tracking Number --- */}
+              {/* --- Manual Tracking Code Generation --- */}
               <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#4A3E2D]">Nhập mã bưu tá / Simulator:</span>
+                  <span className="text-xs font-bold text-[#4A3E2D]">Mã vận đơn đối tác cấp:</span>
                   <button
                     type="button"
                     onClick={() => {
                       const code = generateTrackingCode(shippingCarrier);
                       setShippingTrackingNumber(code);
                     }}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold transition shadow-xs cursor-pointer"
-                    title="Tự động tạo mã vận đơn chuẩn TMĐT theo đơn vị vận chuyển"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[10px] font-bold transition shadow-xs cursor-pointer"
+                    title="Tạo mã vận đơn tự động theo chuẩn đối tác vận chuyển"
                   >
                     <Zap className="w-3 h-3" />
-                    Tự sinh mã
+                    Tạo mã nhanh
                   </button>
                 </div>
                 {shippingTrackingNumber && (

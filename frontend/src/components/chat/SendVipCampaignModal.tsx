@@ -12,7 +12,7 @@ import {
   Crown,
 } from 'lucide-react';
 import api from '../../services/api';
-import type { Campaign } from '../../types/campaigns';
+import type { Campaign } from '@/types/campaigns.types';
 
 interface SendVipCampaignModalProps {
   conversationId: string;

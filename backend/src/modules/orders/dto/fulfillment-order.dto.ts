@@ -59,6 +59,13 @@ export class QueryStoreOrdersDto {
   @IsString()
   search?: string;
 
+  @ApiPropertyOptional({
+    description: 'Trạng thái thanh toán (UNPAID, PAID)',
+  })
+  @IsOptional()
+  @IsString()
+  paymentStatus?: string;
+
   @ApiPropertyOptional({ description: 'Trang hiện tại (mặc định 1)' })
   @IsOptional()
   page?: number;
