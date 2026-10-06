@@ -8,7 +8,6 @@ import {
   Truck,
   CheckCircle2,
   Clock,
-  ChevronDown,
   LogOut,
   ArrowLeft,
   Plus,
@@ -16,11 +15,12 @@ import {
   Edit2,
   AlertCircle,
   Loader2,
+  Store,
   Store as StoreIcon,
+  ShieldCheck,
   ExternalLink,
   RotateCcw,
   Sparkles,
-  Home,
   X,
   XCircle,
   Camera,
@@ -37,6 +37,7 @@ import {
   Mail,
   KeyRound,
   Lock,
+  Wallet,
 } from 'lucide-react';
 import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 import { authService, type UserProfile } from '../../services/auth.service';
@@ -57,8 +58,9 @@ import {
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import { toast } from '../../utils/toast';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
-import { PublicHeader } from '../../components/layout/PublicHeader';
+import { Topbar } from '../../components/layout/Topbar';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
+import { CustomerWalletTab } from './CustomerWalletTab';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { useScanmsChat, type ChatProductInfo } from '../../context/ScanmsChatContext';
 import {
@@ -73,7 +75,7 @@ import {
   type AddressLocationResult,
 } from '../../components/customer/AddressLocationPicker';
 
-type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'identity' | 'upgrade' | 'vouchers' | 'notifications' | 'security';
+type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'identity' | 'upgrade' | 'vouchers' | 'notifications' | 'security' | 'wallet';
 type OrderFilterStatus = 'ALL' | 'UNPAID' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'RECEIVING' | 'COMPLETED' | 'RETURN_REQUESTED' | 'CANCELLED' | 'RETURNED';
 
 const normalizeAdministrativeName = (value: string) => value
@@ -100,7 +102,9 @@ export default function CustomerPortalPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const pathTab = location.pathname.includes('/customer/upgrade')
+  const pathTab = location.pathname.includes('/customer/wallet')
+    ? 'wallet'
+    : location.pathname.includes('/customer/upgrade')
     ? 'upgrade'
     : location.pathname.includes('/customer/identity')
     ? 'identity'
@@ -128,12 +132,6 @@ export default function CustomerPortalPage() {
   // Active notification category from URL query (?cat=ALL | ORDER | PROMOTION | WALLET | SYSTEM)
   const activeNotifCategory: NotificationCategory =
     (searchParams.get('cat') as NotificationCategory) || 'ALL';
-
-  // Submenu open states (SCANMS Accordion)
-  const [isAccountSubmenuOpen, setIsAccountSubmenuOpen] = useState(
-    currentTab === 'profile' || currentTab === 'identity' || currentTab === 'addresses' || currentTab === 'security'
-  );
-  const [isNotificationSubmenuOpen, setIsNotificationSubmenuOpen] = useState(true);
 
   // Floating Chat hook
   const { openChat } = useScanmsChat();
@@ -249,10 +247,17 @@ export default function CustomerPortalPage() {
     return `*********${last2}`;
   };
 
+  const displayName =
+    profileData?.user?.fullName?.trim() ||
+    currentUser?.fullName?.trim() ||
+    profileData?.user?.email?.split('@')[0] ||
+    currentUser?.email?.split('@')[0] ||
+    'Khách Hàng SCANMS';
+
   const username =
     profileData?.user?.email?.split('@')[0] ||
     currentUser?.email?.split('@')[0] ||
-    'tuan15252004';
+    'khachhang';
 
   // Avatar Upload State & Handler
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -325,17 +330,9 @@ export default function CustomerPortalPage() {
   useEffect(() => {
     if (currentTab === 'notifications') {
       fetchNotifications(activeNotifCategory);
-      setIsNotificationSubmenuOpen(true);
     }
     refreshUnreadCounts();
   }, [currentTab, activeNotifCategory]);
-
-  // Keep submenu open if active tab is in account
-  useEffect(() => {
-    if (currentTab === 'profile' || currentTab === 'identity' || currentTab === 'addresses' || currentTab === 'security') {
-      setIsAccountSubmenuOpen(true);
-    }
-  }, [currentTab]);
 
   // Load Vietnam Administrative Divisions
   useEffect(() => {
@@ -452,18 +449,37 @@ export default function CustomerPortalPage() {
       }));
     }
 
-    if (notif.data?.actionUrl) {
-      navigate(notif.data.actionUrl);
+    let targetUrl = notif.data?.actionUrl;
+
+    // Chan triet de viec cac thong bao chung (WELCOME, SYSTEM) bi ep chuyen huong sang /customer/upgrade
+    if (targetUrl === '/customer/upgrade' && (notif.type === 'WELCOME' || notif.type === 'SYSTEM' || !notif.type.includes('UPGRADE'))) {
+      targetUrl = '/marketplace';
+    }
+
+    if (targetUrl) {
+      navigate(targetUrl);
     } else {
       const type = notif.type;
       if (type.startsWith('ORDER_') || type.startsWith('DISPUTE_')) {
         navigate('/customer/orders');
-      } else if (type.startsWith('PROMOTION_') || type.startsWith('VOUCHER_')) {
+      } else if (type.startsWith('PROMOTION_') || type.startsWith('VOUCHER_') || type.startsWith('COUPON_')) {
         navigate('/customer/vouchers');
       } else if (type.startsWith('WALLET_') || type.startsWith('COMMISSION_') || type.startsWith('PAYOUT_')) {
         navigate('/customer/orders');
-      } else {
+      } else if (type.startsWith('KYC_') || type.startsWith('IDENTITY_')) {
+        navigate('/customer/identity');
+      } else if (type.startsWith('LIVE_') || type.includes('LIVE')) {
+        const sId = (notif.data as any)?.sessionId;
+        if (sId) {
+          navigate(`/live/${sId}`);
+        } else {
+          navigate('/marketplace');
+        }
+      } else if (type.startsWith('UPGRADE_') || type.startsWith('PARTNER_')) {
         navigate('/customer/upgrade');
+      } else {
+        // Mac dinh: Thong bao he thong hoac tin tuc thi giu nguoi dung o trang thong bao hien tai, khong ep sang upgrade
+        setTab('notifications');
       }
     }
   };
@@ -897,18 +913,21 @@ export default function CustomerPortalPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612]">
-      <PublicHeader />
+      <Topbar
+        currentUser={currentUser}
+        onLogout={() => {
+          authService.logout();
+          navigate('/login');
+        }}
+      />
 
-      <main className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+      <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex-1">
         <div className="flex flex-col lg:flex-row gap-5 items-start">
           {/* ========================================================= */}
           {/* LEFT SIDEBAR - USER CARD & SCANMS Standard NAVIGATION MENU */}
           {/* ========================================================= */}
-          {/* ========================================================= */}
-          {/* LEFT SIDEBAR - USER CARD & SCANMS Standard NAVIGATION MENU (IMAGE 3) */}
-          {/* ========================================================= */}
-          <aside className="w-full lg:w-[240px] shrink-0 bg-transparent flex flex-col gap-3.5 text-left sticky top-20 self-start">
-            {/* User Identity Header (SCANMS UI Reference Style) */}
+          <aside className="w-full lg:w-[250px] shrink-0 bg-white border border-[#EAE4D7] rounded-2xl p-3.5 shadow-2xs sticky top-20 self-start text-left select-none flex flex-col gap-2.5 z-30">
+            {/* User Identity Header (SCANMS UI Reference Style matching Sidebar.tsx) */}
             <div className="flex items-center gap-3 px-1 py-1">
               {/* Hidden file input for avatar upload */}
               <input
@@ -950,8 +969,8 @@ export default function CustomerPortalPage() {
               </div>
 
               <div className="min-w-0 flex-1 text-left">
-                <strong className="block text-sm font-bold text-[#1A1612] truncate">
-                  {username}
+                <strong className="block text-sm font-bold text-[#1A1612] truncate" title={displayName}>
+                  {displayName}
                 </strong>
                 <button
                   type="button"
@@ -964,84 +983,26 @@ export default function CustomerPortalPage() {
               </div>
             </div>
 
-            <div className="border-t border-[#EAE4D7] my-0.5" />
+            <div className="border-t border-[#EAE4D7] my-1" />
 
-            {/* SCANMS Standard Minimalist Menu Navigation */}
-            <nav className="flex flex-col space-y-1 text-xs sm:text-[13px]">
-              {/* 1. Tài Khoản Của Tôi (Nằm trên cùng, Expandable) */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setIsAccountSubmenuOpen(!isAccountSubmenuOpen)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer text-left group ${
-                    currentTab === 'profile' || currentTab === 'identity' || currentTab === 'addresses' || currentTab === 'security'
-                      ? 'text-[#B88E4F] font-bold'
-                      : 'text-[#1A1612] hover:text-[#B88E4F] hover:bg-[#FAF8F5]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <User className={`w-4 h-4 shrink-0 ${currentTab === 'profile' || currentTab === 'identity' || currentTab === 'addresses' || currentTab === 'security' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                    <span>Tài Khoản Của Tôi</span>
-                  </div>
-                  <ChevronDown className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${isAccountSubmenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
-                </button>
-
-                {/* Sub-menu items (indented SCANMS Standard) */}
-                {isAccountSubmenuOpen && (
-                  <div className="pl-10 pr-2 py-1 flex flex-col space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setTab('profile')}
-                      className={`w-full text-left py-1 text-xs transition-colors cursor-pointer ${
-                        currentTab === 'profile' ? 'text-[#B88E4F] font-bold' : 'text-[#574C3D] hover:text-[#B88E4F]'
-                      }`}
-                    >
-                      Hồ Sơ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTab('identity')}
-                      className={`w-full text-left py-1 text-xs transition-colors cursor-pointer ${
-                        currentTab === 'identity' ? 'text-[#B88E4F] font-bold' : 'text-[#574C3D] hover:text-[#B88E4F]'
-                      }`}
-                    >
-                      Xác minh CCCD
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTab('addresses')}
-                      className={`w-full text-left py-1 text-xs transition-colors cursor-pointer ${
-                        currentTab === 'addresses' ? 'text-[#B88E4F] font-bold' : 'text-[#574C3D] hover:text-[#B88E4F]'
-                      }`}
-                    >
-                      Địa Chỉ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTab('security')}
-                      className={`w-full text-left py-1 text-xs transition-colors cursor-pointer ${
-                        currentTab === 'security' ? 'text-[#B88E4F] font-bold' : 'text-[#574C3D] hover:text-[#B88E4F]'
-                      }`}
-                    >
-                      Đổi Mật Khẩu
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Đơn Mua (Active SCANMS Standard) */}
+            {/* SCANMS Standard Minimalist Navigation List */}
+            <nav className="flex flex-col gap-0.5 text-xs sm:text-[13px]" aria-label="Menu chức năng khách hàng">
+              {/* SECTION 1: ĐƠN HÀNG & TÀI CHÍNH */}
+              <span className="text-[10px] font-bold text-[#A89D8E] uppercase tracking-wider px-3 pt-2 pb-1 select-none">
+                ĐƠN HÀNG & TÀI CHÍNH
+              </span>
               <button
                 type="button"
                 onClick={() => setTab('orders')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer text-left group ${
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
                   currentTab === 'orders'
-                    ? 'text-[#B88E4F] font-bold bg-[#FAF5EB]'
-                    : 'text-[#1A1612] hover:text-[#B88E4F] hover:bg-[#FAF8F5]'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <ShoppingBag className={`w-4 h-4 shrink-0 ${currentTab === 'orders' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Đơn Mua</span>
+                  <span>Đơn Mua Của Tôi</span>
                 </div>
                 {(profileData?.stats.pendingOrders ?? 0) > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-[#C59B58] text-white text-[10px] font-bold shrink-0">
@@ -1050,105 +1011,35 @@ export default function CustomerPortalPage() {
                 )}
               </button>
 
-              {/* 3. Thông Báo (SCANMS UI Reference Style with Sub-items) */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsNotificationSubmenuOpen(!isNotificationSubmenuOpen);
-                    if (currentTab !== 'notifications') {
-                      navigate('/customer/notifications');
-                    }
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer text-left group ${
-                    currentTab === 'notifications'
-                      ? 'text-[#C59B58] font-bold'
-                      : 'text-[#1A1612] hover:text-[#C59B58] hover:bg-[#FAF8F5]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Bell className={`w-4 h-4 shrink-0 ${currentTab === 'notifications' ? 'text-[#C59B58]' : 'text-[#7D715E] group-hover:text-[#C59B58]'}`} />
-                    <span>Thông Báo</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {unreadNotifCount > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-[#DC2626] text-white text-[10px] font-bold shrink-0">
-                        {unreadNotifCount}
-                      </span>
-                    )}
-                    <ChevronDown
-                      className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${
-                        isNotificationSubmenuOpen ? 'rotate-180 text-[#C59B58]' : ''
-                      }`}
-                    />
-                  </div>
-                </button>
+              <button
+                type="button"
+                onClick={() => setTab('wallet')}
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
+                  currentTab === 'wallet'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Wallet className={`w-4 h-4 shrink-0 ${currentTab === 'wallet' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
+                  <span>Ví Mua Sắm SCANMS</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded bg-[#F3EFE6] text-[#B88E4F] border border-[#EEDFC6] text-[9.5px] font-bold uppercase tracking-wider shrink-0">
+                  Ví
+                </span>
+              </button>
 
-                {/* Sub-menu items: Cập Nhật Đơn Hàng, Khuyến Mãi, Cập Nhật SCANMS */}
-                {isNotificationSubmenuOpen && (
-                  <div className="pl-10 pr-2 py-1 flex flex-col space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectNotifCategory('ORDER')}
-                      className={`w-full flex items-center justify-between text-left py-1 text-xs transition-colors cursor-pointer ${
-                        currentTab === 'notifications' && activeNotifCategory === 'ORDER'
-                          ? 'text-[#C59B58] font-bold'
-                          : 'text-[#574C3D] hover:text-[#C59B58]'
-                      }`}
-                    >
-                      <span>Cập Nhật Đơn Hàng</span>
-                      {categoryUnread.ORDER > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#8C6226] text-[10px] font-bold shrink-0">
-                          {categoryUnread.ORDER}
-                        </span>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSelectNotifCategory('PROMOTION')}
-                      className={`w-full flex items-center justify-between text-left py-1 text-xs transition-colors cursor-pointer ${
-                        currentTab === 'notifications' && activeNotifCategory === 'PROMOTION'
-                          ? 'text-[#C59B58] font-bold'
-                          : 'text-[#574C3D] hover:text-[#C59B58]'
-                      }`}
-                    >
-                      <span>Khuyến Mãi</span>
-                      {categoryUnread.PROMOTION > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#8C6226] text-[10px] font-bold shrink-0">
-                          {categoryUnread.PROMOTION}
-                        </span>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSelectNotifCategory('SYSTEM')}
-                      className={`w-full flex items-center justify-between text-left py-1 text-xs transition-colors cursor-pointer ${
-                        currentTab === 'notifications' && activeNotifCategory === 'SYSTEM'
-                          ? 'text-[#C59B58] font-bold'
-                          : 'text-[#574C3D] hover:text-[#C59B58]'
-                      }`}
-                    >
-                      <span>Cập Nhật SCANMS</span>
-                      {categoryUnread.SYSTEM > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#8C6226] text-[10px] font-bold shrink-0">
-                          {categoryUnread.SYSTEM}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* 4. Kho Voucher */}
+              {/* SECTION 2: ƯU ĐÃI & TƯƠNG TÁC */}
+              <span className="text-[10px] font-bold text-[#A89D8E] uppercase tracking-wider px-3 pt-3 pb-1 select-none">
+                ƯU ĐÃI & TƯƠNG TÁC
+              </span>
               <button
                 type="button"
                 onClick={() => setTab('vouchers')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer text-left group ${
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
                   currentTab === 'vouchers'
-                    ? 'text-[#B88E4F] font-bold bg-[#FAF5EB]'
-                    : 'text-[#1A1612] hover:text-[#B88E4F] hover:bg-[#FAF8F5]'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -1157,14 +1048,13 @@ export default function CustomerPortalPage() {
                 </div>
               </button>
 
-              {/* 5. Sản Phẩm Yêu Thích */}
               <button
                 type="button"
                 onClick={() => setTab('wishlist')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer text-left group ${
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
                   currentTab === 'wishlist'
-                    ? 'text-[#B88E4F] font-bold bg-[#FAF5EB]'
-                    : 'text-[#1A1612] hover:text-[#B88E4F] hover:bg-[#FAF8F5]'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -1178,36 +1068,105 @@ export default function CustomerPortalPage() {
                 )}
               </button>
 
-              {/* 6. Nâng Cấp Đối Tác (Cuối cùng, VIP Partner Upgrade) */}
               <button
                 type="button"
-                onClick={() => setTab('upgrade')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer text-left group ${
-                  currentTab === 'upgrade'
-                    ? 'text-[#B88E4F] font-bold bg-[#FAF5EB]'
-                    : 'text-[#1A1612] hover:text-[#B88E4F] hover:bg-[#FAF8F5]'
+                onClick={() => setTab('notifications')}
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
+                  currentTab === 'notifications'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Sparkles className="w-4 h-4 text-[#C59B58] shrink-0" />
-                  <span className="truncate">Nâng Cấp Đối Tác</span>
+                  <Bell className={`w-4 h-4 shrink-0 ${currentTab === 'notifications' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
+                  <span>Thông Báo</span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded-[3px] bg-[#DC2626] text-white text-[9.5px] font-bold uppercase tracking-wider shrink-0">
-                  New
-                </span>
+                {unreadNotifCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#DC2626] text-white text-[10px] font-bold shrink-0">
+                    {unreadNotifCount}
+                  </span>
+                )}
+              </button>
+
+              {/* SECTION 3: TÀI KHOẢN & BẢO MẬT */}
+              <span className="text-[10px] font-bold text-[#A89D8E] uppercase tracking-wider px-3 pt-3 pb-1 select-none">
+                TÀI KHOẢN & BẢO MẬT
+              </span>
+              <button
+                type="button"
+                onClick={() => setTab('profile')}
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
+                  currentTab === 'profile'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <User className={`w-4 h-4 shrink-0 ${currentTab === 'profile' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
+                  <span>Hồ Sơ Cá Nhân</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTab('identity')}
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
+                  currentTab === 'identity'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className={`w-4 h-4 shrink-0 ${currentTab === 'identity' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
+                  <span>Xác Minh CCCD</span>
+                </div>
+                {cccdVerified && (
+                  <span className="text-[9.5px] font-bold text-[#059669] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                    Đã duyệt
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTab('addresses')}
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
+                  currentTab === 'addresses'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className={`w-4 h-4 shrink-0 ${currentTab === 'addresses' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
+                  <span>Sổ Địa Chỉ</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTab('security')}
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
+                  currentTab === 'security'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold shadow-2xs border border-[#EEDFC6]'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Lock className={`w-4 h-4 shrink-0 ${currentTab === 'security' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
+                  <span>Đổi Mật Khẩu</span>
+                </div>
               </button>
             </nav>
 
-            <div className="border-t border-[#EAE4D7] my-1" />
-
-            {/* Utilities: Tiếp tục mua sắm & Đăng xuất */}
-            <div className="flex flex-col space-y-1 text-xs">
+            {/* Bottom Actions (SCANMS UI Reference Style matching Sidebar.tsx) */}
+            <div className="pt-2 border-t border-[#EAE4D7] flex flex-col gap-1 text-xs sm:text-[13px]">
               <Link
                 to="/marketplace"
-                className="flex items-center gap-2.5 px-3 py-2 text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] rounded-lg transition-colors font-medium group"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition cursor-pointer group"
+                title="Quay lại Sàn Mua Sắm SCANMS"
               >
-                <ArrowLeft className="w-4 h-4 text-[#7D715E] group-hover:text-[#C59B58] transition-colors shrink-0" />
-                <Home className="w-4 h-4 text-[#7D715E] group-hover:text-[#C59B58] transition-colors shrink-0" />
+                <ArrowLeft className="w-4 h-4 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors shrink-0" aria-hidden="true" />
+                <Store className="w-4 h-4 text-[#7D715E] group-hover:text-[#B88E4F] shrink-0" />
                 <span>Sàn Mua Sắm</span>
               </Link>
 
@@ -1217,9 +1176,9 @@ export default function CustomerPortalPage() {
                   authService.logout();
                   navigate('/login');
                 }}
-                className="flex items-center gap-3 px-3 py-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors font-medium cursor-pointer text-left"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer text-left w-full"
               >
-                <LogOut className="w-4 h-4 text-rose-500" />
+                <LogOut className="w-4 h-4 text-rose-500 shrink-0" />
                 <span>Đăng xuất</span>
               </button>
             </div>
@@ -2220,6 +2179,11 @@ export default function CustomerPortalPage() {
             )}
 
             {/* ------------------------------------------------------------- */}
+            {/* TAB: VÍ MUA SẮM SCANMS */}
+            {/* ------------------------------------------------------------- */}
+            {currentTab === 'wallet' && <CustomerWalletTab />}
+
+            {/* ------------------------------------------------------------- */}
             {/* TAB 5: NÂNG CẤP ĐỐI TÁC (KOL / SHOP MANAGER) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'upgrade' && <PartnerUpgradeTab />}
@@ -2240,7 +2204,7 @@ export default function CustomerPortalPage() {
                     )}
                   </div>
                   <p className="text-xs sm:text-sm text-[#7D715E] mt-1.5 leading-relaxed m-0">
-                    Bạn vui lòng nhập chính xác thông tin CCCD để đơn hàng được thông quan theo quy định từ ngày 9/7. Thông tin sẽ được bảo mật theo Chính sách Bảo mật SCANMS
+                    Thông tin CCCD dùng để xác minh tài khoản và bảo mật đơn hàng theo quy định.
                   </p>
                 </div>
 
@@ -2735,65 +2699,48 @@ export default function CustomerPortalPage() {
                   <div className="flex flex-col gap-6">
                     <div className="bg-white border border-[#EAE4D7] rounded-2xl p-6 sm:p-8 shadow-2xs text-center flex flex-col items-center">
                       {/* Shield Badge Icon */}
-                      <div className="w-16 h-16 rounded-full bg-[#FAF5EB] border-2 border-[#EEDFC6] text-[#C59B58] flex items-center justify-center mb-4 shadow-xs">
-                        <Shield className="w-8 h-8 text-[#C59B58]" />
+                      <div className="w-14 h-14 rounded-full bg-[#FAF5EB] border border-[#EEDFC6] text-[#C59B58] flex items-center justify-center mb-3 shadow-xs">
+                        <Shield className="w-7 h-7 text-[#C59B58]" />
                       </div>
 
                       <h2 className="text-base sm:text-lg font-bold text-[#1A1612] max-w-md leading-relaxed m-0 font-display">
-                        Để tăng cường bảo mật cho tài khoản của bạn, hãy xác minh thông tin bằng phương thức sau.
+                        Xác minh bảo mật tài khoản
                       </h2>
+                      <p className="text-xs text-[#7D715E] mt-1 max-w-sm">
+                        Chọn phương thức để tiếp tục đổi mật khẩu.
+                      </p>
 
                       {/* Nút gửi link/mã qua Email (SCANMS Standard) */}
                       <button
                         type="button"
                         onClick={handleSendSecurityOtp}
                         disabled={sendingSecurityOtp}
-                        className="w-full mt-6 py-3 px-5 rounded-xl border border-[#EAE4D7] hover:border-[#C59B58] bg-[#FAF8F5] hover:bg-white text-xs sm:text-sm font-bold text-[#1A1612] flex items-center justify-center gap-2.5 transition shadow-2xs cursor-pointer group disabled:opacity-60"
+                        className="w-full mt-5 py-3 px-5 rounded-xl border border-[#EAE4D7] hover:border-[#C59B58] bg-[#FAF8F5] hover:bg-white text-xs sm:text-sm font-bold text-[#1A1612] flex items-center justify-center gap-2.5 transition shadow-2xs cursor-pointer group disabled:opacity-60"
                       >
                         {sendingSecurityOtp ? (
                           <Loader2 className="w-4 h-4 animate-spin text-[#C59B58]" />
                         ) : (
                           <Mail className="w-4 h-4 text-[#7D715E] group-hover:text-[#C59B58] transition" />
                         )}
-                        <span>Xác minh bằng liên kết / Mã OTP gửi qua Email</span>
+                        <span>Gửi mã xác thực qua Email</span>
                       </button>
 
                       {/* Tùy chọn đổi bằng mật khẩu hiện tại (nếu đã có mật khẩu) */}
-                      <div className="mt-5 pt-4 border-t border-[#F0EBE0] w-full text-center">
+                      <div className="mt-4 pt-4 border-t border-[#F0EBE0] w-full text-center">
                         <button
                           type="button"
                           onClick={() => setSecurityMode('DIRECT_CHANGE')}
                           className="text-xs text-[#7D715E] hover:text-[#C59B58] font-semibold transition cursor-pointer flex items-center justify-center gap-1 mx-auto"
                         >
                           <Lock className="w-3.5 h-3.5 text-[#B88E4F]" />
-                          <span>Đã có mật khẩu cũ? Đổi trực tiếp bằng mật khẩu hiện tại →</span>
+                          <span>Đổi bằng mật khẩu hiện tại →</span>
                         </button>
-                      </div>
-                    </div>
-
-                    {/* Câu hỏi thường gặp FAQs (Theo chuẩn SCANMS Ảnh 2) */}
-                    <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col gap-4 text-xs text-left">
-                      <div>
-                        <strong className="text-[#1A1612] font-bold block mb-1">
-                          Câu hỏi: Vì sao tôi phải xác minh tài khoản?
-                        </strong>
-                        <p className="text-[#7D715E] leading-relaxed m-0">
-                          Trả lời: Nâng cao tiêu chuẩn bảo mật tài khoản cho người dùng là ưu tiên hàng đầu của SCANMS. SCANMS yêu cầu xác minh tài khoản để đảm bảo không ai khác ngoài bạn được phép đăng nhập hoặc thiết lập mật khẩu tài khoản của mình.
-                        </p>
-                      </div>
-                      <div className="border-t border-[#EAE4D7] pt-3">
-                        <strong className="text-[#1A1612] font-bold block mb-1">
-                          Câu hỏi: Tôi phải làm gì nếu như không xác minh được tài khoản?
-                        </strong>
-                        <p className="text-[#7D715E] leading-relaxed m-0">
-                          Trả lời: Vui lòng liên hệ Bộ phận CSKH của SCANMS qua mục Chat hỗ trợ trực tuyến để được nhân viên hỗ trợ xác minh thủ công.
-                        </p>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* 2. MÀN HÌNH CHỜ NHẬP MÃ OTP GỬI QUA EMAIL (Chuẩn SCANMS Ảnh 3) */}
+                {/* 2. MÀN HÌNH CHỜ NHẬP MÃ OTP GỬI QUA EMAIL */}
                 {securityMode === 'AWAIT_OTP' && (
                   <div className="bg-white border border-[#EAE4D7] rounded-2xl p-6 sm:p-8 shadow-2xs text-center flex flex-col items-center relative">
                     <button
@@ -2806,18 +2753,18 @@ export default function CustomerPortalPage() {
                     </button>
 
                     <h2 className="text-base sm:text-lg font-black text-[#1A1612] m-0 font-display mt-2 sm:mt-0">
-                      Xác minh bằng mã gửi qua Email
+                      Nhập mã xác thực
                     </h2>
-                    <p className="text-xs text-[#7D715E] mt-1.5 max-w-sm leading-relaxed">
-                      Vui lòng kiểm tra hộp thư đến (hoặc thư mục <strong>Thư rác / Spam</strong>) và nhập mã xác thực OTP đã được gửi đến địa chỉ Email:
+                    <p className="text-xs text-[#7D715E] mt-1.5 max-w-sm">
+                      Mã 6 số đã được gửi đến:
                     </p>
-                    <strong className="text-xs sm:text-sm font-bold text-[#1A1612] bg-[#FAF8F5] px-3 py-1 rounded-lg border border-[#EAE4D7] mt-2 inline-block">
+                    <strong className="text-xs sm:text-sm font-bold text-[#1A1612] bg-[#FAF8F5] px-3 py-1 rounded-lg border border-[#EAE4D7] mt-1 inline-block">
                       {maskedSecurityEmail || maskEmail(currentUser?.email)}
                     </strong>
 
-                    {/* Envelope Icon Circle (SCANMS UI Reference) */}
-                    <div className="w-16 h-16 rounded-full bg-[#FAF5EB] border border-[#EEDFC6] text-[#C59B58] flex items-center justify-center my-6 shadow-xs">
-                      <Mail className="w-8 h-8 text-[#C59B58]" />
+                    {/* Envelope Icon */}
+                    <div className="w-14 h-14 rounded-full bg-[#FAF5EB] border border-[#EEDFC6] text-[#C59B58] flex items-center justify-center my-5 shadow-xs">
+                      <Mail className="w-7 h-7 text-[#C59B58]" />
                     </div>
 
                     <form onSubmit={handleVerifySecurityOtp} className="w-full max-w-xs flex flex-col gap-4">
@@ -2838,7 +2785,7 @@ export default function CustomerPortalPage() {
                       <div className="text-xs text-[#7D715E]">
                         {otpCountdown > 0 ? (
                           <span>
-                            Vui lòng chờ trong <strong className="text-[#C59B58] font-bold">{otpCountdown}</strong> giây để gửi lại.
+                            Gửi lại sau <strong className="text-[#C59B58] font-bold">{otpCountdown}</strong>s
                           </span>
                         ) : (
                           <button
@@ -2847,26 +2794,18 @@ export default function CustomerPortalPage() {
                             disabled={sendingSecurityOtp}
                             className="text-[#C59B58] hover:text-[#B88E4F] font-bold underline transition cursor-pointer"
                           >
-                            {sendingSecurityOtp ? 'Đang gửi...' : 'Gửi lại mã OTP qua Email'}
+                            {sendingSecurityOtp ? 'Đang gửi...' : 'Gửi lại mã OTP'}
                           </button>
                         )}
-                      </div>
-
-                      {/* Clean Security Notice (SCANMS Standard) */}
-                      <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-left text-xs text-[#7D715E] flex items-start gap-2.5 shadow-2xs">
-                        <Mail className="w-4 h-4 text-[#C59B58] shrink-0 mt-0.5" />
-                        <span className="text-[11px] leading-relaxed text-[#7D715E]">
-                          Mã xác thực 6 số bảo mật đã được gửi đến hộp thư Gmail của bạn. Vui lòng mở ứng dụng Gmail (kiểm tra cả mục <strong>Thư rác / Spam</strong> nếu chưa thấy trong Hộp thư chính) để lấy mã OTP.
-                        </span>
                       </div>
 
                       <button
                         type="submit"
                         disabled={verifyingSecurityOtp || securityOtp.length < 6}
-                        className="mt-2 py-3 px-6 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-white text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                        className="mt-2 py-2.5 px-6 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-white text-xs sm:text-sm font-bold transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
                       >
                         {verifyingSecurityOtp && <Loader2 className="w-4 h-4 animate-spin" />}
-                        <span>Tiếp Tục (Xác Nhận OTP)</span>
+                        <span>Xác nhận</span>
                       </button>
                     </form>
                   </div>
@@ -2881,7 +2820,7 @@ export default function CustomerPortalPage() {
                         <span>Thiết Lập Mật Khẩu Mới</span>
                       </h1>
                       <p className="text-xs text-[#7D715E] mt-1 m-0">
-                        Đã xác minh chủ tài khoản thành công qua Email. Vui lòng thiết lập mật khẩu mới (tối thiểu 6 ký tự)
+                        Nhập mật khẩu mới (tối thiểu 6 ký tự)
                       </p>
                     </div>
 

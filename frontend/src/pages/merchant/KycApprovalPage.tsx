@@ -178,6 +178,29 @@ export default function KycApprovalPage() {
       channelUrl: socialLinks.channelUrl || null,
       followerCount: socialLinks.followerCount || p.totalFollowers || 0,
       socialChannels: p.user?.socialChannels || [],
+      channelsList: (socialLinks.channels && socialLinks.channels.length > 0)
+        ? socialLinks.channels
+        : (p.user?.socialChannels && p.user.socialChannels.length > 0)
+          ? p.user.socialChannels.map((c: any) => ({
+              platform: c.platformName || c.platform,
+              channelName: c.channelName,
+              channelUrl: c.channelUrl,
+              followerCount: c.followerCount,
+              channelProofUrl: socialLinks.channelProofUrl,
+              isPrimary: c.isPrimary,
+            }))
+          : socialLinks.channelUrl
+            ? [{
+                platform: socialLinks.platform || 'TIKTOK',
+                channelName: socialLinks.channelName || '',
+                channelUrl: socialLinks.channelUrl,
+                followerCount: socialLinks.followerCount || p.totalFollowers || 0,
+                channelProofUrl: socialLinks.channelProofUrl,
+                isPrimary: true,
+              }]
+            : [],
+      specialtyCategories: socialLinks.specialtyCategories || [],
+      contentStyles: socialLinks.contentStyles || [],
     };
   });
 
@@ -617,58 +640,112 @@ export default function KycApprovalPage() {
           maxWidth="lg"
         >
           <div className="space-y-5 text-left text-xs">
-            {/* 1. Kênh sáng tạo & Bằng chứng */}
+            {/* 1. Kênh sáng tạo & Bằng chứng chính chủ */}
             <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-3">
-              <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
-                1. Năng lực kênh truyền thông &amp; Bằng chứng chính chủ
-              </strong>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-[#7D715E] block">Tên kênh / Profile:</span>
-                  <strong className="text-[#1A1612] text-sm font-bold block">{inspectProfile.channelName || 'Chưa cung cấp'}</strong>
-                </div>
-                <div>
-                  <span className="text-[#7D715E] block">Lượng Followers:</span>
-                  <strong className="text-[#1A1612] text-sm font-bold block">
-                    {Number(inspectProfile.followerCount).toLocaleString('vi-VN')} người theo dõi
-                  </strong>
-                </div>
+              <div className="flex items-center justify-between">
+                <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
+                  1. Năng lực kênh truyền thông &amp; Bằng chứng chính chủ ({inspectProfile.channelsList?.length || 1} kênh)
+                </strong>
+                <span className="text-[11px] font-bold text-[#7D715E]">
+                  Tổng cộng: <strong className="text-[#1A1612]">{Number(inspectProfile.followerCount).toLocaleString('vi-VN')}</strong> followers
+                </span>
               </div>
 
-              {inspectProfile.channelUrl && (
-                <div>
-                  <span className="text-[#7D715E] block mb-1">Đường dẫn liên kết kênh:</span>
-                  <a
-                    href={inspectProfile.channelUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#EAE4D7] text-[#B88E4F] font-bold hover:underline"
-                  >
-                    <span>{inspectProfile.channelUrl}</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              )}
-
-              {inspectProfile.channelProofUrl && (
-                <div>
-                  <span className="text-[#7D715E] block mb-1.5 font-bold">
-                    Ảnh chụp màn hình trang quản trị kênh (Studio Proof):
-                  </span>
-                  <div
-                    onClick={() => setPreviewImage(inspectProfile.channelProofUrl)}
-                    className="w-full h-36 bg-slate-100 border border-[#EAE4D7] rounded-xl overflow-hidden cursor-pointer relative group"
-                  >
-                    <img
-                      src={inspectProfile.channelProofUrl}
-                      alt="Ảnh chứng minh sở hữu kênh"
-                      className="w-full h-full object-cover group-hover:scale-105 transition"
-                    />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold">
-                      Nhấn để phóng to
+              {/* Danh sách các kênh mạng xã hội */}
+              <div className="space-y-3">
+                {(inspectProfile.channelsList && inspectProfile.channelsList.length > 0 ? inspectProfile.channelsList : [{
+                  platform: inspectProfile.channelName || 'Mạng xã hội',
+                  channelName: inspectProfile.channelName || 'Chưa cung cấp',
+                  channelUrl: inspectProfile.channelUrl,
+                  followerCount: inspectProfile.followerCount,
+                  channelProofUrl: inspectProfile.channelProofUrl,
+                  isPrimary: true,
+                }]).map((ch: any, idx: number) => (
+                  <div key={idx} className="p-3 bg-white border border-[#EAE4D7] rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-[#1A1612]">
+                          Kênh #{idx + 1} ({ch.platform || 'Nền tảng'}):
+                        </span>
+                        <strong className="text-[#1A1612]">{ch.channelName || inspectProfile.channelName}</strong>
+                        {ch.isPrimary && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                            ★ Kênh chính
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-bold text-[#B88E4F]">
+                        {Number(ch.followerCount || 0).toLocaleString('vi-VN')} followers
+                      </span>
                     </div>
+
+                    {ch.channelUrl && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-[#7D715E] font-mono truncate max-w-xs">{ch.channelUrl}</span>
+                        <a
+                          href={ch.channelUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#B88E4F] font-bold text-[11px] hover:underline shrink-0"
+                        >
+                          <span>Mở kênh kiểm tra (1-click)</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+
+                    {(ch.channelProofUrl || inspectProfile.channelProofUrl) && (
+                      <div>
+                        <span className="text-[10.5px] text-[#7D715E] block mb-1 font-semibold">
+                          Ảnh chụp màn hình trang quản trị Studio (Proof):
+                        </span>
+                        <div
+                          onClick={() => setPreviewImage(ch.channelProofUrl || inspectProfile.channelProofUrl)}
+                          className="w-full h-32 bg-slate-100 border border-[#EAE4D7] rounded-xl overflow-hidden cursor-pointer relative group"
+                        >
+                          <img
+                            src={ch.channelProofUrl || inspectProfile.channelProofUrl}
+                            alt="Ảnh chứng minh sở hữu kênh"
+                            className="w-full h-full object-cover group-hover:scale-105 transition"
+                          />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold text-xs">
+                            Nhấn để phóng to
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                ))}
+              </div>
+
+              {/* Ngành hàng thế mạnh & Phong cách */}
+              {((inspectProfile.specialtyCategories && inspectProfile.specialtyCategories.length > 0) ||
+                (inspectProfile.contentStyles && inspectProfile.contentStyles.length > 0)) && (
+                <div className="p-3 bg-white border border-[#EAE4D7] rounded-xl space-y-2">
+                  {inspectProfile.specialtyCategories && inspectProfile.specialtyCategories.length > 0 && (
+                    <div>
+                      <span className="text-[11px] font-bold text-[#7D715E] block mb-1">Ngành hàng thế mạnh:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {inspectProfile.specialtyCategories.map((cat: string) => (
+                          <span key={cat} className="px-2 py-0.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] text-[11px] font-bold text-[#1A1612]">
+                            {cat}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {inspectProfile.contentStyles && inspectProfile.contentStyles.length > 0 && (
+                    <div>
+                      <span className="text-[11px] font-bold text-[#7D715E] block mb-1">Phong cách sáng tạo:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {inspectProfile.contentStyles.map((style: string) => (
+                          <span key={style} className="px-2 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#B88E4F]">
+                            {style}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

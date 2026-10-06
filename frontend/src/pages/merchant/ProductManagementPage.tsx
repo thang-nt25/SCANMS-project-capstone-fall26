@@ -261,6 +261,42 @@ const inferCategoryFromTitle = (title: string) => {
   return '';
 };
 
+export interface ProductSpecificationItem {
+  id: string;
+  key: string;
+  value: string;
+}
+
+const getDefaultSpecsForCategory = (cat: string): ProductSpecificationItem[] => {
+  if (cat === 'Thời trang & Phụ kiện') {
+    return [
+      { id: 'spec-1', key: 'Chất liệu vải', value: '' },
+      { id: 'spec-2', key: 'Kiểu dáng / Form dáng', value: '' },
+      { id: 'spec-3', key: 'Độ co giãn', value: '' },
+      { id: 'spec-4', key: 'Hướng dẫn giặt ủi', value: '' },
+    ];
+  }
+  if (cat === 'Mỹ phẩm & Chăm sóc da' || cat === 'Trang điểm & Làm đẹp') {
+    return [
+      { id: 'spec-1', key: 'Loại da phù hợp', value: '' },
+      { id: 'spec-2', key: 'Kết cấu (Texture)', value: '' },
+      { id: 'spec-3', key: 'Dung tích / Trọng lượng', value: '' },
+      { id: 'spec-4', key: 'Hạn sử dụng sau mở nắp', value: '' },
+    ];
+  }
+  if (cat === 'Thiết bị điện tử & Phụ kiện') {
+    return [
+      { id: 'spec-1', key: 'Cổng kết nối / Chuẩn sạc', value: '' },
+      { id: 'spec-2', key: 'Thời lượng pin / Nguồn điện', value: '' },
+      { id: 'spec-3', key: 'Thời gian bảo hành chính hãng', value: '' },
+    ];
+  }
+  return [
+    { id: 'spec-1', key: 'Chất liệu / Thành phần chính', value: '' },
+    { id: 'spec-2', key: 'Quy cách đóng gói', value: '' },
+  ];
+};
+
 export default function ProductManagementPage() {
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
@@ -560,6 +596,10 @@ export default function ProductManagementPage() {
   const [formStock, setFormStock] = useState<number | ''>('');
   const [formSampleEnabled, setFormSampleEnabled] = useState(false);
   const [formSampleQuota, setFormSampleQuota] = useState<number | ''>('');
+  const [formSpecifications, setFormSpecifications] = useState<ProductSpecificationItem[]>([
+    { id: 'spec-1', key: 'Chất liệu vải', value: '' },
+    { id: 'spec-2', key: 'Kiểu dáng / Form dáng', value: '' },
+  ]);
   const [variantSamplePolicies, setVariantSamplePolicies] = useState<Record<string, {
     inheritProductPolicy: boolean;
     sampleEnabled: boolean;
@@ -790,43 +830,16 @@ export default function ProductManagementPage() {
     setFormPrice(newPrice);
     if (newPrice === '') {
       setFormCommissionAmount('');
-    } else if (newPrice > 0 && formCommission !== '') {
-      setFormCommissionAmount(Math.round((newPrice * formCommission) / 100));
-    } else if (newPrice > 0 && formCommissionAmount !== '') {
-      setFormCommission(Math.min(100, Number(((formCommissionAmount / newPrice) * 100).toFixed(1))));
-    }
-  };
-
-  const handleCommissionRateChange = (newPercent: number | '') => {
-    if (newPercent === '') {
-      setFormCommission('');
-      setFormCommissionAmount('');
-      return;
-    }
-    const cleanPercent = Math.max(0, Math.min(100, newPercent));
-    setFormCommission(cleanPercent);
-    if (Number(formPrice) > 0) {
-      setFormCommissionAmount(Math.round((Number(formPrice) * cleanPercent) / 100));
-    }
-  };
-
-  const handleCommissionAmountChange = (newAmount: number | '') => {
-    if (newAmount === '') {
-      setFormCommissionAmount('');
-      setFormCommission('');
-      return;
-    }
-    const cleanAmount = Math.max(0, newAmount);
-    setFormCommissionAmount(cleanAmount);
-    if (Number(formPrice) > 0) {
-      const calculatedPercent = Number(((cleanAmount / Number(formPrice)) * 100).toFixed(1));
-      setFormCommission(Math.min(100, calculatedPercent));
+    } else if (newPrice > 0) {
+      setFormCommission(10);
+      setFormCommissionAmount(Math.round((newPrice * 10) / 100));
     }
   };
 
   const handleCategoryChange = (categoryName: string) => {
     setFormCategory(categoryName);
     setVariantOptionLists({});
+    setFormSpecifications(getDefaultSpecsForCategory(categoryName));
     const nextFields = getVariantFields(categoryName);
     setFormVariants((current) => current.map((variant) => {
       const attributes = Object.fromEntries(nextFields
@@ -914,12 +927,13 @@ export default function ProductManagementPage() {
     setFormLabelProofLinks([]);
     setFormLabelProofImages([]);
     setFormPrice('');
-    setFormCommission('');
+    setFormCommission(10);
     setFormCommissionAmount('');
-    setFormAffiliateEnabled(false);
+    setFormAffiliateEnabled(true);
     setFormStock('');
     setFormSampleEnabled(false);
     setFormSampleQuota('');
+    setFormSpecifications(getDefaultSpecsForCategory(''));
     setVariantSamplePolicies({});
     setFormImage('');
     setFormSubImages([]);
@@ -942,6 +956,7 @@ export default function ProductManagementPage() {
       setFormCategory('Danh mục khác (Tự nhập)');
       setFormCustomCategory(p.categoryName || p.category || '');
     }
+    setFormSpecifications(getDefaultSpecsForCategory(matchedCat ? matchedCat.name : ''));
     setFormDescription(p.description || '');
     setFormIngredients(p.ingredients || '');
     setFormOrigin(p.origin || '');
@@ -952,10 +967,8 @@ export default function ProductManagementPage() {
     setFormLabelProofImages(Array.isArray(p.labelProofImages) ? p.labelProofImages : []);
     const currentPrice = Number(p.price) || 0;
     setFormPrice(currentPrice);
-    const savedCommissionRate = p.customCommissionRate ?? p.commissionRate;
-    const commRate = savedCommissionRate == null ? '' : Number(savedCommissionRate);
-    setFormCommission(commRate);
-    setFormCommissionAmount(commRate === '' ? '' : Math.round((currentPrice * commRate) / 100));
+    setFormCommission(10);
+    setFormCommissionAmount(currentPrice > 0 ? Math.round((currentPrice * 10) / 100) : '');
     setFormAffiliateEnabled(p.isAffiliateEnabled !== false);
     setFormStock(p.stockQuantity ?? p.stock ?? 0);
     setFormSampleEnabled(p.sampleEnabled === true);
@@ -1348,13 +1361,22 @@ export default function ProductManagementPage() {
         ? formCustomCategory.trim() || 'Khác'
         : formCategory;
 
+    const validSpecs = formSpecifications.filter((s) => s.key.trim() && s.value.trim());
+    let combinedDescription = formDescription.trim();
+    if (validSpecs.length > 0 && !combinedDescription.includes('📌 THÔNG SỐ KỸ THUẬT:')) {
+      const specsBlock = `📌 THÔNG SỐ KỸ THUẬT SẢN PHẨM:\n` +
+        validSpecs.map((s) => `• ${s.key.trim()}: ${s.value.trim()}`).join('\n') +
+        `\n\n`;
+      combinedDescription = specsBlock + combinedDescription;
+    }
+
     setSavingProduct(true);
     try {
       if (editingProduct) {
         const productUpdate = await productService.updateProduct(editingProduct.id, {
           title: formTitle.trim(),
           categoryName: effectiveCategory,
-          description: formDescription.trim() || undefined,
+          description: combinedDescription || undefined,
           ingredients: formIngredients.trim() || undefined,
           origin: formOrigin.trim() || undefined,
           labelInfo: formLabelInfo.trim() || undefined,
@@ -1363,7 +1385,7 @@ export default function ProductManagementPage() {
           labelProofLinks: formLabelProofLinks.map((url) => url.trim()).filter(Boolean),
           labelProofImages: formLabelProofImages,
           price: Number(formPrice),
-          customCommissionRate: formCommission === '' ? undefined : Number(formCommission),
+          customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
           stockQuantity: Number(formStock),
           sampleEnabled: formSampleEnabled,
@@ -1387,7 +1409,7 @@ export default function ProductManagementPage() {
           sku: formSku.trim().toUpperCase(),
           title: formTitle.trim(),
           categoryName: effectiveCategory,
-          description: formDescription.trim() || undefined,
+          description: combinedDescription || undefined,
           ingredients: formIngredients.trim() || undefined,
           origin: formOrigin.trim() || undefined,
           labelInfo: formLabelInfo.trim() || undefined,
@@ -1396,7 +1418,7 @@ export default function ProductManagementPage() {
           labelProofLinks: formLabelProofLinks.map((url) => url.trim()).filter(Boolean),
           labelProofImages: formLabelProofImages,
           price: Number(formPrice),
-          customCommissionRate: formCommission === '' ? undefined : Number(formCommission),
+          customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
           stockQuantity: Number(formStock),
           sampleEnabled: formSampleEnabled,
@@ -1982,6 +2004,7 @@ export default function ProductManagementPage() {
                 </label>
                 <div>
                   <Select
+                    id="form-category-select"
                     value={formCategory}
                     onChange={(e) => handleCategoryChange(e.target.value)}
                     required
@@ -2311,8 +2334,8 @@ export default function ProductManagementPage() {
                 variant="outline"
                 onClick={() => {
                   if (!formCategory) {
-                    showToast('Vui lòng chọn loại sản phẩm trước khi thêm phân loại.');
-                    document.getElementById('variant-product-category')?.focus();
+                    showToast('Vui lòng chọn loại sản phẩm ở Mục 1 trước khi thêm phân loại.');
+                    document.getElementById('form-category-select')?.focus();
                     return;
                   }
                   const newVariantIndex = formVariants.length;
@@ -2329,14 +2352,29 @@ export default function ProductManagementPage() {
               </Button>
             </div>
 
-            <label className="grid gap-2 text-xs font-bold text-[#1A1612] sm:max-w-lg">
-              <span>Loại sản phẩm cần phân loại <span className="text-[#DC2626]">*</span></span>
-              <Select id="variant-product-category" value={formCategory} onChange={(event) => handleCategoryChange(event.target.value)} required className="w-full bg-white font-normal shadow-sm">
-                <option value="" disabled>Chọn thời trang, mỹ phẩm, điện tử...</option>
-                {STANDARD_CATEGORIES.map((category) => <option key={category.id} value={category.name}>{category.icon} {category.name}</option>)}
-              </Select>
-              <span className="font-normal text-[#7D715E]">Đồng bộ với danh mục sản phẩm ở mục 1.</span>
-            </label>
+            {/* THÔNG TIN DANH MỤC ĐỒNG BỘ TỪ MỤC 1 */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-[#8C6226]">Danh mục phân loại:</span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-2.5 py-1 font-bold text-[#1A1612] shadow-2xs">
+                  {STANDARD_CATEGORIES.find((c) => c.name === formCategory)?.icon || '📦'}{' '}
+                  {formCategory === 'Danh mục khác (Tự nhập)'
+                    ? (formCustomCategory || 'Danh mục tự nhập')
+                    : (formCategory || 'Chưa chọn danh mục')}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('form-category-select');
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  el?.focus();
+                }}
+                className="text-[11px] font-bold text-[#B88E4F] hover:underline cursor-pointer"
+              >
+                Đổi danh mục tại Mục 1 ↑
+              </button>
+            </div>
 
             {formCategory && (
               <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.03)] sm:p-5">
@@ -2652,76 +2690,135 @@ export default function ProductManagementPage() {
             )}
           </div>
 
-          {/* SECTION 5: THIẾT LẬP HOA HỒNG KOL/CTV (QUY ĐỔI 2 CHIỀU % ⇄ VNĐ) */}
+          {/* SECTION 4: THÔNG SỐ KỸ THUẬT SẢN PHẨM (PRODUCT SPECIFICATIONS DYNAMIC KEY-VALUE) */}
+          <div className="flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
+              <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#1A1612]">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
+                  <Boxes className="h-4 w-4 text-[#B88E4F]" />
+                </span>
+                4. Thông số kỹ thuật & Thuộc tính sản phẩm (Product Specifications)
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setFormSpecifications((current) => [
+                    ...current,
+                    { id: `spec-${Date.now()}`, key: '', value: '' },
+                  ]);
+                }}
+                className="shrink-0 border-[#EEDFC6] bg-white text-[#6F4E20] text-xs shadow-2xs hover:border-[#C59B58] hover:bg-[#FBF5EB]"
+              >
+                <PlusCircle size={14} /> Thêm thông số kỹ thuật
+              </Button>
+            </div>
+
+            <p className="text-xs text-[#7D715E] leading-relaxed">
+              Khai báo các thuộc tính kỹ thuật chi tiết để khách hàng và KOL nắm rõ (VD: Chất liệu, Kiểu dáng, Độ co giãn, Hạn dùng, Bảo hành...). Bấm nút <strong className="text-[#1A1612]">+ Thêm thông số kỹ thuật</strong> để bổ sung thêm các trường mới.
+            </p>
+
+            <div className="space-y-2.5">
+              {formSpecifications.map((spec, specIdx) => (
+                <div
+                  key={spec.id || specIdx}
+                  className="flex flex-col gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-2.5 sm:flex-row sm:items-center"
+                >
+                  <div className="w-full sm:w-1/3">
+                    <input
+                      type="text"
+                      value={spec.key}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormSpecifications((current) =>
+                          current.map((item, idx) => (idx === specIdx ? { ...item, key: val } : item))
+                        );
+                      }}
+                      placeholder="Tên thuộc tính (VD: Chất liệu)"
+                      className="h-10 w-full rounded-lg border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none transition focus:border-[#B88E4F] focus:ring-1 focus:ring-[#C59B58]/20"
+                    />
+                  </div>
+                  <div className="w-full flex-1">
+                    <input
+                      type="text"
+                      value={spec.value}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormSpecifications((current) =>
+                          current.map((item, idx) => (idx === specIdx ? { ...item, value: val } : item))
+                        );
+                      }}
+                      placeholder="Giá trị chi tiết (VD: 100% Cotton Compact, Co giãn 4 chiều...)"
+                      className="h-10 w-full rounded-lg border border-[#EAE4D7] bg-white px-3 text-xs text-[#1A1612] outline-none transition focus:border-[#B88E4F] focus:ring-1 focus:ring-[#C59B58]/20"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (formSpecifications.length <= 1) {
+                        setFormSpecifications([{ id: `spec-${Date.now()}`, key: '', value: '' }]);
+                        return;
+                      }
+                      setFormSpecifications((current) => current.filter((_, idx) => idx !== specIdx));
+                    }}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-transparent text-[#7D715E] hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
+                    title="Xóa thông số này"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* SECTION 5: THIẾT LẬP HOA HỒNG TIẾP THỊ LIÊN KẾT (CỐ ĐỊNH 10% CHUẨN SÀN SCANMS) */}
           <div className="flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_3px_14px_rgba(35,29,21,0.045)] sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
               <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#1A1612]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
                   <Percent className="h-4 w-4 text-[#B88E4F]" />
                 </span>
-                5. Chính sách hoa hồng cho KOL/CTV (Quy đổi 2 chiều)
+                5. Chính sách hoa hồng cho KOL/CTV (Chuẩn Sàn SCANMS)
               </span>
               <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1.5 text-[11px] font-semibold text-[#8C6226]">
-                Tùy chọn · Có thể bổ sung sau khi duyệt
+                Cố định 10.0% · Mọi chiến dịch mở
               </span>
             </div>
 
-            {/* PRESET SHORTCUT BUTTONS */}
-            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#FAF8F5] p-2.5">
-              <span className="mr-1 text-xs font-semibold text-[#7D715E]">Mẫu nhanh:</span>
-              {[10, 15, 20, 25, 30].map((pct) => (
-                <button
-                  key={pct}
-                  type="button"
-                  onClick={() => handleCommissionRateChange(pct)}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                    formCommission === pct
-                      ? 'border-[#C59B58] bg-[#C59B58] text-[#231D15] shadow-sm'
-                      : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#C59B58] hover:bg-[#FBF5EB]'
-                  }`}
-                >
-                  {pct}%
-                </button>
-              ))}
-              <div className="mx-1 hidden h-5 w-px bg-[#D8C7A8] sm:block" />
-              {[50000, 100000, 150000].map((amt) => (
-                <button
-                  key={amt}
-                  type="button"
-                  onClick={() => handleCommissionAmountChange(amt)}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                    formCommissionAmount === amt
-                      ? 'border-[#C59B58] bg-[#C59B58] text-[#231D15] shadow-sm'
-                      : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#C59B58] hover:bg-[#FBF5EB]'
-                  }`}
-                >
-                  {(amt / 1000).toLocaleString()}k
-                </button>
-              ))}
+            {/* CALLOUT QUY CHUẨN HOA HỒNG SÀN */}
+            <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 text-xs text-[#574C3D] leading-relaxed">
+              <div className="flex items-start gap-2.5">
+                <span className="text-base shrink-0">⚖️</span>
+                <div>
+                  <strong className="block text-[#1A1612] font-bold">Chính sách hoa hồng mở toàn sàn cố định 10%</strong>
+                  <span className="mt-0.5 block">
+                    Mọi sản phẩm khi bật tiếp thị liên kết công khai (Open Offer) đều áp dụng tỷ lệ hoa hồng cố định là <strong>10.0%</strong>.
+                    Tỷ lệ này chỉ thay đổi khi KOL và Chủ Shop đàm phán hợp đồng độc quyền riêng thông qua tính năng <strong>Đề xuất Hợp đồng Độc quyền (Exclusive Deal Negotiation)</strong>.
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* TWO-WAY BINDING INPUTS */}
+            {/* READONLY COMMISSION FIELDS */}
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)]">
               <div>
                 <label className="mb-2 block text-xs font-semibold text-[#1A1612]">
-                  Tỷ lệ hoa hồng (%)
+                  Tỷ lệ hoa hồng chuẩn sàn (%)
                 </label>
                 <div className="relative flex items-center">
                   <Percent className="w-4 h-4 text-[#B88E4F] absolute left-3 pointer-events-none" />
                   <input
                     type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    value={formCommission}
-                    onChange={(e) => handleCommissionRateChange(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Ví dụ: 10"
-                    className="h-12 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] pl-9 pr-3 text-sm font-semibold text-[#1A1612] outline-none transition hover:border-[#D8C7A8] focus:border-[#B88E4F] focus:bg-white focus:ring-2 focus:ring-[#C59B58]/15"
+                    value={formCommission || 10}
+                    readOnly
+                    disabled
+                    className="h-12 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] pl-9 pr-3 text-sm font-bold text-[#1A1612] cursor-not-allowed select-none opacity-90"
                   />
                 </div>
+                <span className="mt-1 block text-[10.5px] text-[#7D715E]">Cố định 10% cho mọi chiến dịch mở toàn sàn</span>
               </div>
 
-              <div className="hidden items-center justify-center sm:flex">
+              <div className="hidden items-center justify-center sm:flex pb-5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]">
                   <ArrowLeftRight size={14} />
                 </div>
@@ -2729,20 +2826,18 @@ export default function ProductManagementPage() {
 
               <div>
                 <label className="mb-2 block text-xs font-semibold text-[#1A1612]">
-                  Hoa hồng cụ thể nhận được (₫ / sản phẩm)
+                  Hoa hồng cụ thể KOL nhận được (₫ / sản phẩm)
                 </label>
                 <div className="relative flex items-center">
                   <Coins className="w-4 h-4 text-[#B88E4F] absolute left-3 pointer-events-none" />
                   <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={formCommissionAmount}
-                    onChange={(e) => handleCommissionAmountChange(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Ví dụ: 50000"
-                    className="h-12 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] pl-9 pr-3 text-sm font-semibold text-[#1A1612] outline-none transition hover:border-[#D8C7A8] focus:border-[#B88E4F] focus:bg-white focus:ring-2 focus:ring-[#C59B58]/15"
+                    type="text"
+                    readOnly
+                    value={formCommissionAmount === '' ? '—' : `${Number(formCommissionAmount).toLocaleString('vi-VN')} ₫`}
+                    className="h-12 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] pl-9 pr-3 text-sm font-bold text-[#B88E4F] select-none"
                   />
                 </div>
+                <span className="mt-1 block text-[10.5px] text-[#7D715E]">Tự động quy đổi = 10% × Giá bán niêm yết</span>
               </div>
             </div>
 
@@ -2756,7 +2851,7 @@ export default function ProductManagementPage() {
                     {formCommissionAmount === '' ? '—' : `${Number(formCommissionAmount).toLocaleString('vi-VN')} ₫`}
                   </span>
                   <span className="text-[#7D715E] text-[11px] ml-1">
-                    ({formCommission === '' ? '—' : formCommission}% giá trị đơn)
+                    (10.0% giá trị đơn hàng)
                   </span>
                 </div>
               </div>

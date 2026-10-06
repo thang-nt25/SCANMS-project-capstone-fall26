@@ -881,8 +881,9 @@ export default function OrdersManagementPage({
           {/* Orders Table */}
           <div className="bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs overflow-hidden">
             {ordersLoading ? (
-              <div className="p-12 text-center text-sm font-semibold text-[#7D715E]">
-                Đang tải dữ liệu đơn hàng thực tế...
+              <div className="p-12 text-center text-xs font-semibold text-[#7D715E] flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-[#B88E4F]" />
+                <span>Đang tải đơn hàng...</span>
               </div>
             ) : orders.length === 0 ? (
               <div className="p-12 text-center flex flex-col items-center gap-3">
@@ -890,11 +891,11 @@ export default function OrdersManagementPage({
                   <ShoppingBag className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[#1A1612]">Chưa có đơn hàng nào</h3>
+                  <h3 className="text-sm font-extrabold text-[#1A1612]">Chưa có đơn hàng</h3>
                   <p className="text-xs text-[#7D715E] mt-1">
                     {orderSearchQuery || statusFilter !== "ALL"
-                      ? "Không tìm thấy đơn hàng phù hợp với bộ lọc hiện tại."
-                      : "Khi khách đặt hàng trên gian hàng hoặc bạn import đơn, danh sách sẽ hiển thị ở đây."}
+                      ? "Không tìm thấy đơn hàng phù hợp."
+                      : "Đơn hàng mới sẽ hiển thị tại đây."}
                   </p>
                 </div>
               </div>

@@ -24,6 +24,7 @@ import {
   Save,
   Plus,
   Trash2,
+  Wallet,
 } from 'lucide-react';
 
 function normalizeVietnameseAddress(str: string): string {
@@ -53,6 +54,7 @@ import { useScanmsChat } from '../../context/ScanmsChatContext';
 import { formatMoney, getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 import { CustomSelect } from '../ui/CustomSelect';
 import { resolveSavedShippingAddress } from '../../utils/checkoutAddress';
+import { walletService, type WalletSummary } from '../../services/wallet.service';
 
 const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
@@ -232,8 +234,42 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [policyLoading, setPolicyLoading] = useState(false);
   const [policyError, setPolicyError] = useState<string | null>(null);
 
-  // Payment Method: Default to COD (reliable & always available), with PayOS option
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS'>('COD');
+  // Payment Method: Default to WALLET if has enough balance, otherwise COD
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS' | 'WALLET'>('COD');
+  const [wallet, setWallet] = useState<WalletSummary | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [topUpLoading, setTopUpLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && isSignedIn) {
+      setWalletLoading(true);
+      walletService
+        .getMyWallet()
+        .then((w) => {
+          setWallet(w);
+          if (Number(w.availableBalance) > 0) {
+            setPaymentMethod('WALLET');
+          }
+        })
+        .catch(() => {})
+        .finally(() => setWalletLoading(false));
+    }
+  }, [isOpen, isSignedIn]);
+
+  const handleTopUpDemo = async (amount: number) => {
+    try {
+      setTopUpLoading(true);
+      await walletService.topUpDemo(amount);
+      toast.success(`Nạp thành công ${formatMoney(amount)} vào Ví SCANMS!`);
+      const updated = await walletService.getMyWallet();
+      setWallet(updated);
+      setPaymentMethod('WALLET');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể nạp tiền thử nghiệm');
+    } finally {
+      setTopUpLoading(false);
+    }
+  };
 
   // Single-product fallback state
   const [singleQuantity] = useState(initialQuantity);
@@ -1218,8 +1254,19 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               <div className="p-3.5 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-xs text-[#B88E4F] flex items-center gap-2.5 mb-5 text-left">
                 <Truck className="w-5 h-5 shrink-0" />
                 <div>
-                  <strong className="block text-[#1A1612]">Thanh toán tiền mặt khi nhận hàng (COD)</strong>
+                  <strong>Thanh toán tiền mặt khi nhận hàng (COD)</strong>
                   <span>Nhân viên giao vận sẽ liên hệ với bạn trước khi giao. Vui lòng kiểm tra kiện hàng trước khi thanh toán.</span>
+                </div>
+              </div>
+            )}
+
+            {/* WALLET Notice */}
+            {orderSuccess.paymentMethod === 'WALLET' && (
+              <div className="p-3.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#B88E4F] flex items-center gap-2.5 mb-5 text-left">
+                <Wallet className="w-5 h-5 shrink-0 text-[#B88E4F]" />
+                <div>
+                  <strong className="block text-[#1A1612]">Đã thanh toán 100% bằng Ví Mua Sắm SCANMS</strong>
+                  <span className="text-[#7D715E]">Đơn hàng đã được trừ trực tiếp từ số dư ví khả dụng của bạn. Bạn không cần thanh toán thêm bất kỳ khoản phí nào khi nhận hàng!</span>
                 </div>
               </div>
             )}
@@ -1907,7 +1954,73 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <span className="text-xs text-gray-500">Mọi giao dịch được bảo hộ 100% qua Quỹ Escrow SCANMS</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* SCANMS Wallet Option */}
+                <label
+                  className={`p-4 rounded-lg border text-left cursor-pointer transition-all ${
+                    paymentMethod === 'WALLET'
+                      ? 'bg-[#FBF5EB] border-[#C59B58] ring-1 ring-[#C59B58] shadow-2xs'
+                      : 'bg-white border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="WALLET"
+                        checked={paymentMethod === 'WALLET'}
+                        onChange={() => setPaymentMethod('WALLET')}
+                        className="w-4 h-4 text-[#C59B58] accent-[#C59B58]"
+                      />
+                      <strong className="text-xs sm:text-sm text-[#1A1612] flex items-center gap-1.5">
+                        <Wallet className="w-4 h-4 text-[#B88E4F]" />
+                        Ví SCANMS
+                      </strong>
+                    </div>
+                    <span className="text-[10px] font-bold text-[#B88E4F] bg-[#F3EFE6] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                      1-Chạm
+                    </span>
+                  </div>
+                  <div className="mt-2 pl-6.5 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-gray-500">Số dư khả dụng:</span>
+                      <strong className="text-[#B88E4F] font-bold">
+                        {walletLoading ? '...' : formatMoney(Number(wallet?.availableBalance || 0))}
+                      </strong>
+                    </div>
+                    {Number(wallet?.availableBalance || 0) >= finalTotal ? (
+                      <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                        ✓ Đủ số dư thanh toán ngay
+                      </span>
+                    ) : (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-medium text-amber-700 block">
+                          Thiếu {formatMoney(Math.max(0, finalTotal - Number(wallet?.availableBalance || 0)))}
+                        </span>
+                        <div className="text-[10px] text-gray-500 font-medium">Nạp nhanh Demo:</div>
+                        <div className="flex flex-wrap gap-1">
+                          {[200000, 500000, 1000000, 2000000].map((amt) => (
+                            <button
+                              key={amt}
+                              type="button"
+                              disabled={topUpLoading}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleTopUpDemo(amt);
+                              }}
+                              className="px-2 py-0.5 text-[10px] font-bold rounded bg-[#F3EFE6] text-[#B88E4F] hover:bg-[#EEDFC6] border border-[#EEDFC6] transition cursor-pointer"
+                            >
+                              +{amt >= 1000000 ? `${amt / 1000000}M` : `${amt / 1000}k`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </label>
+
                 {/* COD Option */}
                 <label
                   className={`p-4 rounded-lg border text-left cursor-pointer transition-all ${
