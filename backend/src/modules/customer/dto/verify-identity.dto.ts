@@ -16,7 +16,9 @@ export class VerifyCustomerIdentityDto {
   })
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng nhập số định danh cá nhân trên CCCD' })
-  @Matches(/^\d{9,12}$/, { message: 'Số CCCD phải gồm 9 hoặc 12 chữ số hợp lệ' })
+  @Matches(/^\d{9,12}$/, {
+    message: 'Số CCCD phải gồm 9 hoặc 12 chữ số hợp lệ',
+  })
   idCardNumber: string;
 
   @ApiProperty({

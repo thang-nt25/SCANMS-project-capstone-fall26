@@ -27,7 +27,8 @@ export class CreateReferralLinkDto {
   campaignId?: string;
 
   @ApiPropertyOptional({
-    description: 'ID Exclusive Deal đã được Shop duyệt, dùng khi phát hành link VIP.',
+    description:
+      'ID Exclusive Deal đã được Shop duyệt, dùng khi phát hành link VIP.',
   })
   @IsOptional()
   @IsUUID('4', { message: 'exclusiveDealId phải là định dạng UUID v4 hợp lệ' })

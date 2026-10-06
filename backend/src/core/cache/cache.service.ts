@@ -296,7 +296,10 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   // Cache dữ liệu thống kê tổng hợp từ Redis phân tán (Cửa sổ trượt 5 phút - Multi-Instance Safe)
   private cachedTopLinks: Array<{ linkId: string; count: number }> = [];
   private cachedTopStores: Array<{ storeId: string; count: number }> = [];
-  private cachedTopCollaborators: Array<{ collaboratorId: string; count: number }> = [];
+  private cachedTopCollaborators: Array<{
+    collaboratorId: string;
+    count: number;
+  }> = [];
   private cachedUniqueBlockedIpsCount = 0;
   private lastMetricsSyncAt = 0;
 
@@ -319,7 +322,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       const pipeline = this.redisClient.pipeline();
       pipeline.zadd('rl:v1:metrics:blocked_ips', now, ipHash);
       pipeline.expire('rl:v1:metrics:blocked_ips', 86400); // 24 giờ
-      pipeline.zremrangebyscore('rl:v1:metrics:blocked_ips', '-inf', (now - 86400000).toString());
+      pipeline.zremrangebyscore(
+        'rl:v1:metrics:blocked_ips',
+        '-inf',
+        (now - 86400000).toString(),
+      );
       pipeline.exec().catch(() => {});
     }
   }
@@ -448,13 +455,18 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
       this.lastMetricsSyncAt = now;
     } catch (err: any) {
-      this.logger.debug(`[REDIS_METRICS_SYNC] Lỗi đồng bộ metrics: ${err.message}`);
+      this.logger.debug(
+        `[REDIS_METRICS_SYNC] Lỗi đồng bộ metrics: ${err.message}`,
+      );
     }
   }
 
   // Giới hạn số lượng entry tối đa của fallback map trong RAM chống tấn công DoS tràn bộ nhớ (FR-14 Mục 30 & Lỗi 12)
   private static readonly MAX_FALLBACK_RATELIMIT_ENTRIES = 10000;
-  private readonly fallbackSlidingWindowMap = new Map<string, { timestamps: number[]; lastSeen: number }>();
+  private readonly fallbackSlidingWindowMap = new Map<
+    string,
+    { timestamps: number[]; lastSeen: number }
+  >();
 
   // Lua script kiểm tra và tăng nguyên tử THUẬT TOÁN SLIDING WINDOW (ZSET) trên Redis (FR-14 Mục 5, 6, 7, 11 & Lỗi 2)
   private readonly clickRateLimitLuaScript = `
@@ -540,27 +552,26 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
           secKey,
           minKey,
           now,
-          1000,   // Cửa sổ trượt 1s (1000ms)
-          60000,  // Cửa sổ trượt 60s (60000ms)
+          1000, // Cửa sổ trượt 1s (1000ms)
+          60000, // Cửa sổ trượt 60s (60000ms)
           secLimit,
           minLimit,
-          3,      // 3 giây TTL cho secKey ZSET
-          70,     // 70 giây TTL cho minKey ZSET
+          3, // 3 giây TTL cho secKey ZSET
+          70, // 70 giây TTL cho minKey ZSET
           member,
         ) as Promise<[number, string, number, number, number, number]>;
 
         const startRedis = Date.now();
         const timeoutOp = new Promise<never>((_, reject) => {
           timerHandle = setTimeout(
-            () => reject(new Error('Redis check timeout > ' + timeoutMs + 'ms')),
+            () =>
+              reject(new Error('Redis check timeout > ' + timeoutMs + 'ms')),
             timeoutMs,
           );
         });
 
-        const [allowedNum, limitedCode, curSec, curMin, ttlSec, ttlMin] = await Promise.race([
-          redisOp,
-          timeoutOp,
-        ]);
+        const [allowedNum, limitedCode, curSec, curMin, ttlSec, ttlMin] =
+          await Promise.race([redisOp, timeoutOp]);
         const latencyMs = Date.now() - startRedis;
         this.clickRateLimitMetrics.redisLatencyMs = latencyMs;
 
@@ -571,7 +582,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         const limitedBy = allowed ? null : (limitedCode as 'SEC' | 'MIN');
 
         if (this.degradedSince) {
-          this.logger.log('✔ [OPERATIONAL RECOVERY] Kết nối Redis rate limiting đã được khôi phục.');
+          this.logger.log(
+            '✔ [OPERATIONAL RECOVERY] Kết nối Redis rate limiting đã được khôi phục.',
+          );
           this.degradedSince = null;
           this.degradationAlertCount = 0;
           this.cleanupExpiredRateLimits();
@@ -607,7 +620,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         } else {
           this.clickRateLimitMetrics.redisErrorCount += 1;
         }
-        this.logger.warn(`Redis checkClickRateLimitAtomic lỗi/timeout, fallback in-memory: ${errMsg}`);
+        this.logger.warn(
+          `Redis checkClickRateLimitAtomic lỗi/timeout, fallback in-memory: ${errMsg}`,
+        );
       }
     }
 
@@ -619,7 +634,10 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     this.degradationAlertCount += 1;
     this.clickRateLimitMetrics.degradedCount += 1;
 
-    if (this.degradationAlertCount === 1 || this.degradationAlertCount % 100 === 0) {
+    if (
+      this.degradationAlertCount === 1 ||
+      this.degradationAlertCount % 100 === 0
+    ) {
       this.logger.error(
         `[OPERATIONAL ALERT - REDIS DEGRADED] FR-14 Rate Limiting đang chạy ở chế độ fallback RAM (${this.degradationAlertCount} lần)! ` +
           `Cảnh báo: Tính năng rate-limit phân tán giữa nhiều instance đang bị suy giảm.`,
@@ -629,9 +647,15 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     let entry = this.fallbackSlidingWindowMap.get(ipHash);
     if (!entry) {
       // Giới hạn dung lượng fallback map (Lỗi 12)
-      if (this.fallbackSlidingWindowMap.size >= CacheService.MAX_FALLBACK_RATELIMIT_ENTRIES) {
+      if (
+        this.fallbackSlidingWindowMap.size >=
+        CacheService.MAX_FALLBACK_RATELIMIT_ENTRIES
+      ) {
         this.cleanupExpiredRateLimits();
-        if (this.fallbackSlidingWindowMap.size >= CacheService.MAX_FALLBACK_RATELIMIT_ENTRIES) {
+        if (
+          this.fallbackSlidingWindowMap.size >=
+          CacheService.MAX_FALLBACK_RATELIMIT_ENTRIES
+        ) {
           const oldestKey = this.fallbackSlidingWindowMap.keys().next().value;
           if (oldestKey) this.fallbackSlidingWindowMap.delete(oldestKey);
         }
@@ -778,8 +802,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     const totalBlocked =
       this.clickRateLimitMetrics.blockedSecCount +
       this.clickRateLimitMetrics.blockedMinCount;
-    const blockedRatio =
-      totalRequests > 0 ? totalBlocked / totalRequests : 0;
+    const blockedRatio = totalRequests > 0 ? totalBlocked / totalRequests : 0;
     const isBlockedRateHigh = totalRequests >= 20 && blockedRatio > 0.2;
 
     // Lấy top spike: Ưu tiên dữ liệu đa instance từ Redis (cửa sổ trượt 5 phút)
@@ -794,14 +817,20 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         .slice(0, 5);
     }
 
-    if (!isRedisLive || (topStores.length === 0 && this.spikeByStore.size > 0)) {
+    if (
+      !isRedisLive ||
+      (topStores.length === 0 && this.spikeByStore.size > 0)
+    ) {
       topStores = Array.from(this.spikeByStore.entries())
         .map(([storeId, count]) => ({ storeId, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
     }
 
-    if (!isRedisLive || (topCollaborators.length === 0 && this.spikeByCollaborator.size > 0)) {
+    if (
+      !isRedisLive ||
+      (topCollaborators.length === 0 && this.spikeByCollaborator.size > 0)
+    ) {
       topCollaborators = Array.from(this.spikeByCollaborator.entries())
         .map(([collaboratorId, count]) => ({ collaboratorId, count }))
         .sort((a, b) => b.count - a.count)
@@ -867,7 +896,8 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       },
       runbook: {
         documentationUrl: 'docs/RUNBOOK_REDIS_RATE_LIMIT.md',
-        guide: 'Xem runbook chi tiết xử lý sự cố Redis down và DDoS cày click tại docs/RUNBOOK_REDIS_RATE_LIMIT.md',
+        guide:
+          'Xem runbook chi tiết xử lý sự cố Redis down và DDoS cày click tại docs/RUNBOOK_REDIS_RATE_LIMIT.md',
       },
     };
   }

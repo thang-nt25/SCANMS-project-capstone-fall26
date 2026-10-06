@@ -196,7 +196,10 @@ export class CommissionsService {
         const eligibleAt =
           receiptAt.getTime() <= now.getTime() ? receiptAt : now;
         // Động cơ Bảo Chứng Escrow thích ứng Lễ/Tết Việt Nam (Nhiệm vụ 3 - Leader Thắng)
-        const escrowCalc = calculateAdaptiveEscrowReleaseDate(eligibleAt, COMMISSION_HOLD_DAYS);
+        const escrowCalc = calculateAdaptiveEscrowReleaseDate(
+          eligibleAt,
+          COMMISSION_HOLD_DAYS,
+        );
         const availableAt = escrowCalc.availableAt;
         const hasPayableCommission =
           calculation.totalCommissionAmount.greaterThan(0);
@@ -345,7 +348,10 @@ export class CommissionsService {
    */
   getEscrowPolicyInfo(sampleDate?: string) {
     const targetDate = sampleDate ? new Date(sampleDate) : new Date();
-    const calculation = calculateAdaptiveEscrowReleaseDate(targetDate, COMMISSION_HOLD_DAYS);
+    const calculation = calculateAdaptiveEscrowReleaseDate(
+      targetDate,
+      COMMISSION_HOLD_DAYS,
+    );
     return {
       policy: {
         baseHoldDays: COMMISSION_HOLD_DAYS,
@@ -385,13 +391,17 @@ export class CommissionsService {
 
     const now = new Date();
     const isMatured = commission.availableAt.getTime() <= now.getTime();
-    const remainingMs = Math.max(0, commission.availableAt.getTime() - now.getTime());
+    const remainingMs = Math.max(
+      0,
+      commission.availableAt.getTime() - now.getTime(),
+    );
     const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
     const remainingDays = Math.floor(remainingHours / 24);
     const remainingHoursInDay = remainingHours % 24;
 
     const holidayCheck = isVietnamHoliday(now);
-    const isFrozenDueToDispute = commission.order.status === OrderStatus.RETURNED;
+    const isFrozenDueToDispute =
+      commission.order.status === OrderStatus.RETURNED;
 
     return {
       commissionId: commission.id,

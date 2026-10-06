@@ -94,7 +94,8 @@ export class OrdersController {
   @Post('validate-cart')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Kiểm tra tính hợp lệ, tồn kho và giá hiện hành của giỏ hàng trước khi chốt đơn (FR-Checkout)',
+    summary:
+      'Kiểm tra tính hợp lệ, tồn kho và giá hiện hành của giỏ hàng trước khi chốt đơn (FR-Checkout)',
     description:
       'Đối chiếu từng sản phẩm, phân loại SKU, giá hiện hành từ cơ sở dữ liệu và tình trạng kho để cảnh báo khách mua.',
   })
@@ -141,7 +142,10 @@ export class OrdersController {
     dto.customerId = userId;
     if (dto.paymentMethod === 'PAYOS') this.payosPaymentService.assertReady();
     const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
-    await this.ordersService.checkCreateOrderRateLimit(rawIp, dto.customerPhone);
+    await this.ordersService.checkCreateOrderRateLimit(
+      rawIp,
+      dto.customerPhone,
+    );
 
     const cookieAttr = readCookie(req, ['scanms_attr', 'scanms_attribution']);
     const legacyCookieRef = readCookie(req, [
@@ -191,7 +195,10 @@ export class OrdersController {
       'Xác thực chữ ký HMAC-SHA256, kiểm tra số tiền và cập nhật trạng thái đơn sang PAID kèm ghi nhận AuditLog nguyên tử.',
   })
   @ApiResponse({ status: 200, description: 'Đối soát thanh toán thành công' })
-  @ApiResponse({ status: 400, description: 'Số tiền hoặc đơn hàng không hợp lệ' })
+  @ApiResponse({
+    status: 400,
+    description: 'Số tiền hoặc đơn hàng không hợp lệ',
+  })
   @ApiResponse({ status: 403, description: 'Chữ ký webhook không hợp lệ' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy đơn hàng' })
   async reconcilePayment(
@@ -201,20 +208,25 @@ export class OrdersController {
     @Headers('x-signature') altSignatureHeader?: string,
     @Req() req?: Request,
   ) {
-    const signatureOrSecret = signatureHeader || altSignatureHeader || secretHeader;
+    const signatureOrSecret =
+      signatureHeader || altSignatureHeader || secretHeader;
     const rawBody = (req as any)?.rawBody;
     return this.ordersService.reconcilePayment(dto, signatureOrSecret, rawBody);
   }
 
   @Post('payos/webhook')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'PayOS webhook đã ký: xác nhận thanh toán đơn hàng' })
+  @ApiOperation({
+    summary: 'PayOS webhook đã ký: xác nhận thanh toán đơn hàng',
+  })
   async payosWebhook(@Body() body: PayosWebhook) {
     return this.payosPaymentService.handleWebhook(body);
   }
 
   @Get('payos/availability')
-  @ApiOperation({ summary: 'Kiểm tra PayOS đã được cấu hình cho thanh toán hay chưa' })
+  @ApiOperation({
+    summary: 'Kiểm tra PayOS đã được cấu hình cho thanh toán hay chưa',
+  })
   getPayosAvailability() {
     return this.payosPaymentService.isAvailable();
   }
@@ -233,14 +245,15 @@ export class OrdersController {
   @Get('payos/:publicCode/status')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Tra trạng thái PayOS của đơn hàng thuộc tài khoản' })
+  @ApiOperation({
+    summary: 'Tra trạng thái PayOS của đơn hàng thuộc tài khoản',
+  })
   async getPayosStatus(
     @Param('publicCode') publicCode: string,
     @CurrentUser('id') userId: string,
   ) {
     return this.payosPaymentService.getStatus(publicCode, userId);
   }
-
 
   @Post('manual')
   @HttpCode(HttpStatus.CREATED)
@@ -329,11 +342,15 @@ export class OrdersController {
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Lấy danh sách đơn hàng thực tế của Gian hàng (Fulfillment & Tracking)',
+    summary:
+      'Lấy danh sách đơn hàng thực tế của Gian hàng (Fulfillment & Tracking)',
     description:
       'Trả về danh sách đơn hàng thực tế từ database kèm sản phẩm, người mua, hoa hồng KOL, mã vận đơn bưu cục',
   })
-  @ApiResponse({ status: 200, description: 'Lấy danh sách đơn hàng thành công' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lấy danh sách đơn hàng thành công',
+  })
   async getMyStoreOrders(
     @CurrentUser() manager: OrderManagerIdentity,
     @Query() query: QueryStoreOrdersDto,
@@ -345,13 +362,20 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Shop duyệt hoặc từ chối yêu cầu đổi trả của đơn thuộc Shop mình' })
+  @ApiOperation({
+    summary: 'Shop duyệt hoặc từ chối yêu cầu đổi trả của đơn thuộc Shop mình',
+  })
   async respondReturnRequest(
     @CurrentUser() manager: OrderManagerIdentity,
     @Param('id', ParseUUIDPipe) orderId: string,
     @Body() dto: RespondReturnRequestDto,
   ) {
-    return this.ordersService.respondReturnRequest(orderId, manager.id, manager.role, dto);
+    return this.ordersService.respondReturnRequest(
+      orderId,
+      manager.id,
+      manager.role,
+      dto,
+    );
   }
 
   @Patch(':id/fulfillment')
@@ -361,13 +385,21 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Cập nhật trạng thái giao hàng & mã vận đơn bưu cục cho đơn hàng',
   })
-  @ApiResponse({ status: 200, description: 'Cập nhật trạng thái đơn hàng thành công' })
+  @ApiResponse({
+    status: 200,
+    description: 'Cập nhật trạng thái đơn hàng thành công',
+  })
   async updateOrderFulfillment(
     @CurrentUser() manager: OrderManagerIdentity,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateOrderFulfillmentDto,
   ) {
-    return this.ordersService.updateOrderFulfillment(id, manager.id, manager.role, dto);
+    return this.ordersService.updateOrderFulfillment(
+      id,
+      manager.id,
+      manager.role,
+      dto,
+    );
   }
 
   @Get('track')
@@ -508,8 +540,14 @@ export class OrdersController {
     description:
       'Gửi mã OTP 6 chữ số đến số điện thoại đặt hàng để khách xác thực hủy đơn khi không còn cancellationToken.',
   })
-  @ApiResponse({ status: 200, description: 'Mã OTP đã được tạo và gửi thành công' })
-  @ApiResponse({ status: 400, description: 'Thông tin hoặc trạng thái đơn không hợp lệ' })
+  @ApiResponse({
+    status: 200,
+    description: 'Mã OTP đã được tạo và gửi thành công',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Thông tin hoặc trạng thái đơn không hợp lệ',
+  })
   @ApiResponse({ status: 403, description: 'Số điện thoại không khớp' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy đơn hàng' })
   @ApiResponse({ status: 429, description: 'Quá nhiều yêu cầu gửi OTP' })
@@ -549,7 +587,8 @@ export class OrdersController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Lấy danh sách các đơn hàng có khiếu nại tranh chấp (Admin Portal)',
+    summary:
+      'Lấy danh sách các đơn hàng có khiếu nại tranh chấp (Admin Portal)',
   })
   async getAdminDisputes() {
     return this.ordersService.getAdminDisputes();
@@ -599,7 +638,8 @@ export class OrdersController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Trọng tài độc lập SCANMS ban hành Phán quyết Tranh chấp cuối cùng',
+    summary:
+      'Trọng tài độc lập SCANMS ban hành Phán quyết Tranh chấp cuối cùng',
   })
   async arbitrateDispute(
     @Param('id') orderId: string,
@@ -613,8 +653,11 @@ export class OrdersController {
     },
   ) {
     const adminIp = req.ip || ip;
-    return this.ordersService.arbitrateDispute(orderId, adminUser, adminIp, dto);
+    return this.ordersService.arbitrateDispute(
+      orderId,
+      adminUser,
+      adminIp,
+      dto,
+    );
   }
 }
-
-

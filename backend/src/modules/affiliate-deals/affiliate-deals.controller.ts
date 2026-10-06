@@ -29,21 +29,27 @@ export class AffiliateDealsController {
 
   @Get('mine')
   @Roles(UserRole.COLLABORATOR)
-  @ApiOperation({ summary: 'KOL xem trạng thái các đề xuất deal riêng của mình' })
+  @ApiOperation({
+    summary: 'KOL xem trạng thái các đề xuất deal riêng của mình',
+  })
   getMine(@CurrentUser('id') userId: string) {
     return this.service.getMyProposals(userId);
   }
 
   @Get('my-status')
   @Roles(UserRole.COLLABORATOR)
-  @ApiOperation({ summary: 'KOL kiểm tra trạng thái điều kiện nhận deal độc quyền & cooldown' })
+  @ApiOperation({
+    summary: 'KOL kiểm tra trạng thái điều kiện nhận deal độc quyền & cooldown',
+  })
   getMyStatus(@CurrentUser('id') userId: string) {
     return this.service.getMyDealStatus(userId);
   }
 
   @Post('proposals')
   @Roles(UserRole.COLLABORATOR)
-  @ApiOperation({ summary: 'KOL gửi đề xuất mức VIP và cam kết doanh số cho Shop' })
+  @ApiOperation({
+    summary: 'KOL gửi đề xuất mức VIP và cam kết doanh số cho Shop',
+  })
   createProposal(
     @CurrentUser('id') userId: string,
     @Body() dto: CreateExclusiveDealDto,
@@ -63,7 +69,9 @@ export class AffiliateDealsController {
 
   @Patch(':id/approve')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  @ApiOperation({ summary: 'Shop chấp thuận deal và tự tạo link VIP riêng cho KOL' })
+  @ApiOperation({
+    summary: 'Shop chấp thuận deal và tự tạo link VIP riêng cho KOL',
+  })
   approve(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
@@ -86,7 +94,10 @@ export class AffiliateDealsController {
 
   @Post(':id/terminate')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  @ApiOperation({ summary: 'Shop đóng deal độc quyền khi KOL không đạt cam kết và áp dụng chế tài 4 cấp độ' })
+  @ApiOperation({
+    summary:
+      'Shop đóng deal độc quyền khi KOL không đạt cam kết và áp dụng chế tài 4 cấp độ',
+  })
   terminate(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
@@ -103,7 +114,10 @@ export class AffiliateDealsController {
     UserRole.SYSTEM_ADMIN,
     UserRole.SYSTEM_MANAGER,
   )
-  @ApiOperation({ summary: 'KOL hoặc Shop gỡ bỏ hoặc hủy đề xuất Exclusive Deal khi không còn dùng hoặc hết hạn' })
+  @ApiOperation({
+    summary:
+      'KOL hoặc Shop gỡ bỏ hoặc hủy đề xuất Exclusive Deal khi không còn dùng hoặc hết hạn',
+  })
   deleteProposal(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,

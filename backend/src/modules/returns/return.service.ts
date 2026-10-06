@@ -5,8 +5,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
+import { WalletsService } from '../wallets/wallets.service';
 import { timingSafeEqual } from 'crypto';
 import {
   OrderStatus,
@@ -42,7 +44,10 @@ const detailInclude = {
       shippingAddress: true,
       finalAmount: true,
       refundedAmount: true,
-      store: { select: { id: true, ownerId: true, name: true, returnWarehouse: true } },
+      customerId: true,
+      store: {
+        select: { id: true, ownerId: true, name: true, returnWarehouse: true },
+      },
       paymentTransactions: {
         select: { paymentMethod: true, status: true },
         orderBy: { createdAt: 'desc' as const },
@@ -75,6 +80,7 @@ export class ReturnService {
     private readonly prisma: PrismaService,
     private readonly cloudinary: CloudinaryService,
     private readonly pickupGateway: PickupGateway = new PickupGateway(),
+    @Optional() private readonly walletsService?: WalletsService,
   ) {}
 
   private scope(
@@ -171,12 +177,15 @@ export class ReturnService {
         customerPhone: order.customerPhone,
         shippingAddress: order.shippingAddress,
       },
-      returnWarehouse: warehouseSchema.safeParse(order.store.returnWarehouse).success
+      returnWarehouse: warehouseSchema.safeParse(order.store.returnWarehouse)
+        .success
         ? order.store.returnWarehouse
         : null,
       pickupProviderMode: this.pickupGateway.mode(),
-      pickupSimulationEnabled: process.env.NODE_ENV !== 'production' &&
-        (this.pickupGateway.mode() === 'mock' || process.env.RETURN_PICKUP_SIMULATION_ENABLED === 'true'),
+      pickupSimulationEnabled:
+        process.env.NODE_ENV !== 'production' &&
+        (this.pickupGateway.mode() === 'mock' ||
+          process.env.RETURN_PICKUP_SIMULATION_ENABLED === 'true'),
       customerShipment:
         shipments.find(
           (s) => s.direction === ReturnShipmentDirection.CUSTOMER_TO_SHOP,
@@ -224,7 +233,12 @@ export class ReturnService {
     };
   }
 
-  async saveWarehouse(userId: string, role: UserRole, id: string, input: WarehouseInput) {
+  async saveWarehouse(
+    userId: string,
+    role: UserRole,
+    id: string,
+    input: WarehouseInput,
+  ) {
     const detail = await this.scopedDetail(userId, role, id);
     this.requireShop(userId, role, detail);
     await this.prisma.$transaction(async (tx) => {
@@ -232,168 +246,376 @@ export class ReturnService {
         where: { id: detail.order.store.id, ownerId: userId },
         data: { returnWarehouse: input },
       });
-      if (changed.count !== 1) throw new ConflictException('Gian hàng đã thay đổi');
+      if (changed.count !== 1)
+        throw new ConflictException('Gian hàng đã thay đổi');
       // Existing approved requests can now book pickup without asking for an address per order.
       const waiting = await tx.returnRequest.findMany({
-        where: { order: { storeId: detail.order.store.id }, status: ReturnRequestStatus.SHOP_APPROVED, shipByAt: null },
-        select: { id: true, customerId: true, orderId: true, order: { select: { externalOrderSn: true } } },
+        where: {
+          order: { storeId: detail.order.store.id },
+          status: ReturnRequestStatus.SHOP_APPROVED,
+          shipByAt: null,
+        },
+        select: {
+          id: true,
+          customerId: true,
+          orderId: true,
+          order: { select: { externalOrderSn: true } },
+        },
       });
       for (const request of waiting) {
         const updated = await tx.returnRequest.updateMany({
-          where: { id: request.id, status: ReturnRequestStatus.SHOP_APPROVED, shipByAt: null },
+          where: {
+            id: request.id,
+            status: ReturnRequestStatus.SHOP_APPROVED,
+            shipByAt: null,
+          },
           data: {
             returnAddress: input.address,
-            returnInstructions: 'Đóng gói sản phẩm và chờ đơn vị vận chuyển đến lấy tại địa chỉ đã xác nhận.',
+            returnInstructions:
+              'Đóng gói sản phẩm và chờ đơn vị vận chuyển đến lấy tại địa chỉ đã xác nhận.',
             shipByAt: new Date(Date.now() + SHIP_WINDOW_MS),
           },
         });
         if (updated.count === 1) {
-          await tx.returnEvent.create({ data: { returnRequestId: request.id, actorId: userId, type: 'PICKUP_WAREHOUSE_READY' } });
-          await tx.notification.create({ data: {
-            userId: request.customerId,
-            type: 'RETURN_PICKUP_READY',
-            title: 'Có thể đặt lấy hàng trả tại nhà',
-            message: `Đơn ${request.order.externalOrderSn}: vui lòng xác nhận địa chỉ lấy hàng trong 7 ngày.`,
-            data: { orderId: request.orderId, returnRequestId: request.id },
-          } });
+          await tx.returnEvent.create({
+            data: {
+              returnRequestId: request.id,
+              actorId: userId,
+              type: 'PICKUP_WAREHOUSE_READY',
+            },
+          });
+          await tx.notification.create({
+            data: {
+              userId: request.customerId,
+              type: 'RETURN_PICKUP_READY',
+              title: 'Có thể đặt lấy hàng trả tại nhà',
+              message: `Đơn ${request.order.externalOrderSn}: vui lòng xác nhận địa chỉ lấy hàng trong 7 ngày.`,
+              data: { orderId: request.orderId, returnRequestId: request.id },
+            },
+          });
         }
       }
     });
     return this.getOne(userId, role, id);
   }
 
-  async bookPickup(userId: string, role: UserRole, id: string, input: BookPickupInput) {
+  async bookPickup(
+    userId: string,
+    role: UserRole,
+    id: string,
+    input: BookPickupInput,
+  ) {
     const detail = await this.scopedDetail(userId, role, id);
     this.requireCustomer(userId, detail);
-    if (detail.status === ReturnRequestStatus.PICKUP_BOOKED) return this.present(detail);
-    const warehouse = warehouseSchema.safeParse(detail.order.store.returnWarehouse);
-    if (!warehouse.success) throw new ConflictException('Shop chưa cấu hình kho nhận hàng trả');
-    if (detail.status !== ReturnRequestStatus.SHOP_APPROVED || !detail.shipByAt) {
+    if (detail.status === ReturnRequestStatus.PICKUP_BOOKED)
+      return this.present(detail);
+    const warehouse = warehouseSchema.safeParse(
+      detail.order.store.returnWarehouse,
+    );
+    if (!warehouse.success)
+      throw new ConflictException('Shop chưa cấu hình kho nhận hàng trả');
+    if (
+      detail.status !== ReturnRequestStatus.SHOP_APPROVED ||
+      !detail.shipByAt
+    ) {
       throw new ConflictException('Hồ sơ chưa sẵn sàng đặt lấy hàng');
     }
-    if (detail.shipByAt.getTime() <= Date.now()) throw new ConflictException('Đã quá hạn đặt lấy hàng');
+    if (detail.shipByAt.getTime() <= Date.now())
+      throw new ConflictException('Đã quá hạn đặt lấy hàng');
     const clientOrderCode = `SC-R-${id.replace(/-/g, '')}`;
     const booking = await this.pickupGateway.book({
       clientOrderCode,
       pickup: input,
       warehouse: warehouse.data,
-      content: detail.items.map((item) => `${item.orderItem.product.title} x${item.quantity}`).join(', ') || 'Hàng trả SCANMS',
+      content:
+        detail.items
+          .map((item) => `${item.orderItem.product.title} x${item.quantity}`)
+          .join(', ') || 'Hàng trả SCANMS',
     });
     await this.prisma.$transaction(async (tx) => {
-      const current = await tx.returnRequest.findFirst({ where: { id, customerId: userId, status: ReturnRequestStatus.SHOP_APPROVED }, include: detailInclude });
-      if (!current || !current.shipByAt || current.shipByAt.getTime() <= Date.now()) {
+      const current = await tx.returnRequest.findFirst({
+        where: {
+          id,
+          customerId: userId,
+          status: ReturnRequestStatus.SHOP_APPROVED,
+        },
+        include: detailInclude,
+      });
+      if (
+        !current ||
+        !current.shipByAt ||
+        current.shipByAt.getTime() <= Date.now()
+      ) {
         throw new ConflictException('Hồ sơ đã thay đổi; vui lòng tải lại');
       }
-      await this.move(tx, id, ReturnRequestStatus.SHOP_APPROVED, ReturnRequestStatus.PICKUP_BOOKED, userId, {
-        pickupContact: input,
-        returnAddress: warehouse.data.address,
+      await this.move(
+        tx,
+        id,
+        ReturnRequestStatus.SHOP_APPROVED,
+        ReturnRequestStatus.PICKUP_BOOKED,
+        userId,
+        {
+          pickupContact: input,
+          returnAddress: warehouse.data.address,
+        },
+      );
+      await tx.returnShipment.create({
+        data: {
+          returnRequestId: id,
+          direction: ReturnShipmentDirection.CUSTOMER_TO_SHOP,
+          carrierName: booking.carrierName,
+          trackingNumber: booking.trackingNumber,
+          provider: booking.provider,
+          providerStatus: booking.providerStatus,
+          clientOrderCode,
+          feeAmount: booking.feeAmount,
+          bookedAt: new Date(),
+        },
       });
-      await tx.returnShipment.create({ data: {
-        returnRequestId: id,
-        direction: ReturnShipmentDirection.CUSTOMER_TO_SHOP,
-        carrierName: booking.carrierName,
-        trackingNumber: booking.trackingNumber,
-        provider: booking.provider,
-        providerStatus: booking.providerStatus,
-        clientOrderCode,
-        feeAmount: booking.feeAmount,
-        bookedAt: new Date(),
-      } });
-      await this.notify(tx, current, current.order.store.ownerId, 'RETURN_PICKUP_BOOKED',
-        'Khách đã đặt lấy hàng trả', `Đơn ${current.order.externalOrderSn}: vận đơn ${booking.trackingNumber}.`);
-      await this.notify(tx, current, current.customerId, 'RETURN_PICKUP_BOOKED',
-        'Đã đặt đơn lấy hàng trả', `Đơn ${current.order.externalOrderSn}: mã vận đơn ${booking.trackingNumber}.`);
+      await this.notify(
+        tx,
+        current,
+        current.order.store.ownerId,
+        'RETURN_PICKUP_BOOKED',
+        'Khách đã đặt lấy hàng trả',
+        `Đơn ${current.order.externalOrderSn}: vận đơn ${booking.trackingNumber}.`,
+      );
+      await this.notify(
+        tx,
+        current,
+        current.customerId,
+        'RETURN_PICKUP_BOOKED',
+        'Đã đặt đơn lấy hàng trả',
+        `Đơn ${current.order.externalOrderSn}: mã vận đơn ${booking.trackingNumber}.`,
+      );
     });
     return this.getOne(userId, role, id);
   }
 
-  async simulatePickup(userId: string, role: UserRole, id: string, status: 'picked' | 'delivered') {
+  async simulatePickup(
+    userId: string,
+    role: UserRole,
+    id: string,
+    status: 'picked' | 'delivered',
+  ) {
     const detail = await this.scopedDetail(userId, role, id);
-    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER) this.requireShop(userId, role, detail);
-    if (process.env.NODE_ENV === 'production' ||
-      (this.pickupGateway.mode() !== 'mock' && process.env.RETURN_PICKUP_SIMULATION_ENABLED !== 'true')) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      this.requireShop(userId, role, detail);
+    if (
+      process.env.NODE_ENV === 'production' ||
+      (this.pickupGateway.mode() !== 'mock' &&
+        process.env.RETURN_PICKUP_SIMULATION_ENABLED !== 'true')
+    ) {
       throw new ForbiddenException('Mô phỏng vận chuyển chưa được bật');
     }
-    const shipment = detail.shipments.find((item) => item.direction === ReturnShipmentDirection.CUSTOMER_TO_SHOP);
-    if (!shipment?.provider) throw new ConflictException('Chưa có đơn lấy hàng tự động');
-    await this.applyCarrierStatus(shipment.trackingNumber, status, shipment.provider);
+    const shipment = detail.shipments.find(
+      (item) => item.direction === ReturnShipmentDirection.CUSTOMER_TO_SHOP,
+    );
+    if (!shipment?.provider)
+      throw new ConflictException('Chưa có đơn lấy hàng tự động');
+    await this.applyCarrierStatus(
+      shipment.trackingNumber,
+      status,
+      shipment.provider,
+    );
     return this.getOne(userId, role, id);
   }
 
   async syncPickup(userId: string, role: UserRole, id: string) {
     const detail = await this.scopedDetail(userId, role, id);
-    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER) this.requireShop(userId, role, detail);
-    const shipment = detail.shipments.find((item) => item.direction === ReturnShipmentDirection.CUSTOMER_TO_SHOP);
-    if (!shipment || shipment.provider !== 'GHN_STAGING') throw new ConflictException('Hồ sơ không có vận đơn GHN Staging');
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      this.requireShop(userId, role, detail);
+    const shipment = detail.shipments.find(
+      (item) => item.direction === ReturnShipmentDirection.CUSTOMER_TO_SHOP,
+    );
+    if (!shipment || shipment.provider !== 'GHN_STAGING')
+      throw new ConflictException('Hồ sơ không có vận đơn GHN Staging');
     const status = await this.pickupGateway.status(shipment.trackingNumber);
-    await this.applyCarrierStatus(shipment.trackingNumber, status, 'GHN_STAGING');
+    await this.applyCarrierStatus(
+      shipment.trackingNumber,
+      status,
+      'GHN_STAGING',
+    );
     return this.getOne(userId, role, id);
   }
 
-  async handleGhnWebhook(secret: string | undefined, payload: { OrderCode?: string; Status?: string; ShopID?: number }) {
+  async handleGhnWebhook(
+    secret: string | undefined,
+    payload: { OrderCode?: string; Status?: string; ShopID?: number },
+  ) {
     const expected = process.env.GHN_STAGING_WEBHOOK_SECRET;
-    if (!expected || !secret || Buffer.byteLength(secret) !== Buffer.byteLength(expected) ||
-      !timingSafeEqual(Buffer.from(secret), Buffer.from(expected))) {
+    if (
+      !expected ||
+      !secret ||
+      Buffer.byteLength(secret) !== Buffer.byteLength(expected) ||
+      !timingSafeEqual(Buffer.from(secret), Buffer.from(expected))
+    ) {
       throw new UnauthorizedException('Webhook không hợp lệ');
     }
-    if (this.pickupGateway.mode() !== 'staging' || payload.ShopID !== Number(process.env.GHN_STAGING_SHOP_ID)) {
-      throw new UnauthorizedException('Webhook không thuộc tài khoản GHN Staging');
+    if (
+      this.pickupGateway.mode() !== 'staging' ||
+      payload.ShopID !== Number(process.env.GHN_STAGING_SHOP_ID)
+    ) {
+      throw new UnauthorizedException(
+        'Webhook không thuộc tài khoản GHN Staging',
+      );
     }
-    if (!payload.OrderCode || !payload.Status) throw new BadRequestException('Thiếu thông tin vận đơn');
-    await this.applyCarrierStatus(payload.OrderCode, payload.Status, 'GHN_STAGING');
+    if (!payload.OrderCode || !payload.Status)
+      throw new BadRequestException('Thiếu thông tin vận đơn');
+    await this.applyCarrierStatus(
+      payload.OrderCode,
+      payload.Status,
+      'GHN_STAGING',
+    );
     return { received: true };
   }
 
-  private async applyCarrierStatus(trackingNumber: string, status: string, provider: string) {
+  private async applyCarrierStatus(
+    trackingNumber: string,
+    status: string,
+    provider: string,
+  ) {
     const shipment = await this.prisma.returnShipment.findFirst({
-      where: { trackingNumber, provider, direction: ReturnShipmentDirection.CUSTOMER_TO_SHOP },
+      where: {
+        trackingNumber,
+        provider,
+        direction: ReturnShipmentDirection.CUSTOMER_TO_SHOP,
+      },
       include: { returnRequest: { include: detailInclude } },
     });
     if (!shipment) return; // GHN may send the create callback before the local booking transaction commits.
     const ranks: Record<string, number> = {
-      ready_to_pick: 0, picking: 1, money_collect_picking: 1,
-      picked: 2, storing: 3, sorting: 4, transporting: 5,
-      delivering: 6, money_collect_delivering: 6, delivery_fail: 6,
-      waiting_to_return: 6, return: 6, return_transporting: 6,
-      return_sorting: 6, returning: 6, return_fail: 6,
-      delivered: 7, returned: 7, cancel: 7, exception: 7, lost: 7, damage: 7, scrap: 7,
+      ready_to_pick: 0,
+      picking: 1,
+      money_collect_picking: 1,
+      picked: 2,
+      storing: 3,
+      sorting: 4,
+      transporting: 5,
+      delivering: 6,
+      money_collect_delivering: 6,
+      delivery_fail: 6,
+      waiting_to_return: 6,
+      return: 6,
+      return_transporting: 6,
+      return_sorting: 6,
+      returning: 6,
+      return_fail: 6,
+      delivered: 7,
+      returned: 7,
+      cancel: 7,
+      exception: 7,
+      lost: 7,
+      damage: 7,
+      scrap: 7,
     };
     const incomingRank = ranks[status];
-    if (shipment.providerStatus === 'delivered' || incomingRank === undefined ||
+    if (
+      shipment.providerStatus === 'delivered' ||
+      incomingRank === undefined ||
       incomingRank < (ranks[shipment.providerStatus || 'ready_to_pick'] ?? 0) ||
-      status === shipment.providerStatus) return;
-    const onRoute = ['picked', 'storing', 'sorting', 'transporting', 'delivering', 'money_collect_delivering', 'delivered'].includes(status);
+      status === shipment.providerStatus
+    )
+      return;
+    const onRoute = [
+      'picked',
+      'storing',
+      'sorting',
+      'transporting',
+      'delivering',
+      'money_collect_delivering',
+      'delivered',
+    ].includes(status);
     await this.prisma.$transaction(async (tx) => {
       const updated = await tx.returnShipment.updateMany({
         where: { id: shipment.id, version: shipment.version },
         data: {
           providerStatus: status,
           version: { increment: 1 },
-          ...(onRoute && !shipment.pickedUpAt ? { pickedUpAt: new Date() } : {}),
+          ...(onRoute && !shipment.pickedUpAt
+            ? { pickedUpAt: new Date() }
+            : {}),
           ...(status === 'delivered' ? { receivedAt: new Date() } : {}),
         },
       });
       if (updated.count !== 1) return;
       const request = shipment.returnRequest;
       if (onRoute && request.status === ReturnRequestStatus.PICKUP_BOOKED) {
-        await this.move(tx, request.id, ReturnRequestStatus.PICKUP_BOOKED, ReturnRequestStatus.RETURN_SHIPPED, null);
-        await this.notify(tx, request, request.customerId, 'RETURN_PICKED_UP', 'Đơn vị vận chuyển đã lấy hàng',
-          `Đơn ${request.order.externalOrderSn}: kiện hàng đang trên đường về Shop.`);
+        await this.move(
+          tx,
+          request.id,
+          ReturnRequestStatus.PICKUP_BOOKED,
+          ReturnRequestStatus.RETURN_SHIPPED,
+          null,
+        );
+        await this.notify(
+          tx,
+          request,
+          request.customerId,
+          'RETURN_PICKED_UP',
+          'Đơn vị vận chuyển đã lấy hàng',
+          `Đơn ${request.order.externalOrderSn}: kiện hàng đang trên đường về Shop.`,
+        );
       }
-      if (status === 'delivered' && (request.status === ReturnRequestStatus.PICKUP_BOOKED || request.status === ReturnRequestStatus.RETURN_SHIPPED)) {
-        await this.move(tx, request.id, ReturnRequestStatus.RETURN_SHIPPED, ReturnRequestStatus.RETURN_RECEIVED, null, { receivedAt: new Date() });
-        for (const recipient of [request.customerId, request.order.store.ownerId]) {
-          await this.notify(tx, request, recipient, 'RETURN_RECEIVED', 'Kiện hàng trả đã đến Shop',
-            `Đơn ${request.order.externalOrderSn}: Shop có thể bắt đầu kiểm tra.`);
+      if (
+        status === 'delivered' &&
+        (request.status === ReturnRequestStatus.PICKUP_BOOKED ||
+          request.status === ReturnRequestStatus.RETURN_SHIPPED)
+      ) {
+        await this.move(
+          tx,
+          request.id,
+          ReturnRequestStatus.RETURN_SHIPPED,
+          ReturnRequestStatus.RETURN_RECEIVED,
+          null,
+          { receivedAt: new Date() },
+        );
+        for (const recipient of [
+          request.customerId,
+          request.order.store.ownerId,
+        ]) {
+          await this.notify(
+            tx,
+            request,
+            recipient,
+            'RETURN_RECEIVED',
+            'Kiện hàng trả đã đến Shop',
+            `Đơn ${request.order.externalOrderSn}: Shop có thể bắt đầu kiểm tra.`,
+          );
         }
       }
-      if (['delivery_fail', 'return_fail', 'cancel', 'exception', 'lost', 'damage', 'scrap'].includes(status)) {
-        for (const recipient of [request.customerId, request.order.store.ownerId]) {
-          await this.notify(tx, request, recipient, 'RETURN_PICKUP_PROBLEM', 'Đơn hàng trả gặp sự cố vận chuyển',
-            `Đơn ${request.order.externalOrderSn}: GHN báo ${status}. Vui lòng liên hệ hỗ trợ.`);
+      if (
+        [
+          'delivery_fail',
+          'return_fail',
+          'cancel',
+          'exception',
+          'lost',
+          'damage',
+          'scrap',
+        ].includes(status)
+      ) {
+        for (const recipient of [
+          request.customerId,
+          request.order.store.ownerId,
+        ]) {
+          await this.notify(
+            tx,
+            request,
+            recipient,
+            'RETURN_PICKUP_PROBLEM',
+            'Đơn hàng trả gặp sự cố vận chuyển',
+            `Đơn ${request.order.externalOrderSn}: GHN báo ${status}. Vui lòng liên hệ hỗ trợ.`,
+          );
         }
       }
-      await tx.returnEvent.create({ data: { returnRequestId: request.id, type: 'PICKUP_PROVIDER_STATUS', data: { provider, status, trackingNumber } } });
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: request.id,
+          type: 'PICKUP_PROVIDER_STATUS',
+          data: { provider, status, trackingNumber },
+        },
+      });
     });
   }
 
@@ -483,8 +705,12 @@ export class ReturnService {
         'Shop chưa cấp hướng dẫn gửi trả hoặc hồ sơ không còn chờ gửi hàng',
       );
     }
-    if (warehouseSchema.safeParse(initial.order.store.returnWarehouse).success) {
-      throw new ConflictException('Hồ sơ này sử dụng lấy hàng tận nơi; vui lòng đặt lịch lấy hàng');
+    if (
+      warehouseSchema.safeParse(initial.order.store.returnWarehouse).success
+    ) {
+      throw new ConflictException(
+        'Hồ sơ này sử dụng lấy hàng tận nơi; vui lòng đặt lịch lấy hàng',
+      );
     }
     if (initial.shipByAt.getTime() <= Date.now())
       throw new ConflictException('Đã quá hạn gửi hàng trả');
@@ -568,7 +794,10 @@ export class ReturnService {
       });
       if (!shipment || shipment.receivedAt)
         throw new ConflictException('Shop đã nhận hàng hoặc chưa có vận đơn');
-      if (shipment.provider) throw new ConflictException('Mã vận đơn tự động không thể sửa thủ công');
+      if (shipment.provider)
+        throw new ConflictException(
+          'Mã vận đơn tự động không thể sửa thủ công',
+        );
       const changed = await tx.returnShipment.updateMany({
         where: { id: shipment.id, version: shipment.version, receivedAt: null },
         data: {
@@ -685,14 +914,58 @@ export class ReturnService {
         const payment = detail.order.paymentTransactions.find(
           (p) => p.status === 'SUCCESS',
         );
+
+        const refundTargetUser =
+          detail.customerId || (detail.order as any).customerId;
+        let refundSucceeded = false;
+        if (refundTargetUser && this.walletsService) {
+          try {
+            await this.walletsService.refundToWallet(
+              tx,
+              refundTargetUser,
+              amount,
+              detail.orderId,
+            );
+            refundSucceeded = true;
+          } catch (err) {
+            this.logger.error(`Lỗi hoàn tiền ví điện tử SCANMS: ${err}`);
+          }
+        }
+
         await tx.refund.create({
           data: {
             returnRequestId: id,
             amount,
-            method: payment?.paymentMethod || 'MANUAL_REVIEW',
+            method: refundSucceeded
+              ? 'WALLET'
+              : (payment?.paymentMethod || 'MANUAL_REVIEW'),
+            status: refundSucceeded ? 'SUCCEEDED' : 'PENDING',
+            processedAt: refundSucceeded ? new Date() : null,
             idempotencyKey: `return:${id}`,
           },
         });
+
+        if (refundSucceeded) {
+          await tx.order.update({
+            where: { id: detail.orderId },
+            data: { refundedAmount: { increment: amount } },
+          });
+
+          await this.move(
+            tx,
+            id,
+            ReturnRequestStatus.REFUND_PENDING,
+            ReturnRequestStatus.REFUND_PROCESSING,
+            userId,
+          );
+          await this.move(
+            tx,
+            id,
+            ReturnRequestStatus.REFUND_PROCESSING,
+            ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION,
+            userId,
+          );
+        }
       }
       await this.notify(
         tx,
@@ -979,20 +1252,63 @@ export class ReturnService {
         );
         if (amount.lessThanOrEqualTo(0))
           throw new ConflictException('Không còn số tiền có thể hoàn');
+        const refundTargetUser =
+          detail.customerId || (detail.order as any).customerId;
+        let refundSucceeded = false;
+        if (refundTargetUser && this.walletsService) {
+          try {
+            await this.walletsService.refundToWallet(
+              tx,
+              refundTargetUser,
+              amount,
+              detail.orderId,
+            );
+            refundSucceeded = true;
+          } catch (err) {
+            this.logger.error(`Lỗi hoàn tiền ví từ tranh chấp: ${err}`);
+          }
+        }
+
         await tx.refund.upsert({
           where: { returnRequestId: detail.id },
           create: {
             returnRequestId: detail.id,
             amount,
-            method: 'MANUAL_REVIEW',
+            method: refundSucceeded ? 'WALLET' : 'MANUAL_REVIEW',
+            status: refundSucceeded ? 'SUCCEEDED' : 'PENDING',
+            processedAt: refundSucceeded ? new Date() : null,
             idempotencyKey: `return:${detail.id}`,
           },
           update: {
-            status: 'PENDING',
+            status: refundSucceeded ? 'SUCCEEDED' : 'PENDING',
+            method: refundSucceeded ? 'WALLET' : 'MANUAL_REVIEW',
+            processedAt: refundSucceeded ? new Date() : null,
             failureReason: null,
             providerReference: null,
           },
         });
+
+        if (refundSucceeded) {
+          await tx.order.update({
+            where: { id: detail.orderId },
+            data: { refundedAmount: { increment: amount } },
+          });
+
+          await this.move(
+            tx,
+            detail.id,
+            ReturnRequestStatus.REFUND_PENDING,
+            ReturnRequestStatus.REFUND_PROCESSING,
+            adminId,
+          );
+          await this.move(
+            tx,
+            detail.id,
+            ReturnRequestStatus.REFUND_PROCESSING,
+            ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION,
+            adminId,
+          );
+        }
       }
       if (target === ReturnRequestStatus.CLOSED) {
         const orderChanged = await tx.order.updateMany({

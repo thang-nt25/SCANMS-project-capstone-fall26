@@ -93,7 +93,9 @@ describe('AuthService', () => {
   });
 
   it('returns 503 when the backend cannot reach Google', async () => {
-    jest.spyOn(global, 'fetch').mockRejectedValue(new TypeError('fetch failed'));
+    jest
+      .spyOn(global, 'fetch')
+      .mockRejectedValue(new TypeError('fetch failed'));
 
     await expect(
       authService.googleLogin({ idToken: 'ya29.valid' }),

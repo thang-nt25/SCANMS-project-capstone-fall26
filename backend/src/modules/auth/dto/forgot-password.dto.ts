@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, Length, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 
 export class SendForgotPasswordOtpDto {
   @ApiProperty({
@@ -48,7 +54,8 @@ export class ResetPasswordDto {
 
   @ApiProperty({
     example: 'Password@123',
-    description: 'Mật khẩu mới (tối thiểu 6 ký tự, gồm ít nhất 1 chữ hoa, 1 chữ thường và 1 số)',
+    description:
+      'Mật khẩu mới (tối thiểu 6 ký tự, gồm ít nhất 1 chữ hoa, 1 chữ thường và 1 số)',
   })
   @IsString()
   @Length(6, 50, { message: 'Mật khẩu phải từ 6 đến 50 ký tự' })

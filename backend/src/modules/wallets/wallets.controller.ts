@@ -1,26 +1,48 @@
-import { Controller, Delete, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Body,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
 import type { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 import { WalletSummaryService } from './wallet-summary.service';
+import { WalletsService } from './wallets.service';
 import { QueryLedgerDto } from './dto/query-ledger.dto';
+
+class TopUpDemoDto {
+  amount: number;
+}
 
 @ApiTags('Wallets')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.COLLABORATOR)
+@UseGuards(JwtAuthGuard)
 @Controller('wallets')
 export class WalletsController {
-  constructor(private readonly summaryService: WalletSummaryService) {}
+  constructor(
+    private readonly summaryService: WalletSummaryService,
+    private readonly walletsService: WalletsService,
+  ) {}
 
   @Get('me')
-  @ApiOperation({ summary: 'FR-22: Lấy số dư và điều kiện rút tiền của KOL' })
+  @ApiOperation({ summary: 'Lấy số dư ví và trạng thái của người dùng (Customer, KOL, Shop)' })
   getMyWallet(@CurrentUser() user: AuthenticatedUser) {
     return this.summaryService.getMyWallet(user.id);
+  }
+
+  @Post('top-up-demo')
+  @ApiOperation({ summary: 'Nạp tiền thử nghiệm Sandbox vào Ví SCANMS' })
+  topUpDemo(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: TopUpDemoDto,
+  ) {
+    const amount = Number(body?.amount || 0);
+    return this.walletsService.topUpDemo(user.id, amount);
   }
 
   @Delete('me/bank-account')
@@ -30,7 +52,7 @@ export class WalletsController {
   }
 
   @Get('me/ledger')
-  @ApiOperation({ summary: 'FR-23: Lịch sử sổ cái tài chính của chính KOL' })
+  @ApiOperation({ summary: 'Lịch sử sổ cái biến động số dư ví' })
   getMyLedger(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: QueryLedgerDto,

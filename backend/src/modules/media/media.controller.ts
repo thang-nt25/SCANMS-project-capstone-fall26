@@ -94,9 +94,16 @@ export class MediaController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+  )
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'KOL, Chủ Shop hoặc Quản trị viên xóa tài nguyên media' })
+  @ApiOperation({
+    summary: 'KOL, Chủ Shop hoặc Quản trị viên xóa tài nguyên media',
+  })
   async delete(
     @CurrentUser('id') ownerId: string,
     @CurrentUser('role') role: UserRole,

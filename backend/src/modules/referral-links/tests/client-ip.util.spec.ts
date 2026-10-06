@@ -151,13 +151,17 @@ describe('ClientIpUtil (FR-14)', () => {
         socket: { remoteAddress: '10.0.1.20' },
       };
       // Khi đã khai báo 10.0.0.0/8 trong TRUSTED_PROXIES -> tin cậy header
-      expect(extractTrustedClientIp(mockReq1, true, '10.0.0.0/8')).toBe('14.161.20.5');
+      expect(extractTrustedClientIp(mockReq1, true, '10.0.0.0/8')).toBe(
+        '14.161.20.5',
+      );
 
       const mockReq2: any = {
         headers: { 'cf-connecting-ip': '14.161.20.6' },
         socket: { remoteAddress: '172.20.0.5' },
       };
-      expect(extractTrustedClientIp(mockReq2, true, '172.20.0.5')).toBe('14.161.20.6');
+      expect(extractTrustedClientIp(mockReq2, true, '172.20.0.5')).toBe(
+        '14.161.20.6',
+      );
     });
 
     it('should always automatically trust loopback (127.0.0.1, ::1) when trustProxy is true', () => {
@@ -171,7 +175,9 @@ describe('ClientIpUtil (FR-14)', () => {
         headers: { 'cf-connecting-ip': '14.161.20.9' },
         socket: { remoteAddress: '::1' },
       };
-      expect(extractTrustedClientIp(mockReqIpv6Loopback, true)).toBe('14.161.20.9');
+      expect(extractTrustedClientIp(mockReqIpv6Loopback, true)).toBe(
+        '14.161.20.9',
+      );
     });
 
     it('should trust headers when socket matches custom CIDR or trustedProxies list', () => {
@@ -183,9 +189,9 @@ describe('ClientIpUtil (FR-14)', () => {
       expect(extractTrustedClientIp(mockReq, true)).toBe('198.51.100.44');
 
       // With custom CIDR configured
-      expect(
-        extractTrustedClientIp(mockReq, true, '198.51.100.0/24'),
-      ).toBe('14.161.20.7');
+      expect(extractTrustedClientIp(mockReq, true, '198.51.100.0/24')).toBe(
+        '14.161.20.7',
+      );
     });
   });
 });

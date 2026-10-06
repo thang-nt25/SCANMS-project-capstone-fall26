@@ -28,7 +28,8 @@ export class CreateStoreCouponDto {
   @MinLength(4, { message: 'Mã voucher phải có tối thiểu 4 ký tự' })
   @MaxLength(20, { message: 'Mã voucher không được vượt quá 20 ký tự' })
   @Matches(/^[A-Za-z0-9]+$/, {
-    message: 'Mã voucher chỉ được chứa chữ cái Latin (A-Z, a-z) và chữ số (0-9)',
+    message:
+      'Mã voucher chỉ được chứa chữ cái Latin (A-Z, a-z) và chữ số (0-9)',
   })
   @Matches(/^(?![0-9]+$)/, {
     message: 'Mã voucher không được chỉ toàn số, phải có ít nhất một chữ cái',
@@ -73,7 +74,8 @@ export class CreateStoreCouponDto {
   maximumDiscountAmount?: number;
 
   @ApiPropertyOptional({
-    description: 'Tổng số lượt sử dụng tối đa của mã (bỏ trống = không giới hạn)',
+    description:
+      'Tổng số lượt sử dụng tối đa của mã (bỏ trống = không giới hạn)',
     example: 200,
   })
   @IsOptional()

@@ -36,18 +36,17 @@ export class LeaderboardController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Lấy Bảng vinh danh Leaderboard đầy đủ (Podium Top 3, Bảng xếp hạng Top 4-20 & Vị trí của tôi)',
-    description: 'Hỗ trợ lọc theo Doanh thu GMV, Lượng đơn hàng, Tỷ lệ chốt đơn CR%, Hoa hồng, Tháng/Năm hoặc Phạm vi Gian Hàng.',
+    summary:
+      'Lấy Bảng vinh danh Leaderboard đầy đủ (Podium Top 3, Bảng xếp hạng Top 4-20 & Vị trí của tôi)',
+    description:
+      'Hỗ trợ lọc theo Doanh thu GMV, Lượng đơn hàng, Tỷ lệ chốt đơn CR%, Hoa hồng, Tháng/Năm hoặc Phạm vi Gian Hàng.',
   })
   @ApiResponse({
     status: 200,
     description: 'Dữ liệu bảng xếp hạng trả về thành công.',
     type: LeaderboardFullResponseDto,
   })
-  getLeaderboard(
-    @CurrentUser() user: any,
-    @Query() dto: LeaderboardQueryDto,
-  ) {
+  getLeaderboard(@CurrentUser() user: any, @Query() dto: LeaderboardQueryDto) {
     return this.leaderboardService.getLeaderboard(user.id, user.role, dto);
   }
 
@@ -55,7 +54,8 @@ export class LeaderboardController {
   @Get('podium')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Lấy danh sách 3 Creators xuất sắc nhất đứng trên bục vinh danh Podium',
+    summary:
+      'Lấy danh sách 3 Creators xuất sắc nhất đứng trên bục vinh danh Podium',
   })
   @ApiResponse({
     status: 200,
@@ -70,17 +70,16 @@ export class LeaderboardController {
   @Get('my-rank')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Lấy vị trí xếp hạng và khoảng cách doanh thu đến Top 10 của Creator đang đăng nhập',
+    summary:
+      'Lấy vị trí xếp hạng và khoảng cách doanh thu đến Top 10 của Creator đang đăng nhập',
   })
   @ApiResponse({
     status: 200,
-    description: 'Thông tin thứ hạng cá nhân, biến động rankDelta và mục tiêu lên hạng.',
+    description:
+      'Thông tin thứ hạng cá nhân, biến động rankDelta và mục tiêu lên hạng.',
     type: MyRankStatusDto,
   })
-  getMyRank(
-    @CurrentUser() user: any,
-    @Query() dto: LeaderboardQueryDto,
-  ) {
+  getMyRank(@CurrentUser() user: any, @Query() dto: LeaderboardQueryDto) {
     return this.leaderboardService.getMyRankStatus(user.id, user.role, dto);
   }
 
@@ -88,8 +87,10 @@ export class LeaderboardController {
   @Get('creator/:id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Xem hồ sơ vinh danh chi tiết của một Creator bất kỳ trên bảng xếp hạng',
-    description: 'Trả về thống kê trọn đời, danh hiệu huy hiệu, mạng xã hội và top sản phẩm bán chạy nhất.',
+    summary:
+      'Xem hồ sơ vinh danh chi tiết của một Creator bất kỳ trên bảng xếp hạng',
+    description:
+      'Trả về thống kê trọn đời, danh hiệu huy hiệu, mạng xã hội và top sản phẩm bán chạy nhất.',
   })
   @ApiParam({ name: 'id', description: 'ID tài khoản Creator / KOL' })
   @ApiResponse({

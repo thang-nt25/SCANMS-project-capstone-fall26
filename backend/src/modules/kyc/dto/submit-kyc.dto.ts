@@ -26,7 +26,10 @@ export class SubmitKycDto {
   @IsString({ message: 'Tên ngân hàng không hợp lệ' })
   bankName?: string;
 
-  @ApiPropertyOptional({ example: '0123456789', description: 'Số tài khoản ngân hàng' })
+  @ApiPropertyOptional({
+    example: '0123456789',
+    description: 'Số tài khoản ngân hàng',
+  })
   @IsOptional()
   @IsString({ message: 'Số tài khoản ngân hàng không hợp lệ' })
   bankAccountNumber?: string;

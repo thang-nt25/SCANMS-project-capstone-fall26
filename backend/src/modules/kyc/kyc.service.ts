@@ -12,7 +12,12 @@ import {
   ReviewUpgradeApplicationDto,
   ReviewShopApplicationDto,
 } from './dto/apply-upgrade.dto';
-import { KycStatus, UserRole, SocialPlatform, ShopOnboardingStatus } from '@prisma/client';
+import {
+  KycStatus,
+  UserRole,
+  SocialPlatform,
+  ShopOnboardingStatus,
+} from '@prisma/client';
 
 function slugify(text: string): string {
   return text
@@ -69,7 +74,9 @@ export class KycService {
       ...(dto.platform ? { platform: dto.platform } : {}),
       ...(dto.channelName ? { channelName: dto.channelName.trim() } : {}),
       ...(dto.channelUrl ? { channelUrl: dto.channelUrl.trim() } : {}),
-      ...(dto.followerCount !== undefined ? { followerCount: Number(dto.followerCount) } : {}),
+      ...(dto.followerCount !== undefined
+        ? { followerCount: Number(dto.followerCount) }
+        : {}),
       submittedAt: new Date().toISOString(),
     };
 
@@ -84,23 +91,36 @@ export class KycService {
           bankAccountName: dto.bankAccountName?.trim().toUpperCase() || '',
           bio: dto.bio?.trim() || null,
           socialLinksJson: updatedMeta,
-          totalFollowers: dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
+          totalFollowers:
+            dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
           kycStatus: KycStatus.UNVERIFIED,
         },
       });
     } else {
-      const targetStatus = profile.kycStatus === KycStatus.VERIFIED ? KycStatus.VERIFIED : KycStatus.UNVERIFIED;
+      const targetStatus =
+        profile.kycStatus === KycStatus.VERIFIED
+          ? KycStatus.VERIFIED
+          : KycStatus.UNVERIFIED;
       profile = await this.prisma.collaboratorProfile.update({
         where: { userId },
         data: {
           idCardNumber: dto.idCardNumber.trim(),
           taxCode: dto.taxCode?.trim() || null,
-          bankName: dto.bankName !== undefined ? dto.bankName.trim() : profile.bankName,
-          bankAccountNumber: dto.bankAccountNumber !== undefined ? dto.bankAccountNumber.trim() : profile.bankAccountNumber,
-          bankAccountName: dto.bankAccountName !== undefined ? dto.bankAccountName.trim().toUpperCase() : profile.bankAccountName,
+          bankName:
+            dto.bankName !== undefined ? dto.bankName.trim() : profile.bankName,
+          bankAccountNumber:
+            dto.bankAccountNumber !== undefined
+              ? dto.bankAccountNumber.trim()
+              : profile.bankAccountNumber,
+          bankAccountName:
+            dto.bankAccountName !== undefined
+              ? dto.bankAccountName.trim().toUpperCase()
+              : profile.bankAccountName,
           bio: dto.bio?.trim(),
           socialLinksJson: updatedMeta,
-          ...(dto.followerCount !== undefined ? { totalFollowers: Number(dto.followerCount) } : {}),
+          ...(dto.followerCount !== undefined
+            ? { totalFollowers: Number(dto.followerCount) }
+            : {}),
           kycStatus: targetStatus,
         },
       });
@@ -109,9 +129,10 @@ export class KycService {
     // Tự động đồng bộ vào danh mục Kênh Mạng Xã Hội (FR-07)
     if (dto.platform && dto.channelUrl) {
       const platformEnum = dto.platform as SocialPlatform;
-      const existingChannel = await this.prisma.collaboratorSocialChannel.findFirst({
-        where: { collaboratorId: userId, platformName: platformEnum },
-      });
+      const existingChannel =
+        await this.prisma.collaboratorSocialChannel.findFirst({
+          where: { collaboratorId: userId, platformName: platformEnum },
+        });
 
       if (existingChannel) {
         await this.prisma.collaboratorSocialChannel.update({
@@ -119,7 +140,10 @@ export class KycService {
           data: {
             channelName: dto.channelName?.trim() || existingChannel.channelName,
             channelUrl: dto.channelUrl.trim(),
-            followerCount: dto.followerCount !== undefined ? Number(dto.followerCount) : existingChannel.followerCount,
+            followerCount:
+              dto.followerCount !== undefined
+                ? Number(dto.followerCount)
+                : existingChannel.followerCount,
             isPrimary: true,
           },
         });
@@ -130,7 +154,8 @@ export class KycService {
             platformName: platformEnum,
             channelName: dto.channelName?.trim() || `${dto.platform} Creator`,
             channelUrl: dto.channelUrl.trim(),
-            followerCount: dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
+            followerCount:
+              dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
             isPrimary: true,
           },
         });
@@ -138,7 +163,8 @@ export class KycService {
     }
 
     return {
-      message: 'Hồ sơ KYC đã được nộp thành công! Hệ thống sẽ xem xét và phê duyệt.',
+      message:
+        'Hồ sơ KYC đã được nộp thành công! Hệ thống sẽ xem xét và phê duyệt.',
       profile,
     };
   }
@@ -156,12 +182,51 @@ export class KycService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
+    const incomingChannels =
+      dto.channels && dto.channels.length > 0
+        ? dto.channels
+        : dto.platform && dto.channelUrl
+          ? [
+              {
+                platform: dto.platform,
+                channelName: dto.channelName || '',
+                channelUrl: dto.channelUrl,
+                followerCount: Number(dto.followerCount) || 0,
+                channelProofUrl: dto.channelProofUrl || '',
+                isPrimary: true,
+              },
+            ]
+          : [];
+
+    if (incomingChannels.length === 0) {
+      throw new BadRequestException(
+        'Vui lòng thêm ít nhất một kênh mạng xã hội',
+      );
+    }
+
+    const totalFollowers = incomingChannels.reduce(
+      (sum, ch) => sum + (Number(ch.followerCount) || 0),
+      0,
+    );
+    const primaryChannel =
+      incomingChannels.find((ch) => ch.isPrimary) || incomingChannels[0];
+
     const proofData = {
-      platform: dto.platform,
-      channelName: dto.channelName.trim(),
-      channelUrl: dto.channelUrl.trim(),
-      followerCount: Number(dto.followerCount) || 0,
-      channelProofUrl: dto.channelProofUrl || null,
+      platform: primaryChannel.platform,
+      channelName: primaryChannel.channelName.trim(),
+      channelUrl: primaryChannel.channelUrl.trim(),
+      followerCount: Number(primaryChannel.followerCount) || 0,
+      channelProofUrl: primaryChannel.channelProofUrl || null,
+      channels: incomingChannels.map((ch) => ({
+        platform: ch.platform,
+        channelName: ch.channelName.trim(),
+        channelUrl: ch.channelUrl.trim(),
+        followerCount: Number(ch.followerCount) || 0,
+        channelProofUrl: ch.channelProofUrl || null,
+        isPrimary: Boolean(ch.isPrimary || ch === primaryChannel),
+      })),
+      specialtyCategories: dto.specialtyCategories || [],
+      contentStyles: dto.contentStyles || [],
       frontCardUrl: dto.frontCardUrl || null,
       backCardUrl: dto.backCardUrl || null,
       submittedAt: new Date().toISOString(),
@@ -179,7 +244,7 @@ export class KycService {
         bankAccountName: dto.bankAccountName.trim().toUpperCase(),
         bio: dto.bio?.trim() || null,
         socialLinksJson: proofData,
-        totalFollowers: Number(dto.followerCount) || 0,
+        totalFollowers,
         kycStatus: KycStatus.UNVERIFIED,
       },
       update: {
@@ -190,42 +255,50 @@ export class KycService {
         bankAccountName: dto.bankAccountName.trim().toUpperCase(),
         bio: dto.bio?.trim() || null,
         socialLinksJson: proofData,
-        totalFollowers: Number(dto.followerCount) || 0,
+        totalFollowers,
         kycStatus: KycStatus.UNVERIFIED,
       },
     });
 
-    // 2. Tạo/cập nhật kênh mạng xã hội chính
-    const existingChannel = await this.prisma.collaboratorSocialChannel.findFirst({
-      where: { collaboratorId: userId, platformName: dto.platform },
-    });
+    // 2. Tạo/cập nhật tất cả kênh mạng xã hội của KOL
+    for (let i = 0; i < incomingChannels.length; i++) {
+      const ch = incomingChannels[i];
+      const isPrimary = Boolean(
+        ch.isPrimary || (i === 0 && !incomingChannels.some((c) => c.isPrimary)),
+      );
+      const existingChannel =
+        await this.prisma.collaboratorSocialChannel.findFirst({
+          where: { collaboratorId: userId, platformName: ch.platform },
+        });
 
-    if (existingChannel) {
-      await this.prisma.collaboratorSocialChannel.update({
-        where: { id: existingChannel.id },
-        data: {
-          channelName: dto.channelName.trim(),
-          channelUrl: dto.channelUrl.trim(),
-          followerCount: Number(dto.followerCount) || 0,
-          isPrimary: true,
-        },
-      });
-    } else {
-      await this.prisma.collaboratorSocialChannel.create({
-        data: {
-          collaboratorId: userId,
-          platformName: dto.platform,
-          channelName: dto.channelName.trim(),
-          channelUrl: dto.channelUrl.trim(),
-          followerCount: Number(dto.followerCount) || 0,
-          isPrimary: true,
-        },
-      });
+      if (existingChannel) {
+        await this.prisma.collaboratorSocialChannel.update({
+          where: { id: existingChannel.id },
+          data: {
+            channelName: ch.channelName.trim(),
+            channelUrl: ch.channelUrl.trim(),
+            followerCount: Number(ch.followerCount) || 0,
+            isPrimary,
+          },
+        });
+      } else {
+        await this.prisma.collaboratorSocialChannel.create({
+          data: {
+            collaboratorId: userId,
+            platformName: ch.platform,
+            channelName: ch.channelName.trim(),
+            channelUrl: ch.channelUrl.trim(),
+            followerCount: Number(ch.followerCount) || 0,
+            isPrimary,
+          },
+        });
+      }
     }
 
     return {
       success: true,
-      message: 'Đơn đăng ký nâng cấp KOL đã được gửi thành công. Quản trị viên SCANMS sẽ xét duyệt trong vòng 24 giờ.',
+      message:
+        'Đơn đăng ký nâng cấp KOL đã được gửi thành công. Quản trị viên SCANMS sẽ xét duyệt trong vòng 24 giờ.',
       profile,
     };
   }
@@ -275,7 +348,8 @@ export class KycService {
     const submittedAt = new Date();
 
     const legalDocs = {
-      representativeName: user.fullName?.trim() || dto.bankAccountName.trim().toUpperCase(),
+      representativeName:
+        user.fullName?.trim() || dto.bankAccountName.trim().toUpperCase(),
       businessType: dto.businessType,
       taxCode: dto.taxCode.trim(),
       bankName: dto.bankName.trim(),
@@ -327,7 +401,8 @@ export class KycService {
 
     return {
       success: true,
-      message: 'Hồ sơ mở Gian Hàng đã được gửi thành công. Ban Quản Trị SCANMS sẽ thẩm định giấy phép kinh doanh & kho hàng theo Nghị định 85/2021/NĐ-CP.',
+      message:
+        'Hồ sơ mở Gian Hàng đã được gửi thành công. Ban Quản Trị SCANMS sẽ thẩm định giấy phép kinh doanh & kho hàng theo Nghị định 85/2021/NĐ-CP.',
       store,
     };
   }
@@ -364,6 +439,7 @@ export class KycService {
             tier: kolProfile.tier?.name,
             totalFollowers: kolProfile.totalFollowers,
             socialLinksJson: kolProfile.socialLinksJson,
+            channels: kolProfile.user?.socialChannels || [],
             submittedAt: kolProfile.createdAt,
             updatedAt: kolProfile.updatedAt,
           }
@@ -382,7 +458,8 @@ export class KycService {
               onboardingReviewedAt: userStores[0].onboardingReviewedAt,
               onboardingReviewNote: userStores[0].onboardingReviewNote,
               warehouseAddress:
-                ((userStores[0].onboardingData as Record<string, any> | null)?.warehouseAddress as string | undefined) ||
+                ((userStores[0].onboardingData as Record<string, any> | null)
+                  ?.warehouseAddress as string | undefined) ||
                 userStores[0].policyShipping,
               submittedAt:
                 userStores[0].onboardingSubmittedAt || userStores[0].createdAt,
@@ -456,7 +533,9 @@ export class KycService {
               createdAt: true,
             },
           },
-          onboardingReviewer: { select: { id: true, fullName: true, email: true } },
+          onboardingReviewer: {
+            select: { id: true, fullName: true, email: true },
+          },
         },
         orderBy: { updatedAt: 'desc' },
       }),
@@ -471,7 +550,10 @@ export class KycService {
   /**
    * Admin duyệt hồ sơ KOL
    */
-  async reviewKolApplication(profileId: string, dto: ReviewUpgradeApplicationDto) {
+  async reviewKolApplication(
+    profileId: string,
+    dto: ReviewUpgradeApplicationDto,
+  ) {
     const profile = await this.prisma.collaboratorProfile.findUnique({
       where: { id: profileId },
       include: { user: true },
@@ -484,7 +566,8 @@ export class KycService {
     const updatedProfile = await this.prisma.collaboratorProfile.update({
       where: { id: profileId },
       data: {
-        kycStatus: dto.status === 'VERIFIED' ? KycStatus.VERIFIED : KycStatus.REJECTED,
+        kycStatus:
+          dto.status === 'VERIFIED' ? KycStatus.VERIFIED : KycStatus.REJECTED,
       },
     });
 
@@ -516,7 +599,8 @@ export class KycService {
         data: {
           userId: profile.userId,
           title: 'Chúc mừng! Bạn đã trở thành Đối tác KOL chính thức',
-          message: 'Hồ sơ đối tác sáng tạo nội dung & liên kết tiếp thị của bạn đã được Admin SCANMS phê duyệt cấp Tích Xanh.',
+          message:
+            'Hồ sơ đối tác sáng tạo nội dung & liên kết tiếp thị của bạn đã được Admin SCANMS phê duyệt cấp Tích Xanh.',
           type: 'KOL_APPROVED',
         },
       });
@@ -525,7 +609,9 @@ export class KycService {
         data: {
           userId: profile.userId,
           title: 'Hồ sơ đối tác KOL cần cập nhật thêm',
-          message: dto.note || 'Hồ sơ nâng cấp KOL chưa đáp ứng đủ tiêu chí xác thực kênh. Vui lòng nộp lại thông tin chính xác.',
+          message:
+            dto.note ||
+            'Hồ sơ nâng cấp KOL chưa đáp ứng đủ tiêu chí xác thực kênh. Vui lòng nộp lại thông tin chính xác.',
           type: 'KOL_REJECTED',
         },
       });
@@ -574,10 +660,20 @@ export class KycService {
 
     const updatedStore = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM stores WHERE id = ${storeId}::uuid FOR UPDATE`;
-      const current = await tx.store.findUnique({ where: { id: storeId }, include: { owner: true } });
+      const current = await tx.store.findUnique({
+        where: { id: storeId },
+        include: { owner: true },
+      });
       if (!current) throw new NotFoundException('Không tìm thấy gian hàng');
-      if (!(<ShopOnboardingStatus[]>[ShopOnboardingStatus.PENDING_APPROVAL, ShopOnboardingStatus.NEEDS_INFO]).includes(current.onboardingStatus)) {
-        throw new BadRequestException('Hồ sơ đã được xử lý bởi một quản trị viên khác.');
+      if (
+        !(<ShopOnboardingStatus[]>[
+          ShopOnboardingStatus.PENDING_APPROVAL,
+          ShopOnboardingStatus.NEEDS_INFO,
+        ]).includes(current.onboardingStatus)
+      ) {
+        throw new BadRequestException(
+          'Hồ sơ đã được xử lý bởi một quản trị viên khác.',
+        );
       }
 
       const reviewedAt = new Date();
@@ -586,7 +682,7 @@ export class KycService {
         data: {
           isVerified: dto.status === 'VERIFIED',
           isActive: dto.status === 'VERIFIED',
-          onboardingStatus: dto.status as ShopOnboardingStatus,
+          onboardingStatus: dto.status,
           onboardingReviewedAt: reviewedAt,
           onboardingReviewedById: reviewerId,
           onboardingReviewNote: dto.note?.trim() || null,
@@ -608,20 +704,36 @@ export class KycService {
 
       if (dto.status === 'VERIFIED') {
         if (current.owner.role === UserRole.CUSTOMER) {
-          await tx.user.update({ where: { id: current.ownerId }, data: { role: UserRole.SHOP_MANAGER } });
+          await tx.user.update({
+            where: { id: current.ownerId },
+            data: { role: UserRole.SHOP_MANAGER },
+          });
         }
-        let ownerWallet = await tx.wallet.findUnique({ where: { collaboratorId: current.ownerId } });
+        let ownerWallet = await tx.wallet.findUnique({
+          where: { collaboratorId: current.ownerId },
+        });
         if (!ownerWallet) {
           ownerWallet = await tx.wallet.create({
-            data: { collaboratorId: current.ownerId, availableBalance: 0, pendingBalance: 0 },
+            data: {
+              collaboratorId: current.ownerId,
+              availableBalance: 0,
+              pendingBalance: 0,
+            },
           });
         }
         const existingStoreWallet = await tx.storeWallet.findUnique({
-          where: { walletId_storeId: { walletId: ownerWallet.id, storeId: current.id } },
+          where: {
+            walletId_storeId: { walletId: ownerWallet.id, storeId: current.id },
+          },
         });
         if (!existingStoreWallet) {
           await tx.storeWallet.create({
-            data: { walletId: ownerWallet.id, storeId: current.id, availableBalance: 0, pendingBalance: 0 },
+            data: {
+              walletId: ownerWallet.id,
+              storeId: current.id,
+              availableBalance: 0,
+              pendingBalance: 0,
+            },
           });
         }
         await tx.notification.create({
@@ -636,9 +748,13 @@ export class KycService {
         await tx.notification.create({
           data: {
             userId: current.ownerId,
-            title: dto.status === 'NEEDS_INFO' ? 'Hồ sơ gian hàng cần bổ sung' : 'Hồ sơ gian hàng chưa được duyệt',
+            title:
+              dto.status === 'NEEDS_INFO'
+                ? 'Hồ sơ gian hàng cần bổ sung'
+                : 'Hồ sơ gian hàng chưa được duyệt',
             message: dto.note!.trim(),
-            type: dto.status === 'NEEDS_INFO' ? 'SHOP_NEEDS_INFO' : 'SHOP_REJECTED',
+            type:
+              dto.status === 'NEEDS_INFO' ? 'SHOP_NEEDS_INFO' : 'SHOP_REJECTED',
           },
         });
       }
