@@ -3,6 +3,7 @@ import {
   Delete,
   Get,
   Post,
+  Put,
   Body,
   Query,
   UseGuards,
@@ -43,6 +44,15 @@ export class WalletsController {
   ) {
     const amount = Number(body?.amount || 0);
     return this.walletsService.topUpDemo(user.id, amount);
+  }
+
+  @Put('me/bank-account')
+  @ApiOperation({ summary: 'Cập nhật tài khoản ngân hàng nhận tiền của KOL' })
+  updateBankAccount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { bankName: string; bankAccountNumber: string; bankAccountName: string },
+  ) {
+    return this.summaryService.updateBankAccount(user.id, body);
   }
 
   @Delete('me/bank-account')

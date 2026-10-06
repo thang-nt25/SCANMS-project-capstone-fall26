@@ -32,7 +32,7 @@ export default function SocialChannelsPage() {
   const [platformName, setPlatformName] = useState('TIKTOK');
   const [channelName, setChannelName] = useState('');
   const [channelUrl, setChannelUrl] = useState('');
-  const [followerCount, setFollowerCount] = useState<number>(50000);
+  const [followerCount, setFollowerCount] = useState<number | ''>('');
   const [isPrimary, setIsPrimary] = useState(false);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function SocialChannelsPage() {
       setShowModal(false);
       setChannelName('');
       setChannelUrl('');
-      setFollowerCount(50000);
+      setFollowerCount('');
       setIsPrimary(false);
       loadChannels();
     } catch (err: any) {
@@ -416,9 +416,9 @@ export default function SocialChannelsPage() {
                 </label>
                 <input
                   type="number"
-                  placeholder="50000"
+                  placeholder="VD: 10000"
                   value={followerCount}
-                  onChange={(e) => setFollowerCount(Number(e.target.value))}
+                  onChange={(e) => setFollowerCount(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs font-semibold text-[#1A1612] outline-none"
                   required
                 />
