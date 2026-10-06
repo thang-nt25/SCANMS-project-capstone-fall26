@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
+import { publicReturnPolicy } from '../stores/store-policy.util';
 import { CacheService } from '../../core/cache/cache.service';
 import { CreateOrderDto, PaymentMethod } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
@@ -1724,8 +1725,8 @@ export class OrdersService {
           policySnapshot: {
             storeId: lockedStore.id,
             storeName: lockedStore.name,
-            returnPolicy: lockedStore.policyReturn || 'Quy định SCANMS: yêu cầu đổi trả trong 14 ngày kể từ khi giao, kèm ảnh và video mở hộp.',
-            returnPolicySource: lockedStore.policyReturn ? 'SHOP' : 'SCANMS',
+            returnPolicy: publicReturnPolicy(lockedStore.policyReturn) || 'Quy định SCANMS: yêu cầu đổi trả trong 14 ngày kể từ khi giao, kèm ảnh và video mở hộp.',
+            returnPolicySource: publicReturnPolicy(lockedStore.policyReturn) ? 'SHOP' : 'SCANMS',
             warrantyPolicy: lockedStore.policyWarranty || null,
             shippingPolicy: lockedStore.policyShipping || null,
             accepted: dto.policyAccepted === true,
@@ -3653,7 +3654,7 @@ export class OrdersService {
     }
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      include: { store: { select: { ownerId: true } }, returnRequest: true },
+      include: { store: { select: { ownerId: true, returnWarehouse: true } }, returnRequest: true },
     });
     if (!order?.returnRequest) throw new NotFoundException('Không tìm thấy yêu cầu đổi trả');
     if (
@@ -3668,6 +3669,8 @@ export class OrdersService {
     }
 
     const approved = dto.decision === ReturnDecision.APPROVE;
+    const warehouse = order.store.returnWarehouse as { address?: string } | null;
+    const warehouseAddress = typeof warehouse?.address === 'string' ? warehouse.address : null;
     const result = await this.prisma.$transaction(async (tx) => {
       const changed = await tx.returnRequest.updateMany({
         where: { id: order.returnRequest!.id, status: ReturnRequestStatus.REQUESTED },
@@ -3675,9 +3678,22 @@ export class OrdersService {
           status: approved ? ReturnRequestStatus.SHOP_APPROVED : ReturnRequestStatus.SHOP_REJECTED,
           shopResponse: response,
           shopRespondedAt: new Date(),
+          ...(approved && warehouseAddress ? {
+            returnAddress: warehouseAddress,
+            returnInstructions: 'Đóng gói sản phẩm và chờ đơn vị vận chuyển đến lấy tại địa chỉ đã xác nhận.',
+            shipByAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          } : {}),
         },
       });
       if (changed.count !== 1) throw new ConflictException('Yêu cầu đã được xử lý trước đó');
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: order.returnRequest!.id,
+          actorId: userId,
+          type: approved ? 'REQUESTED_TO_SHOP_APPROVED' : 'REQUESTED_TO_SHOP_REJECTED',
+          data: { response },
+        },
+      });
       if (!approved) {
         const restored = await tx.order.updateMany({
           where: { id: orderId, status: OrderStatus.RETURN_REQUESTED },
@@ -3690,7 +3706,7 @@ export class OrdersService {
           userId: order.returnRequest!.customerId,
           title: approved ? 'Shop đã chấp thuận yêu cầu đổi trả' : 'Shop đã từ chối yêu cầu đổi trả',
           message: approved
-            ? `Đơn ${order.externalOrderSn}: Shop đã đồng ý xử lý. Đây chưa phải xác nhận đã hoàn tiền. Phản hồi: ${response}`
+            ? `Đơn ${order.externalOrderSn}: Shop đã đồng ý xử lý. ${warehouseAddress ? 'Bạn có thể xác nhận địa chỉ để đặt lấy hàng tại nhà.' : 'Đang chờ Shop cấu hình kho nhận hàng trả.'} Đây chưa phải xác nhận đã hoàn tiền. Phản hồi: ${response}`
             : `Đơn ${order.externalOrderSn}: ${response}`,
           type: approved ? 'RETURN_APPROVED' : 'RETURN_REJECTED',
           data: { orderId, returnRequestId: order.returnRequest!.id },
@@ -3698,7 +3714,7 @@ export class OrdersService {
       });
       return tx.returnRequest.findUniqueOrThrow({ where: { id: order.returnRequest!.id } });
     });
-    return { message: approved ? 'Đã duyệt yêu cầu, chờ hoàn tất xử lý/hoàn tiền' : 'Đã từ chối yêu cầu', returnRequest: result };
+    return { message: approved ? 'Đã duyệt yêu cầu; chờ khách đặt lấy hàng trả' : 'Đã từ chối yêu cầu', returnRequest: result };
   }
 
   /**
@@ -3739,12 +3755,21 @@ export class OrdersService {
       throw new BadRequestException('Chỉ được cập nhật đơn từ Chờ lấy hàng → Đang giao → Đã giao');
     }
 
+    const trackingNumber = dto.trackingNumber?.trim();
+    const carrierName = dto.carrierName?.trim();
+    if (dto.status === OrderStatus.SHIPPING && !trackingNumber) {
+      throw new BadRequestException('Vui lòng nhập mã vận đơn bưu cục');
+    }
+    if (dto.status === OrderStatus.SHIPPING && !carrierName) {
+      throw new BadRequestException('Vui lòng chọn đơn vị vận chuyển');
+    }
+
     const currentRaw = (order.rawPayload as Record<string, any>) || {};
     const updatedRaw = {
       ...currentRaw,
-      trackingNumber: dto.trackingNumber || currentRaw.trackingNumber,
-      carrierName: dto.carrierName || currentRaw.carrierName || 'GHTK Express',
-      fulfillmentNote: dto.note || currentRaw.fulfillmentNote,
+      trackingNumber: trackingNumber || currentRaw.trackingNumber,
+      carrierName: carrierName || currentRaw.carrierName || 'GHTK Express',
+      fulfillmentNote: dto.note?.trim() || currentRaw.fulfillmentNote,
       fulfillmentUpdatedAt: new Date().toISOString(),
     };
 
