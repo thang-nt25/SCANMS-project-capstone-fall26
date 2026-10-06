@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Save,
@@ -32,10 +32,9 @@ import { Select } from '../../components/ui/Select';
 export default function ShopSettingsPage() {
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
-  const isShopOrAdmin =
-    currentUser?.role === 'SHOP_MANAGER' ||
-    currentUser?.role === 'SYSTEM_ADMIN' ||
-    currentUser?.role === 'SYSTEM_MANAGER';
+  const isShopManager = currentUser?.role === 'SHOP_MANAGER';
+  const isPlatformAdmin =
+    currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'SYSTEM_MANAGER';
 
   const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -63,10 +62,6 @@ export default function ShopSettingsPage() {
   const [savingOwnerDetails, setSavingOwnerDetails] = useState(false);
   const [shopVerificationStatus, setShopVerificationStatus] = useState('DRAFT');
 
-  useEffect(() => {
-    loadStore();
-  }, []);
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -85,7 +80,7 @@ export default function ShopSettingsPage() {
     }
   };
 
-  const loadStore = async () => {
+  const loadStore = useCallback(async () => {
     try {
       const store = await storeService.getMyStore();
       if (store.name) setName(store.name);
@@ -123,7 +118,11 @@ export default function ShopSettingsPage() {
     } catch (err) {
       console.error('Lỗi tải cấu hình shop:', err);
     }
-  };
+  }, [currentUser?.fullName]);
+
+  useEffect(() => {
+    if (isShopManager) void loadStore();
+  }, [isShopManager, loadStore]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -217,7 +216,7 @@ export default function ShopSettingsPage() {
     }
   };
 
-  if (!isShopOrAdmin) {
+  if (!isShopManager) {
     return (
       <div className="max-w-lg mx-auto my-12 text-center">
         <Card className="p-8 bg-white border border-[#EAE4D7] flex flex-col items-center gap-4">
@@ -225,17 +224,17 @@ export default function ShopSettingsPage() {
             <ShieldAlert className="w-7 h-7" />
           </div>
           <h2 className="text-xl font-extrabold text-[#1A1612] m-0">
-            Khu Vực Dành Cho Chủ Gian Hàng
+            Chỉ dành cho Chủ gian hàng
           </h2>
           <p className="text-xs sm:text-sm text-[#7D715E] leading-relaxed m-0">
-            Cài đặt gian hàng, hạn mức rút tiền tối thiểu và thời hạn lưu vết cookie là tính năng quản trị dành riêng cho Chủ Shop.
+            Đây là nơi quản lý thông tin và chính sách của một gian hàng cụ thể. Tài khoản quản trị sàn không dùng khu vực này để cấu hình chính sách toàn sàn.
           </p>
           <Button
             variant="gold"
             size="md"
-            onClick={() => navigate('/collaborator/dashboard')}
+            onClick={() => navigate(isPlatformAdmin ? '/admin/analytics' : '/collaborator/dashboard')}
           >
-            Về trang Tổng quan KOL
+            {isPlatformAdmin ? 'Về trang quản trị sàn' : 'Về trang Tổng quan KOL'}
           </Button>
         </Card>
       </div>
@@ -243,7 +242,7 @@ export default function ShopSettingsPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-5 pb-12 pt-4 text-left sm:pt-5 xl:gap-6">
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 pb-10 pt-3 text-left sm:gap-5 sm:pt-4">
       {toastMsg && (
         <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2.5 border border-[#EEDFC6] animate-in fade-in slide-in-from-top-2">
           <CheckCircle2 className="w-5 h-5 text-[#B88E4F]" />
@@ -251,10 +250,25 @@ export default function ShopSettingsPage() {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:gap-6">
-        <div className="space-y-5 xl:space-y-6">
-          <section className="space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:space-y-5 sm:p-5">
-            <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.025)] sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F"><Store className="h-5 w-5" /></div>
+          <div className="min-w-0">
+            <span className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#B88E4F]">Thiết lập cửa hàng</span>
+            <h1 className="m-0 mt-0.5 text-lg font-bold tracking-tight text-[#1A1612]">Cài đặt gian hàng</h1>
+            <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Quản lý thương hiệu, chính sách bán hàng và thông tin đối soát.</p>
+          </div>
+        </div>
+        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${shopVerificationStatus === 'VERIFIED' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]' : shopVerificationStatus === 'REJECTED' ? 'border-red-200 bg-red-50 text-red-700' : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${shopVerificationStatus === 'VERIFIED' ? 'bg-[#B88E4F]' : shopVerificationStatus === 'REJECTED' ? 'bg-red-500' : 'bg-[#A99D8A]'}`} />
+          {shopVerificationStatus === 'VERIFIED' ? 'Đã xác minh' : shopVerificationStatus === 'PENDING_APPROVAL' ? 'Đang chờ duyệt' : shopVerificationStatus === 'NEEDS_INFO' ? 'Cần bổ sung hồ sơ' : shopVerificationStatus === 'REJECTED' ? 'Cần cập nhật hồ sơ' : 'Chưa xác minh'}
+        </span>
+      </div>
+
+      <form onSubmit={handleSave} className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.04fr_0.96fr] xl:gap-5">
+        <div className="space-y-4 xl:space-y-5">
+          <section className="space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+            <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <Store className="h-4 w-4" />
               </div>
@@ -370,8 +384,8 @@ export default function ShopSettingsPage() {
             </div>
           </section>
 
-          <section className="space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:space-y-5 sm:p-5">
-            <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-4">
+          <section className="space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+            <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <FileText className="h-4 w-4" />
               </div>
@@ -381,7 +395,7 @@ export default function ShopSettingsPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {([
                 ['Chính sách Đổi trả & Hoàn tiền', policyReturn, setPolicyReturn, 'Cam kết đổi trả trong 7-14 ngày nếu lỗi nhà sản xuất...'],
                 ['Chính sách Bảo hành & Cam kết chất lượng', policyWarranty, setPolicyWarranty, 'Cam kết 100% hàng chính hãng có tem niêm phong...'],
@@ -395,7 +409,7 @@ export default function ShopSettingsPage() {
                     value={value}
                     onChange={(event) => setValue(event.target.value)}
                     maxLength={500}
-                    rows={3}
+                    rows={2}
                     placeholder={placeholder}
                     className="min-h-[88px] w-full resize-y rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-sm text-[#1A1612] outline-none transition focus:border-[#C59B58] focus:bg-white"
                   />
@@ -405,9 +419,9 @@ export default function ShopSettingsPage() {
           </section>
         </div>
 
-        <div className="space-y-5 xl:space-y-6">
-          <section className="space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:space-y-5 sm:p-5">
-            <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-4">
+        <div className="space-y-4 xl:space-y-5">
+          <section className="space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+            <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <Percent className="h-4 w-4" />
               </div>
@@ -419,7 +433,7 @@ export default function ShopSettingsPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0">
-                <label className="mb-1.5 flex min-h-9 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
+                <label className="mb-1.5 flex min-h-7 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
                   <Percent className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
                   Hoa hồng mặc định (%)
                 </label>
@@ -436,7 +450,7 @@ export default function ShopSettingsPage() {
               </div>
 
               <div className="min-w-0">
-                <label className="mb-1.5 flex min-h-9 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
+                <label className="mb-1.5 flex min-h-7 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
                   <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
                   Thời hạn ghi nhận đơn qua link affiliate
                 </label>
@@ -454,9 +468,9 @@ export default function ShopSettingsPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:p-5">
-            <div className="space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-4">
+          <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                       <Building2 className="h-4 w-4" />
@@ -467,21 +481,6 @@ export default function ShopSettingsPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
-                      shopVerificationStatus === 'VERIFIED'
-                        ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]'
-                        : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'
-                    }`}>
-                      {shopVerificationStatus === 'VERIFIED'
-                        ? 'Shop đã xác minh'
-                        : shopVerificationStatus === 'PENDING_APPROVAL'
-                          ? 'Hồ sơ đang chờ duyệt'
-                          : shopVerificationStatus === 'NEEDS_INFO'
-                            ? 'Hồ sơ cần bổ sung'
-                            : shopVerificationStatus === 'REJECTED'
-                              ? 'Hồ sơ chưa được duyệt'
-                              : 'Chưa xác minh hồ sơ'}
-                    </span>
                     {isEditingOwnerDetails ? (
                       <button
                         type="button"
@@ -592,15 +591,15 @@ export default function ShopSettingsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                    <div className="flex min-h-[72px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3.5">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Người đại diện</p>
                         <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.representativeName || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[72px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3.5">
+                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Loại hình kinh doanh</p>
@@ -615,28 +614,28 @@ export default function ShopSettingsPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex min-h-[72px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3.5">
+                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Điện thoại liên hệ</p>
                         <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.contactPhone || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[72px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3.5">
+                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Email nhận đối soát</p>
                         <p className="m-0 mt-0.5 break-all text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.contactEmail || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[72px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3.5">
+                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Mã số thuế</p>
                         <p className="m-0 mt-0.5 break-words font-mono text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.taxCode || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[72px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3.5 sm:col-span-2">
+                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3 sm:col-span-2">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Địa chỉ kho hàng</p>
@@ -650,7 +649,8 @@ export default function ShopSettingsPage() {
 
         </div>
 
-        <div className="flex items-center justify-end border-t border-[#EAE4D7] pt-5 lg:col-span-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#EAE4D7] bg-[#FAF8F5] py-3 lg:col-span-2">
+          <p className="m-0 text-[11px] text-[#7D715E]">Thay đổi của bạn sẽ được áp dụng lên trang gian hàng.</p>
           <Button
             type="submit"
             variant="gold"

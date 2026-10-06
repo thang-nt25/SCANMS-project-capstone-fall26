@@ -1,9 +1,11 @@
+import { LiveGovernancePanel, type LiveGovernance } from '../../components/live/LiveGovernancePanel';
 import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, Radio, RefreshCw, Search, TrendingUp, Award, PlayCircle, Loader2, Filter } from 'lucide-react';
 import api from '../../services/api';
 import { Select } from '../../components/ui/Select';
 
 type AdminLiveSession = {
+  governance?: LiveGovernance;
   id: string;
   title: string;
   platform: string;
@@ -16,6 +18,7 @@ type AdminLiveSession = {
     currentViewers: number | null;
     totalViewers: number | null;
     orders: number;
+    buyers?: number;
     pendingOrders: number;
     grossSales: number;
     commission: number;
@@ -45,6 +48,7 @@ export default function AdminLiveSessionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [platformFilter, setPlatformFilter] = useState('ALL');
+  const [disputeFilter, setDisputeFilter] = useState('ALL');
 
   const load = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);
@@ -83,7 +87,9 @@ export default function AdminLiveSessionsPage() {
       session.platform.toLowerCase().includes(term);
     const matchesStatus = statusFilter === 'ALL' || session.status === statusFilter;
     const matchesPlatform = platformFilter === 'ALL' || session.platform.toUpperCase() === platformFilter;
-    return matchesSearch && matchesStatus && matchesPlatform;
+    const disputeStatus = session.governance?.dispute?.status;
+    const matchesDispute = disputeFilter === 'ALL' || (disputeFilter === 'PENDING' ? ['OPEN', 'ESCALATED', 'APPEALED'].includes(disputeStatus || '') : Boolean(disputeStatus));
+    return matchesSearch && matchesStatus && matchesPlatform && matchesDispute;
   });
 
   return (
@@ -159,6 +165,11 @@ export default function AdminLiveSessionsPage() {
                 className="h-10 w-full rounded-xl border border-[#EAE4D7] py-2 pl-9 pr-3 text-xs text-[#1A1612] placeholder:text-[#A89D8B] focus:border-[#C59B58] focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15 sm:text-sm"
               />
             </div>
+            <Select value={disputeFilter} onChange={e => setDisputeFilter(e.target.value)} className="w-44 text-xs sm:text-sm">
+              <option value="ALL">Phiên & tranh chấp</option>
+              <option value="PENDING">Tranh chấp chờ xử lý</option>
+              <option value="DISPUTED">Tất cả tranh chấp</option>
+            </Select>
             <button
               type="submit"
               className="shrink-0 cursor-pointer rounded-xl bg-[#C59B58] px-4 py-2 text-xs font-semibold text-[#1A1612] transition hover:bg-[#B88E4F]"
@@ -260,11 +271,12 @@ export default function AdminLiveSessionsPage() {
                   <ExternalLink className="h-4 w-4 text-[#B88E4F]" /> Mở link live
                 </a>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[#EAE4D7] pt-3 text-xs sm:grid-cols-3 lg:grid-cols-6">
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[#EAE4D7] pt-3 text-xs sm:grid-cols-3 lg:grid-cols-7">
                 {[
                   ['Đang xem', session.platform === 'SCANMS' ? String(session.report.currentViewers ?? 0) : '—'],
                   ['Tổng lượt xem', session.platform === 'SCANMS' ? String(session.report.totalViewers ?? 0) : '—'],
                   ['Tổng đơn', String(session.report.orders)],
+                  ['Người mua', String(session.report.buyers ?? 0)],
                   ['Đơn chờ', String(session.report.pendingOrders)],
                   ['Doanh số đã chốt', money(session.report.grossSales)],
                   ['Hoa hồng KOL đã chốt', money(session.report.commission)],
@@ -275,6 +287,7 @@ export default function AdminLiveSessionsPage() {
                   </div>
                 ))}
               </div>
+              <LiveGovernancePanel session={session} audience="admin" onChanged={() => void load()} />
             </article>
           ))}
         </div>

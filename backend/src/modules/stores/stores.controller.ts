@@ -49,11 +49,11 @@ export class StoresController {
 
   @Put('my-store')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SHOP_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({
     summary:
-      'Chủ Shop cập nhật cấu hình gian hàng (Hạn mức rút tiền, thời hạn cookie, % hoa hồng mặc định)',
+      'Chủ Shop cập nhật cấu hình gian hàng và thông tin đối soát của Shop mình',
   })
   async updateMyStore(
     @CurrentUser('id') ownerId: string,

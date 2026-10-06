@@ -23,10 +23,26 @@ import {
   UpdateLiveSessionStateDto,
 } from './dto/create-live-session.dto';
 import { LiveSessionsService } from './live-sessions.service';
+import { LiveGovernanceService } from './live-governance.service';
+import { LiveGovernanceDto } from './dto/live-governance.dto';
 
 @Controller('live-sessions')
 export class LiveSessionsController {
-  constructor(private readonly service: LiveSessionsService) {}
+  constructor(private readonly service: LiveSessionsService, private readonly governance: LiveGovernanceService) {}
+
+  @Get(':id/governance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  getGovernance(@CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole, @Param('id', ParseUUIDPipe) id: string) {
+    return this.governance.get(userId, role, id);
+  }
+
+  @Post(':id/governance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  govern(@CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole, @Param('id', ParseUUIDPipe) id: string, @Body() dto: LiveGovernanceDto) {
+    return this.governance.act(userId, role, id, dto);
+  }
 
   @Get('public/list')
   getPublicLiveList() {

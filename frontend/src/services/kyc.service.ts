@@ -33,6 +33,7 @@ export interface KycProfile {
     fullName: string;
     email: string;
     phoneNumber?: string;
+    avatarUrl?: string | null;
     role?: string;
     socialChannels?: Array<{
       id: string;

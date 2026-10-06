@@ -85,7 +85,6 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/admin/affiliate-oversight', label: 'Tiếp thị & Dòng tiền Sàn', icon: Link2 },
       { path: '/merchant/fraud-sentinel', label: 'AI Giám sát Gian lận Sàn', icon: ShieldAlert },
       { path: '/admin/audit-logs', label: 'Nhật ký Kiểm toán Toàn sàn', icon: ShieldCheck },
-      { path: '/merchant/settings', label: 'Cấu hình Chính sách Sàn', icon: Settings },
     ],
   },
   SYSTEM_MANAGER: {

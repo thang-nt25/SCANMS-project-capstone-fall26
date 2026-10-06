@@ -1,3 +1,4 @@
+import { LiveGovernancePanel, type LiveGovernance } from '../../components/live/LiveGovernancePanel';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import {
@@ -25,12 +26,13 @@ import { liveBroadcastService } from '../../services/liveBroadcast';
 type LiveProduct = { id: string; title: string; imageUrl?: string | null; price: number; variants: Array<{ id: string; name: string; sku: string; price: number | null }> };
 type Creator = { id: string; fullName: string; avatarUrl?: string | null; collaboratorProfile?: { totalFollowers: number; kycStatus: string } | null; socialChannels: Array<{ platformName: string; channelName?: string | null; followerCount: number; channelUrl: string }> };
 type LiveSessionItem = {
+  governance?: LiveGovernance;
   id: string; title: string; platform: string; liveUrl: string; startsAt: string; endsAt: string;
   externalChannels?: Array<{ channelUrl: string; followerCount: number }>;
   status: string; inviteStatus: string; description?: string | null;
   creator: Creator; coupon: { displayCode: string; discountType: string; discountValue: number | string; usageCount: number; usageLimitTotal: number | null };
   products: Array<{ product: { id: string; title: string; imageUrl?: string | null } }>;
-  report: { claims: number; orders: number; pendingOrders?: number; grossSales: number; voucherDiscount: number; commission: number; usedUses: number; remainingUses: number | null; currentViewers?: number | null; totalViewers?: number | null };
+  report: { claims: number; buyers?: number; orders: number; pendingOrders?: number; grossSales: number; voucherDiscount: number; commission: number; usedUses: number; remainingUses: number | null; currentViewers?: number | null; totalViewers?: number | null };
 };
 type Catalog = { products: LiveProduct[]; creators: Creator[]; defaultCommissionRate: number };
 
@@ -281,10 +283,14 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
 
   useEffect(() => {
     if (!storeId || !isActive) return;
-    const timer = window.setInterval(() => {
+    const refresh = () => {
       if (document.visibilityState === 'visible') void loadSessions(storeId).catch(() => {});
+    };
+    const timer = window.setInterval(() => {
+      refresh();
     }, 15000);
-    return () => window.clearInterval(timer);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
   }, [storeId, isActive, loadSessions]);
 
   const setField = (field: string, value: any) => {
@@ -724,12 +730,13 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
               </div>
 
               {/* Live viewers and settled financial metrics */}
-              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">
                 {[
                   { label: 'Đang xem', value: session.platform === 'SCANMS' ? (session.report.currentViewers ?? 0) : '—', isMoney: false },
                   { label: 'Tổng lượt xem', value: session.platform === 'SCANMS' ? (session.report.totalViewers ?? 0) : '—', isMoney: false },
                   { label: 'Lượt nhận mã', value: session.report.claims, isMoney: false },
                   { label: 'Tổng đơn hàng', value: session.report.orders, isMoney: false },
+                  { label: 'Người mua', value: session.report.buyers ?? 0, isMoney: false },
                   { label: 'Đơn chờ thanh toán', value: session.report.pendingOrders || 0, isMoney: false },
                   { label: 'Doanh số đã chốt', value: currency(session.report.grossSales), isMoney: true },
                   { label: 'Giảm giá voucher', value: currency(session.report.voucherDiscount), isMoney: true },
@@ -759,7 +766,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
 
                   {session.inviteStatus === 'REJECTED' && (
                     <div className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-800">
-                      <span>KOL đã từ chối lời mời phiên live này. Bạn có thể bấm hủy phiên.</span>
+                      <span>KOL đã từ chối lời mời phiên live này. Bạn có thể tạo lời mời mới.</span>
                     </div>
                   )}
 
@@ -773,32 +780,9 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
                       <span>Mở phiên phát sóng ngay</span>
                     </button>
                   )}
-                  {session.status === 'PAUSED' ? (
-                    <button
-                      type="button"
-                      onClick={() => void changeState(session, 'RESUME')}
-                      className="rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-4 py-2 text-xs font-bold text-white cursor-pointer transition shadow-2xs active:scale-95"
-                    >
-                      Mở lại phiên
-                    </button>
-                  ) : session.status === 'LIVE' ? (
-                    <button
-                      type="button"
-                      onClick={() => void changeState(session, 'PAUSED')}
-                      className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] px-4 py-2 text-xs font-bold text-[#1A1612] cursor-pointer transition active:scale-95"
-                    >
-                      Tạm dừng
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => void changeState(session, 'CANCELLED')}
-                    className="rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 px-4 py-2 text-xs font-bold text-[#DC2626] cursor-pointer transition active:scale-95"
-                  >
-                    Hủy phiên
-                  </button>
                 </div>
               )}
+              <LiveGovernancePanel session={session} audience="shop" onChanged={() => void loadSessions(storeId)} />
             </article>
           );
         })}

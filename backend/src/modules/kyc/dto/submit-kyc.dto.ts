@@ -47,21 +47,21 @@ export class SubmitKycDto {
   @IsString()
   bio?: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'https://res.cloudinary.com/.../cccd_front.jpg',
     description: 'Ảnh CCCD mặt trước',
   })
-  @IsOptional()
   @IsString()
-  frontCardUrl?: string;
+  @IsNotEmpty({ message: 'Vui lòng tải lên ảnh CCCD mặt trước' })
+  frontCardUrl: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'https://res.cloudinary.com/.../cccd_back.jpg',
     description: 'Ảnh CCCD mặt sau',
   })
-  @IsOptional()
   @IsString()
-  backCardUrl?: string;
+  @IsNotEmpty({ message: 'Vui lòng tải lên ảnh CCCD mặt sau' })
+  backCardUrl: string;
 
   @ApiPropertyOptional({
     example: 'https://res.cloudinary.com/.../channel_proof.jpg',

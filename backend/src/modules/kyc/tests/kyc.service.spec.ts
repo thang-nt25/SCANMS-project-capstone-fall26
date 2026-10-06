@@ -166,3 +166,17 @@ describe('KycService shop onboarding', () => {
     expect(prisma.store.update).not.toHaveBeenCalled();
   });
 });
+
+describe('KycService KOL identity documents', () => {
+  const prisma = {} as any;
+  const service = new KycService(prisma);
+
+  it('rejects KOL applications without both ID card photos before saving a profile', async () => {
+    await expect(
+      service.applyKolUpgrade('kol-1', {
+        frontCardUrl: 'https://cdn.scanms.vn/id-front.jpg',
+        backCardUrl: ' ',
+      } as any),
+    ).rejects.toThrow(BadRequestException);
+  });
+});
