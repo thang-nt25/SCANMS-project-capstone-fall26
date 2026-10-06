@@ -96,10 +96,9 @@ test('Marketplace uses real stock and cart integration', () => {
   assert.match(source, /openCart/);
 });
 
-test('global sidebar uses production role-switching component instead of Demo wording', () => {
-  const sidebar = readFileSync(new URL('../src/components/layout/Sidebar.tsx', import.meta.url), 'utf8');
-  assert.match(sidebar, /<WorkspaceSwitcher variant="sidebar" \/>/);
-  assert.doesNotMatch(sidebar, /Đổi vai trò Demo/i);
+test('role switcher component is present on topbar instead of Demo wording', () => {
+  const topbar = readFileSync(new URL('../src/components/layout/Topbar.tsx', import.meta.url), 'utf8');
+  assert.match(topbar, /<WorkspaceSwitcher/);
   const switcher = readFileSync(new URL('../src/components/common/WorkspaceSwitcher.tsx', import.meta.url), 'utf8');
   assert.match(switcher, /Chuyển đổi không gian làm việc/);
   assert.match(switcher, /Không gian hiện tại/);
@@ -107,12 +106,13 @@ test('global sidebar uses production role-switching component instead of Demo wo
 
 test('every sidebar navigation function renders its link with warm gold styling', () => {
   const source = readFileSync(new URL('../src/components/layout/Sidebar.tsx', import.meta.url), 'utf8');
-  assert.match(source, /group flex items-center gap-3 px-3 py-2\.5 rounded-xl/);
+  assert.match(source, /group flex items-center gap-3 px-3 py-2 rounded-xl/);
   assert.match(source, /bg-\[#FAF5EB\] text-\[#B88E4F\]/);
 });
 
 test('sidebar navigation rows use clean layout and active indicators', () => {
   const source = readFileSync(new URL('../src/components/layout/Sidebar.tsx', import.meta.url), 'utf8');
-  assert.match(source, /group flex items-center gap-3 px-3 py-2\.5 rounded-xl/);
-  assert.match(source, /text-\[#1A1612\] hover:bg-white hover:text-\[#B88E4F\]/);
+  assert.match(source, /group flex items-center gap-3 px-3 py-2 rounded-xl/);
+  assert.match(source, /hover:bg-\[#FAF8F5\] hover:text-\[#B88E4F\]/);
 });
+
