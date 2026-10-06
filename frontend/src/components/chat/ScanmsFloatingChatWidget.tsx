@@ -943,7 +943,7 @@ export function ScanmsFloatingChatWidget() {
                   placeholder="Tìm tên sản phẩm"
                   value={productSearchQuery}
                   onChange={(e) => setProductSearchQuery(e.target.value)}
-                  className="w-full pl-3 pr-9 py-2 bg-white border border-[#EAE4D7] rounded text-xs text-[#1A1612] placeholder:text-[#999999] focus:outline-hidden focus:border-[#ee4d2d]"
+                  className="w-full pl-3 pr-9 py-2 bg-white border border-[#EAE4D7] rounded text-xs text-[#1A1612] placeholder:text-[#999999] focus:outline-hidden focus:border-[#C59B58]"
                 />
                 <Search className="w-4 h-4 text-[#999999] absolute right-3 pointer-events-none" />
               </div>
@@ -970,7 +970,7 @@ export function ScanmsFloatingChatWidget() {
                       key={p.id}
                       onClick={() => toggleSelectProduct(p.id)}
                       className={`p-2.5 bg-white border rounded-lg transition flex items-center justify-between gap-3 cursor-pointer group ${
-                        isChecked ? 'border-[#ee4d2d] bg-[#FFF5F1]/30 shadow-xs' : 'border-[#EAE4D7] hover:border-[#D5CBB8]'
+                        isChecked ? 'border-[#C59B58] bg-[#FBF5EB] shadow-xs' : 'border-[#EAE4D7] hover:border-[#D5CBB8]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -979,7 +979,7 @@ export function ScanmsFloatingChatWidget() {
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => {}} // Handled by row click
-                          className="w-4 h-4 rounded border-gray-300 accent-[#ee4d2d] text-[#ee4d2d] focus:ring-0 cursor-pointer shrink-0"
+                          className="w-4 h-4 rounded border-gray-300 accent-[#C59B58] text-[#C59B58] focus:ring-0 cursor-pointer shrink-0"
                         />
 
                         {/* Thumbnail */}
@@ -999,7 +999,7 @@ export function ScanmsFloatingChatWidget() {
                         {/* Title & Prices */}
                         <div className="min-w-0 flex-1">
                           <div
-                            className="text-xs font-normal text-[#1A1612] line-clamp-2 leading-snug group-hover:text-[#ee4d2d] transition-colors"
+                            className="text-xs font-normal text-[#1A1612] line-clamp-2 leading-snug group-hover:text-[#B88E4F] transition-colors"
                             title={p.title}
                           >
                             {p.title}
@@ -1010,7 +1010,7 @@ export function ScanmsFloatingChatWidget() {
                                 {p.originalPrice.toLocaleString('vi-VN')}₫
                               </span>
                             )}
-                            <span className="text-xs font-bold text-[#ee4d2d]">
+                            <span className="text-xs font-bold text-[#B88E4F]">
                               {p.price.toLocaleString('vi-VN')}₫
                             </span>
                           </div>
@@ -1024,7 +1024,7 @@ export function ScanmsFloatingChatWidget() {
                           e.stopPropagation();
                           handleSendSingleProduct(p);
                         }}
-                        className="px-3.5 py-1.5 bg-[#ee4d2d] hover:bg-[#d03e1e] text-white text-xs font-bold rounded-[3px] shadow-xs shrink-0 cursor-pointer transition active:scale-95"
+                        className="px-3.5 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold rounded-[3px] shadow-xs shrink-0 cursor-pointer transition active:scale-95"
                       >
                         Gửi
                       </button>
@@ -1038,7 +1038,7 @@ export function ScanmsFloatingChatWidget() {
             {selectedProductIds.length > 0 && (
               <div className="px-4 py-2.5 border-t border-[#F0ECE1] bg-white flex items-center justify-between shrink-0 shadow-lg">
                 <div className="text-xs text-[#555]">
-                  <span className="text-[#ee4d2d] font-bold">{selectedProductIds.length}/{currentShopProducts.length}</span> sản phẩm đã chọn
+                  <span className="text-[#B88E4F] font-bold">{selectedProductIds.length}/{currentShopProducts.length}</span> sản phẩm đã chọn
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -1051,7 +1051,7 @@ export function ScanmsFloatingChatWidget() {
                   <button
                     type="button"
                     onClick={handleSendSelectedProducts}
-                    className="px-5 py-1.5 bg-[#ee4d2d] hover:bg-[#d03e1e] text-white text-xs font-bold rounded-[3px] shadow-xs transition active:scale-95 cursor-pointer"
+                    className="px-5 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold rounded-[3px] shadow-xs transition active:scale-95 cursor-pointer"
                   >
                     Gửi
                   </button>
@@ -1069,7 +1069,7 @@ export function ScanmsFloatingChatWidget() {
         <div className="w-[230px] shrink-0 border-r border-[#EAE4D7] bg-white flex flex-col min-w-0">
           {/* Header trái: Chat (2) + [↗] + [⌄] */}
           <div className="h-11 px-3 border-b border-[#EAE4D7] flex items-center justify-between bg-white shrink-0">
-            <div className="flex items-center gap-1 text-[#ee4d2d] font-bold text-sm sm:text-[15px]">
+            <div className="flex items-center gap-1 text-[#B88E4F] font-bold text-sm sm:text-[15px]">
               <span>Chat</span>
               <span className="font-semibold text-xs sm:text-sm">({totalUnread > 0 ? totalUnread : filteredConversations.length})</span>
             </div>
@@ -1152,7 +1152,7 @@ export function ScanmsFloatingChatWidget() {
                     key={c.id}
                     onClick={() => selectConversation(c.id)}
                     className={`group px-3 py-2.5 flex items-center gap-2.5 cursor-pointer hover:bg-[#FAF8F5] transition relative ${
-                      isSelected ? 'bg-[#FBF5EB] border-l-3 border-l-[#ee4d2d]' : ''
+                      isSelected ? 'bg-[#FBF5EB] border-l-3 border-l-[#C59B58]' : ''
                     }`}
                   >
                     {/* Avatar Shop chuẩn thương hiệu SCANMS (Đồng bộ với Card Shop trên sàn) */}
@@ -1217,7 +1217,7 @@ export function ScanmsFloatingChatWidget() {
                           {snippetText}
                         </p>
                         {c.unreadCount > 0 && (
-                          <span className="min-w-[16px] h-4 px-1 rounded-full bg-[#ee4d2d] text-white text-[9.5px] font-bold flex items-center justify-center shrink-0 ml-1">
+                          <span className="min-w-[16px] h-4 px-1 rounded-full bg-[#C59B58] text-white text-[9.5px] font-bold flex items-center justify-center shrink-0 ml-1">
                             {c.unreadCount}
                           </span>
                         )}
@@ -1412,11 +1412,11 @@ export function ScanmsFloatingChatWidget() {
                                       {p.originalPrice.toLocaleString('vi-VN')}₫
                                     </span>
                                   )}
-                                  <span className="font-bold text-[#ee4d2d]">
+                                  <span className="font-bold text-[#B88E4F]">
                                     {p.price.toLocaleString('vi-VN')}₫
                                   </span>
                                   {discountPercent && discountPercent > 0 && (
-                                    <span className="text-[10px] text-[#ee4d2d] font-semibold">
+                                    <span className="text-[10px] text-[#B88E4F] font-semibold">
                                       -{discountPercent}%
                                     </span>
                                   )}
@@ -1451,7 +1451,7 @@ export function ScanmsFloatingChatWidget() {
                     msg.mediaUrl
                       ? 'bg-white text-[#1A1612] border border-[#EAE4D7]'
                       : isUser
-                        ? 'px-3.5 py-2.5 bg-[#ee4d2d] text-white rounded-br-none'
+                        ? 'px-3.5 py-2.5 bg-[#C59B58] text-white rounded-br-none'
                         : 'px-3.5 py-2.5 bg-white text-[#1A1612] border border-[#EAE4D7] rounded-bl-none'
                   }`}
                 >
@@ -1646,7 +1646,7 @@ export function ScanmsFloatingChatWidget() {
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={isUploadingAttachment}
-                className="hover:text-[#ee4d2d] transition cursor-pointer p-0.5 disabled:opacity-50"
+                className="hover:text-[#B88E4F] transition cursor-pointer p-0.5 disabled:opacity-50"
                 title="Gửi ảnh PNG/JPG (tối đa 5 MB)"
               >
                 <ImageIcon className="w-4 h-4" />
@@ -1657,7 +1657,7 @@ export function ScanmsFloatingChatWidget() {
                 type="button"
                 onClick={() => videoInputRef.current?.click()}
                 disabled={isUploadingAttachment}
-                className="hover:text-[#ee4d2d] transition cursor-pointer p-0.5 disabled:opacity-50"
+                className="hover:text-[#B88E4F] transition cursor-pointer p-0.5 disabled:opacity-50"
                 title="Gửi video review (MP4/MOV/WEBM, tối đa 50 MB)"
               >
                 <Video className="w-4 h-4" />
@@ -1667,7 +1667,7 @@ export function ScanmsFloatingChatWidget() {
               <button
                 type="button"
                 onClick={() => void openCouponPicker()}
-                className="hover:text-[#ee4d2d] transition cursor-pointer p-0.5"
+                className="hover:text-[#B88E4F] transition cursor-pointer p-0.5"
                 title="Xem và gửi mã giảm giá của Shop"
               >
                 <Ticket className="w-4 h-4" />
@@ -1677,7 +1677,7 @@ export function ScanmsFloatingChatWidget() {
               <button
                 type="button"
                 onClick={openProductPicker}
-                className="hover:text-[#ee4d2d] transition cursor-pointer p-0.5"
+                className="hover:text-[#B88E4F] transition cursor-pointer p-0.5"
                 title="Chọn sản phẩm thật của Shop để gửi trong chat"
               >
                 <Package className="w-4 h-4" />
@@ -1688,7 +1688,7 @@ export function ScanmsFloatingChatWidget() {
                 type="button"
                 onClick={() => documentInputRef.current?.click()}
                 disabled={isUploadingAttachment}
-                className="hover:text-[#ee4d2d] transition cursor-pointer p-0.5 disabled:opacity-50"
+                className="hover:text-[#B88E4F] transition cursor-pointer p-0.5 disabled:opacity-50"
                 title="Đính kèm biên lai / hóa đơn (tối đa 20 MB)"
               >
                 <FileText className="w-4 h-4" />

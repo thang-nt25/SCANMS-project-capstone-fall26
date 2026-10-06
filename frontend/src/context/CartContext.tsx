@@ -806,27 +806,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // Check login status
+      // Check login status: nếu chưa đăng nhập, lưu pending state nhưng không redirect mất giỏ hàng,
+      // mà mở ngay CheckoutModal để khách đăng nhập tại chỗ qua Google/Email rồi thanh toán ngay!
       const token = localStorage.getItem('token');
       const currentUser = authService.getCurrentUser();
 
       if (!token || !currentUser) {
-        // Guest user: save state and redirect to login
         const itemIds = itemsToCheckout.map((i) => i.cartItemId);
         localStorage.setItem(
           PENDING_CHECKOUT_KEY,
           JSON.stringify({ itemIds, time: Date.now() }),
         );
-
-        toast.info('Vui lòng đăng nhập hoặc tạo tài khoản để hoàn tất đơn hàng!');
-        const redirectUrl = encodeURIComponent(
-          window.location.pathname + window.location.search,
-        );
-        window.location.href = `/login?redirect=${redirectUrl}`;
-        return;
       }
 
-      // User logged in: open checkout modal with selected items
       setCheckoutItems(itemsToCheckout);
       if (couponCode !== undefined) {
         setCheckoutCouponCode(couponCode);

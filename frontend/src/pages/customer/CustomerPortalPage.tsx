@@ -587,7 +587,16 @@ export default function CustomerPortalPage() {
         status: statusParam,
         search: orderSearch.trim() || undefined,
       });
-      setOrders(res.orders);
+      const loadedOrders = res.orders || [];
+      setOrders(loadedOrders);
+
+      const targetOrderId = searchParams.get('orderId');
+      if (targetOrderId && loadedOrders.length > 0) {
+        const found = loadedOrders.find((o) => o.id === targetOrderId || o.externalOrderSn === targetOrderId);
+        if (found) {
+          setSelectedOrderDetails(found);
+        }
+      }
     } catch (err: any) {
       console.error('Fetch orders error:', err);
       setOrdersError(true);
