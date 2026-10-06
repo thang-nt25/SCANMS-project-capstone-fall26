@@ -16,6 +16,7 @@ describe('Customer shopping rules', () => {
       completedAt: new Date(),
       updatedAt: new Date(),
       returnRequest: null,
+      orderItems: [{ id: 'line-1', quantity: 1, unitPrice: '100000.00' }],
     } as any);
     await expect(service.createReturnRequest('customer-1', 'order-1', {
       reason: 'DAMAGED', imageUrls: ['https://example.com/image.jpg'],
@@ -28,6 +29,7 @@ describe('Customer shopping rules', () => {
     const tx = {
       order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
       returnRequest: { create: jest.fn().mockResolvedValue({ id: 'request-1' }) },
+      returnEvent: { create: jest.fn() },
       notification: { create: jest.fn() },
     };
     const prisma = { $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)) };
@@ -37,6 +39,7 @@ describe('Customer shopping rules', () => {
       deliveredAt: new Date(Date.now() - 86400000),
       returnRequest: null,
       store: { ownerId: 'owner-1' }, externalOrderSn: 'S-001',
+      orderItems: [{ id: 'line-1', quantity: 2, unitPrice: '100000.00' }],
     } as any);
     await service.createReturnRequest('customer-1', 'order-1', {
       reason: 'DAMAGED', imageUrls: ['https://example.com/image.jpg'],
@@ -44,7 +47,11 @@ describe('Customer shopping rules', () => {
     } as any);
     expect(tx.returnRequest.create).toHaveBeenCalledWith({ data: expect.objectContaining({
       customerId: 'customer-1', originalOrderStatus: OrderStatus.COMPLETED,
+      items: { create: [{ orderItemId: 'line-1', quantity: 2, unitPrice: '100000.00' }] },
     }) });
+    expect(tx.returnEvent.create).toHaveBeenCalledWith({ data: {
+      returnRequestId: 'request-1', actorId: 'customer-1', type: 'REQUEST_CREATED',
+    } });
   });
 
   it('rejects a review unless the order is completed', async () => {

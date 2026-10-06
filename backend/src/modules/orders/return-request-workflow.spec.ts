@@ -21,6 +21,7 @@ describe('Shop return request workflow', () => {
         findUniqueOrThrow: jest.fn().mockResolvedValue(request),
       },
       order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      returnEvent: { create: jest.fn() },
       notification: { create: jest.fn() },
     };
     const prisma = {
@@ -49,6 +50,9 @@ describe('Shop return request workflow', () => {
       data: expect.objectContaining({ status: ReturnRequestStatus.SHOP_APPROVED }),
     }));
     expect(tx.order.updateMany).not.toHaveBeenCalled();
+    expect(tx.returnEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      returnRequestId: request.id, type: 'REQUESTED_TO_SHOP_APPROVED',
+    }) });
   });
 
   it('restores the original order status on rejection', async () => {

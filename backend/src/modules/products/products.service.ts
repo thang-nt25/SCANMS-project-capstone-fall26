@@ -21,6 +21,7 @@ import { TrackAnalyticsEventDto } from './dto/track-event.dto';
 import { ProductLandingResponseDto } from './dto/landing-page-response.dto';
 import { UserRole, ReviewStatus, ProductModerationStatus } from '@prisma/client';
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
+import { publicReturnPolicy } from '../stores/store-policy.util';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -1901,8 +1902,8 @@ export class ProductsService {
 
     const policies = {
       returnPolicy:
-        product.store.policyReturn ||
-        'Chính sách đổi trả hàng theo quy định chuẩn của sàn SCANMS',
+        publicReturnPolicy(product.store.policyReturn) ||
+        'Yêu cầu đổi trả trong 14 ngày kể từ khi nhận hàng, kèm ảnh và video mở hộp.',
       warranty:
         product.store.policyWarranty ||
         'Bảo hành chính hãng theo chính sách gian hàng đối tác',

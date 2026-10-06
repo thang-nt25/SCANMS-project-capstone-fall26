@@ -104,10 +104,45 @@ enum OrderStatus {
 enum ReturnRequestStatus {
   REQUESTED
   SHOP_APPROVED
+  PICKUP_BOOKED
   SHOP_REJECTED
+  EXPIRED
+  RETURN_SHIPPED
+  RETURN_RECEIVED
+  INSPECTING
+  INSPECTION_REJECTED
+  REFUND_PENDING
+  REFUND_PROCESSING
+  REFUND_FAILED
+  EXCHANGE_PENDING
+  EXCHANGE_SHIPPED
+  AWAITING_CUSTOMER_CONFIRMATION
+  COMPLETED
   DISPUTED
   REFUNDED
   CLOSED
+}
+
+enum ReturnShipmentDirection {
+  CUSTOMER_TO_SHOP
+  SHOP_TO_CUSTOMER
+}
+
+enum ReturnResolution {
+  REFUND
+  EXCHANGE
+}
+
+enum ReturnRefundStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+enum ReturnDisputeStatus {
+  OPEN
+  RESOLVED
 }
 
 enum ReturnReason {
@@ -296,6 +331,7 @@ model User {
   customerOrders            Order[]                     @relation("CustomerOrders")
   customerCartItems         CustomerCartItem[]
   customerReturnRequests    ReturnRequest[]             @relation("CustomerReturnRequests")
+  resolvedReturnDisputes    Dispute[]                   @relation("ReturnDisputeResolver")
   customerConversations     Conversation[]              @relation("CustomerConversations")
   storeFollows              StoreFollow[]
   liveSessionsCreated       LiveShoppingSession[] @relation("LiveSessionCreator")
@@ -330,6 +366,7 @@ model Store {
   policyReturn          String?   @map("policy_return")
   policyWarranty        String?   @map("policy_warranty") @db.VarChar(500)
   policyShipping        String?   @map("policy_shipping") @db.VarChar(500)
+  returnWarehouse       Json?     @map("return_warehouse") @db.JsonB
   isDeleted             Boolean   @default(false) @map("is_deleted")
   deletedAt             DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1286,6 +1323,7 @@ model OrderItem {
   product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   referralLink ReferralLink?   @relation(fields: [referralLinkId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  returnItems  ReturnItem[]
 
   @@index([orderId], map: "idx_fk_order_items_order")
   @@index([productId], map: "idx_fk_order_items_product")
@@ -1600,13 +1638,117 @@ model ReturnRequest {
   deadlineAt          DateTime            @map("deadline_at") @db.Timestamptz(6)
   shopResponse        String?             @map("shop_response") @db.VarChar(1000)
   shopRespondedAt     DateTime?           @map("shop_responded_at") @db.Timestamptz(6)
+  shipByAt            DateTime?           @map("ship_by_at") @db.Timestamptz(6)
+  returnAddress       String?             @map("return_address") @db.VarChar(500)
+  returnInstructions  String?             @map("return_instructions") @db.VarChar(1000)
+  pickupContact       Json?               @map("pickup_contact") @db.JsonB
+  resolution          ReturnResolution?
+  inspectionNotes     String?             @map("inspection_notes") @db.VarChar(2000)
+  receivedAt          DateTime?           @map("received_at") @db.Timestamptz(6)
+  inspectionStartedAt DateTime?           @map("inspection_started_at") @db.Timestamptz(6)
+  inspectionCompletedAt DateTime?         @map("inspection_completed_at") @db.Timestamptz(6)
+  inspectionEscalatedAt DateTime?         @map("inspection_escalated_at") @db.Timestamptz(6)
+  completedAt          DateTime?           @map("completed_at") @db.Timestamptz(6)
   submittedAt         DateTime            @default(now()) @map("submitted_at") @db.Timestamptz(6)
   updatedAt           DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   customer User  @relation("CustomerReturnRequests", fields: [customerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  items     ReturnItem[]
+  shipments ReturnShipment[]
+  refund    Refund?
+  dispute   Dispute?
+  events    ReturnEvent[]
 
   @@index([customerId, submittedAt], map: "idx_return_requests_customer")
   @@index([status, submittedAt], map: "idx_return_requests_status")
+  @@index([status, shipByAt], map: "idx_return_requests_ship_deadline")
+  @@index([status, receivedAt], map: "idx_return_requests_inspection_sla")
   @@map("return_requests")
+}
+
+model ReturnItem {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  returnRequestId String        @map("return_request_id") @db.Uuid
+  orderItemId     String        @map("order_item_id") @db.Uuid
+  quantity        Int
+  unitPrice       Decimal       @map("unit_price") @db.Decimal(15, 2)
+  returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "return_items_request_fkey")
+  orderItem       OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "return_items_order_item_fkey")
+
+  @@unique([returnRequestId, orderItemId], map: "return_items_request_item_key")
+  @@map("return_items")
+}
+
+model ReturnShipment {
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  returnRequestId String                  @map("return_request_id") @db.Uuid
+  direction       ReturnShipmentDirection
+  carrierName     String                  @map("carrier_name") @db.VarChar(100)
+  trackingNumber  String                  @map("tracking_number") @db.VarChar(100)
+  receiptImageUrl String?                 @map("receipt_image_url") @db.VarChar(1000)
+  provider        String?                 @db.VarChar(30)
+  providerStatus  String?                 @map("provider_status") @db.VarChar(50)
+  clientOrderCode String?                 @unique @map("client_order_code") @db.VarChar(50)
+  feeAmount       Int?                    @map("fee_amount")
+  bookedAt        DateTime?               @map("booked_at") @db.Timestamptz(6)
+  pickedUpAt      DateTime?               @map("picked_up_at") @db.Timestamptz(6)
+  version         Int                     @default(1)
+  shippedAt       DateTime                @default(now()) @map("shipped_at") @db.Timestamptz(6)
+  receivedAt      DateTime?               @map("received_at") @db.Timestamptz(6)
+  returnRequest   ReturnRequest           @relation(fields: [returnRequestId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "return_shipments_request_fkey")
+
+  @@index([returnRequestId, direction, shippedAt])
+  @@unique([returnRequestId, direction], map: "return_shipments_request_direction_key")
+  @@index([trackingNumber])
+  @@map("return_shipments")
+}
+
+model Refund {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  returnRequestId   String             @unique(map: "return_refunds_request_key") @map("return_request_id") @db.Uuid
+  amount            Decimal            @db.Decimal(15, 2)
+  method            String             @db.VarChar(50)
+  provider          String?            @db.VarChar(50)
+  providerReference String?            @unique(map: "return_refunds_provider_reference_key") @map("provider_reference") @db.VarChar(150)
+  idempotencyKey    String             @unique(map: "return_refunds_idempotency_key_key") @map("idempotency_key") @db.VarChar(150)
+  status            ReturnRefundStatus @default(PENDING)
+  failureReason     String?            @map("failure_reason") @db.VarChar(1000)
+  processedAt       DateTime?          @map("processed_at") @db.Timestamptz(6)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  returnRequest     ReturnRequest      @relation(fields: [returnRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "return_refunds_request_fkey")
+
+  @@map("return_refunds")
+}
+
+model Dispute {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  returnRequestId String              @unique(map: "return_disputes_request_key") @map("return_request_id") @db.Uuid
+  reason          String              @db.VarChar(100)
+  details         String              @db.VarChar(2000)
+  status          ReturnDisputeStatus @default(OPEN)
+  ruling          String?             @db.VarChar(50)
+  resolutionNotes String?             @map("resolution_notes") @db.VarChar(3000)
+  resolvedById    String?             @map("resolved_by_id") @db.Uuid
+  openedAt        DateTime            @default(now()) @map("opened_at") @db.Timestamptz(6)
+  resolvedAt      DateTime?           @map("resolved_at") @db.Timestamptz(6)
+  returnRequest   ReturnRequest       @relation(fields: [returnRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "return_disputes_request_fkey")
+  resolvedBy      User?               @relation("ReturnDisputeResolver", fields: [resolvedById], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "return_disputes_resolver_fkey")
+
+  @@index([status, openedAt])
+  @@map("return_disputes")
+}
+
+model ReturnEvent {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  returnRequestId String        @map("return_request_id") @db.Uuid
+  actorId         String?       @map("actor_id") @db.Uuid
+  type            String        @db.VarChar(80)
+  data            Json?         @db.JsonB
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "return_events_request_fkey")
+
+  @@index([returnRequestId, createdAt], map: "return_events_request_created_at_idx")
+  @@map("return_events")
 }

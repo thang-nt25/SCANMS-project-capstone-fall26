@@ -9,8 +9,11 @@ export interface StoreReturnRequest {
   details: string | null;
   imageUrls: string[];
   unboxingVideoUrl: string;
-  status: 'REQUESTED' | 'SHOP_APPROVED' | 'SHOP_REJECTED' | 'DISPUTED' | 'REFUNDED' | 'CLOSED';
+  status: import('./return.service').ReturnStatus;
   deadlineAt: string;
+  shipByAt?: string | null;
+  returnAddress?: string | null;
+  returnInstructions?: string | null;
   submittedAt: string;
   shopResponse: string | null;
   shopRespondedAt: string | null;
