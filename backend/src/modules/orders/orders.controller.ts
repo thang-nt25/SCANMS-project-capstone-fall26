@@ -584,14 +584,14 @@ export class OrdersController {
 
   @Get('admin/disputes')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({
     summary:
-      'Lấy danh sách các đơn hàng có khiếu nại tranh chấp (Admin Portal)',
+      'Lấy danh sách các đơn hàng có khiếu nại tranh chấp (Admin & Shop Portal)',
   })
-  async getAdminDisputes() {
-    return this.ordersService.getAdminDisputes();
+  async getAdminDisputes(@CurrentUser() user: any) {
+    return this.ordersService.getAdminDisputes(user?.id, user?.role);
   }
 
   @Post(':id/dispute')
