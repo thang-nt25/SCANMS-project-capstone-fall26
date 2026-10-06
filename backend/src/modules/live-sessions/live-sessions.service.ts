@@ -142,6 +142,7 @@ export class LiveSessionsService {
 
   async create(userId: string, dto: CreateLiveSessionDto) {
     const store = await this.assertStoreOwner(userId, dto.storeId);
+    this.assertLiveAllowed(store);
     const creator = await this.prisma.storeCollaborator.findFirst({
       where: {
         storeId: dto.storeId,
@@ -240,6 +241,8 @@ export class LiveSessionsService {
     const sessionId = randomUUID();
     const couponCode = `LIVE${randomBytes(5).toString('hex').toUpperCase()}`;
     const session = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM stores WHERE id = ${dto.storeId}::uuid FOR UPDATE`;
+      this.assertLiveAllowed(await tx.store.findUniqueOrThrow({ where: { id: dto.storeId } }));
       const created = await tx.liveShoppingSession.create({
         data: {
           id: sessionId,
@@ -343,11 +346,14 @@ export class LiveSessionsService {
   }
 
   async getAdminSessions() {
-    const sessions = await this.prisma.liveShoppingSession.findMany({
-      include: sessionInclude,
-      orderBy: [{ createdAt: 'desc' }],
-      take: 50,
-    });
+    const [recent, disputed] = await Promise.all([
+      this.prisma.liveShoppingSession.findMany({ include: sessionInclude, orderBy: [{ createdAt: 'desc' }], take: 50 }),
+      this.prisma.liveShoppingSession.findMany({
+        where: { OR: ['OPEN', 'ESCALATED', 'RESOLVED', 'APPEALED', 'CLOSED'].map(status => ({ governance: { path: ['dispute', 'status'], equals: status } })) },
+        include: sessionInclude, orderBy: [{ updatedAt: 'desc' }],
+      }),
+    ]);
+    const sessions = [...new Map([...disputed, ...recent].map(session => [session.id, session])).values()];
     return Promise.all(sessions.map(async (session) => ({
       ...session,
       report: { ...await this.getReportData(session.id), ...await this.getViewerStats(session.id, session.platform) },
@@ -378,6 +384,7 @@ export class LiveSessionsService {
       throw new BadRequestException('Đã quá thời gian của phiên livestream này.');
     }
     const inviteStatus = dto.accepted ? LiveSessionInviteStatus.ACCEPTED : LiveSessionInviteStatus.REJECTED;
+    if (dto.accepted) this.assertLiveAllowed(await this.prisma.store.findUniqueOrThrow({ where: { id: session.storeId } }));
     const status = dto.accepted
       ? session.endsAt <= now ? LiveSessionStatus.ENDED : session.startsAt <= now ? LiveSessionStatus.LIVE : LiveSessionStatus.SCHEDULED
       : LiveSessionStatus.CANCELLED;
@@ -407,12 +414,16 @@ export class LiveSessionsService {
     const session = await this.prisma.liveShoppingSession.findUnique({ where: { id: sessionId } });
     if (!session) throw new NotFoundException('Không tìm thấy phiên livestream.');
     await this.assertStoreOwner(userId, session.storeId);
+    if (dto.action === 'PAUSED' || dto.action === 'CANCELLED') {
+      throw new BadRequestException('Vui lòng dùng Yêu cầu kết thúc hoặc Dừng khẩn cấp và ghi lý do.');
+    }
     if (session.status === LiveSessionStatus.ENDED || session.status === LiveSessionStatus.CANCELLED) {
       throw new BadRequestException('Phiên livestream đã kết thúc hoặc bị hủy.');
     }
     const now = new Date();
 
     if (dto.action === 'START_NOW') {
+      this.assertLiveAllowed(await this.assertStoreOwner(userId, session.storeId));
       if (session.inviteStatus !== LiveSessionInviteStatus.ACCEPTED) {
         throw new BadRequestException('KOL chưa chấp nhận lời mời tham gia phiên live này. Vui lòng chờ KOL đồng ý trước khi phát sóng.');
       }
@@ -475,33 +486,15 @@ export class LiveSessionsService {
     if (session.inviteStatus !== LiveSessionInviteStatus.ACCEPTED) {
       throw new BadRequestException('Chỉ có thể điều khiển phiên sau khi KOL chấp nhận hoặc chọn Mở phiên phát sóng ngay.');
     }
-    let status: LiveSessionStatus;
-    if (dto.action === 'CANCELLED') status = LiveSessionStatus.CANCELLED;
-    else if (dto.action === 'PAUSED') status = LiveSessionStatus.PAUSED;
-    else status = session.endsAt <= now ? LiveSessionStatus.ENDED : session.startsAt <= now ? LiveSessionStatus.LIVE : LiveSessionStatus.SCHEDULED;
+    this.assertLiveAllowed(await this.assertStoreOwner(userId, session.storeId));
+    const status: LiveSessionStatus = session.endsAt <= now ? LiveSessionStatus.ENDED : session.startsAt <= now ? LiveSessionStatus.LIVE : LiveSessionStatus.SCHEDULED;
     await this.prisma.$transaction([
       this.prisma.liveShoppingSession.update({ where: { id: sessionId }, data: { status } }),
       this.prisma.coupon.updateMany({
         where: { liveSessionId: sessionId },
-        data: { status: status === LiveSessionStatus.CANCELLED || status === LiveSessionStatus.ENDED ? CouponStatus.EXPIRED : status === LiveSessionStatus.PAUSED ? CouponStatus.PAUSED : CouponStatus.ACTIVE },
+        data: { status: status === LiveSessionStatus.ENDED ? CouponStatus.EXPIRED : CouponStatus.ACTIVE },
       }),
     ]);
-    if (status === LiveSessionStatus.CANCELLED) {
-      try {
-        await this.prisma.notification.deleteMany({
-          where: {
-            type: 'LIVE_SESSION_BROADCAST',
-            data: {
-              path: ['sessionId'],
-              equals: sessionId,
-            },
-          },
-        });
-      } catch (delErr) {
-        this.logger.error('Failed to cleanup live broadcast notifications on cancel', delErr);
-      }
-      await this.repriceUnpaidOrders(sessionId);
-    }
     if (status === LiveSessionStatus.ENDED) {
       try {
         await this.prisma.notification.deleteMany({
@@ -547,9 +540,10 @@ export class LiveSessionsService {
       orderBy: { startsAt: 'asc' },
     });
     if (!session) return { session: null, serverTime: now.toISOString() };
+    const { governance: _privateGovernance, ...publicSession } = session;
     return {
       session: {
-        ...session,
+        ...publicSession,
         remainingUses: session.coupon?.usageLimitTotal === null ? null : Math.max(0, (session.coupon?.usageLimitTotal ?? 0) - (session.coupon?.usageCount ?? 0)),
       },
       serverTime: now.toISOString(),
@@ -661,13 +655,30 @@ export class LiveSessionsService {
 
     if (session) {
       const stats = await this.getSessionStats(session.id);
+      const { governance: _privateGovernance, ...publicSession } = session;
       return {
-        ...session,
+        ...publicSession,
         liveStats: stats,
       };
     }
 
     return session;
+  }
+
+  async getStreamRoomInfo(sessionId: string) {
+    const session = await this.prisma.liveShoppingSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true, creatorId: true, platform: true, status: true, inviteStatus: true, startsAt: true, endsAt: true, store: { select: { liveCooperationBlocked: true, liveRestrictionUntil: true } } },
+    });
+    if (!session || session.platform !== 'SCANMS') {
+      throw new NotFoundException('Không tìm thấy phiên SCANMS Live.');
+    }
+    if (!['LIVE', 'SCHEDULED'].includes(session.status) || session.inviteStatus !== 'ACCEPTED' || session.endsAt <= new Date()) throw new BadRequestException('Phiên chưa sẵn sàng hoặc đã dừng phát sóng.');
+    if (session.status === 'SCHEDULED') {
+      this.assertLiveAllowed(session.store);
+      if (session.startsAt > new Date()) throw new BadRequestException('Chưa đến giờ phát sóng. Shop cần chọn Mở phiên phát sóng ngay nếu muốn bắt đầu sớm.');
+    }
+    return { id: session.id, creatorId: session.creatorId };
   }
 
   private sessionStatsMap = new Map<
@@ -696,7 +707,7 @@ export class LiveSessionsService {
   private async getViewerStats(sessionId: string, platform: string) {
     if (platform !== 'SCANMS') return { currentViewers: null, totalViewers: null };
     const [currentViewers, totalViewers] = await Promise.all([
-      this.prisma.liveSessionViewer.count({ where: { sessionId, leftAt: null, lastSeenAt: { gte: new Date(Date.now() - 30_000) } } }),
+      this.prisma.liveSessionViewer.count({ where: { sessionId, leftAt: null, lastSeenAt: { gte: new Date(Date.now() - 30_000) }, session: { status: { in: ['LIVE', 'SCHEDULED'] }, endsAt: { gt: new Date() } } } }),
       this.prisma.liveSessionViewer.count({ where: { sessionId } }),
     ]);
     return { currentViewers, totalViewers };
@@ -731,6 +742,10 @@ export class LiveSessionsService {
     if (body.action === 'LEAVE') {
       await this.prisma.liveSessionViewer.updateMany({ where: { sessionId: key, clientId: body.clientId }, data: { leftAt: now } });
     } else {
+      const session = await this.prisma.liveShoppingSession.findUnique({ where: { id: key }, select: { status: true, endsAt: true } });
+      if (!session || !['LIVE', 'SCHEDULED'].includes(session.status) || session.endsAt <= now) {
+        return { identifier: key, viewers: 0, likes: this.sessionStatsMap.get(key)?.likes || 0, actionApplied: 'IGNORED', serverTime: now.toISOString() };
+      }
       await this.prisma.liveSessionViewer.upsert({
         where: { sessionId_clientId: { sessionId: key, clientId: body.clientId } },
         create: { sessionId: key, clientId: body.clientId, lastSeenAt: now },
@@ -755,7 +770,7 @@ export class LiveSessionsService {
 
   async getPublicLiveList() {
     const now = new Date();
-    return this.prisma.liveShoppingSession.findMany({
+    const sessions = await this.prisma.liveShoppingSession.findMany({
       where: {
         status: { in: [LiveSessionStatus.LIVE, LiveSessionStatus.SCHEDULED, LiveSessionStatus.PENDING_CREATOR, LiveSessionStatus.PAUSED] },
         endsAt: { gt: now },
@@ -764,6 +779,7 @@ export class LiveSessionsService {
       orderBy: [{ status: 'asc' }, { startsAt: 'asc' }],
       take: 20,
     });
+    return sessions.map(({ governance: _privateGovernance, ...session }) => session);
   }
 
   async getReport(userId: string, sessionId: string) {
@@ -777,7 +793,7 @@ export class LiveSessionsService {
   async synchronizeLifecycle() {
     const now = new Date();
     const dueToGoLive = await this.prisma.liveShoppingSession.findMany({
-      where: { status: LiveSessionStatus.SCHEDULED, inviteStatus: LiveSessionInviteStatus.ACCEPTED, startsAt: { lte: now }, endsAt: { gt: now } },
+      where: { status: LiveSessionStatus.SCHEDULED, inviteStatus: LiveSessionInviteStatus.ACCEPTED, startsAt: { lte: now }, endsAt: { gt: now }, store: { liveCooperationBlocked: false, OR: [{ liveRestrictionUntil: null }, { liveRestrictionUntil: { lte: now } }] } },
       select: { id: true, title: true, creatorId: true, createdBy: true },
     });
     for (const session of dueToGoLive) {
@@ -851,10 +867,10 @@ export class LiveSessionsService {
   private async repriceUnpaidOrders(sessionId: string) {
     const session = await this.prisma.liveShoppingSession.findUnique({
       where: { id: sessionId },
-      select: { id: true, title: true, status: true, commissionRate: true, coupon: { select: { id: true } } },
+      select: { id: true, title: true, status: true, governance: true, commissionRate: true, coupon: { select: { id: true } } },
     });
     if (
-      !session ||
+      !session || (session.governance as any)?.preserveOrderTerms ||
       (session.status !== LiveSessionStatus.ENDED && session.status !== LiveSessionStatus.CANCELLED) ||
       !session.coupon
     ) return;
@@ -1015,6 +1031,11 @@ export class LiveSessionsService {
     }
   }
 
+  private assertLiveAllowed(store: { liveCooperationBlocked: boolean; liveRestrictionUntil: Date | null }) {
+    if (store.liveCooperationBlocked) throw new ForbiddenException('Shop đang bị khóa quyền hợp tác livestream. Liên hệ Vận hành & Tuân thủ.');
+    if (store.liveRestrictionUntil && store.liveRestrictionUntil > new Date()) throw new ForbiddenException(`Shop bị hạn chế mở phiên đến ${store.liveRestrictionUntil.toLocaleString('vi-VN')}.`);
+  }
+
   private async assertStoreOwner(userId: string, storeId: string) {
     const store = await this.prisma.store.findFirst({ where: { id: storeId, ownerId: userId, isDeleted: false } });
     if (!store) throw new ForbiddenException('Bạn không có quyền quản lý gian hàng này.');
@@ -1023,10 +1044,13 @@ export class LiveSessionsService {
 
   private async getReportData(sessionId: string) {
     const session = await this.prisma.liveShoppingSession.findUnique({ where: { id: sessionId }, select: { creatorId: true, coupon: { select: { id: true, usageLimitTotal: true, usageCount: true } }, _count: { select: { claims: true } } } });
-    if (!session?.coupon) return { claims: session?._count.claims ?? 0, orders: 0, pendingOrders: 0, cancelledOrders: 0, grossSales: 0, voucherDiscount: 0, commission: 0, usedUses: 0, remainingUses: 0 };
+    if (!session) return { claims: 0, buyers: 0, orders: 0, pendingOrders: 0, cancelledOrders: 0, grossSales: 0, voucherDiscount: 0, commission: 0, usedUses: 0, remainingUses: 0 };
     const orders = await this.prisma.order.findMany({
-      where: { couponId: session.coupon.id },
-      select: { id: true, status: true, finalAmount: true, couponDiscountAmount: true, rawPayload: true, couponRedemption: { select: { status: true } } },
+      where: { OR: [
+        ...(session.coupon ? [{ couponId: session.coupon.id }] : []),
+        { rawPayload: { path: ['liveSessionIds'], array_contains: [sessionId] } },
+      ] },
+      select: { id: true, customerId: true, customerPhone: true, status: true, finalAmount: true, couponDiscountAmount: true, rawPayload: true, couponRedemption: { select: { status: true } } },
     });
     const activeOrders = orders.filter((order) => order.status !== 'CANCELLED');
     const cancelledOrders = orders.length - activeOrders.length;
@@ -1040,14 +1064,15 @@ export class LiveSessionsService {
       : [];
     return {
       claims: session._count.claims,
+      buyers: new Set(activeOrders.map((order) => order.customerId || order.customerPhone?.replace(/\D/g, '') || order.id)).size,
       orders: activeOrders.length,
       pendingOrders: activeOrders.length - settledOrders.length,
       cancelledOrders,
       grossSales: settledOrders.reduce((sum, order) => sum + Number(order.finalAmount), 0),
       voucherDiscount: activeOrders.reduce((sum, order) => sum + Number(order.couponDiscountAmount || 0), 0),
       commission: commissions.reduce((sum, commission) => sum + Number(commission.commissionAmount), 0),
-      usedUses: session.coupon.usageCount,
-      remainingUses: session.coupon.usageLimitTotal === null ? null : Math.max(0, session.coupon.usageLimitTotal - session.coupon.usageCount),
+      usedUses: session.coupon?.usageCount ?? 0,
+      remainingUses: !session.coupon || session.coupon.usageLimitTotal === null ? null : Math.max(0, session.coupon.usageLimitTotal - session.coupon.usageCount),
     };
   }
 }

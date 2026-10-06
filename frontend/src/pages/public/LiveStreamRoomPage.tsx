@@ -18,6 +18,7 @@ import {
   Video,
   VideoOff,
   Camera,
+  Sparkles,
   Mic,
   MicOff,
   Upload,
@@ -35,13 +36,20 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
+import { LiveGovernancePanel } from '../../components/live/LiveGovernancePanel';
 import { useCart } from '../../context/CartContext';
 import { useScanmsChat } from '../../context/ScanmsChatContext';
 import { toast } from '../../utils/toast';
 import { cn } from '../../utils/cn';
+import { useLiveStreamTransport } from '../../hooks/useLiveStreamTransport';
+import { FACE_FILTERS, useLiveFaceFilter, type FaceFilter } from '../../hooks/useLiveFaceFilter';
+import { FaceFilterPreview } from '../../components/live/FaceFilterPreview';
+import type { FilterCategory } from '../../features/live/faceFilters';
 
 interface LiveProduct {
   id: string;
+  variantId?: string;
+  variantName?: string;
   title: string;
   imageUrl?: string | null;
   price: number;
@@ -557,6 +565,10 @@ export default function LiveStreamRoomPage() {
 
   // Live session state
   const [sessionData, setSessionData] = useState<any>(null);
+  const isSessionHost =
+    currentUser?.role === 'COLLABORATOR' &&
+    Boolean(currentUser.id) &&
+    currentUser.id === sessionData?.creator?.id;
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -575,14 +587,37 @@ export default function LiveStreamRoomPage() {
 
   // WEBCAM / CAMERA STREAMING STATES
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [faceFilter, setFaceFilter] = useState<FaceFilter>('off');
+  const [filterStrength, setFilterStrength] = useState(60);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
+  const { stream: filteredStream, status: filterStatus, faceDetected } = useLiveFaceFilter(
+    isSessionHost ? cameraStream : null, faceFilter, filterStrength,
+  );
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isMirror, setIsMirror] = useState(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [activeBackdropUrl, setActiveBackdropUrl] = useState<string>(BACKDROP_PRESETS[0].url);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const { remoteStream, hostOnline, isStreamLive, streamError, sessionEnded } = useLiveStreamTransport({
+    sessionId: sessionData?.id,
+    isHost: isSessionHost,
+    localStream: isCameraActive ? filteredStream : null,
+  });
+
+  useEffect(() => {
+    if (!sessionEnded) return;
+    mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+    mediaStreamRef.current = null;
+    setIsCameraActive(false);
+    setCameraStream(null);
+    setSessionData((previous: any) => previous ? { ...previous, status: 'ENDED' } : previous);
+  }, [sessionEnded]);
 
   // Floating Reactions & Hearts
   const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
@@ -908,20 +943,46 @@ export default function LiveStreamRoomPage() {
 
   // Đồng bộ MediaStream vào video element mỗi khi isCameraActive thay đổi hoặc component cập nhật
   useEffect(() => {
-    if (isCameraActive && mediaStreamRef.current && videoRef.current) {
-      if (videoRef.current.srcObject !== mediaStreamRef.current) {
-        videoRef.current.srcObject = mediaStreamRef.current;
+    if (isSessionHost && isCameraActive && filteredStream && videoRef.current) {
+      if (videoRef.current.srcObject !== filteredStream) {
+        videoRef.current.srcObject = filteredStream;
       }
       videoRef.current.muted = true;
       videoRef.current.play().catch((err) => {
         console.warn('Tự động phát video cảnh báo:', err);
       });
     }
-  }, [isCameraActive]);
+  }, [isCameraActive, isSessionHost, filteredStream]);
+
+  useEffect(() => {
+    const video = remoteVideoRef.current;
+    if (!video) return;
+    video.srcObject = remoteStream;
+    video.muted = isMuted;
+    if (remoteStream) {
+      video.play().catch((err) => {
+        console.warn('Trình duyệt chưa cho tự phát video livestream:', err);
+        if (!video.muted) {
+          video.muted = true;
+          setIsMuted(true);
+          video.play().catch(() => {});
+        }
+      });
+    }
+  }, [remoteStream, isMuted]);
 
   // START / STOP CAMERA WEBCAM
   const startCamera = async () => {
+    if (sessionEnded || ['ENDED', 'CANCELLED'].includes(sessionData?.status)) {
+      toast.error('Phiên đã kết thúc, không thể bật camera.');
+      return;
+    }
     setCameraError(null);
+
+    if (!isSessionHost) {
+      setCameraError('Chỉ KOL được mời vào phiên mới có thể phát camera.');
+      return;
+    }
 
     if (!navigator?.mediaDevices?.getUserMedia) {
       const msg = 'Trình duyệt không hỗ trợ hoặc kết nối chưa an toàn (cần HTTPS hoặc localhost).';
@@ -956,6 +1017,8 @@ export default function LiveStreamRoomPage() {
       }
 
       mediaStreamRef.current = stream;
+      stream.getAudioTracks().forEach((track) => { track.enabled = !isMicMuted; });
+      setCameraStream(stream);
       setIsCameraActive(true);
 
       // Gán trực tiếp stream vào thẻ video (thẻ luôn tồn tại trong DOM)
@@ -996,6 +1059,7 @@ export default function LiveStreamRoomPage() {
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
+    setCameraStream(null);
     toast.success('Đã tắt camera phát sóng');
   };
 
@@ -1035,6 +1099,7 @@ export default function LiveStreamRoomPage() {
 
   // REAL LIVE STATS SYNC & PRESENCE HEARTBEAT (Đồng bộ số người xem và tim thực tế)
   useEffect(() => {
+    if (sessionEnded) return;
     let active = true;
 
     const syncLiveStats = async () => {
@@ -1083,10 +1148,11 @@ export default function LiveStreamRoomPage() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       handleBeforeUnload();
     };
-  }, [identifier, likesStorageKey]);
+  }, [identifier, likesStorageKey, sessionEnded]);
 
   // Real-time purchase alert ticker
   useEffect(() => {
+    if (identifier !== 'demo') return;
     const buyerNames = ['Thu Thảo', 'Quốc Bảo', 'Minh Tuấn', 'Ngọc Hân', 'Hoàng Long', 'Thùy Chi', 'Kim Ngân'];
     const buyerCities = ['Hà Nội', 'TP.HCM', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ', 'Bình Dương'];
     const items = [
@@ -1121,7 +1187,7 @@ export default function LiveStreamRoomPage() {
     return () => {
       clearInterval(alertInterval);
     };
-  }, []);
+  }, [identifier]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -1133,7 +1199,7 @@ export default function LiveStreamRoomPage() {
     if (sessionData?.products && sessionData.products.length > 0) {
       return sessionData.products.map((p: any, idx: number) => {
         const prod = p.product || {};
-        const basePrice = Number(prod.price || 300000);
+        const basePrice = Number(p.variant?.price ?? prod.price ?? 0);
         const discountVal = sessionData.coupon?.discountValue ? Number(sessionData.coupon.discountValue) : 20;
         const discountType = sessionData.coupon?.discountType || 'PERCENTAGE';
         const livePrice =
@@ -1142,6 +1208,8 @@ export default function LiveStreamRoomPage() {
             : Math.max(1000, basePrice - discountVal);
         return {
           id: prod.id || `session-prod-${idx}`,
+          variantId: p.variantId || p.variant?.id || undefined,
+          variantName: p.variant?.name,
           title: prod.title || prod.name || `Sản phẩm Deal Live #${idx + 1}`,
           imageUrl: prod.imageUrl || defaultProducts[idx % defaultProducts.length]?.imageUrl,
           price: basePrice,
@@ -1339,9 +1407,8 @@ export default function LiveStreamRoomPage() {
       }
       setIsVoucherClaimed(true);
       toast.success(`Đã lưu mã voucher ${couponCode} vào ví! Mã sẽ tự áp dụng khi bạn thanh toán.`);
-    } catch {
-      setIsVoucherClaimed(true);
-      toast.success(`Đã nhận voucher phiên live ${couponCode}!`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Chưa lưu được voucher. Vui lòng thử lại.');
     } finally {
       setVoucherClaimLoading(false);
     }
@@ -1366,15 +1433,20 @@ export default function LiveStreamRoomPage() {
   // Add to cart
   const handleAddToCart = (product: LiveProduct) => {
     addItem({
+      variantId: product.variantId,
+      liveSessionId: sessionData?.id,
+      liveCouponCode: sessionData?.coupon?.displayCode,
       product: {
         id: product.id,
         title: product.title,
-        price: product.livePrice || product.price,
+        price: product.price,
         imageUrl: product.imageUrl || '',
+        stockQuantity: product.stockLeft ?? 9999,
+        variants: product.variantId ? [{ id: product.variantId, name: product.variantName || 'Phân loại live', sku: '', price: product.price, stockQuantity: product.stockLeft ?? 9999 }] : undefined,
       },
       store: {
-        id: product.storeId || 'sora-skin',
-        name: product.storeName || 'Sora Skin Official',
+        id: product.storeId || sessionData?.store?.id,
+        name: product.storeName || sessionData?.store?.name || liveShopName,
       },
       openCartAfterAdd: false,
     });
@@ -1385,13 +1457,17 @@ export default function LiveStreamRoomPage() {
   const handleInstantBuy = (product: LiveProduct) => {
     buyNow(
       {
+        variantId: product.variantId,
+        liveSessionId: sessionData?.id,
+        liveCouponCode: sessionData?.coupon?.displayCode,
         product: {
           id: product.id,
           title: product.title,
-          price: Number(product.livePrice || product.price || 0),
+          price: Number(product.price || 0),
           originalPrice: product.price ? Number(product.price) : undefined,
           imageUrl: product.imageUrl || '',
           stockQuantity: 9999,
+          variants: product.variantId ? [{ id: product.variantId, name: product.variantName || 'Phân loại live', sku: '', price: product.price, stockQuantity: product.stockLeft ?? 9999 }] : undefined,
         },
         store: {
           id: product.storeId || sessionData?.store?.id || 'sora-skin',
@@ -1601,30 +1677,82 @@ export default function LiveStreamRoomPage() {
           </div>
 
           {/* Live Webcam Toggle Button (BẬT / TẮT CAMERA THẬT) */}
-          <button
-            type="button"
-            onClick={isCameraActive ? stopCamera : startCamera}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer select-none shadow-xs ${
-              isCameraActive
-                ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
-                : 'bg-white hover:bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]'
-            }`}
-            title={isCameraActive ? 'Tắt camera trực tiếp' : 'Bật camera máy tính để phát sóng'}
-          >
-            {isCameraActive ? (
-              <>
-                <VideoOff className="w-3.5 h-3.5 text-rose-600" />
-                <span className="hidden sm:inline">Tắt Cam</span>
-              </>
-            ) : (
-              <>
-                <Video className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span className="hidden sm:inline">Bật Camera Live</span>
-              </>
-            )}
-          </button>
+          {isSessionHost && (
+            <button
+              type="button"
+              onClick={isCameraActive ? stopCamera : startCamera}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer select-none shadow-xs ${
+                isCameraActive
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                  : 'bg-white hover:bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]'
+              }`}
+              title={isCameraActive ? 'Tắt camera trực tiếp' : 'Bật camera máy tính để phát sóng'}
+            >
+              {isCameraActive ? (
+                <>
+                  <VideoOff className="w-3.5 h-3.5 text-rose-600" />
+                  <span className="hidden sm:inline">Tắt Cam</span>
+                </>
+              ) : (
+                <>
+                  <Video className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span className="hidden sm:inline">Bật Camera Live</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Mute Audio Toggle */}
+          {isSessionHost && (
+            <div className="relative">
+              <button type="button" disabled={!isCameraActive} aria-expanded={isFilterPanelOpen}
+                onClick={() => setIsFilterPanelOpen((open) => !open)}
+                className={cn('inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition disabled:opacity-40',
+                  faceFilter === 'off' ? 'border-[#EAE4D7] bg-white text-[#7D715E]' : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]')}
+                title="Filter khuôn mặt">
+                <Sparkles className="h-4 w-4" /><span className="hidden sm:inline">Filter</span>
+              </button>
+              {isFilterPanelOpen && isCameraActive && (
+                <div className="absolute right-0 top-full z-50 mt-3 flex max-h-[calc(100dvh-100px)] w-[min(380px,calc(100vw-24px))] flex-col rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-lg">
+                  <div className="mb-3 flex items-center justify-between text-sm font-bold text-[#1A1612]">
+                    <div>Hiệu ứng khuôn mặt <span className="ml-1 text-xs font-normal text-[#7D715E]">15 filter</span></div>
+                    <button type="button" aria-label="Đóng filter" onClick={() => setIsFilterPanelOpen(false)}><X className="h-4 w-4" /></button>
+                  </div>
+                  <div className="mb-3 grid shrink-0 grid-cols-4 gap-1 rounded-xl bg-[#F3EFE6] p-1">
+                    {([{ id: 'all', label: 'Tất cả' }, { id: 'animals', label: 'Thú cưng' }, { id: 'accessories', label: 'Phụ kiện' }, { id: 'beauty', label: 'Làm đẹp' }] as const).map((category) => (
+                      <button key={category.id} type="button" aria-pressed={filterCategory === category.id} onClick={() => setFilterCategory(category.id)}
+                        className={cn('rounded-lg px-1 py-2 text-[11px] font-semibold', filterCategory === category.id ? 'bg-white text-[#1A1612] shadow-xs' : 'text-[#7D715E]')}>
+                        {category.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid min-h-0 grid-cols-3 gap-2 overflow-y-auto pr-1">
+                    {FACE_FILTERS.filter((preset) => preset.id === 'off' || filterCategory === 'all' || preset.category === filterCategory).map((preset) => (
+                      <button type="button" key={preset.id} aria-pressed={faceFilter === preset.id}
+                        onClick={() => setFaceFilter(preset.id)}
+                        className={cn('rounded-xl border px-1 py-2 text-[11px] font-semibold transition', faceFilter === preset.id
+                          ? 'border-[#C59B58] bg-[#FBF5EB] text-[#B88E4F]' : 'border-[#EAE4D7] text-[#7D715E] hover:bg-[#FAF8F5]')}>
+                        <FaceFilterPreview filter={preset.id} />
+                        <span className="mt-1.5 block">{preset.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {faceFilter !== 'off' && (
+                    <label className="mt-4 block text-xs text-[#7D715E]">
+                      Mức độ <span className="float-right">{filterStrength}%</span>
+                      <input type="range" min="10" max="100" value={filterStrength} onChange={(event) => setFilterStrength(Number(event.target.value))}
+                        className="mt-2 w-full accent-[#C59B58]" />
+                    </label>
+                  )}
+                  <p role="status" className="mt-3 text-xs leading-relaxed text-[#7D715E]">
+                    {faceFilter === 'off' ? 'Đang phát camera nguyên bản.' : filterStatus === 'loading' ? 'Đang chuẩn bị filter…'
+                      : filterStatus === 'error' ? 'Chưa tải được filter. Camera vẫn phát bình thường; chọn Nguyên bản rồi bật lại để thử lại.'
+                      : faceDetected ? `${FACE_FILTERS.find((preset) => preset.id === faceFilter)?.label} đang bám mặt · Hiệu ứng được phát tới người xem.` : 'Đưa khuôn mặt vào khung hình để áp dụng filter.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setIsMuted((v) => !v)}
@@ -1666,6 +1794,9 @@ export default function LiveStreamRoomPage() {
         </div>
       </header>
 
+      {isSessionHost && sessionData?.id && <div className="max-h-[35vh] shrink-0 overflow-auto px-3 pb-3"><LiveGovernancePanel session={sessionData} audience="kol" liveRoom /></div>}
+      {(sessionEnded || ['ENDED', 'CANCELLED'].includes(sessionData?.status)) && <div className="shrink-0 border-b border-[#EEDFC6] bg-[#FBF5EB] px-6 py-3 text-sm text-[#7D715E]">Phiên đã kết thúc. Đơn đã đặt tiếp tục được xử lý; KOL có thể xem lý do và gửi khiếu nại trong hồ sơ phiên.</div>}
+
       {/* MAIN SCREEN: BRIGHT WARM STAGE + CHAT SIDEBAR */}
       <div className="flex-1 relative flex flex-col md:flex-row overflow-hidden bg-[#F3EFE6]">
         {/* CENTRAL VIDEO STREAM & INTERACTIVE STAGE */}
@@ -1688,16 +1819,46 @@ export default function LiveStreamRoomPage() {
               className={cn(
                 "w-full h-full object-cover transition-transform duration-300",
                 isMirror && "-scale-x-100",
-                !isCameraActive && "hidden"
+                (!isSessionHost || !isCameraActive) && "hidden"
               )}
             />
 
-            {!isCameraActive && (
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              muted={isMuted}
+              onLoadedMetadata={() => {
+                remoteVideoRef.current?.play().catch(() => {});
+              }}
+              className={cn(
+                'w-full h-full object-cover',
+                (isSessionHost || !remoteStream) && 'hidden',
+              )}
+            />
+
+            {!(isSessionHost && isCameraActive) && !remoteStream && (
               <img
                 src={activeBackdropUrl}
                 alt="Stage Backdrop"
                 className="w-full h-full object-cover filter brightness-105 contrast-102"
               />
+            )}
+
+            {(sessionEnded || ['ENDED', 'CANCELLED'].includes(sessionData?.status)) && <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#FAF8F5]"><div className="px-6 text-center"><p className="text-lg font-semibold text-[#1A1612]">Phiên livestream đã kết thúc</p><p className="mt-2 text-sm text-[#7D715E]">Cảm ơn bạn đã theo dõi trên SCANMS.</p></div></div>}
+
+            {!isSessionHost && !remoteStream && (hostOnline || isStreamLive || streamError) && (
+              <div className="absolute left-1/2 top-1/2 z-10 max-w-[min(90%,420px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/70 bg-white/90 px-4 py-3 text-center text-sm font-semibold text-[#1A1612] shadow-lg backdrop-blur-sm">
+                {streamError || (isStreamLive
+                  ? 'Đang kết nối camera của KOL…'
+                  : 'KOL đã vào phiên, đang chờ bật camera…')}
+              </div>
+            )}
+
+            {isSessionHost && streamError && (
+              <div className="absolute left-1/2 top-4 z-10 max-w-[min(90%,520px)] -translate-x-1/2 rounded-xl border border-rose-200 bg-white/95 px-4 py-2 text-center text-xs font-semibold text-rose-700 shadow-lg backdrop-blur-sm">
+                {streamError}
+              </div>
             )}
 
             {/* Bright Studio Lighting & Vignette Overlay */}

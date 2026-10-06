@@ -21,7 +21,6 @@ import {
   ShoppingBag,
   Zap,
   Gift,
-  Flame,
 } from 'lucide-react';
 import {
   couponService,
@@ -593,52 +592,58 @@ export const ShopCouponsPage: React.FC = () => {
 
   return (
     <div className="w-full text-[#1A1612]">
-      <div className="max-w-[1520px] mx-auto space-y-6 pt-1 pb-8">
-        {/* Header with Title & "+ Phát hành Voucher Mới" Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE4D7] pb-6">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
-                <Store className="w-3.5 h-3.5" />
-                {storeName}
-              </span>
-              {storesList.length > 1 && (
-                <div className="inline-flex items-center gap-1.5 ml-1">
-                  <span className="text-xs text-[#7D715E]">Chọn Shop:</span>
-                  <CustomSandSelect
-                    value={storeId}
-                    onChange={(val) => handleStoreChange(val)}
-                    options={storesList.map((s) => ({ value: s.id, label: s.name }))}
-                    className="min-w-[160px]"
-                    buttonClassName="py-1 px-2.5 text-xs font-semibold"
-                  />
-                </div>
-              )}
+      <div className="max-w-[1520px] mx-auto space-y-4 pt-1 pb-8">
+        <section aria-label="Phát hành voucher gian hàng" className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                <Ticket className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-[#1A1612]">Tạo voucher gian hàng</h2>
+                <p className="mt-0.5 text-xs text-[#7D715E]">Chọn mẫu nhanh hoặc tạo ưu đãi riêng.</p>
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612] flex items-center gap-2.5">
-              <span>Mã Giảm Giá & Voucher Gian Hàng</span>
-              <span className="px-2.5 py-0.5 text-xs font-bold bg-[#FAF0DC] text-[#8C6B32] border border-[#DEBE85] rounded-full">
-                FR-12
-              </span>
-            </h1>
-            <p className="text-sm sm:text-base text-[#7D715E] mt-1">
-              Chủ động phát hành mã giảm giá riêng của gian hàng để kích cầu, tăng tỷ lệ chốt đơn và phê duyệt mã liên kết từ các Nhà sáng tạo (KOL/KOC).
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              {storesList.length > 1 ? (
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 text-xs text-[#7D715E]">Gian hàng</span>
+                  <CustomSandSelect value={storeId} onChange={handleStoreChange}
+                    options={storesList.map((s) => ({ value: s.id, label: s.name }))}
+                    className="min-w-0 flex-1 sm:w-[240px]" buttonClassName="h-10 px-3 text-xs font-medium" />
+                </div>
+              ) : (
+                <span className="inline-flex min-w-0 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2.5 text-xs text-[#7D715E]">
+                  <Store className="h-4 w-4 shrink-0 text-[#B88E4F]" /><span className="truncate">{storeName}</span>
+                </span>
+              )}
             <button
+              type="button"
               onClick={() => {
                 generateRandomCode('SHOP');
                 setIsCreateModalOpen(true);
               }}
-              className="px-5 py-2.5 bg-gradient-to-r from-[#C59B58] via-[#B88E4F] to-[#966E2E] hover:from-[#B88E4F] hover:to-[#845E20] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-[#C59B58]/25 flex items-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#C59B58] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#B88E4F] cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />
-              <span>+ Phát hành Voucher Mới</span>
+              <Plus className="h-4 w-4" />
+              <span>Phát hành voucher mới</span>
             </button>
+            </div>
           </div>
-        </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#EAE4D7] pt-3">
+            <span className="mr-1 text-xs text-[#7D715E]">Mẫu nhanh</span>
+            {([
+              { id: 'DISCOUNT_10', label: 'Giảm 10%', icon: Zap },
+              { id: 'FLAT_50K', label: 'Giảm 50K', icon: Coins },
+              { id: 'FREESHIP', label: 'Freeship 25K', icon: Gift },
+            ] as const).map((preset) => (
+              <button key={preset.id} type="button" onClick={() => { applyPreset(preset.id); setIsCreateModalOpen(true); }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#7D715E] transition-colors hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#B88E4F] cursor-pointer">
+                <preset.icon className="h-3.5 w-3.5 text-[#B88E4F]" />{preset.label}
+              </button>
+            ))}
+          </div>
+        </section>
 
         {/* Top 4 Stat Cards */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -699,58 +704,6 @@ export const ShopCouponsPage: React.FC = () => {
                 .toLocaleString('vi-VN')}{' '}
               ₫
             </p>
-          </div>
-        </div>
-
-        {/* Quick Voucher Booster Banner */}
-        <div className="bg-gradient-to-r from-[#FAF0DC]/80 via-[#FBF5EB] to-white rounded-2xl border border-[#DEBE85] p-5 mb-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#C59B58] to-[#966E2E] flex items-center justify-center text-white shadow-md shadow-[#C59B58]/20 shrink-0">
-              <Flame className="w-6 h-6 text-amber-200" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-[#1A1612] flex items-center gap-2">
-                <span>Kích cầu doanh số: Tạo Voucher độc quyền cho gian hàng</span>
-                <span className="px-2 py-0.5 text-[10px] font-extrabold bg-[#ECFDF5] text-[#059669] rounded-md border border-[#A7F3D0]">
-                  TỰ ĐỘNG KÍCH HOẠT
-                </span>
-              </h3>
-              <p className="text-xs text-[#7D715E] mt-0.5">
-                Các voucher do Shop tự tạo sẽ được hiển thị công khai trên gian hàng & trang sản phẩm để khách thu thập và chốt đơn ngay!
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <button
-              onClick={() => {
-                applyPreset('DISCOUNT_10');
-                setIsCreateModalOpen(true);
-              }}
-              className="px-3 py-1.5 bg-white hover:bg-[#F3EFE6] text-[#8C6B32] border border-[#DEBE85] rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <span>Mẫu Giảm 10%</span>
-            </button>
-            <button
-              onClick={() => {
-                applyPreset('FLAT_50K');
-                setIsCreateModalOpen(true);
-              }}
-              className="px-3 py-1.5 bg-white hover:bg-[#F3EFE6] text-[#8C6B32] border border-[#DEBE85] rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Coins className="w-3.5 h-3.5 text-amber-500" />
-              <span>Mẫu Giảm 50K</span>
-            </button>
-            <button
-              onClick={() => {
-                applyPreset('FREESHIP');
-                setIsCreateModalOpen(true);
-              }}
-              className="px-3 py-1.5 bg-white hover:bg-[#F3EFE6] text-[#8C6B32] border border-[#DEBE85] rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Gift className="w-3.5 h-3.5 text-amber-500" />
-              <span>Mẫu Freeship 25K</span>
-            </button>
           </div>
         </div>
 

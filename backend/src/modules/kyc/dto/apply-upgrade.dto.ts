@@ -33,15 +33,15 @@ export class ApplyKolUpgradeDto {
   @IsString()
   bio?: string;
 
-  @ApiPropertyOptional({ description: 'Ảnh CCCD mặt trước' })
-  @IsOptional()
+  @ApiProperty({ description: 'Ảnh CCCD mặt trước' })
   @IsString()
-  frontCardUrl?: string;
+  @IsNotEmpty({ message: 'Vui lòng tải lên ảnh CCCD mặt trước' })
+  frontCardUrl: string;
 
-  @ApiPropertyOptional({ description: 'Ảnh CCCD mặt sau' })
-  @IsOptional()
+  @ApiProperty({ description: 'Ảnh CCCD mặt sau' })
   @IsString()
-  backCardUrl?: string;
+  @IsNotEmpty({ message: 'Vui lòng tải lên ảnh CCCD mặt sau' })
+  backCardUrl: string;
 
   @ApiProperty({ enum: SocialPlatform, example: SocialPlatform.TIKTOK, description: 'Nền tảng mạng xã hội chính' })
   @IsNotEmpty({ message: 'Vui lòng chọn nền tảng mạng xã hội' })

@@ -40,6 +40,7 @@ export class KycService {
             id: true,
             email: true,
             fullName: true,
+            avatarUrl: true,
             phoneNumber: true,
             role: true,
             socialChannels: true,
@@ -56,6 +57,10 @@ export class KycService {
    * KOL nộp hồ sơ KYC (CCCD, Ngân hàng)
    */
   async submitKyc(userId: string, dto: SubmitKycDto) {
+    if (!dto.frontCardUrl?.trim() || !dto.backCardUrl?.trim()) {
+      throw new BadRequestException('Vui lòng tải lên đầy đủ ảnh CCCD mặt trước và mặt sau.');
+    }
+
     let profile = await this.prisma.collaboratorProfile.findUnique({
       where: { userId },
     });
@@ -147,6 +152,10 @@ export class KycService {
    * Khách Hàng nộp đơn nâng cấp tài khoản lên KOL
    */
   async applyKolUpgrade(userId: string, dto: ApplyKolUpgradeDto) {
+    if (!dto.frontCardUrl?.trim() || !dto.backCardUrl?.trim()) {
+      throw new BadRequestException('Vui lòng tải lên đầy đủ ảnh CCCD mặt trước và mặt sau.');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { collaboratorProfile: true },
@@ -430,6 +439,7 @@ export class KycService {
               id: true,
               email: true,
               fullName: true,
+              avatarUrl: true,
               phoneNumber: true,
               role: true,
               socialChannels: true,

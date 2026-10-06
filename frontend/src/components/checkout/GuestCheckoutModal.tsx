@@ -241,6 +241,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   // Coupons
   const [couponCode, setCouponCode] = useState(initialCouponCode);
+  const [autoCouponDismissed, setAutoCouponDismissed] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{
     code: string;
@@ -793,6 +794,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         customerPhone: customerPhone.trim() || undefined,
         items: activeItems.map((item) => ({
           productId: item.productId,
+          variantId: item.variantId,
           quantity: item.quantity,
           unitPrice: item.price,
         })),
@@ -823,15 +825,49 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   };
 
   const handleRemoveCoupon = () => {
+    setAutoCouponDismissed(true);
+    setCouponLoading(false);
     setAppliedCoupon(null);
     setCouponCode('');
     setCouponMessage(null);
   };
 
+  const liveCouponCodes = [...new Set(activeItems.map((item) => item.liveCouponCode).filter(Boolean))];
+  const autoCouponCode = initialCouponCode || (liveCouponCodes.length === 1 ? liveCouponCodes[0]! : '');
+  useEffect(() => {
+    if (!isOpen) { setAutoCouponDismissed(false); return; }
+    if (!autoCouponCode || autoCouponDismissed) return;
+    let active = true;
+    setCouponLoading(true);
+    setAppliedCoupon(null);
+    const timer = window.setTimeout(() => {
+      setCouponCode(autoCouponCode);
+      setCouponLoading(true);
+      void api.post('/coupons/validate', {
+        code: autoCouponCode,
+        storeId: activeItems[0]?.store.id || store?.id,
+        customerPhone: customerPhone.trim() || undefined,
+        items: activeItems.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, unitPrice: item.price })),
+        hasProductDiscount: false, hasShopVoucher: false, hasPlatformVoucher: false,
+      }).then((response: any) => {
+        if (!active) return;
+        const data = response?.data || response;
+        setAppliedCoupon({ code: data.code, discountAmount: Number(data.discountAmount) || 0, discountType: data.discountType });
+        setCouponMessage({ type: 'success', text: `Đã áp dụng voucher live, giảm ${formatMoney(Number(data.discountAmount) || 0)}.` });
+      }).catch((error: any) => {
+        if (!active) return;
+        setAppliedCoupon(null);
+        setCouponMessage({ type: 'error', text: error?.response?.data?.message || 'Voucher live không còn áp dụng được.' });
+      }).finally(() => { if (active) setCouponLoading(false); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); setCouponLoading(false); };
+  }, [isOpen, autoCouponCode, autoCouponDismissed, activeItems, customerPhone, store?.id]);
+
   // Submit Order (Requirements 7, 8, 9, 10)
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    if (couponLoading) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
 
     if (!currentUser && (!localStorage.getItem('token') || !authService.getCurrentUser())) {
       setErrorMessage(
@@ -918,6 +954,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const normalizedItems = await Promise.all(
         activeItems.map(async (item) => ({
           productId: item.productId,
+          liveSessionId: item.liveSessionId,
           variantId: await resolveOrderVariantId(item),
           quantity: item.quantity,
         })),
@@ -1993,6 +2030,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     disabled={!!appliedCoupon}
                     onChange={(e) => {
                       setCouponCode(e.target.value.toUpperCase());
+                      setAutoCouponDismissed(true);
+                      setCouponLoading(false);
+                      setAppliedCoupon(null);
                       setCouponMessage(null);
                     }}
                     className="px-3.5 py-1.5 bg-white border border-gray-300 rounded text-xs text-[#1A1612] uppercase font-bold focus:outline-none focus:border-[#ee4d2d] flex-1 sm:w-60"
