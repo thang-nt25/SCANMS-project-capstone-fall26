@@ -33,16 +33,16 @@ import {
   MessageSquare,
   Package,
 } from 'lucide-react';
-import api from '../services/api';
-import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
-import { PublicHeader } from '../components/layout/PublicHeader';
-import { authService } from '../services/auth.service';
-import { customerService } from '../services/customer.service';
-import { couponService } from '../services/coupon.service';
-import { toast } from '../utils/toast';
-import { useCart } from '../context/CartContext';
-import { useScanmsChat } from '../context/ScanmsChatContext';
-import { LiveSessionDealCard } from '../components/product/LiveSessionDealCard';
+import api from '@/services/api';
+import { GuestCheckoutModal } from '@/components/checkout/GuestCheckoutModal';
+import { PublicHeader } from '@/components/layout/PublicHeader';
+import { authService } from '@/services/auth.service';
+import { customerService } from '@/services/customer.service';
+import { couponService } from '@/services/coupon.service';
+import { toast } from '@/utils/toast';
+import { useCart } from '@/context/CartContext';
+import { useScanmsChat } from '@/context/ScanmsChatContext';
+import { LiveSessionDealCard } from '@/components/product/LiveSessionDealCard';
 
 
 function getSmartFallbackImage(title?: string, categoryName?: string): string {

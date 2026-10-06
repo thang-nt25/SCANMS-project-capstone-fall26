@@ -29,7 +29,7 @@ import api from '../../services/api';
 import { couponService, type PublicStoreCoupon } from '../../services/coupon.service';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
-import type { ChatAttachmentType } from '../../types/chat';
+import type { ChatAttachmentType } from '@/types/chat.types';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 const emojiCategories: NonNullable<PickerProps['categories']> = [

@@ -44,7 +44,7 @@ import { authService } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
 import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
 import { toast } from '../../utils/toast';
-import { apiCache } from '../../utils/apiCache';
+import { apiCache } from '@/utils/api-cache.utils';
 import {
   loadShippingAddresses,
   type ShippingProvince,
@@ -53,7 +53,7 @@ import { useCart, type CartItem } from '../../context/CartContext';
 import { useScanmsChat } from '../../context/ScanmsChatContext';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { CustomSelect } from '../ui/CustomSelect';
-import { resolveSavedShippingAddress } from '../../utils/checkoutAddress';
+import { resolveSavedShippingAddress } from '@/utils/checkout-address.utils';
 import { walletService, type WalletSummary } from '../../services/wallet.service';
 
 const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;

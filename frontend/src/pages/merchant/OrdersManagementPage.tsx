@@ -43,7 +43,7 @@ import {
   validateExcelFile,
   validateManualItems,
   type ManualItemForm,
-} from "../../components/orders/manualOrderValidation";
+} from "@/utils/validations/manual-order.validation";
 import {
   ShippingLabel,
   generateTrackingCode,

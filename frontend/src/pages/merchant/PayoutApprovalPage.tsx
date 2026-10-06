@@ -25,7 +25,7 @@ import {
   maskBankAccount,
   MAX_PAYOUT_BILL_BYTES,
   validatePayoutBill,
-} from "../../components/payouts/payoutBillValidation";
+} from "@/utils/validations/payout-bill.validation";
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",

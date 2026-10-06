@@ -9,7 +9,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { type VietQrBank, findBankByQuery } from '@/config/banks.config';
-import { VietQrBankService } from '../../services/vietqrBank.service';
+import { VietQrBankService } from '@/services/vietqr-bank.service';
 
 export interface BankSelectorModalProps {
   isOpen: boolean;

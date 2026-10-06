@@ -18,16 +18,16 @@ function lazyRetry<T extends ComponentType<any>>(
 }
 
 import MainLayout from '../components/layout/MainLayout';
-const DashboardDispatcher = lazyRetry(() => import('../pages/DashboardDispatcher'));
-const HomePage = lazyRetry(() => import('../pages/HomePage'));
+const DashboardDispatcher = lazyRetry(() => import('@/pages/DashboardDispatcher'));
+const KolDashboardPage = lazyRetry(() => import('@/pages/collaborator/KolDashboardPage'));
 
-const LoginPage = lazyRetry(() => import('../pages/auth/LoginPage'));
-const RegisterPage = lazyRetry(() => import('../pages/auth/RegisterPage'));
+const LoginPage = lazyRetry(() => import('@/pages/auth/LoginPage'));
+const RegisterPage = lazyRetry(() => import('@/pages/auth/RegisterPage'));
 
-const ProductDetailPage = lazyRetry(() => import('../pages/ProductDetailPage'));
-const RedirectHandlerPage = lazyRetry(() => import('../pages/RedirectHandlerPage'));
+const ProductDetailPage = lazyRetry(() => import('@/pages/public/ProductDetailPage'));
+const RedirectHandlerPage = lazyRetry(() => import('@/pages/public/RedirectHandlerPage'));
 
-const UiReferencePage = lazyRetry(() => import('../pages/UiReferencePage'));
+const UiReferencePage = lazyRetry(() => import('@/pages/public/UiReferencePage'));
 const MarketplacePage = lazyRetry(() => import('../pages/public/MarketplacePage'));
 const ShopPage = lazyRetry(() => import('../pages/public/ShopPage'));
 const SearchPage = lazyRetry(() => import('../pages/public/SearchPage'));
@@ -227,7 +227,7 @@ function AppRoutes() {
           {/* Collaborator (KOL) Routes - Được bảo vệ bằng RoleGuard 'kol' */}
           <Route element={<RoleGuard requiredWorkspace="kol" />}>
             <Route element={<RouteContent />}>
-              <Route path="collaborator/dashboard" element={<HomePage />} />
+              <Route path="collaborator/dashboard" element={<KolDashboardPage />} />
               <Route path="collaborator/wallet" element={<WalletPage />} />
 
               {/* Collaborator Consolidated Hubs */}

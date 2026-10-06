@@ -4,7 +4,7 @@ import { authService } from '../services/auth.service';
 import api from '../services/api';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { customerService } from '../services/customer.service';
-import { normalizeOrderVariantId } from '../utils/orderVariant';
+import { normalizeOrderVariantId } from '@/utils/order-variant.utils';
 
 export interface CartVariantInfo {
   id: string;

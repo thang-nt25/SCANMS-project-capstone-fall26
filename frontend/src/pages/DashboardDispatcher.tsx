@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { authService } from '../services/auth.service';
-import HomePage from './HomePage';
+import KolDashboardPage from './collaborator/KolDashboardPage';
 import ShopDashboardPage from './merchant/ShopDashboardPage';
 import KycApprovalPage from './merchant/KycApprovalPage';
 
@@ -27,7 +27,7 @@ export default function DashboardDispatcher() {
   }
 
   if (activeWs === 'kol' && available.includes('kol')) {
-    return <HomePage />;
+    return <KolDashboardPage />;
   }
 
   if (activeWs === 'customer') {
@@ -47,7 +47,7 @@ export default function DashboardDispatcher() {
   }
 
   if (user.role === 'COLLABORATOR' && available.includes('kol')) {
-    return <HomePage />;
+    return <KolDashboardPage />;
   }
 
   return <Navigate to="/customer/orders" replace />;

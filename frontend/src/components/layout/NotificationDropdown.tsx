@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { notificationsService, type AppNotification } from '../../services/notifications.service';
 import { authService } from '../../services/auth.service';
-import { liveBroadcastService } from '../../services/liveBroadcast';
+import { liveBroadcastService } from '@/services/live-broadcast.service';
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);

@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
-import type { ChatMessage, Conversation } from '../../types/chat';
+import type { ChatMessage, Conversation } from '@/types/chat.types';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
 
 function removeAccents(str: string): string {
