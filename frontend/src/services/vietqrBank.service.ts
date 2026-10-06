@@ -1,4 +1,4 @@
-import { VIETNAM_BANKS, type VietQrBank } from '../constants/vietnamBanks';
+import { VIETNAM_BANKS, type VietQrBank } from '@/config/banks.config';
 
 const VIETQR_API_URL = 'https://api.vietqr.io/v2/banks';
 const CACHE_KEY = 'scanms_vietqr_banks_cache';

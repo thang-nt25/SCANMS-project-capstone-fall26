@@ -19,7 +19,7 @@ import PayoutBillUpload from "../../components/payouts/PayoutBillUpload";
 import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { Select } from "../../components/ui/Select";
-import { type VietQrBank, findBankByQuery } from "../../constants/vietnamBanks";
+import { type VietQrBank, findBankByQuery } from "@/config/banks.config";
 import { toast } from "../../utils/toast";
 import {
   maskBankAccount,

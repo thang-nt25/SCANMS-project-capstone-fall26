@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   RefreshCw,
 } from 'lucide-react';
-import { type VietQrBank, findBankByQuery } from '../../constants/vietnamBanks';
+import { type VietQrBank, findBankByQuery } from '@/config/banks.config';
 import { VietQrBankService } from '../../services/vietqrBank.service';
 
 export interface BankSelectorModalProps {

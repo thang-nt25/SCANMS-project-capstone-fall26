@@ -35,7 +35,7 @@ import { cn } from "../../utils/cn";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
 import { Select } from "../../components/ui/Select";
-import { type VietQrBank, findBankByQuery, VIETNAM_BANKS } from "../../constants/vietnamBanks";
+import { type VietQrBank, findBankByQuery, VIETNAM_BANKS } from "@/config/banks.config";
 import type {
   PayoutStatus,
   WalletSummary,
