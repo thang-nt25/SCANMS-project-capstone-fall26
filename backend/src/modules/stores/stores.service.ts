@@ -23,19 +23,29 @@ export class StoresService {
         owner: { isActive: true },
       },
       select: {
-        id: true, name: true, slug: true, logoUrl: true, description: true,
-        isActive: true, isVerified: true, createdAt: true,
-        policyReturn: true, policyWarranty: true, policyShipping: true,
-        _count: { select: {
-          products: {
-            where: {
-              isDeleted: false,
-              isActive: true,
-              moderationStatus: 'APPROVED',
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        description: true,
+        isActive: true,
+        isVerified: true,
+        createdAt: true,
+        policyReturn: true,
+        policyWarranty: true,
+        policyShipping: true,
+        _count: {
+          select: {
+            products: {
+              where: {
+                isDeleted: false,
+                isActive: true,
+                moderationStatus: 'APPROVED',
+              },
             },
+            follows: true,
           },
-          follows: true,
-        } },
+        },
       },
     });
     if (!store) throw new NotFoundException('Không tìm thấy Shop');
@@ -50,22 +60,31 @@ export class StoresService {
       select: { categoryName: true },
       orderBy: { categoryName: 'asc' },
     });
-    return { ...store, productCount: store._count.products, followerCount: store._count.follows,
-      categories: categories.map((item) => item.categoryName).filter(Boolean) };
+    return {
+      ...store,
+      productCount: store._count.products,
+      followerCount: store._count.follows,
+      categories: categories.map((item) => item.categoryName).filter(Boolean),
+    };
   }
 
   async getFollowStatus(storeId: string, userId: string) {
     await this.getPublicStoreById(storeId);
-    return { following: !!(await this.prisma.storeFollow.findUnique({
-      where: { storeId_userId: { storeId, userId } }, select: { id: true },
-    })) };
+    return {
+      following: !!(await this.prisma.storeFollow.findUnique({
+        where: { storeId_userId: { storeId, userId } },
+        select: { id: true },
+      })),
+    };
   }
 
   async setFollow(storeId: string, userId: string, following: boolean) {
     await this.getPublicStoreById(storeId);
     if (following) {
       await this.prisma.storeFollow.upsert({
-        where: { storeId_userId: { storeId, userId } }, update: {}, create: { storeId, userId },
+        where: { storeId_userId: { storeId, userId } },
+        update: {},
+        create: { storeId, userId },
       });
     } else {
       await this.prisma.storeFollow.deleteMany({ where: { storeId, userId } });
@@ -155,8 +174,12 @@ export class StoresService {
       }),
       ...(dto.businessType !== undefined && { businessType: dto.businessType }),
       ...(dto.taxCode !== undefined && { taxCode: dto.taxCode.trim() }),
-      ...(dto.contactPhone !== undefined && { contactPhone: dto.contactPhone.trim() }),
-      ...(dto.contactEmail !== undefined && { contactEmail: dto.contactEmail.trim() }),
+      ...(dto.contactPhone !== undefined && {
+        contactPhone: dto.contactPhone.trim(),
+      }),
+      ...(dto.contactEmail !== undefined && {
+        contactEmail: dto.contactEmail.trim(),
+      }),
       ...(dto.warehouseAddress !== undefined && {
         warehouseAddress: dto.warehouseAddress.trim(),
       }),
@@ -180,7 +203,7 @@ export class StoresService {
       store.onboardingData &&
       typeof store.onboardingData === 'object' &&
       !Array.isArray(store.onboardingData)
-        ? (store.onboardingData as Prisma.JsonObject)
+        ? store.onboardingData
         : {};
 
     const updated = await this.prisma.store.update({
@@ -194,9 +217,15 @@ export class StoresService {
         ...(dto.websiteUrl !== undefined && {
           websiteUrl: dto.websiteUrl?.trim(),
         }),
-        ...(dto.policyReturn !== undefined && { policyReturn: dto.policyReturn?.trim() || null }),
-        ...(dto.policyWarranty !== undefined && { policyWarranty: dto.policyWarranty?.trim() || null }),
-        ...(dto.policyShipping !== undefined && { policyShipping: dto.policyShipping?.trim() || null }),
+        ...(dto.policyReturn !== undefined && {
+          policyReturn: dto.policyReturn?.trim() || null,
+        }),
+        ...(dto.policyWarranty !== undefined && {
+          policyWarranty: dto.policyWarranty?.trim() || null,
+        }),
+        ...(dto.policyShipping !== undefined && {
+          policyShipping: dto.policyShipping?.trim() || null,
+        }),
         ...(dto.defaultCommissionRate !== undefined && {
           defaultCommissionRate: dto.defaultCommissionRate,
         }),
@@ -279,7 +308,8 @@ export class StoresService {
       typeof onboardingData.warehouseAddress === 'string'
         ? onboardingData.warehouseAddress
         : '';
-    let address = registeredWarehouseAddress || 'Phường Bến Nghé, Quận 1, TP. HCM';
+    let address =
+      registeredWarehouseAddress || 'Phường Bến Nghé, Quận 1, TP. HCM';
     let followers = 125000;
     let following = 3;
     let rating = 4.9;
@@ -336,12 +366,19 @@ export class StoresService {
       chatResponseRate = '100% (Trong Vài Phút)';
       joinDuration = '6 Tháng Trước';
     } else {
-      if (!registeredWarehouseAddress && store.policyShipping && store.policyShipping.length > 5 && !store.policyShipping.toLowerCase().includes('giao')) {
+      if (
+        !registeredWarehouseAddress &&
+        store.policyShipping &&
+        store.policyShipping.length > 5 &&
+        !store.policyShipping.toLowerCase().includes('giao')
+      ) {
         address = store.policyShipping;
       }
-      companyName = store.name.toUpperCase().startsWith('CÔNG TY') || store.name.toUpperCase().startsWith('HỘ KINH DOANH')
-        ? store.name.toUpperCase()
-        : `CÔNG TY TNHH ${store.name.toUpperCase()} VIỆT NAM`;
+      companyName =
+        store.name.toUpperCase().startsWith('CÔNG TY') ||
+        store.name.toUpperCase().startsWith('HỘ KINH DOANH')
+          ? store.name.toUpperCase()
+          : `CÔNG TY TNHH ${store.name.toUpperCase()} VIỆT NAM`;
       followers = 18500;
       following = 2;
       rating = 4.9;
@@ -416,8 +453,8 @@ export class StoresService {
       category: st.name.toLowerCase().includes('tech')
         ? 'Công nghệ & Phụ kiện'
         : st.name.toLowerCase().includes('green')
-        ? 'Thực phẩm & Sức khỏe'
-        : 'Mỹ phẩm & Chăm sóc da',
+          ? 'Thực phẩm & Sức khỏe'
+          : 'Mỹ phẩm & Chăm sóc da',
       commissionRange: `${Number(st.defaultCommissionRate)}% - ${Math.min(
         35,
         Number(st.defaultCommissionRate) + 5,

@@ -1,7 +1,15 @@
-import { IsOptional, IsString, IsNumber, IsEnum, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsEnum,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
-export type FraudRiskLevel = 'CLEAN' | 'LOW_RISK' | 'SUSPICIOUS' | 'FRAUD_CRITICAL';
+export type FraudRiskLevel =
+  'CLEAN' | 'LOW_RISK' | 'SUSPICIOUS' | 'FRAUD_CRITICAL';
 
 export type FraudAnomalyType =
   | 'CLICK_BURST_BOT'
@@ -11,9 +19,11 @@ export type FraudAnomalyType =
   | 'CONVERSION_SPIKE'
   | 'IP_CLUSTER';
 
-export type FraudIncidentStatus = 'ACTIVE' | 'FROZEN' | 'RESOLVED' | 'DISMISSED';
+export type FraudIncidentStatus =
+  'ACTIVE' | 'FROZEN' | 'RESOLVED' | 'DISMISSED';
 
-export type FraudMitigationAction = 'FREEZE_COMMISSION' | 'PAUSE_LINK' | 'DISMISS' | 'RESOLVE';
+export type FraudMitigationAction =
+  'FREEZE_COMMISSION' | 'PAUSE_LINK' | 'DISMISS' | 'RESOLVE';
 
 export class FraudScanQueryDto {
   @IsOptional()

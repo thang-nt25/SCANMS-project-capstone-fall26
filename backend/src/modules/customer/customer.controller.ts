@@ -13,7 +13,12 @@ import {
   Ip,
   Headers,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { CustomerService } from './customer.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -21,7 +26,10 @@ import { UpdateCustomerProfileDto } from './dto/update-profile.dto';
 import { ChangeCustomerPasswordDto } from './dto/change-password.dto';
 import { CreateCustomerAddressDto } from './dto/create-address.dto';
 import { UpdateCustomerAddressDto } from './dto/update-address.dto';
-import { SetPasswordWithOtpDto, VerifyPasswordOtpDto } from './dto/set-password-otp.dto';
+import {
+  SetPasswordWithOtpDto,
+  VerifyPasswordOtpDto,
+} from './dto/set-password-otp.dto';
 import { VerifyCustomerIdentityDto } from './dto/verify-identity.dto';
 import { SyncCustomerCartDto } from './dto/sync-cart.dto';
 import { CreateReturnRequestDto } from './dto/create-return-request.dto';
@@ -39,13 +47,17 @@ export class CustomerController {
   // 1. HỒ SƠ & THỐNG KÊ
   // ==========================================
   @Get('profile')
-  @ApiOperation({ summary: 'Lấy thông tin tài khoản và chỉ số mua sắm của khách hàng' })
+  @ApiOperation({
+    summary: 'Lấy thông tin tài khoản và chỉ số mua sắm của khách hàng',
+  })
   async getProfile(@CurrentUser('id') userId: string) {
     return this.customerService.getProfile(userId);
   }
 
   @Put('profile')
-  @ApiOperation({ summary: 'Cập nhật thông tin họ tên, số điện thoại khách hàng' })
+  @ApiOperation({
+    summary: 'Cập nhật thông tin họ tên, số điện thoại khách hàng',
+  })
   async updateProfile(
     @CurrentUser('id') userId: string,
     @Body() dto: UpdateCustomerProfileDto,
@@ -63,7 +75,10 @@ export class CustomerController {
   }
 
   @Post('send-password-otp')
-  @ApiOperation({ summary: 'Gửi mã OTP xác minh qua Email để đổi hoặc thêm mật khẩu mới (Chuẩn Shopee)' })
+  @ApiOperation({
+    summary:
+      'Gửi mã OTP xác minh qua Email để đổi hoặc thêm mật khẩu mới (Chuẩn Shopee)',
+  })
   async sendPasswordOtp(
     @CurrentUser('id') userId: string,
     @Ip() ip: string,
@@ -85,7 +100,10 @@ export class CustomerController {
   }
 
   @Post('set-password-with-otp')
-  @ApiOperation({ summary: 'Thiết lập mật khẩu mới sau khi xác thực OTP thành công (Dành cho tài khoản Google hoặc đổi mật khẩu bảo mật)' })
+  @ApiOperation({
+    summary:
+      'Thiết lập mật khẩu mới sau khi xác thực OTP thành công (Dành cho tài khoản Google hoặc đổi mật khẩu bảo mật)',
+  })
   async setPasswordWithOtp(
     @CurrentUser('id') userId: string,
     @Body() dto: SetPasswordWithOtpDto,
@@ -97,7 +115,9 @@ export class CustomerController {
   // 2. ĐƠN MUA CỦA TÔI
   // ==========================================
   @Get('orders')
-  @ApiOperation({ summary: 'Lấy danh sách đơn hàng đã mua (hỗ trợ lọc trạng thái, tìm kiếm)' })
+  @ApiOperation({
+    summary: 'Lấy danh sách đơn hàng đã mua (hỗ trợ lọc trạng thái, tìm kiếm)',
+  })
   async getOrders(
     @CurrentUser('id') userId: string,
     @Query() query: CustomerOrdersQueryDto,
@@ -115,7 +135,10 @@ export class CustomerController {
   }
 
   @Post('orders/:id/cancel')
-  @ApiOperation({ summary: 'Khách hàng tự hủy đơn hàng khi đơn đang ở trạng thái Chờ xác nhận' })
+  @ApiOperation({
+    summary:
+      'Khách hàng tự hủy đơn hàng khi đơn đang ở trạng thái Chờ xác nhận',
+  })
   async cancelOrder(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) orderId: string,
@@ -129,7 +152,13 @@ export class CustomerController {
   async requestReturnOrder(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) orderId: string,
-    @Body() dto: { reason: string; notes?: string; proofImages?: string[]; proofVideos?: string[] },
+    @Body()
+    dto: {
+      reason: string;
+      notes?: string;
+      proofImages?: string[];
+      proofVideos?: string[];
+    },
   ) {
     return this.customerService.requestReturnOrder(userId, orderId, dto);
   }
@@ -138,7 +167,9 @@ export class CustomerController {
   // 3. XÁC NHẬN, ĐỔI TRẢ, ĐÁNH GIÁ & GIỎ HÀNG
   // ==========================================
   @Post('orders/:id/confirm-receipt')
-  @ApiOperation({ summary: 'Khách xác nhận đã nhận hàng để chuyển đơn sang COMPLETED' })
+  @ApiOperation({
+    summary: 'Khách xác nhận đã nhận hàng để chuyển đơn sang COMPLETED',
+  })
   async confirmReceipt(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) orderId: string,
@@ -156,7 +187,9 @@ export class CustomerController {
   }
 
   @Post('orders/:id/return-request')
-  @ApiOperation({ summary: 'Gửi yêu cầu đổi trả trong 14 ngày, bắt buộc ảnh và video mở hộp' })
+  @ApiOperation({
+    summary: 'Gửi yêu cầu đổi trả trong 14 ngày, bắt buộc ảnh và video mở hộp',
+  })
   async createReturnRequest(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) orderId: string,
@@ -176,13 +209,17 @@ export class CustomerController {
   }
 
   @Get('cart')
-  @ApiOperation({ summary: 'Tải giỏ hàng tập trung của tài khoản từ PostgreSQL' })
+  @ApiOperation({
+    summary: 'Tải giỏ hàng tập trung của tài khoản từ PostgreSQL',
+  })
   async getCart(@CurrentUser('id') userId: string) {
     return this.customerService.getCart(userId);
   }
 
   @Put('cart')
-  @ApiOperation({ summary: 'Đồng bộ toàn bộ giỏ hàng của tài khoản vào PostgreSQL' })
+  @ApiOperation({
+    summary: 'Đồng bộ toàn bộ giỏ hàng của tài khoản vào PostgreSQL',
+  })
   async syncCart(
     @CurrentUser('id') userId: string,
     @Body() dto: SyncCustomerCartDto,
@@ -276,13 +313,17 @@ export class CustomerController {
   // 5. XÁC MINH CCCD THÔNG TIN CÁ NHÂN (CHUẨN SHOPEE)
   // ==========================================
   @Get('identity')
-  @ApiOperation({ summary: 'Lấy thông tin xác minh CCCD của khách hàng (Chuẩn Shopee)' })
+  @ApiOperation({
+    summary: 'Lấy thông tin xác minh CCCD của khách hàng (Chuẩn Shopee)',
+  })
   async getIdentity(@CurrentUser('id') userId: string) {
     return this.customerService.getCustomerIdentity(userId);
   }
 
   @Post('identity')
-  @ApiOperation({ summary: 'Xác minh và lưu thông tin CCCD cá nhân (Chuẩn Shopee)' })
+  @ApiOperation({
+    summary: 'Xác minh và lưu thông tin CCCD cá nhân (Chuẩn Shopee)',
+  })
   async verifyIdentity(
     @CurrentUser('id') userId: string,
     @Body() dto: VerifyCustomerIdentityDto,
@@ -290,4 +331,3 @@ export class CustomerController {
     return this.customerService.verifyCustomerIdentity(userId, dto);
   }
 }
-

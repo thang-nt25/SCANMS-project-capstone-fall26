@@ -17,27 +17,33 @@ export const shipmentSchema = z
   })
   .strict();
 
-const pickupAddressSchema = z.object({
-  name: text(2, 150),
-  phone: text(9, 20).regex(/^\+?[0-9]{9,15}$/),
-  address: text(10, 500),
-  wardName: text(2, 100),
-  provinceName: text(2, 100),
-  districtName: text(2, 100).optional(),
-}).strict();
+const pickupAddressSchema = z
+  .object({
+    name: text(2, 150),
+    phone: text(9, 20).regex(/^\+?[0-9]{9,15}$/),
+    address: text(10, 500),
+    wardName: text(2, 100),
+    provinceName: text(2, 100),
+    districtName: text(2, 100).optional(),
+  })
+  .strict();
 
 export const warehouseSchema = pickupAddressSchema;
 
-export const bookPickupSchema = pickupAddressSchema.extend({
-  weight: z.coerce.number().int().min(1).max(19999),
-  length: z.coerce.number().int().min(1).max(200),
-  width: z.coerce.number().int().min(1).max(200),
-  height: z.coerce.number().int().min(1).max(200),
-}).strict();
+export const bookPickupSchema = pickupAddressSchema
+  .extend({
+    weight: z.coerce.number().int().min(1).max(19999),
+    length: z.coerce.number().int().min(1).max(200),
+    width: z.coerce.number().int().min(1).max(200),
+    height: z.coerce.number().int().min(1).max(200),
+  })
+  .strict();
 
-export const simulatePickupSchema = z.object({
-  status: z.enum(['picked', 'delivered']),
-}).strict();
+export const simulatePickupSchema = z
+  .object({
+    status: z.enum(['picked', 'delivered']),
+  })
+  .strict();
 
 export const inspectionSchema = z
   .object({

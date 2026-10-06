@@ -252,7 +252,9 @@ export class AuditService {
         },
       });
     } catch (err: any) {
-      this.logger.warn(`[FAIL-SAFE] Ghi AuditLog [${action}] thất bại: ${err.message}`);
+      this.logger.warn(
+        `[FAIL-SAFE] Ghi AuditLog [${action}] thất bại: ${err.message}`,
+      );
       return null;
     }
   }
@@ -278,7 +280,11 @@ export class AuditService {
 
     // Heuristics cho các action tùy biến
     const upper = actionCode.toUpperCase();
-    if (upper.includes('FRAUD') || upper.includes('CRITICAL') || upper.includes('LOCK')) {
+    if (
+      upper.includes('FRAUD') ||
+      upper.includes('CRITICAL') ||
+      upper.includes('LOCK')
+    ) {
       return {
         category: 'AI_SECURITY',
         severity: 'CRITICAL',
@@ -286,7 +292,11 @@ export class AuditService {
         description: 'Sự kiện bảo mật & cảnh báo an ninh',
       };
     }
-    if (upper.includes('PAYOUT') || upper.includes('COMMISSION') || upper.includes('WALLET')) {
+    if (
+      upper.includes('PAYOUT') ||
+      upper.includes('COMMISSION') ||
+      upper.includes('WALLET')
+    ) {
       return {
         category: 'FINANCIAL',
         severity: 'WARN',
@@ -294,7 +304,12 @@ export class AuditService {
         description: 'Sự kiện biến động tài chính',
       };
     }
-    if (upper.includes('AUTH') || upper.includes('LOGIN') || upper.includes('USER') || upper.includes('KYC')) {
+    if (
+      upper.includes('AUTH') ||
+      upper.includes('LOGIN') ||
+      upper.includes('USER') ||
+      upper.includes('KYC')
+    ) {
       return {
         category: 'AUTH',
         severity: 'INFO',
@@ -349,9 +364,9 @@ export class AuditService {
 
     // Filter theo category
     if (query.category) {
-      const actionsInCat = AUDIT_ACTIONS.filter((a) => a.category === query.category).map(
-        (a) => a.code,
-      );
+      const actionsInCat = AUDIT_ACTIONS.filter(
+        (a) => a.category === query.category,
+      ).map((a) => a.code);
       if (actionsInCat.length > 0) {
         where.action = { in: actionsInCat };
       }
@@ -480,7 +495,9 @@ export class AuditService {
     });
 
     if (!log) {
-      throw new NotFoundException(`Không tìm thấy nhật ký kiểm toán mã [${id}]`);
+      throw new NotFoundException(
+        `Không tìm thấy nhật ký kiểm toán mã [${id}]`,
+      );
     }
 
     const meta = this.resolveActionMeta(log.action);
@@ -520,12 +537,18 @@ export class AuditService {
   /**
    * Thống kê tổng quan KPI và phân loại Audit Logs
    */
-  async getAuditStats(timeframe: '24h' | '7d' | '30d' | 'all' = '30d'): Promise<{
+  async getAuditStats(
+    timeframe: '24h' | '7d' | '30d' | 'all' = '30d',
+  ): Promise<{
     success: boolean;
     data: AuditStatsResponse;
   }> {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
 
     let dateGte: Date | undefined;
     if (timeframe === '24h') {
@@ -536,7 +559,9 @@ export class AuditService {
       dateGte = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    const whereTime: Prisma.AuditLogWhereInput = dateGte ? { createdAt: { gte: dateGte } } : {};
+    const whereTime: Prisma.AuditLogWhereInput = dateGte
+      ? { createdAt: { gte: dateGte } }
+      : {};
 
     const [totalEvents, eventsToday, allLogs] = await Promise.all([
       this.prisma.auditLog.count({ where: whereTime }),
@@ -581,7 +606,13 @@ export class AuditService {
 
     const actorMap = new Map<
       string,
-      { userId: string; userName: string; userEmail: string; role: string; count: number }
+      {
+        userId: string;
+        userName: string;
+        userEmail: string;
+        role: string;
+        count: number;
+      }
     >();
 
     allLogs.forEach((log) => {
@@ -627,7 +658,8 @@ export class AuditService {
         category: cat as AuditCategory,
         categoryNameVi: categoryNamesVi[cat] || cat,
         count,
-        percentage: totalEvents > 0 ? Math.round((count / totalEvents) * 100) : 0,
+        percentage:
+          totalEvents > 0 ? Math.round((count / totalEvents) * 100) : 0,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -724,7 +756,9 @@ export class AuditService {
 
     const rows = logs.map((log, idx) => {
       const meta = this.resolveActionMeta(log.action);
-      const detailsStr = log.details ? JSON.stringify(log.details).replace(/"/g, '""') : '';
+      const detailsStr = log.details
+        ? JSON.stringify(log.details).replace(/"/g, '""')
+        : '';
       return [
         idx + 1,
         `"${log.id}"`,

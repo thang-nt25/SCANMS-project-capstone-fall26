@@ -17,8 +17,14 @@ export class WalletSummaryService {
 
   async getMyWallet(collaboratorId: string) {
     const [wallet, profile] = await Promise.all([
-      this.prisma.wallet.findUnique({
+      this.prisma.wallet.upsert({
         where: { collaboratorId },
+        update: {},
+        create: {
+          collaboratorId,
+          availableBalance: new Prisma.Decimal(0),
+          pendingBalance: new Prisma.Decimal(0),
+        },
         include: {
           storeWallets: {
             include: {

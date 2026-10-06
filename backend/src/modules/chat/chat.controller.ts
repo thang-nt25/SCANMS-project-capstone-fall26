@@ -37,12 +37,23 @@ import { MAX_CHAT_ATTACHMENT_BYTES } from './chat-attachment.utils';
 @UseGuards(JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService, private readonly chatGateway: ChatGateway) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Patch('conversations/:conversationId/read')
-  async markRead(@Param('conversationId', ParseUUIDPipe) conversationId: string, @CurrentUser() user: any) {
+  async markRead(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser() user: any,
+  ) {
     const result = await this.chatService.markRead(conversationId, user.id);
-    if (result.count) this.chatGateway.broadcastToConversation(conversationId, 'messages_read', { conversationId, readerId: user.id });
+    if (result.count)
+      this.chatGateway.broadcastToConversation(
+        conversationId,
+        'messages_read',
+        { conversationId, readerId: user.id },
+      );
     return result;
   }
 
@@ -144,7 +155,9 @@ export class ChatController {
 
   // Xóa lịch sử tin nhắn trong cuộc trò chuyện
   @Delete('conversations/:conversationId/messages')
-  @ApiOperation({ summary: 'Xóa toàn bộ lịch sử tin nhắn trong cuộc trò chuyện' })
+  @ApiOperation({
+    summary: 'Xóa toàn bộ lịch sử tin nhắn trong cuộc trò chuyện',
+  })
   @ApiParam({ name: 'conversationId', type: 'string', format: 'uuid' })
   clearMessages(
     @Param('conversationId', ParseUUIDPipe) conversationId: string,

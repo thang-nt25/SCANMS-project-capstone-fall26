@@ -42,10 +42,18 @@ export class CampaignsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Shop: Tạo chiến dịch tiếp thị độc quyền mới',
-    description: 'Tạo chiến dịch kèm tỷ lệ hoa hồng thưởng thêm (bonusCommissionRate) dành riêng cho KOLs.',
+    description:
+      'Tạo chiến dịch kèm tỷ lệ hoa hồng thưởng thêm (bonusCommissionRate) dành riêng cho KOLs.',
   })
-  @ApiResponse({ status: 201, description: 'Chiến dịch đã được khởi tạo thành công.' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu đầu vào không hợp lệ hoặc ngày kết thúc trước ngày bắt đầu.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Chiến dịch đã được khởi tạo thành công.',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Dữ liệu đầu vào không hợp lệ hoặc ngày kết thúc trước ngày bắt đầu.',
+  })
   @ApiResponse({ status: 403, description: 'Không có quyền quản lý cửa hàng.' })
   createCampaign(@CurrentUser() user: any, @Body() dto: CreateCampaignDto) {
     return this.campaignsService.createCampaign(user.id, dto);
@@ -56,7 +64,8 @@ export class CampaignsController {
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiOperation({
     summary: 'Shop: Lấy danh sách chiến dịch và người tham gia',
-    description: 'Trả về toàn bộ chiến dịch của cửa hàng kèm danh sách KOLs đã mời/đã tham gia.',
+    description:
+      'Trả về toàn bộ chiến dịch của cửa hàng kèm danh sách KOLs đã mời/đã tham gia.',
   })
   @ApiResponse({ status: 200, description: 'Danh sách chiến dịch của Shop.' })
   getShopCampaigns(@CurrentUser() user: any) {
@@ -69,12 +78,22 @@ export class CampaignsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Shop: Mời KOL vào chiến dịch qua Thẻ Mời VIP',
-    description: 'Gửi thẻ mời VIP dạng tin nhắn tương tác trực tiếp vào cuộc hội thoại chat và broadcast Socket.io.',
+    description:
+      'Gửi thẻ mời VIP dạng tin nhắn tương tác trực tiếp vào cuộc hội thoại chat và broadcast Socket.io.',
   })
   @ApiParam({ name: 'campaignId', description: 'ID chiến dịch' })
-  @ApiResponse({ status: 200, description: 'Thẻ mời VIP đã được gửi thành công.' })
-  @ApiResponse({ status: 400, description: 'KOL đã được mời hoặc chiến dịch không còn hiệu lực.' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy chiến dịch hoặc KOL.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Thẻ mời VIP đã được gửi thành công.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'KOL đã được mời hoặc chiến dịch không còn hiệu lực.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Không tìm thấy chiến dịch hoặc KOL.',
+  })
   inviteCollaborator(
     @CurrentUser() user: any,
     @Param('campaignId', new ParseUUIDPipe()) campaignId: string,
@@ -89,10 +108,14 @@ export class CampaignsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Shop: Mời trực tiếp từ cuộc hội thoại Chat hiện tại',
-    description: 'Tiện ích cho phép Chủ Shop chọn nhanh chiến dịch từ danh sách và gửi thẳng vào cuộc trò chuyện.',
+    description:
+      'Tiện ích cho phép Chủ Shop chọn nhanh chiến dịch từ danh sách và gửi thẳng vào cuộc trò chuyện.',
   })
   @ApiParam({ name: 'conversationId', description: 'ID cuộc hội thoại chat' })
-  @ApiResponse({ status: 200, description: 'Đã gửi thẻ mời VIP vào cuộc hội thoại.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Đã gửi thẻ mời VIP vào cuộc hội thoại.',
+  })
   inviteInChat(
     @CurrentUser() user: any,
     @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
@@ -106,7 +129,8 @@ export class CampaignsController {
   @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiOperation({
     summary: 'KOL: Lấy danh sách các lời mời chiến dịch VIP',
-    description: 'Trả về danh sách các chiến dịch mà KOL đã nhận được lời mời tham gia kèm trạng thái phản hồi.',
+    description:
+      'Trả về danh sách các chiến dịch mà KOL đã nhận được lời mời tham gia kèm trạng thái phản hồi.',
   })
   @ApiResponse({ status: 200, description: 'Danh sách lời mời của KOL.' })
   getMyInvitations(@CurrentUser() user: any) {
@@ -119,12 +143,22 @@ export class CampaignsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'KOL: Chấp nhận tham gia chiến dịch VIP',
-    description: 'Chấp nhận lời mời, kích hoạt quyền nhận hoa hồng thưởng thêm và gửi thông báo phản hồi vào chat.',
+    description:
+      'Chấp nhận lời mời, kích hoạt quyền nhận hoa hồng thưởng thêm và gửi thông báo phản hồi vào chat.',
   })
-  @ApiParam({ name: 'participantId', description: 'ID bản ghi tham gia chiến dịch (CampaignParticipant)' })
-  @ApiResponse({ status: 200, description: 'Đã chấp nhận tham gia chiến dịch thành công.' })
+  @ApiParam({
+    name: 'participantId',
+    description: 'ID bản ghi tham gia chiến dịch (CampaignParticipant)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Đã chấp nhận tham gia chiến dịch thành công.',
+  })
   @ApiResponse({ status: 400, description: 'Lời mời đã được xử lý trước đó.' })
-  @ApiResponse({ status: 403, description: 'Không có quyền chấp nhận lời mời của người khác.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền chấp nhận lời mời của người khác.',
+  })
   acceptInvitation(
     @CurrentUser() user: any,
     @Param('participantId', new ParseUUIDPipe()) participantId: string,
@@ -138,9 +172,13 @@ export class CampaignsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'KOL: Từ chối tham gia chiến dịch VIP',
-    description: 'Từ chối lời mời chiến dịch và thông báo phản hồi lịch sự tới Chủ Shop qua tin nhắn hội thoại.',
+    description:
+      'Từ chối lời mời chiến dịch và thông báo phản hồi lịch sự tới Chủ Shop qua tin nhắn hội thoại.',
   })
-  @ApiParam({ name: 'participantId', description: 'ID bản ghi tham gia chiến dịch' })
+  @ApiParam({
+    name: 'participantId',
+    description: 'ID bản ghi tham gia chiến dịch',
+  })
   @ApiResponse({ status: 200, description: 'Đã từ chối lời mời chiến dịch.' })
   @ApiResponse({ status: 400, description: 'Lời mời đã được xử lý trước đó.' })
   rejectInvitation(
@@ -154,12 +192,15 @@ export class CampaignsController {
   @Get(':campaignId')
   @ApiOperation({
     summary: 'Lấy thông tin chi tiết một chiến dịch',
-    description: 'Xem thông tin gian hàng, sản phẩm trong chiến dịch và các KOL tham gia.',
+    description:
+      'Xem thông tin gian hàng, sản phẩm trong chiến dịch và các KOL tham gia.',
   })
   @ApiParam({ name: 'campaignId', description: 'ID chiến dịch' })
   @ApiResponse({ status: 200, description: 'Chi tiết chiến dịch.' })
   @ApiResponse({ status: 404, description: 'Chiến dịch không tồn tại.' })
-  getCampaignDetail(@Param('campaignId', new ParseUUIDPipe()) campaignId: string) {
+  getCampaignDetail(
+    @Param('campaignId', new ParseUUIDPipe()) campaignId: string,
+  ) {
     return this.campaignsService.getCampaignDetail(campaignId);
   }
 }

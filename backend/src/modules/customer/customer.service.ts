@@ -14,7 +14,10 @@ import { CreateCustomerAddressDto } from './dto/create-address.dto';
 import { UpdateCustomerAddressDto } from './dto/update-address.dto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { SetPasswordWithOtpDto, VerifyPasswordOtpDto } from './dto/set-password-otp.dto';
+import {
+  SetPasswordWithOtpDto,
+  VerifyPasswordOtpDto,
+} from './dto/set-password-otp.dto';
 import { VerifyCustomerIdentityDto } from './dto/verify-identity.dto';
 import { SyncCustomerCartDto } from './dto/sync-cart.dto';
 import { CreateReturnRequestDto } from './dto/create-return-request.dto';
@@ -25,7 +28,10 @@ const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class CustomerService {
-  private readonly securityOtpCache = new Map<string, { code: string; expiresAt: number }>();
+  private readonly securityOtpCache = new Map<
+    string,
+    { code: string; expiresAt: number }
+  >();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -54,8 +60,10 @@ export class CustomerService {
 
     // Điều kiện khớp đơn hàng của user
     const orderFilterOr: any[] = [{ customerId: userId }];
-    if (user.email) orderFilterOr.push({ customerEmail: user.email.toLowerCase() });
-    if (user.phoneNumber) orderFilterOr.push({ customerPhone: user.phoneNumber.trim() });
+    if (user.email)
+      orderFilterOr.push({ customerEmail: user.email.toLowerCase() });
+    if (user.phoneNumber)
+      orderFilterOr.push({ customerPhone: user.phoneNumber.trim() });
 
     const [totalOrders, pendingOrders, completedOrders] = await Promise.all([
       this.prisma.order.count({ where: { OR: orderFilterOr } }),
@@ -100,8 +108,10 @@ export class CustomerService {
   async updateProfile(userId: string, dto: UpdateCustomerProfileDto) {
     const dataToUpdate: any = {};
     if (dto.fullName !== undefined) dataToUpdate.fullName = dto.fullName.trim();
-    if (dto.phoneNumber !== undefined) dataToUpdate.phoneNumber = dto.phoneNumber.trim();
-    if (dto.avatarUrl !== undefined) dataToUpdate.avatarUrl = dto.avatarUrl.trim();
+    if (dto.phoneNumber !== undefined)
+      dataToUpdate.phoneNumber = dto.phoneNumber.trim();
+    if (dto.avatarUrl !== undefined)
+      dataToUpdate.avatarUrl = dto.avatarUrl.trim();
 
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -135,7 +145,10 @@ export class CustomerService {
       throw new NotFoundException('Không tìm thấy tài khoản người dùng');
     }
 
-    const isMatch = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    const isMatch = await bcrypt.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
     if (!isMatch) {
       throw new BadRequestException('Mật khẩu hiện tại không chính xác');
     }
@@ -213,19 +226,26 @@ export class CustomerService {
     const cached = this.securityOtpCache.get(userId);
 
     if (!cached) {
-      throw new BadRequestException('Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng gửi lại mã mới.');
+      throw new BadRequestException(
+        'Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng gửi lại mã mới.',
+      );
     }
     if (Date.now() > cached.expiresAt) {
       this.securityOtpCache.delete(userId);
-      throw new BadRequestException('Mã OTP đã hết hạn (quá 5 phút). Vui lòng gửi lại mã mới.');
+      throw new BadRequestException(
+        'Mã OTP đã hết hạn (quá 5 phút). Vui lòng gửi lại mã mới.',
+      );
     }
     if (cached.code !== otp.trim()) {
-      throw new BadRequestException('Mã OTP không chính xác. Vui lòng kiểm tra lại trong Gmail.');
+      throw new BadRequestException(
+        'Mã OTP không chính xác. Vui lòng kiểm tra lại trong Gmail.',
+      );
     }
 
     return {
       success: true,
-      message: 'Xác thực OTP qua Email thành công! Bạn có thể thiết lập mật khẩu mới.',
+      message:
+        'Xác thực OTP qua Email thành công! Bạn có thể thiết lập mật khẩu mới.',
     };
   }
 
@@ -240,7 +260,9 @@ export class CustomerService {
     }
     if (Date.now() > cached.expiresAt) {
       this.securityOtpCache.delete(userId);
-      throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.');
+      throw new BadRequestException(
+        'Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.',
+      );
     }
     if (cached.code !== dto.otp.trim()) {
       throw new BadRequestException('Mã OTP không chính xác.');
@@ -257,7 +279,8 @@ export class CustomerService {
 
     return {
       success: true,
-      message: 'Thiết lập mật khẩu mới thành công! Bạn có thể sử dụng mật khẩu này để đăng nhập.',
+      message:
+        'Thiết lập mật khẩu mới thành công! Bạn có thể sử dụng mật khẩu này để đăng nhập.',
     };
   }
 
@@ -271,8 +294,10 @@ export class CustomerService {
     });
 
     const orderFilterOr: any[] = [{ customerId: userId }];
-    if (user?.email) orderFilterOr.push({ customerEmail: user.email.toLowerCase() });
-    if (user?.phoneNumber) orderFilterOr.push({ customerPhone: user.phoneNumber.trim() });
+    if (user?.email)
+      orderFilterOr.push({ customerEmail: user.email.toLowerCase() });
+    if (user?.phoneNumber)
+      orderFilterOr.push({ customerPhone: user.phoneNumber.trim() });
 
     const where: any = {
       OR: orderFilterOr,
@@ -293,7 +318,13 @@ export class CustomerService {
           OR: [
             { externalOrderSn: { contains: q, mode: 'insensitive' } },
             { store: { name: { contains: q, mode: 'insensitive' } } },
-            { orderItems: { some: { product: { title: { contains: q, mode: 'insensitive' } } } } },
+            {
+              orderItems: {
+                some: {
+                  product: { title: { contains: q, mode: 'insensitive' } },
+                },
+              },
+            },
           ],
         },
       ];
@@ -317,7 +348,12 @@ export class CustomerService {
           },
         },
         coupon: {
-          select: { displayCode: true, codeNormalized: true, discountValue: true, discountType: true },
+          select: {
+            displayCode: true,
+            codeNormalized: true,
+            discountValue: true,
+            discountType: true,
+          },
         },
         returnRequest: true,
         productReviews: true,
@@ -362,8 +398,12 @@ export class CustomerService {
 
     const belongsToUser =
       order.customerId === userId ||
-      (order.customerEmail && user?.email && order.customerEmail.toLowerCase() === user.email.toLowerCase()) ||
-      (order.customerPhone && user?.phoneNumber && order.customerPhone.trim() === user.phoneNumber.trim());
+      (order.customerEmail &&
+        user?.email &&
+        order.customerEmail.toLowerCase() === user.email.toLowerCase()) ||
+      (order.customerPhone &&
+        user?.phoneNumber &&
+        order.customerPhone.trim() === user.phoneNumber.trim());
 
     if (!belongsToUser) {
       throw new ForbiddenException('Bạn không có quyền truy cập đơn hàng này');
@@ -418,13 +458,20 @@ export class CustomerService {
   async requestReturnOrder(
     userId: string,
     orderId: string,
-    dto: { reason: string; notes?: string; proofImages?: string[]; proofVideos?: string[] },
+    dto: {
+      reason: string;
+      notes?: string;
+      proofImages?: string[];
+      proofVideos?: string[];
+    },
   ) {
     return this.createReturnRequest(userId, orderId, {
       reason: dto.reason as any,
       details: dto.notes,
       imageUrls: dto.proofImages || [],
-      unboxingVideoUrl: dto.proofVideos?.[0] || 'https://res.cloudinary.com/demo/video/upload/sample.mp4',
+      unboxingVideoUrl:
+        dto.proofVideos?.[0] ||
+        'https://res.cloudinary.com/demo/video/upload/sample.mp4',
     });
   }
 
@@ -432,21 +479,35 @@ export class CustomerService {
   async confirmReceipt(userId: string, orderId: string) {
     const order = await this.getOrderDetails(userId, orderId);
     if (order.status !== OrderStatus.DELIVERED) {
-      throw new BadRequestException('Chỉ có thể xác nhận khi đơn đang ở trạng thái Đã giao');
+      throw new BadRequestException(
+        'Chỉ có thể xác nhận khi đơn đang ở trạng thái Đã giao',
+      );
     }
     if (order.returnRequest) {
-      throw new BadRequestException('Đơn hàng đang có yêu cầu đổi trả nên chưa thể hoàn tất');
+      throw new BadRequestException(
+        'Đơn hàng đang có yêu cầu đổi trả nên chưa thể hoàn tất',
+      );
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const changed = await tx.order.updateMany({
-        where: { id: orderId, status: OrderStatus.DELIVERED, returnRequest: { is: null } },
+        where: {
+          id: orderId,
+          status: OrderStatus.DELIVERED,
+          returnRequest: { is: null },
+        },
         data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
       });
-      if (changed.count !== 1) throw new BadRequestException('Đơn đã thay đổi trạng thái hoặc có yêu cầu đổi trả');
+      if (changed.count !== 1)
+        throw new BadRequestException(
+          'Đơn đã thay đổi trạng thái hoặc có yêu cầu đổi trả',
+        );
       return tx.order.findUniqueOrThrow({ where: { id: orderId } });
     });
-    return { message: 'Đã xác nhận nhận hàng. Bạn có thể đánh giá sản phẩm.', order: updated };
+    return {
+      message: 'Đã xác nhận nhận hàng. Bạn có thể đánh giá sản phẩm.',
+      order: updated,
+    };
   }
 
   async getReturnRequest(userId: string, orderId: string) {
@@ -464,7 +525,9 @@ export class CustomerService {
       order.status !== OrderStatus.DELIVERED &&
       order.status !== OrderStatus.COMPLETED
     ) {
-      throw new BadRequestException('Chỉ đơn đã giao mới được yêu cầu đổi trả/hoàn tiền');
+      throw new BadRequestException(
+        'Chỉ đơn đã giao mới được yêu cầu đổi trả/hoàn tiền',
+      );
     }
     if (order.returnRequest) {
       throw new BadRequestException('Đơn hàng này đã có yêu cầu đổi trả');
@@ -472,7 +535,9 @@ export class CustomerService {
 
     const deliveredAt = order.deliveredAt || order.completedAt;
     if (!deliveredAt) {
-      throw new BadRequestException('Chưa xác định được ngày giao hàng; vui lòng liên hệ hỗ trợ');
+      throw new BadRequestException(
+        'Chưa xác định được ngày giao hàng; vui lòng liên hệ hỗ trợ',
+      );
     }
     const deadlineAt = new Date(deliveredAt.getTime() + RETURN_WINDOW_MS);
     if (deadlineAt.getTime() < Date.now()) {
@@ -488,7 +553,10 @@ export class CustomerService {
         },
         data: { status: OrderStatus.RETURN_REQUESTED },
       });
-      if (changed.count !== 1) throw new BadRequestException('Đơn đã thay đổi trạng thái hoặc đã có yêu cầu đổi trả');
+      if (changed.count !== 1)
+        throw new BadRequestException(
+          'Đơn đã thay đổi trạng thái hoặc đã có yêu cầu đổi trả',
+        );
       const request = await tx.returnRequest.create({
         data: {
           orderId,
@@ -513,7 +581,10 @@ export class CustomerService {
       return request;
     });
 
-    return { message: 'Đã gửi yêu cầu đổi trả đến Shop', returnRequest: result };
+    return {
+      message: 'Đã gửi yêu cầu đổi trả đến Shop',
+      returnRequest: result,
+    };
   }
 
   async createVerifiedReview(
@@ -523,16 +594,24 @@ export class CustomerService {
   ) {
     const order = await this.getOrderDetails(userId, orderId);
     if (order.status !== OrderStatus.COMPLETED) {
-      throw new BadRequestException("Bạn cần bấm 'Đã nhận hàng - Hoàn tất' trước khi đánh giá");
+      throw new BadRequestException(
+        "Bạn cần bấm 'Đã nhận hàng - Hoàn tất' trước khi đánh giá",
+      );
     }
     if (order.returnRequest) {
-      throw new BadRequestException('Không thể đánh giá khi đơn hàng có yêu cầu đổi trả');
+      throw new BadRequestException(
+        'Không thể đánh giá khi đơn hàng có yêu cầu đổi trả',
+      );
     }
     if (!order.orderItems.some((item) => item.productId === dto.productId)) {
       throw new BadRequestException('Sản phẩm không thuộc đơn hàng này');
     }
-    if (order.productReviews.some((review) => review.productId === dto.productId)) {
-      throw new BadRequestException('Sản phẩm này đã được đánh giá trong đơn hàng');
+    if (
+      order.productReviews.some((review) => review.productId === dto.productId)
+    ) {
+      throw new BadRequestException(
+        'Sản phẩm này đã được đánh giá trong đơn hàng',
+      );
     }
 
     const review = await this.prisma.productReview.create({
@@ -578,7 +657,9 @@ export class CustomerService {
           title: product.title,
           sku: variant?.sku || product.sku,
           price: Number(price),
-          originalPrice: product.originalPrice ? Number(product.originalPrice) : undefined,
+          originalPrice: product.originalPrice
+            ? Number(product.originalPrice)
+            : undefined,
           imageUrl: product.imageUrl || '/assets/product-placeholder.svg',
           quantity: Math.min(row.quantity, Math.max(stockQuantity, 1)),
           stockQuantity,
@@ -618,10 +699,15 @@ export class CustomerService {
 
     const items = Array.from(unique.values());
     const products = await this.prisma.product.findMany({
-      where: { id: { in: items.map((item) => item.productId) }, isDeleted: false },
+      where: {
+        id: { in: items.map((item) => item.productId) },
+        isDeleted: false,
+      },
       include: { variants: true },
     });
-    const productMap = new Map(products.map((product) => [product.id, product]));
+    const productMap = new Map(
+      products.map((product) => [product.id, product]),
+    );
     const warnings: string[] = [];
     const valid = items.flatMap((item) => {
       const product = productMap.get(item.productId);
@@ -634,18 +720,22 @@ export class CustomerService {
         product.moderationStatus !== 'APPROVED' ||
         (item.variantId && !variant)
       ) {
-        warnings.push('Một sản phẩm không còn khả dụng và đã được bỏ khỏi giỏ hàng.');
+        warnings.push(
+          'Một sản phẩm không còn khả dụng và đã được bỏ khỏi giỏ hàng.',
+        );
         return [];
       }
       const stock = variant?.stockQuantity ?? product.stockQuantity;
       if (stock <= 0) warnings.push(`Sản phẩm "${product.title}" đã hết hàng.`);
-      return [{
-        userId,
-        productId: product.id,
-        variantId: variant?.id || null,
-        variantKey: variant?.id || 'base',
-        quantity: Math.max(1, Math.min(item.quantity, Math.max(stock, 1))),
-      }];
+      return [
+        {
+          userId,
+          productId: product.id,
+          variantId: variant?.id || null,
+          variantKey: variant?.id || 'base',
+          quantity: Math.max(1, Math.min(item.quantity, Math.max(stock, 1))),
+        },
+      ];
     });
 
     await this.prisma.$transaction(async (tx) => {
@@ -700,7 +790,11 @@ export class CustomerService {
     };
   }
 
-  async updateAddress(userId: string, addressId: string, dto: UpdateCustomerAddressDto) {
+  async updateAddress(
+    userId: string,
+    addressId: string,
+    dto: UpdateCustomerAddressDto,
+  ) {
     const address = await this.prisma.customerAddress.findFirst({
       where: { id: addressId, userId },
     });
@@ -720,14 +814,22 @@ export class CustomerService {
       where: { id: addressId },
       data: {
         fullName: dto.fullName !== undefined ? dto.fullName.trim() : undefined,
-        phoneNumber: dto.phoneNumber !== undefined ? dto.phoneNumber.trim() : undefined,
-        provinceCode: dto.provinceCode !== undefined ? dto.provinceCode : undefined,
-        provinceName: dto.provinceName !== undefined ? dto.provinceName.trim() : undefined,
-        districtCode: dto.districtCode !== undefined ? dto.districtCode : undefined,
-        districtName: dto.districtName !== undefined ? dto.districtName.trim() : undefined,
+        phoneNumber:
+          dto.phoneNumber !== undefined ? dto.phoneNumber.trim() : undefined,
+        provinceCode:
+          dto.provinceCode !== undefined ? dto.provinceCode : undefined,
+        provinceName:
+          dto.provinceName !== undefined ? dto.provinceName.trim() : undefined,
+        districtCode:
+          dto.districtCode !== undefined ? dto.districtCode : undefined,
+        districtName:
+          dto.districtName !== undefined ? dto.districtName.trim() : undefined,
         wardCode: dto.wardCode !== undefined ? dto.wardCode : undefined,
         wardName: dto.wardName !== undefined ? dto.wardName.trim() : undefined,
-        detailAddress: dto.detailAddress !== undefined ? dto.detailAddress.trim() : undefined,
+        detailAddress:
+          dto.detailAddress !== undefined
+            ? dto.detailAddress.trim()
+            : undefined,
         latitude: dto.latitude !== undefined ? dto.latitude : undefined,
         longitude: dto.longitude !== undefined ? dto.longitude : undefined,
         isDefault: dto.isDefault !== undefined ? dto.isDefault : undefined,
@@ -812,7 +914,9 @@ export class CustomerService {
       include: {
         product: {
           include: {
-            store: { select: { id: true, name: true, slug: true, logoUrl: true } },
+            store: {
+              select: { id: true, name: true, slug: true, logoUrl: true },
+            },
             variants: true,
           },
         },
@@ -835,7 +939,11 @@ export class CustomerService {
       throw new NotFoundException('Không tìm thấy sản phẩm');
     }
 
-    if (product.moderationStatus !== 'APPROVED' || !product.isActive || product.isDeleted) {
+    if (
+      product.moderationStatus !== 'APPROVED' ||
+      !product.isActive ||
+      product.isDeleted
+    ) {
       throw new NotFoundException('Sản phẩm chưa được công khai trên sàn');
     }
 
@@ -942,20 +1050,26 @@ export class CustomerService {
       throw new BadRequestException('Số CCCD phải gồm 9 hoặc 12 chữ số hợp lệ');
     }
     if (!address || address.length < 5) {
-      throw new BadRequestException('Vui lòng nhập đầy đủ địa chỉ nơi thường trú trên CCCD');
+      throw new BadRequestException(
+        'Vui lòng nhập đầy đủ địa chỉ nơi thường trú trên CCCD',
+      );
     }
 
     // Cập nhật họ tên của tài khoản đồng bộ với CCCD
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { fullName },
-    }).catch(() => {});
+    await this.prisma.user
+      .update({
+        where: { id: userId },
+        data: { fullName },
+      })
+      .catch(() => {});
 
     // Đồng bộ vào CollaboratorProfile nếu có
-    await this.prisma.collaboratorProfile.update({
-      where: { userId },
-      data: { idCardNumber: cleanId },
-    }).catch(() => {});
+    await this.prisma.collaboratorProfile
+      .update({
+        where: { userId },
+        data: { idCardNumber: cleanId },
+      })
+      .catch(() => {});
 
     const record = {
       fullName,
@@ -976,4 +1090,3 @@ export class CustomerService {
     };
   }
 }
-

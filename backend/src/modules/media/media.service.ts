@@ -47,10 +47,7 @@ export class MediaService {
   /**
    * Lấy danh sách tài nguyên truyền thông (Hỗ trợ lọc theo loại IMAGE/VIDEO/COPYWRITE_TEXT)
    */
-  async findAll(
-    query: QueryMediaDto,
-    viewer: { id: string; role: UserRole },
-  ) {
+  async findAll(query: QueryMediaDto, viewer: { id: string; role: UserRole }) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
@@ -70,10 +67,7 @@ export class MediaService {
         },
       };
       // KOL chỉ xem tài nguyên đã duyệt hoặc chính video mình đã nộp.
-      where.OR = [
-        { status: 'APPROVED' },
-        { collaboratorId: viewer.id },
-      ];
+      where.OR = [{ status: 'APPROVED' }, { collaboratorId: viewer.id }];
     }
 
     if (query.storeId) {
@@ -124,7 +118,10 @@ export class MediaService {
   async create(userId: string, userRole: UserRole, dto: CreateMediaDto) {
     let storeId: string;
 
-    if (userRole === UserRole.SYSTEM_MANAGER || userRole === UserRole.SYSTEM_ADMIN) {
+    if (
+      userRole === UserRole.SYSTEM_MANAGER ||
+      userRole === UserRole.SYSTEM_ADMIN
+    ) {
       if (dto.storeId) {
         const store = await this.prisma.store.findFirst({
           where: { id: dto.storeId, isDeleted: false },
@@ -167,7 +164,9 @@ export class MediaService {
         where: { id: dto.productId, storeId, isDeleted: false },
       });
       if (!product) {
-        throw new NotFoundException('Sản phẩm được gán không thuộc cửa hàng này hoặc không tồn tại');
+        throw new NotFoundException(
+          'Sản phẩm được gán không thuộc cửa hàng này hoặc không tồn tại',
+        );
       }
     }
 
@@ -209,17 +208,21 @@ export class MediaService {
     }
 
     const isSystemAdminOrManager =
-      userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
+      userRole === UserRole.SYSTEM_ADMIN ||
+      userRole === UserRole.SYSTEM_MANAGER;
     const isStoreOwner = asset.store?.ownerId === userId;
     const isOwnerCollaborator = asset.collaboratorId === userId;
 
     if (!isSystemAdminOrManager && !isStoreOwner && !isOwnerCollaborator) {
-      throw new ForbiddenException(
-        'Bạn không có quyền xóa tài nguyên này',
-      );
+      throw new ForbiddenException('Bạn không có quyền xóa tài nguyên này');
     }
 
-    if (asset.sampleRequestId && isOwnerCollaborator && !isStoreOwner && !isSystemAdminOrManager) {
+    if (
+      asset.sampleRequestId &&
+      isOwnerCollaborator &&
+      !isStoreOwner &&
+      !isSystemAdminOrManager
+    ) {
       throw new ForbiddenException(
         'Video gắn với yêu cầu nhận mẫu cần được Shop hoặc Admin xử lý trước khi xóa.',
       );
@@ -255,7 +258,11 @@ export class MediaService {
     }
 
     const product = await this.prisma.product.findFirst({
-      where: { id: dto.productId, isDeleted: false, moderationStatus: 'APPROVED' },
+      where: {
+        id: dto.productId,
+        isDeleted: false,
+        moderationStatus: 'APPROVED',
+      },
       include: { store: true },
     });
 
@@ -264,7 +271,9 @@ export class MediaService {
     }
 
     if (!product.store || product.store.isDeleted || !product.store.isActive) {
-      throw new ForbiddenException('Cửa hàng của sản phẩm đang tạm ngừng hoạt động');
+      throw new ForbiddenException(
+        'Cửa hàng của sản phẩm đang tạm ngừng hoạt động',
+      );
     }
 
     // Kiểm tra KOL đã được phê duyệt làm cộng tác viên của gian hàng chưa
@@ -331,7 +340,8 @@ export class MediaService {
     });
 
     return {
-      message: 'Nộp video review thành công! Video đang chờ Shop kiểm duyệt trước khi xuất hiện trên Landing Page.',
+      message:
+        'Nộp video review thành công! Video đang chờ Shop kiểm duyệt trước khi xuất hiện trên Landing Page.',
       asset,
     };
   }
@@ -373,7 +383,9 @@ export class MediaService {
     });
 
     if (!asset || asset.isDeleted) {
-      throw new NotFoundException('Tài nguyên media không tồn tại hoặc đã bị xóa');
+      throw new NotFoundException(
+        'Tài nguyên media không tồn tại hoặc đã bị xóa',
+      );
     }
 
     // Phân quyền: SHOP_MANAGER chỉ được duyệt media của shop mình
@@ -418,7 +430,14 @@ export class MediaService {
       if (asset.sampleRequestId) {
         const sampleRequest = await tx.sampleProductRequest.findUnique({
           where: { id: asset.sampleRequestId },
-          select: { id: true, collaboratorId: true, videoUrl: true, status: true, deadlineAt: true, product: { select: { title: true } } },
+          select: {
+            id: true,
+            collaboratorId: true,
+            videoUrl: true,
+            status: true,
+            deadlineAt: true,
+            product: { select: { title: true } },
+          },
         });
         if (
           sampleRequest &&
@@ -437,7 +456,10 @@ export class MediaService {
             where: { id: sampleRequest.id },
             data: {
               status: isApproved ? 'COMPLETED' : 'REVISION_REQUIRED',
-              videoRejectionReason: isApproved ? null : dto.rejectionReason?.trim() || 'Shop yêu cầu chỉnh sửa video.',
+              videoRejectionReason: isApproved
+                ? null
+                : dto.rejectionReason?.trim() ||
+                  'Shop yêu cầu chỉnh sửa video.',
               revisionDeadlineAt: isApproved ? null : revisionDeadlineAt,
               revisionReminderSentAt: null,
               revisionShopReminderSentAt: null,
@@ -464,11 +486,15 @@ export class MediaService {
             data: {
               sampleRequestId: sampleRequest.id,
               actorId: reviewerId,
-              action: isApproved ? 'SAMPLE_VIDEO_APPROVED' : 'SAMPLE_VIDEO_REVISION_REQUIRED',
+              action: isApproved
+                ? 'SAMPLE_VIDEO_APPROVED'
+                : 'SAMPLE_VIDEO_REVISION_REQUIRED',
               details: {
                 mediaAssetId: asset.id,
                 videoUrl: asset.urlOrContent,
-                revisionDeadlineAt: isApproved ? null : revisionDeadlineAt.toISOString(),
+                revisionDeadlineAt: isApproved
+                  ? null
+                  : revisionDeadlineAt.toISOString(),
                 reason: isApproved ? null : dto.rejectionReason?.trim() || null,
               },
             },
@@ -476,12 +502,19 @@ export class MediaService {
           await tx.notification.create({
             data: {
               userId: sampleRequest.collaboratorId,
-              title: isApproved ? 'Video mẫu đã được nghiệm thu' : 'Shop yêu cầu chỉnh sửa video mẫu',
+              title: isApproved
+                ? 'Video mẫu đã được nghiệm thu'
+                : 'Shop yêu cầu chỉnh sửa video mẫu',
               message: isApproved
                 ? `Shop đã nghiệm thu video cho ${sampleRequest.product.title}. Nghĩa vụ nhận mẫu đã hoàn tất.`
                 : `Shop yêu cầu chỉnh sửa video cho ${sampleRequest.product.title}: ${dto.rejectionReason?.trim() || 'Vui lòng kiểm tra và nộp lại.'}`,
-              type: isApproved ? 'SAMPLE_VIDEO_APPROVED' : 'SAMPLE_VIDEO_REVISION_REQUIRED',
-              data: { sampleRequestId: sampleRequest.id, mediaAssetId: asset.id },
+              type: isApproved
+                ? 'SAMPLE_VIDEO_APPROVED'
+                : 'SAMPLE_VIDEO_REVISION_REQUIRED',
+              data: {
+                sampleRequestId: sampleRequest.id,
+                mediaAssetId: asset.id,
+              },
             },
           });
         }
@@ -514,27 +547,38 @@ export class MediaService {
       return updatedAsset;
     });
 
-    if (asset.sampleRequestId && dto.status === ReviewActionStatus.APPROVED && asset.collaboratorId) {
-      const unresolvedOverdueCount = await this.prisma.sampleProductRequest.count({
-        where: {
-          collaboratorId: asset.collaboratorId,
-          overdueAt: { not: null },
-          status: { not: 'COMPLETED' },
-        },
-      });
+    if (
+      asset.sampleRequestId &&
+      dto.status === ReviewActionStatus.APPROVED &&
+      asset.collaboratorId
+    ) {
+      const unresolvedOverdueCount =
+        await this.prisma.sampleProductRequest.count({
+          where: {
+            collaboratorId: asset.collaboratorId,
+            overdueAt: { not: null },
+            status: { not: 'COMPLETED' },
+          },
+        });
       if (unresolvedOverdueCount === 0) {
         await this.prisma.collaboratorProfile.updateMany({
           where: { userId: asset.collaboratorId },
-          data: { sampleRequestsBlockedAt: null, sampleRequestsBlockReason: null },
-        });
-        await this.prisma.notification.create({
           data: {
-            userId: asset.collaboratorId,
-            title: 'Đã mở lại quyền xin sản phẩm mẫu',
-            message: 'Shop đã nghiệm thu các video mẫu quá hạn của bạn. Bạn có thể gửi yêu cầu xin mẫu mới.',
-            type: 'SAMPLE_REQUESTS_UNBLOCKED',
+            sampleRequestsBlockedAt: null,
+            sampleRequestsBlockReason: null,
           },
-        }).catch(() => undefined);
+        });
+        await this.prisma.notification
+          .create({
+            data: {
+              userId: asset.collaboratorId,
+              title: 'Đã mở lại quyền xin sản phẩm mẫu',
+              message:
+                'Shop đã nghiệm thu các video mẫu quá hạn của bạn. Bạn có thể gửi yêu cầu xin mẫu mới.',
+              type: 'SAMPLE_REQUESTS_UNBLOCKED',
+            },
+          })
+          .catch(() => undefined);
       }
     }
 
@@ -587,7 +631,9 @@ export class MediaService {
     try {
       parsed = new URL(trimmed);
     } catch {
-      throw new BadRequestException(`${fieldName} không phải là một URL hợp lệ`);
+      throw new BadRequestException(
+        `${fieldName} không phải là một URL hợp lệ`,
+      );
     }
 
     const host = parsed.hostname.toLowerCase();

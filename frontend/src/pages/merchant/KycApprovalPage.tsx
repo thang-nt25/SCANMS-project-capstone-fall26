@@ -213,6 +213,29 @@ export default function KycApprovalPage() {
       followerCount: socialLinks.followerCount ?? primaryChannel?.followerCount ?? p.totalFollowers ?? 0,
       socialChannels,
       missingRequiredFields,
+      channelsList: (socialLinks.channels && socialLinks.channels.length > 0)
+        ? socialLinks.channels
+        : (p.user?.socialChannels && p.user.socialChannels.length > 0)
+          ? p.user.socialChannels.map((c: any) => ({
+              platform: c.platformName || c.platform,
+              channelName: c.channelName,
+              channelUrl: c.channelUrl,
+              followerCount: c.followerCount,
+              channelProofUrl: socialLinks.channelProofUrl,
+              isPrimary: c.isPrimary,
+            }))
+          : socialLinks.channelUrl
+            ? [{
+                platform: socialLinks.platform || 'TIKTOK',
+                channelName: socialLinks.channelName || '',
+                channelUrl: socialLinks.channelUrl,
+                followerCount: socialLinks.followerCount || p.totalFollowers || 0,
+                channelProofUrl: socialLinks.channelProofUrl,
+                isPrimary: true,
+              }]
+            : [],
+      specialtyCategories: socialLinks.specialtyCategories || [],
+      contentStyles: socialLinks.contentStyles || [],
     };
   });
 

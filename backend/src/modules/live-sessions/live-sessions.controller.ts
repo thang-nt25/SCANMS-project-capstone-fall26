@@ -62,7 +62,12 @@ export class LiveSessionsController {
   @Post('public/:identifier/interaction')
   recordInteraction(
     @Param('identifier') identifier: string,
-    @Body() body: { action: 'HEARTBEAT' | 'LIKE' | 'LEAVE'; clientId: string; count?: number },
+    @Body()
+    body: {
+      action: 'HEARTBEAT' | 'LIKE' | 'LEAVE';
+      clientId: string;
+      count?: number;
+    },
   ) {
     return this.service.recordInteraction(identifier, body);
   }
@@ -89,14 +94,20 @@ export class LiveSessionsController {
   @Get('shop/catalog')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER)
-  getShopCatalog(@CurrentUser('id') userId: string, @Query('storeId') storeId: string) {
+  getShopCatalog(
+    @CurrentUser('id') userId: string,
+    @Query('storeId') storeId: string,
+  ) {
     return this.service.getShopCatalog(userId, storeId);
   }
 
   @Post('shop/link-code')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER)
-  generateLinkCode(@CurrentUser('id') userId: string, @Body() dto: GenerateLiveLinkCodeDto) {
+  generateLinkCode(
+    @CurrentUser('id') userId: string,
+    @Body() dto: GenerateLiveLinkCodeDto,
+  ) {
     return this.service.generateLinkCode(userId, dto);
   }
 
@@ -110,7 +121,10 @@ export class LiveSessionsController {
   @Get('shop')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER)
-  getShopSessions(@CurrentUser('id') userId: string, @Query('storeId') storeId: string) {
+  getShopSessions(
+    @CurrentUser('id') userId: string,
+    @Query('storeId') storeId: string,
+  ) {
     return this.service.getShopSessions(userId, storeId);
   }
 
@@ -135,7 +149,10 @@ export class LiveSessionsController {
   @Get('shop/:id/report')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER)
-  getReport(@CurrentUser('id') userId: string, @Param('id', ParseUUIDPipe) id: string) {
+  getReport(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.getReport(userId, id);
   }
 

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import {
   FraudScanQueryDto,
@@ -115,7 +120,9 @@ export class AiFraudService {
       },
     });
 
-    const collaboratorIds = [...new Set(referralLinks.map((link) => link.collaboratorId))];
+    const collaboratorIds = [
+      ...new Set(referralLinks.map((link) => link.collaboratorId)),
+    ];
     const pendingCommissions = collaboratorIds.length
       ? await this.prisma.commission.groupBy({
           by: ['collaboratorId'],
@@ -138,11 +145,15 @@ export class AiFraudService {
     let potentialSavedAmount = 0;
 
     for (const link of referralLinks) {
-      const pendingAmount = pendingAmountByCollaborator.get(link.collaboratorId) ?? 0;
+      const pendingAmount =
+        pendingAmountByCollaborator.get(link.collaboratorId) ?? 0;
       const relatedOrders = link.orders;
 
       const totalOrdersCount = relatedOrders.length;
-      const totalClicks = Math.max(link.totalClicks || link.clickTrafficLogs.length, 1);
+      const totalClicks = Math.max(
+        link.totalClicks || link.clickTrafficLogs.length,
+        1,
+      );
       totalScannedClicks += totalClicks;
 
       const incidentId = `incident-${link.id}`;
@@ -161,11 +172,16 @@ export class AiFraudService {
       });
 
       // Nếu có query minRiskScore thì filter
-      if (query.minRiskScore !== undefined && analysis.riskScore < query.minRiskScore) {
+      if (
+        query.minRiskScore !== undefined &&
+        analysis.riskScore < query.minRiskScore
+      ) {
         continue;
       }
 
-      const currentStatus = actionRecord?.status || (link.status === 'PAUSED' ? 'FROZEN' : 'ACTIVE');
+      const currentStatus =
+        actionRecord?.status ||
+        (link.status === 'PAUSED' ? 'FROZEN' : 'ACTIVE');
 
       if (query.status && currentStatus !== query.status) {
         continue;
@@ -181,8 +197,10 @@ export class AiFraudService {
         collaboratorId: link.collaboratorId,
         collaboratorName: link.collaborator.fullName,
         collaboratorEmail: link.collaborator.email,
-        collaboratorAvatar: link.collaborator.collaboratorProfile?.avatarUrl || undefined,
-        collaboratorTier: link.collaborator.collaboratorProfile?.tier?.name || 'Đồng',
+        collaboratorAvatar:
+          link.collaborator.collaboratorProfile?.avatarUrl || undefined,
+        collaboratorTier:
+          link.collaborator.collaboratorProfile?.tier?.name || 'Đồng',
         storeId: link.storeId,
         storeName: link.store.name,
         referralLinkId: link.id,
@@ -193,7 +211,9 @@ export class AiFraudService {
         anomalyTypes: analysis.anomalies,
         totalClicks,
         totalOrders: totalOrdersCount,
-        conversionRate: Number(((totalOrdersCount / totalClicks) * 100).toFixed(2)),
+        conversionRate: Number(
+          ((totalOrdersCount / totalClicks) * 100).toFixed(2),
+        ),
         pendingCommissionAmount: pendingAmount,
         aiReasoning: analysis.aiReasoning,
         evidences: analysis.evidences,
@@ -209,9 +229,15 @@ export class AiFraudService {
     // Sắp xếp các sự vụ theo điểm nguy cơ giảm dần
     incidents.sort((a, b) => b.riskScore - a.riskScore);
 
-    const criticalCount = incidents.filter((i) => i.riskLevel === 'FRAUD_CRITICAL').length;
-    const suspiciousCount = incidents.filter((i) => i.riskLevel === 'SUSPICIOUS').length;
-    const lowRiskCount = incidents.filter((i) => i.riskLevel === 'LOW_RISK').length;
+    const criticalCount = incidents.filter(
+      (i) => i.riskLevel === 'FRAUD_CRITICAL',
+    ).length;
+    const suspiciousCount = incidents.filter(
+      (i) => i.riskLevel === 'SUSPICIOUS',
+    ).length;
+    const lowRiskCount = incidents.filter(
+      (i) => i.riskLevel === 'LOW_RISK',
+    ).length;
     const cleanCount = incidents.filter((i) => i.riskLevel === 'CLEAN').length;
 
     return {
@@ -242,11 +268,16 @@ export class AiFraudService {
   /**
    * Lấy chi tiết sự vụ theo ID
    */
-  async getIncidentById(incidentId: string, requesterUser: any): Promise<FraudIncidentDto> {
+  async getIncidentById(
+    incidentId: string,
+    requesterUser: any,
+  ): Promise<FraudIncidentDto> {
     const summary = await this.scanTraffic({}, requesterUser);
     const incident = summary.incidents.find((i) => i.id === incidentId);
     if (!incident) {
-      throw new NotFoundException(`Không tìm thấy sự vụ gian lận với mã ${incidentId}`);
+      throw new NotFoundException(
+        `Không tìm thấy sự vụ gian lận với mã ${incidentId}`,
+      );
     }
     return incident;
   }
@@ -282,13 +313,15 @@ export class AiFraudService {
         totalOrders: 0,
         conversionRate: 0,
         pendingCommissionAmount: 0,
-        aiReasoning: 'Chưa phát hiện hành vi bất thường. Tài khoản hoạt động ổn định và tuân thủ chính sách.',
+        aiReasoning:
+          'Chưa phát hiện hành vi bất thường. Tài khoản hoạt động ổn định và tuân thủ chính sách.',
         evidences: [
           {
             metric: 'Lưu lượng sạch',
             value: '100% Organic',
             severity: 'LOW',
-            description: 'Không phát hiện bot hoặc dấu hiệu can thiệp click ảo.',
+            description:
+              'Không phát hiện bot hoặc dấu hiệu can thiệp click ảo.',
           },
         ],
         suggestedAction: 'NONE',
@@ -308,7 +341,11 @@ export class AiFraudService {
     incidentId: string,
     actionDto: FraudActionDto,
     actorUser: { id: string; fullName?: string; email: string },
-  ): Promise<{ success: boolean; message: string; incident: FraudIncidentDto }> {
+  ): Promise<{
+    success: boolean;
+    message: string;
+    incident: FraudIncidentDto;
+  }> {
     const linkId = incidentId.replace('incident-', '');
 
     const referralLink = await this.prisma.referralLink.findUnique({
@@ -317,7 +354,9 @@ export class AiFraudService {
     });
 
     if (!referralLink) {
-      throw new NotFoundException(`Không tìm thấy link tiếp thị liên quan tới sự vụ ${incidentId}`);
+      throw new NotFoundException(
+        `Không tìm thấy link tiếp thị liên quan tới sự vụ ${incidentId}`,
+      );
     }
 
     let targetStatus: 'ACTIVE' | 'FROZEN' | 'RESOLVED' | 'DISMISSED' = 'ACTIVE';
@@ -326,7 +365,8 @@ export class AiFraudService {
     switch (actionDto.action) {
       case 'FREEZE_COMMISSION':
         targetStatus = 'FROZEN';
-        message = 'Đã kích hoạt đóng băng toàn bộ hoa hồng ví chờ của đối tác để đối soát an toàn.';
+        message =
+          'Đã kích hoạt đóng băng toàn bộ hoa hồng ví chờ của đối tác để đối soát an toàn.';
         // Tạm ngưng link tiếp thị trong database
         await this.prisma.referralLink.update({
           where: { id: linkId },
@@ -358,7 +398,8 @@ export class AiFraudService {
 
       case 'DISMISS':
         targetStatus = 'DISMISSED';
-        message = 'Đã bác bỏ cảnh báo. Lưu lượng được đánh giá là an toàn và hợp lệ.';
+        message =
+          'Đã bác bỏ cảnh báo. Lưu lượng được đánh giá là an toàn và hợp lệ.';
         await this.prisma.referralLink.update({
           where: { id: linkId },
           data: { status: 'ACTIVE' },
@@ -375,7 +416,10 @@ export class AiFraudService {
     }
 
     // Ghi nhận vào action store
-    const existing = incidentActionStore.get(incidentId) || { status: 'ACTIVE', history: [] };
+    const existing = incidentActionStore.get(incidentId) || {
+      status: 'ACTIVE',
+      history: [],
+    };
     existing.status = targetStatus;
     existing.history.unshift({
       action: actionDto.action,
@@ -423,7 +467,12 @@ export class AiFraudService {
     linkCode: string;
     totalClicks: number;
     totalOrders: number;
-    logs: Array<{ ipAddress: string; userAgent: string | null; createdAt: Date; riskReason: string | null }>;
+    logs: Array<{
+      ipAddress: string;
+      userAgent: string | null;
+      createdAt: Date;
+      riskReason: string | null;
+    }>;
     productPrice: number;
     pendingAmount: number;
     orders?: Array<{
@@ -452,7 +501,8 @@ export class AiFraudService {
     const evidences: FraudEvidenceItem[] = [];
 
     const { totalClicks, totalOrders, logs, orders, collaborator } = data;
-    const conversionRate = totalClicks > 0 ? (totalOrders / totalClicks) * 100 : 0;
+    const conversionRate =
+      totalClicks > 0 ? (totalOrders / totalClicks) * 100 : 0;
 
     // 1. Kiểm tra Zombie Traffic: Quá nhiều click nhưng không chuyển đổi (Clicks > 300, CR < 0.2%)
     if (totalClicks >= 300 && totalOrders === 0) {
@@ -462,7 +512,8 @@ export class AiFraudService {
         metric: 'Zombie Traffic (Lưu lượng ảo)',
         value: `${totalClicks} Clicks / 0 Đơn`,
         severity: 'HIGH',
-        description: 'Phát hiện lượng click lớn bất thường nhưng không phát sinh bất kỳ đơn hàng nào.',
+        description:
+          'Phát hiện lượng click lớn bất thường nhưng không phát sinh bất kỳ đơn hàng nào.',
       });
     } else if (totalClicks >= 150 && conversionRate < 0.3) {
       score += 25;
@@ -471,7 +522,8 @@ export class AiFraudService {
         metric: 'Tỷ lệ chuyển đổi thấp bất thường',
         value: `CR = ${conversionRate.toFixed(2)}%`,
         severity: 'MEDIUM',
-        description: 'Tỷ lệ chuyển đổi thấp hơn 95% mức trung bình của toàn sàn.',
+        description:
+          'Tỷ lệ chuyển đổi thấp hơn 95% mức trung bình của toàn sàn.',
       });
     }
 
@@ -492,7 +544,8 @@ export class AiFraudService {
           metric: 'Tập trung địa chỉ IP',
           value: `${maxIpCount} clicks từ cùng 1 IP`,
           severity: 'HIGH',
-          description: 'Hàng loạt lượt truy cập xuất phát từ cùng một địa chỉ IP hoặc dải mạng bot proxy.',
+          description:
+            'Hàng loạt lượt truy cập xuất phát từ cùng một địa chỉ IP hoặc dải mạng bot proxy.',
         });
       }
     }
@@ -505,7 +558,8 @@ export class AiFraudService {
         metric: 'Tỷ lệ chốt đơn siêu thực',
         value: `CR = ${conversionRate.toFixed(1)}%`,
         severity: 'HIGH',
-        description: 'Tỷ lệ tạo đơn cao bất thường so với hành vi mua sắm thương mại điện tử tự nhiên.',
+        description:
+          'Tỷ lệ tạo đơn cao bất thường so với hành vi mua sắm thương mại điện tử tự nhiên.',
       });
     }
 
@@ -518,7 +572,8 @@ export class AiFraudService {
         metric: 'Rate Limit Triggers',
         value: `${flaggedClicks} lượt vi phạm bảo mật`,
         severity: 'HIGH',
-        description: 'Lượt click kích hoạt cơ chế chặn spam Redis Rate Limiter.',
+        description:
+          'Lượt click kích hoạt cơ chế chặn spam Redis Rate Limiter.',
       });
     }
 
@@ -529,7 +584,8 @@ export class AiFraudService {
         const isMatchEmail =
           o.customerEmail &&
           collaborator.email &&
-          o.customerEmail.toLowerCase().trim() === collaborator.email.toLowerCase().trim();
+          o.customerEmail.toLowerCase().trim() ===
+            collaborator.email.toLowerCase().trim();
         const isMatchPhone =
           collaborator.phoneNumber &&
           o.customerPhone &&
@@ -554,7 +610,8 @@ export class AiFraudService {
         metric: 'Hoa hồng đột biến trên ít đơn',
         value: `${(data.pendingAmount / 1000).toLocaleString('vi-VN')}k ₫`,
         severity: 'MEDIUM',
-        description: 'Giá trị hoa hồng lớn tập trung vào số ít đơn hàng giá trị cao nghi vấn tự mua.',
+        description:
+          'Giá trị hoa hồng lớn tập trung vào số ít đơn hàng giá trị cao nghi vấn tự mua.',
       });
     }
 
@@ -562,7 +619,8 @@ export class AiFraudService {
     const finalScore = Math.min(Math.max(score, 5), 98);
 
     let riskLevel: FraudRiskLevel = 'CLEAN';
-    let suggestedAction: 'FREEZE_COMMISSION' | 'PAUSE_LINK' | 'MONITOR' | 'NONE' = 'NONE';
+    let suggestedAction:
+      'FREEZE_COMMISSION' | 'PAUSE_LINK' | 'MONITOR' | 'NONE' = 'NONE';
     let aiReasoning = '';
 
     if (finalScore >= 85) {
@@ -586,7 +644,8 @@ export class AiFraudService {
           metric: 'Traffic Organic',
           value: 'Bình thường',
           severity: 'LOW',
-          description: 'Lượt click và đơn hàng phân bố đều đặn theo thời gian thực.',
+          description:
+            'Lượt click và đơn hàng phân bố đều đặn theo thời gian thực.',
         });
       }
     }

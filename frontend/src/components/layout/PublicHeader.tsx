@@ -28,6 +28,7 @@ import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { ChatBell } from '../chat/ChatBell';
 import { NotificationDropdown } from './NotificationDropdown';
+import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface PublicHeaderProps {
   cartCount?: number;
@@ -267,16 +268,8 @@ export function PublicHeader({
           {currentUser ? (
             /* Logged in User Profile & Workspace Link */
             <div className="flex items-center gap-2">
-              {isCustomer && (
-                <Link
-                  to="/customer/upgrade"
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition shadow-2xs group"
-                  title="Nâng cấp tài khoản Khách Hàng lên KOL Tiếp Thị hoặc Mở Shop"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F] group-hover:scale-110 transition-transform" />
-                  <span>Nâng cấp Đối tác</span>
-                </Link>
-              )}
+              {/* Nút chuyển đổi vai trò 1-chạm thống nhất toàn sàn cho cả 3 role */}
+              <WorkspaceSwitcher variant="header" />
 
               {/* User Dropdown Pill - Framed VIP Card */}
               <div className="relative" ref={userMenuRef}>

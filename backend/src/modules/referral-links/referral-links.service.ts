@@ -36,10 +36,7 @@ import {
   normalizeUserAgent,
   generateDeviceFingerprint,
 } from './utils/short-code.generator';
-import {
-  normalizeClientIp,
-  hashIpForRateLimit,
-} from './utils/client-ip.util';
+import { normalizeClientIp, hashIpForRateLimit } from './utils/client-ip.util';
 import { CacheService } from '../../core/cache/cache.service';
 import * as QRCode from 'qrcode';
 import * as crypto from 'crypto';
@@ -104,10 +101,7 @@ export class ReferralLinksService {
   ) {
     const uniquePairs = Array.from(
       new Map(
-        pairs.map((pair) => [
-          `${pair.collaboratorId}:${pair.productId}`,
-          pair,
-        ]),
+        pairs.map((pair) => [`${pair.collaboratorId}:${pair.productId}`, pair]),
       ).values(),
     );
     if (!uniquePairs.length) return new Map<string, any>();
@@ -156,7 +150,10 @@ export class ReferralLinksService {
       return [];
     }
 
-    const page = Number.isInteger(query.page) && Number(query.page) > 0 ? Number(query.page) : 1;
+    const page =
+      Number.isInteger(query.page) && Number(query.page) > 0
+        ? Number(query.page)
+        : 1;
     const limit = Number.isInteger(query.limit)
       ? Math.min(Math.max(Number(query.limit), 1), 100)
       : 100;
@@ -224,18 +221,17 @@ export class ReferralLinksService {
       take: limit,
     });
 
-    return products
-      .map((p) => {
-        const estimatedRate =
-          p.customCommissionRate !== null
-            ? Number(p.customCommissionRate)
-            : Number(p.store.defaultCommissionRate);
-        return {
-          ...p,
-          estimatedCommissionRate: estimatedRate,
-          estimatedCommissionAmount: (Number(p.price) * estimatedRate) / 100,
-        };
-      });
+    return products.map((p) => {
+      const estimatedRate =
+        p.customCommissionRate !== null
+          ? Number(p.customCommissionRate)
+          : Number(p.store.defaultCommissionRate);
+      return {
+        ...p,
+        estimatedCommissionRate: estimatedRate,
+        estimatedCommissionAmount: (Number(p.price) * estimatedRate) / 100,
+      };
+    });
   }
 
   /**
@@ -316,7 +312,9 @@ export class ReferralLinksService {
     }
 
     if (product.moderationStatus !== 'APPROVED') {
-      throw new ForbiddenException('Sản phẩm chưa được SCANMS kiểm duyệt để làm tiếp thị.');
+      throw new ForbiddenException(
+        'Sản phẩm chưa được SCANMS kiểm duyệt để làm tiếp thị.',
+      );
     }
 
     // Kiểm tra sản phẩm có cho affiliate không
@@ -728,7 +726,10 @@ export class ReferralLinksService {
     const currentDeals = await this.getCurrentApprovedDeals(
       items
         .filter((item) => item.exclusiveDealId)
-        .map((item) => ({ collaboratorId: item.collaboratorId, productId: item.productId })),
+        .map((item) => ({
+          collaboratorId: item.collaboratorId,
+          productId: item.productId,
+        })),
     );
 
     const publicAppUrl = this.getPublicAppUrl();
@@ -742,11 +743,11 @@ export class ReferralLinksService {
         currentDeal?.approvedCommissionRate != null
           ? Number(currentDeal.approvedCommissionRate)
           : item.exclusiveDeal?.approvedCommissionRate !== null &&
-            item.exclusiveDeal?.approvedCommissionRate !== undefined
-          ? Number(item.exclusiveDeal.approvedCommissionRate)
-          : item.product.customCommissionRate !== null
-          ? Number(item.product.customCommissionRate)
-          : Number(item.product.store.defaultCommissionRate);
+              item.exclusiveDeal?.approvedCommissionRate !== undefined
+            ? Number(item.exclusiveDeal.approvedCommissionRate)
+            : item.product.customCommissionRate !== null
+              ? Number(item.product.customCommissionRate)
+              : Number(item.product.store.defaultCommissionRate);
 
       return {
         ...item,
@@ -1093,7 +1094,10 @@ export class ReferralLinksService {
     const currentDeals = await this.getCurrentApprovedDeals(
       items
         .filter((item) => item.exclusiveDealId)
-        .map((item) => ({ collaboratorId: item.collaboratorId, productId: item.productId })),
+        .map((item) => ({
+          collaboratorId: item.collaboratorId,
+          productId: item.productId,
+        })),
     );
 
     const publicAppUrl = this.getPublicAppUrl();
@@ -1109,13 +1113,18 @@ export class ReferralLinksService {
         commissionRate: item.campaignId
           ? null
           : item.exclusiveDealId &&
-              currentDeals.get(`${item.collaboratorId}:${item.productId}`)?.approvedCommissionRate != null
-            ? Number(currentDeals.get(`${item.collaboratorId}:${item.productId}`).approvedCommissionRate)
-            : item.exclusiveDeal?.status === 'APPROVED' && item.exclusiveDeal.approvedCommissionRate !== null
+              currentDeals.get(`${item.collaboratorId}:${item.productId}`)
+                ?.approvedCommissionRate != null
+            ? Number(
+                currentDeals.get(`${item.collaboratorId}:${item.productId}`)
+                  .approvedCommissionRate,
+              )
+            : item.exclusiveDeal?.status === 'APPROVED' &&
+                item.exclusiveDeal.approvedCommissionRate !== null
               ? Number(item.exclusiveDeal.approvedCommissionRate)
-            : item.product.customCommissionRate !== null
-              ? Number(item.product.customCommissionRate)
-              : Number(item.product.store.defaultCommissionRate),
+              : item.product.customCommissionRate !== null
+                ? Number(item.product.customCommissionRate)
+                : Number(item.product.store.defaultCommissionRate),
       })),
       meta: {
         total,
@@ -1277,7 +1286,9 @@ export class ReferralLinksService {
         include: {
           collaborator: { select: { id: true, fullName: true, email: true } },
           store: { select: { id: true, name: true } },
-          product: { select: { id: true, title: true, imageUrl: true, price: true } },
+          product: {
+            select: { id: true, title: true, imageUrl: true, price: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -1454,8 +1465,16 @@ export class ReferralLinksService {
     // 1. Rate limit kép nguyên tử qua Redis: 10 req/giây và 60 req/phút theo IP (FR-14 Mục 5, 6, 7, 10, 11, 20)
     const normalizedIp = normalizeClientIp(rawIp);
     const rateLimitIpHash = hashIpForRateLimit(normalizedIp, jwtSecret);
-    const secLimit = Number(this.configService.get<number>('CLICK_RATE_LIMIT_SEC') || process.env.CLICK_RATE_LIMIT_SEC || 10);
-    const minLimit = Number(this.configService.get<number>('CLICK_RATE_LIMIT_MIN') || process.env.CLICK_RATE_LIMIT_MIN || 60);
+    const secLimit = Number(
+      this.configService.get<number>('CLICK_RATE_LIMIT_SEC') ||
+        process.env.CLICK_RATE_LIMIT_SEC ||
+        10,
+    );
+    const minLimit = Number(
+      this.configService.get<number>('CLICK_RATE_LIMIT_MIN') ||
+        process.env.CLICK_RATE_LIMIT_MIN ||
+        60,
+    );
 
     const timeoutMs = Number(
       this.configService.get<number>('CLICK_RATE_LIMIT_TIMEOUT_MS') ||
@@ -1549,8 +1568,9 @@ export class ReferralLinksService {
       typeof link.destinationPath === 'string'
         ? link.destinationPath.trim()
         : '';
-    const isLegacyProductCollectionPath =
-      /^\/?products\/?$/i.test(storedDestinationPath);
+    const isLegacyProductCollectionPath = /^\/?products\/?$/i.test(
+      storedDestinationPath,
+    );
     const destinationPath =
       !storedDestinationPath || isLegacyProductCollectionPath
         ? `/products/${link.productId}`
@@ -1679,7 +1699,9 @@ export class ReferralLinksService {
             `Referral link ${link.id} có thể đã bị xóa đồng thời khi tạo AttributionSession (${sessionErr.message}).`,
           );
         } else {
-          this.logger.error(`Lỗi tạo AttributionSession: ${sessionErr.message}`);
+          this.logger.error(
+            `Lỗi tạo AttributionSession: ${sessionErr.message}`,
+          );
         }
         // Không cấp cookie nếu session thất bại để chống việc client nhận cookie nhưng DB không có session (Lỗi 1)
         allowAttribution = false;
@@ -1872,7 +1894,9 @@ export class ReferralLinksService {
     const conversions = attributedOrders.length;
     // FR-14 Mục 27: Raw click, bot và rate-limited clicks tuyệt đối không dùng tính conversion rate
     const conversionRate =
-      validClicks > 0 ? Number(((conversions / validClicks) * 100).toFixed(2)) : 0;
+      validClicks > 0
+        ? Number(((conversions / validClicks) * 100).toFixed(2))
+        : 0;
     let totalRevenue = 0;
     let totalCommission = 0;
 
@@ -2149,7 +2173,9 @@ export class ReferralLinksService {
 
       if (rawCollab) {
         // Chỉ Quản trị viên hệ thống mới xem được email gốc đầy đủ; Chủ Shop chỉ xem email đã ẩn danh (Issue 1)
-        const isSysAdmin = userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
+        const isSysAdmin =
+          userRole === UserRole.SYSTEM_ADMIN ||
+          userRole === UserRole.SYSTEM_MANAGER;
         effectiveCollaborator = {
           id: rawCollab.id,
           fullName: rawCollab.fullName,
@@ -2459,8 +2485,8 @@ export class ReferralLinksService {
       effectiveDeal.approvedCommissionRate !== null
         ? Number(effectiveDeal.approvedCommissionRate)
         : link.product.customCommissionRate !== null
-        ? Number(link.product.customCommissionRate)
-        : Number(link.store.defaultCommissionRate);
+          ? Number(link.product.customCommissionRate)
+          : Number(link.store.defaultCommissionRate);
 
     // Cộng thưởng chiến dịch nếu chiến dịch còn hiệu lực
     if (
@@ -2712,7 +2738,10 @@ export class ReferralLinksService {
           'Bạn không có quyền xem mã QR của liên kết thuộc cửa hàng khác.',
         );
       }
-    } else if (user.role === UserRole.SYSTEM_ADMIN || user.role === UserRole.SYSTEM_MANAGER) {
+    } else if (
+      user.role === UserRole.SYSTEM_ADMIN ||
+      user.role === UserRole.SYSTEM_MANAGER
+    ) {
       // Cho phép tra cứu/hỗ trợ
     } else {
       throw new ForbiddenException(

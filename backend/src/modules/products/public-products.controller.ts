@@ -47,7 +47,10 @@ export class PublicProductsController {
 
   @Get()
   @UseGuards(OptionalJwtAuthGuard)
-  @ApiOperation({ summary: 'Marketplace công khai chỉ trả dữ liệu sản phẩm an toàn với bộ lọc thực tế' })
+  @ApiOperation({
+    summary:
+      'Marketplace công khai chỉ trả dữ liệu sản phẩm an toàn với bộ lọc thực tế',
+  })
   async getMarketplace(
     @Query('search') search = '',
     @Query('category') category?: string,
@@ -59,27 +62,43 @@ export class PublicProductsController {
     @Query('limit') limit = '24',
     @Req() req?: Request,
   ) {
-    const role = (req as (Request & { user?: { role?: UserRole } }) | undefined)?.user?.role;
-    return this.productsService.findPublicMarketplace({
-      search,
-      category,
-      storeId,
-      minPrice: minPrice !== undefined && minPrice !== '' ? Number(minPrice) : undefined,
-      maxPrice: maxPrice !== undefined && maxPrice !== '' ? Number(maxPrice) : undefined,
-      sortBy,
-      page: Number(page) || 1,
-      limit: Number(limit) || 24,
-    }, 1, 24, role === UserRole.COLLABORATOR);
+    const role = (req as (Request & { user?: { role?: UserRole } }) | undefined)
+      ?.user?.role;
+    return this.productsService.findPublicMarketplace(
+      {
+        search,
+        category,
+        storeId,
+        minPrice:
+          minPrice !== undefined && minPrice !== ''
+            ? Number(minPrice)
+            : undefined,
+        maxPrice:
+          maxPrice !== undefined && maxPrice !== ''
+            ? Number(maxPrice)
+            : undefined,
+        sortBy,
+        page: Number(page) || 1,
+        limit: Number(limit) || 24,
+      },
+      1,
+      24,
+      role === UserRole.COLLABORATOR,
+    );
   }
 
   @Get('categories')
-  @ApiOperation({ summary: 'Lấy danh sách các danh mục ngành hàng có sản phẩm thực tế' })
+  @ApiOperation({
+    summary: 'Lấy danh sách các danh mục ngành hàng có sản phẩm thực tế',
+  })
   async getCategories() {
     return this.productsService.getPublicCategories();
   }
 
   @Get('stores')
-  @ApiOperation({ summary: 'Lấy danh sách các gian hàng đối tác đang hoạt động trên sàn' })
+  @ApiOperation({
+    summary: 'Lấy danh sách các gian hàng đối tác đang hoạt động trên sàn',
+  })
   async getStores() {
     return this.productsService.getPublicStores();
   }
@@ -87,7 +106,8 @@ export class PublicProductsController {
   @Get(':idOrSlug/landing')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Lấy dữ liệu Landing Page mua hàng công khai & Video Review (FR-15)',
+    summary:
+      'Lấy dữ liệu Landing Page mua hàng công khai & Video Review (FR-15)',
     description:
       'Cung cấp dữ liệu công khai an toàn cho khách vãng lai: Thông tin sản phẩm, tồn kho, chính sách Shop, video review KOL đã APPROVED (ưu tiên đúng KOL referral), thống kê sao và đánh giá đã duyệt có huy hiệu Đã mua hàng. Không lộ PII, commission hay thông tin nội bộ.',
   })
@@ -98,7 +118,8 @@ export class PublicProductsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Trả về dữ liệu Landing Page an toàn của sản phẩm & video review',
+    description:
+      'Trả về dữ liệu Landing Page an toàn của sản phẩm & video review',
     type: ProductLandingResponseDto,
   })
   @ApiResponse({
@@ -107,7 +128,8 @@ export class PublicProductsController {
   })
   @ApiResponse({
     status: 404,
-    description: 'Sản phẩm không tồn tại, đã bị xóa mềm hoặc gian hàng tạm đóng/bị khóa',
+    description:
+      'Sản phẩm không tồn tại, đã bị xóa mềm hoặc gian hàng tạm đóng/bị khóa',
   })
   @ApiResponse({
     status: 410,
@@ -133,7 +155,8 @@ export class PublicProductsController {
   @Post('analytics/events')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Tiếp nhận sự kiện tương tác người dùng trên Landing Page (FR-15 Analytics)',
+    summary:
+      'Tiếp nhận sự kiện tương tác người dùng trên Landing Page (FR-15 Analytics)',
     description:
       'Ghi nhận các sự kiện page_view, video_start, video_complete, cta_click, checkout_start phục vụ thống kê chuyển đổi tiếp thị.',
   })
@@ -165,7 +188,8 @@ export class PublicProductsController {
 
   @Get([':idOrSlug/seo', 'preview/:idOrSlug', 'p/:idOrSlug'])
   @ApiOperation({
-    summary: 'Server-Side Render Open Graph Meta Tags cho mạng xã hội (Facebook, Zalo, Twitter) (FR-15 SEO)',
+    summary:
+      'Server-Side Render Open Graph Meta Tags cho mạng xã hội (Facebook, Zalo, Twitter) (FR-15 SEO)',
   })
   async getSeoPreview(
     @Param('idOrSlug') idOrSlug: string,
@@ -173,7 +197,8 @@ export class PublicProductsController {
     @Req() req: Request,
   ) {
     try {
-      const landingData = await this.productsService.getLandingPageData(idOrSlug);
+      const landingData =
+        await this.productsService.getLandingPageData(idOrSlug);
       const frontendBaseUrl =
         this.configService.get<string>('FRONTEND_URL') ||
         process.env.FRONTEND_URL ||
@@ -193,11 +218,16 @@ export class PublicProductsController {
         landingData.product.imageUrl ||
         landingData.images?.[0] ||
         `${normalizedFrontendUrl}/banner-placeholder.jpg`;
-      const imageUrl = new URL(imagePath, `${normalizedFrontendUrl}/`).toString();
+      const imageUrl = new URL(
+        imagePath,
+        `${normalizedFrontendUrl}/`,
+      ).toString();
       const safeTargetUrl = escapeHtml(targetUrl);
       const safeImageUrl = escapeHtml(imageUrl);
       const price = landingData.product.price;
-      const storeName = escapeHtml(landingData.store?.name || 'SCANMS Official');
+      const storeName = escapeHtml(
+        landingData.store?.name || 'SCANMS Official',
+      );
 
       const html = `<!DOCTYPE html>
 <html lang="vi" prefix="og: https://ogp.me/ns#">
@@ -247,4 +277,3 @@ export class PublicProductsController {
     }
   }
 }
-

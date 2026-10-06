@@ -35,7 +35,9 @@ export class CreateSampleRequestDto {
   @ApiProperty({ description: 'Số điện thoại người nhận hàng mẫu' })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+?[0-9\s().-]{9,20}$/, { message: 'Số điện thoại người nhận không hợp lệ.' })
+  @Matches(/^\+?[0-9\s().-]{9,20}$/, {
+    message: 'Số điện thoại người nhận không hợp lệ.',
+  })
   recipientPhone: string;
 
   @ApiProperty({
@@ -52,7 +54,9 @@ export class CreateSampleRequestDto {
   @IsUUID()
   socialChannelId: string;
 
-  @ApiProperty({ description: 'Loại nội dung dự kiến, ví dụ video review 60 giây' })
+  @ApiProperty({
+    description: 'Loại nội dung dự kiến, ví dụ video review 60 giây',
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
@@ -64,7 +68,9 @@ export class CreateSampleRequestDto {
 
   @ApiProperty({ description: 'KOL đã tích xác nhận cam kết 14 ngày' })
   @IsBoolean()
-  @Equals(true, { message: 'Bạn cần đồng ý với cam kết nộp video trong 14 ngày.' })
+  @Equals(true, {
+    message: 'Bạn cần đồng ý với cam kết nộp video trong 14 ngày.',
+  })
   termsAccepted: boolean;
 }
 
@@ -136,7 +142,9 @@ export class ShipSampleRequestDto {
 }
 
 export class AdminResolveSampleRequestDto {
-  @ApiProperty({ enum: ['EXTEND_DEADLINE', 'CANCEL_OBLIGATION', 'RESOLVE_DELIVERY_ISSUE'] })
+  @ApiProperty({
+    enum: ['EXTEND_DEADLINE', 'CANCEL_OBLIGATION', 'RESOLVE_DELIVERY_ISSUE'],
+  })
   @IsIn(['EXTEND_DEADLINE', 'CANCEL_OBLIGATION', 'RESOLVE_DELIVERY_ISSUE'])
   action: 'EXTEND_DEADLINE' | 'CANCEL_OBLIGATION' | 'RESOLVE_DELIVERY_ISSUE';
 
@@ -146,7 +154,9 @@ export class AdminResolveSampleRequestDto {
   @MaxLength(500)
   reason: string;
 
-  @ApiPropertyOptional({ description: 'Hạn mới theo ISO 8601, bắt buộc khi gia hạn' })
+  @ApiPropertyOptional({
+    description: 'Hạn mới theo ISO 8601, bắt buộc khi gia hạn',
+  })
   @IsOptional()
   @IsDateString()
   deadlineAt?: string;

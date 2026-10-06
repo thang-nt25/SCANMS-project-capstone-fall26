@@ -180,13 +180,13 @@ export const authService = {
 
     const isKol =
       u.role === 'COLLABORATOR' ||
-      Boolean(u.collaboratorProfile) ||
+      (Boolean(u.collaboratorProfile) && u.collaboratorProfile?.kycStatus === 'VERIFIED') ||
       u.role === 'SYSTEM_ADMIN' ||
       u.role === 'SYSTEM_MANAGER';
 
     const isShop =
       u.role === 'SHOP_MANAGER' ||
-      Boolean(u.stores && u.stores.length > 0) ||
+      Boolean(u.stores?.some((s: any) => s.isActive || s.isVerified || s.onboardingStatus === 'APPROVED')) ||
       u.role === 'SYSTEM_ADMIN' ||
       u.role === 'SYSTEM_MANAGER';
 
@@ -229,16 +229,19 @@ export const authService = {
   },
 
   getActiveWorkspace(): 'customer' | 'kol' | 'shop' | 'admin' {
-    const stored = localStorage.getItem('scanms-active-workspace') as any;
-    if (stored && ['customer', 'kol', 'shop', 'admin'].includes(stored)) {
-      return stored;
-    }
     const user = this.getCurrentUser();
     if (!user) return 'customer';
 
-    if (user.role === 'SHOP_MANAGER') return 'shop';
-    if (user.role === 'SYSTEM_ADMIN' || user.role === 'SYSTEM_MANAGER') return 'admin';
-    if (user.role === 'COLLABORATOR') return 'kol';
+    const availableWorkspaces = this.getUserAvailableWorkspaces(user).map((w) => w.key);
+
+    const stored = localStorage.getItem('scanms-active-workspace') as any;
+    if (stored && availableWorkspaces.includes(stored)) {
+      return stored;
+    }
+
+    if (user.role === 'SHOP_MANAGER' && availableWorkspaces.includes('shop')) return 'shop';
+    if ((user.role === 'SYSTEM_ADMIN' || user.role === 'SYSTEM_MANAGER') && availableWorkspaces.includes('admin')) return 'admin';
+    if (user.role === 'COLLABORATOR' && availableWorkspaces.includes('kol')) return 'kol';
     return 'customer';
   },
 

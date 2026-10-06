@@ -51,7 +51,9 @@ describe('FR-28 — Realtime Sales & Performance Analytics Dashboard E2E Suite (
         },
         select: { id: true },
       });
-      const allUserIds = Array.from(new Set([...testUserIds, ...existingUsers.map(u => u.id)]));
+      const allUserIds = Array.from(
+        new Set([...testUserIds, ...existingUsers.map((u) => u.id)]),
+      );
 
       const existingStores = await prisma.store.findMany({
         where: {
@@ -63,7 +65,9 @@ describe('FR-28 — Realtime Sales & Performance Analytics Dashboard E2E Suite (
         },
         select: { id: true },
       });
-      const allStoreIds = Array.from(new Set([...testStoreIds, ...existingStores.map(s => s.id)]));
+      const allStoreIds = Array.from(
+        new Set([...testStoreIds, ...existingStores.map((s) => s.id)]),
+      );
 
       // Cleanup dependent tables
       await prisma.commission.deleteMany({
@@ -181,7 +185,12 @@ describe('FR-28 — Realtime Sales & Performance Analytics Dashboard E2E Suite (
     for (const u of testUsers) {
       await prisma.user.upsert({
         where: { id: u.id },
-        update: { passwordHash, isActive: true, role: u.role, fullName: u.fullName },
+        update: {
+          passwordHash,
+          isActive: true,
+          role: u.role,
+          fullName: u.fullName,
+        },
         create: {
           id: u.id,
           email: u.email,
@@ -417,7 +426,8 @@ describe('FR-28 — Realtime Sales & Performance Analytics Dashboard E2E Suite (
     const loginOtherShop = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'othershop-fr28@scanms.test', password: 'Password@123' });
-    tokenOtherShop = loginOtherShop.body.data?.accessToken || loginOtherShop.body.accessToken;
+    tokenOtherShop =
+      loginOtherShop.body.data?.accessToken || loginOtherShop.body.accessToken;
 
     const loginKol = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -508,7 +518,9 @@ describe('FR-28 — Realtime Sales & Performance Analytics Dashboard E2E Suite (
     const end = new Date().toISOString();
 
     const res = await request(app.getHttpServer())
-      .get(`/api/dashboard/realtime/overview?range=custom&startDate=${start}&endDate=${end}`)
+      .get(
+        `/api/dashboard/realtime/overview?range=custom&startDate=${start}&endDate=${end}`,
+      )
       .set('Authorization', `Bearer ${tokenShop}`);
 
     expect(res.status).toBe(200);
@@ -631,8 +643,9 @@ describe('FR-28 — Realtime Sales & Performance Analytics Dashboard E2E Suite (
   // Test 14: Bảo mật 401 khi không có JWT Token
   // ══════════════════════════════════════════════════════════════════════════
   it('Test 14 [GET /api/dashboard/realtime/overview] — Trả về 401 khi không truyền Access Token', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/dashboard/realtime/overview?range=today');
+    const res = await request(app.getHttpServer()).get(
+      '/api/dashboard/realtime/overview?range=today',
+    );
 
     expect(res.status).toBe(401);
   });

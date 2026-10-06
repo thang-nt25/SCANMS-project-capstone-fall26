@@ -32,18 +32,32 @@ export class AiRecommendationService {
     // 1. Nếu có productId -> Lấy thông tin sản phẩm cụ thể
     if (query.productId) {
       targetProduct = await this.prisma.product.findFirst({
-        where: { id: query.productId, moderationStatus: 'APPROVED', isActive: true, isDeleted: false, store: { isDeleted: false } },
+        where: {
+          id: query.productId,
+          moderationStatus: 'APPROVED',
+          isActive: true,
+          isDeleted: false,
+          store: { isDeleted: false },
+        },
         include: { store: true },
       });
 
       if (!targetProduct) {
-        throw new NotFoundException(`Không tìm thấy sản phẩm với ID: ${query.productId}`);
+        throw new NotFoundException(
+          `Không tìm thấy sản phẩm với ID: ${query.productId}`,
+        );
       }
 
-      if (currentUserRole === UserRole.SHOP_MANAGER && targetProduct.store.ownerId !== currentUserId) {
-        throw new ForbiddenException('Chỉ được quét KOL cho sản phẩm của gian hàng mình.');
+      if (
+        currentUserRole === UserRole.SHOP_MANAGER &&
+        targetProduct.store.ownerId !== currentUserId
+      ) {
+        throw new ForbiddenException(
+          'Chỉ được quét KOL cho sản phẩm của gian hàng mình.',
+        );
       }
-      targetCategory = query.category || targetProduct.categoryName || undefined;
+      targetCategory =
+        query.category || targetProduct.categoryName || undefined;
       targetPrice = Number(targetProduct.price || 0);
     }
 
@@ -70,33 +84,55 @@ export class AiRecommendationService {
         where: {
           status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
           OR: [
-            { attributedCollaboratorId: { in: collaborators.map((c) => c.id) } },
-            { orderItems: { some: { referralLink: { collaboratorId: { in: collaborators.map((c) => c.id) } } } } },
+            {
+              attributedCollaboratorId: { in: collaborators.map((c) => c.id) },
+            },
+            {
+              orderItems: {
+                some: {
+                  referralLink: {
+                    collaboratorId: { in: collaborators.map((c) => c.id) },
+                  },
+                },
+              },
+            },
           ],
         },
         select: {
           attributedCollaboratorId: true,
           orderItems: {
-            select: { quantity: true, unitPrice: true, product: { select: { categoryName: true } }, referralLink: { select: { collaboratorId: true } } },
+            select: {
+              quantity: true,
+              unitPrice: true,
+              product: { select: { categoryName: true } },
+              referralLink: { select: { collaboratorId: true } },
+            },
           },
         },
       }),
       this.prisma.clickTrafficLog.groupBy({
         by: ['collaboratorId'],
-        where: { isValid: true, isUnique: true, collaboratorId: { in: collaborators.map((c) => c.id) } },
+        where: {
+          isValid: true,
+          isUnique: true,
+          collaboratorId: { in: collaborators.map((c) => c.id) },
+        },
         _count: { _all: true },
       }),
     ]);
 
     // Gom nhóm thống kê theo từng KOL
-    const kolStatsMap = new Map<string, {
-      totalOrders: number;
-      grossRevenue: number;
-      totalClicks: number;
-      categoryOrderCounts: Map<string, number>;
-      priceSum: number;
-      totalUnits: number;
-    }>();
+    const kolStatsMap = new Map<
+      string,
+      {
+        totalOrders: number;
+        grossRevenue: number;
+        totalClicks: number;
+        categoryOrderCounts: Map<string, number>;
+        priceSum: number;
+        totalUnits: number;
+      }
+    >();
 
     for (const c of collaborators) {
       kolStatsMap.set(c.id, {
@@ -118,7 +154,8 @@ export class AiRecommendationService {
     for (const order of allOrders) {
       const countedCollaborators = new Set<string>();
       for (const item of order.orderItems) {
-        const collaboratorId = item.referralLink?.collaboratorId || order.attributedCollaboratorId;
+        const collaboratorId =
+          item.referralLink?.collaboratorId || order.attributedCollaboratorId;
         if (collaboratorId && kolStatsMap.has(collaboratorId)) {
           const stats = kolStatsMap.get(collaboratorId)!;
           if (!countedCollaborators.has(collaboratorId)) {
@@ -141,10 +178,17 @@ export class AiRecommendationService {
 
     for (const c of collaborators) {
       const stats = kolStatsMap.get(c.id)!;
-      const socialChannels = c.socialChannels.filter((channel, index, channels) => {
-        const identity = (entry: typeof channel) => `${entry.platformName.toUpperCase()}:${(entry.channelUrl || entry.channelName || entry.id).trim().replace(/\/$/, '').toLowerCase()}`;
-        return channels.findIndex((entry) => identity(entry) === identity(channel)) === index;
-      });
+      const socialChannels = c.socialChannels.filter(
+        (channel, index, channels) => {
+          const identity = (entry: typeof channel) =>
+            `${entry.platformName.toUpperCase()}:${(entry.channelUrl || entry.channelName || entry.id).trim().replace(/\/$/, '').toLowerCase()}`;
+          return (
+            channels.findIndex(
+              (entry) => identity(entry) === identity(channel),
+            ) === index
+          );
+        },
+      );
       const tierName = c.collaboratorProfile?.tier?.name || 'Chưa xếp hạng';
 
       // Tiêu chí 1: Điểm trùng khớp ngành hàng (Category Score - 35%)
@@ -163,7 +207,10 @@ export class AiRecommendationService {
         const targetCatNormalized = targetCategory.toLowerCase();
         let directMatchOrders = 0;
         for (const [cat, count] of stats.categoryOrderCounts.entries()) {
-          if (cat.toLowerCase().includes(targetCatNormalized) || targetCatNormalized.includes(cat.toLowerCase())) {
+          if (
+            cat.toLowerCase().includes(targetCatNormalized) ||
+            targetCatNormalized.includes(cat.toLowerCase())
+          ) {
             directMatchOrders += count;
           }
         }
@@ -172,16 +219,23 @@ export class AiRecommendationService {
         else if (directMatchOrders >= 20) categoryScore = 92;
         else if (directMatchOrders >= 5) categoryScore = 85;
         else if (directMatchOrders > 0) categoryScore = 75;
-        else if (primaryCategory.toLowerCase().includes(targetCatNormalized)) categoryScore = 80;
+        else if (primaryCategory.toLowerCase().includes(targetCatNormalized))
+          categoryScore = 80;
         else categoryScore = 0;
       } else if (stats.totalOrders > 0) {
-        categoryScore = Math.min(100, Math.round((stats.totalOrders / 50) * 100));
+        categoryScore = Math.min(
+          100,
+          Math.round((stats.totalOrders / 50) * 100),
+        );
       }
 
       // Tiêu chí 2: Điểm tỷ lệ chuyển đổi (Conversion Rate CR% - 25%)
-      const conversionRate = stats.totalClicks > 0
-        ? parseFloat(((stats.totalOrders / stats.totalClicks) * 100).toFixed(2))
-        : 0;
+      const conversionRate =
+        stats.totalClicks > 0
+          ? parseFloat(
+              ((stats.totalOrders / stats.totalClicks) * 100).toFixed(2),
+            )
+          : 0;
 
       let conversionRateScore = 0;
       if (conversionRate >= 8.0) conversionRateScore = 98;
@@ -190,21 +244,46 @@ export class AiRecommendationService {
       else if (conversionRate >= 2.0) conversionRateScore = 74;
       else if (conversionRate > 0) conversionRateScore = 65;
       // Reduce the influence of a high CR from only a handful of clicks.
-      conversionRateScore = Math.round(conversionRateScore * Math.min(1, stats.totalClicks / 30));
+      conversionRateScore = Math.round(
+        conversionRateScore * Math.min(1, stats.totalClicks / 30),
+      );
 
       // Lọc điều kiện minConversionRate nếu có
-      if (query.minConversionRate !== undefined && conversionRate < query.minConversionRate) {
+      if (
+        query.minConversionRate !== undefined &&
+        conversionRate < query.minConversionRate
+      ) {
         continue;
       }
 
       // Tiêu chí 3: Điểm cấp bậc & mạng xã hội (Tier & Social Score - 20%)
       let tierAndSocialScore = 0;
       const tierNormalized = tierName.toUpperCase();
-      if (tierNormalized.includes('KIM CƯƠNG') || tierNormalized.includes('DIAMOND')) tierAndSocialScore = 98;
-      else if (tierNormalized.includes('BẠCH KIM') || tierNormalized.includes('PLATINUM')) tierAndSocialScore = 90;
-      else if (tierNormalized.includes('VÀNG') || tierNormalized.includes('GOLD')) tierAndSocialScore = 80;
-      else if (tierNormalized.includes('BẠC') || tierNormalized.includes('SILVER')) tierAndSocialScore = 70;
-      else if (tierNormalized.includes('ĐỒNG') || tierNormalized.includes('BRONZE')) tierAndSocialScore = 60;
+      if (
+        tierNormalized.includes('KIM CƯƠNG') ||
+        tierNormalized.includes('DIAMOND')
+      )
+        tierAndSocialScore = 98;
+      else if (
+        tierNormalized.includes('BẠCH KIM') ||
+        tierNormalized.includes('PLATINUM')
+      )
+        tierAndSocialScore = 90;
+      else if (
+        tierNormalized.includes('VÀNG') ||
+        tierNormalized.includes('GOLD')
+      )
+        tierAndSocialScore = 80;
+      else if (
+        tierNormalized.includes('BẠC') ||
+        tierNormalized.includes('SILVER')
+      )
+        tierAndSocialScore = 70;
+      else if (
+        tierNormalized.includes('ĐỒNG') ||
+        tierNormalized.includes('BRONZE')
+      )
+        tierAndSocialScore = 60;
 
       // Lọc điều kiện minTier nếu có
       if (query.minTier) {
@@ -217,16 +296,24 @@ export class AiRecommendationService {
       }
 
       // Thưởng điểm Follower MXH
-      const totalFollowers = socialChannels.reduce((sum, ch) => sum + (ch.followerCount || 0), 0);
-      if (totalFollowers >= 500000) tierAndSocialScore = Math.min(100, tierAndSocialScore + 5);
-      else if (totalFollowers >= 100000) tierAndSocialScore = Math.min(100, tierAndSocialScore + 3);
+      const totalFollowers = socialChannels.reduce(
+        (sum, ch) => sum + (ch.followerCount || 0),
+        0,
+      );
+      if (totalFollowers >= 500000)
+        tierAndSocialScore = Math.min(100, tierAndSocialScore + 5);
+      else if (totalFollowers >= 100000)
+        tierAndSocialScore = Math.min(100, tierAndSocialScore + 3);
 
       // Tiêu chí 4: Điểm phù hợp phân khúc giá (Price Fit Score - 20%)
       let priceFitScore = 0;
-      const avgOrderValue = stats.totalUnits > 0 ? stats.priceSum / stats.totalUnits : 0;
+      const avgOrderValue =
+        stats.totalUnits > 0 ? stats.priceSum / stats.totalUnits : 0;
 
       if (targetPrice > 0 && avgOrderValue > 0) {
-        const ratio = Math.min(targetPrice, avgOrderValue) / Math.max(targetPrice, avgOrderValue);
+        const ratio =
+          Math.min(targetPrice, avgOrderValue) /
+          Math.max(targetPrice, avgOrderValue);
         priceFitScore = Math.round(60 + ratio * 38);
       }
 
@@ -234,10 +321,26 @@ export class AiRecommendationService {
       if (query.priceRange && query.priceRange !== PriceRangeFilter.ALL) {
         const evalPrice = avgOrderValue;
         if (evalPrice <= 0) continue;
-        if (query.priceRange === PriceRangeFilter.UNDER_200K && evalPrice >= 200000) continue;
-        if (query.priceRange === PriceRangeFilter.FROM_200K_TO_500K && (evalPrice < 200000 || evalPrice > 500000)) continue;
-        if (query.priceRange === PriceRangeFilter.FROM_500K_TO_1M && (evalPrice < 500000 || evalPrice > 1000000)) continue;
-        if (query.priceRange === PriceRangeFilter.OVER_1M && evalPrice <= 1000000) continue;
+        if (
+          query.priceRange === PriceRangeFilter.UNDER_200K &&
+          evalPrice >= 200000
+        )
+          continue;
+        if (
+          query.priceRange === PriceRangeFilter.FROM_200K_TO_500K &&
+          (evalPrice < 200000 || evalPrice > 500000)
+        )
+          continue;
+        if (
+          query.priceRange === PriceRangeFilter.FROM_500K_TO_1M &&
+          (evalPrice < 500000 || evalPrice > 1000000)
+        )
+          continue;
+        if (
+          query.priceRange === PriceRangeFilter.OVER_1M &&
+          evalPrice <= 1000000
+        )
+          continue;
       }
 
       // 5. TỔNG HỢP MATCH SCORE (Công thức ma trận trọng số)
@@ -247,11 +350,11 @@ export class AiRecommendationService {
           0,
           Math.round(
             categoryScore * 0.35 +
-            conversionRateScore * 0.25 +
-            tierAndSocialScore * 0.20 +
-            priceFitScore * 0.20
-          )
-        )
+              conversionRateScore * 0.25 +
+              tierAndSocialScore * 0.2 +
+              priceFitScore * 0.2,
+          ),
+        ),
       );
 
       // Đánh giá mức độ
@@ -309,7 +412,12 @@ export class AiRecommendationService {
         })),
         lifetimeStats: {
           totalClicks: stats.totalClicks,
-          dataConfidence: stats.totalOrders >= 20 && stats.totalClicks >= 100 ? 'HIGH' : stats.totalOrders >= 5 && stats.totalClicks >= 30 ? 'MEDIUM' : 'LOW',
+          dataConfidence:
+            stats.totalOrders >= 20 && stats.totalClicks >= 100
+              ? 'HIGH'
+              : stats.totalOrders >= 5 && stats.totalClicks >= 30
+                ? 'MEDIUM'
+                : 'LOW',
           totalOrders: stats.totalOrders,
           grossRevenue: stats.grossRevenue,
           conversionRate,
@@ -319,7 +427,11 @@ export class AiRecommendationService {
     }
 
     // Sắp xếp giảm dần theo Điểm tương thích AI (Match Score)
-    matchResults.sort((a, b) => b.matchScore - a.matchScore || b.lifetimeStats.conversionRate - a.lifetimeStats.conversionRate);
+    matchResults.sort(
+      (a, b) =>
+        b.matchScore - a.matchScore ||
+        b.lifetimeStats.conversionRate - a.lifetimeStats.conversionRate,
+    );
 
     const limit = query.limit || 5;
     const topRecommended = matchResults.slice(0, limit);
@@ -333,7 +445,11 @@ export class AiRecommendationService {
             category: targetCategory || 'Chưa phân loại',
             price: targetPrice,
             imageUrl: targetProduct.imageUrl,
-            commissionRate: Number(targetProduct.customCommissionRate ?? targetProduct.store.defaultCommissionRate ?? 0),
+            commissionRate: Number(
+              targetProduct.customCommissionRate ??
+                targetProduct.store.defaultCommissionRate ??
+                0,
+            ),
           }
         : undefined,
       totalKolsScanned: collaborators.length,
@@ -342,7 +458,11 @@ export class AiRecommendationService {
   }
 
   // ─── 2. PHÂN TÍCH CHUYÊN SÂU 1-1 GIỮA 1 SẢN PHẨM VÀ 1 KOL CỤ THỂ ─────
-  async analyzeMatch(dto: MatchAnalysisRequestDto, currentUserId: string, currentUserRole: string) {
+  async analyzeMatch(
+    dto: MatchAnalysisRequestDto,
+    currentUserId: string,
+    currentUserRole: string,
+  ) {
     const res = await this.getRecommendedKols(
       { productId: dto.productId, limit: 100 },
       currentUserId,
@@ -350,9 +470,13 @@ export class AiRecommendationService {
       dto.collaboratorId,
     );
 
-    const found = res.recommendedKols.find((k) => k.collaboratorId === dto.collaboratorId);
+    const found = res.recommendedKols.find(
+      (k) => k.collaboratorId === dto.collaboratorId,
+    );
     if (!found) {
-      throw new NotFoundException('Không tìm thấy dữ liệu đối sánh cho KOL được chọn.');
+      throw new NotFoundException(
+        'Không tìm thấy dữ liệu đối sánh cho KOL được chọn.',
+      );
     }
 
     return {
@@ -377,7 +501,8 @@ export class AiRecommendationService {
     score: number,
     orders: number,
   ): string {
-    if (!orders) return `${kolName} chưa có đơn affiliate hoàn tất trên SCANMS. Điểm ${score}/100 chủ yếu dựa trên hồ sơ; chưa đủ dữ liệu để đánh giá hiệu quả bán "${productTitle}".`;
+    if (!orders)
+      return `${kolName} chưa có đơn affiliate hoàn tất trên SCANMS. Điểm ${score}/100 chủ yếu dựa trên hồ sơ; chưa đủ dữ liệu để đánh giá hiệu quả bán "${productTitle}".`;
     return `${kolName}: ${score}/100 điểm gợi ý cho "${productTitle}" với ngành mục tiêu ${category}. Căn cứ: ${orders} đơn affiliate đã giao/hoàn tất trên SCANMS, tỷ lệ đơn trên lượt nhấp hợp lệ duy nhất ${cr}% và hạng ${tier}. Điểm dùng để xếp hạng tham khảo, không phải xác suất chốt đơn.`;
   }
 
@@ -388,10 +513,17 @@ export class AiRecommendationService {
     followers: number,
   ): string[] {
     const strengths: string[] = [];
-    strengths.push(orders ? `${orders} đơn affiliate đã giao/hoàn tất` : 'Chưa có đơn affiliate hoàn tất');
+    strengths.push(
+      orders
+        ? `${orders} đơn affiliate đã giao/hoàn tất`
+        : 'Chưa có đơn affiliate hoàn tất',
+    );
     if (orders) strengths.push(`Ngành bán nhiều nhất: ${category}`);
     strengths.push(`Hạng: ${tier}`);
-    if (followers > 0) strengths.push(`${followers.toLocaleString('vi-VN')} người theo dõi do hồ sơ kênh cung cấp`);
+    if (followers > 0)
+      strengths.push(
+        `${followers.toLocaleString('vi-VN')} người theo dõi do hồ sơ kênh cung cấp`,
+      );
 
     return strengths.slice(0, 3);
   }

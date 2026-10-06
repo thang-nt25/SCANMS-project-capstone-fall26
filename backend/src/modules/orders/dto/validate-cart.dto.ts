@@ -30,7 +30,8 @@ export class ValidateCartItemDto {
   quantity: number;
 
   @ApiPropertyOptional({
-    description: 'Đơn giá lưu trữ tạm thời phía client để đối chiếu biến động giá',
+    description:
+      'Đơn giá lưu trữ tạm thời phía client để đối chiếu biến động giá',
     example: 150000,
   })
   @IsOptional()

@@ -104,7 +104,10 @@ export class AiFraudController {
     @Param('collaboratorId') collaboratorId: string,
     @Req() req: any,
   ): Promise<FraudIncidentDto> {
-    return this.aiFraudService.analyzeCollaboratorFraud(collaboratorId, req.user);
+    return this.aiFraudService.analyzeCollaboratorFraud(
+      collaboratorId,
+      req.user,
+    );
   }
 
   /**
@@ -112,11 +115,7 @@ export class AiFraudController {
    * POST /api/ai/fraud/incidents/:id/action
    */
   @Post('incidents/:id/action')
-  @Roles(
-    UserRole.SYSTEM_ADMIN,
-    UserRole.SYSTEM_MANAGER,
-    UserRole.SHOP_MANAGER,
-  )
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
   async takeAction(
     @Param('id') id: string,
     @Body() actionDto: FraudActionDto,

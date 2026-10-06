@@ -60,9 +60,7 @@ describe('FR-11 — Dynamic QR Code E2E (Real PostgreSQL & Redis)', () => {
     await prisma.storeCollaborator
       .deleteMany({ where: { storeId } })
       .catch(() => {});
-    await prisma.store
-      .deleteMany({ where: { id: storeId } })
-      .catch(() => {});
+    await prisma.store.deleteMany({ where: { id: storeId } }).catch(() => {});
     await prisma.user
       .deleteMany({
         where: { id: { in: [kolAId, kolBId, shopOwnerId, otherShopOwnerId] } },

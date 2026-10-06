@@ -55,4 +55,3 @@ export class GuestCancelOrderDto {
   @IsString()
   reason?: string;
 }
-
