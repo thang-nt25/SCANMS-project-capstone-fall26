@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../core/database/prisma.service';
-import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  UnauthorizedException,
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { MailService } from '../mail.service';
 import { UserRole } from '@prisma/client';
@@ -62,6 +66,49 @@ describe('AuthService', () => {
 
     authService = module.get<AuthService>(AuthService);
     jwtService = module.get<JwtService>(JwtService);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('logs in with a Google access token verified by Google userinfo', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ email: mockUser.email, email_verified: true }),
+    } as Response);
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(mockUser);
+
+    const result = await authService.googleLogin({ idToken: 'ya29.valid' });
+
+    expect(result.accessToken).toBe('mock-jwt-token');
+    expect(result.user.email).toBe(mockUser.email);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer ya29.valid' },
+      }),
+    );
+  });
+
+  it('returns 503 when the backend cannot reach Google', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new TypeError('fetch failed'));
+
+    await expect(
+      authService.googleLogin({ idToken: 'ya29.valid' }),
+    ).rejects.toThrow(ServiceUnavailableException);
+  });
+
+  it('returns 401 only when Google rejects the access token', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+    } as Response);
+
+    await expect(
+      authService.googleLogin({ idToken: 'ya29.expired' }),
+    ).rejects.toThrow(UnauthorizedException);
   });
 
   it('should login successfully with correct credentials and return accessToken', async () => {

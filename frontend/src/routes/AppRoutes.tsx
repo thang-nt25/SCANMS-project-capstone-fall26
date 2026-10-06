@@ -44,6 +44,8 @@ const PayoutApprovalPage = lazyRetry(() => import('../pages/merchant/PayoutAppro
 const WalletPage = lazyRetry(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazyRetry(() => import('../pages/public/OrderTrackingPage'));
 const CustomerPortalPage = lazyRetry(() => import('../pages/customer/CustomerPortalPage'));
+const ReturnDetailPage = lazyRetry(() => import('../pages/returns/ReturnDetailPage'));
+const AdminReturnDisputesPage = lazyRetry(() => import('../pages/admin/AdminReturnDisputesPage'));
 const ChatBoxPage = lazyRetry(() => import('../pages/chat/ChatBoxPage'));
 const RealtimeAnalyticsPage = lazyRetry(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPage'));
@@ -157,6 +159,7 @@ function AppRoutes() {
         <Route path="/customer/upgrade" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/kol" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/shop" element={<CustomerPortalPage />} />
+        <Route path="/customer/returns/:id" element={<ReturnDetailPage mode="customer" />} />
         <Route path="/customer/vouchers" element={<CustomerPortalPage />} />
         <Route path="/customer/notifications" element={<CustomerPortalPage />} />
         <Route path="/customer/security" element={<CustomerPortalPage />} />
@@ -176,6 +179,7 @@ function AppRoutes() {
             <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
             <Route path="merchant/products" element={<ProductManagementPage />} />
             <Route path="merchant/orders" element={<OrdersManagementPage />} />
+            <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
             <Route path="merchant/payouts" element={<PayoutApprovalPage />} />
             <Route path="merchant/wallet" element={<WalletPage />} />
             <Route path="shop/wallet" element={<WalletPage />} />
@@ -255,6 +259,8 @@ function AppRoutes() {
             <Route path="admin/leaderboard" element={<Navigate to="/admin/analytics?tab=leaderboard" replace />} />
             <Route path="admin/kol-recommendations" element={<Navigate to="/admin/analytics?tab=ai-matching" replace />} />
             <Route path="admin/disputes" element={<DisputeResolutionPage />} />
+            <Route path="admin/return-disputes" element={<AdminReturnDisputesPage />} />
+            <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
             <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
             <Route path="admin/sample-requests" element={<AdminSampleRequestsPage />} />
             <Route path="admin/product-moderation" element={<ProductModerationPage />} />
