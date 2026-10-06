@@ -11,7 +11,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { formatMoney, getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { Select } from '../ui/Select';
 
 export const CartDrawer: React.FC = () => {

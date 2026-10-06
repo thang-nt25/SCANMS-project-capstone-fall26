@@ -216,7 +216,6 @@ export default function ShopKolHubPage() {
   const [newCommissionRate, setNewCommissionRate] = useState<number>(22);
   const [updatingCommission, setUpdatingCommission] = useState(false);
   const [performanceRange, setPerformanceRange] = useState<'7d' | '30d' | 'month' | 'all'>('30d');
-  const [showSimulatedOrders, setShowSimulatedOrders] = useState(false);
 
   // Creator Discovery Directory Modal (Khám phá & Thêm KOL mới)
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
@@ -2008,56 +2007,15 @@ return true;
                 const effectiveCommissionRate = selectedKol.commissionRate || 18;
                 const rawRevenue = selectedKol.stats?.totalRevenue || 0;
                 const rawOrders = selectedKol.stats?.totalOrders || 0;
-                const hasOrders = showSimulatedOrders || rawOrders > 0;
+                const hasOrders = rawOrders > 0;
                 
                 // Numbers
-                const displayRevenue = hasOrders ? (rawRevenue || 12850000) : 0;
-                const displayOrders = hasOrders ? (rawOrders || 24) : 0;
+                const displayRevenue = rawRevenue;
+                const displayOrders = rawOrders;
                 const displayCommission = Math.round((displayRevenue * effectiveCommissionRate) / 100);
                 const displayAov = displayOrders > 0 ? Math.round(displayRevenue / displayOrders) : 0;
 
-                const ordersList: AffiliateOrderItem[] = hasOrders ? [
-                  {
-                    id: 'ord-1',
-                    orderCode: '#SCN-99824',
-                    createdAt: 'Hôm nay, 10:15',
-                    customerName: 'Trần Minh Anh',
-                    productTitle: 'Serum Dưỡng Sáng Mờ Thâm Niacinamide 30ml',
-                    orderTotal: 485000,
-                    commissionEarned: Math.round((485000 * effectiveCommissionRate) / 100),
-                    status: 'DELIVERED',
-                  },
-                  {
-                    id: 'ord-2',
-                    orderCode: '#SCN-99752',
-                    createdAt: 'Hôm qua, 18:40',
-                    customerName: 'Hoàng Quốc Bảo',
-                    productTitle: 'Kem Dưỡng Ẩm Chuyên Sâu Khóa Nước 50ml',
-                    orderTotal: 620000,
-                    commissionEarned: Math.round((620000 * effectiveCommissionRate) / 100),
-                    status: 'DELIVERED',
-                  },
-                  {
-                    id: 'ord-3',
-                    orderCode: '#SCN-99610',
-                    createdAt: '03/10/2026',
-                    customerName: 'Vũ Thị Thanh Mai',
-                    productTitle: 'Sữa Rửa Mặt Dịu Nhẹ Cân Bằng pH 150ml',
-                    orderTotal: 290000,
-                    commissionEarned: Math.round((290000 * effectiveCommissionRate) / 100),
-                    status: 'SHIPPING',
-                  },
-                  {
-                    id: 'ord-4',
-                    orderCode: '#SCN-99540',
-                    createdAt: '01/10/2026',
-                    customerName: 'Lê Hoàng Nam',
-                    productTitle: 'Bộ Chăm Sóc Da Toàn Diện Ban Ngày',
-                    orderTotal: 1150000,
-                    commissionEarned: Math.round((1150000 * effectiveCommissionRate) / 100),
-                    status: 'DELIVERED',
-                  },
-                ] : [];
+                const ordersList: AffiliateOrderItem[] = [];
 
                 return (
                   <div className="animate-in fade-in-50 duration-200 space-y-4">
@@ -2134,19 +2092,6 @@ return true;
                           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                           Đối soát thời gian thực
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowSimulatedOrders((v) => !v)}
-                          className={`rounded-xl border px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                            showSimulatedOrders
-                              ? 'border-[#C59B58] bg-[#C59B58] text-white shadow-xs'
-                              : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#EEDFC6] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
-                          }`}
-                          title="Bật/Tắt dữ liệu minh họa"
-                        >
-                          <Sparkles className="inline h-3.5 w-3.5 mr-1 text-inherit" />
-                          {showSimulatedOrders ? 'Đang bật số liệu mẫu' : 'Xem mẫu có đơn'}
-                        </button>
                       </div>
                     </div>
 
@@ -2319,14 +2264,7 @@ return true;
                               <DollarSign className="w-3.5 h-3.5" />
                               <span>Nâng mức hoa hồng VIP</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => setShowSimulatedOrders(true)}
-                              className="rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] px-3.5 py-2 text-xs font-semibold text-[#7D715E] transition flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                              <span>Xem mẫu có đơn</span>
-                            </button>
+                            
                           </div>
                         </div>
                       ) : (

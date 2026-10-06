@@ -33,16 +33,16 @@ import {
   MessageSquare,
   Package,
 } from 'lucide-react';
-import api from '../services/api';
-import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
-import { PublicHeader } from '../components/layout/PublicHeader';
-import { authService } from '../services/auth.service';
-import { customerService } from '../services/customer.service';
-import { couponService } from '../services/coupon.service';
-import { toast } from '../utils/toast';
-import { useCart } from '../context/CartContext';
-import { useScanmsChat } from '../context/ScanmsChatContext';
-import { LiveSessionDealCard } from '../components/product/LiveSessionDealCard';
+import api from '@/services/api';
+import { GuestCheckoutModal } from '@/components/checkout/GuestCheckoutModal';
+import { PublicHeader } from '@/components/layout/PublicHeader';
+import { authService } from '@/services/auth.service';
+import { customerService } from '@/services/customer.service';
+import { couponService } from '@/services/coupon.service';
+import { toast } from '@/utils/toast';
+import { useCart } from '@/context/CartContext';
+import { useScanmsChat } from '@/context/ScanmsChatContext';
+import { LiveSessionDealCard } from '@/components/product/LiveSessionDealCard';
 
 
 function getSmartFallbackImage(title?: string, categoryName?: string): string {
@@ -376,12 +376,6 @@ export default function ProductDetailPage() {
   }, [isCheckoutParam, isCheckoutOpen]);
 
   const handleBuyNow = (source?: string) => {
-    const currentUser = authService.getCurrentUser();
-    if (!currentUser) {
-      toast.info('Vui lòng đăng nhập để tiến hành mua hàng!');
-      navigate(`/login?redirect=${encodeURIComponent(location.pathname + '?checkout=1')}`);
-      return;
-    }
     if (data?.product) {
       setIsCheckoutOpen(true);
       setSearchParams(
@@ -559,29 +553,11 @@ export default function ProductDetailPage() {
       try {
         let res: any;
         try {
-
           res = await api.get(
             `/public/products/${encodeURIComponent(slug)}/landing`,
           );
         } catch {
-          try {
-            res = await api.get(`/products/${encodeURIComponent(slug)}/landing`);
-          } catch {
-            // Fallback cho các alias hoặc ID thử nghiệm (prod-1, P01, P02, serum-vitamin-c, etc.)
-            try {
-              res = await api.get('/public/products/SR-VTC-15/landing');
-            } catch {
-              try {
-                const prodList = await api.get('/public/products?limit=5');
-                const firstItem = prodList?.data?.data?.items?.[0] || prodList?.data?.items?.[0];
-                if (firstItem?.id || firstItem?.sku) {
-                  res = await api.get(`/public/products/${firstItem.sku || firstItem.id}/landing`);
-                }
-              } catch {
-                // Ignore fallback error
-              }
-            }
-          }
+          res = await api.get(`/products/${encodeURIComponent(slug)}/landing`);
         }
 
         const landingPayload = res?.data?.product
@@ -1020,7 +996,7 @@ export default function ProductDetailPage() {
           </button>
           <Link
             to="/marketplace"
-            className="px-5 py-2.5 rounded-xl bg-[#EBD08C] text-white text-sm font-semibold hover:bg-[#DEC07A] transition-colors shadow-xs"
+            className="px-5 py-2.5 rounded-xl bg-[#C59B58] text-[#231D15] text-sm font-bold hover:bg-[#B88E4F] transition shadow-xs cursor-pointer"
           >
             Về Chợ Tiếp Thị
           </Link>

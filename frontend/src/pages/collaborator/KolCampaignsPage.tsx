@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import type { CampaignParticipant } from '../../types/campaigns';
+import type { CampaignParticipant } from '@/types/campaigns.types';
 
 const STATUS_CONFIG: Record<
   string,

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Landmark, ChevronDown } from 'lucide-react';
-import { type VietQrBank, findBankByQuery } from '../../constants/vietnamBanks';
+import { type VietQrBank, findBankByQuery } from '@/config/banks.config';
 import { BankSelectorModal } from './BankSelectorModal';
 
 export interface BankSelectTriggerProps {

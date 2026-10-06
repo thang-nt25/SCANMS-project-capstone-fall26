@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Eye,
@@ -44,7 +44,7 @@ import { cn } from '../../utils/cn';
 import { useLiveStreamTransport } from '../../hooks/useLiveStreamTransport';
 import { FACE_FILTERS, useLiveFaceFilter, type FaceFilter } from '../../hooks/useLiveFaceFilter';
 import { FaceFilterPreview } from '../../components/live/FaceFilterPreview';
-import type { FilterCategory } from '../../features/live/faceFilters';
+import type { FilterCategory } from '@/components/live/faceFilters';
 
 interface LiveProduct {
   id: string;
@@ -619,6 +619,8 @@ export default function LiveStreamRoomPage() {
     setSessionData((previous: any) => previous ? { ...previous, status: 'ENDED' } : previous);
   }, [sessionEnded]);
 
+  const isStreamEnded = Boolean(sessionEnded || ['ENDED', 'CANCELLED'].includes(sessionData?.status));
+
   // Floating Reactions & Hearts
   const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
   const reactionCounterRef = useRef(0);
@@ -1150,44 +1152,7 @@ export default function LiveStreamRoomPage() {
     };
   }, [identifier, likesStorageKey, sessionEnded]);
 
-  // Real-time purchase alert ticker
-  useEffect(() => {
-    if (identifier !== 'demo') return;
-    const buyerNames = ['Thu Thảo', 'Quốc Bảo', 'Minh Tuấn', 'Ngọc Hân', 'Hoàng Long', 'Thùy Chi', 'Kim Ngân'];
-    const buyerCities = ['Hà Nội', 'TP.HCM', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ', 'Bình Dương'];
-    const items = [
-      'Serum B5 Centella',
-      'Kem Chống Nắng Kiềm Dầu',
-      'Combo Serum + KCN',
-      'Sữa Rửa Mặt Amino Acid',
-    ];
 
-    const alertInterval = setInterval(() => {
-      const name = buyerNames[Math.floor(Math.random() * buyerNames.length)];
-      const city = buyerCities[Math.floor(Math.random() * buyerCities.length)];
-      const item = items[Math.floor(Math.random() * items.length)];
-
-      // Add automated comment occasionally
-      if (Math.random() > 0.4) {
-        const preset = USER_PROFILES_MAP[name];
-        setChatMessages((prev) => [
-          ...prev.slice(-30),
-          {
-            id: String(Date.now()),
-            sender: name,
-            role: 'VIEWER',
-            avatar: preset?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
-            text: `(${city}) Vừa chốt đơn ${item} nhận voucher phiên live rồi nha shop!`,
-            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-          },
-        ]);
-      }
-    }, 9000);
-
-    return () => {
-      clearInterval(alertInterval);
-    };
-  }, [identifier]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -1845,7 +1810,75 @@ export default function LiveStreamRoomPage() {
               />
             )}
 
-            {(sessionEnded || ['ENDED', 'CANCELLED'].includes(sessionData?.status)) && <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#FAF8F5]"><div className="px-6 text-center"><p className="text-lg font-semibold text-[#1A1612]">Phiên livestream đã kết thúc</p><p className="mt-2 text-sm text-[#7D715E]">Cảm ơn bạn đã theo dõi trên SCANMS.</p></div></div>}
+            {isStreamEnded && (
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#FAF8F5]/95 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
+                <div className="max-w-md w-full bg-white rounded-3xl border border-[#EEDFC6] p-6 sm:p-8 text-center shadow-2xl flex flex-col items-center">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black uppercase tracking-wider mb-4">
+                    <span className="w-2 h-2 rounded-full bg-rose-600" />
+                    Phiên Livestream Đã Kết Thúc
+                  </div>
+
+                  <div className="w-20 h-20 rounded-full border-2 border-[#C59B58] p-1 mb-3 shadow-xs">
+                    <img
+                      src={
+                        sessionData?.creator?.avatarUrl ||
+                        sessionData?.store?.logoUrl ||
+                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
+                      }
+                      alt="Host Avatar"
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-black text-[#1A1612]">
+                    {sessionData?.title || 'Phiên Livestream Tiếp Thị Liên Kết'}
+                  </h3>
+                  <p className="text-xs text-[#7D715E] mt-1 mb-5">
+                    Chủ trì bởi <b>{liveHostName}</b> · Gian hàng <b>{liveShopName}</b>
+                  </p>
+
+                  {/* KPI Summary Grid */}
+                  <div className="grid grid-cols-3 gap-2 w-full p-3 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] mb-6">
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase font-bold text-[#7D715E]">Thời lượng</div>
+                      <div className="text-xs font-extrabold text-[#1A1612] mt-0.5">
+                        {formatLiveDuration(liveElapsedSeconds)}
+                      </div>
+                    </div>
+                    <div className="text-center border-x border-[#EAE4D7]">
+                      <div className="text-[10px] uppercase font-bold text-[#7D715E]">Lượt xem</div>
+                      <div className="text-xs font-extrabold text-[#1A1612] mt-0.5">
+                        {viewerCount.toLocaleString('vi-VN')}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase font-bold text-[#7D715E]">Lượt thích</div>
+                      <div className="text-xs font-extrabold text-[#B88E4F] mt-0.5">
+                        {likesCount.toLocaleString('vi-VN')} ❤️
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col sm:flex-row gap-2.5 w-full">
+                    <button
+                      type="button"
+                      onClick={handleOpenShopProfile}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Store className="w-3.5 h-3.5" />
+                      Ghé Thăm Gian Hàng
+                    </button>
+                    <Link
+                      to="/marketplace"
+                      className="flex-1 py-2.5 px-4 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-[#1A1612] text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      Khám Phá Sàn SCANMS
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {!isSessionHost && !remoteStream && (hostOnline || isStreamLive || streamError) && (
               <div className="absolute left-1/2 top-1/2 z-10 max-w-[min(90%,420px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/70 bg-white/90 px-4 py-3 text-center text-sm font-semibold text-[#1A1612] shadow-lg backdrop-blur-sm">
@@ -2267,13 +2300,14 @@ export default function LiveStreamRoomPage() {
             <input
               type="text"
               value={inputComment}
+              disabled={isStreamEnded}
               onChange={(e) => setInputComment(e.target.value)}
-              placeholder="Gửi bình luận hoặc hỏi KOC..."
-              className="flex-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] placeholder:text-[#7D715E] focus:outline-none focus:border-[#C59B58] focus:bg-white transition"
+              placeholder={isStreamEnded ? "Phiên live đã kết thúc, khung chat tạm đóng." : "Gửi bình luận hoặc hỏi KOC..."}
+              className="flex-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] placeholder:text-[#7D715E] focus:outline-none focus:border-[#C59B58] focus:bg-white transition disabled:opacity-60 disabled:cursor-not-allowed"
             />
             <button
               type="submit"
-              disabled={!inputComment.trim()}
+              disabled={isStreamEnded || !inputComment.trim()}
               className="p-2 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A77D3E] text-white transition disabled:opacity-40 cursor-pointer shadow-xs"
             >
               <Send className="w-4 h-4" />

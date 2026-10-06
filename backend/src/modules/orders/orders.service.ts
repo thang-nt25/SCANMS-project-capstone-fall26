@@ -3621,6 +3621,7 @@ export class OrdersService {
     userRole: string,
     query: {
       status?: OrderStatus;
+      paymentStatus?: string;
       search?: string;
       page?: number | string;
       limit?: number | string;
@@ -3668,8 +3669,21 @@ export class OrdersService {
     if (targetStoreId) {
       where.storeId = targetStoreId;
     }
-    if (query.status) {
+    if ((query.status as string) === 'RETURNS') {
+      where.OR = [
+        { status: OrderStatus.RETURNED },
+        { status: OrderStatus.RETURN_REQUESTED },
+        { status: OrderStatus.DISPUTED },
+        { returnRequest: { isNot: null } },
+      ];
+    } else if (query.status) {
       where.status = query.status;
+    }
+    if (query.paymentStatus) {
+      where.rawPayload = {
+        path: ['paymentStatus'],
+        equals: query.paymentStatus,
+      };
     }
     if (query.search?.trim()) {
       const search = query.search.trim();
@@ -4106,11 +4120,29 @@ export class OrdersService {
   }
 
   /**
-   * Quản trị viên (Admin) lấy danh sách tranh chấp
+   * Quản trị viên (Admin) và Gian hàng (Shop) lấy danh sách tranh chấp
    */
-  async getAdminDisputes() {
+  async getAdminDisputes(userId?: string, userRole?: string) {
+    let storeCondition: any = undefined;
+    if (
+      userRole &&
+      userRole !== UserRole.SYSTEM_ADMIN &&
+      userRole !== UserRole.SYSTEM_MANAGER
+    ) {
+      const userStores = await this.prisma.store.findMany({
+        where: { ownerId: userId, isDeleted: false },
+        select: { id: true },
+      });
+      const storeIds = userStores.map((s) => s.id);
+      if (storeIds.length === 0) {
+        return [];
+      }
+      storeCondition = { in: storeIds };
+    }
+
     const orders = await this.prisma.order.findMany({
       where: {
+        ...(storeCondition ? { storeId: storeCondition } : {}),
         rawPayload: {
           path: ['dispute'],
           not: Prisma.JsonNullValueFilter.JsonNull,

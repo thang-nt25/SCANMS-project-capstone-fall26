@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { apiCache } from '../utils/apiCache';
+import { apiCache } from '@/utils/api-cache.utils';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',

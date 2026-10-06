@@ -21,7 +21,7 @@ import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { DateTimePicker } from '../../components/common/DateTimePicker';
 import { Select } from '../../components/ui/Select';
-import { liveBroadcastService } from '../../services/liveBroadcast';
+import { liveBroadcastService } from '@/services/live-broadcast.service';
 
 type LiveProduct = { id: string; title: string; imageUrl?: string | null; price: number; variants: Array<{ id: string; name: string; sku: string; price: number | null }> };
 type Creator = { id: string; fullName: string; avatarUrl?: string | null; collaboratorProfile?: { totalFollowers: number; kycStatus: string } | null; socialChannels: Array<{ platformName: string; channelName?: string | null; followerCount: number; channelUrl: string }> };

@@ -26,7 +26,7 @@ import type {
   BonusPreviewResult,
   SettlementHistoryItem,
 } from '../../services/commission-rules.service';
-import { getVietnamCurrentMonthYear } from '../../utils/dateTimeUtils';
+import { getVietnamCurrentMonthYear } from '@/utils/date-time.utils';
 import { Select } from '../../components/ui/Select';
 
 export const CommissionRulesPage: React.FC = () => {

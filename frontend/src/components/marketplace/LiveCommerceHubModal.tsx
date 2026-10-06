@@ -15,9 +15,9 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import api from '../../services/api';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
-import { liveBroadcastService } from '../../services/liveBroadcast';
+import { liveBroadcastService } from '@/services/live-broadcast.service';
 
 interface LiveCommerceHubModalProps {
   isOpen: boolean;

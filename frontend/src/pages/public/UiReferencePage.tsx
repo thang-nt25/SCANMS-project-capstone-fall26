@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import OrdersManagementPage from "./merchant/OrdersManagementPage";
+import OrdersManagementPage from "@/pages/merchant/OrdersManagementPage";
 import {
   ProductReviewModal,
   type ProductReviewTarget,
-} from "../components/reviews/ProductReviewModal";
+} from "@/components/reviews/ProductReviewModal";
 
 export default function UiReferencePage() {
   const location = useLocation();

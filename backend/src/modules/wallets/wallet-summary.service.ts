@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { KycStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { WithdrawalPolicyService } from './withdrawal-policy.service';
@@ -152,6 +152,35 @@ export class WalletSummaryService {
     };
   }
 
+  async updateBankAccount(
+    collaboratorId: string,
+    dto: { bankName: string; bankAccountNumber: string; bankAccountName: string },
+  ) {
+    if (
+      !dto.bankName?.trim() ||
+      !dto.bankAccountNumber?.trim() ||
+      !dto.bankAccountName?.trim()
+    ) {
+      throw new BadRequestException('Vui lòng nhập đầy đủ thông tin tài khoản ngân hàng.');
+    }
+    await this.prisma.collaboratorProfile.upsert({
+      where: { userId: collaboratorId },
+      create: {
+        userId: collaboratorId,
+        idCardNumber: '',
+        bankName: dto.bankName.trim(),
+        bankAccountNumber: dto.bankAccountNumber.trim(),
+        bankAccountName: dto.bankAccountName.trim().toUpperCase(),
+      },
+      update: {
+        bankName: dto.bankName.trim(),
+        bankAccountNumber: dto.bankAccountNumber.trim(),
+        bankAccountName: dto.bankAccountName.trim().toUpperCase(),
+      },
+    });
+    return { success: true, message: 'Đã cập nhật thông tin tài khoản nhận tiền thành công.' };
+  }
+
   async disconnectBankAccount(collaboratorId: string) {
     await this.prisma.collaboratorProfile.updateMany({
       where: { userId: collaboratorId },
@@ -164,3 +193,4 @@ export class WalletSummaryService {
     return { success: true, message: 'Đã ngừng sử dụng tài khoản nhận tiền.' };
   }
 }
+

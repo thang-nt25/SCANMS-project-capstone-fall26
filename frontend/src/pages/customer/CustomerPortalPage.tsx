@@ -39,7 +39,7 @@ import {
   Lock,
   Wallet,
 } from 'lucide-react';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { Select } from '../../components/ui/Select';
@@ -55,7 +55,7 @@ import {
   loadShippingAddresses,
   type ShippingProvince,
 } from '../../services/order-address.service';
-import { formatMoney } from '../../features/marketplace/marketplaceUtils';
+import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { Topbar } from '../../components/layout/Topbar';
@@ -587,7 +587,16 @@ export default function CustomerPortalPage() {
         status: statusParam,
         search: orderSearch.trim() || undefined,
       });
-      setOrders(res.orders);
+      const loadedOrders = res.orders || [];
+      setOrders(loadedOrders);
+
+      const targetOrderId = searchParams.get('orderId');
+      if (targetOrderId && loadedOrders.length > 0) {
+        const found = loadedOrders.find((o) => o.id === targetOrderId || o.externalOrderSn === targetOrderId);
+        if (found) {
+          setSelectedOrderDetails(found);
+        }
+      }
     } catch (err: any) {
       console.error('Fetch orders error:', err);
       setOrdersError(true);

@@ -32,14 +32,14 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { authService, type UserProfile } from '../../services/auth.service';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { uploadService } from '../../services/upload.service';
 import { customerService } from '../../services/customer.service';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { ChatBell } from '../../components/chat/ChatBell';
-import { formatMoney } from '../../features/marketplace/marketplaceUtils';
-import type { Product } from '../../features/marketplace/marketplace.types';
+import { formatMoney } from '@/utils/marketplace.utils';
+import type { Product } from '@/types/marketplace.types';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';

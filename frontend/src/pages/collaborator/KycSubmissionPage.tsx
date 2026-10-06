@@ -203,6 +203,10 @@ export default function KycSubmissionPage() {
       toast.error('Vui lòng nhập số CCCD/CMND hợp lệ (từ 9 đến 12 số)');
       return;
     }
+    if (!taxCode.trim()) {
+      toast.error('Vui lòng nhập Mã số thuế cá nhân (MST) để hoàn tất hồ sơ');
+      return;
+    }
     if (!bankName?.trim()) {
       toast.error('Vui lòng chọn ngân hàng thụ hưởng nhận hoa hồng');
       return;
@@ -220,7 +224,7 @@ export default function KycSubmissionPage() {
     try {
       await kycService.submitKyc({
         idCardNumber: idCardNumber.trim(),
-        taxCode: taxCode.trim() || '8012345678',
+        taxCode: taxCode.trim(),
         bankName,
         bankAccountNumber: bankAccountNumber.trim(),
         bankAccountName: bankAccountName.trim().toUpperCase(),
