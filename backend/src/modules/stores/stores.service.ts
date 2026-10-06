@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { publicReturnPolicy } from './store-policy.util';
 
 @Injectable()
 export class StoresService {
@@ -31,7 +32,7 @@ export class StoresService {
       select: { categoryName: true },
       orderBy: { categoryName: 'asc' },
     });
-    return { ...store, productCount: store._count.products, followerCount: store._count.follows,
+    return { ...store, policyReturn: publicReturnPolicy(store.policyReturn), productCount: store._count.products, followerCount: store._count.follows,
       categories: categories.map((item) => item.categoryName).filter(Boolean) };
   }
 
@@ -183,7 +184,7 @@ export class StoresService {
       );
     }
 
-    return store;
+    return { ...store, policyReturn: publicReturnPolicy(store.policyReturn) };
   }
 
   /**
@@ -215,6 +216,7 @@ export class StoresService {
 
     return stores.map((st) => ({
       ...st,
+      policyReturn: publicReturnPolicy(st.policyReturn),
       totalProducts: st._count.products,
       category: st.name.toLowerCase().includes('tech')
         ? 'Công nghệ & Phụ kiện'

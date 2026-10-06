@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 
 export interface GetNotificationsQuery {
@@ -21,7 +22,7 @@ export class NotificationsService {
     const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const whereClause: any = { userId };
+    const whereClause: Prisma.NotificationWhereInput = { userId };
 
     if (query?.category && query.category !== 'ALL') {
       switch (query.category) {
@@ -35,6 +36,20 @@ export class NotificationsService {
               'ORDER_CANCELLED',
               'DISPUTE_OPENED',
               'DISPUTE_RESOLVED',
+              'RETURN_REQUESTED',
+              'RETURN_APPROVED',
+              'RETURN_REJECTED',
+              'RETURN_INSTRUCTIONS',
+              'RETURN_SHIPPED',
+              'RETURN_TRACKING_CORRECTED',
+              'RETURN_RECEIVED',
+              'RETURN_INSPECTED',
+              'RETURN_EXCHANGE_SHIPPED',
+              'RETURN_COMPLETED',
+              'RETURN_DISPUTED',
+              'RETURN_DISPUTE_RESOLVED',
+              'RETURN_EXPIRED',
+              'RETURN_INSPECTION_OVERDUE',
             ],
           };
           break;
@@ -126,7 +141,7 @@ export class NotificationsService {
     title: string;
     message: string;
     type: string;
-    data?: any;
+    data?: Prisma.InputJsonValue;
   }) {
     try {
       return await this.prisma.notification.create({
@@ -135,7 +150,7 @@ export class NotificationsService {
           title: data.title,
           message: data.message,
           type: data.type,
-          data: data.data || null,
+          data: data.data ?? Prisma.JsonNull,
         },
       });
     } catch (err) {

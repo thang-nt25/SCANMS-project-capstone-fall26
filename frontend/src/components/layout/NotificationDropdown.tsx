@@ -20,6 +20,7 @@ export const NotificationDropdown: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const unreadInitialized = useRef(false);
   const navigate = useNavigate();
 
   // Phát âm thanh chime nhẹ khi có thông báo mới (Web Audio API)
@@ -47,9 +48,10 @@ export const NotificationDropdown: React.FC = () => {
     if (!user) return;
     const count = await notificationsService.getUnreadCount();
     setUnreadCount((prev) => {
-      if (count > prev && prev > 0) {
+      if (unreadInitialized.current && count > prev) {
         playNotificationChime();
       }
+      unreadInitialized.current = true;
       return count;
     });
   };
@@ -113,7 +115,17 @@ export const NotificationDropdown: React.FC = () => {
     const user = authService.getCurrentUser();
     const userRole = user?.role;
 
-    if (notif.type.startsWith('ORDER_') || notif.type.startsWith('DISPUTE_')) {
+    if (notif.type.startsWith('RETURN_')) {
+      const returnId = notif.data?.returnRequestId;
+      if (userRole === 'CUSTOMER') {
+        navigate(typeof returnId === 'string' ? `/customer/returns/${returnId}` : '/customer/orders');
+      } else if (userRole === 'SHOP_MANAGER') {
+        navigate(typeof returnId === 'string' ? `/merchant/returns/${returnId}` : '/merchant/orders');
+      } else if (userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM_MANAGER') {
+        navigate(notif.type === 'RETURN_INSPECTION_OVERDUE' && typeof returnId === 'string'
+          ? `/admin/returns/${returnId}` : '/admin/return-disputes');
+      }
+    } else if (notif.type.startsWith('ORDER_') || notif.type.startsWith('DISPUTE_')) {
       if (userRole === 'CUSTOMER') {
         navigate('/customer/orders');
       } else if (userRole === 'SHOP_MANAGER') {
@@ -137,7 +149,7 @@ export const NotificationDropdown: React.FC = () => {
   };
 
   const getNotificationIcon = (type: string) => {
-    if (type.startsWith('ORDER_')) {
+    if (type.startsWith('ORDER_') || type.startsWith('RETURN_')) {
       return <ShoppingBag className="w-4 h-4 text-[#C59B58]" />;
     }
     if (type.startsWith('COMMISSION_') || type.startsWith('PAYOUT_')) {

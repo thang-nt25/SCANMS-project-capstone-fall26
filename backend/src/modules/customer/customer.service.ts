@@ -15,6 +15,7 @@ import { CustomerOrdersQueryDto } from './dto/customer-orders-query.dto';
 import { SyncCustomerCartDto } from './dto/sync-cart.dto';
 import { CreateReturnRequestDto } from './dto/create-return-request.dto';
 import { CreateCustomerReviewDto } from './dto/create-customer-review.dto';
+import { publicReturnPolicy } from '../stores/store-policy.util';
 
 const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -312,6 +313,9 @@ export class CustomerService {
     if (order.returnRequest) {
       throw new BadRequestException('Đơn hàng này đã có yêu cầu đổi trả');
     }
+    if (order.orderItems.length === 0) {
+      throw new BadRequestException('Đơn hàng không có sản phẩm để đổi trả');
+    }
 
     const deliveredAt = order.deliveredAt || order.completedAt;
     if (!deliveredAt) {
@@ -342,6 +346,22 @@ export class CustomerService {
           unboxingVideoUrl: dto.unboxingVideoUrl,
           deadlineAt,
           originalOrderStatus: order.status,
+          // This endpoint currently requests an order-wide return. Snapshot lines
+          // so later price/product edits cannot change the reviewed items.
+          items: {
+            create: order.orderItems.map((item) => ({
+              orderItemId: item.id,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+            })),
+          },
+        },
+      });
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: request.id,
+          actorId: userId,
+          type: 'REQUEST_CREATED',
         },
       });
       await tx.notification.create({
@@ -431,7 +451,7 @@ export class CustomerService {
             name: product.store.name,
             slug: product.store.slug,
             logoUrl: product.store.logoUrl || undefined,
-            policyReturn: product.store.policyReturn || undefined,
+            policyReturn: publicReturnPolicy(product.store.policyReturn) || undefined,
             policyWarranty: product.store.policyWarranty || undefined,
             policyShipping: product.store.policyShipping || undefined,
           },

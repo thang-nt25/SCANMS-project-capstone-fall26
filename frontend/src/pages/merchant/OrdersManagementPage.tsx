@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Download,
   FileSpreadsheet,
@@ -17,13 +18,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Play,
+  AlertCircle,
 } from "lucide-react";
 import { productService, type Product } from "../../services/product.service";
 import {
   orderService,
   type ExcelImportResult,
   type StoreOrderRecord,
-  type StoreReturnRequest,
 } from "../../services/order.service";
 import { storeService } from "../../services/store.service";
 import {
@@ -55,9 +56,12 @@ const newItem = (): ManualItemForm => ({
 });
 const currency = (cents: number) =>
   (cents / 100).toLocaleString("vi-VN", { maximumFractionDigits: 2 }) + " ₫";
-const returnRequestStatusLabels: Record<StoreReturnRequest['status'], string> = {
+const returnRequestStatusLabels: Record<string, string> = {
   REQUESTED: 'Chờ Shop xử lý',
-  SHOP_APPROVED: 'Đã duyệt · chờ hoàn tất',
+  SHOP_APPROVED: 'Đã duyệt · chờ đặt lấy hàng',
+  PICKUP_BOOKED: 'Đã đặt shipper lấy hàng',
+  RETURN_SHIPPED: 'Shipper đã lấy hàng',
+  RETURN_RECEIVED: 'Hàng trả đã đến Shop',
   SHOP_REJECTED: 'Đã từ chối',
   DISPUTED: 'Đang khiếu nại',
   REFUNDED: 'Đã hoàn tiền',
@@ -79,6 +83,7 @@ export default function OrdersManagementPage({
   onClose,
   onCompleted,
 }: Props = {}) {
+  const navigate = useNavigate();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -151,6 +156,7 @@ export default function OrdersManagementPage({
   const [shippingCarrier, setShippingCarrier] = useState("GHTK");
   const [shippingTrackingNumber, setShippingTrackingNumber] = useState("");
   const [shippingNote, setShippingNote] = useState("");
+  const [shippingFormError, setShippingFormError] = useState("");
   const [updatingFulfillment, setUpdatingFulfillment] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
 
@@ -188,20 +194,38 @@ export default function OrdersManagementPage({
     setShippingCarrier(order.carrierName || "GHTK");
     setShippingTrackingNumber(order.trackingNumber || "");
     setShippingNote("");
+    setShippingFormError("");
   };
 
-  const handleSubmitShipping = async () => {
+  const handleSubmitShipping = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     if (!shippingModalOrder) return;
-    if (!shippingTrackingNumber.trim()) {
-      alert("Vui lòng nhập mã vận đơn bưu cục!");
+    const trackingNumber = shippingTrackingNumber.trim();
+    const carrierName = shippingCarrier.trim();
+    setShippingFormError("");
+
+    if (!carrierName) {
+      setShippingFormError("Vui lòng chọn đơn vị vận chuyển.");
+      return;
+    }
+    if (!trackingNumber) {
+      setShippingFormError("Vui lòng nhập mã vận đơn bưu cục.");
+      return;
+    }
+    if (trackingNumber.length < 5 || trackingNumber.length > 50) {
+      setShippingFormError("Mã vận đơn phải có từ 5 đến 50 ký tự.");
+      return;
+    }
+    if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(trackingNumber)) {
+      setShippingFormError("Mã vận đơn chỉ được chứa chữ, số, dấu chấm, gạch ngang, gạch dưới hoặc dấu gạch chéo.");
       return;
     }
     setUpdatingFulfillment(true);
     try {
       await orderService.updateOrderFulfillment(shippingModalOrder.id, {
         status: "SHIPPING",
-        carrierName: shippingCarrier,
-        trackingNumber: shippingTrackingNumber.trim(),
+        carrierName,
+        trackingNumber,
         note: shippingNote.trim() || undefined,
       });
       setActionSuccessMsg(`Đã cập nhật đơn #${shippingModalOrder.externalOrderSn} sang Đang giao hàng!`);
@@ -209,7 +233,7 @@ export default function OrdersManagementPage({
       setShippingModalOrder(null);
       setOrdersRefreshCount((c) => c + 1);
     } catch (err: any) {
-      alert(err.message || "Không thể cập nhật trạng thái vận đơn");
+      setShippingFormError(err.message || "Không thể cập nhật trạng thái vận đơn. Vui lòng thử lại.");
     } finally {
       setUpdatingFulfillment(false);
     }
@@ -255,6 +279,9 @@ export default function OrdersManagementPage({
       setReturnDecision(null);
       setReturnResponse('');
       setOrdersRefreshCount((count) => count + 1);
+      if (decision === 'APPROVE') {
+        navigate(`/merchant/returns/${result.returnRequest.id}`);
+      }
     } catch (error) {
       setReturnError(messageOf(error));
     } finally {
@@ -948,7 +975,7 @@ export default function OrdersManagementPage({
       {/* Modal Cập nhật Vận đơn Bưu cục (Shipping) */}
       {shippingModalOrder && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-[#EAE4D7] shadow-xl p-6 text-left flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+          <form onSubmit={handleSubmitShipping} className="w-full max-w-md bg-white rounded-2xl border border-[#EAE4D7] shadow-xl p-6 text-left flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex justify-between items-center border-b border-[#EAE4D7] pb-3">
               <div>
                 <h3 className="text-base font-extrabold text-[#1A1612] m-0">
@@ -959,8 +986,10 @@ export default function OrdersManagementPage({
                 </p>
               </div>
               <button
-                onClick={() => setShippingModalOrder(null)}
+                onClick={() => { setShippingModalOrder(null); setShippingFormError(""); }}
+                type="button"
                 className="p-1 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6]"
+                aria-label="Đóng form vận đơn"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -973,7 +1002,7 @@ export default function OrdersManagementPage({
                 </label>
                 <select
                   value={shippingCarrier}
-                  onChange={(e) => setShippingCarrier(e.target.value)}
+                  onChange={(e) => { setShippingCarrier(e.target.value); setShippingFormError(""); }}
                   className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-semibold outline-none focus:border-[#C59B58]"
                 >
                   <option value="GHTK">Giao Hàng Tiết Kiệm (GHTK)</option>
@@ -994,9 +1023,15 @@ export default function OrdersManagementPage({
                   type="text"
                   placeholder="Ví dụ: GHTK-88992211"
                   value={shippingTrackingNumber}
-                  onChange={(e) => setShippingTrackingNumber(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-semibold outline-none focus:border-[#C59B58]"
+                  onChange={(e) => { setShippingTrackingNumber(e.target.value.toUpperCase()); setShippingFormError(""); }}
+                  autoFocus
+                  maxLength={50}
+                  autoComplete="off"
+                  aria-invalid={Boolean(shippingFormError)}
+                  aria-describedby={shippingFormError ? "shipping-form-error" : undefined}
+                  className={`w-full px-3 py-2 rounded-xl border bg-[#FAF8F5] text-xs font-semibold outline-none focus:ring-2 focus:ring-[#C59B58]/20 ${shippingFormError ? 'border-[#DC2626] focus:border-[#DC2626]' : 'border-[#EAE4D7] focus:border-[#C59B58]'}`}
                 />
+                <p className="mt-1 text-[10px] text-[#7D715E]">Kiểm tra đúng mã trên phiếu gửi trước khi xác nhận.</p>
               </div>
 
               <div>
@@ -1008,29 +1043,36 @@ export default function OrdersManagementPage({
                   placeholder="Kiểm hàng trước khi nhận, hàng dễ vỡ..."
                   value={shippingNote}
                   onChange={(e) => setShippingNote(e.target.value)}
+                  maxLength={500}
                   className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs outline-none focus:border-[#C59B58]"
                 />
               </div>
             </div>
 
+            {shippingFormError && (
+              <div id="shipping-form-error" role="alert" className="flex items-start gap-2 rounded-xl border border-[#DC2626]/25 bg-[#DC2626]/8 px-3 py-2.5 text-xs font-semibold text-[#DC2626]">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{shippingFormError}</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
               <button
                 type="button"
-                onClick={() => setShippingModalOrder(null)}
+                onClick={() => { setShippingModalOrder(null); setShippingFormError(""); }}
                 className="px-4 py-2 rounded-xl border border-[#EAE4D7] text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6]"
               >
                 Hủy
               </button>
               <button
-                type="button"
+                type="submit"
                 disabled={updatingFulfillment}
-                onClick={handleSubmitShipping}
                 className="px-4 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs"
               >
                 {updatingFulfillment ? "Đang cập nhật..." : "Xác nhận gửi hàng"}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -1151,6 +1193,12 @@ export default function OrdersManagementPage({
                   )}
                 </div>
                 {selectedOrderDetails.returnRequest.shopResponse && <p>Phản hồi của Shop: {selectedOrderDetails.returnRequest.shopResponse}</p>}
+                <Link to={`/merchant/returns/${selectedOrderDetails.returnRequest.id}`}
+                  className="inline-flex rounded-xl border border-[#EEDFC6] bg-white px-3 py-2 font-bold text-[#8A6736] hover:bg-[#FBF5EB]">
+                  {selectedOrderDetails.returnRequest.status === 'SHOP_APPROVED' && !selectedOrderDetails.returnRequest.shipByAt
+                    ? 'Cấu hình kho nhận hàng trả'
+                    : 'Xem tiến trình và xử lý tiếp'}
+                </Link>
                 {selectedOrderDetails.returnRequest.status === 'REQUESTED' && (
                   <div className="rounded-xl border border-[#EEDFC6] bg-white p-3">
                     <p className="font-bold text-[#1A1612]">Shop cần phản hồi yêu cầu này</p>

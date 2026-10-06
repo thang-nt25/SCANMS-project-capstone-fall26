@@ -27,6 +27,8 @@ const PayoutApprovalPage = lazy(() => import('../pages/merchant/PayoutApprovalPa
 const WalletPage = lazy(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazy(() => import('../pages/public/OrderTrackingPage'));
 const CustomerPortalPage = lazy(() => import('../pages/customer/CustomerPortalPage'));
+const ReturnDetailPage = lazy(() => import('../pages/returns/ReturnDetailPage'));
+const AdminReturnDisputesPage = lazy(() => import('../pages/admin/AdminReturnDisputesPage'));
 const ChatBoxPage = lazy(() => import('../pages/chat/ChatBoxPage'));
 const RealtimeAnalyticsPage = lazy(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 const LeaderboardPage = lazy(() => import('../pages/dashboard/LeaderboardPage'));
@@ -100,6 +102,7 @@ function AppRoutes() {
         <Route path="/customer/upgrade" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/kol" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/shop" element={<CustomerPortalPage />} />
+        <Route path="/customer/returns/:id" element={<ReturnDetailPage mode="customer" />} />
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -116,6 +119,7 @@ function AppRoutes() {
             <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
             <Route path="merchant/products" element={<ProductManagementPage />} />
             <Route path="merchant/orders" element={<OrdersManagementPage />} />
+            <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
             <Route path="merchant/payouts" element={<PayoutApprovalPage />} />
             <Route path="stores/:storeId/payouts" element={<PayoutApprovalPage />} />
             <Route path="merchant/settings" element={<ShopSettingsPage />} />
@@ -190,6 +194,8 @@ function AppRoutes() {
             <Route path="admin/leaderboard" element={<Navigate to="/admin/analytics?tab=leaderboard" replace />} />
             <Route path="admin/kol-recommendations" element={<Navigate to="/admin/analytics?tab=ai-matching" replace />} />
             <Route path="admin/disputes" element={<DisputeResolutionPage />} />
+            <Route path="admin/return-disputes" element={<AdminReturnDisputesPage />} />
+            <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
             <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
             <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
             <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />

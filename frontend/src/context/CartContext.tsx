@@ -3,6 +3,7 @@ import { toast } from '../utils/toast';
 import { authService } from '../services/auth.service';
 import api from '../services/api';
 import { customerService } from '../services/customer.service';
+import { normalizeOrderVariantId } from '../utils/orderVariant';
 
 export interface CartVariantInfo {
   id: string;
@@ -215,7 +216,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (localItems.length > 0) {
           const synced = await customerService.syncCart(next.map((item) => ({
             productId: item.productId,
-            variantId: item.variantId,
+            variantId: normalizeOrderVariantId(item.variantId),
             quantity: item.quantity,
           })));
           if (active) setCartSyncedAt(synced.syncedAt || new Date().toISOString());
@@ -242,7 +243,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       customerService
         .syncCart(cart.map((item) => ({
           productId: item.productId,
-          variantId: item.variantId,
+          variantId: normalizeOrderVariantId(item.variantId),
           quantity: item.quantity,
         })))
         .then((result) => setCartSyncedAt(result.syncedAt || new Date().toISOString()))
@@ -721,7 +722,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res: any = await api.post('/orders/validate-cart', {
         items: cart.map((i) => ({
           productId: i.productId,
-          variantId: i.variantId,
+          variantId: normalizeOrderVariantId(i.variantId),
           quantity: i.quantity,
           clientPrice: i.price,
         })),

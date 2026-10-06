@@ -35,6 +35,8 @@ import {
 import { useCart, type CartItem } from '../../context/CartContext';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import { formatSavedAddressOption, resolveSavedShippingAddress } from '../../utils/checkoutAddress';
+import { publicPolicyText } from '../../utils/storePolicy';
+import { normalizeOrderVariantId } from '../../utils/orderVariant';
 
 export interface ProductVariantItem {
   id: string;
@@ -455,7 +457,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
           .post('/orders/validate-cart', {
             items: activeItems.map((i) => ({
               productId: i.productId,
-              variantId: i.variantId || undefined,
+              variantId: normalizeOrderVariantId(i.variantId),
               quantity: i.quantity,
               clientPrice: i.price,
             })),
@@ -669,7 +671,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         idempotencyKey,
         items: activeItems.map((item) => ({
           productId: item.productId,
-          variantId: item.variantId || undefined,
+          variantId: normalizeOrderVariantId(item.variantId),
           quantity: item.quantity,
         })),
       };
@@ -1528,8 +1530,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       {itemsGroupedByShop.map((group) => (
                         <div key={group.store.id} className="rounded-xl border border-[#EAE4D7] bg-white p-3">
                           <strong className="block text-[#1A1612]">{group.store.name}</strong>
-                          {shopPolicies[group.store.id]?.policyReturn
-                            ? <p>• Đổi trả (Shop): {shopPolicies[group.store.id].policyReturn}</p>
+                          {publicPolicyText(shopPolicies[group.store.id]?.policyReturn)
+                            ? <p>• Đổi trả (Shop): {publicPolicyText(shopPolicies[group.store.id]?.policyReturn)}</p>
                             : <p>• Đổi trả (quy định SCANMS): yêu cầu trong 14 ngày kể từ khi giao, kèm ảnh và video mở hộp.</p>}
                           <p>• Bảo hành: {shopPolicies[group.store.id]?.policyWarranty || 'Shop chưa công bố chính sách bảo hành riêng.'}</p>
                           <p>• Giao hàng: {shopPolicies[group.store.id]?.policyShipping || 'Shop chưa công bố chính sách giao hàng riêng.'}</p>

@@ -44,6 +44,7 @@ import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } 
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
 import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal';
+import { returnStatusLabel } from '../../utils/return-status';
 import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
 import {
   AddressLocationPicker,
@@ -747,6 +748,8 @@ export default function CustomerPortalPage() {
                       const isCompleted = order.status === 'COMPLETED';
                       const isCancelled = order.status === 'CANCELLED';
                       const hasReturnRequest = Boolean(order.returnRequest) || ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'].includes(order.status);
+                      const isWaitingForReturnAddress = order.returnRequest?.status === 'SHOP_APPROVED' && !order.returnRequest.shipByAt;
+                      const canSubmitReturnShipment = order.returnRequest?.status === 'SHOP_APPROVED' && Boolean(order.returnRequest.shipByAt);
                       const returnAnchor = new Date(order.deliveredAt || order.completedAt || 0).getTime();
                       const canRequestReturn =
                         (isDelivered || isCompleted) &&
@@ -799,9 +802,10 @@ export default function CustomerPortalPage() {
                               {hasReturnRequest && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
                                   <RotateCcw className="w-3 h-3" />
-                                  <span>{order.returnRequest?.status === 'SHOP_APPROVED' ? 'Shop đã duyệt · chờ xử lý tiền/hàng'
-                                    : order.returnRequest?.status === 'SHOP_REJECTED' ? 'Shop đã từ chối đổi trả'
-                                    : order.returnRequest?.status === 'REFUNDED' ? 'Đã hoàn tiền'
+                                  <span>{order.returnRequest
+                                    ? isWaitingForReturnAddress
+                                      ? 'Shop đã duyệt · chờ cấu hình kho trả hàng'
+                                      : returnStatusLabel(order.returnRequest.status)
                                     : 'Đang xử lý trả hàng'}</span>
                                 </span>
                               )}
@@ -818,6 +822,15 @@ export default function CustomerPortalPage() {
                             <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#1A1612]">
                               Phản hồi của Shop: {order.returnRequest.shopResponse}
                             </p>
+                          )}
+
+                          {isWaitingForReturnAddress && (
+                            <div role="status" className="flex items-start gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+                              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
+                              <span>
+                                Shop đang cấu hình kho nhận hàng trả. Sau đó bạn sẽ xác nhận địa chỉ của mình để đặt shipper đến lấy hàng.
+                              </span>
+                            </div>
                           )}
 
                           {/* Order Items */}
@@ -907,6 +920,13 @@ export default function CustomerPortalPage() {
                                 <button type="button" onClick={() => setReturnOrder(order)} className="px-3.5 py-2 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] transition">
                                   Trả hàng / Hoàn tiền
                                 </button>
+                              )}
+
+                              {order.returnRequest && (
+                                <Link to={`/customer/returns/${order.returnRequest.id}`}
+                                  className="px-3.5 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8A6736] hover:bg-[#F3EFE6]">
+                                  {canSubmitReturnShipment ? 'Đặt shipper lấy hàng' : 'Xem hồ sơ đổi trả'}
+                                </Link>
                               )}
 
                               {isCompleted && !hasReturnRequest && (

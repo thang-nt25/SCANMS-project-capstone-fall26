@@ -32,6 +32,8 @@ import { authService } from '../services/auth.service';
 import { customerService } from '../services/customer.service';
 import { toast } from '../utils/toast';
 import { useCart } from '../context/CartContext';
+import { publicPolicyText } from '../utils/storePolicy';
+import { normalizeOrderVariantId } from '../utils/orderVariant';
 
 
 const SCANMS_PLACEHOLDER =
@@ -125,6 +127,12 @@ interface LandingData {
 }
 
 function resolveProductVariants(product: LandingProduct): ProductVariantItem[] {
+  return (product.variants || []).filter((variant) => variant.isActive !== false);
+}
+
+// Kept temporarily for reading legacy cart data created by older frontend builds.
+// New purchases only use variants persisted by the backend via resolveProductVariants.
+export function buildLegacyDisplayVariants(product: LandingProduct): ProductVariantItem[] {
   if (product.variants && product.variants.length > 0) {
     return product.variants;
   }
@@ -806,6 +814,13 @@ export default function ProductDetailPage() {
 
 
   const activeVariants = data?.product ? resolveProductVariants(data.product) : [];
+  const selectedVariantId = normalizeOrderVariantId(selectedVariant?.id);
+
+  useEffect(() => {
+    if (selectedVariant && !activeVariants.some((variant) => variant.id === selectedVariant.id)) {
+      setSelectedVariant(null);
+    }
+  }, [data?.product?.id, selectedVariant?.id]);
   const currentPrice =
     selectedVariant?.price !== undefined && selectedVariant?.price !== null
       ? Number(selectedVariant.price)
@@ -872,6 +887,7 @@ export default function ProductDetailPage() {
 
   const { product, store, images, videos, reviews, availability, policies } =
     data;
+  const returnPolicy = publicPolicyText(policies?.returnPolicy);
   const activeVideo =
     videos && videos.length > 0 ? videos[activeVideoIndex] : null;
   const validGallery = (images || []).filter((img) => Boolean(img && img.trim()));
@@ -1274,11 +1290,11 @@ export default function ProductDetailPage() {
                         policyWarranty: policies?.warranty,
                         policyShipping: policies?.shipping,
                       },
-                      variantId: selectedVariant?.id,
+                      variantId: selectedVariantId,
                       quantity,
                       openCartAfterAdd: true,
                     });
-                    trackAnalytics('add_to_cart', { productId: product.id, variantId: selectedVariant?.id, quantity });
+                    trackAnalytics('add_to_cart', { productId: product.id, variantId: selectedVariantId, quantity });
                   }}
                   className="py-2.5 px-3 rounded-xl border border-[#C59B58] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#B88E4F] font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Thêm sản phẩm và phân loại đã chọn vào giỏ hàng"
@@ -1292,7 +1308,7 @@ export default function ProductDetailPage() {
                   disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
                   onClick={() => {
                     setIsCheckoutOpen(true);
-                    trackAnalytics('cta_click', { productId: product.id, variantId: selectedVariant?.id });
+                    trackAnalytics('cta_click', { productId: product.id, variantId: selectedVariantId });
                   }}
                   className="py-2.5 px-3 bg-[#EBD08C] hover:bg-[#DEC07A] disabled:bg-[#EAE4D7] disabled:text-[#7D715E] disabled:cursor-not-allowed text-[#231D15] font-extrabold text-xs sm:text-sm rounded-xl shadow-sm shadow-[#C59B58]/15 flex items-center justify-center gap-1.5 active:scale-98 transition-all"
                 >
@@ -1319,30 +1335,32 @@ export default function ProductDetailPage() {
                 </div>
                 <div
                   className="flex flex-col items-center gap-1"
-                  title={policies?.returnPolicy}
+                  title={returnPolicy || 'Yêu cầu trong 14 ngày kể từ khi nhận hàng, kèm ảnh và video mở hộp.'}
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>{policies?.returnPolicy ? 'Đổi trả bảo đảm' : 'Đổi trả 14 ngày'}</span>
+                  <span>Đổi trả trong 14 ngày</span>
                 </div>
                 <div
                   className="flex flex-col items-center gap-1"
                   title={policies?.shipping}
                 >
                   <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Đồng kiểm khi nhận</span>
+                  <span>Giao hàng minh bạch</span>
                 </div>
                 <div
                   className="flex flex-col items-center gap-1"
                   title={policies?.warranty}
                 >
                   <Lock className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Bảo hành uy tín</span>
+                  <span>Bảo hành theo Shop</span>
                 </div>
               </div>
               <div className="mt-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] p-3 text-left">
-                <strong className="block text-[11px] text-[#1A1612] mb-1.5">Chính sách của {store.name}</strong>
-                <p className="m-0 text-[11px] leading-relaxed text-[#7D715E]"><b>Đổi trả:</b> {policies?.returnPolicy || 'Yêu cầu trong 14 ngày kể từ khi nhận hàng, kèm ảnh và video mở hộp.'}</p>
-                <p className="m-0 mt-1 text-[11px] leading-relaxed text-[#7D715E]"><b>Bảo hành:</b> {policies?.warranty || 'Theo điều kiện bảo hành do gian hàng công bố và xác nhận trên đơn hàng.'}</p>
+                <strong className="block text-xs text-[#1A1612] mb-2">Chính sách mua hàng · {store.name}</strong>
+                <div className="space-y-1.5 text-[11px] leading-relaxed text-[#7D715E]">
+                  <p className="m-0"><b className="text-[#1A1612]">Đổi trả:</b> {returnPolicy || 'Theo quy định SCANMS: yêu cầu trong 14 ngày kể từ khi nhận hàng, kèm ảnh và video mở hộp.'}</p>
+                  <p className="m-0"><b className="text-[#1A1612]">Bảo hành:</b> {policies?.warranty || 'Shop chưa công bố chính sách bảo hành riêng.'}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -1762,7 +1780,7 @@ export default function ProductDetailPage() {
             setIsCheckoutOpen(true);
             trackAnalytics('cta_click', {
               productId: product.id,
-              variantId: selectedVariant?.id,
+              variantId: selectedVariantId,
               source: 'mobile_sticky',
             });
           }}
@@ -1796,7 +1814,7 @@ export default function ProductDetailPage() {
             policyWarranty: policies?.warranty,
             policyShipping: policies?.shipping,
           }}
-          initialVariantId={selectedVariant?.id}
+          initialVariantId={selectedVariantId}
           initialQuantity={quantity}
           initialCouponCode={appliedCoupon?.code || ''}
           onOrderPlaced={(order) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Scale,
   CheckCircle2,
@@ -144,6 +145,10 @@ export const DisputeResolutionPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <Link to="/admin/return-disputes"
+              className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3.5 py-2 text-xs font-bold text-[#B88E4F]">
+              Khiếu nại trả hàng mới
+            </Link>
             <button
               onClick={fetchDisputes}
               className="px-3.5 py-2 bg-white border border-[#EAE4D7] hover:border-[#C59B58] rounded-xl text-xs font-bold text-[#1A1612] flex items-center gap-1.5 shadow-xs transition"

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   MessageSquare,
   Plus,
@@ -844,6 +844,7 @@ export default function ChatBoxPage({
   const [showVipModal, setShowVipModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const isShop = currentUser?.role === 'SHOP_MANAGER';
+  const isShopCounterparty = currentUser?.role === 'CUSTOMER' || currentUser?.role === 'COLLABORATOR';
   const onlyCustomerChats = isShop && window.location.pathname === '/merchant/customer-messages';
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1288,9 +1289,19 @@ export default function ChatBoxPage({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <span className="font-bold text-stone-900 text-sm truncate">
-                      {getOtherParty(conv)}
-                    </span>
+                    {isShopCounterparty && (conv.store?.id || conv.storeId) ? (
+                      <Link
+                        to={`/shops/${conv.store?.id || conv.storeId}`}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        className="min-w-0 truncate text-sm font-bold text-stone-900 hover:text-[#B88E4F] hover:underline"
+                        title={`Xem gian hàng ${conv.store?.name || 'Shop'}`}
+                      >
+                        {getOtherParty(conv)}
+                      </Link>
+                    ) : (
+                      <span className="truncate text-sm font-bold text-stone-900">{getOtherParty(conv)}</span>
+                    )}
                     {lastMsg && (
                       <span className="text-[10px] text-stone-400 flex-shrink-0">
                         {formatConvTime(lastMsg.createdAt)}
@@ -1349,7 +1360,17 @@ export default function ChatBoxPage({
                   {getOtherAvatar(activeConv)}
                 </div>
                 <div>
-                  <div className="font-bold text-stone-900 text-sm">{getOtherParty(activeConv)}</div>
+                  {isShopCounterparty && (activeConv.store?.id || activeConv.storeId) ? (
+                    <Link
+                      to={`/shops/${activeConv.store?.id || activeConv.storeId}`}
+                      className="text-sm font-bold text-stone-900 hover:text-[#B88E4F] hover:underline"
+                      title={`Xem gian hàng ${activeConv.store?.name || 'Shop'}`}
+                    >
+                      {getOtherParty(activeConv)}
+                    </Link>
+                  ) : (
+                    <div className="text-sm font-bold text-stone-900">{getOtherParty(activeConv)}</div>
+                  )}
                   <div className="text-xs text-stone-500 flex items-center gap-1.5">
                     {typingUser ? (
                       <span className="text-amber-600 font-medium flex items-center gap-1">

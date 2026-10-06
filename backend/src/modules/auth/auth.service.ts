@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
+  ServiceUnavailableException,
   Optional,
   Logger,
 } from '@nestjs/common';
@@ -473,16 +474,36 @@ export class AuthService {
     let payload: any;
 
     if (dto.idToken.startsWith('ya29.') || dto.idToken.split('.').length !== 3) {
+      let userInfoResponse: Response;
       try {
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${dto.idToken}` },
+          signal: AbortSignal.timeout(8000),
         });
-        if (!userInfoResponse.ok) throw new Error(`Google HTTP ${userInfoResponse.status}`);
-        payload = await userInfoResponse.json();
       } catch (err: any) {
-        this.logger.warn(`Google Access Token verification failed: ${err.message}`);
+        this.logger.warn(`Google userinfo unavailable: ${err?.message || String(err)}`);
+        throw new ServiceUnavailableException(
+          'Không thể kết nối Google để xác thực. Vui lòng thử lại sau hoặc đăng nhập bằng email.',
+        );
+      }
+
+      if (userInfoResponse.status === 401 || userInfoResponse.status === 403) {
         throw new UnauthorizedException(
           'Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.',
+        );
+      }
+      if (!userInfoResponse.ok) {
+        this.logger.warn(`Google userinfo returned HTTP ${userInfoResponse.status}`);
+        throw new ServiceUnavailableException(
+          'Google đang tạm thời không xác thực được. Vui lòng thử lại sau.',
+        );
+      }
+
+      try {
+        payload = await userInfoResponse.json();
+      } catch {
+        throw new ServiceUnavailableException(
+          'Phản hồi xác thực từ Google không hợp lệ. Vui lòng thử lại sau.',
         );
       }
     } else {

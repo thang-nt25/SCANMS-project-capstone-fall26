@@ -200,7 +200,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
         isApproved: true,
         order: {
           id: 'order-12345',
-          status: 'DELIVERED',
+          status: 'COMPLETED',
         },
         reviewImageUrl: null,
         createdAt: new Date(),
@@ -247,7 +247,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
     // Tên phải được che một phần theo chuẩn FR-15
     const rev1 = result.reviews.items.find((i: any) => i.id === 'rev-1');
     expect(rev1.customerName).toBe('Nguyễn Đ*** T***');
-    expect(rev1.isVerifiedBuyer).toBe(true); // DELIVERED order
+    expect(rev1.isVerifiedBuyer).toBe(true); // Chỉ đơn COMPLETED được xác minh đánh giá
 
     const rev2 = result.reviews.items.find((i: any) => i.id === 'rev-2');
     expect(rev2.customerName).toBe('Trần V*** N***');

@@ -83,8 +83,12 @@ export interface CustomerReturnRequest {
   details?: string | null;
   imageUrls: string[];
   unboxingVideoUrl: string;
-  status: 'REQUESTED' | 'SHOP_APPROVED' | 'SHOP_REJECTED' | 'DISPUTED' | 'REFUNDED' | 'CLOSED';
+  status: import('./return.service').ReturnStatus;
   deadlineAt: string;
+  shipByAt?: string | null;
+  pickupContact?: import('./return.service').PickupBookingInput | null;
+  returnAddress?: string | null;
+  returnInstructions?: string | null;
   shopResponse?: string | null;
   submittedAt: string;
   updatedAt: string;
