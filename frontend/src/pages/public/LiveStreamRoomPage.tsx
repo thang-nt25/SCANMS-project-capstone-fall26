@@ -44,7 +44,7 @@ import { cn } from '../../utils/cn';
 import { useLiveStreamTransport } from '../../hooks/useLiveStreamTransport';
 import { FACE_FILTERS, useLiveFaceFilter, type FaceFilter } from '../../hooks/useLiveFaceFilter';
 import { FaceFilterPreview } from '../../components/live/FaceFilterPreview';
-import type { FilterCategory } from '../../features/live/faceFilters';
+import type { FilterCategory } from '@/components/live/faceFilters';
 
 interface LiveProduct {
   id: string;

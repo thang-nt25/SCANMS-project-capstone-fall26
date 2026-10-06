@@ -51,7 +51,7 @@ import {
 } from '../../services/order-address.service';
 import { useCart, type CartItem } from '../../context/CartContext';
 import { useScanmsChat } from '../../context/ScanmsChatContext';
-import { formatMoney, getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { CustomSelect } from '../ui/CustomSelect';
 import { resolveSavedShippingAddress } from '../../utils/checkoutAddress';
 import { walletService, type WalletSummary } from '../../services/wallet.service';

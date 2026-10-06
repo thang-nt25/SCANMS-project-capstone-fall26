@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { walletService, type WalletSummary, type LedgerEntry, type LedgerHistory } from '../../services/wallet.service';
 import { authService } from '../../services/auth.service';
-import { formatMoney } from '../../features/marketplace/marketplaceUtils';
+import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
 import { Link } from 'react-router-dom';
 

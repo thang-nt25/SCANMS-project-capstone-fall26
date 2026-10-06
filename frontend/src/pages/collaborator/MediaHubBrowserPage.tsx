@@ -27,7 +27,7 @@ import { Select } from '../../components/ui/Select';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { toast } from '../../utils/toast';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 
 export default function MediaHubBrowserPage() {
   const currentUser = authService.getCurrentUser();

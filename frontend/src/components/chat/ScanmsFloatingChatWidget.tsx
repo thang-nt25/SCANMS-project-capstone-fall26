@@ -28,7 +28,7 @@ import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { couponService, type PublicStoreCoupon } from '../../services/coupon.service';
 import { authService, type UserProfile } from '../../services/auth.service';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import type { ChatAttachmentType } from '../../types/chat';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));

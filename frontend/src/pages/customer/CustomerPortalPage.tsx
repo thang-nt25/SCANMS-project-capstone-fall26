@@ -39,7 +39,7 @@ import {
   Lock,
   Wallet,
 } from 'lucide-react';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { Select } from '../../components/ui/Select';
@@ -55,7 +55,7 @@ import {
   loadShippingAddresses,
   type ShippingProvince,
 } from '../../services/order-address.service';
-import { formatMoney } from '../../features/marketplace/marketplaceUtils';
+import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { Topbar } from '../../components/layout/Topbar';

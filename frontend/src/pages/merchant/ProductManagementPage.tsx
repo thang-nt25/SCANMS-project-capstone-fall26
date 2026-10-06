@@ -37,7 +37,7 @@ import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
