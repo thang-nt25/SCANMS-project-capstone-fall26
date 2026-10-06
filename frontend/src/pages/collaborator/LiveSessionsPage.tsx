@@ -1,3 +1,4 @@
+import { LiveGovernancePanel, type LiveGovernance } from '../../components/live/LiveGovernancePanel';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CalendarClock,
@@ -22,6 +23,7 @@ import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
 
 type Session = {
+  governance?: LiveGovernance;
   id: string;
   title: string;
   description?: string | null;
@@ -45,6 +47,7 @@ type Session = {
   report?: {
     claims: number;
     orders: number;
+    buyers?: number;
     pendingOrders?: number;
     cancelledOrders?: number;
     grossSales: number;
@@ -490,7 +493,11 @@ export default function CollaboratorLiveSessionsPage() {
 
                 {/* Performance Metrics Strip (Tone trắng sáng, viền tinh tế, nổi bật số liệu giống Trung tâm Tiếp thị) */}
                 {session.report && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                    <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5 sm:p-3">
+                      <div className="text-[11px] font-semibold text-[#7D715E]">Người mua</div>
+                      <p className="mt-1 text-sm sm:text-base font-black text-[#1A1612]">{session.report.buyers ?? 0}</p>
+                    </div>
                     {/* 1. Lượt nhận voucher */}
                     <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5 sm:p-3 hover:border-[#C59B58]/40 hover:shadow-xs transition">
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#7D715E]">
@@ -601,7 +608,8 @@ export default function CollaboratorLiveSessionsPage() {
                     </div>
                   </div>
                 )}
-              </article>
+                <LiveGovernancePanel session={session} audience="kol" onChanged={() => void load(false)} />
+            </article>
             );
           })}
         </div>

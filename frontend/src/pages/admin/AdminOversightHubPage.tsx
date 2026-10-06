@@ -52,6 +52,8 @@ export default function AdminOversightHubPage() {
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}
+        stretchTabs
+        stretchTabColumns={3}
         tone="white"
       />
 

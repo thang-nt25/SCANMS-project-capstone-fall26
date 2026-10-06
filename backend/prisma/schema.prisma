@@ -307,6 +307,8 @@ model User {
 }
 
 model Store {
+  liveRestrictionUntil DateTime? @map("live_restriction_until") @db.Timestamptz(6)
+  liveCooperationBlocked Boolean @default(false) @map("live_cooperation_blocked")
   id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ownerId               String    @map("owner_id") @db.Uuid
   name                  String    @db.VarChar(200)
@@ -990,6 +992,7 @@ model Coupon {
 }
 
 model LiveShoppingSession {
+  governance Json @default("{}") @db.JsonB
   id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   storeId               String                 @map("store_id") @db.Uuid
   creatorId             String                 @map("creator_id") @db.Uuid

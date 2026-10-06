@@ -990,6 +990,21 @@ export class OrdersService {
 
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
     let shopFundedAmount = 0;
+    const requestedLiveIds = [...new Set(dto.items.map((item) => item.liveSessionId).filter((id): id is string => Boolean(id)))];
+    // Use the same session -> coupon lock order as an emergency stop. An order
+    // already being placed is committed before the session evidence is captured.
+    for (const liveId of [...requestedLiveIds].sort()) {
+      await tx.$queryRaw`SELECT id FROM live_shopping_sessions WHERE id = ${liveId}::uuid AND store_id = ${store.id}::uuid FOR UPDATE`;
+    }
+    const liveSources = requestedLiveIds.length ? await tx.liveShoppingSession.findMany({
+      where: { id: { in: requestedLiveIds }, storeId: store.id, platform: 'SCANMS', inviteStatus: 'ACCEPTED', status: { in: ['LIVE', 'SCHEDULED'] }, startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
+      select: { id: true, products: { select: { productId: true, variantId: true } } },
+    }) : [];
+    const liveSessionIds = liveSources.filter((session) => dto.items.some((item) =>
+      item.liveSessionId === session.id && session.products.some((product) =>
+        product.productId === item.productId && (!product.variantId || product.variantId === item.variantId),
+      ),
+    )).map((session) => session.id);
     let platformFundedAmount = 0;
     let appliedDiscountAmount = 0;
 
@@ -1714,6 +1729,7 @@ export class OrdersService {
         shippingFee: new Prisma.Decimal(shippingFee),
         finalAmount: new Prisma.Decimal(orderFinalAmount),
           rawPayload: {
+            liveSessionIds,
             orderNotes: orderNotes || null,
             paymentMethod,
             paymentStatus: isVietQr || isPayos ? 'WAITING_PAYMENT' : 'UNPAID',

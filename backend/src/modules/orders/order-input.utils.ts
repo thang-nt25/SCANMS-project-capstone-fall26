@@ -85,6 +85,7 @@ export function computeOrderPayloadHash(
     .map((it) => ({
       productId: (it.productId || '').trim().toLowerCase(),
       variantId: (it.variantId || '').trim().toLowerCase(),
+      ...(it.liveSessionId ? { liveSessionId: it.liveSessionId.trim().toLowerCase() } : {}),
       quantity: Number(it.quantity) || 1,
     }))
     .sort((a, b) => {

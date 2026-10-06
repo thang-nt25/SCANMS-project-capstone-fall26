@@ -17,6 +17,8 @@ export interface CartVariantInfo {
 export interface CartItem {
   cartItemId: string; // `${productId}_${variantId || 'base'}`
   productId: string;
+  liveSessionId?: string;
+  liveCouponCode?: string;
   variantId?: string;
   variantName?: string;
   title: string;
@@ -53,6 +55,8 @@ export interface StoreCartGroup {
 }
 
 interface AddItemParams {
+  liveSessionId?: string;
+  liveCouponCode?: string;
   product: {
     id: string;
     title?: string;
@@ -257,7 +261,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // subsequent sign-ins. Only an unowned guest cart may be merged.
         const localItems = previousOwner ? [] : cart;
         const merged = new Map<string, CartItem>();
-        for (const item of remote.items || []) merged.set(item.cartItemId, item as CartItem);
+        for (const item of remote.items || []) {
+          const local = loadCartFromStorage(user.id).find((saved) => saved.cartItemId === item.cartItemId);
+          merged.set(item.cartItemId, { ...item, liveSessionId: local?.liveSessionId, liveCouponCode: local?.liveCouponCode } as CartItem);
+        }
         for (const item of localItems) {
           const existing = merged.get(item.cartItemId);
           merged.set(item.cartItemId, existing
@@ -537,7 +544,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Add Item to Cart
   const addItem = useCallback(
-    ({ product, variantId, quantity = 1, store, openCartAfterAdd = true }: AddItemParams) => {
+    ({ product, variantId, quantity = 1, store, openCartAfterAdd = true, liveSessionId, liveCouponCode }: AddItemParams) => {
       const prodTitle = product.title || product.name || 'Sản phẩm';
       const prodImage = getSafeProductImageUrl(product.imageUrl || product.image, prodTitle);
       const availableVariants = product.variants || [];
@@ -589,12 +596,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             quantity: newQty,
             stockQuantity: availableStock,
             price: finalPrice,
+            liveSessionId,
+            liveCouponCode,
           };
           return next;
         }
 
         // Add new item
         const newItem: CartItem = {
+          liveSessionId,
+          liveCouponCode,
           cartItemId,
           productId: product.id,
           variantId,
@@ -868,6 +879,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const qty = params.quantity || 1;
 
       const directItem: CartItem = {
+        liveSessionId: params.liveSessionId,
+        liveCouponCode: params.liveCouponCode,
         cartItemId,
         productId: params.product.id,
         variantId,

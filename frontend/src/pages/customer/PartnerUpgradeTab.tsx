@@ -111,6 +111,10 @@ export const PartnerUpgradeTab: React.FC = () => {
       toast.error('Vui lòng nhập số CCCD/CMND hợp lệ');
       return;
     }
+    if (!kolForm.frontCardUrl?.trim() || !kolForm.backCardUrl?.trim()) {
+      toast.error('Vui lòng tải lên đầy đủ ảnh CCCD mặt trước và mặt sau');
+      return;
+    }
     if (!kolForm.bankName?.trim()) {
       toast.error('Vui lòng chọn ngân hàng thụ hưởng');
       return;
@@ -567,20 +571,22 @@ export const PartnerUpgradeTab: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <ImageUploadDropzone
-                label="Ảnh mặt trước CCCD"
+                label="Ảnh mặt trước CCCD *"
                 helperText="Chụp rõ nét, đủ 4 góc, tối đa 5MB"
                 value={kolForm.frontCardUrl}
                 onChange={(url) => setKolForm({ ...kolForm, frontCardUrl: url })}
                 iconType="idcard"
                 folder="scanms/kyc/idcards"
+                required
               />
               <ImageUploadDropzone
-                label="Ảnh mặt sau CCCD"
+                label="Ảnh mặt sau CCCD *"
                 helperText="Chụp rõ nét mã QR và nơi cấp"
                 value={kolForm.backCardUrl}
                 onChange={(url) => setKolForm({ ...kolForm, backCardUrl: url })}
                 iconType="idcard"
                 folder="scanms/kyc/idcards"
+                required
               />
             </div>
           </div>

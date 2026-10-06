@@ -19,6 +19,7 @@ export interface HubTabsProps {
   className?: string;
   compact?: boolean;
   stretchTabs?: boolean;
+  stretchTabColumns?: 3 | 4;
   variant?: 'default' | 'pills';
   tone?: 'default' | 'light' | 'white';
 }
@@ -33,6 +34,7 @@ export function HubTabs({
   className = '',
   compact = false,
   stretchTabs = false,
+  stretchTabColumns = 4,
   variant = 'default',
   tone = 'default',
 }: HubTabsProps) {
@@ -115,7 +117,7 @@ export function HubTabs({
         <div className={`w-full ${tone === 'white' ? 'bg-white' : tone === 'light' ? 'bg-[#FAF8F5]' : 'bg-[#F3EFE6]'} ${compact ? 'p-1 rounded-xl' : 'p-1.5 rounded-2xl'} border border-[#EAE4D7] shadow-2xs ${stretchTabs ? 'flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between' : 'flex flex-wrap items-center justify-between gap-2'}`}>
           <div
             className={stretchTabs
-              ? 'grid w-full min-w-0 flex-1 grid-cols-2 gap-1.5 xl:grid-cols-4'
+              ? `grid w-full min-w-0 flex-1 grid-cols-2 gap-1.5 ${stretchTabColumns === 3 ? 'xl:grid-cols-3' : 'xl:grid-cols-4'}`
               : 'flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth'}
             role="tablist"
           >

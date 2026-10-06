@@ -118,6 +118,7 @@ export const NotificationDropdown: React.FC = () => {
       // Tránh trùng lặp nếu cả backend lẫn local broadcast đều có cùng sessionId
       const liveSessionIds = new Set(liveItems.map((i) => i.data?.sessionId).filter(Boolean));
       const deduplicatedBackend = validBackendItems.filter((item) => {
+        if (item.type === 'LIVE_GOVERNANCE') return true;
         if (item.type.startsWith('LIVE_') || item.type.includes('LIVE')) {
           const sId = (item.data as any)?.sessionId;
           if (sId && liveSessionIds.has(sId)) {
@@ -217,6 +218,15 @@ export const NotificationDropdown: React.FC = () => {
     }
     setIsOpen(false);
 
+    if (notif.type === 'LIVE_GOVERNANCE') {
+      const role = authService.getCurrentUser()?.role;
+      const sessionQuery = `session=${encodeURIComponent(notif.data?.sessionId || '')}`;
+      if (role === 'COLLABORATOR') navigate(`/collaborator/live-sessions?${sessionQuery}`);
+      else if (role === 'SHOP_MANAGER') navigate(`/merchant/promotions?tab=live-sessions&${sessionQuery}`);
+      else if (role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER') navigate(`/admin/affiliate-oversight?tab=live-sessions&${sessionQuery}`);
+      return;
+    }
+
     // 1. Live stream broadcast notification -> dẫn thẳng vào phòng livestream
     if (notif.type.startsWith('LIVE_') || notif.type.includes('LIVE')) {
       const liveUrl = notif.data?.liveUrl;
@@ -273,6 +283,7 @@ export const NotificationDropdown: React.FC = () => {
   };
 
   const getNotificationIcon = (type: string) => {
+    if (type === 'LIVE_GOVERNANCE') return <ShieldAlert className="h-4 w-4 text-[#B88E4F]" />;
     if (type.startsWith('LIVE_') || type.includes('LIVE')) {
       return (
         <div className="relative">
