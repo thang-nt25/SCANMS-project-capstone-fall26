@@ -16,13 +16,17 @@ export class CreateGhnOrderDto {
   @ApiPropertyOptional({
     enum: GhnRequiredNote,
     default: GhnRequiredNote.CHOXEMHANGKHONGTHU,
-    description: 'Quy định kiểm hàng: Cho xem không thử, Cho thử hàng, hoặc Không cho xem',
+    description:
+      'Quy định kiểm hàng: Cho xem không thử, Cho thử hàng, hoặc Không cho xem',
   })
   @IsOptional()
   @IsEnum(GhnRequiredNote)
   requiredNote?: GhnRequiredNote;
 
-  @ApiPropertyOptional({ description: 'Trọng lượng gói hàng (gram)', default: 500 })
+  @ApiPropertyOptional({
+    description: 'Trọng lượng gói hàng (gram)',
+    default: 500,
+  })
   @IsOptional()
   @IsNumber()
   @Min(10)
@@ -43,7 +47,10 @@ export class CreateGhnOrderDto {
   @IsNumber()
   height?: number;
 
-  @ApiPropertyOptional({ description: 'Tiền thu hộ COD (VNĐ). Nếu không gửi, hệ thống tự trích xuất từ đơn hàng' })
+  @ApiPropertyOptional({
+    description:
+      'Tiền thu hộ COD (VNĐ). Nếu không gửi, hệ thống tự trích xuất từ đơn hàng',
+  })
   @IsOptional()
   @IsNumber()
   codAmount?: number;
@@ -58,7 +65,10 @@ export class CalculateShippingFeeDto {
   @IsString()
   toWardCode: string;
 
-  @ApiPropertyOptional({ description: 'Trọng lượng gói hàng (gram)', default: 500 })
+  @ApiPropertyOptional({
+    description: 'Trọng lượng gói hàng (gram)',
+    default: 500,
+  })
   @IsOptional()
   @IsNumber()
   weight?: number;

@@ -57,8 +57,6 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
-  const isShopSettings = location.pathname === '/merchant/settings';
-
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   if (isAuth || isIframe) {
@@ -70,26 +68,30 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-[#FAF8F5] text-[#1A1612]">
-      <Sidebar
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+      {/* 1. Topbar nằm full-width trên cùng (chuẩn vị trí Header như Customer) */}
+      <Topbar
         currentUser={currentUser}
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onLogout={handleLogout}
       />
 
-      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <Topbar
-          currentUser={currentUser}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          onLogout={handleLogout}
-        />
+      {/* 2. Container nội dung căn giữa đồng bộ 100% với Customer (max-w-[1520px]) */}
+      <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex-1">
+        <div className="flex flex-col lg:flex-row gap-5 items-start">
+          {/* Cột trái: Sidebar điều hướng các chức năng của từng vai trò */}
+          <Sidebar
+            currentUser={currentUser}
+            onLogout={handleLogout}
+          />
 
-        <main className={`flex-1 overflow-y-auto overflow-x-hidden px-4 pt-2.5 pb-6 sm:px-6 sm:pt-3 sm:pb-8 lg:px-8 lg:pt-3 lg:pb-8 ${isShopSettings ? 'bg-white' : 'bg-[#FAF8F5]'}`}>
-          <div className="max-w-[1520px] w-full mx-auto">
+          {/* Cột phải: Khung nội dung chính của vai trò */}
+          <div className="flex-1 min-w-0 flex flex-col gap-4 text-left">
             <Outlet />
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

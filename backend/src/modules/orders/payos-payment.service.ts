@@ -39,26 +39,46 @@ export class PayosPaymentService {
     const apiKey = this.config.get<string>('PAYOS_API_KEY')?.trim();
     const checksumKey = this.config.get<string>('PAYOS_CHECKSUM_KEY')?.trim();
     if (!clientId || !apiKey || !checksumKey) {
-      throw new ServiceUnavailableException('PayOS chưa được cấu hình. Vui lòng liên hệ quản trị viên.');
+      throw new ServiceUnavailableException(
+        'PayOS chưa được cấu hình. Vui lòng liên hệ quản trị viên.',
+      );
     }
-    return new PayOS({ clientId, apiKey, checksumKey, timeout: 10000, maxRetries: 1 });
+    return new PayOS({
+      clientId,
+      apiKey,
+      checksumKey,
+      timeout: 10000,
+      maxRetries: 1,
+    });
   }
 
   private storefrontBaseUrl(): string {
     const configured = this.config.get<string>('PAYOS_STOREFRONT_URL');
     if (!configured && this.config.get<string>('NODE_ENV') === 'production') {
-      throw new InternalServerErrorException('PAYOS_STOREFRONT_URL chưa được cấu hình cho production');
+      throw new InternalServerErrorException(
+        'PAYOS_STOREFRONT_URL chưa được cấu hình cho production',
+      );
     }
     let url: URL;
     try {
       url = new URL(configured || 'http://localhost:5173');
     } catch {
-      throw new InternalServerErrorException('PAYOS_STOREFRONT_URL không hợp lệ');
+      throw new InternalServerErrorException(
+        'PAYOS_STOREFRONT_URL không hợp lệ',
+      );
     }
-    const isLocalDev = this.config.get<string>('NODE_ENV') !== 'production' &&
+    const isLocalDev =
+      this.config.get<string>('NODE_ENV') !== 'production' &&
       ['localhost', '127.0.0.1'].includes(url.hostname);
-    if ((url.protocol !== 'https:' && !(isLocalDev && url.protocol === 'http:')) || url.username || url.password) {
-      throw new InternalServerErrorException('PAYOS_STOREFRONT_URL phải là HTTPS (hoặc localhost khi phát triển)');
+    if (
+      (url.protocol !== 'https:' &&
+        !(isLocalDev && url.protocol === 'http:')) ||
+      url.username ||
+      url.password
+    ) {
+      throw new InternalServerErrorException(
+        'PAYOS_STOREFRONT_URL phải là HTTPS (hoặc localhost khi phát triển)',
+      );
     }
     return url.origin;
   }
@@ -66,7 +86,9 @@ export class PayosPaymentService {
   private webhookUrl(): string {
     const configured = this.config.get<string>('PAYOS_WEBHOOK_URL')?.trim();
     if (!configured) {
-      throw new ServiceUnavailableException('PayOS chưa có webhook HTTPS công khai để xác nhận thanh toán');
+      throw new ServiceUnavailableException(
+        'PayOS chưa có webhook HTTPS công khai để xác nhận thanh toán',
+      );
     }
     let url: URL;
     try {
@@ -74,10 +96,18 @@ export class PayosPaymentService {
     } catch {
       throw new InternalServerErrorException('PAYOS_WEBHOOK_URL không hợp lệ');
     }
-    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
-        !url.pathname.endsWith('/api/orders/payos/webhook') ||
-        ['localhost', '127.0.0.1'].includes(url.hostname)) {
-      throw new InternalServerErrorException('PAYOS_WEBHOOK_URL phải là URL HTTPS công khai của /api/orders/payos/webhook');
+    if (
+      url.protocol !== 'https:' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !url.pathname.endsWith('/api/orders/payos/webhook') ||
+      ['localhost', '127.0.0.1'].includes(url.hostname)
+    ) {
+      throw new InternalServerErrorException(
+        'PAYOS_WEBHOOK_URL phải là URL HTTPS công khai của /api/orders/payos/webhook',
+      );
     }
     return url.toString();
   }
@@ -126,7 +156,7 @@ export class PayosPaymentService {
             'Livestream ended; the unpaid order was repriced.',
           )
         : await payos.paymentRequests.cancel(
-            details.orderCode!,
+            details.orderCode,
             'Livestream ended; the unpaid order was repriced.',
           );
       return link.status === 'CANCELLED' || link.status === 'EXPIRED';
@@ -140,7 +170,11 @@ export class PayosPaymentService {
 
   private async ownedOrder(publicCode: string, userId: string) {
     const order = await this.prisma.order.findFirst({
-      where: { externalOrderSn: publicCode, customerId: userId, sourcePlatform: 'INTERNAL' },
+      where: {
+        externalOrderSn: publicCode,
+        customerId: userId,
+        sourcePlatform: 'INTERNAL',
+      },
     });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng của bạn');
     const raw = (order.rawPayload || {}) as Record<string, any>;
@@ -154,21 +188,31 @@ export class PayosPaymentService {
     this.assertReady();
     const payos = this.client();
     const { order, raw } = await this.ownedOrder(publicCode, userId);
-    if (order.status === OrderStatus.CANCELLED) throw new BadRequestException('Đơn hàng đã hủy');
-    if (raw.paymentStatus === 'PAID') throw new ConflictException('Đơn hàng đã thanh toán');
+    if (order.status === OrderStatus.CANCELLED)
+      throw new BadRequestException('Đơn hàng đã hủy');
+    if (raw.paymentStatus === 'PAID')
+      throw new ConflictException('Đơn hàng đã thanh toán');
     const amount = Number(order.finalAmount);
     if (!Number.isSafeInteger(amount) || amount <= 0) {
-      throw new BadRequestException('Số tiền thanh toán PayOS phải là số nguyên VND dương');
+      throw new BadRequestException(
+        'Số tiền thanh toán PayOS phải là số nguyên VND dương',
+      );
     }
     let existing = raw.payos as PayosDetails | undefined;
-    if (existing?.checkoutUrl && existing.qrCode && existing.amount === amount) {
+    if (
+      existing?.checkoutUrl &&
+      existing.qrCode &&
+      existing.amount === amount
+    ) {
       return { ...existing, paymentStatus: raw.paymentStatus };
     }
     let orderCode = existing?.orderCode || this.numericCode(order.id);
     if (existing?.paymentLinkId && existing.amount !== amount) {
       const cancelled = await this.cancelPendingLinkForLivePriceReset(order.id);
       if (!cancelled) {
-        throw new ConflictException('Liên kết thanh toán cũ đang được xử lý. Vui lòng tải lại sau ít phút.');
+        throw new ConflictException(
+          'Liên kết thanh toán cũ đang được xử lý. Vui lòng tải lại sau ít phút.',
+        );
       }
       orderCode = this.newPaymentOrderCode();
       existing = undefined;
@@ -200,13 +244,23 @@ export class PayosPaymentService {
         cancelUrl,
       });
     } catch (error) {
-      this.logger.error(`PayOS link creation failed for order ${publicCode}: ${error instanceof Error ? error.message : String(error)}`);
-      throw new ServiceUnavailableException('Chưa tạo được mã PayOS. Đơn đã được ghi nhận; vui lòng thử tạo mã lại.');
+      this.logger.error(
+        `PayOS link creation failed for order ${publicCode}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw new ServiceUnavailableException(
+        'Chưa tạo được mã PayOS. Đơn đã được ghi nhận; vui lòng thử tạo mã lại.',
+      );
     }
 
-    if (link.orderCode !== orderCode || link.amount !== amount || !link.qrCode ||
-        !link.checkoutUrl.startsWith('https://pay.payos.vn/')) {
-      throw new ServiceUnavailableException('PayOS trả về thông tin thanh toán không hợp lệ');
+    if (
+      link.orderCode !== orderCode ||
+      link.amount !== amount ||
+      !link.qrCode ||
+      !link.checkoutUrl.startsWith('https://pay.payos.vn/')
+    ) {
+      throw new ServiceUnavailableException(
+        'PayOS trả về thông tin thanh toán không hợp lệ',
+      );
     }
     const details: PayosDetails = {
       orderCode,
@@ -225,7 +279,12 @@ export class PayosPaymentService {
       const latest = (rows[0]?.raw_payload || {}) as Record<string, any>;
       await tx.order.update({
         where: { id: order.id },
-        data: { rawPayload: { ...latest, payos: { ...(latest.payos || {}), ...details } } },
+        data: {
+          rawPayload: {
+            ...latest,
+            payos: { ...(latest.payos || {}), ...details },
+          },
+        },
       });
       return latest.paymentStatus || 'WAITING_PAYMENT';
     });
@@ -252,19 +311,26 @@ export class PayosPaymentService {
     if (!body.success || body.code !== '00' || data.code !== '00') {
       return { success: true };
     }
-    if (!Number.isSafeInteger(data.orderCode) || !Number.isSafeInteger(data.amount) ||
-        data.amount <= 0 || data.currency !== 'VND' || !data.reference) {
+    if (
+      !Number.isSafeInteger(data.orderCode) ||
+      !Number.isSafeInteger(data.amount) ||
+      data.amount <= 0 ||
+      data.currency !== 'VND' ||
+      !data.reference
+    ) {
       throw new BadRequestException('Dữ liệu thanh toán PayOS không hợp lệ');
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<Array<{
-        id: string;
-        external_order_sn: string;
-        status: OrderStatus;
-        final_amount: unknown;
-        raw_payload: any;
-      }>>`
+      const rows = await tx.$queryRaw<
+        Array<{
+          id: string;
+          external_order_sn: string;
+          status: OrderStatus;
+          final_amount: unknown;
+          raw_payload: any;
+        }>
+      >`
         SELECT id, external_order_sn, status, final_amount, raw_payload
         FROM orders
         WHERE raw_payload->'payos'->>'orderCode' = ${String(data.orderCode)}
@@ -273,21 +339,31 @@ export class PayosPaymentService {
       const order = rows[0];
       if (!order) {
         // PayOS sends a signed sample webhook when registering the endpoint.
-        this.logger.warn(`PayOS webhook order code ${data.orderCode} does not match a SCANMS order`);
+        this.logger.warn(
+          `PayOS webhook order code ${data.orderCode} does not match a SCANMS order`,
+        );
         return { success: true };
       }
       const raw = (order.raw_payload || {}) as Record<string, any>;
-      if (raw.paymentMethod !== 'PAYOS' || Number(order.final_amount) !== data.amount ||
-          (raw.payos?.paymentLinkId && raw.payos.paymentLinkId !== data.paymentLinkId)) {
+      if (
+        raw.paymentMethod !== 'PAYOS' ||
+        Number(order.final_amount) !== data.amount ||
+        (raw.payos?.paymentLinkId &&
+          raw.payos.paymentLinkId !== data.paymentLinkId)
+      ) {
         throw new BadRequestException('Giao dịch PayOS không khớp đơn hàng');
       }
       const transactionId = `PAYOS:${data.reference}`;
       if (raw.paymentStatus === 'PAID') {
         if (raw.transactionId === transactionId) return { success: true };
-        throw new ConflictException('Đơn hàng đã được thanh toán bởi giao dịch khác');
+        throw new ConflictException(
+          'Đơn hàng đã được thanh toán bởi giao dịch khác',
+        );
       }
       if (order.status === OrderStatus.CANCELLED) {
-        throw new ConflictException('Đơn đã hủy nhưng PayOS báo thanh toán; cần đối soát thủ công');
+        throw new ConflictException(
+          'Đơn đã hủy nhưng PayOS báo thanh toán; cần đối soát thủ công',
+        );
       }
       await tx.paymentTransaction.create({
         data: {
@@ -315,10 +391,17 @@ export class PayosPaymentService {
       await tx.auditLog.create({
         data: {
           action: 'PAYMENT_RECONCILED',
-          details: { provider: 'PAYOS', orderCode: order.external_order_sn, transactionId, amount: data.amount },
+          details: {
+            provider: 'PAYOS',
+            orderCode: order.external_order_sn,
+            transactionId,
+            amount: data.amount,
+          },
         },
       });
-      this.logger.log(`PayOS payment confirmed for order ${order.external_order_sn}`);
+      this.logger.log(
+        `PayOS payment confirmed for order ${order.external_order_sn}`,
+      );
       return { success: true };
     });
   }

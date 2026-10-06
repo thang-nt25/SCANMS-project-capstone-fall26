@@ -152,8 +152,10 @@ export class RedirectController {
 
   @Get(['r/rate-limit/health', 'api/referral-links/rate-limit/health'])
   @ApiOperation({
-    summary: 'Kiểm tra trạng thái sức khỏe Redis Rate Limiter (FR-14 Mục 23, 29)',
-    description: 'Cung cấp thông tin trạng thái Redis, chế độ fallback degraded, và số liệu metric.',
+    summary:
+      'Kiểm tra trạng thái sức khỏe Redis Rate Limiter (FR-14 Mục 23, 29)',
+    description:
+      'Cung cấp thông tin trạng thái Redis, chế độ fallback degraded, và số liệu metric.',
   })
   async getRateLimitHealth() {
     return this.service.getRateLimitHealth();
@@ -350,7 +352,8 @@ export class RedirectController {
         const store = result.link?.store;
         const title = product?.title || 'Sản phẩm đối tác - SCANMS';
         const description = `Khám phá ${product?.title || 'sản phẩm'} chính hãng phân phối bởi ${store?.name || 'gian hàng đối tác'} trên sàn SCANMS.`;
-        const imageUrl = product?.imageUrl || `${publicAppUrl}/assets/product-placeholder.svg`;
+        const imageUrl =
+          product?.imageUrl || `${publicAppUrl}/assets/product-placeholder.svg`;
         const price = product?.price ? Number(product.price) : 0;
 
         return res.status(HttpStatus.OK).send(`<!DOCTYPE html>
@@ -365,10 +368,14 @@ export class RedirectController {
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:image" content="${escapeHtml(imageUrl)}">
   <meta property="og:url" content="${escapeHtml(destinationUrl)}">
-  ${price > 0 ? `<meta property="product:price:amount" content="${price}">
+  ${
+    price > 0
+      ? `<meta property="product:price:amount" content="${price}">
   <meta property="product:price:currency" content="VND">
   <meta property="og:price:amount" content="${price}">
-  <meta property="og:price:currency" content="VND">` : ''}
+  <meta property="og:price:currency" content="VND">`
+      : ''
+  }
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
@@ -455,7 +462,8 @@ export class RedirectController {
 
   @Get('p/:idOrSlug')
   @ApiOperation({
-    summary: 'Chuyển hướng URL sản phẩm rút gọn: Bot mạng xã hội vào SEO HTML, người dùng vào React SPA (FR-15)',
+    summary:
+      'Chuyển hướng URL sản phẩm rút gọn: Bot mạng xã hội vào SEO HTML, người dùng vào React SPA (FR-15)',
   })
   async handleDirectProductUrl(
     @Param('idOrSlug') idOrSlug: string,

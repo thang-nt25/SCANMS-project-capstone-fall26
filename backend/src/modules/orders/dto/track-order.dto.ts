@@ -22,4 +22,3 @@ export class TrackOrderQueryDto {
   @MaxLength(100)
   orderSn?: string;
 }
-

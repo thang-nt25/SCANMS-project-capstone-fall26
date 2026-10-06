@@ -428,41 +428,6 @@ export default function MarketplacePage() {
 
       {/* Fixed Sticky Top Header Container */}
       <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300">
-        {/* Top Banner Bar - Slides up/collapses when scrolled */}
-        <aside
-          className={`bg-[#F3EFE6] text-[#B88E4F] text-[11.5px] font-medium px-4 border-b border-[#EAE4D7] transition-all duration-300 ease-in-out overflow-hidden ${
-            isScrolled ? 'max-h-0 py-0 opacity-0 border-transparent pointer-events-none' : 'max-h-12 py-2 opacity-100'
-          }`}
-        >
-          <div className="max-w-[1200px] mx-auto px-3 sm:px-4 lg:px-6 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#EBD08C] animate-ping"></span>
-              <span className="font-bold text-[#1A1612]">ScanMS COMMERCE:</span>
-              <span className="text-[#7D715E]">Sàn Tiếp Thị Liên Kết Đa Gian Hàng · 100% Đối Tác KYC · Đồng Kiểm 14 Ngày</span>
-            </div>
-            <div className="hidden sm:flex items-center gap-5 text-xs text-[#B88E4F]">
-              <button
-                type="button"
-                onClick={() => setIsGuideOpen(true)}
-                className="hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer font-semibold"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                Chính sách an tâm
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  trackingRef.current?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer font-semibold"
-              >
-                <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                Tra cứu đơn
-              </button>
-            </div>
-          </div>
-        </aside>
-
         {/* Main marketplace header */}
         <header
           className={`bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] transition-all duration-300 ease-in-out ${

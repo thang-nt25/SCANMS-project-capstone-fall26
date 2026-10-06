@@ -42,12 +42,16 @@ export class CreateConversationDto {
   @IsUUID()
   collaboratorId?: string;
 
-  @ApiPropertyOptional({ description: 'ID khách hàng khi Shop mở hội thoại hỗ trợ' })
+  @ApiPropertyOptional({
+    description: 'ID khách hàng khi Shop mở hội thoại hỗ trợ',
+  })
   @IsOptional()
   @IsUUID()
   customerId?: string;
 
-  @ApiPropertyOptional({ description: 'Mở hội thoại với tư cách người mua hàng' })
+  @ApiPropertyOptional({
+    description: 'Mở hội thoại với tư cách người mua hàng',
+  })
   @IsOptional()
   @IsBoolean()
   asCustomer?: boolean;

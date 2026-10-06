@@ -16,7 +16,13 @@ import { AuthModule } from '../auth/auth.module';
 import { PayosPaymentService } from './payos-payment.service';
 
 @Module({
-  imports: [PrismaModule, CouponsModule, WalletsModule, CloudinaryModule, AuthModule],
+  imports: [
+    PrismaModule,
+    CouponsModule,
+    WalletsModule,
+    CloudinaryModule,
+    AuthModule,
+  ],
   controllers: [OrdersController],
   providers: [
     OrdersService,

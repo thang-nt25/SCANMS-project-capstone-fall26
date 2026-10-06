@@ -7,7 +7,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/database/prisma.service';
 import { OrderStatus } from '@prisma/client';
-import { CreateGhnOrderDto, CalculateShippingFeeDto, GhnRequiredNote } from './dto/shipping.dto';
+import {
+  CreateGhnOrderDto,
+  CalculateShippingFeeDto,
+  GhnRequiredNote,
+} from './dto/shipping.dto';
 
 interface GhnProvince {
   ProvinceID: number;
@@ -102,7 +106,9 @@ export class GhnService {
       const data = await res.json();
       return data as T;
     } catch (error: any) {
-      this.logger.error(`Lỗi gọi API GHN [${method} ${endpoint}]: ${error?.message}`);
+      this.logger.error(
+        `Lỗi gọi API GHN [${method} ${endpoint}]: ${error?.message}`,
+      );
       throw error;
     }
   }
@@ -198,7 +204,9 @@ export class GhnService {
       // Tìm Tỉnh/Thành phố khớp nhất (ưu tiên chuỗi xuất hiện ở cuối địa chỉ)
       let bestProvinceIndex = -1;
       for (const p of provinces) {
-        const pName = p.ProvinceName.toLowerCase().replace(/tỉnh|thành phố|tp\.?/g, '').trim();
+        const pName = p.ProvinceName.toLowerCase()
+          .replace(/tỉnh|thành phố|tp\.?/g, '')
+          .trim();
         if (pName && raw.includes(pName)) {
           const idx = raw.lastIndexOf(pName);
           if (idx > bestProvinceIndex) {
@@ -214,7 +222,9 @@ export class GhnService {
         let bestDistrictIndex = -1;
 
         for (const d of districts) {
-          const dName = d.DistrictName.toLowerCase().replace(/quận|huyện|thị xã|tp\.?/g, '').trim();
+          const dName = d.DistrictName.toLowerCase()
+            .replace(/quận|huyện|thị xã|tp\.?/g, '')
+            .trim();
           if (dName && raw.includes(dName)) {
             const idx = raw.lastIndexOf(dName);
             if (idx > bestDistrictIndex) {
@@ -229,7 +239,9 @@ export class GhnService {
           const wards = await this.getWards(matchedDistrict.DistrictID);
 
           for (const w of wards) {
-            const wName = w.WardName.toLowerCase().replace(/phường|xã|thị trấn/g, '').trim();
+            const wName = w.WardName.toLowerCase()
+              .replace(/phường|xã|thị trấn/g, '')
+              .trim();
             if (wName && raw.includes(wName)) {
               resolvedWardCode = w.WardCode;
               break;
@@ -241,7 +253,9 @@ export class GhnService {
         }
       }
     } catch (e: any) {
-      this.logger.warn(`Lỗi phân tích địa chỉ sang GHN location: ${e?.message}`);
+      this.logger.warn(
+        `Lỗi phân tích địa chỉ sang GHN location: ${e?.message}`,
+      );
     }
 
     return { districtId: resolvedDistrictId, wardCode: resolvedWardCode };
@@ -283,7 +297,9 @@ export class GhnService {
         };
       }
     } catch (e: any) {
-      this.logger.warn(`Tính cước GHN lỗi, chuyển sang cước mặc định: ${e?.message}`);
+      this.logger.warn(
+        `Tính cước GHN lỗi, chuyển sang cước mặc định: ${e?.message}`,
+      );
     }
 
     return {
@@ -320,7 +336,9 @@ export class GhnService {
     }
 
     if (storeIdContext && order.storeId !== storeIdContext) {
-      throw new BadRequestException('Bạn không có quyền tạo vận đơn cho đơn hàng của gian hàng khác.');
+      throw new BadRequestException(
+        'Bạn không có quyền tạo vận đơn cho đơn hàng của gian hàng khác.',
+      );
     }
 
     const { districtId, wardCode } = await this.resolveGhnLocation(
@@ -348,7 +366,9 @@ export class GhnService {
 
     const buildGhnPayload = (targetCod: number) => ({
       payment_type_id: 2, // Người nhận trả cước
-      note: customOptions?.note || `Đơn hàng #${order.externalOrderSn} từ sàn SCANMS`,
+      note:
+        customOptions?.note ||
+        `Đơn hàng #${order.externalOrderSn} từ sàn SCANMS`,
       required_note:
         customOptions?.requiredNote || GhnRequiredNote.CHOXEMHANGKHONGTHU,
       from_name: order.store?.name || 'Gian hàng SCANMS',
@@ -358,7 +378,9 @@ export class GhnService {
       from_district_id: 1442,
       to_name: order.customerName || 'Khách hàng SCANMS',
       to_phone: order.customerPhone || '0987654321',
-      to_address: order.shippingAddress || '72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+      to_address:
+        order.shippingAddress ||
+        '72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
       to_ward_code: wardCode,
       to_district_id: districtId,
       cod_amount: targetCod,
@@ -368,7 +390,10 @@ export class GhnService {
       width: customOptions?.width || 10,
       height: customOptions?.height || 5,
       service_type_id: 2, // Giao chuẩn TMĐT
-      items: items.length > 0 ? items : [{ name: 'Sản phẩm SCANMS', quantity: 1, price: 100000 }],
+      items:
+        items.length > 0
+          ? items
+          : [{ name: 'Sản phẩm SCANMS', quantity: 1, price: 100000 }],
     });
 
     let orderCode = '';
@@ -378,7 +403,9 @@ export class GhnService {
     let ghnResponseData: any = null;
 
     try {
-      this.logger.log(`Đang gửi yêu cầu tạo đơn sang GHN cho Đơn hàng #${order.externalOrderSn}...`);
+      this.logger.log(
+        `Đang gửi yêu cầu tạo đơn sang GHN cho Đơn hàng #${order.externalOrderSn}...`,
+      );
       let ghnRes = await this.ghnFetch<{
         code: number;
         message: string;
@@ -400,7 +427,9 @@ export class GhnService {
         (ghnRes?.code_message === 'COD_IS_OVER_LIMIT' ||
           ghnRes?.message?.includes('COD'))
       ) {
-        this.logger.warn(`Tài khoản GHN bị giới hạn COD: "${ghnRes?.message}". Đang tự động điều chỉnh COD về 50.000đ để bắn đơn GHN thành công...`);
+        this.logger.warn(
+          `Tài khoản GHN bị giới hạn COD: "${ghnRes?.message}". Đang tự động điều chỉnh COD về 50.000đ để bắn đơn GHN thành công...`,
+        );
         codAmount = 50000;
         ghnRes = await this.ghnFetch<{
           code: number;
@@ -423,7 +452,9 @@ export class GhnService {
         expectedDeliveryTime = ghnRes.data.expected_delivery_time || null;
         isRealGhn = true;
         ghnResponseData = ghnRes.data;
-        this.logger.log(`✅ Tạo đơn GHN thành công! Mã vận đơn GHN: ${orderCode}`);
+        this.logger.log(
+          `✅ Tạo đơn GHN thành công! Mã vận đơn GHN: ${orderCode}`,
+        );
       } else {
         this.logger.warn(`GHN trả về mã ${ghnRes?.code}: ${ghnRes?.message}.`);
       }
@@ -539,7 +570,9 @@ export class GhnService {
         detailData = res.data;
       }
     } catch (e: any) {
-      this.logger.warn(`Không tra cứu được mã ${orderCode} trên GHN: ${e?.message}`);
+      this.logger.warn(
+        `Không tra cứu được mã ${orderCode} trên GHN: ${e?.message}`,
+      );
     }
 
     const now = new Date();
@@ -552,7 +585,8 @@ export class GhnService {
       status: detailData?.status || 'delivering',
       statusText: this.translateStatus(detailData?.status || 'delivering'),
       trackingUrl: `https://ghn.vn/blogs/trang-thai-don-hang?order_code=${encodeURIComponent(orderCode)}`,
-      expectedDeliveryTime: detailData?.leadtime || detailData?.expected_delivery_time || null,
+      expectedDeliveryTime:
+        detailData?.leadtime || detailData?.expected_delivery_time || null,
       timeline: [
         {
           status: 'ready_to_pick',
@@ -564,21 +598,24 @@ export class GhnService {
         {
           status: 'picking',
           title: 'Đã lấy hàng & nhập kho phân loại',
-          description: 'Kiện hàng đã được cân đo và phân loại tại bưu cục trung chuyển',
+          description:
+            'Kiện hàng đã được cân đo và phân loại tại bưu cục trung chuyển',
           time: pickedTime.toISOString(),
           completed: true,
         },
         {
           status: 'delivering',
           title: 'Đang vận chuyển đến người nhận',
-          description: 'Bưu tá GHN đang tiến hành giao hàng đến địa chỉ của bạn',
+          description:
+            'Bưu tá GHN đang tiến hành giao hàng đến địa chỉ của bạn',
           time: now.toISOString(),
           completed: true,
         },
         {
           status: 'delivered',
           title: 'Giao hàng thành công (Kích hoạt Escrow 14 ngày)',
-          description: 'Khách hàng nhận hàng và bắt đầu thời gian thẩm định đổi trả 14 ngày',
+          description:
+            'Khách hàng nhận hàng và bắt đầu thời gian thẩm định đổi trả 14 ngày',
           time: null,
           completed: detailData?.status === 'delivered',
         },
@@ -625,7 +662,9 @@ export class GhnService {
           deliveredAt: new Date(),
         },
       });
-      this.logger.log(`✅ Webhook GHN: Đơn #${order.externalOrderSn} đã được chuyển sang DELIVERED.`);
+      this.logger.log(
+        `✅ Webhook GHN: Đơn #${order.externalOrderSn} đã được chuyển sang DELIVERED.`,
+      );
     } else if (ghnStatus === 'cancel' && order.status === OrderStatus.PENDING) {
       await this.prisma.order.update({
         where: { id: order.id },

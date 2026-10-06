@@ -121,4 +121,18 @@ export const walletService = {
       >("/wallets/me/bank-account")
     ).data;
   },
+
+  async topUpDemo(amount: number) {
+    return (
+      await api.post<
+        never,
+        ApiEnvelope<{
+          message: string;
+          amount: number;
+          availableBalance: string;
+        }>
+      >("/wallets/top-up-demo", { amount })
+    ).data;
+  },
 };
+

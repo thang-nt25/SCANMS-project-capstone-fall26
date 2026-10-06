@@ -2,10 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import * as bcrypt from 'bcryptjs';
-import {
-  UserRole,
-  CampaignParticipantStatus,
-} from '@prisma/client';
+import { UserRole, CampaignParticipantStatus } from '@prisma/client';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/core/database/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -52,7 +49,9 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
         },
         select: { id: true },
       });
-      const allUserIds = Array.from(new Set([...testUserIds, ...existingUsers.map(u => u.id)]));
+      const allUserIds = Array.from(
+        new Set([...testUserIds, ...existingUsers.map((u) => u.id)]),
+      );
 
       const existingStores = await prisma.store.findMany({
         where: {
@@ -64,7 +63,9 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
         },
         select: { id: true },
       });
-      const allStoreIds = Array.from(new Set([...testStoreIds, ...existingStores.map(s => s.id)]));
+      const allStoreIds = Array.from(
+        new Set([...testStoreIds, ...existingStores.map((s) => s.id)]),
+      );
 
       // Dọn dẹp bảng quan hệ
       await prisma.auditLog.deleteMany({
@@ -191,7 +192,12 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
     for (const u of testUsers) {
       await prisma.user.upsert({
         where: { id: u.id },
-        update: { passwordHash, isActive: true, role: u.role, fullName: u.fullName },
+        update: {
+          passwordHash,
+          isActive: true,
+          role: u.role,
+          fullName: u.fullName,
+        },
         create: {
           id: u.id,
           email: u.email,
@@ -289,7 +295,8 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
     const loginOtherShop = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'othershop-fr27@scanms.test', password: 'Password@123' });
-    tokenOtherShop = loginOtherShop.body.data?.accessToken || loginOtherShop.body.accessToken;
+    tokenOtherShop =
+      loginOtherShop.body.data?.accessToken || loginOtherShop.body.accessToken;
 
     const loginKolA = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -395,7 +402,8 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
       .set('Authorization', `Bearer ${tokenShop}`)
       .send({
         collaboratorId: kolAId,
-        personalMessage: 'Chào bạn Nhật, Shop trân trọng mời bạn tham gia với thưởng +7.5% nhé!',
+        personalMessage:
+          'Chào bạn Nhật, Shop trân trọng mời bạn tham gia với thưởng +7.5% nhé!',
       });
 
     expect(res.status).toBe(200);
@@ -456,7 +464,9 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toContain('KOL này đã nhận được thẻ mời VIP trước đó');
+    expect(res.body.message).toContain(
+      'KOL này đã nhận được thẻ mời VIP trước đó',
+    );
   });
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -508,7 +518,7 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
       orderBy: { createdAt: 'desc' },
     });
 
-    const acceptedMsg = msgs.find(m => {
+    const acceptedMsg = msgs.find((m) => {
       try {
         const parsed = JSON.parse(m.messageText);
         return parsed.type === 'CAMPAIGN_ACCEPTED';
@@ -605,7 +615,7 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
       where: { userId: { in: [shopOwnerId, kolAId, kolBId] } },
     });
 
-    const actions = auditLogs.map(a => a.action);
+    const actions = auditLogs.map((a) => a.action);
     expect(actions).toContain('CAMPAIGN_CREATED');
     expect(actions).toContain('CAMPAIGN_INVITE_SENT');
     expect(actions).toContain('CAMPAIGN_INVITE_ACCEPTED');
@@ -615,7 +625,7 @@ describe('FR-27 — Exclusive VIP Campaign Chat Invitations E2E Suite (Real Post
       where: { userId: { in: [shopOwnerId, kolAId, kolBId] } },
     });
 
-    const notifTypes = notifications.map(n => n.type);
+    const notifTypes = notifications.map((n) => n.type);
     expect(notifTypes).toContain('CAMPAIGN_INVITE');
     expect(notifTypes).toContain('CAMPAIGN_ACCEPTED');
     expect(notifTypes).toContain('CAMPAIGN_REJECTED');

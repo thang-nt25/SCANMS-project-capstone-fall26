@@ -69,8 +69,10 @@ export class RegisterDto {
   storeName?: string;
 
   @ApiPropertyOptional({
-    example: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-    description: 'Ảnh đại diện của KOL / KOC (Bắt buộc khi đăng ký COLLABORATOR)',
+    example:
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+    description:
+      'Ảnh đại diện của KOL / KOC (Bắt buộc khi đăng ký COLLABORATOR)',
   })
   @IsOptional()
   @IsString({ message: 'Ảnh đại diện không hợp lệ' })

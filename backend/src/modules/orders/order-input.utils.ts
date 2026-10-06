@@ -37,7 +37,9 @@ export function validateCustomerName(value: string): string {
   }
   const trimmed = value.trim();
   if (trimmed.length < 2 || trimmed.length > 150) {
-    throw new BadRequestException('Họ và tên người nhận phải từ 2 đến 150 ký tự');
+    throw new BadRequestException(
+      'Họ và tên người nhận phải từ 2 đến 150 ký tự',
+    );
   }
   // Disallow HTML tags, script injection
   if (/<[^>]*>/.test(trimmed) || /[<>{}\\]/.test(trimmed)) {
@@ -67,7 +69,9 @@ export function validateOrderNotes(value?: string): string | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   if (trimmed.length > 500) {
-    throw new BadRequestException('Ghi chú giao hàng không được vượt quá 500 ký tự');
+    throw new BadRequestException(
+      'Ghi chú giao hàng không được vượt quá 500 ký tự',
+    );
   }
   return trimmed.replace(/<[^>]*>/g, '');
 }
@@ -144,7 +148,10 @@ export function verifyCancellationToken(
     .digest('hex');
 
   // Hỗ trợ cả trường hợp token cũ lưu plaintext hoặc token mới lưu SHA-256 hash
-  if (storedTokenOrHash.length === 64 && /^[0-9a-f]{64}$/i.test(storedTokenOrHash)) {
+  if (
+    storedTokenOrHash.length === 64 &&
+    /^[0-9a-f]{64}$/i.test(storedTokenOrHash)
+  ) {
     const inputBuf = Buffer.from(inputHash, 'utf8');
     const storedBuf = Buffer.from(storedTokenOrHash.toLowerCase(), 'utf8');
     if (inputBuf.length !== storedBuf.length) return false;

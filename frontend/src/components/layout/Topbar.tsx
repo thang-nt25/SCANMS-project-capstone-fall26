@@ -1,25 +1,38 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, ChevronDown, Store, LogOut, Settings, Camera, Loader2 } from 'lucide-react';
+import { Sun, Moon, ChevronDown, Store, LogOut, Settings, Camera, Loader2, ShoppingBag } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { NotificationDropdown } from './NotificationDropdown';
 import { ChatBell } from '../chat/ChatBell';
+import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
+import { ScanMSLogo } from '../common/ScanMSLogo';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
   onLogout?: () => void;
 }
 
 export function Topbar({
   currentUser,
-  theme,
-  onToggleTheme,
+  theme: propTheme,
+  onToggleTheme: propToggleTheme,
   onLogout,
 }: TopbarProps) {
+  const [internalTheme, setInternalTheme] = useState<'light' | 'dark'>('light');
+  const theme = propTheme || internalTheme;
+  const onToggleTheme = propToggleTheme || (() => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setInternalTheme(nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  });
   const location = useLocation();
   const pathname = location.pathname;
 
@@ -53,12 +66,20 @@ export function Topbar({
     ? 'SHOP_MANAGER'
     : activeWorkspace === 'admin'
     ? currentUser?.role === 'SYSTEM_MANAGER' ? 'SYSTEM_MANAGER' : 'SYSTEM_ADMIN'
-    : activeWorkspace === 'customer'
+    : activeWorkspace === 'customer' || location.pathname.startsWith('/customer')
     ? 'CUSTOMER'
     : 'COLLABORATOR';
   const isShop = role === 'SHOP_MANAGER';
   const isCustomer = role === 'CUSTOMER';
   const isAdmin = role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER';
+
+  const portalSectionName = isShop
+    ? 'KÊNH NGƯỜI BÁN'
+    : isAdmin
+    ? 'BAN QUẢN TRỊ'
+    : isCustomer
+    ? 'CỔNG KHÁCH HÀNG'
+    : 'CỔNG NHÀ SÁNG TẠO';
 
   const displayName =
     currentUser?.fullName ||
@@ -171,10 +192,17 @@ export function Topbar({
     if (pathname.includes('/chat')) return 'Tin nhắn & Trò chuyện Trực tiếp';
 
     if (pathname.startsWith('/customer')) {
-      if (pathname.includes('/orders')) return 'Đơn Hàng Của Tôi';
-      if (pathname.includes('/upgrade')) return 'Nâng Cấp Đối Tác (KOL / Shop)';
-      if (pathname.includes('/wishlist')) return 'Danh Sách Yêu Thích';
-      if (pathname.includes('/vouchers')) return 'Kho Mã Giảm Giá';
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      if (pathname.includes('/wallet') || search.includes('tab=wallet')) return 'Ví Mua Sắm SCANMS';
+      if (pathname.includes('/upgrade') || search.includes('tab=upgrade')) return 'Nâng Cấp Đối Tác (KOL / Shop)';
+      if (pathname.includes('/wishlist') || search.includes('tab=wishlist')) return 'Danh Sách Yêu Thích';
+      if (pathname.includes('/vouchers') || search.includes('tab=vouchers')) return 'Kho Mã Giảm Giá';
+      if (pathname.includes('/notifications') || search.includes('tab=notifications')) return 'Trung Tâm Thông Báo';
+      if (pathname.includes('/profile') || search.includes('tab=profile')) return 'Hồ Sơ & Bảo Mật';
+      if (pathname.includes('/identity') || search.includes('tab=identity')) return 'Xác Minh CCCD';
+      if (pathname.includes('/addresses') || search.includes('tab=addresses')) return 'Sổ Địa Chỉ Nhận Hàng';
+      if (pathname.includes('/security') || search.includes('tab=security')) return 'Bảo Mật & Mật Khẩu';
+      if (pathname.includes('/orders') || search.includes('tab=orders')) return 'Đơn Hàng Của Tôi';
       return 'Cổng Mua Sắm Khách Hàng';
     }
 
@@ -184,158 +212,179 @@ export function Topbar({
   };
 
   return (
-    <header className="shrink-0 min-h-[60px] px-6 py-2.5 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] flex items-center justify-between gap-4 z-20">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
+      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6">
+        {/* Left: Brand Logo + Section Breadcrumb */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
+            <ScanMSLogo size="md" />
+          </Link>
 
-      <div className="flex items-center gap-2 text-xs sm:text-sm text-[#7D715E]">
-        <span className="font-extrabold text-[#B88E4F] tracking-wide">SCANMS</span>
-        <span className="text-[#CDC4B5]">/</span>
-        <strong className="text-[#1A1612] font-bold">{getPageTitle()}</strong>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Hệ thống trực tuyến</span>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-[#7D715E] pl-3 border-l border-[#EAE4D7]">
+            <span className="font-extrabold text-[#B88E4F] tracking-wide">
+              {portalSectionName}
+            </span>
+            <span className="text-[#CDC4B5]">/</span>
+            <strong className="text-[#1A1612] font-bold truncate max-w-[220px] md:max-w-xs">{getPageTitle()}</strong>
+          </div>
         </div>
 
-        <Link
-          to="/marketplace"
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] hover:bg-[#ECE1CD] transition shadow-2xs group"
-          title="Xem Sàn Mua Sắm & Tiếp Thị Đa Gian Hàng"
-        >
-          <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
-          <span>Sàn mua sắm</span>
-        </Link>
-
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          aria-label="Đổi giao diện"
-          className="w-8.5 h-8.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] flex items-center justify-center transition cursor-pointer shadow-2xs"
-        >
-          {theme === 'dark' ? <Sun className="w-4 h-4 text-[#B88E4F]" /> : <Moon className="w-4 h-4 text-[#7D715E]" />}
-        </button>
-
-        <NotificationDropdown />
-        {(isCustomer || isShop || currentUser?.role === 'CUSTOMER' || currentUser?.role === 'SHOP_MANAGER') && currentUser?.id && <ChatBell userId={currentUser.id} isShop={isShop} />}
-
-        <div className="relative" ref={menuRef}>
-          <div
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
-          >
-            {currentUser?.avatarUrl ? (
-              <img
-                src={currentUser.avatarUrl}
-                alt="Avatar"
-                className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#E8D4B0] shadow-2xs"
-              />
-            ) : (
-              <span
-                className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-[#EAE4D7] text-[#B88E4F]"
-              >
-                {userProfile.avatar}
-              </span>
-            )}
-            <div className="text-left hidden md:block">
-              <strong className="block text-xs font-bold text-[#1A1612] leading-none">
-                {userProfile.name}
-              </strong>
-              <small className="text-[11px] font-semibold text-[#B88E4F] leading-tight block mt-0.5">
-                {userProfile.sub}
-              </small>
-            </div>
-            <ChevronDown className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
+        {/* Right: Actions, Switcher, Notifications & User Card */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Hệ thống trực tuyến</span>
           </div>
 
-          {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
-              <div className="p-2.5 border-b border-[#EAE4D7] flex items-center gap-2.5">
-                <div className="relative group shrink-0">
-                  {currentUser?.avatarUrl ? (
-                    <img
-                      src={currentUser.avatarUrl}
-                      alt="Avatar"
-                      className="w-10 h-10 rounded-xl object-cover border border-[#E8D4B0] shadow-2xs"
-                    />
-                  ) : (
-                    <span className="w-10 h-10 rounded-xl bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-sm border border-[#EAE4D7]">
-                      {userProfile.avatar}
-                    </span>
-                  )}
+          <Link
+            to="/marketplace"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] hover:bg-[#ECE1CD] transition shadow-2xs group"
+            title="Xem Sàn Mua Sắm & Tiếp Thị Đa Gian Hàng"
+          >
+            <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
+            <span>Sàn mua sắm</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label="Đổi giao diện"
+            className="w-8.5 h-8.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] flex items-center justify-center transition cursor-pointer shadow-2xs"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-[#B88E4F]" /> : <Moon className="w-4 h-4 text-[#7D715E]" />}
+          </button>
+
+          {currentUser && <WorkspaceSwitcher variant="header" />}
+
+          <NotificationDropdown />
+          {(isCustomer || isShop || currentUser?.role === 'CUSTOMER' || currentUser?.role === 'SHOP_MANAGER') && currentUser?.id && <ChatBell userId={currentUser.id} isShop={isShop} />}
+
+          <div className="relative" ref={menuRef}>
+            <div
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
+            >
+              {currentUser?.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt="Avatar"
+                  className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#E8D4B0] shadow-2xs"
+                />
+              ) : (
+                <span
+                  className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-[#EAE4D7] text-[#B88E4F]"
+                >
+                  {userProfile.avatar}
+                </span>
+              )}
+              <div className="text-left hidden md:block">
+                <strong className="block text-xs font-bold text-[#1A1612] leading-none">
+                  {userProfile.name}
+                </strong>
+                <small className="text-[11px] font-semibold text-[#B88E4F] leading-tight block mt-0.5">
+                  {userProfile.sub}
+                </small>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
+            </div>
+
+            {isMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+                <div className="p-2.5 border-b border-[#EAE4D7] flex items-center gap-2.5">
+                  <div className="relative group shrink-0">
+                    {currentUser?.avatarUrl ? (
+                      <img
+                        src={currentUser.avatarUrl}
+                        alt="Avatar"
+                        className="w-10 h-10 rounded-xl object-cover border border-[#E8D4B0] shadow-2xs"
+                      />
+                    ) : (
+                      <span className="w-10 h-10 rounded-xl bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-sm border border-[#EAE4D7]">
+                        {userProfile.avatar}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        avatarInputRef.current?.click();
+                      }}
+                      disabled={uploading}
+                      title="Bấm để tải ảnh đại diện lên"
+                      className="absolute -bottom-1 -right-1 p-1 rounded-full bg-[#C59B58] hover:bg-[#B88E4F] text-white shadow-xs border-2 border-white transition cursor-pointer"
+                    >
+                      {uploading ? (
+                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                      ) : (
+                        <Camera className="w-2.5 h-2.5" />
+                      )}
+                    </button>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-[#1A1612] truncate">
+                      {currentUser?.fullName || displayName}
+                    </div>
+                    <div className="text-[11px] text-[#7D715E] truncate mt-0.5">
+                      {currentUser?.email || 'N/A'}
+                    </div>
+                    <div className="mt-1 inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
+                      {displaySub}
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  onChange={handleAvatarUpload}
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  className="hidden"
+                />
+
+                <div className="py-1 flex flex-col gap-0.5">
+                  <Link
+                    to="/customer/orders"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    <span>Đơn mua cá nhân (Khách Hàng)</span>
+                  </Link>
+
+                  <Link
+                    to={profilePath}
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    <span>Cài đặt & Hồ sơ</span>
+                  </Link>
+
+                  <Link
+                    to="/marketplace"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
+                  >
+                    <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    <span>Sàn mua sắm công khai</span>
+                  </Link>
+                </div>
+
+                <div className="pt-1 border-t border-[#EAE4D7]">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      avatarInputRef.current?.click();
-                    }}
-                    disabled={uploading}
-                    title="Bấm để tải ảnh đại diện lên"
-                    className="absolute -bottom-1 -right-1 p-1 rounded-full bg-[#C59B58] hover:bg-[#B88E4F] text-white shadow-xs border-2 border-white transition cursor-pointer"
+                    onClick={handleLogoutClick}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-xl transition w-full text-left cursor-pointer"
                   >
-                    {uploading ? (
-                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                    ) : (
-                      <Camera className="w-2.5 h-2.5" />
-                    )}
+                    <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Đăng xuất an toàn</span>
                   </button>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-[#1A1612] truncate">
-                    {currentUser?.fullName || displayName}
-                  </div>
-                  <div className="text-[11px] text-[#7D715E] truncate mt-0.5">
-                    {currentUser?.email || 'N/A'}
-                  </div>
-                  <div className="mt-1 inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                    {displaySub}
-                  </div>
-                </div>
               </div>
-
-              <input
-                type="file"
-                ref={avatarInputRef}
-                onChange={handleAvatarUpload}
-                accept="image/png,image/jpeg,image/webp,image/jpg"
-                className="hidden"
-              />
-
-              <div className="py-1 flex flex-col gap-0.5">
-                <Link
-                  to={profilePath}
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                >
-                  <Settings className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Cài đặt & Hồ sơ</span>
-                </Link>
-
-                <Link
-                  to="/marketplace"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                >
-                  <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Sàn mua sắm công khai</span>
-                </Link>
-              </div>
-
-              <div className="pt-1 border-t border-[#EAE4D7]">
-                <button
-                  type="button"
-                  onClick={handleLogoutClick}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-xl transition w-full text-left cursor-pointer"
-                >
-                  <LogOut className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Đăng xuất an toàn</span>
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </header>
   );
 }
-

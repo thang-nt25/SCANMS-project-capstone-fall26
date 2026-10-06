@@ -55,37 +55,79 @@ export class UpdateProductDto {
   @IsString()
   origin?: string;
 
-  @ApiPropertyOptional({ description: 'Thông tin nhãn mác, cảnh báo và hướng dẫn trên bao bì' })
+  @ApiPropertyOptional({
+    description: 'Thông tin nhãn mác, cảnh báo và hướng dẫn trên bao bì',
+  })
   @IsOptional()
   @IsString()
   labelInfo?: string;
 
-  @ApiPropertyOptional({ description: 'Đường dẫn tài liệu chứng minh xuất xứ sản phẩm', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Đường dẫn tài liệu chứng minh xuất xứ sản phẩm',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  @IsUrl(
+    {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: false,
+    },
+    { each: true },
+  )
   originProofLinks?: string[];
 
-  @ApiPropertyOptional({ description: 'Ảnh chứng từ/xuất xứ sản phẩm đã tải lên', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Ảnh chứng từ/xuất xứ sản phẩm đã tải lên',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  @IsUrl(
+    {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: false,
+    },
+    { each: true },
+  )
   originProofImages?: string[];
 
-  @ApiPropertyOptional({ description: 'Đường dẫn chứng minh nhãn mác và thông tin công bố', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Đường dẫn chứng minh nhãn mác và thông tin công bố',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  @IsUrl(
+    {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: false,
+    },
+    { each: true },
+  )
   labelProofLinks?: string[];
 
-  @ApiPropertyOptional({ description: 'Ảnh nhãn mác, cảnh báo và hướng dẫn sử dụng đã tải lên', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Ảnh nhãn mác, cảnh báo và hướng dẫn sử dụng đã tải lên',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  @IsUrl(
+    {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: false,
+    },
+    { each: true },
+  )
   labelProofImages?: string[];
 
   @ApiPropertyOptional({
@@ -102,7 +144,10 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
-  @IsString({ each: true, message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ' })
+  @IsString({
+    each: true,
+    message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ',
+  })
   subImages?: string[];
 
   @ApiPropertyOptional({
@@ -155,12 +200,16 @@ export class UpdateProductDto {
   @IsBoolean()
   isAffiliateEnabled?: boolean;
 
-  @ApiPropertyOptional({ description: 'Cho phép KOL đăng ký nhận sản phẩm mẫu' })
+  @ApiPropertyOptional({
+    description: 'Cho phép KOL đăng ký nhận sản phẩm mẫu',
+  })
   @IsOptional()
   @IsBoolean()
   sampleEnabled?: boolean;
 
-  @ApiPropertyOptional({ description: 'Số lượng mẫu tối đa Shop cấp cho sản phẩm' })
+  @ApiPropertyOptional({
+    description: 'Số lượng mẫu tối đa Shop cấp cho sản phẩm',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)

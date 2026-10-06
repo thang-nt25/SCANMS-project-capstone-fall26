@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import {
   Prisma,
   TransactionType,
@@ -7,6 +8,7 @@ import {
   FinancialLedger,
 } from '@prisma/client';
 import { FinancialLedgerService } from './financial-ledger.service';
+import { PrismaService } from '../../core/database/prisma.service';
 import type {
   LedgerReference,
   LedgerBalanceChange,
@@ -21,7 +23,10 @@ export class WalletBalanceInvariantError extends Error {
 
 @Injectable()
 export class WalletsService {
-  constructor(private readonly ledgerService: FinancialLedgerService) {}
+  constructor(
+    private readonly ledgerService: FinancialLedgerService,
+    @Optional() private readonly prisma?: PrismaService,
+  ) {}
 
   /** The caller must create the payout request in this same transaction. */
   async debitAvailableBalanceForWithdrawal(
@@ -385,5 +390,94 @@ export class WalletsService {
         storeId,
       )
     ).wallet;
+  }
+
+  /**
+   * Trừ số dư ví khi khách hàng thanh toán đơn hàng (1-Click Wallet Checkout)
+   */
+  async debitAvailableBalanceForOrder(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    amount: Prisma.Decimal,
+    orderId: string,
+  ) {
+    this.assertPositiveAmount(amount);
+    const wallet = await this.lockWallet(tx, userId);
+    if (wallet.availableBalance.lessThan(amount)) {
+      throw new BadRequestException(
+        'Số dư ví SCANMS không đủ để thanh toán đơn hàng.',
+      );
+    }
+
+    return (
+      await this.applyBalanceChanges(
+        tx,
+        wallet,
+        { id: orderId, type: 'ORDER_PAYMENT' },
+        [
+          this.buildChange(
+            WalletBalanceBucket.AVAILABLE,
+            TransactionType.PAYOUT_WITHDRAW,
+            wallet.availableBalance,
+            amount.negated(),
+          ),
+        ],
+      )
+    ).wallet;
+  }
+
+  /**
+   * Hoàn tiền siêu tốc vào ví SCANMS khi duyệt đổi trả / tranh chấp
+   */
+  async refundToWallet(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    amount: Prisma.Decimal,
+    orderId: string,
+  ) {
+    this.assertPositiveAmount(amount);
+    const wallet = await this.lockWallet(tx, userId);
+    return (
+      await this.applyBalanceChanges(
+        tx,
+        wallet,
+        { id: orderId, type: 'ORDER_REFUND' },
+        [
+          this.buildChange(
+            WalletBalanceBucket.AVAILABLE,
+            TransactionType.COMMISSION_APPROVED,
+            wallet.availableBalance,
+            amount,
+          ),
+        ],
+      )
+    ).wallet;
+  }
+
+  /**
+   * Nạp tiền giả lập Sandbox / Demo (Phục vụ kiểm thử & trải nghiệm thanh toán giỏ hàng)
+   */
+  async topUpDemo(userId: string, amountNum: number) {
+    if (!this.prisma) {
+      throw new Error('PrismaService is required for topUpDemo');
+    }
+    if (amountNum <= 0 || amountNum > 50000000) {
+      throw new BadRequestException(
+        'Số tiền nạp thử nghiệm phải lớn hơn 0 và tối đa 50.000.000đ',
+      );
+    }
+    const amount = new Prisma.Decimal(amountNum);
+    return this.prisma.$transaction(async (tx) => {
+      const res = await this.creditAvailableBalance(tx, userId, amount, {
+        id: randomUUID(),
+        type: 'TOPUP_DEMO',
+      });
+      return {
+        success: true,
+        message: `Nạp thành công ${amountNum.toLocaleString('vi-VN')} ₫ vào Ví SCANMS!`,
+        availableBalance: res.wallet.availableBalance.toFixed(2),
+        walletId: res.wallet.id,
+      };
+    });
   }
 }

@@ -42,7 +42,12 @@ export class MailService {
     const name = this.escapeHtml(input.customerName);
     const orderCode = this.escapeHtml(input.publicOrderCode);
     const storeName = this.escapeHtml(input.storeName);
-    const paymentMethod = input.paymentMethod === 'PAYOS' ? 'PayOS' : input.paymentMethod === 'VIETQR' ? 'VietQR' : 'COD';
+    const paymentMethod =
+      input.paymentMethod === 'PAYOS'
+        ? 'PayOS'
+        : input.paymentMethod === 'VIETQR'
+          ? 'VietQR'
+          : 'COD';
     const amount = new Intl.NumberFormat('vi-VN').format(input.finalAmount);
     const subject = `[SCANMS] Xác nhận đơn hàng ${input.publicOrderCode}`;
     const html = `
@@ -242,7 +247,9 @@ export class MailService {
   ) {
     const smsContent = `[SCANMS] Ma OTP xac thuc huy don hang ${orderCode} la: ${otp}. Hieu luc trong 5 phut. Khong chia se ma cho bat ky ai.`;
     console.log('\n======================================================');
-    console.log(`📱 [SCANMS SMS/ZNS DISPATCHER] Gửi tin nhắn tới SĐT: ${phoneNumber}`);
+    console.log(
+      `📱 [SCANMS SMS/ZNS DISPATCHER] Gửi tin nhắn tới SĐT: ${phoneNumber}`,
+    );
     console.log(`Nội dung: ${smsContent}`);
     console.log('======================================================\n');
   }
@@ -254,7 +261,12 @@ export class MailService {
     email: string,
     fullName: string,
     otp: string,
-    meta: { ipAddress?: string; userAgent?: string; time: string; location?: string },
+    meta: {
+      ipAddress?: string;
+      userAgent?: string;
+      time: string;
+      location?: string;
+    },
   ) {
     const maskedAccount =
       email.length > 5 ? `${email.slice(0, 2)}***${email.slice(-6)}` : email;
@@ -321,7 +333,7 @@ export class MailService {
           headers: {
             'X-Priority': '1',
             'X-MSMail-Priority': 'High',
-            'Importance': 'high',
+            Importance: 'high',
           },
         });
         this.logger.log(

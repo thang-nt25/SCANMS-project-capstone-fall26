@@ -23,7 +23,8 @@ async function bootstrap() {
   // Cấu hình Trust Proxy an toàn: Mặc định false, chỉ bật khi cấu hình rõ ràng với proxy tin cậy
   const httpAdapter = app.getHttpAdapter().getInstance();
   if (typeof httpAdapter?.set === 'function') {
-    const isTrustProxy = process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1';
+    const isTrustProxy =
+      process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1';
     const trustedProxies = process.env.TRUSTED_PROXIES || 'loopback';
     httpAdapter.set('trust proxy', isTrustProxy ? trustedProxies : false);
   }
@@ -46,7 +47,11 @@ async function bootstrap() {
     ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : []),
   ];
   const allowedOrigins = Array.from(
-    new Set(rawOrigins.map((origin) => origin.trim().replace(/\/$/, '')).filter(Boolean)),
+    new Set(
+      rawOrigins
+        .map((origin) => origin.trim().replace(/\/$/, ''))
+        .filter(Boolean),
+    ),
   );
 
   app.enableCors({

@@ -60,7 +60,9 @@ describe('FR-30 — Smart KOL Recommendation & Matching Engine E2E Suite (Real P
         },
         select: { id: true },
       });
-      const allUserIds = Array.from(new Set([...testUserIds, ...existingUsers.map((u) => u.id)]));
+      const allUserIds = Array.from(
+        new Set([...testUserIds, ...existingUsers.map((u) => u.id)]),
+      );
 
       const existingStores = await prisma.store.findMany({
         where: {
@@ -72,7 +74,9 @@ describe('FR-30 — Smart KOL Recommendation & Matching Engine E2E Suite (Real P
         },
         select: { id: true },
       });
-      const allStoreIds = Array.from(new Set([...testStoreIds, ...existingStores.map((s) => s.id)]));
+      const allStoreIds = Array.from(
+        new Set([...testStoreIds, ...existingStores.map((s) => s.id)]),
+      );
 
       // Delete dependent data
       await prisma.commission.deleteMany({
@@ -196,7 +200,12 @@ describe('FR-30 — Smart KOL Recommendation & Matching Engine E2E Suite (Real P
     for (const u of testUsers) {
       await prisma.user.upsert({
         where: { id: u.id },
-        update: { passwordHash, isActive: true, role: u.role, fullName: u.fullName },
+        update: {
+          passwordHash,
+          isActive: true,
+          role: u.role,
+          fullName: u.fullName,
+        },
         create: {
           id: u.id,
           email: u.email,
@@ -472,12 +481,14 @@ describe('FR-30 — Smart KOL Recommendation & Matching Engine E2E Suite (Real P
     const loginShop = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'shop-fr30@scanms.test', password: 'Password@123' });
-    tokenShop = loginShop.body?.data?.accessToken || loginShop.body?.accessToken;
+    tokenShop =
+      loginShop.body?.data?.accessToken || loginShop.body?.accessToken;
 
     const loginAdmin = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'admin-fr30@scanms.test', password: 'Password@123' });
-    tokenAdmin = loginAdmin.body?.data?.accessToken || loginAdmin.body?.accessToken;
+    tokenAdmin =
+      loginAdmin.body?.data?.accessToken || loginAdmin.body?.accessToken;
 
     const loginKol = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -605,7 +616,16 @@ describe('FR-30 — Smart KOL Recommendation & Matching Engine E2E Suite (Real P
     const body = res.body?.data || res.body;
     for (const kol of body.recommendedKols) {
       const tier = kol.tierName?.toUpperCase();
-      expect(['GOLD', 'PLATINUM', 'DIAMOND', 'VÀNG', 'BẠCH KIM', 'KIM CƯƠNG', 'KIM CƯƠNG (DIAMOND)', 'VÀNG (GOLD)']).toContain(tier);
+      expect([
+        'GOLD',
+        'PLATINUM',
+        'DIAMOND',
+        'VÀNG',
+        'BẠCH KIM',
+        'KIM CƯƠNG',
+        'KIM CƯƠNG (DIAMOND)',
+        'VÀNG (GOLD)',
+      ]).toContain(tier);
     }
   });
 

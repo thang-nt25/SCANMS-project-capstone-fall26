@@ -2,7 +2,9 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsInt, IsOptional, Min } from 'class-validator';
 
 export class UpdateVariantSamplePolicyDto {
-  @ApiPropertyOptional({ description: 'Kế thừa chính sách mẫu của sản phẩm cha' })
+  @ApiPropertyOptional({
+    description: 'Kế thừa chính sách mẫu của sản phẩm cha',
+  })
   @IsOptional()
   @IsBoolean()
   inheritProductPolicy?: boolean;

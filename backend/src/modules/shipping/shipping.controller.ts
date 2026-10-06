@@ -9,7 +9,12 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { GhnService } from './ghn.service';
 import { CreateGhnOrderDto, CalculateShippingFeeDto } from './dto/shipping.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -24,7 +29,8 @@ export class ShippingController {
 
   @ApiOperation({
     summary: 'Tạo vận đơn GHN Express chính thức (hoặc GHN Smart Sandbox)',
-    description: 'Gọi trực tiếp GHN API để sinh mã vận đơn, tính cước phí và chuyển đơn hàng sang trạng thái SHIPPING.',
+    description:
+      'Gọi trực tiếp GHN API để sinh mã vận đơn, tính cước phí và chuyển đơn hàng sang trạng thái SHIPPING.',
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)

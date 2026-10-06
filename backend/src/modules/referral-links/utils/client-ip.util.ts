@@ -22,7 +22,9 @@ function isIpInCidr(ip: string, cidr: string): boolean {
   if (isNaN(bits) || bits < 0 || bits > 32 || !net.isIPv4(range)) return false;
 
   const ipToInt = (addr: string) =>
-    addr.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+    addr
+      .split('.')
+      .reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
 
   const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
   return (ipToInt(ip) & mask) === (ipToInt(range) & mask);
@@ -100,7 +102,11 @@ export function extractTrustedClientIp(
     // 3. Fallback sang req.ip nếu Express đã được cấu hình trust proxy
     if (req.ip) {
       const cleanedReqIp = cleanIpString(req.ip);
-      if (cleanedReqIp !== '127.0.0.1' && cleanedReqIp !== '::1' && cleanedReqIp !== cleanedSocketIp) {
+      if (
+        cleanedReqIp !== '127.0.0.1' &&
+        cleanedReqIp !== '::1' &&
+        cleanedReqIp !== cleanedSocketIp
+      ) {
         return cleanedReqIp;
       }
     }
@@ -108,7 +114,8 @@ export function extractTrustedClientIp(
 
   // Khi trustProxy = false hoặc kết nối trực tiếp từ Internet không qua proxy:
   // Luôn dùng socket remote address để triệt tiêu nguy cơ giả mạo IP
-  const rawIp = cleanedSocketIp || (req.ip ? cleanIpString(req.ip) : '127.0.0.1');
+  const rawIp =
+    cleanedSocketIp || (req.ip ? cleanIpString(req.ip) : '127.0.0.1');
   return rawIp;
 }
 
@@ -192,10 +199,18 @@ function expandIPv6(ip: string): string {
  * Tạo mã băm HMAC-SHA256 của IP đã chuẩn hóa (FR-14 Mục 10, 11)
  * Secret nằm ở server, không lộ ra ngoài. Tuyệt đối không dùng hard-coded fallback.
  */
-export function hashIpForRateLimit(normalizedIp: string, secret: string): string {
+export function hashIpForRateLimit(
+  normalizedIp: string,
+  secret: string,
+): string {
   const effectiveSecret = secret || process.env.JWT_SECRET;
   if (!effectiveSecret || !effectiveSecret.trim()) {
-    throw new Error('FATAL SECURITY ERROR: JWT_SECRET hoặc server secret chưa được cấu hình cho IP HMAC rate limiting!');
+    throw new Error(
+      'FATAL SECURITY ERROR: JWT_SECRET hoặc server secret chưa được cấu hình cho IP HMAC rate limiting!',
+    );
   }
-  return crypto.createHmac('sha256', effectiveSecret).update(normalizedIp).digest('hex');
+  return crypto
+    .createHmac('sha256', effectiveSecret)
+    .update(normalizedIp)
+    .digest('hex');
 }

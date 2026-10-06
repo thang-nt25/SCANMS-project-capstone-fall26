@@ -289,12 +289,12 @@ export default function KycSubmissionPage() {
               <div className="flex flex-wrap items-center gap-2 mb-0.5">
                 <strong className="text-sm sm:text-base font-extrabold text-[#1A1612]">
                   {isVerified
-                    ? 'Hồ sơ đã được Ban Quản Trị SCANMS phê duyệt chính thức'
+                    ? 'Hồ sơ đã được phê duyệt'
                     : isRejected
-                    ? 'Hồ sơ bị từ chối phê duyệt'
+                    ? 'Hồ sơ bị từ chối'
                     : isPending
-                    ? 'Hồ sơ đang được Ban Quản Trị thẩm định đối soát'
-                    : 'Chưa hoàn tất nộp hồ sơ định danh'}
+                    ? 'Hồ sơ đang chờ duyệt'
+                    : 'Chưa gửi hồ sơ định danh'}
                 </strong>
                 <span
                   className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
@@ -311,47 +311,40 @@ export default function KycSubmissionPage() {
                 </span>
                 {isVerified && (
                   <span className="inline-flex items-center gap-1 bg-white border border-[#EEDFC6] text-[#B88E4F] text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-                    <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> TÍCH XANH CHÍNH THỨC
+                    <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> TÍCH XANH
                   </span>
                 )}
               </div>
               <p className="text-xs text-[#7D715E] leading-relaxed m-0">
                 {isVerified
-                  ? 'Tài khoản của bạn đã đạt chuẩn đối tác uy tín. Bạn có thể cập nhật lại tài khoản ngân hàng, mã số thuế hoặc ảnh CCCD mới bất cứ lúc nào bên dưới.'
+                  ? 'Tài khoản đã xác minh đối tác uy tín.'
                   : isRejected
-                  ? 'Thông tin định danh chưa hợp lệ hoặc hình ảnh CCCD không rõ. Vui lòng kiểm tra lại số liệu và gửi lại hồ sơ.'
+                  ? 'Thông tin chưa hợp lệ. Vui lòng kiểm tra và gửi lại.'
                   : isPending
-                  ? 'Đội ngũ kiểm soát gian lận và Admin sàn đang kiểm tra ảnh CCCD và các kênh sáng tạo nội dung của bạn.'
-                  : 'Vui lòng điền thông tin chính xác, tải ảnh 2 mặt CCCD và liên kết kênh mạng xã hội bên dưới.'}
+                  ? 'Hồ sơ đang được xem xét (kết quả trong 24h làm việc).'
+                  : 'Vui lòng cung cấp thông tin CCCD và kênh mạng xã hội bên dưới.'}
               </p>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* 2. FORM ĐỊNH DANH TOÀN DIỆN (CHÍNH XÁC THEO GIAO DIỆN ẢNH 2 BÊN USER) */}
+      {/* 2. FORM ĐỊNH DANH */}
       <form onSubmit={handleSubmit} className="bg-white border border-[#EAE4D7] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 w-full">
-        {/* BANNER TIÊU ĐỀ + NẠP DỮ LIỆU MẪU (CHUẨN IMAGE 2) */}
-        <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-black text-[#1A1612] tracking-tight m-0">
-                Hồ sơ Chứng Minh Kênh Sáng Tạo &amp; Thông Tin Định Danh KOL
-              </h3>
-              <p className="text-[11px] text-[#7D715E] mt-0.5 m-0">
-                Cung cấp link mạng xã hội và ảnh chụp màn hình studio để chứng minh quyền sở hữu kênh.
-              </p>
-            </div>
+        {/* BANNER TIÊU ĐỀ + NẠP DỮ LIỆU MẪU */}
+        <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#B88E4F]" />
+            <h3 className="text-xs sm:text-sm font-black text-[#1A1612] tracking-tight m-0">
+              Thông tin định danh &amp; Kênh sáng tạo
+            </h3>
           </div>
           <button
             type="button"
             onClick={fillSampleKolData}
             className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58] text-[11px] font-bold text-[#B88E4F] transition cursor-pointer shadow-2xs shrink-0"
           >
-            ⚡ Nạp dữ liệu mẫu thử nghiệm
+            ⚡ Nạp demo
           </button>
         </div>
 

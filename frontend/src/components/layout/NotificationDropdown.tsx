@@ -255,7 +255,17 @@ export const NotificationDropdown: React.FC = () => {
       return;
     }
 
-    // 2. Deep-link routing based on notification type
+    // 2. Action URL routing neu co san
+    let actionUrl = notif.data?.actionUrl;
+    if (actionUrl === '/customer/upgrade' && (notif.type === 'WELCOME' || notif.type === 'SYSTEM' || !notif.type.includes('UPGRADE'))) {
+      actionUrl = '/marketplace';
+    }
+    if (actionUrl) {
+      navigate(actionUrl);
+      return;
+    }
+
+    // 3. Deep-link routing based on notification type
     const user = authService.getCurrentUser();
     const userRole = user?.role;
 

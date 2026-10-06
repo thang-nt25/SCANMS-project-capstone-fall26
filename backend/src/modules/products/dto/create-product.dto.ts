@@ -19,7 +19,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductVariantInputDto } from './sync-product-variants.dto';
 
 export class CreateProductDto {
-  @ApiProperty({ description: 'Ít nhất một SKU phân loại được tạo cùng sản phẩm' })
+  @ApiProperty({
+    description: 'Ít nhất một SKU phân loại được tạo cùng sản phẩm',
+  })
   @IsArray()
   @ArrayMinSize(1, { message: 'Sản phẩm cần có ít nhất một phân loại SKU' })
   @ArrayMaxSize(100)
@@ -75,37 +77,79 @@ export class CreateProductDto {
   @IsNotEmpty({ message: 'Xuất xứ sản phẩm không được để trống' })
   origin: string;
 
-  @ApiProperty({ description: 'Thông tin nhãn mác, cảnh báo và hướng dẫn trên bao bì' })
+  @ApiProperty({
+    description: 'Thông tin nhãn mác, cảnh báo và hướng dẫn trên bao bì',
+  })
   @IsString()
   @IsNotEmpty({ message: 'Thông tin nhãn mác không được để trống' })
   labelInfo: string;
 
-  @ApiPropertyOptional({ description: 'Đường dẫn tài liệu chứng minh xuất xứ sản phẩm', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Đường dẫn tài liệu chứng minh xuất xứ sản phẩm',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  @IsUrl(
+    {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: false,
+    },
+    { each: true },
+  )
   originProofLinks?: string[];
 
-  @ApiPropertyOptional({ description: 'Ảnh chứng từ/xuất xứ sản phẩm đã tải lên', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Ảnh chứng từ/xuất xứ sản phẩm đã tải lên',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  @IsUrl(
+    {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: false,
+    },
+    { each: true },
+  )
   originProofImages?: string[];
 
-  @ApiPropertyOptional({ description: 'Đường dẫn chứng minh nhãn mác và thông tin công bố', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Đường dẫn chứng minh nhãn mác và thông tin công bố',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  @IsUrl(
+    {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: false,
+    },
+    { each: true },
+  )
   labelProofLinks?: string[];
 
-  @ApiPropertyOptional({ description: 'Ảnh nhãn mác, cảnh báo và hướng dẫn sử dụng đã tải lên', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Ảnh nhãn mác, cảnh báo và hướng dẫn sử dụng đã tải lên',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false }, { each: true })
+  @IsUrl(
+    {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: false,
+    },
+    { each: true },
+  )
   labelProofImages?: string[];
 
   @ApiProperty({
@@ -127,7 +171,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
   @ArrayMaxSize(4, { message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ' })
-  @IsString({ each: true, message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ' })
+  @IsString({
+    each: true,
+    message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ',
+  })
   subImages?: string[];
 
   @ApiProperty({ example: 499000, description: 'Giá bán thực tế (VNĐ)' })
@@ -169,12 +216,18 @@ export class CreateProductDto {
   @IsBoolean()
   isAffiliateEnabled?: boolean;
 
-  @ApiPropertyOptional({ default: false, description: 'Cho phép KOL đăng ký nhận sản phẩm mẫu' })
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Cho phép KOL đăng ký nhận sản phẩm mẫu',
+  })
   @IsOptional()
   @IsBoolean()
   sampleEnabled?: boolean;
 
-  @ApiPropertyOptional({ default: 0, description: 'Số lượng mẫu tối đa Shop cấp cho sản phẩm' })
+  @ApiPropertyOptional({
+    default: 0,
+    description: 'Số lượng mẫu tối đa Shop cấp cho sản phẩm',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)

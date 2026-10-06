@@ -30,7 +30,8 @@ export enum AnalyticsQuickRange {
 
 export class DashboardAnalyticsQueryDto {
   @ApiPropertyOptional({
-    description: 'Khoảng thời gian chọn nhanh (today, 7d, 30d, this_month, custom)',
+    description:
+      'Khoảng thời gian chọn nhanh (today, 7d, 30d, this_month, custom)',
     enum: AnalyticsQuickRange,
     default: AnalyticsQuickRange.LAST_30_DAYS,
     example: AnalyticsQuickRange.LAST_7_DAYS,
@@ -68,7 +69,8 @@ export class DashboardAnalyticsQueryDto {
   endDate?: string;
 
   @ApiPropertyOptional({
-    description: 'Độ chia biểu đồ chuỗi thời gian (hourly, daily, weekly, monthly)',
+    description:
+      'Độ chia biểu đồ chuỗi thời gian (hourly, daily, weekly, monthly)',
     enum: AnalyticsTimeInterval,
     default: AnalyticsTimeInterval.DAILY,
     example: AnalyticsTimeInterval.DAILY,
@@ -78,7 +80,8 @@ export class DashboardAnalyticsQueryDto {
   interval?: AnalyticsTimeInterval = AnalyticsTimeInterval.DAILY;
 
   @ApiPropertyOptional({
-    description: 'Lọc theo ID gian hàng cụ thể (Dành cho Admin hoặc Shop đa gian hàng)',
+    description:
+      'Lọc theo ID gian hàng cụ thể (Dành cho Admin hoặc Shop đa gian hàng)',
     example: '11111111-2828-4000-8000-000000000001',
   })
   @IsOptional()
@@ -86,7 +89,8 @@ export class DashboardAnalyticsQueryDto {
   storeId?: string;
 
   @ApiPropertyOptional({
-    description: 'Lọc theo kênh mạng xã hội cụ thể (TIKTOK, FACEBOOK, YOUTUBE, ZALO)',
+    description:
+      'Lọc theo kênh mạng xã hội cụ thể (TIKTOK, FACEBOOK, YOUTUBE, ZALO)',
     example: 'TIKTOK',
   })
   @IsOptional()
@@ -104,7 +108,8 @@ export class DashboardAnalyticsQueryDto {
 
 export class TopBreakdownQueryDto {
   @ApiPropertyOptional({
-    description: 'Số lượng phần tử lấy trong bảng xếp hạng Top (Mặc định 5, tối đa 50)',
+    description:
+      'Số lượng phần tử lấy trong bảng xếp hạng Top (Mặc định 5, tối đa 50)',
     example: 5,
     default: 5,
   })

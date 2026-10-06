@@ -29,7 +29,8 @@ export class RecommendKolsQueryDto {
   productId?: string;
 
   @ApiPropertyOptional({
-    description: 'Lọc theo danh mục ngành hàng (VD: Mỹ phẩm & Làm đẹp, Công nghệ, Thời trang)',
+    description:
+      'Lọc theo danh mục ngành hàng (VD: Mỹ phẩm & Làm đẹp, Công nghệ, Thời trang)',
     example: 'Mỹ phẩm & Làm đẹp',
   })
   @IsOptional()
@@ -47,7 +48,8 @@ export class RecommendKolsQueryDto {
   priceRange?: PriceRangeFilter = PriceRangeFilter.ALL;
 
   @ApiPropertyOptional({
-    description: 'Cấp bậc tối thiểu của KOL (BRONZE, SILVER, GOLD, PLATINUM, DIAMOND)',
+    description:
+      'Cấp bậc tối thiểu của KOL (BRONZE, SILVER, GOLD, PLATINUM, DIAMOND)',
     example: 'GOLD',
   })
   @IsOptional()
@@ -55,7 +57,8 @@ export class RecommendKolsQueryDto {
   minTier?: string;
 
   @ApiPropertyOptional({
-    description: 'Tỷ lệ chốt đơn tối thiểu (Conversion Rate CR% tối thiểu, VD: 3.0)',
+    description:
+      'Tỷ lệ chốt đơn tối thiểu (Conversion Rate CR% tối thiểu, VD: 3.0)',
     example: 3.0,
   })
   @IsOptional()
@@ -79,16 +82,28 @@ export class RecommendKolsQueryDto {
 }
 
 export class ScoreBreakdownDto {
-  @ApiProperty({ description: 'Điểm trùng khớp ngành hàng (0 - 100)', example: 95 })
+  @ApiProperty({
+    description: 'Điểm trùng khớp ngành hàng (0 - 100)',
+    example: 95,
+  })
   categoryScore: number;
 
-  @ApiProperty({ description: 'Điểm tỷ lệ chuyển đổi CR% (0 - 100)', example: 88 })
+  @ApiProperty({
+    description: 'Điểm tỷ lệ chuyển đổi CR% (0 - 100)',
+    example: 88,
+  })
   conversionRateScore: number;
 
-  @ApiProperty({ description: 'Điểm cấp bậc & mạng xã hội (0 - 100)', example: 90 })
+  @ApiProperty({
+    description: 'Điểm cấp bậc & mạng xã hội (0 - 100)',
+    example: 90,
+  })
   tierAndSocialScore: number;
 
-  @ApiProperty({ description: 'Điểm phù hợp phân khúc giá (0 - 100)', example: 92 })
+  @ApiProperty({
+    description: 'Điểm phù hợp phân khúc giá (0 - 100)',
+    example: 92,
+  })
   priceFitScore: number;
 }
 
@@ -99,7 +114,10 @@ export class KolSocialChannelSummaryDto {
   @ApiProperty({ description: 'Tên kênh', example: '@thuylinh.beauty' })
   channelName: string;
 
-  @ApiProperty({ description: 'Đường dẫn kênh', example: 'https://tiktok.com/@thuylinh.beauty' })
+  @ApiProperty({
+    description: 'Đường dẫn kênh',
+    example: 'https://tiktok.com/@thuylinh.beauty',
+  })
   channelUrl: string;
 
   @ApiProperty({ description: 'Số người theo dõi', example: 250000 })
@@ -110,76 +128,125 @@ export class KolSocialChannelSummaryDto {
 }
 
 export class KolLifetimeStatsSummaryDto {
-  @ApiProperty({ description: 'Số lượt nhấp hợp lệ, duy nhất được dùng khi chấm điểm' })
+  @ApiProperty({
+    description: 'Số lượt nhấp hợp lệ, duy nhất được dùng khi chấm điểm',
+  })
   totalClicks: number;
 
-  @ApiProperty({ description: 'Độ đầy đủ dữ liệu để đối sánh: LOW, MEDIUM, HIGH' })
+  @ApiProperty({
+    description: 'Độ đầy đủ dữ liệu để đối sánh: LOW, MEDIUM, HIGH',
+  })
   dataConfidence: string;
   @ApiProperty({ description: 'Tổng đơn hàng đã chốt', example: 342 })
   totalOrders: number;
 
-  @ApiProperty({ description: 'Tổng doanh thu GMV tạo ra (VNĐ)', example: 188450000 })
+  @ApiProperty({
+    description: 'Tổng doanh thu GMV tạo ra (VNĐ)',
+    example: 188450000,
+  })
   grossRevenue: number;
 
   @ApiProperty({ description: 'Tỷ lệ chuyển đổi CR% thực tế', example: 6.8 })
   conversionRate: number;
 
-  @ApiProperty({ description: 'Ngành hàng thế mạnh nhất', example: 'Mỹ phẩm & Làm đẹp' })
+  @ApiProperty({
+    description: 'Ngành hàng thế mạnh nhất',
+    example: 'Mỹ phẩm & Làm đẹp',
+  })
   primaryCategory: string;
 }
 
 export class KolMatchResultDto {
-  @ApiProperty({ description: 'ID định danh của KOL', example: '22222222-3030-4000-8000-000000000001' })
+  @ApiProperty({
+    description: 'ID định danh của KOL',
+    example: '22222222-3030-4000-8000-000000000001',
+  })
   collaboratorId: string;
 
   @ApiProperty({ description: 'Họ và tên KOL', example: 'Lê Thuỳ Linh' })
   fullName: string;
 
-  @ApiProperty({ description: 'Email liên hệ', example: 'thuylinh@scanms.test' })
+  @ApiProperty({
+    description: 'Email liên hệ',
+    example: 'thuylinh@scanms.test',
+  })
   email: string;
 
-  @ApiProperty({ description: 'Ảnh đại diện', example: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb' })
+  @ApiProperty({
+    description: 'Ảnh đại diện',
+    example: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+  })
   avatarUrl?: string;
 
   @ApiProperty({ description: 'Cấp bậc danh hiệu', example: 'Platinum' })
   tierName: string;
 
-  @ApiProperty({ description: 'Tiểu sử / Giới thiệu', example: 'Beauty Blogger chuyên dòng dưỡng ẩm & phục hồi da' })
+  @ApiProperty({
+    description: 'Tiểu sử / Giới thiệu',
+    example: 'Beauty Blogger chuyên dòng dưỡng ẩm & phục hồi da',
+  })
   bio: string;
 
-  @ApiProperty({ description: 'Điểm đối sánh có trọng số (0 - 100), không phải xác suất chốt đơn', example: 94 })
+  @ApiProperty({
+    description:
+      'Điểm đối sánh có trọng số (0 - 100), không phải xác suất chốt đơn',
+    example: 94,
+  })
   matchScore: number;
 
-  @ApiProperty({ description: 'Đánh giá mức độ phù hợp', example: 'Siêu Phù Hợp' })
+  @ApiProperty({
+    description: 'Đánh giá mức độ phù hợp',
+    example: 'Siêu Phù Hợp',
+  })
   matchLevel: string;
 
-  @ApiProperty({ description: 'Chi tiết điểm số 4 tiêu chí', type: ScoreBreakdownDto })
+  @ApiProperty({
+    description: 'Chi tiết điểm số 4 tiêu chí',
+    type: ScoreBreakdownDto,
+  })
   scoreBreakdown: ScoreBreakdownDto;
 
   @ApiProperty({
     description: 'Lời giải thích logic do AI phân tích tự động',
-    example: 'KOL Lê Thuỳ Linh đạt 94% tương thích nhờ kinh nghiệm bán chạy 342 đơn ngành Mỹ phẩm với tỷ lệ chốt đơn 6.8% vượt trội.',
+    example:
+      'KOL Lê Thuỳ Linh đạt 94% tương thích nhờ kinh nghiệm bán chạy 342 đơn ngành Mỹ phẩm với tỷ lệ chốt đơn 6.8% vượt trội.',
   })
   aiReasoning: string;
 
   @ApiProperty({
     description: '3 điểm mạnh nổi bật của KOL đối với sản phẩm này',
-    example: ['CR cao 6.8% (Top 5% toàn sàn)', 'Tệp khán giả nữ 85% trùng khớp', 'Đã chốt 340+ đơn Mỹ phẩm'],
+    example: [
+      'CR cao 6.8% (Top 5% toàn sàn)',
+      'Tệp khán giả nữ 85% trùng khớp',
+      'Đã chốt 340+ đơn Mỹ phẩm',
+    ],
   })
   keyStrengths: string[];
 
-  @ApiProperty({ description: 'Kênh mạng xã hội của KOL', type: [KolSocialChannelSummaryDto] })
+  @ApiProperty({
+    description: 'Kênh mạng xã hội của KOL',
+    type: [KolSocialChannelSummaryDto],
+  })
   socialChannels: KolSocialChannelSummaryDto[];
 
-  @ApiProperty({ description: 'Thống kê hiệu suất lịch sử', type: KolLifetimeStatsSummaryDto })
+  @ApiProperty({
+    description: 'Thống kê hiệu suất lịch sử',
+    type: KolLifetimeStatsSummaryDto,
+  })
   lifetimeStats: KolLifetimeStatsSummaryDto;
 }
 
 export class TargetProductSummaryDto {
-  @ApiProperty({ description: 'ID sản phẩm', example: '77777777-3030-4000-8000-000000000001' })
+  @ApiProperty({
+    description: 'ID sản phẩm',
+    example: '77777777-3030-4000-8000-000000000001',
+  })
   productId: string;
 
-  @ApiProperty({ description: 'Tên sản phẩm', example: 'Serum Phục Hồi B5 HA Đậm Đặc' })
+  @ApiProperty({
+    description: 'Tên sản phẩm',
+    example: 'Serum Phục Hồi B5 HA Đậm Đặc',
+  })
   title: string;
 
   @ApiProperty({ description: 'Danh mục', example: 'Mỹ phẩm & Làm đẹp' })
@@ -196,25 +263,44 @@ export class TargetProductSummaryDto {
 }
 
 export class AiRecommendationResponseDto {
-  @ApiProperty({ description: 'Thời điểm AI phân tích và tính toán', example: '2026-09-15T10:30:00.000Z' })
+  @ApiProperty({
+    description: 'Thời điểm AI phân tích và tính toán',
+    example: '2026-09-15T10:30:00.000Z',
+  })
   calculatedAt: string;
 
-  @ApiProperty({ description: 'Thông tin sản phẩm đối sánh (nếu có)', type: TargetProductSummaryDto, required: false })
+  @ApiProperty({
+    description: 'Thông tin sản phẩm đối sánh (nếu có)',
+    type: TargetProductSummaryDto,
+    required: false,
+  })
   targetProduct?: TargetProductSummaryDto;
 
-  @ApiProperty({ description: 'Tổng số lượng KOLs tiềm năng được phân tích', example: 120 })
+  @ApiProperty({
+    description: 'Tổng số lượng KOLs tiềm năng được phân tích',
+    example: 120,
+  })
   totalKolsScanned: number;
 
-  @ApiProperty({ description: 'Danh sách Top KOLs có điểm tương thích cao nhất', type: [KolMatchResultDto] })
+  @ApiProperty({
+    description: 'Danh sách Top KOLs có điểm tương thích cao nhất',
+    type: [KolMatchResultDto],
+  })
   recommendedKols: KolMatchResultDto[];
 }
 
 export class MatchAnalysisRequestDto {
-  @ApiProperty({ description: 'ID sản phẩm cần so khớp', example: '77777777-3030-4000-8000-000000000001' })
+  @ApiProperty({
+    description: 'ID sản phẩm cần so khớp',
+    example: '77777777-3030-4000-8000-000000000001',
+  })
   @IsUUID()
   productId: string;
 
-  @ApiProperty({ description: 'ID của KOL cần đánh giá tương thích', example: '22222222-3030-4000-8000-000000000001' })
+  @ApiProperty({
+    description: 'ID của KOL cần đánh giá tương thích',
+    example: '22222222-3030-4000-8000-000000000001',
+  })
   @IsUUID()
   collaboratorId: string;
 }
