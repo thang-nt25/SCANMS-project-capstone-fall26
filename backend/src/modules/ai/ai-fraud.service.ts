@@ -87,6 +87,20 @@ export class AiFraudService {
             price: true,
           },
         },
+        orders: {
+          where: {
+            status: { notIn: ['CANCELLED', 'RETURNED'] },
+          },
+          select: {
+            id: true,
+            customerId: true,
+            customerName: true,
+            customerPhone: true,
+            customerEmail: true,
+            finalAmount: true,
+          },
+          take: 50,
+        },
         clickTrafficLogs: {
           take: 100,
           orderBy: { createdAt: 'desc' },
@@ -101,40 +115,31 @@ export class AiFraudService {
       },
     });
 
+    const collaboratorIds = [...new Set(referralLinks.map((link) => link.collaboratorId))];
+    const pendingCommissions = collaboratorIds.length
+      ? await this.prisma.commission.groupBy({
+          by: ['collaboratorId'],
+          where: {
+            collaboratorId: { in: collaboratorIds },
+            status: 'PENDING',
+          },
+          _sum: { commissionAmount: true },
+        })
+      : [];
+    const pendingAmountByCollaborator = new Map(
+      pendingCommissions.map((commission) => [
+        commission.collaboratorId,
+        Number(commission._sum.commissionAmount || 0),
+      ]),
+    );
+
     const incidents: FraudIncidentDto[] = [];
     let totalScannedClicks = 0;
     let potentialSavedAmount = 0;
 
     for (const link of referralLinks) {
-      // Tính hoa hồng đang chờ duyệt (Pending Commissions) của KOL với link này
-      const pendingCommissions = await this.prisma.commission.aggregate({
-        where: {
-          collaboratorId: link.collaboratorId,
-          status: 'PENDING',
-        },
-        _sum: {
-          commissionAmount: true,
-        },
-      });
-
-      const pendingAmount = Number(pendingCommissions._sum.commissionAmount || 0);
-
-      // Thống kê & kiểm tra danh sách đơn hàng liên quan đến link này
-      const relatedOrders = await this.prisma.order.findMany({
-        where: {
-          referralLinkId: link.id,
-          status: { notIn: ['CANCELLED', 'RETURNED'] },
-        },
-        select: {
-          id: true,
-          customerId: true,
-          customerName: true,
-          customerPhone: true,
-          customerEmail: true,
-          finalAmount: true,
-        },
-        take: 50,
-      });
+      const pendingAmount = pendingAmountByCollaborator.get(link.collaboratorId) ?? 0;
+      const relatedOrders = link.orders;
 
       const totalOrdersCount = relatedOrders.length;
       const totalClicks = Math.max(link.totalClicks || link.clickTrafficLogs.length, 1);

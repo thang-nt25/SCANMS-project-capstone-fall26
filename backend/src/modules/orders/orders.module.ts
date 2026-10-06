@@ -27,6 +27,6 @@ import { PayosPaymentService } from './payos-payment.service';
     CheckoutMetricsService,
     PayosPaymentService,
   ],
-  exports: [OrdersService, CheckoutMetricsService],
+  exports: [OrdersService, CheckoutMetricsService, PayosPaymentService],
 })
 export class OrdersModule {}

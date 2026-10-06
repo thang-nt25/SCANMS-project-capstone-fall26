@@ -95,35 +95,51 @@
 - **Request Body (JSON):**
   ```json
   {
-    "product_id": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
-    "shipping_address": "123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM"
+    "productId": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
+    "shippingAddress": "123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM",
+    "socialChannelId": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6d",
+    "contentType": "Video review 60 giây",
+    "expectedVideoAt": "2026-10-20T16:59:00.000Z",
+    "termsAccepted": true
   }
   ```
-- **Response 201 Created:**
-  ```json
-  {
-    "success": true,
-    "message": "Gửi yêu cầu nhận hàng mẫu thành công",
-    "data": {
-      "request_id": "8a7b6c5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d",
-      "status": "PENDING"
-    }
-  }
-  ```
+- **Quy tắc:** Yêu cầu cần KYC đã xác minh, kênh MXH đã liên kết và cam kết hợp lệ. Hạn video là 14 ngày kể từ khi KOL xác nhận nhận mẫu.
 
-### 3.2 `POST /sample-requests/:id/approve` (Shop Manager duyệt gửi hàng mẫu)
+### 3.2 Các endpoint quản lý vòng đời yêu cầu mẫu
+
+| Endpoint | Vai trò | Chức năng |
+|---|---|---|
+| `GET /sample-requests/my/eligibility` | KOL | Kiểm tra KYC, kênh liên kết, trạng thái khóa quyền xin mẫu |
+| `GET /sample-requests/my` | KOL | Danh sách và tiến độ yêu cầu của mình |
+| `GET /sample-requests/:id` | KOL / Shop | Chi tiết yêu cầu, có kiểm tra quyền sở hữu |
+| `PATCH /sample-requests/:id/cancel` | KOL | Hủy yêu cầu trước khi Shop duyệt |
+| `PATCH /sample-requests/:id/approve` | Shop | Duyệt cấp mẫu |
+| `PATCH /sample-requests/:id/reject` | Shop | Từ chối, bắt buộc có `rejectedReason` |
+| `PATCH /sample-requests/:id/ship` | Shop | Nhập `trackingNumber`, `carrier`; chuyển sang `SHIPPED` |
+| `PATCH /sample-requests/:id/receive` | KOL | Xác nhận đã nhận, lưu thời điểm và bắt đầu hạn 14 ngày |
+| `PATCH /sample-requests/:id/delivery-issue` | KOL | Báo sự cố giao nhận bằng `reason` |
+| `POST /sample-requests/:id/video` | KOL | Nộp `title`, `videoUrl`, tùy chọn `caption`; tạo video chờ Shop duyệt |
+| `GET /sample-requests/shop` | Shop | Danh sách yêu cầu thuộc gian hàng của mình |
+| `GET /sample-requests/shop/stats` | Shop | Số lượng yêu cầu theo trạng thái |
+| `PATCH /sample-requests/admin/:collaboratorId/unblock` | Admin / Manager | Mở khóa quyền xin mẫu, bắt buộc nêu lý do |
+
+Video hàng mẫu được Shop duyệt qua endpoint Media hiện có:
+`PATCH /media/:mediaAssetId/review` với `status: "APPROVED"` hoặc `status: "REJECTED"` kèm `rejectionReason` khi yêu cầu sửa. Khi video được chấp nhận, yêu cầu mẫu chuyển sang `COMPLETED`; khi bị yêu cầu sửa, chuyển sang `REVISION_REQUIRED`.
+
+### 3.3 Trạng thái và tự động hóa
+
+- Vòng đời chính: `PENDING → APPROVED → SHIPPED → RECEIVED → VIDEO_SUBMITTED → COMPLETED`.
+- Nhánh khác: `REJECTED`, `CANCELLED`, `DELIVERY_ISSUE`, `REVISION_REQUIRED`, `OVERDUE`.
+- Mỗi giờ hệ thống nhắc trước hạn dưới 24 giờ; quá hạn 14 ngày mà chưa nộp video thì chuyển `OVERDUE`, khóa quyền xin mẫu mới và tạo thông báo cho KOL/Shop.
+- KOL nộp muộn vẫn được gửi video để giải quyết nghĩa vụ; quyền xin mẫu chỉ mở lại sau khi Shop nghiệm thu tất cả yêu cầu quá hạn hoặc Admin xử lý.
+
+### 3.4 `PATCH /sample-requests/:id/ship` (Shop nhập vận đơn)
 - **Access:** Shop Manager Only
 - **Request Body (JSON):**
   ```json
   {
-    "tracking_number": "GHTK-99882211"
-  }
-  ```
-- **Response 200 OK:**
-  ```json
-  {
-    "success": true,
-    "message": "Phê duyệt gửi hàng mẫu thành công và đã cập nhật Mã vận đơn"
+    "trackingNumber": "GHTK-99882211",
+    "carrier": "GHTK"
   }
   ```
 

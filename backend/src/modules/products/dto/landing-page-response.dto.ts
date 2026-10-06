@@ -31,6 +31,15 @@ export class LandingProductDto {
   @ApiProperty({ example: true, description: 'Khách hàng có thể mua sản phẩm lúc này không' })
   canPurchase: boolean;
 
+  @ApiProperty({ description: 'Shop có nhận đăng ký mẫu cho sản phẩm hay không' })
+  sampleEnabled: boolean;
+
+  @ApiProperty({ description: 'Còn suất mẫu được phép cấp cho sản phẩm hay không' })
+  sampleAvailable: boolean;
+
+  @ApiProperty({ description: 'Số suất mẫu còn lại ở cấp sản phẩm' })
+  sampleQuotaRemaining: number;
+
   @ApiProperty({ example: 'ACTIVE', description: 'Trạng thái kinh doanh sản phẩm (ACTIVE | INACTIVE | OUT_OF_STOCK)' })
   status: string;
 
@@ -48,8 +57,8 @@ export class LandingStoreDto {
   @ApiProperty({ example: 'sora-skin', description: 'Slug định danh gian hàng' })
   slug: string;
 
-  @ApiPropertyOptional({ description: 'Logo gian hàng' })
-  logoUrl: string | null;
+  @ApiPropertyOptional({ example: 'https://cdn.scanms.vn/logos/shop.jpg', description: 'Logo của gian hàng' })
+  logoUrl?: string | null;
 
   @ApiProperty({ example: true, description: 'Trạng thái xác minh gian hàng chính hãng' })
   isVerified: boolean;

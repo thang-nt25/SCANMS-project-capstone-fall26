@@ -54,6 +54,10 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       findFirst: jest.fn(),
       findMany: jest.fn(),
     },
+    exclusiveDealProposal: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     sampleProductRequest: {
       findFirst: jest.fn(),
     },
@@ -777,6 +781,43 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       expect(result.isValid).toBe(true);
       expect(result.appliedCommissionRate).toBe(25);
       expect(result.calculatedCommissionAmount).toBe(25000);
+    });
+
+    it('a renewed deal rate is returned for new orders through an older VIP link', async () => {
+      prisma.referralLink.findUnique.mockResolvedValue({
+        id: 'vip-link-old',
+        shortCode: 'vipold12',
+        collaboratorId: 'collab-1',
+        storeId: 'store-1',
+        productId: 'prod-1',
+        exclusiveDealId: 'deal-old',
+        status: ReferralLinkStatus.ACTIVE,
+        deletedAt: null,
+        product: {
+          id: 'prod-1',
+          isActive: true,
+          isAffiliateEnabled: true,
+          deletedAt: null,
+          customCommissionRate: 15,
+          price: 100000,
+        },
+        store: { deletedAt: null, defaultCommissionRate: 10 },
+        campaign: null,
+        exclusiveDeal: { status: 'APPROVED', approvedCommissionRate: 20 },
+      });
+      prisma.exclusiveDealProposal.findFirst.mockResolvedValue({
+        status: 'APPROVED',
+        approvedCommissionRate: 30,
+      });
+
+      const result = await service.verifyAttributionForOrder({
+        shortCode: 'vipold12',
+        storeId: 'store-1',
+        productId: 'prod-1',
+      });
+
+      expect(result.appliedCommissionRate).toBe(30);
+      expect(result.calculatedCommissionAmount).toBe(30000);
     });
 
     it('Sản phẩm hoặc Cửa hàng không khớp -> Từ chối attribution', async () => {

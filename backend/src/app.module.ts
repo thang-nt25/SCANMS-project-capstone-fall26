@@ -36,6 +36,8 @@ import { AiModule } from './modules/ai/ai.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { LiveSessionsModule } from './modules/live-sessions/live-sessions.module';
+import { ShippingModule } from './modules/shipping/shipping.module';
 import { ReturnModule } from './modules/returns/return.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 
@@ -96,6 +98,8 @@ import { validateEnv } from './core/config/env.validation';
     AuditModule,
     CustomerModule,
     NotificationsModule,
+    LiveSessionsModule,
+    ShippingModule,
     ReturnModule,
   ],
   controllers: [AppController],

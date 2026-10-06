@@ -34,7 +34,6 @@ async function bootstrap() {
       'api/r/:shortCode',
       'r/rate-limit/health',
       'api/referral-links/rate-limit/health',
-      { path: 'products/:idOrSlug', method: RequestMethod.GET },
       { path: 'p/:idOrSlug', method: RequestMethod.GET },
     ],
   });
@@ -72,6 +71,7 @@ async function bootstrap() {
       'X-Requested-With',
       'X-Idempotency-Key',
       'X-Skip-Cache',
+      'x-skip-cache',
     ],
   });
 

@@ -20,6 +20,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { CreateCouponDto } from './dto/create-coupon.dto';
+import { CreateStoreCouponDto } from './dto/create-store-coupon.dto';
 import { ApproveCouponDto } from './dto/approve-coupon.dto';
 import { RejectCouponDto } from './dto/reject-coupon.dto';
 import { BlockCouponDto } from './dto/block-coupon.dto';
@@ -54,6 +55,78 @@ export class CouponsService {
     private readonly prisma: PrismaService,
     private readonly cacheService: CacheService,
   ) {}
+
+  async getPublicStoreCoupons(storeId: string) {
+    const now = new Date();
+    const coupons = await this.prisma.coupon.findMany({
+      where: {
+        storeId,
+        status: CouponStatus.ACTIVE,
+        deletedAt: null,
+        store: {
+          isDeleted: false,
+          isActive: true,
+          owner: { isActive: true, isDeleted: false },
+        },
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        ],
+      },
+      select: {
+        id: true,
+        displayCode: true,
+        codeNormalized: true,
+        discountType: true,
+        discountValue: true,
+        minimumOrderAmount: true,
+        maximumDiscountAmount: true,
+        usageLimitTotal: true,
+        usageCount: true,
+        expiresAt: true,
+        scopeType: true,
+        fundingSource: true,
+        couponProducts: {
+          where: { product: { isDeleted: false, isActive: true } },
+          select: { product: { select: { id: true, title: true } } },
+        },
+        couponCategories: { select: { categoryName: true } },
+        store: { select: { name: true } },
+      },
+      orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    return coupons
+      .filter(
+        (coupon) =>
+          coupon.usageLimitTotal === null ||
+          coupon.usageCount < coupon.usageLimitTotal,
+      )
+      .map((coupon) => ({
+        id: coupon.id,
+        code: coupon.displayCode,
+        displayCode: coupon.displayCode,
+        codeNormalized: coupon.codeNormalized,
+        discountType: coupon.discountType,
+        discountValue: Number(coupon.discountValue),
+        minimumOrderAmount: coupon.minimumOrderAmount
+          ? Number(coupon.minimumOrderAmount)
+          : null,
+        maximumDiscountAmount: coupon.maximumDiscountAmount
+          ? Number(coupon.maximumDiscountAmount)
+          : null,
+        remainingUses:
+          coupon.usageLimitTotal === null
+            ? null
+            : Math.max(0, coupon.usageLimitTotal - coupon.usageCount),
+        expiresAt: coupon.expiresAt,
+        scopeType: coupon.scopeType,
+        fundingSource: coupon.fundingSource,
+        products: coupon.couponProducts.map((item) => item.product),
+        categories: coupon.couponCategories.map((item) => item.categoryName),
+        storeName: coupon.store.name,
+      }));
+  }
 
   // =========================================================================
   // 1. UTILITY & NORMALIZATION METHODS
@@ -437,6 +510,7 @@ export class CouponsService {
 
     const where: Prisma.CouponWhereInput = {
       collaboratorId,
+      liveSessionId: null,
       status: query.status ? query.status : { not: CouponStatus.DELETED },
     };
 
@@ -617,6 +691,10 @@ export class CouponsService {
       where: { id, collaboratorId },
     });
 
+    if (coupon?.liveSessionId) {
+      throw new BadRequestException('Hãy quản lý voucher này trong trang Phiên Livestream.');
+    }
+
     if (!coupon || coupon.status === CouponStatus.DELETED) {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
@@ -772,6 +850,7 @@ export class CouponsService {
 
     const where: Prisma.CouponWhereInput = {
       storeId,
+      liveSessionId: null,
       status: query.status ? query.status : { not: CouponStatus.DELETED },
     };
 
@@ -835,6 +914,139 @@ export class CouponsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Shop chủ động phát hành mã giảm giá (Voucher) riêng của gian hàng để kích cầu
+   */
+  async createStoreCoupon(
+    storeId: string,
+    userId: string,
+    role: UserRole,
+    dto: CreateStoreCouponDto,
+    ipAddress?: string,
+  ) {
+    await this.verifyStoreAccess(storeId, userId, role);
+
+    // Rate limit: 10 requests / minute
+    await this.checkRateLimit(`shop_create_min_${storeId}`, 10, 60 * 1000);
+
+    const codeNormalized = this.normalizeAndValidateCode(dto.code);
+
+    // Check code uniqueness across the whole system
+    const existing = await this.prisma.coupon.findUnique({
+      where: { codeNormalized },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `Mã giảm giá "${codeNormalized}" đã tồn tại trong hệ thống. Vui lòng chọn một mã khác.`,
+      );
+    }
+
+    // Validate percentage
+    if (
+      dto.discountType === DiscountType.PERCENTAGE &&
+      (dto.discountValue <= 0 || dto.discountValue > 100)
+    ) {
+      throw new BadRequestException(
+        'Tỷ lệ giảm giá theo phần trăm phải nằm trong khoảng từ 1% đến 100%',
+      );
+    }
+
+    // Validate dates
+    const startsAt: Date | null = dto.startsAt
+      ? new Date(dto.startsAt)
+      : new Date();
+    const expiresAt: Date | null = dto.expiresAt
+      ? new Date(dto.expiresAt)
+      : null;
+    if (startsAt && expiresAt && startsAt > expiresAt) {
+      throw new BadRequestException(
+        'Thời điểm bắt đầu không được lớn hơn thời điểm kết thúc',
+      );
+    }
+
+    // Execute in transaction
+    const newCoupon = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.coupon.create({
+        data: {
+          storeId,
+          collaboratorId: userId,
+          codeNormalized,
+          displayCode: dto.code.trim().toUpperCase(),
+          status: CouponStatus.ACTIVE,
+          discountType: dto.discountType,
+          discountValue: new Prisma.Decimal(dto.discountValue),
+          minimumOrderAmount: dto.minimumOrderAmount
+            ? new Prisma.Decimal(dto.minimumOrderAmount)
+            : null,
+          maximumDiscountAmount: dto.maximumDiscountAmount
+            ? new Prisma.Decimal(dto.maximumDiscountAmount)
+            : null,
+          usageLimitTotal: dto.usageLimitTotal || null,
+          usageLimitPerCustomer: dto.usageLimitPerCustomer || 1,
+          budgetTotal: dto.budgetTotal
+            ? new Prisma.Decimal(dto.budgetTotal)
+            : null,
+          budgetUsed: new Prisma.Decimal(0),
+          startsAt,
+          expiresAt,
+          scopeType: dto.scopeType || CouponScope.STORE_WIDE,
+          fundingSource: CouponFundingSource.SHOP_FUNDED,
+          shopFundingRate: new Prisma.Decimal(100),
+          platformFundingRate: new Prisma.Decimal(0),
+          stackableWithProductDiscount:
+            dto.stackableWithProductDiscount ?? true,
+          stackableWithShopVoucher: dto.stackableWithShopVoucher ?? false,
+          stackableWithPlatformVoucher:
+            dto.stackableWithPlatformVoucher ?? true,
+          approvedBy: userId,
+          approvedAt: new Date(),
+        },
+      });
+
+      // Handle product scope
+      if (
+        dto.scopeType === CouponScope.PRODUCTS &&
+        dto.productIds &&
+        dto.productIds.length > 0
+      ) {
+        await tx.couponProduct.createMany({
+          data: dto.productIds.map((productId) => ({
+            couponId: created.id,
+            productId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      // Handle category scope
+      if (
+        dto.scopeType === CouponScope.CATEGORIES &&
+        dto.categoryNames &&
+        dto.categoryNames.length > 0
+      ) {
+        await tx.couponCategory.createMany({
+          data: dto.categoryNames.map((categoryName) => ({
+            couponId: created.id,
+            categoryName,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return created;
+    });
+
+    // Invalidate caches
+    await this.cacheService.del(`coupon_code_${codeNormalized}`);
+    await this.cacheService.del(`store_coupons_${storeId}`);
+
+    this.logger.log(
+      `Shop ${storeId} created store voucher "${codeNormalized}" successfully by user ${userId}`,
+    );
+
+    return newCoupon;
   }
 
   /**
@@ -1398,6 +1610,15 @@ export class CouponsService {
         },
         couponProducts: true,
         couponCategories: true,
+        liveSession: {
+          select: {
+            id: true,
+            status: true,
+            inviteStatus: true,
+            commissionRate: true,
+            products: { select: { productId: true, variantId: true } },
+          },
+        },
       },
     });
 
@@ -1448,11 +1669,22 @@ export class CouponsService {
       });
     }
 
-    if (coupon.expiresAt && now > coupon.expiresAt) {
+    if (coupon.expiresAt && now >= coupon.expiresAt) {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
         errorCode: 'COUPON_EXPIRED',
         message: 'Mã giảm giá đã hết hạn sử dụng.',
+      });
+    }
+    if (
+      coupon.liveSession &&
+      (coupon.liveSession.inviteStatus !== 'ACCEPTED' ||
+        !['SCHEDULED', 'LIVE'].includes(coupon.liveSession.status))
+    ) {
+      await this.recordValidationFailure(rateLimitKey);
+      throw new BadRequestException({
+        errorCode: 'LIVE_SESSION_NOT_ACTIVE',
+        message: 'Voucher của phiên live hiện không được mở.',
       });
     }
 
@@ -1518,12 +1750,21 @@ export class CouponsService {
         id: { in: productIds },
         isDeleted: false,
         isActive: true,
+        moderationStatus: 'APPROVED',
       },
     });
 
     const dbProductMap = new Map<string, any>(
       dbProducts.map((p: any) => [p.id, p]),
     );
+    const variantIds = dto.items.map((item) => item.variantId).filter(Boolean) as string[];
+    const dbVariants = variantIds.length
+      ? await this.prisma.productVariant.findMany({
+          where: { id: { in: variantIds }, isActive: true },
+          select: { id: true, productId: true, price: true },
+        })
+      : [];
+    const dbVariantMap = new Map(dbVariants.map((variant) => [variant.id, variant]));
 
     // Filter items that belong to the coupon's store
     const storeItems = dto.items.filter((item) => {
@@ -1561,6 +1802,8 @@ export class CouponsService {
 
     for (const item of storeItems) {
       const prod = dbProductMap.get(item.productId)!;
+      const variant = item.variantId ? dbVariantMap.get(item.variantId) : undefined;
+      if (item.variantId && (!variant || variant.productId !== prod.id)) continue;
       let isEligible = false;
 
       if (coupon.scopeType === CouponScope.STORE_WIDE) {
@@ -1576,9 +1819,16 @@ export class CouponsService {
           campaignProductIds.size > 0 ? campaignProductIds.has(prod.id) : true;
       }
 
+      if (isEligible && coupon.liveSession) {
+        isEligible = coupon.liveSession.products.some(
+          (liveProduct) => liveProduct.productId === prod.id &&
+            (!liveProduct.variantId || liveProduct.variantId === item.variantId),
+        );
+      }
+
       if (isEligible) {
         eligibleProductIds.push(prod.id);
-        eligibleSubtotal += Number(prod.price) * item.quantity;
+        eligibleSubtotal += Number(variant?.price ?? prod.price) * item.quantity;
       }
     }
 
@@ -1693,6 +1943,7 @@ export class CouponsService {
       eligibleSubtotal,
       eligibleProductIds,
       collaboratorId: coupon.collaboratorId,
+      sessionCommissionRate: coupon.liveSession ? Number(coupon.liveSession.commissionRate) : null,
       message: 'Áp dụng mã giảm giá thành công',
     };
   }

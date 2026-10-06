@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -21,6 +21,12 @@ export class WalletsController {
   @ApiOperation({ summary: 'FR-22: Lấy số dư và điều kiện rút tiền của KOL' })
   getMyWallet(@CurrentUser() user: AuthenticatedUser) {
     return this.summaryService.getMyWallet(user.id);
+  }
+
+  @Delete('me/bank-account')
+  @ApiOperation({ summary: 'Ngừng sử dụng tài khoản nhận tiền của KOL' })
+  disconnectBankAccount(@CurrentUser() user: AuthenticatedUser) {
+    return this.summaryService.disconnectBankAccount(user.id);
   }
 
   @Get('me/ledger')

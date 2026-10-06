@@ -16,7 +16,7 @@
 | **2** | **Phòng Livestream bán hàng tương tác (Live Shopping)** | Bán hàng & Trải nghiệm | KOL $\rightarrow$ Khách xem live | `FR-34 (EXT)` |
 | **3** | **Đồng bộ Link Shopee & File Excel đối soát chuẩn** | Đa kênh Omnichannel | Chủ Shop $\rightarrow$ Hệ thống | `FR-35 (EXT)` |
 | **4** | **Quy trình Trả hàng & 1 Nút phán quyết của Admin** | Đơn hàng & Tranh chấp | Khách mua $\rightarrow$ Shop $\rightarrow$ Admin | `FR-36 (EXT)` |
-| **5** | **Cam kết nộp Video Review Hàng Mẫu trong 7 ngày** | Hàng mẫu dùng thử | KOL $\rightarrow$ Chủ Shop | `FR-37 (EXT)` |
+| **5** | **Cam kết nộp Video Review Hàng Mẫu trong 14 ngày** | Hàng mẫu dùng thử | KOL $\rightarrow$ Chủ Shop | `FR-37 (EXT)` |
 | **6** | **Bộ lọc từ ngữ thô tục khi Chat (Profanity Masking `***`)** | Tương tác & Giao tiếp | Shop $\leftrightarrow$ KOL | `FR-38 (EXT)` |
 | **7** | **Đánh giá sao theo đơn & Xử phạt sản phẩm lỗi** | Đánh giá & Chất lượng | Khách mua $\rightarrow$ Hệ thống | `FR-39 (EXT)` |
 
@@ -98,12 +98,12 @@
 ### Luồng xử lý chi tiết:
 1. Khi Shop gửi hàng mẫu $\rightarrow$ Shop nhập Mã vận đơn GHTK/GHN.
 2. Khi bưu tá giao thành công $\rightarrow$ KOL bấm nút **"Tôi đã nhận được hàng mẫu"**.
-3. Hệ thống kích hoạt đồng hồ đếm ngược **7 ngày (168 giờ)**.
+3. Hệ thống kích hoạt đồng hồ đếm ngược **14 ngày (336 giờ)** kể từ khi KOL xác nhận đã nhận hàng.
 4. Màn hình của KOL xuất hiện nút: **[Nộp Link Video Review]** (nhập link TikTok video / YouTube Shorts / Reels).
 5. Khi nộp link thành công:
    * Hệ thống xác nhận hoàn thành nghĩa vụ.
    * Mở khóa quyền được xin tiếp các sản phẩm mẫu khác trên sàn.
-   * Nếu quá 7 ngày không nộp: Tạm khóa quyền xin hàng mẫu của KOL.
+   * Nếu quá 14 ngày không nộp: Tự động khóa quyền xin mẫu mới của KOL cho đến khi Shop nghiệm thu hoặc Admin xử lý.
 
 ---
 

@@ -1,5 +1,6 @@
 import {
   Controller,
+  ExecutionContext,
   Get,
   Post,
   Body,
@@ -9,7 +10,11 @@ import {
   Res,
   HttpStatus,
   HttpCode,
+  Injectable,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { UserRole } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ProductsService } from './products.service';
@@ -18,6 +23,19 @@ import { TrackAnalyticsEventDto } from './dto/track-event.dto';
 import { ConfigService } from '@nestjs/config';
 import { extractTrustedClientIp } from '../referral-links/utils/client-ip.util';
 import { escapeHtml } from '../referral-links/utils/short-code.generator';
+
+@Injectable()
+class OptionalJwtAuthGuard extends AuthGuard('jwt') {
+  handleRequest<TUser = any>(
+    _error: any,
+    user: TUser,
+    _info: any,
+    _context: ExecutionContext,
+    _status?: any,
+  ): TUser {
+    return (user ?? null) as TUser;
+  }
+}
 
 @ApiTags('Public Product Landing Page (FR-15)')
 @Controller('public/products')
@@ -28,6 +46,7 @@ export class PublicProductsController {
   ) {}
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Marketplace công khai chỉ trả dữ liệu sản phẩm an toàn với bộ lọc thực tế' })
   async getMarketplace(
     @Query('search') search = '',
@@ -38,7 +57,9 @@ export class PublicProductsController {
     @Query('sortBy') sortBy?: string,
     @Query('page') page = '1',
     @Query('limit') limit = '24',
+    @Req() req?: Request,
   ) {
+    const role = (req as (Request & { user?: { role?: UserRole } }) | undefined)?.user?.role;
     return this.productsService.findPublicMarketplace({
       search,
       category,
@@ -48,7 +69,7 @@ export class PublicProductsController {
       sortBy,
       page: Number(page) || 1,
       limit: Number(limit) || 24,
-    });
+    }, 1, 24, role === UserRole.COLLABORATOR);
   }
 
   @Get('categories')
@@ -157,17 +178,24 @@ export class PublicProductsController {
         this.configService.get<string>('FRONTEND_URL') ||
         process.env.FRONTEND_URL ||
         'http://localhost:5173';
+      const normalizedFrontendUrl = frontendBaseUrl.replace(/\/+$/, '');
       const targetSlug = landingData.product.sku || landingData.product.id;
-      const targetUrl = `${frontendBaseUrl}/products/${encodeURIComponent(targetSlug)}`;
+      const targetUrl = new URL(
+        `/products/${encodeURIComponent(targetSlug)}`,
+        `${normalizedFrontendUrl}/`,
+      ).toString();
       const title = `${escapeHtml(landingData.product.title)} | SCANMS Sàn Đối Tác`;
       const description = escapeHtml(
         landingData.product.description?.slice(0, 160) ||
           'Khám phá sản phẩm chính hãng với mức chiết khấu và ưu đãi tốt nhất trên SCANMS.',
       );
-      const imageUrl =
+      const imagePath =
         landingData.product.imageUrl ||
         landingData.images?.[0] ||
-        `${frontendBaseUrl}/banner-placeholder.jpg`;
+        `${normalizedFrontendUrl}/banner-placeholder.jpg`;
+      const imageUrl = new URL(imagePath, `${normalizedFrontendUrl}/`).toString();
+      const safeTargetUrl = escapeHtml(targetUrl);
+      const safeImageUrl = escapeHtml(imageUrl);
       const price = landingData.product.price;
       const storeName = escapeHtml(landingData.store?.name || 'SCANMS Official');
 
@@ -181,10 +209,10 @@ export class PublicProductsController {
 
   <!-- Open Graph / Facebook / Zalo -->
   <meta property="og:type" content="product">
-  <meta property="og:url" content="${targetUrl}">
+  <meta property="og:url" content="${safeTargetUrl}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
-  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:image" content="${safeImageUrl}">
   <meta property="og:site_name" content="SCANMS - Sàn Thương Mại Đối Tác">
   <meta property="og:price:amount" content="${price}">
   <meta property="og:price:currency" content="VND">
@@ -195,15 +223,15 @@ export class PublicProductsController {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">
-  <meta name="twitter:image" content="${imageUrl}">
+  <meta name="twitter:image" content="${safeImageUrl}">
 
   <!-- Fallback Client Redirection -->
-  <meta http-equiv="refresh" content="0;url=${targetUrl}">
+  <meta http-equiv="refresh" content="0;url=${safeTargetUrl}">
   <script>window.location.replace(${JSON.stringify(targetUrl)});</script>
 </head>
 <body style="font-family: system-ui, sans-serif; background: #FAF8F5; color: #1A1612; padding: 2rem; text-align: center;">
   <p>Đang chuyển hướng tới sản phẩm trên <strong>SCANMS</strong>...</p>
-  <p><a href="${targetUrl}" style="color: #B88E4F; font-weight: 600;">Nhấn vào đây nếu không tự động chuyển hướng</a></p>
+  <p><a href="${safeTargetUrl}" style="color: #B88E4F; font-weight: 600;">Nhấn vào đây nếu không tự động chuyển hướng</a></p>
 </body>
 </html>`;
 

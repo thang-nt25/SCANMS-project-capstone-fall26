@@ -4,6 +4,7 @@ import {
   Post,
   Patch,
   Delete,
+  ParseUUIDPipe,
   Body,
   Param,
   Query,
@@ -27,6 +28,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { CouponsService } from './coupons.service';
 import { CreateCouponDto } from './dto/create-coupon.dto';
+import { CreateStoreCouponDto } from './dto/create-store-coupon.dto';
 import { ApproveCouponDto } from './dto/approve-coupon.dto';
 import { RejectCouponDto } from './dto/reject-coupon.dto';
 import { BlockCouponDto } from './dto/block-coupon.dto';
@@ -42,6 +44,18 @@ import { QueryCouponsDto } from './dto/query-coupons.dto';
 @Controller('coupons')
 export class PublicCouponsController {
   constructor(private readonly service: CouponsService) {}
+
+  @Get('stores/:storeId/available')
+  @ApiOperation({
+    summary: 'Lấy các mã giảm giá đang áp dụng công khai của một gian hàng',
+  })
+  @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
+  @ApiResponse({ status: 200, description: 'Danh sách mã giảm giá còn hiệu lực' })
+  async getAvailableStoreCoupons(
+    @Param('storeId', new ParseUUIDPipe({ version: '4' })) storeId: string,
+  ) {
+    return this.service.getPublicStoreCoupons(storeId);
+  }
 
   @Post('validate')
   @HttpCode(HttpStatus.OK)
@@ -87,6 +101,19 @@ export class PublicCouponsController {
     // Filter out internal collaboratorId from public response (Section 4.4, 20 & 35)
     const { collaboratorId, ...publicResult } = result;
     return publicResult;
+  }
+
+  @Get('store/:storeId')
+  @ApiOperation({
+    summary: 'Khách hàng lấy danh sách voucher công khai của Shop để áp dụng',
+  })
+  @ApiParam({ name: 'storeId', description: 'ID của gian hàng' })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách các voucher đang kích hoạt của Shop',
+  })
+  async getPublicStoreCoupons(@Param('storeId') storeId: string) {
+    return this.service.getPublicStoreCoupons(storeId);
   }
 }
 
@@ -244,6 +271,28 @@ export class CollaboratorCouponsController {
 @Controller('stores/:storeId/coupons')
 export class StoreCouponsController {
   constructor(private readonly service: CouponsService) {}
+
+  @Post()
+  @ApiOperation({
+    summary: 'Gian hàng chủ động phát hành mã giảm giá (Voucher) riêng để kích cầu',
+  })
+  @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
+  @ApiResponse({
+    status: 201,
+    description: 'Phát hành voucher thành công và kích hoạt ACTIVE ngay lập tức',
+  })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc trùng lặp mã' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực' })
+  @ApiResponse({ status: 403, description: 'Không có quyền quản lý gian hàng này' })
+  async createStoreCoupon(
+    @Param('storeId') storeId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Body() dto: CreateStoreCouponDto,
+    @Ip() ipAddress: string,
+  ) {
+    return this.service.createStoreCoupon(storeId, userId, role, dto, ipAddress);
+  }
 
   @Get()
   @ApiOperation({

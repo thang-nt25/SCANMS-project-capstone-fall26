@@ -248,6 +248,58 @@ export class MailService {
   }
 
   /**
+   * Gửi mã OTP xác minh đổi / thêm mật khẩu mới cho tài khoản (Chuẩn Shopee)
+   */
+  async sendPasswordSecurityOtp(
+    email: string,
+    fullName: string,
+    otp: string,
+    meta: { ipAddress?: string; userAgent?: string; time: string; location?: string },
+  ) {
+    const maskedAccount =
+      email.length > 5 ? `${email.slice(0, 2)}***${email.slice(-6)}` : email;
+    const subject = `[SCANMS] ${otp} là mã xác thực OTP của bạn`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; background: #FAF8F5; padding: 30px; color: #1A1612;">
+        <div style="max-width: 500px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border: 1px solid #EAE4D7; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 26px; font-weight: 800; color: #C59B58; letter-spacing: -0.5px;">SCANMS</span>
+            <p style="font-size: 11px; color: #7D715E; margin: 4px 0 0; text-transform: uppercase; font-weight: 700;">Sàn Thương Mại Tiếp Thị Liên Kết</p>
+          </div>
+
+          <h2 style="font-size: 18px; font-weight: 800; margin: 0 0 12px; text-align: center; color: #1A1612;">
+            Mã xác thực bảo mật tài khoản
+          </h2>
+          <p style="font-size: 13.5px; line-height: 1.6; color: #52525B; margin: 0 0 20px; text-align: center;">
+            Xin chào <strong>${this.escapeHtml(fullName || maskedAccount)}</strong>, bạn đang thực hiện xác minh để cập nhật mật khẩu cho tài khoản <strong>${maskedAccount}</strong>.
+          </p>
+
+          <div style="background: #FBF5EB; border: 2px dashed #C59B58; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+            <p style="margin: 0 0 8px; font-size: 12px; color: #7D715E; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;">Mã OTP của bạn:</p>
+            <span style="font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #B88E4F; font-family: monospace;">${otp}</span>
+            <p style="margin: 8px 0 0; font-size: 12px; color: #7D715E;">(Mã có hiệu lực trong vòng 5 phút)</p>
+          </div>
+
+          <p style="font-size: 12px; color: #7D715E; line-height: 1.6; margin: 0 0 20px; text-align: center;">
+            Để bảo mật tài khoản, vui lòng không chia sẻ mã xác thực này cho bất kỳ ai khác.
+          </p>
+
+          <div style="border-top: 1px solid #EAE4D7; padding-top: 16px; font-size: 11.5px; color: #A89F91; text-align: center;">
+            Đây là email tự động gửi từ hệ thống SCANMS. Vui lòng không trả lời thư này.
+          </div>
+        </div>
+      </div>
+    `;
+
+    await this.sendMail(
+      email,
+      subject,
+      html,
+      `Mã OTP xác thực thêm/đổi mật khẩu SCANMS của bạn là: ${otp} (Hiệu lực 5 phút).`,
+    );
+  }
+
+  /**
    * Phương thức chung gửi email hoặc fallback ra console đẹp mắt
    */
   private async sendMail(
@@ -259,11 +311,18 @@ export class MailService {
     if (this.transporter) {
       try {
         await this.transporter.sendMail({
-          from: `"SCANMS Network" <${process.env.GMAIL_USER || 'no-reply@scanms.vn'}>`,
+          from: `"SCANMS" <${process.env.GMAIL_USER || 'no-reply@scanms.vn'}>`,
           to,
+          replyTo: process.env.GMAIL_USER || 'no-reply@scanms.vn',
           subject,
           text: textFallback,
           html,
+          priority: 'high',
+          headers: {
+            'X-Priority': '1',
+            'X-MSMail-Priority': 'High',
+            'Importance': 'high',
+          },
         });
         this.logger.log(
           `Real Gmail successfully sent to: ${to} | Subject: ${subject}`,

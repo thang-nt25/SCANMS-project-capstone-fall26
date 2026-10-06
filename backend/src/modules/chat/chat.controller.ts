@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   ParseUUIDPipe,
@@ -11,19 +12,25 @@ import {
   Query,
   ParseIntPipe,
   DefaultValuePipe,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
 import { CreateConversationDto } from './dto/send-message.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { MAX_CHAT_ATTACHMENT_BYTES } from './chat-attachment.utils';
 
 @ApiTags('Chat')
 @ApiBearerAuth('JWT-auth')
@@ -49,6 +56,31 @@ export class ChatController {
   @ApiOperation({ summary: 'Lấy danh sách hội thoại của user hiện tại' })
   getMyConversations(@CurrentUser() user: any) {
     return this.chatService.getConversationsByUser(user.id);
+  }
+
+  @Post('conversations/:conversationId/attachments')
+  @ApiOperation({ summary: 'Tải ảnh, video hoặc tài liệu lên hội thoại chat' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_CHAT_ATTACHMENT_BYTES },
+    }),
+  )
+  uploadAttachment(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.chatService.uploadAttachment(conversationId, userId, file);
   }
 
   @Get('conversations/:conversationId/messages')
@@ -97,5 +129,27 @@ export class ChatController {
   @ApiQuery({ name: 'q', required: false, type: String })
   searchStores(@Query('q') q?: string) {
     return this.chatService.searchStores(q);
+  }
+
+  // Xóa cuộc trò chuyện
+  @Delete('conversations/:conversationId')
+  @ApiOperation({ summary: 'Xóa hoàn toàn cuộc trò chuyện và lịch sử chat' })
+  @ApiParam({ name: 'conversationId', type: 'string', format: 'uuid' })
+  deleteConversation(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.chatService.deleteConversation(conversationId, userId);
+  }
+
+  // Xóa lịch sử tin nhắn trong cuộc trò chuyện
+  @Delete('conversations/:conversationId/messages')
+  @ApiOperation({ summary: 'Xóa toàn bộ lịch sử tin nhắn trong cuộc trò chuyện' })
+  @ApiParam({ name: 'conversationId', type: 'string', format: 'uuid' })
+  clearMessages(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.chatService.clearConversationMessages(conversationId, userId);
   }
 }

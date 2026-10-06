@@ -18,26 +18,26 @@ export class SubmitKycDto {
   @IsNotEmpty({ message: 'Mã số thuế không được để trống' })
   taxCode: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'Vietcombank',
     description: 'Tên ngân hàng thụ hưởng',
   })
-  @IsString({ message: 'Tên ngân hàng không được để trống' })
-  @IsNotEmpty({ message: 'Tên ngân hàng không được để trống' })
-  bankName: string;
+  @IsOptional()
+  @IsString({ message: 'Tên ngân hàng không hợp lệ' })
+  bankName?: string;
 
-  @ApiProperty({ example: '0123456789', description: 'Số tài khoản ngân hàng' })
-  @IsString({ message: 'Số tài khoản ngân hàng không được để trống' })
-  @IsNotEmpty({ message: 'Số tài khoản ngân hàng không được để trống' })
-  bankAccountNumber: string;
+  @ApiPropertyOptional({ example: '0123456789', description: 'Số tài khoản ngân hàng' })
+  @IsOptional()
+  @IsString({ message: 'Số tài khoản ngân hàng không hợp lệ' })
+  bankAccountNumber?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'NGUYEN THANH THANG',
     description: 'Tên chủ tài khoản (In hoa)',
   })
-  @IsString({ message: 'Tên chủ tài khoản không được để trống' })
-  @IsNotEmpty({ message: 'Tên chủ tài khoản không được để trống' })
-  bankAccountName: string;
+  @IsOptional()
+  @IsString({ message: 'Tên chủ tài khoản không hợp lệ' })
+  bankAccountName?: string;
 
   @ApiPropertyOptional({
     example: 'KOL chuyên review đồ công nghệ và lifestyle',
@@ -62,4 +62,43 @@ export class SubmitKycDto {
   @IsOptional()
   @IsString()
   backCardUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://res.cloudinary.com/.../channel_proof.jpg',
+    description: 'Ảnh chụp màn hình trang quản trị kênh',
+  })
+  @IsOptional()
+  @IsString()
+  channelProofUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'TIKTOK',
+    description: 'Nền tảng mạng xã hội chính',
+  })
+  @IsOptional()
+  @IsString()
+  platform?: string;
+
+  @ApiPropertyOptional({
+    example: 'Thành Thắng Reviews',
+    description: 'Tên kênh hiển thị',
+  })
+  @IsOptional()
+  @IsString()
+  channelName?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://tiktok.com/@thangtechreview',
+    description: 'Đường dẫn liên kết kênh',
+  })
+  @IsOptional()
+  @IsString()
+  channelUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 15000,
+    description: 'Số lượng người theo dõi (Followers)',
+  })
+  @IsOptional()
+  followerCount?: number;
 }

@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Body,
   Get,
   UseGuards,
@@ -126,6 +127,21 @@ export class AuthController {
   async getMe(@CurrentUser('id') currentUserId?: string, @Req() req?: any) {
     const userId = currentUserId || req?.user?.sub || req?.user?.id;
     return this.authService.getMe(userId);
+  }
+
+  @Patch('avatar')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Cập nhật ảnh đại diện (Avatar) cho mọi vai trò (User, KOL, Shop, Admin)',
+  })
+  async updateAvatar(
+    @CurrentUser('id') currentUserId: string,
+    @Body('avatarUrl') avatarUrl: string,
+    @Req() req: any,
+  ) {
+    const userId = currentUserId || req?.user?.sub || req?.user?.id;
+    return this.authService.updateAvatar(userId, avatarUrl);
   }
 }
 

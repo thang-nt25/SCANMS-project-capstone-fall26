@@ -124,6 +124,8 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
         id: 'store-1',
         isDeleted: false,
         isActive: true,
+        isVerified: true,
+        onboardingStatus: 'VERIFIED',
         owner: { id: 'owner-1', isActive: false },
       },
     });
@@ -155,6 +157,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
         isDeleted: false,
         isActive: true,
         isVerified: true,
+        onboardingStatus: 'VERIFIED',
         policyReturn: 'Đổi trả miễn phí 7 ngày',
         policyWarranty: 'Bảo hành 12 tháng',
         policyShipping: 'Giao hàng toàn quốc',
@@ -277,6 +280,8 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
         name: 'Shop 1',
         isDeleted: false,
         isActive: true,
+        isVerified: true,
+        onboardingStatus: 'VERIFIED',
         owner: { id: 'owner-1', isActive: true },
       },
     });
@@ -304,6 +309,8 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
         name: 'Shop 1',
         isDeleted: false,
         isActive: true,
+        isVerified: true,
+        onboardingStatus: 'VERIFIED',
         owner: { id: 'owner-1', isActive: true },
       },
     });

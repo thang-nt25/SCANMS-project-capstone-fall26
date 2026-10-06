@@ -88,10 +88,17 @@ export function checkProfanity(text: string): {
 } {
   if (!text) return { isProfane: false };
 
-  // Cho phép định dạng JSON của thẻ chiến dịch VIP (FR-27)
+  // Thẻ có dữ liệu sản phẩm/giá/mã đã được server chuẩn hóa; chỉ kiểm tra
+  // phần lời nhắn do người gửi tự nhập, tránh nhầm giá trị lớn thành số tài khoản.
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed === 'object' && parsed.type?.startsWith('CAMPAIGN_')) {
+      return { isProfane: false };
+    }
+    if (parsed?.type === 'PRODUCT_INQUIRY') {
+      return checkProfanity(typeof parsed.message === 'string' ? parsed.message : '');
+    }
+    if (parsed?.type === 'COUPON_VOUCHER') {
       return { isProfane: false };
     }
   } catch {}

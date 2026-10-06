@@ -163,7 +163,11 @@ async function main() {
 
   await prisma.collaboratorProfile.upsert({
     where: { userId: kol1.id },
-    update: {},
+    update: {
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: 'VERIFIED',
+    },
     create: {
       userId: kol1.id,
       tierId: goldTier.id,
@@ -259,7 +263,9 @@ async function main() {
       websiteUrl: 'https://techstore.vn',
       defaultCommissionRate: 10.0,
       attributionWindowDays: 30,
-      minPayoutAmount: 200000,
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: 'VERIFIED',
     },
   });
 
@@ -288,6 +294,10 @@ async function main() {
     where: { id: soraStoreId },
     update: {
       ownerId: shopOwner.id,
+      websiteUrl: '',
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: 'VERIFIED',
     },
     create: {
       id: soraStoreId,
@@ -296,10 +306,12 @@ async function main() {
       slug: 'sora-skin-official',
       logoUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200',
       description: 'Gian hàng phân phối chính hãng dòng sản phẩm chăm sóc da chuyên sâu Sora Skin Flagship.',
-      websiteUrl: 'https://soraskin.vn',
+      websiteUrl: '',
       defaultCommissionRate: 15.0,
       attributionWindowDays: 30,
-      minPayoutAmount: 200000,
+      isActive: true,
+      isVerified: true,
+      onboardingStatus: 'VERIFIED',
     },
   });
 
@@ -348,12 +360,13 @@ async function main() {
         title: 'Tai nghe Bluetooth True Wireless Chống Ồn ANC Pro X',
         categoryName: 'Phụ kiện Âm thanh',
         description: 'Chống ồn chủ động 42dB, pin 36 tiếng, màng loa titan âm trầm uy lực.',
-        imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600',
+        imageUrl: '/assets/products/real/wireless-earbuds.jpg',
         originalPrice: 1590000,
         price: 1290000,
         customCommissionRate: 12.0,
         stockQuantity: 150,
         isActive: true,
+        moderationStatus: 'APPROVED',
       },
     });
   }
@@ -369,12 +382,13 @@ async function main() {
         title: 'Bàn phím cơ Không dây 3 Modes Hotswap RGB Custom',
         categoryName: 'Phụ kiện Máy tính',
         description: 'Switch Gateron Pro êm ái, kết nối Bluetooth/2.4G/Type-C, pin 4000mAh.',
-        imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600',
+        imageUrl: '/assets/products/real/keyboard-tri-mode.webp',
         originalPrice: 2200000,
         price: 1850000,
         customCommissionRate: 15.0,
         stockQuantity: 80,
         isActive: true,
+        moderationStatus: 'APPROVED',
       },
     });
   }
@@ -391,7 +405,7 @@ async function main() {
           productId: product1.id,
           title: 'Banner Quảng Cáo HD 1200x628 - Tai Nghe ANC Pro X',
           assetType: AssetType.IMAGE,
-          urlOrContent: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200',
+          urlOrContent: '/assets/products/real/wireless-earbuds.jpg',
         },
         {
           storeId: store.id,
@@ -600,12 +614,13 @@ async function main() {
         title: 'Bình giữ nhiệt phong cách Bắc Âu 500ml',
         categoryName: 'Gia dụng thông minh',
         description: 'Bình giữ nhiệt inox 316 cao cấp giữ nhiệt 24h tiện lợi.',
-        imageUrl: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=600',
+        imageUrl: '/assets/products/real/thermos-500ml.jpg',
         originalPrice: 350000,
         price: 280000,
         customCommissionRate: 15.0,
         stockQuantity: 200,
         isActive: true,
+        moderationStatus: 'APPROVED',
       },
     });
   }

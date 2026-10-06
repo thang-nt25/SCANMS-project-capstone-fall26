@@ -145,7 +145,10 @@ export class AuthService {
 
     // Băm mật khẩu bằng Argon2id
     const passwordHash = await this.hashPassword(dto.password);
-    const role = dto.role || UserRole.COLLABORATOR;
+    const requestedShopRole = dto.role === UserRole.SHOP_MANAGER;
+    const role = requestedShopRole
+      ? UserRole.CUSTOMER
+      : dto.role || UserRole.COLLABORATOR;
 
     // Tạo User
     const user = await this.prisma.user.create({
@@ -200,7 +203,7 @@ export class AuthService {
     }
 
     // Nếu là Shop: Tạo Cửa hàng mặc định
-    if (role === UserRole.SHOP_MANAGER) {
+    if (requestedShopRole) {
       const logoUrl = dto.logoUrl?.trim();
       if (!logoUrl) {
         throw new BadRequestException(
@@ -225,7 +228,9 @@ export class AuthService {
           logoUrl,
           defaultCommissionRate: 10.0,
           attributionWindowDays: 30,
-          minPayoutAmount: 200000.0,
+          isActive: false,
+          isVerified: false,
+          onboardingStatus: 'DRAFT',
         },
       });
     }
@@ -539,9 +544,10 @@ export class AuthService {
 
     // Nếu người dùng chưa tồn tại -> Tự động khởi tạo tài khoản mới (Mặc định: CUSTOMER)
     if (!user) {
+      const requestedShopRole = dto.role === 'SHOP_MANAGER';
       const desiredRole =
-        dto.role === 'SHOP_MANAGER'
-          ? UserRole.SHOP_MANAGER
+        requestedShopRole
+          ? UserRole.CUSTOMER
           : dto.role === 'COLLABORATOR'
           ? UserRole.COLLABORATOR
           : UserRole.CUSTOMER;
@@ -592,7 +598,7 @@ export class AuthService {
             pendingBalance: 0,
           },
         });
-      } else if (desiredRole === UserRole.SHOP_MANAGER) {
+      } else if (requestedShopRole) {
         // Nếu là Shop: Tạo store mặc định
         const storeName =
           dto.storeName?.trim() || `${createdUser.fullName} Store`;
@@ -616,7 +622,9 @@ export class AuthService {
             logoUrl,
             defaultCommissionRate: 10.0,
             attributionWindowDays: 30,
-            minPayoutAmount: 200000.0,
+            isActive: false,
+            isVerified: false,
+            onboardingStatus: 'DRAFT',
           },
         });
       }
@@ -738,7 +746,57 @@ export class AuthService {
     const { passwordHash: _, ...safeUser } = user;
     return {
       ...safeUser,
+      avatarUrl: user.avatarUrl || user.collaboratorProfile?.avatarUrl || null,
       storeId: user.stores?.[0]?.id || null,
+    };
+  }
+
+  /**
+   * Cập nhật ảnh đại diện (Avatar) cho mọi vai trò (User, KOL, Shop, Admin)
+   */
+  async updateAvatar(userId: string, avatarUrl: string) {
+    if (!userId) {
+      throw new UnauthorizedException('Không tìm thấy định danh người dùng');
+    }
+    const cleanUrl = avatarUrl?.trim();
+    if (!cleanUrl) {
+      throw new BadRequestException('Đường dẫn ảnh đại diện không hợp lệ');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { collaboratorProfile: true },
+    });
+
+    if (!user || user.isDeleted || !user.isActive) {
+      throw new NotFoundException('Không tìm thấy tài khoản người dùng');
+    }
+
+    // 1. Cập nhật avatar_url trực tiếp trên User table
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: cleanUrl },
+    });
+
+    // 2. Nếu là KOL / CTV, đồng bộ luôn sang collaborator_profiles.avatar_url
+    if (user.collaboratorProfile) {
+      await this.prisma.collaboratorProfile.update({
+        where: { userId },
+        data: { avatarUrl: cleanUrl },
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Cập nhật ảnh đại diện thành công',
+      avatarUrl: cleanUrl,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        role: updatedUser.role,
+        avatarUrl: cleanUrl,
+      },
     };
   }
 

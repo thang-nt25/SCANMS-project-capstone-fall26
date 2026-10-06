@@ -99,6 +99,37 @@ export class ReferralLinksService {
     ).replace(/\/+$/, '');
   }
 
+  private async getCurrentApprovedDeals(
+    pairs: Array<{ collaboratorId: string; productId: string }>,
+  ) {
+    const uniquePairs = Array.from(
+      new Map(
+        pairs.map((pair) => [
+          `${pair.collaboratorId}:${pair.productId}`,
+          pair,
+        ]),
+      ).values(),
+    );
+    if (!uniquePairs.length) return new Map<string, any>();
+
+    const deals = await this.prisma.exclusiveDealProposal.findMany({
+      where: { status: 'APPROVED', OR: uniquePairs },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        collaboratorId: true,
+        productId: true,
+        approvedCommissionRate: true,
+      },
+    });
+    const currentDeals = new Map<string, any>();
+    for (const deal of deals) {
+      const key = `${deal.collaboratorId}:${deal.productId}`;
+      if (!currentDeals.has(key)) currentDeals.set(key, deal);
+    }
+    return currentDeals;
+  }
+
   /**
    * 1. Lấy danh sách sản phẩm hợp lệ để KOL tạo link tiếp thị
    * - BẮT BUỘC nhận collaboratorId
@@ -145,6 +176,7 @@ export class ReferralLinksService {
     const where: Prisma.ProductWhereInput = {
       isActive: true,
       isAffiliateEnabled: true,
+      moderationStatus: 'APPROVED',
       deletedAt: null,
       store: {
         deletedAt: null,
@@ -281,6 +313,10 @@ export class ReferralLinksService {
       throw new BadRequestException(
         'Cửa hàng sở hữu sản phẩm này không còn hoạt động.',
       );
+    }
+
+    if (product.moderationStatus !== 'APPROVED') {
+      throw new ForbiddenException('Sản phẩm chưa được SCANMS kiểm duyệt để làm tiếp thị.');
     }
 
     // Kiểm tra sản phẩm có cho affiliate không
@@ -689,13 +725,24 @@ export class ReferralLinksService {
       }),
     ]);
 
+    const currentDeals = await this.getCurrentApprovedDeals(
+      items
+        .filter((item) => item.exclusiveDealId)
+        .map((item) => ({ collaboratorId: item.collaboratorId, productId: item.productId })),
+    );
+
     const publicAppUrl = this.getPublicAppUrl();
     const formattedItems = items.map((item) => {
       const effectiveStatus = computeEffectiveStatus(item);
 
+      const currentDeal = item.exclusiveDealId
+        ? currentDeals.get(`${item.collaboratorId}:${item.productId}`)
+        : null;
       const commissionRate =
-        item.exclusiveDeal?.approvedCommissionRate !== null &&
-        item.exclusiveDeal?.approvedCommissionRate !== undefined
+        currentDeal?.approvedCommissionRate != null
+          ? Number(currentDeal.approvedCommissionRate)
+          : item.exclusiveDeal?.approvedCommissionRate !== null &&
+            item.exclusiveDeal?.approvedCommissionRate !== undefined
           ? Number(item.exclusiveDeal.approvedCommissionRate)
           : item.product.customCommissionRate !== null
           ? Number(item.product.customCommissionRate)
@@ -1043,6 +1090,12 @@ export class ReferralLinksService {
       }),
     ]);
 
+    const currentDeals = await this.getCurrentApprovedDeals(
+      items
+        .filter((item) => item.exclusiveDealId)
+        .map((item) => ({ collaboratorId: item.collaboratorId, productId: item.productId })),
+    );
+
     const publicAppUrl = this.getPublicAppUrl();
     return {
       data: items.map((item) => ({
@@ -1055,9 +1108,11 @@ export class ReferralLinksService {
             : 'OPEN_OFFER',
         commissionRate: item.campaignId
           ? null
-          : item.exclusiveDeal?.status === 'APPROVED' &&
-              item.exclusiveDeal.approvedCommissionRate !== null
-            ? Number(item.exclusiveDeal.approvedCommissionRate)
+          : item.exclusiveDealId &&
+              currentDeals.get(`${item.collaboratorId}:${item.productId}`)?.approvedCommissionRate != null
+            ? Number(currentDeals.get(`${item.collaboratorId}:${item.productId}`).approvedCommissionRate)
+            : item.exclusiveDeal?.status === 'APPROVED' && item.exclusiveDeal.approvedCommissionRate !== null
+              ? Number(item.exclusiveDeal.approvedCommissionRate)
             : item.product.customCommissionRate !== null
               ? Number(item.product.customCommissionRate)
               : Number(item.product.store.defaultCommissionRate),
@@ -1222,7 +1277,7 @@ export class ReferralLinksService {
         include: {
           collaborator: { select: { id: true, fullName: true, email: true } },
           store: { select: { id: true, name: true } },
-          product: { select: { id: true, title: true, price: true } },
+          product: { select: { id: true, title: true, imageUrl: true, price: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -2094,7 +2149,7 @@ export class ReferralLinksService {
 
       if (rawCollab) {
         // Chỉ Quản trị viên hệ thống mới xem được email gốc đầy đủ; Chủ Shop chỉ xem email đã ẩn danh (Issue 1)
-        const isSysAdmin = userRole === UserRole.SYSTEM_ADMIN;
+        const isSysAdmin = userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
         effectiveCollaborator = {
           id: rawCollab.id,
           fullName: rawCollab.fullName,
@@ -2384,11 +2439,25 @@ export class ReferralLinksService {
       };
     }
 
-    // Tính tỷ lệ hoa hồng snapshot
+    const currentDeal = link.exclusiveDealId
+      ? await this.prisma.exclusiveDealProposal.findFirst({
+          where: {
+            collaboratorId: link.collaboratorId,
+            productId: link.productId,
+            status: 'APPROVED',
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { status: true, approvedCommissionRate: true },
+        })
+      : null;
+    const effectiveDeal = currentDeal ?? link.exclusiveDeal;
+
+    // A renewed deal applies to new orders through every VIP link; existing
+    // orders retain their immutable OrderItem commission snapshots.
     let commissionRate =
-      link.exclusiveDeal?.status === 'APPROVED' &&
-      link.exclusiveDeal.approvedCommissionRate !== null
-        ? Number(link.exclusiveDeal.approvedCommissionRate)
+      effectiveDeal?.status === 'APPROVED' &&
+      effectiveDeal.approvedCommissionRate !== null
+        ? Number(effectiveDeal.approvedCommissionRate)
         : link.product.customCommissionRate !== null
         ? Number(link.product.customCommissionRate)
         : Number(link.store.defaultCommissionRate);
@@ -2643,7 +2712,7 @@ export class ReferralLinksService {
           'Bạn không có quyền xem mã QR của liên kết thuộc cửa hàng khác.',
         );
       }
-    } else if (user.role === UserRole.SYSTEM_ADMIN) {
+    } else if (user.role === UserRole.SYSTEM_ADMIN || user.role === UserRole.SYSTEM_MANAGER) {
       // Cho phép tra cứu/hỗ trợ
     } else {
       throw new ForbiddenException(
@@ -2669,6 +2738,7 @@ export class ReferralLinksService {
     // Ghi Audit Log nếu Admin hoặc Shop thao tác thay KOL (Mục 24)
     if (
       user.role === UserRole.SYSTEM_ADMIN ||
+      user.role === UserRole.SYSTEM_MANAGER ||
       (user.role === UserRole.SHOP_MANAGER && link.collaboratorId !== user.id)
     ) {
       await this.prisma.auditLog
