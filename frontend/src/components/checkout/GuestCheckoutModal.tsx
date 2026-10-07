@@ -144,8 +144,29 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
   }, [isOpen]);
 
-  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
-  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string>('');
+  // Khởi tạo sổ địa chỉ từ LocalStorage để render tức thì ngay khi mở modal
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string>(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          return def?.id || '';
+        }
+      }
+    } catch {}
+    return '';
+  });
 
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
@@ -167,9 +188,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         customerService.getAddresses().then((addrs) => {
           if (Array.isArray(addrs) && addrs.length > 0) {
             setCustomerAddresses(addrs);
+            try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs)); } catch {}
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
               setSelectedSavedAddressId(def.id);
+              if (def.fullName) setCustomerName(def.fullName);
+              if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+              setShippingAddress(def.detailAddress || '');
             }
           }
         }).catch(() => {});
@@ -201,9 +226,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         customerService.getAddresses().then((addrs) => {
           if (Array.isArray(addrs) && addrs.length > 0) {
             setCustomerAddresses(addrs);
+            try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs)); } catch {}
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
               setSelectedSavedAddressId(def.id);
+              if (def.fullName) setCustomerName(def.fullName);
+              if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+              setShippingAddress(def.detailAddress || '');
             }
           }
         }).catch(() => {});
@@ -216,14 +245,103 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
   };
 
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [shippingAddress, setShippingAddress] = useState('');
+  // Khởi tạo các trường thông tin từ địa chỉ mặc định đã lưu nếu có
+  const [customerName, setCustomerName] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.fullName) return def.fullName;
+        }
+      }
+      const user = authService.getCurrentUser();
+      return user?.fullName || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [customerPhone, setCustomerPhone] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.phoneNumber) return def.phoneNumber;
+        }
+      }
+      const user = authService.getCurrentUser();
+      return user?.phoneNumber || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [customerEmail, setCustomerEmail] = useState(() => {
+    const user = authService.getCurrentUser();
+    return user?.email || '';
+  });
+
+  const [shippingAddress, setShippingAddress] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.detailAddress) return def.detailAddress;
+        }
+      }
+    } catch {}
+    return '';
+  });
+
   const [shippingProvinces, setShippingProvinces] = useState<ShippingProvince[]>([]);
-  const [provinceCode, setProvinceCode] = useState('');
-  const [districtCode, setDistrictCode] = useState('');
-  const [wardCode, setWardCode] = useState('');
+  const [provinceCode, setProvinceCode] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.provinceCode) return String(def.provinceCode);
+        }
+      }
+    } catch {}
+    return '';
+  });
+
+  const [districtCode, setDistrictCode] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.districtCode) return String(def.districtCode);
+        }
+      }
+    } catch {}
+    return '';
+  });
+
+  const [wardCode, setWardCode] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.wardCode) return String(def.wardCode);
+        }
+      }
+    } catch {}
+    return '';
+  });
+
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
@@ -511,27 +629,36 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const user = authService.getCurrentUser();
 
       if (user) {
-        setCustomerName(user.fullName || '');
         setCustomerEmail(user.email || '');
-        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
+        if (!customerName) setCustomerName(user.fullName || '');
+        if (!customerPhone && user.phoneNumber) setCustomerPhone(user.phoneNumber);
 
-        if (user.role === 'CUSTOMER') {
-          customerService
-            .getAddresses()
-            .then((addrs) => {
-              if (Array.isArray(addrs) && addrs.length > 0) {
-                setCustomerAddresses(addrs);
-                const def = addrs.find((a) => a.isDefault) || addrs[0];
-                if (def) {
-                  setSelectedSavedAddressId(def.id);
-                  setShippingAddress(def.detailAddress);
-                  if (def.fullName) setCustomerName(def.fullName);
-                  if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+        // Luôn tải sổ địa chỉ đã lưu cho mọi người dùng đã đăng nhập (không giới hạn role)
+        customerService
+          .getAddresses()
+          .then((addrs) => {
+            if (Array.isArray(addrs) && addrs.length > 0) {
+              setCustomerAddresses(addrs);
+              try {
+                localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs));
+              } catch {}
+
+              const def = addrs.find((a) => a.id === selectedSavedAddressId) || addrs.find((a) => a.isDefault) || addrs[0];
+              if (def) {
+                setSelectedSavedAddressId(def.id);
+                if (def.fullName) setCustomerName(def.fullName);
+                if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+                setShippingAddress(def.detailAddress || '');
+                if (def.provinceCode) setProvinceCode(String(def.provinceCode));
+                if (def.districtCode) setDistrictCode(String(def.districtCode));
+                if (def.wardCode) setWardCode(String(def.wardCode));
+                if (shippingProvinces.length > 0) {
+                  populateAddressFromRecord(def, shippingProvinces);
                 }
               }
-            })
-            .catch(() => {});
-        }
+            }
+          })
+          .catch(() => {});
       }
 
       const newKey =
@@ -729,6 +856,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const updated = await customerService.getAddresses();
       const newAddresses = Array.isArray(updated) ? updated : [];
       setCustomerAddresses(newAddresses);
+      try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(newAddresses)); } catch {}
 
       // Nếu địa chỉ vừa xóa là địa chỉ đang được chọn
       if (selectedSavedAddressId === addr.id) {
@@ -803,6 +931,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const updated = await customerService.getAddresses();
       if (Array.isArray(updated)) {
         setCustomerAddresses(updated);
+        try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(updated)); } catch {}
         if (newAddr?.id) {
           setSelectedSavedAddressId(newAddr.id);
         }
