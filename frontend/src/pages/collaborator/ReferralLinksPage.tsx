@@ -1699,7 +1699,7 @@ export default function ReferralLinksPage() {
                               setIsSubmitVideoModalOpen(true);
                             }}
                             className="p-1.5 text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] rounded-lg transition-colors cursor-pointer"
-                            title="Nộp video review sản phẩm này (FR-15)"
+                            title="Nộp video review sản phẩm này"
                           >
                             <Video className="w-4 h-4 text-[#B88E4F]" />
                           </button>
@@ -1708,7 +1708,7 @@ export default function ReferralLinksPage() {
                           <button
                             onClick={() => handleOpenAnalytics(link)}
                             className="p-1.5 text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] rounded-lg transition-colors cursor-pointer"
-                            title="Thống kê chi tiết & Phân tích chuyển đổi (FR-13)"
+                            title="Thống kê chi tiết & Phân tích chuyển đổi"
                           >
                             <TrendingUp className="w-4 h-4" />
                           </button>
@@ -1767,7 +1767,7 @@ export default function ReferralLinksPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#1A1612] leading-tight flex items-center gap-1.5">
-                    Tạo Link Tiếp Thị Rút Gọn (FR-10)
+                    Tạo Link Tiếp Thị Rút Gọn
                   </h3>
                   <p className="text-[11px] text-[#7D715E] mt-0.5">
                     Chọn sản phẩm, kênh truyền thông và tùy chỉnh liên kết rút gọn.
@@ -2620,7 +2620,7 @@ export default function ReferralLinksPage() {
                   <h3 id="qr-modal-title" className="text-sm sm:text-base font-black text-[#1A1612] tracking-tight m-0 flex items-center gap-1.5">
                     Mã QR Tiếp Thị
                     <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#EBD08C]/10 text-[#B88E4F] border border-[#B88E4F]/20 rounded-md">
-                      FR-11
+                      QR Code
                     </span>
                   </h3>
                   <p className="text-[11px] text-[#7D715E] m-0 mt-0.5">
@@ -2870,7 +2870,7 @@ export default function ReferralLinksPage() {
                       Thống Kê Tiếp Thị &amp; Chuyển Đổi
                     </h3>
                     <span className="px-2 py-0.5 text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] rounded-md">
-                      FR-13
+                      Attribution
                     </span>
                   </div>
                   <p className="text-xs text-[#7D715E] mt-0.5">
@@ -3012,7 +3012,7 @@ export default function ReferralLinksPage() {
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-[#B88E4F]" />
                         <span className="text-xs font-bold text-[#1A1612]">
-                          Kiểm Thử Nghiệp Vụ FR-14: Chống Click Spam (Redis Rate Limit)
+                          Kiểm Thử Nghiệp Vụ: Chống Click Spam (Redis Rate Limit)
                         </span>
                       </div>
                       <span className="px-2 py-0.5 text-[10px] font-bold bg-[#F3EFE6] text-[#B88E4F] rounded-full border border-[#EAE4D7]">
@@ -3061,7 +3061,7 @@ export default function ReferralLinksPage() {
                       <div className="p-3 bg-white border border-[#EAE4D7] rounded-xl text-xs space-y-1.5 transition-all">
                         <div className="font-bold text-[#1A1612] flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          Kết quả thử nghiệm FR-14 ({spamTestResult.timestamp}):
+                          Kết quả thử nghiệm ({spamTestResult.timestamp}):
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                           <div className="p-2 bg-emerald-50/80 border border-emerald-200 rounded-lg text-emerald-900">
@@ -3082,7 +3082,7 @@ export default function ReferralLinksPage() {
                   <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-2xl text-xs text-[#7D715E] flex items-start gap-2.5">
                     <ShieldCheck className="w-4 h-4 text-[#B88E4F] flex-shrink-0 mt-0.5" />
                     <div className="text-[11px] leading-relaxed">
-                      <strong className="text-[#1A1612] font-bold">Bảo vệ quyền riêng tư người mua (FR-13):</strong> Hệ thống SCANMS băm bảo mật IP và User-Agent ở phía máy chủ. KOL chỉ xem số liệu thống kê tổng hợp để tối ưu nội dung; không có quyền truy cập địa chỉ IP, dấu vân tay thiết bị hay dữ liệu cá nhân của người mua hàng.
+                      <strong className="text-[#1A1612] font-bold">Bảo vệ quyền riêng tư người mua:</strong> Hệ thống SCANMS băm bảo mật IP và User-Agent ở phía máy chủ. KOL chỉ xem số liệu thống kê tổng hợp để tối ưu nội dung; không có quyền truy cập địa chỉ IP, dấu vân tay thiết bị hay dữ liệu cá nhân của người mua hàng.
                     </div>
                   </div>
                 </>

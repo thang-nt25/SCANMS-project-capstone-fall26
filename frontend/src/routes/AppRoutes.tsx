@@ -62,16 +62,16 @@ const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHu
 const AdminSampleRequestsPage = lazy(() => import('../pages/admin/AdminSampleRequestsPage'));
 const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
 
-// AI Anti-Fraud Sentinel & Traffic Defense (Quý - FR-31)
+// AI Anti-Fraud Sentinel & Traffic Defense
 const AiFraudSentinelPage = lazy(() => import('../pages/merchant/AiFraudSentinelPage'));
 
-// Audit Logs & Security Trail (Quý - FR-32)
+// Audit Logs & Security Trail
 const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
 
-// Dispute Arbitration Portal (Leader Thắng - Nhiệm vụ 4)
+// Dispute Arbitration Portal
 const DisputeResolutionPage = lazy(() => import('../pages/admin/DisputeResolutionPage').then(m => ({ default: m.DisputeResolutionPage })));
 
-// Shop Return Requests (Merchant - Tiếp nhận đổi trả 14 ngày)
+// Shop Return Requests (Merchant)
 const ShopReturnRequestsPage = lazy(() => import('../pages/merchant/ShopReturnRequestsPage').then(m => ({ default: m.ShopReturnRequestsPage })));
 const ShopStorefrontPage = lazy(() => import('../pages/public/ShopStorefrontPage'));
 
