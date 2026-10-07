@@ -690,7 +690,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                     }}
                     className="px-5 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                   >
-                    👑 Mời Vào Chiến Dịch VIP (FR-27)
+                    👑 Mời Vào Chiến Dịch VIP
                   </button>
                 </div>
               </div>

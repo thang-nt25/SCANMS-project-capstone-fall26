@@ -443,7 +443,7 @@ function CampaignCardBubble({
         </span>
         <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full border border-amber-300/60">
           <Gift className="w-3.5 h-3.5 text-amber-700" />
-          <span>FR-27</span>
+          <span>Chiến dịch VIP</span>
         </div>
       </div>
 

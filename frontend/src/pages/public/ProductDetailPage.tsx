@@ -1832,7 +1832,7 @@ export default function ProductDetailPage() {
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-full text-xs font-bold text-[#B88E4F] mb-2">
                 <Play className="w-3.5 h-3.5 fill-[#B88E4F]" />
-                <span>VIDEO REVIEW TRẢI NGHIỆM THẬT (FR-15)</span>
+                <span>VIDEO REVIEW TRẢI NGHIỆM THẬT</span>
               </div>
               <h2 className={`${activeVideo ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'} font-extrabold text-[#1A1612]`}>
                 Trải Nghiệm & Đánh Giá Thực Tế từ Nhà Sáng Tạo
@@ -2073,7 +2073,7 @@ export default function ProductDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#EAE4D7]">
             <div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-[#1A1612]">
-                Đánh Giá Thực Tế Từ Khách Hàng (FR-18)
+                Đánh Giá Thực Tế Từ Khách Hàng
               </h2>
               <p className="text-xs sm:text-sm text-[#7D715E] mt-0.5">
                 Chỉ hiển thị phản hồi đã kiểm duyệt từ người mua hàng thực tế
