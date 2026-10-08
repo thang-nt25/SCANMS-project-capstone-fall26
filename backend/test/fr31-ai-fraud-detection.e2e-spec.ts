@@ -28,7 +28,9 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true }),
+    );
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -41,7 +43,8 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
       create: {
         email: 'shop-fr31@scanms.test',
         fullName: 'Chủ Shop Sora Skin Test FR31',
-        passwordHash: '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
+        passwordHash:
+          '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
         role: UserRole.SHOP_MANAGER,
         isActive: true,
       },
@@ -68,7 +71,8 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
       create: {
         email: 'admin-fr31@scanms.test',
         fullName: 'Super Admin Sentinel FR31',
-        passwordHash: '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
+        passwordHash:
+          '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
         role: UserRole.SYSTEM_ADMIN,
         isActive: true,
       },
@@ -81,7 +85,8 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
       create: {
         email: 'kol-fr31@scanms.test',
         fullName: 'KOL Nguyễn Trọng Nghĩa Test FR31',
-        passwordHash: '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
+        passwordHash:
+          '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
         role: UserRole.COLLABORATOR,
         isActive: true,
       },
@@ -141,28 +146,88 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
     // Gieo mầm Click logs
     await prisma.clickTrafficLog.createMany({
       data: [
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot' },
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot' },
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot' },
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot' },
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot' },
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot' },
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot' },
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot' },
-        { referralLinkId: refLink.id, storeId: store.id, ipAddress: '113.161.45.10', userAgent: 'Mozilla/5.0 Bot', riskReason: 'RATE_LIMIT_BURST' },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+        },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+        },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+        },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+        },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+        },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+        },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+        },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+        },
+        {
+          referralLinkId: refLink.id,
+          storeId: store.id,
+          ipAddress: '113.161.45.10',
+          userAgent: 'Mozilla/5.0 Bot',
+          riskReason: 'RATE_LIMIT_BURST',
+        },
       ],
       skipDuplicates: true,
     });
 
     // 7. Tạo JWT Tokens
-    shopToken = jwtService.sign({ sub: shopUser.id, role: shopUser.role, email: shopUser.email });
-    adminToken = jwtService.sign({ sub: adminUser.id, role: adminUser.role, email: adminUser.email });
-    kolToken = jwtService.sign({ sub: kolUser.id, role: kolUser.role, email: kolUser.email });
+    shopToken = jwtService.sign({
+      sub: shopUser.id,
+      role: shopUser.role,
+      email: shopUser.email,
+    });
+    adminToken = jwtService.sign({
+      sub: adminUser.id,
+      role: adminUser.role,
+      email: adminUser.email,
+    });
+    kolToken = jwtService.sign({
+      sub: kolUser.id,
+      role: kolUser.role,
+      email: kolUser.email,
+    });
   });
 
   afterAll(async () => {
     try {
-      await prisma.clickTrafficLog.deleteMany({ where: { referralLinkId: testReferralLinkId } });
+      await prisma.clickTrafficLog.deleteMany({
+        where: { referralLinkId: testReferralLinkId },
+      });
       await prisma.referralLink.deleteMany({ where: { shortCode: 'fr31bot' } });
       await prisma.product.deleteMany({ where: { id: testProductId } });
     } catch {}
@@ -232,7 +297,9 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
       .set('Authorization', `Bearer ${shopToken}`)
       .expect(200);
 
-    const botIncident = res.body.incidents.find((i: any) => i.referralLinkCode === 'fr31bot');
+    const botIncident = res.body.incidents.find(
+      (i: any) => i.referralLinkCode === 'fr31bot',
+    );
     if (botIncident) {
       expect(botIncident.aiReasoning.length).toBeGreaterThan(10);
       expect(Array.isArray(botIncident.evidences)).toBe(true);
@@ -281,7 +348,9 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
 
     expect(Array.isArray(res.body)).toBe(true);
     for (let i = 0; i < res.body.length - 1; i++) {
-      expect(res.body[i].riskScore).toBeGreaterThanOrEqual(res.body[i + 1].riskScore);
+      expect(res.body[i].riskScore).toBeGreaterThanOrEqual(
+        res.body[i + 1].riskScore,
+      );
     }
   });
 
@@ -324,14 +393,19 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
     const res = await request(app.getHttpServer())
       .post(`/api/ai/fraud/incidents/${incidentId}/action`)
       .set('Authorization', `Bearer ${shopToken}`)
-      .send({ action: 'FREEZE_COMMISSION', note: 'Đóng băng do nghi vấn zombie traffic' })
+      .send({
+        action: 'FREEZE_COMMISSION',
+        note: 'Đóng băng do nghi vấn zombie traffic',
+      })
       .expect(201);
 
     expect(res.body.success).toBe(true);
     expect(res.body.incident.status).toBe('FROZEN');
 
     // Kiểm tra link trong DB đã chuyển sang PAUSED
-    const linkInDb = await prisma.referralLink.findUnique({ where: { id: testReferralLinkId } });
+    const linkInDb = await prisma.referralLink.findUnique({
+      where: { id: testReferralLinkId },
+    });
     expect(linkInDb?.status).toBe('PAUSED');
   });
 
@@ -341,13 +415,18 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
     const res = await request(app.getHttpServer())
       .post(`/api/ai/fraud/incidents/${incidentId}/action`)
       .set('Authorization', `Bearer ${shopToken}`)
-      .send({ action: 'DISMISS', note: 'Traffic hợp lệ từ phiên Livestream lớn' })
+      .send({
+        action: 'DISMISS',
+        note: 'Traffic hợp lệ từ phiên Livestream lớn',
+      })
       .expect(201);
 
     expect(res.body.success).toBe(true);
     expect(res.body.incident.status).toBe('DISMISSED');
 
-    const linkInDb = await prisma.referralLink.findUnique({ where: { id: testReferralLinkId } });
+    const linkInDb = await prisma.referralLink.findUnique({
+      where: { id: testReferralLinkId },
+    });
     expect(linkInDb?.status).toBe('ACTIVE');
   });
 
@@ -363,9 +442,7 @@ describe('FR-31 — AI Fraud Sentinel & Traffic Anomaly Detection E2E Suite (Rea
 
   // TC15: 401 Unauthorized khi không có JWT token
   it('TC15: 401 Unauthorized when request lacks JWT token', async () => {
-    await request(app.getHttpServer())
-      .get('/api/ai/fraud/scan')
-      .expect(401);
+    await request(app.getHttpServer()).get('/api/ai/fraud/scan').expect(401);
   });
 
   // TC16: Kiểm tra độ trễ thuật toán (Performance & Latency)

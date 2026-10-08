@@ -6,7 +6,12 @@ import {
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { CommissionsService } from './commissions.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -18,7 +23,8 @@ export class CommissionsController {
 
   @Get('escrow-info')
   @ApiOperation({
-    summary: 'Lấy chính sách Escrow thích ứng Lễ/Tết Việt Nam (FR Escrow Engine)',
+    summary:
+      'Lấy chính sách Escrow thích ứng Lễ/Tết Việt Nam (FR Escrow Engine)',
     description:
       'Trả về quy tắc tính thời hạn bảo chứng, danh mục ngày nghỉ lễ chính thức và kết quả tính toán thích ứng.',
   })
@@ -33,9 +39,12 @@ export class CommissionsController {
       'Hiển thị trạng thái bảo chứng, số ngày/giờ còn lại, và cờ đóng băng nếu trúng ngày nghỉ lễ hoặc khiếu nại.',
   })
   async getOrderEscrowDetails(@Param('orderId') orderId: string) {
-    const details = await this.commissionsService.getOrderEscrowDetails(orderId);
+    const details =
+      await this.commissionsService.getOrderEscrowDetails(orderId);
     if (!details) {
-      throw new NotFoundException('Không tìm thấy bản ghi hoa hồng / Escrow cho đơn hàng này');
+      throw new NotFoundException(
+        'Không tìm thấy bản ghi hoa hồng / Escrow cho đơn hàng này',
+      );
     }
     return details;
   }

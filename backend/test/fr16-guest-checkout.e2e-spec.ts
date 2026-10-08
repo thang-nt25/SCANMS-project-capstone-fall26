@@ -33,49 +33,74 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
     const storeIds = [testStore1Id, testStore2Id];
     const userIds = [testOwner1Id, testOwner2Id];
     const storeSlugs = ['store-1-fr16', 'store-2-fr16'];
-    const userEmails = ['store1-owner-fr16@test.com', 'store2-owner-fr16@test.com'];
+    const userEmails = [
+      'store1-owner-fr16@test.com',
+      'store2-owner-fr16@test.com',
+    ];
     const productIds = [testProduct1Id, testProduct2Id, testProductStore2Id];
 
     try {
       if ((prisma as any).paymentTransaction) {
-        await (prisma as any).paymentTransaction.deleteMany({
-          where: { order: { storeId: { in: storeIds } } },
-        }).catch(() => {});
+        await (prisma as any).paymentTransaction
+          .deleteMany({
+            where: { order: { storeId: { in: storeIds } } },
+          })
+          .catch(() => {});
       }
       if (prisma.orderItem) {
-        await prisma.orderItem.deleteMany({
-          where: { order: { storeId: { in: storeIds } } },
-        }).catch(() => {});
+        await prisma.orderItem
+          .deleteMany({
+            where: { order: { storeId: { in: storeIds } } },
+          })
+          .catch(() => {});
       }
       if (prisma.productVariant) {
-        await prisma.productVariant.deleteMany({
-          where: { OR: [{ id: testVariantId }, { sku: 'SP-FR16-01-V50' }] },
-        }).catch(() => {});
+        await prisma.productVariant
+          .deleteMany({
+            where: { OR: [{ id: testVariantId }, { sku: 'SP-FR16-01-V50' }] },
+          })
+          .catch(() => {});
       }
       if (prisma.couponRedemption) {
-        await prisma.couponRedemption.deleteMany({
-          where: { storeId: { in: storeIds } },
-        }).catch(() => {});
+        await prisma.couponRedemption
+          .deleteMany({
+            where: { storeId: { in: storeIds } },
+          })
+          .catch(() => {});
       }
       if (prisma.order) {
-        await prisma.order.deleteMany({
-          where: { storeId: { in: storeIds } },
-        }).catch(() => {});
+        await prisma.order
+          .deleteMany({
+            where: { storeId: { in: storeIds } },
+          })
+          .catch(() => {});
       }
       if (prisma.product) {
-        await prisma.product.deleteMany({
-          where: { OR: [{ id: { in: productIds } }, { storeId: { in: storeIds } }] },
-        }).catch(() => {});
+        await prisma.product
+          .deleteMany({
+            where: {
+              OR: [{ id: { in: productIds } }, { storeId: { in: storeIds } }],
+            },
+          })
+          .catch(() => {});
       }
       if (prisma.store) {
-        await prisma.store.deleteMany({
-          where: { OR: [{ id: { in: storeIds } }, { slug: { in: storeSlugs } }] },
-        }).catch(() => {});
+        await prisma.store
+          .deleteMany({
+            where: {
+              OR: [{ id: { in: storeIds } }, { slug: { in: storeSlugs } }],
+            },
+          })
+          .catch(() => {});
       }
       if (prisma.user) {
-        await prisma.user.deleteMany({
-          where: { OR: [{ id: { in: userIds } }, { email: { in: userEmails } }] },
-        }).catch(() => {});
+        await prisma.user
+          .deleteMany({
+            where: {
+              OR: [{ id: { in: userIds } }, { email: { in: userEmails } }],
+            },
+          })
+          .catch(() => {});
       }
     } catch {
       // Ignore
@@ -116,7 +141,11 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
     // Setup test users idempotently (upsert chống duplicate email/pkey)
     await prisma.user.upsert({
       where: { email: 'store1-owner-fr16@test.com' },
-      update: { fullName: 'Chủ Shop 1', role: 'SHOP_MANAGER', passwordHash: 'hash123' },
+      update: {
+        fullName: 'Chủ Shop 1',
+        role: 'SHOP_MANAGER',
+        passwordHash: 'hash123',
+      },
       create: {
         id: testOwner1Id,
         email: 'store1-owner-fr16@test.com',
@@ -127,7 +156,11 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
     });
     await prisma.user.upsert({
       where: { email: 'store2-owner-fr16@test.com' },
-      update: { fullName: 'Chủ Shop 2', role: 'SHOP_MANAGER', passwordHash: 'hash123' },
+      update: {
+        fullName: 'Chủ Shop 2',
+        role: 'SHOP_MANAGER',
+        passwordHash: 'hash123',
+      },
       create: {
         id: testOwner2Id,
         email: 'store2-owner-fr16@test.com',
@@ -164,7 +197,12 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
     // Setup test products idempotently
     await prisma.product.upsert({
       where: { id: testProduct1Id },
-      update: { title: 'Serum Vitamin C 30ml', price: 250000, stockQuantity: 10, isActive: true },
+      update: {
+        title: 'Serum Vitamin C 30ml',
+        price: 250000,
+        stockQuantity: 10,
+        isActive: true,
+      },
       create: {
         id: testProduct1Id,
         storeId: testStore1Id,
@@ -177,7 +215,12 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
     });
     await prisma.product.upsert({
       where: { id: testProduct2Id },
-      update: { title: 'Kem Chống Nắng 50ml', price: 320000, stockQuantity: 2, isActive: true },
+      update: {
+        title: 'Kem Chống Nắng 50ml',
+        price: 320000,
+        stockQuantity: 2,
+        isActive: true,
+      },
       create: {
         id: testProduct2Id,
         storeId: testStore1Id,
@@ -190,7 +233,12 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
     });
     await prisma.product.upsert({
       where: { id: testProductStore2Id },
-      update: { title: 'Sản phẩm của Shop 2', price: 150000, stockQuantity: 20, isActive: true },
+      update: {
+        title: 'Sản phẩm của Shop 2',
+        price: 150000,
+        stockQuantity: 20,
+        isActive: true,
+      },
       create: {
         id: testProductStore2Id,
         storeId: testStore2Id,
@@ -205,7 +253,12 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
     // Setup test product variant idempotently
     await prisma.productVariant.upsert({
       where: { sku: 'SP-FR16-01-VAR-L' },
-      update: { name: 'Phân loại Size L 50ml', price: 350000, stockQuantity: 5, isActive: true },
+      update: {
+        name: 'Phân loại Size L 50ml',
+        price: 350000,
+        stockQuantity: 5,
+        isActive: true,
+      },
       create: {
         id: testVariantId,
         productId: testProduct1Id,
@@ -217,7 +270,6 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
       },
     });
   });
-
 
   afterAll(async () => {
     await cleanupData();
@@ -578,7 +630,7 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
       const cancellationToken = createRes.body.cancellationToken;
 
       // Kiểm tra kho bị trừ 2
-      let pCurrent = await prisma.product.findUnique({
+      const pCurrent = await prisma.product.findUnique({
         where: { id: testProduct1Id },
       });
       expect(pCurrent!.stockQuantity).toBe(stockBefore - 2);
@@ -847,7 +899,10 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
       // Gửi webhook với sai chữ ký bị từ chối 403
       await request(app.getHttpServer())
         .post('/orders/payment-webhook')
-        .set('x-webhook-signature', 'sha256=invalid_signature_hash_0000000000000000000000000000000000000000')
+        .set(
+          'x-webhook-signature',
+          'sha256=invalid_signature_hash_0000000000000000000000000000000000000000',
+        )
         .send(webhookPayload)
         .expect(403);
     });
@@ -881,4 +936,3 @@ describe('FR-16 — Guest Checkout (Đặt Hàng Nhanh) E2E', () => {
     });
   });
 });
-

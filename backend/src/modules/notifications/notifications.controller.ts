@@ -7,7 +7,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { NotificationsService, GetNotificationsQuery } from './notifications.service';
+import {
+  NotificationsService,
+  GetNotificationsQuery,
+} from './notifications.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -20,7 +23,8 @@ export class NotificationsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Lấy danh sách thông báo của người dùng (kèm phân loại đa danh mục)',
+    summary:
+      'Lấy danh sách thông báo của người dùng (kèm phân loại đa danh mục)',
   })
   async getUserNotifications(
     @CurrentUser('id') userId: string,

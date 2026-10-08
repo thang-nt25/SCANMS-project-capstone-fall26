@@ -17,7 +17,9 @@ describe('Product moderation workflow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.$transaction.mockImplementation((callback: (tx: any) => unknown) => callback(prisma));
+    prisma.$transaction.mockImplementation((callback: (tx: any) => unknown) =>
+      callback(prisma),
+    );
     service = new ProductsService(prisma, { get: jest.fn() } as any, cache);
     prisma.product.findFirst.mockResolvedValue({
       id: 'product-1',
@@ -32,27 +34,40 @@ describe('Product moderation workflow', () => {
   });
 
   it('approves a draft, activates it, notifies the Shop, records audit, and invalidates its landing cache', async () => {
-    await service.moderateProduct('manager-1', 'product-1', { status: 'APPROVED' });
+    await service.moderateProduct('manager-1', 'product-1', {
+      status: 'APPROVED',
+    });
 
-    expect(prisma.product.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'product-1' },
-      data: expect.objectContaining({
-        moderationStatus: ProductModerationStatus.APPROVED,
-        moderationReason: null,
-        moderatedById: 'manager-1',
-        isActive: true,
+    expect(prisma.product.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'product-1' },
+        data: expect.objectContaining({
+          moderationStatus: ProductModerationStatus.APPROVED,
+          moderationReason: null,
+          moderatedById: 'manager-1',
+          isActive: true,
+        }),
       }),
-    }));
-    expect(prisma.notification.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ userId: 'owner-1', type: 'PRODUCT_APPROVED' }),
-    }));
+    );
+    expect(prisma.notification.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'owner-1',
+          type: 'PRODUCT_APPROVED',
+        }),
+      }),
+    );
     expect(prisma.auditLog.create).toHaveBeenCalled();
     expect(cache.delPrefix).toHaveBeenCalledWith('landing:v2:product-1:');
   });
 
   it('requires a clear reason to reject a product', async () => {
-    await expect(service.moderateProduct('manager-1', 'product-1', { status: 'REJECTED', reason: '  ' }))
-      .rejects.toThrow(BadRequestException);
+    await expect(
+      service.moderateProduct('manager-1', 'product-1', {
+        status: 'REJECTED',
+        reason: '  ',
+      }),
+    ).rejects.toThrow(BadRequestException);
 
     expect(prisma.product.update).not.toHaveBeenCalled();
   });
@@ -64,14 +79,19 @@ describe('Product moderation workflow', () => {
       store: { id: 'store-1', name: 'Shop test', ownerId: 'owner-1' },
     });
 
-    await expect(service.moderateProduct('manager-1', 'product-1', { status: 'REJECTED', reason: 'Thiếu nhãn' }))
-      .rejects.toThrow(BadRequestException);
+    await expect(
+      service.moderateProduct('manager-1', 'product-1', {
+        status: 'REJECTED',
+        reason: 'Thiếu nhãn',
+      }),
+    ).rejects.toThrow(BadRequestException);
     expect(prisma.product.update).not.toHaveBeenCalled();
   });
 
   it('returns not found for a missing product', async () => {
     prisma.product.findFirst.mockResolvedValueOnce(null);
-    await expect(service.moderateProduct('manager-1', 'missing', { status: 'APPROVED' }))
-      .rejects.toThrow(NotFoundException);
+    await expect(
+      service.moderateProduct('manager-1', 'missing', { status: 'APPROVED' }),
+    ).rejects.toThrow(NotFoundException);
   });
 });

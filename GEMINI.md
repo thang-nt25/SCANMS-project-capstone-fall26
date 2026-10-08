@@ -64,3 +64,48 @@
   - `FR-06`: Xét duyệt hồ sơ KYC đa cấp (System Admin & Shop Manager).
   - `FR-07`: Quản lý danh mục & liên kết tài khoản Mạng xã hội của KOL (TikTok, FB, YouTube...).
   - `FR-08`: Kho nội dung số tập trung (Media Hub) chia sẻ tài nguyên quảng bá.
+
+---
+
+## 4. 📐 TIÊU CHUẨN THIẾT KẾ & VẬN HÀNH TMĐT THỰC TẾ (REAL-WORLD E-COMMERCE GOVERNANCE)
+
+> ⚠️ **BỘ QUY TẮC NGHIỆP VỤ & TRẢI NGHIỆM NGƯỜI DÙNG BẮT BUỘC:**
+
+1. **Nghiệp vụ Tài chính, Ví & Duyệt Chi trả (Payout):**
+   - **Tính toàn vẹn dữ liệu kế toán:** Khi duyệt chi trả hoa hồng (`payoutService.approve/reject`), nếu API backend trả về lỗi, **TUYỆT ĐỐI KHÔNG ĐƯỢC NUỐT LỖI** (`catch (err) { console.warn }`), không được tự động sinh mã ngân hàng giả (`MBB...`) để ép trạng thái sang `APPROVED`. Bắt buộc phải thông báo lỗi đỏ rõ ràng và giữ nguyên trạng thái `PENDING`.
+   - **Cơ chế Nạp tiền Ví Khách hàng:** Duy trì tính năng "Nạp tiền Sandbox / Demo" trong môi trường phát triển để phục vụ kiểm thử đặt hàng, luân chuyển dòng tiền và thử nghiệm chính sách Hoàn tiền đổi trả (`ORDER_REFUND`). Giao diện nạp tiền phải phân định rõ ràng giữa chế độ Thử nghiệm và Cổng thanh toán chính thức (VietQR / PayOS).
+
+2. **Xử lý Trang Chi tiết Sản phẩm 404 (Không Fallback Lừa dối):**
+   - Khi người dùng truy cập một sản phẩm không tồn tại, đã bị xóa hoặc ngừng kinh doanh, **TUYỆT ĐỐI KHÔNG ĐƯỢC ÂM THẦM FALLBACK** tải sản phẩm thử nghiệm khác (`SR-VTC-15` hay sản phẩm đầu tiên trong DB) để hiển thị thay thế.
+   - Bắt buộc phải hiển thị trang thông báo chuẩn mực: *"Sản phẩm không tồn tại hoặc đã ngừng kinh doanh"* kèm nút điều hướng *"Khám phá các sản phẩm khác trên SCANMS"*.
+
+3. **Phòng Livestream (Tính chân thực & Màn hình Kết thúc Phiên Live):**
+   - **Loại bỏ bình luận ảo:** Không sử dụng `setInterval` tự động random bắn tin nhắn bot chốt đơn ảo.
+   - **Màn hình Kết thúc (Ended Stream Overlay):** Khi phiên live có trạng thái `ENDED`, bắt buộc phải hiển thị màn hình kết thúc chuyên nghiệp (hiển thị thời lượng live, số người đã xem, tổng kết ưu đãi) và khóa khung chat / ghim deal, kèm nút "Ghé thăm gian hàng" hoặc "Xem các phiên Live đang diễn ra". Không để khán giả vào phòng live tối đen mà vẫn thao tác được.
+
+4. **Bố cục Form Thêm / Cập nhật Sản phẩm của Shop Manager (`ProductManagementPage.tsx`):**
+   - Bắt buộc tuân theo cấu trúc 6 khối logic tuần tự của sàn TMĐT tiêu chuẩn (Shopee Seller Centre / TikTok Shop Seller Center):
+     - **Khối 1: Thông tin cơ bản** (Tên sản phẩm, Danh mục, Thương hiệu, Mô tả chi tiết rich text).
+     - **Khối 2: Hình ảnh & Video sản phẩm** (Ảnh bìa 1:1, Thư viện ảnh phụ, Video sản phẩm).
+     - **Khối 3: Bán hàng & Phân loại biến thể** (Bảng ma trận biến thể Màu/Size; Giá bán, Tồn kho, SKU con của từng biến thể; Tự động tính tổng tồn kho).
+     - **Khối 4: Quy cách đóng gói & Vận chuyển** (Cân nặng đóng gói gram, Kích thước Dài x Rộng x Cao cm để tính phí ship GHN/GHTK).
+     - **Khối 5: Chính sách KOL & Mẫu thử** (Hoa hồng 10% chuẩn sàn, Công tắc mở Open Offer, Suất cấp mẫu thử cho KOL).
+     - **Khối 6: Pháp lý & Kiểm duyệt** (Xuất xứ, Thành phần, Giấy phép công bố, Hóa đơn chứng từ nguồn gốc).
+   - Tuyệt đối không đặt ô "Mô tả chi tiết" ở tận đáy form, không đưa "Cấp mẫu thử" lên trước "Thông số kỹ thuật".
+
+5. **Quản lý Đơn hàng Merchant (`OrdersManagementPage.tsx`):**
+   - Bắt buộc có tab **"Chờ thanh toán" (Unpaid / Pending Payment)** để tách biệt các đơn VietQR/PayOS chưa nhận được tiền với đơn "Chờ lấy hàng" (COD hoặc đã thanh toán thành công).
+   - Bổ sung tab **"Trả hàng / Hoàn tiền" (Returns / Disputes)** ngay trên thanh trạng thái đơn hàng kèm huy hiệu số lượng đơn khiếu nại cần xử lý.
+   - Loại bỏ các nhãn chữ "Simulator / Tự sinh mã" lộ liễu trên modal tạo vận đơn, đảm bảo giao diện vận hành doanh nghiệp chuyên nghiệp.
+
+6. **Báo cáo Hiệu suất KOL của Shop (`ShopKolHubPage.tsx`):**
+   - Báo cáo doanh số và đơn hàng tiếp thị của từng KOL phải truy vấn từ API backend thực tế theo `collaboratorId` và `storeId`.
+   - Loại bỏ hoàn toàn mảng 4 đơn hàng tĩnh hardcoded (`#SCN-99824`...) và công tắc "Đang bật số liệu mẫu" trên UI sản xuất.
+
+7. **Trải nghiệm Giỏ hàng & Điều hướng Thông báo (Deep Linking):**
+   - **Quy định Bắt buộc Tài khoản khi Mua hàng (Strict Authentication for Purchase):**
+     - Khách chưa đăng nhập (Guest) **CHỈ ĐƯỢC PHÉP XEM HÀNG (Browse only)**, xem livestream, tìm kiếm sản phẩm.
+     - Khi bấm "Mua ngay" hoặc "Tiến hành thanh toán", **BẮT BUỘC PHẢI CÓ TÀI KHOẢN (Đã đăng nhập)**. Hệ thống **TUYỆT ĐỐI KHÔNG HỖ TRỢ MUA ẨN DANH (No Anonymous Guest Checkout)**.
+     - **Cơ chế Đăng nhập không mất giỏ hàng:** Không được redirect làm mất giỏ hàng và dữ liệu form của khách. Phải mở popup Đăng nhập nhanh tại chỗ (Quick Login / Google OAuth / OTP SMS); sau khi đăng nhập thành công, giữ nguyên 100% giỏ hàng để khách tiếp tục thanh toán ngay lập tức.
+   - **Trung tâm thông báo (`NotificationDropdown.tsx`):** Bấm vào thông báo đơn hàng hoặc khiếu nại bắt buộc phải truyền `orderId` để mở trực tiếp modal hoặc trang chi tiết đơn hàng đó, không được chỉ ném người dùng vào trang danh sách tổng.
+

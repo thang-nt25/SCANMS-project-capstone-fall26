@@ -692,7 +692,9 @@ export class CouponsService {
     });
 
     if (coupon?.liveSessionId) {
-      throw new BadRequestException('Hãy quản lý voucher này trong trang Phiên Livestream.');
+      throw new BadRequestException(
+        'Hãy quản lý voucher này trong trang Phiên Livestream.',
+      );
     }
 
     if (!coupon || coupon.status === CouponStatus.DELETED) {
@@ -1757,14 +1759,18 @@ export class CouponsService {
     const dbProductMap = new Map<string, any>(
       dbProducts.map((p: any) => [p.id, p]),
     );
-    const variantIds = dto.items.map((item) => item.variantId).filter(Boolean) as string[];
+    const variantIds = dto.items
+      .map((item) => item.variantId)
+      .filter(Boolean) as string[];
     const dbVariants = variantIds.length
       ? await this.prisma.productVariant.findMany({
           where: { id: { in: variantIds }, isActive: true },
           select: { id: true, productId: true, price: true },
         })
       : [];
-    const dbVariantMap = new Map(dbVariants.map((variant) => [variant.id, variant]));
+    const dbVariantMap = new Map(
+      dbVariants.map((variant) => [variant.id, variant]),
+    );
 
     // Filter items that belong to the coupon's store
     const storeItems = dto.items.filter((item) => {
@@ -1802,8 +1808,11 @@ export class CouponsService {
 
     for (const item of storeItems) {
       const prod = dbProductMap.get(item.productId)!;
-      const variant = item.variantId ? dbVariantMap.get(item.variantId) : undefined;
-      if (item.variantId && (!variant || variant.productId !== prod.id)) continue;
+      const variant = item.variantId
+        ? dbVariantMap.get(item.variantId)
+        : undefined;
+      if (item.variantId && (!variant || variant.productId !== prod.id))
+        continue;
       let isEligible = false;
 
       if (coupon.scopeType === CouponScope.STORE_WIDE) {
@@ -1821,14 +1830,17 @@ export class CouponsService {
 
       if (isEligible && coupon.liveSession) {
         isEligible = coupon.liveSession.products.some(
-          (liveProduct) => liveProduct.productId === prod.id &&
-            (!liveProduct.variantId || liveProduct.variantId === item.variantId),
+          (liveProduct) =>
+            liveProduct.productId === prod.id &&
+            (!liveProduct.variantId ||
+              liveProduct.variantId === item.variantId),
         );
       }
 
       if (isEligible) {
         eligibleProductIds.push(prod.id);
-        eligibleSubtotal += Number(variant?.price ?? prod.price) * item.quantity;
+        eligibleSubtotal +=
+          Number(variant?.price ?? prod.price) * item.quantity;
       }
     }
 
@@ -1943,7 +1955,9 @@ export class CouponsService {
       eligibleSubtotal,
       eligibleProductIds,
       collaboratorId: coupon.collaboratorId,
-      sessionCommissionRate: coupon.liveSession ? Number(coupon.liveSession.commissionRate) : null,
+      sessionCommissionRate: coupon.liveSession
+        ? Number(coupon.liveSession.commissionRate)
+        : null,
       message: 'Áp dụng mã giảm giá thành công',
     };
   }

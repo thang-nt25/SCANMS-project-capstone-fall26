@@ -31,7 +31,9 @@ describe('FR-32 — Comprehensive Audit Logs & Security Trail E2E Suite (Real Po
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true }),
+    );
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -45,7 +47,8 @@ describe('FR-32 — Comprehensive Audit Logs & Security Trail E2E Suite (Real Po
       create: {
         email: 'admin-fr32@scanms.test',
         fullName: 'Super Admin Auditor FR32',
-        passwordHash: '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
+        passwordHash:
+          '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
         role: UserRole.SYSTEM_ADMIN,
         isActive: true,
       },
@@ -59,7 +62,8 @@ describe('FR-32 — Comprehensive Audit Logs & Security Trail E2E Suite (Real Po
       create: {
         email: 'shop-fr32@scanms.test',
         fullName: 'Chủ Shop Sora Skin Test FR32',
-        passwordHash: '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
+        passwordHash:
+          '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
         role: UserRole.SHOP_MANAGER,
         isActive: true,
       },
@@ -73,7 +77,8 @@ describe('FR-32 — Comprehensive Audit Logs & Security Trail E2E Suite (Real Po
       create: {
         email: 'kol-fr32@scanms.test',
         fullName: 'KOL Reviewer Test FR32',
-        passwordHash: '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
+        passwordHash:
+          '$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ecJ.W/1pQ0eH6oNge',
         role: UserRole.COLLABORATOR,
         isActive: true,
       },
@@ -286,7 +291,9 @@ describe('FR-32 — Comprehensive Audit Logs & Security Trail E2E Suite (Real Po
       .expect(200);
 
     expect(res.headers['content-type']).toContain('text/csv');
-    expect(res.headers['content-disposition']).toContain('attachment; filename=');
+    expect(res.headers['content-disposition']).toContain(
+      'attachment; filename=',
+    );
     expect(res.text).toContain('Mã Log (ID)');
     expect(res.text).toContain('Hành động (Action)');
     expect(res.text).toContain('USER_STATUS_UPDATED');
@@ -314,9 +321,7 @@ describe('FR-32 — Comprehensive Audit Logs & Security Trail E2E Suite (Real Po
 
   // TC12: Chặn 401 Unauthorized khi thiếu token
   it('TC12: [AUTH 401] — Ném 401 Unauthorized khi không gửi Bearer Token', async () => {
-    await request(app.getHttpServer())
-      .get('/api/audit-logs')
-      .expect(401);
+    await request(app.getHttpServer()).get('/api/audit-logs').expect(401);
   });
 
   // TC13: Chặn 403 Forbidden đối với COLLABORATOR
@@ -354,7 +359,9 @@ describe('FR-32 — Comprehensive Audit Logs & Security Trail E2E Suite (Real Po
 
     // Dọn dẹp bản ghi phụ
     if (created?.id) {
-      await prisma.auditLog.delete({ where: { id: created.id } }).catch(() => {});
+      await prisma.auditLog
+        .delete({ where: { id: created.id } })
+        .catch(() => {});
     }
   });
 

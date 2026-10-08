@@ -58,7 +58,9 @@ export class SamplesController {
 
   @Get('my/eligibility')
   @Roles('COLLABORATOR')
-  @ApiOperation({ summary: '[KOL] Kiểm tra quyền xin mẫu và kênh mạng xã hội đã liên kết' })
+  @ApiOperation({
+    summary: '[KOL] Kiểm tra quyền xin mẫu và kênh mạng xã hội đã liên kết',
+  })
   getMyEligibility(@Request() req: any) {
     return this.samplesService.getMyEligibility(req.user?.id || req.user?.sub);
   }
@@ -72,9 +74,14 @@ export class SamplesController {
 
   @Patch(':id/receive')
   @Roles('COLLABORATOR')
-  @ApiOperation({ summary: '[KOL] Xác nhận đã nhận mẫu và bắt đầu hạn nộp video 14 ngày' })
+  @ApiOperation({
+    summary: '[KOL] Xác nhận đã nhận mẫu và bắt đầu hạn nộp video 14 ngày',
+  })
   confirmReceived(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
-    return this.samplesService.confirmReceived(id, req.user?.id || req.user?.sub);
+    return this.samplesService.confirmReceived(
+      id,
+      req.user?.id || req.user?.sub,
+    );
   }
 
   @Post(':id/video')
@@ -85,7 +92,11 @@ export class SamplesController {
     @Body() dto: SubmitSampleVideoDto,
     @Request() req: any,
   ) {
-    return this.samplesService.submitVideo(id, req.user?.id || req.user?.sub, dto);
+    return this.samplesService.submitVideo(
+      id,
+      req.user?.id || req.user?.sub,
+      dto,
+    );
   }
 
   @Patch(':id/delivery-issue')
@@ -96,7 +107,11 @@ export class SamplesController {
     @Body() dto: ReportSampleDeliveryIssueDto,
     @Request() req: any,
   ) {
-    return this.samplesService.reportDeliveryIssue(id, req.user?.id || req.user?.sub, dto);
+    return this.samplesService.reportDeliveryIssue(
+      id,
+      req.user?.id || req.user?.sub,
+      dto,
+    );
   }
 
   // ---- Shop endpoints ----
@@ -149,7 +164,9 @@ export class SamplesController {
 
   @Get('admin')
   @Roles('SYSTEM_MANAGER', 'SYSTEM_ADMIN')
-  @ApiOperation({ summary: '[Admin] Tra cứu toàn bộ yêu cầu mẫu và lịch sử xử lý' })
+  @ApiOperation({
+    summary: '[Admin] Tra cứu toàn bộ yêu cầu mẫu và lịch sử xử lý',
+  })
   getAdminRequests(@Query('status') status?: SampleRequestStatus) {
     return this.samplesService.getAdminRequests(status);
   }
@@ -163,13 +180,19 @@ export class SamplesController {
 
   @Patch('admin/:id/resolve')
   @Roles('SYSTEM_MANAGER', 'SYSTEM_ADMIN')
-  @ApiOperation({ summary: '[Admin] Gia hạn hạn video hoặc miễn nghĩa vụ mẫu có ghi lý do' })
+  @ApiOperation({
+    summary: '[Admin] Gia hạn hạn video hoặc miễn nghĩa vụ mẫu có ghi lý do',
+  })
   resolveRequestAsAdmin(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AdminResolveSampleRequestDto,
     @Request() req: any,
   ) {
-    return this.samplesService.resolveRequestAsAdmin(id, req.user?.id || req.user?.sub, dto);
+    return this.samplesService.resolveRequestAsAdmin(
+      id,
+      req.user?.id || req.user?.sub,
+      dto,
+    );
   }
 
   @Patch('admin/:collaboratorId/unblock')

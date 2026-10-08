@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class OrderItemResponseDto {
   @ApiProperty({ description: 'ID sản phẩm' })
@@ -56,10 +62,16 @@ export class VietQrResponseDto {
 }
 
 export class OrderCreatedResponseDto {
-  @ApiProperty({ description: 'Thông báo kết quả', example: 'Đặt hàng thành công!' })
+  @ApiProperty({
+    description: 'Thông báo kết quả',
+    example: 'Đặt hàng thành công!',
+  })
   message: string;
 
-  @ApiProperty({ description: 'Mã đơn hàng công khai', example: 'DH-2026-A1B2C3D4' })
+  @ApiProperty({
+    description: 'Mã đơn hàng công khai',
+    example: 'DH-2026-A1B2C3D4',
+  })
   publicOrderCode: string;
 
   @ApiProperty({ description: 'Trạng thái đơn hàng', example: 'PENDING' })
@@ -74,10 +86,16 @@ export class OrderCreatedResponseDto {
   @ApiProperty({ description: 'Phí vận chuyển', example: 0 })
   shippingFee: number;
 
-  @ApiProperty({ description: 'Chính sách vận chuyển', example: 'NATIONWIDE_FREE_SHIPPING' })
+  @ApiProperty({
+    description: 'Chính sách vận chuyển',
+    example: 'NATIONWIDE_FREE_SHIPPING',
+  })
   shippingFeePolicy: string;
 
-  @ApiProperty({ description: 'Tổng tiền thanh toán cuối cùng', example: 413100 })
+  @ApiProperty({
+    description: 'Tổng tiền thanh toán cuối cùng',
+    example: 413100,
+  })
   finalAmount: number;
 
   @ApiProperty({ description: 'Phương thức thanh toán', example: 'COD' })
@@ -86,25 +104,41 @@ export class OrderCreatedResponseDto {
   @ApiProperty({ description: 'Trạng thái thanh toán', example: 'UNPAID' })
   paymentStatus: string;
 
-  @ApiPropertyOptional({ description: 'Dữ liệu VietQR nếu chọn chuyển khoản', type: VietQrResponseDto })
+  @ApiPropertyOptional({
+    description: 'Dữ liệu VietQR nếu chọn chuyển khoản',
+    type: VietQrResponseDto,
+  })
   vietqr?: VietQrResponseDto | null;
 
-  @ApiPropertyOptional({ description: 'Token hủy đơn bảo mật cấp 1 lần cho khách', example: 'token-abc...' })
+  @ApiPropertyOptional({
+    description: 'Token hủy đơn bảo mật cấp 1 lần cho khách',
+    example: 'token-abc...',
+  })
   cancellationToken?: string;
 
-  @ApiProperty({ description: 'Đường dẫn tra cứu đơn hàng', example: '/tracking?sn=DH-2026-A1B2C3D4' })
+  @ApiProperty({
+    description: 'Đường dẫn tra cứu đơn hàng',
+    example: '/tracking?sn=DH-2026-A1B2C3D4',
+  })
   trackingUrl: string;
 
   @ApiProperty({
-    description: 'Email xác nhận đã được đưa vào tiến trình gửi sau khi đơn commit',
+    description:
+      'Email xác nhận đã được đưa vào tiến trình gửi sau khi đơn commit',
     example: true,
   })
   confirmationEmailQueued: boolean;
 
-  @ApiProperty({ description: 'Danh sách sản phẩm trong đơn', type: [OrderItemResponseDto] })
+  @ApiProperty({
+    description: 'Danh sách sản phẩm trong đơn',
+    type: [OrderItemResponseDto],
+  })
   items: OrderItemResponseDto[];
 
-  @ApiProperty({ description: 'Thông tin gian hàng', type: StoreInfoResponseDto })
+  @ApiProperty({
+    description: 'Thông tin gian hàng',
+    type: StoreInfoResponseDto,
+  })
   store: StoreInfoResponseDto;
 }
 
@@ -118,7 +152,10 @@ export class PublicOrderDetailResponseDto {
   @ApiProperty({ description: 'Họ tên người nhận' })
   customerName: string;
 
-  @ApiProperty({ description: 'Số điện thoại người nhận (đã che hoặc đầy đủ nếu xác thực token)' })
+  @ApiProperty({
+    description:
+      'Số điện thoại người nhận (đã che hoặc đầy đủ nếu xác thực token)',
+  })
   customerPhone: string;
 
   @ApiProperty({ description: 'Địa chỉ giao hàng' })
@@ -145,15 +182,24 @@ export class PublicOrderDetailResponseDto {
   @ApiProperty({ description: 'Thời gian đặt hàng' })
   createdAt: string;
 
-  @ApiProperty({ description: 'Danh sách sản phẩm', type: [OrderItemResponseDto] })
+  @ApiProperty({
+    description: 'Danh sách sản phẩm',
+    type: [OrderItemResponseDto],
+  })
   items: OrderItemResponseDto[];
 
-  @ApiProperty({ description: 'Thông tin gian hàng', type: StoreInfoResponseDto })
+  @ApiProperty({
+    description: 'Thông tin gian hàng',
+    type: StoreInfoResponseDto,
+  })
   store: StoreInfoResponseDto;
 }
 
 export class PaymentWebhookDto {
-  @ApiProperty({ description: 'Mã đơn hàng cần đối soát', example: 'DH-2026-A1B2C3D4' })
+  @ApiProperty({
+    description: 'Mã đơn hàng cần đối soát',
+    example: 'DH-2026-A1B2C3D4',
+  })
   @IsString()
   @IsNotEmpty()
   orderCode: string;
@@ -163,12 +209,18 @@ export class PaymentWebhookDto {
   @Min(0)
   amount: number;
 
-  @ApiProperty({ description: 'Mã giao dịch ngân hàng', example: 'FT260913889900' })
+  @ApiProperty({
+    description: 'Mã giao dịch ngân hàng',
+    example: 'FT260913889900',
+  })
   @IsString()
   @IsNotEmpty()
   transactionId: string;
 
-  @ApiPropertyOptional({ description: 'Đơn vị tiền tệ (mặc định VND)', example: 'VND' })
+  @ApiPropertyOptional({
+    description: 'Đơn vị tiền tệ (mặc định VND)',
+    example: 'VND',
+  })
   @IsOptional()
   @IsString()
   currency?: string;

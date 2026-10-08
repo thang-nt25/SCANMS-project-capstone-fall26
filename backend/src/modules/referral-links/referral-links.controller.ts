@@ -59,7 +59,13 @@ export class CollaboratorReferralLinksController {
     description: 'Danh sách sản phẩm kèm mức hoa hồng dự kiến',
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 50, maximum: 100 })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    example: 50,
+    maximum: 100,
+  })
   async getEligibleProducts(
     @CurrentUser('id') collaboratorId: string,
     @Query('search') search?: string,
@@ -132,7 +138,12 @@ export class CollaboratorReferralLinksController {
   }
 
   @Get([':id/qr', 'by-code/:id/qr'])
-  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Roles(
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_MANAGER,
+  )
   @ApiOperation({
     summary: 'Xem trước hoặc tải về ảnh mã QR Code động (FR-11)',
   })
@@ -654,7 +665,8 @@ export class AdminReferralLinksController {
   @Get('rate-limit/dashboard')
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
-    summary: 'Quản trị viên xem Dashboard giám sát Rate Limit & Redis Realtime (FR-14)',
+    summary:
+      'Quản trị viên xem Dashboard giám sát Rate Limit & Redis Realtime (FR-14)',
     description:
       'Cung cấp toàn diện latency, error count, timeout count, số IP vượt hạn, thống kê spike theo link/KOL/Shop, và cảnh báo bất thường.',
   })

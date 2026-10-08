@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { Select } from '../../components/ui/Select';
 import './AdminSampleRequestsPage.css';
 

@@ -1,26 +1,46 @@
-import { IsEmail, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min, MaxLength, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  MaxLength,
+  Matches,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateStoreDto {
-  @ApiPropertyOptional({ description: 'Chính sách đổi trả của Shop (tối đa 500 ký tự)' })
+  @ApiPropertyOptional({
+    description: 'Chính sách đổi trả của Shop (tối đa 500 ký tự)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   policyReturn?: string;
 
-  @ApiPropertyOptional({ description: 'Chính sách bảo hành của Shop (tối đa 500 ký tự)' })
+  @ApiPropertyOptional({
+    description: 'Chính sách bảo hành của Shop (tối đa 500 ký tự)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   policyWarranty?: string;
 
-  @ApiPropertyOptional({ description: 'Chính sách giao hàng của Shop (tối đa 500 ký tự)' })
+  @ApiPropertyOptional({
+    description: 'Chính sách giao hàng của Shop (tối đa 500 ký tự)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   policyShipping?: string;
 
-  @ApiPropertyOptional({ example: 'Nguyễn Văn A', description: 'Tên người đại diện gian hàng' })
+  @ApiPropertyOptional({
+    example: 'Nguyễn Văn A',
+    description: 'Tên người đại diện gian hàng',
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
@@ -32,45 +52,63 @@ export class UpdateStoreDto {
   @IsIn(['INDIVIDUAL', 'HOUSEHOLD', 'ENTERPRISE'])
   businessType?: string;
 
-  @ApiPropertyOptional({ example: '0315891234', description: 'Mã số thuế gian hàng' })
+  @ApiPropertyOptional({
+    example: '0315891234',
+    description: 'Mã số thuế gian hàng',
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)
   taxCode?: string;
 
-  @ApiPropertyOptional({ example: '0902345678', description: 'Số điện thoại liên hệ gian hàng' })
+  @ApiPropertyOptional({
+    example: '0902345678',
+    description: 'Số điện thoại liên hệ gian hàng',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^\+?[0-9().\-\s]{8,20}$/)
   contactPhone?: string;
 
-  @ApiPropertyOptional({ example: 'shop@example.vn', description: 'Email liên hệ gian hàng' })
+  @ApiPropertyOptional({
+    example: 'shop@example.vn',
+    description: 'Email liên hệ gian hàng',
+  })
   @IsOptional()
   @IsEmail()
   @MaxLength(255)
   contactEmail?: string;
 
-  @ApiPropertyOptional({ example: 'Số 1, đường A, phường B, TP. Hồ Chí Minh', description: 'Địa chỉ kho hàng' })
+  @ApiPropertyOptional({
+    example: 'Số 1, đường A, phường B, TP. Hồ Chí Minh',
+    description: 'Địa chỉ kho hàng',
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
   warehouseAddress?: string;
 
-  @ApiPropertyOptional({ description: 'Ngân hàng dùng để chi trả hoa hồng KOL' })
+  @ApiPropertyOptional({
+    description: 'Ngân hàng dùng để chi trả hoa hồng KOL',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
   payoutBankName?: string | null;
 
-  @ApiPropertyOptional({ description: 'Số tài khoản dùng để chi trả hoa hồng KOL' })
+  @ApiPropertyOptional({
+    description: 'Số tài khoản dùng để chi trả hoa hồng KOL',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50)
   payoutBankAccountNumber?: string | null;
 
-  @ApiPropertyOptional({ description: 'Tên chủ tài khoản chi trả hoa hồng KOL' })
+  @ApiPropertyOptional({
+    description: 'Tên chủ tài khoản chi trả hoa hồng KOL',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(150)
@@ -128,5 +166,4 @@ export class UpdateStoreDto {
   @Min(1, { message: 'Thời gian lưu cookie tối thiểu là 1 ngày' })
   @Max(365, { message: 'Thời gian lưu cookie tối đa là 365 ngày' })
   attributionWindowDays?: number;
-
 }

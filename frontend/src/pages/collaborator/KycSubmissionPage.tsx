@@ -204,6 +204,10 @@ export default function KycSubmissionPage() {
       toast.error('Vui lòng nhập số CCCD/CMND hợp lệ (từ 9 đến 12 số)');
       return;
     }
+    if (!taxCode.trim()) {
+      toast.error('Vui lòng nhập Mã số thuế cá nhân (MST) để hoàn tất hồ sơ');
+      return;
+    }
     if (!bankName?.trim()) {
       toast.error('Vui lòng chọn ngân hàng thụ hưởng nhận hoa hồng');
       return;
@@ -221,7 +225,7 @@ export default function KycSubmissionPage() {
     try {
       await kycService.submitKyc({
         idCardNumber: idCardNumber.trim(),
-        taxCode: taxCode.trim() || '8012345678',
+        taxCode: taxCode.trim(),
         bankName,
         bankAccountNumber: bankAccountNumber.trim(),
         bankAccountName: bankAccountName.trim().toUpperCase(),
@@ -292,10 +296,10 @@ export default function KycSubmissionPage() {
                   {isVerified
                     ? 'Hồ sơ KOL đã được phê duyệt'
                     : isRejected
-                    ? 'Hồ sơ bị từ chối phê duyệt'
+                    ? 'Hồ sơ bị từ chối'
                     : isPending
-                    ? 'Hồ sơ đang được Ban Quản Trị thẩm định đối soát'
-                    : 'Chưa hoàn tất nộp hồ sơ định danh'}
+                    ? 'Hồ sơ đang chờ duyệt'
+                    : 'Chưa gửi hồ sơ định danh'}
                 </strong>
                 <span
                   className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
@@ -312,27 +316,27 @@ export default function KycSubmissionPage() {
                 </span>
                 {isVerified && (
                   <span className="inline-flex items-center gap-1 bg-white border border-[#EEDFC6] text-[#B88E4F] text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-                    <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> TÍCH XANH CHÍNH THỨC
+                    <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> TÍCH XANH
                   </span>
                 )}
               </div>
               <p className="text-xs text-[#7D715E] leading-relaxed m-0">
                 {isVerified
-                    ? 'Bạn có thể cập nhật thông tin ngân hàng, mã số thuế và giấy tờ định danh bên dưới.'
+                  ? 'Bạn có thể cập nhật thông tin ngân hàng, mã số thuế và giấy tờ định danh bên dưới.'
                   : isRejected
-                  ? 'Thông tin định danh chưa hợp lệ hoặc hình ảnh CCCD không rõ. Vui lòng kiểm tra lại số liệu và gửi lại hồ sơ.'
+                  ? 'Thông tin chưa hợp lệ. Vui lòng kiểm tra và gửi lại.'
                   : isPending
-                  ? 'Đội ngũ kiểm soát gian lận và Admin sàn đang kiểm tra ảnh CCCD và các kênh sáng tạo nội dung của bạn.'
-                  : 'Vui lòng điền thông tin chính xác, tải ảnh 2 mặt CCCD và liên kết kênh mạng xã hội bên dưới.'}
+                  ? 'Hồ sơ đang được xem xét (kết quả trong 24h làm việc).'
+                  : 'Vui lòng cung cấp thông tin CCCD và kênh mạng xã hội bên dưới.'}
               </p>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* 2. FORM ĐỊNH DANH TOÀN DIỆN (CHÍNH XÁC THEO GIAO DIỆN ẢNH 2 BÊN USER) */}
+      {/* 2. FORM ĐỊNH DANH */}
       <form onSubmit={handleSubmit} className="bg-white border border-[#EAE4D7] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 w-full">
-        {/* BANNER TIÊU ĐỀ + NẠP DỮ LIỆU MẪU (CHUẨN IMAGE 2) */}
+        {/* BANNER TIÊU ĐỀ + NẠP DỮ LIỆU MẪU */}
         <div className="kol-kyc-heading bg-white border-b border-[#EAE4D7] pb-3 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] shadow-2xs">
@@ -345,14 +349,13 @@ export default function KycSubmissionPage() {
               <p className="text-[11px] text-[#7D715E] mt-0.5 m-0">
                 Cung cấp link mạng xã hội và ảnh chụp màn hình studio để chứng minh quyền sở hữu kênh.
               </p>
-            </div>
           </div>
           <button
             type="button"
             onClick={fillSampleKolData}
             className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58] text-[11px] font-bold text-[#B88E4F] transition cursor-pointer shadow-2xs shrink-0"
           >
-            ⚡ Nạp dữ liệu mẫu thử nghiệm
+            ⚡ Nạp demo
           </button>
         </div>
 

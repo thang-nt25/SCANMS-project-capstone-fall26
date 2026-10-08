@@ -1,4 +1,10 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -21,7 +27,8 @@ export class SubmitKolVideoDto {
 
   @ApiProperty({
     example: 'https://www.tiktok.com/@kol/video/1234567890',
-    description: 'Đường dẫn video review (phải thuộc allowlist nền tảng hợp lệ)',
+    description:
+      'Đường dẫn video review (phải thuộc allowlist nền tảng hợp lệ)',
   })
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng cung cấp URL video' })
@@ -54,7 +61,8 @@ export class SubmitKolVideoDto {
 
   @ApiPropertyOptional({
     example: false,
-    description: 'Yêu cầu kiểm tra quyền tham gia chiến dịch (mặc định false cho video thông thường)',
+    description:
+      'Yêu cầu kiểm tra quyền tham gia chiến dịch (mặc định false cho video thông thường)',
   })
   @IsOptional()
   @Transform(({ value }) => {
@@ -65,4 +73,3 @@ export class SubmitKolVideoDto {
   @IsBoolean({ message: 'requiresCampaignParticipation phải là kiểu boolean' })
   requiresCampaignParticipation?: boolean;
 }
-

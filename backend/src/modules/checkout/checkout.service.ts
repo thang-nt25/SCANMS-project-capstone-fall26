@@ -99,7 +99,7 @@ export class CheckoutService {
           session.referralLink.status === 'ACTIVE'
         ) {
           const linkedProduct = dto.items.find(
-            (item) => item.productId === session.referralLink!.productId,
+            (item) => item.productId === session.referralLink.productId,
           );
           if (linkedProduct) {
             const verification =

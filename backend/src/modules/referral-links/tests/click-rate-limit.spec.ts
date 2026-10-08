@@ -139,12 +139,24 @@ describe('FR-14 — Click Rate Limiter (Atomic Redis True Sliding Window & Degra
       const ipB = 'hash-test-ip-vietnam-b';
 
       for (let i = 0; i < 10; i++) {
-        await cacheService.checkClickRateLimitAtomic({ ipHash: ipA, secLimit: 10, minLimit: 60 });
+        await cacheService.checkClickRateLimitAtomic({
+          ipHash: ipA,
+          secLimit: 10,
+          minLimit: 60,
+        });
       }
-      const resA = await cacheService.checkClickRateLimitAtomic({ ipHash: ipA, secLimit: 10, minLimit: 60 });
+      const resA = await cacheService.checkClickRateLimitAtomic({
+        ipHash: ipA,
+        secLimit: 10,
+        minLimit: 60,
+      });
       expect(resA.allowed).toBe(false);
 
-      const resB = await cacheService.checkClickRateLimitAtomic({ ipHash: ipB, secLimit: 10, minLimit: 60 });
+      const resB = await cacheService.checkClickRateLimitAtomic({
+        ipHash: ipB,
+        secLimit: 10,
+        minLimit: 60,
+      });
       expect(resB.allowed).toBe(true);
     });
   });
@@ -154,8 +166,14 @@ describe('FR-14 — Click Rate Limiter (Atomic Redis True Sliding Window & Degra
     let instanceB: CacheService;
 
     beforeEach(async () => {
-      const configA = new ConfigService({ REDIS_HOST: '127.0.0.1', REDIS_PORT: 6379 });
-      const configB = new ConfigService({ REDIS_HOST: '127.0.0.1', REDIS_PORT: 6379 });
+      const configA = new ConfigService({
+        REDIS_HOST: '127.0.0.1',
+        REDIS_PORT: 6379,
+      });
+      const configB = new ConfigService({
+        REDIS_HOST: '127.0.0.1',
+        REDIS_PORT: 6379,
+      });
       instanceA = new CacheService(configA);
       instanceB = new CacheService(configB);
       await instanceA.onModuleInit();
@@ -178,25 +196,41 @@ describe('FR-14 — Click Rate Limiter (Atomic Redis True Sliding Window & Degra
 
       // Instance A nhận 6 requests đầu tiên
       for (let i = 1; i <= 6; i++) {
-        const res = await instanceA.checkClickRateLimitAtomic({ ipHash, secLimit: 10, minLimit: 60 });
+        const res = await instanceA.checkClickRateLimitAtomic({
+          ipHash,
+          secLimit: 10,
+          minLimit: 60,
+        });
         expect(res.allowed).toBe(true);
         expect(res.isDegraded).toBe(false);
       }
 
       // Instance B nhận 4 requests tiếp theo (tổng là 10 clicks)
       for (let i = 7; i <= 10; i++) {
-        const res = await instanceB.checkClickRateLimitAtomic({ ipHash, secLimit: 10, minLimit: 60 });
+        const res = await instanceB.checkClickRateLimitAtomic({
+          ipHash,
+          secLimit: 10,
+          minLimit: 60,
+        });
         expect(res.allowed).toBe(true);
         expect(res.isDegraded).toBe(false);
       }
 
       // Request thứ 11 gọi vào Instance B phải BỊ CHẶN!
-      const eleventhOnB = await instanceB.checkClickRateLimitAtomic({ ipHash, secLimit: 10, minLimit: 60 });
+      const eleventhOnB = await instanceB.checkClickRateLimitAtomic({
+        ipHash,
+        secLimit: 10,
+        minLimit: 60,
+      });
       expect(eleventhOnB.allowed).toBe(false);
       expect(eleventhOnB.limitedBy).toBe('SEC');
 
       // Request thứ 12 gọi vào Instance A cũng phải BỊ CHẶN (chia sẻ chung state Redis)!
-      const twelfthOnA = await instanceA.checkClickRateLimitAtomic({ ipHash, secLimit: 10, minLimit: 60 });
+      const twelfthOnA = await instanceA.checkClickRateLimitAtomic({
+        ipHash,
+        secLimit: 10,
+        minLimit: 60,
+      });
       expect(twelfthOnA.allowed).toBe(false);
       expect(twelfthOnA.limitedBy).toBe('SEC');
     });
@@ -204,7 +238,10 @@ describe('FR-14 — Click Rate Limiter (Atomic Redis True Sliding Window & Degra
 
   describe('Degraded State & Auto Recovery (Items 21, 22, 23 & Point 4)', () => {
     it('should fall back to in-memory sliding window when Redis is degraded', async () => {
-      const offlineConfig = new ConfigService({ REDIS_HOST: '127.0.0.1', REDIS_PORT: 54321 }); // Cổng không tồn tại
+      const offlineConfig = new ConfigService({
+        REDIS_HOST: '127.0.0.1',
+        REDIS_PORT: 54321,
+      }); // Cổng không tồn tại
       const degradedService = new CacheService(offlineConfig);
       await degradedService.onModuleInit();
 
@@ -213,13 +250,21 @@ describe('FR-14 — Click Rate Limiter (Atomic Redis True Sliding Window & Degra
       const ipHash = 'degraded-test-ip';
       // 10 click đầu cho phép
       for (let i = 1; i <= 10; i++) {
-        const res = await degradedService.checkClickRateLimitAtomic({ ipHash, secLimit: 10, minLimit: 60 });
+        const res = await degradedService.checkClickRateLimitAtomic({
+          ipHash,
+          secLimit: 10,
+          minLimit: 60,
+        });
         expect(res.allowed).toBe(true);
         expect(res.isDegraded).toBe(true);
       }
 
       // Click thứ 11 bị chặn ngay trong memory fallback
-      const eleventh = await degradedService.checkClickRateLimitAtomic({ ipHash, secLimit: 10, minLimit: 60 });
+      const eleventh = await degradedService.checkClickRateLimitAtomic({
+        ipHash,
+        secLimit: 10,
+        minLimit: 60,
+      });
       expect(eleventh.allowed).toBe(false);
       expect(eleventh.limitedBy).toBe('SEC');
       expect(eleventh.isDegraded).toBe(true);

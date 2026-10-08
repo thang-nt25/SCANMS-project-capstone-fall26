@@ -89,10 +89,14 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         }
       }
 
-      await prisma.$executeRawUnsafe(`
+      await prisma
+        .$executeRawUnsafe(
+          `
         UPDATE attribution_sessions SET latest_click_id = NULL 
         WHERE store_id IN ('${store1Id}', '${store2Id}')
-      `).catch(() => {});
+      `,
+        )
+        .catch(() => {});
 
       await prisma.attributionAdjustment.deleteMany({
         where: { order: { storeId: { in: [store1Id, store2Id] } } },
@@ -1008,12 +1012,12 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
         });
       }
       expect(order).toBeDefined();
-      const originalCollabId = order!.attributedCollaboratorId;
+      const originalCollabId = order.attributedCollaboratorId;
 
       // 1. Thử điều chỉnh sang KOL B khi chưa được Store 1 duyệt -> Bị từ chối BadRequestException (Issue 9)
       await expect(
         app.get(ReferralLinksService).adjustOrderAttribution(
-          order!.id,
+          order.id,
           {
             newCollaboratorId: kolBId,
             reason: 'Khiếu nại khi chưa duyệt',
@@ -1036,15 +1040,17 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       const prevComm = await prisma.commission.upsert({
         where: {
           orderId_collaboratorId: {
-            orderId: order!.id,
+            orderId: order.id,
             collaboratorId: originalCollabId!,
           },
         },
         create: {
-          orderId: order!.id,
+          orderId: order.id,
           collaboratorId: originalCollabId!,
           commissionAmount: 50000,
           status: CommissionStatus.PENDING,
+          eligibleAt: new Date(),
+          availableAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         },
         update: {
           status: CommissionStatus.PENDING,
@@ -1053,7 +1059,7 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
 
       // 2. Điều chỉnh thành công sau khi đã duyệt
       const resAdj = await app.get(ReferralLinksService).adjustOrderAttribution(
-        order!.id,
+        order.id,
         {
           newCollaboratorId: kolBId,
           reason: 'Khiếu nại attribution hợp lệ của KOL B',
@@ -1086,14 +1092,14 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
 
       // Đơn hàng gốc KHÔNG bị sửa đè trực tiếp (Bảo toàn lịch sử đơn - Issue 10)
       const orderAfterAdj = await prisma.order.findUnique({
-        where: { id: order!.id },
+        where: { id: order.id },
       });
       expect(orderAfterAdj?.attributedCollaboratorId).toBe(originalCollabId);
 
       // 3. Kiểm tra resolveEffectiveOrderAttribution trả về KOL B (Issue 3)
       const effectiveInfo = await app
         .get(ReferralLinksService)
-        .resolveEffectiveOrderAttribution(order!.id);
+        .resolveEffectiveOrderAttribution(order.id);
       expect(effectiveInfo.effectiveCollaboratorId).toBe(kolBId);
       expect(effectiveInfo.isAdjusted).toBe(true);
       expect(effectiveInfo.originalCollaboratorId).toBe(originalCollabId);
@@ -1101,7 +1107,7 @@ describe('FR-13 — Last-Click & Cookie Tracking Engine E2E (Full Specification)
       // 4. Thử điều chỉnh lại chính KOL B -> Phải bị từ chối BadRequestException (trùng lặp)
       await expect(
         app.get(ReferralLinksService).adjustOrderAttribution(
-          order!.id,
+          order.id,
           {
             newCollaboratorId: kolBId,
             reason: 'Điều chỉnh trùng lặp KOL B',

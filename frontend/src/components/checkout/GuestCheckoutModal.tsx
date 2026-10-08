@@ -24,6 +24,7 @@ import {
   Save,
   Plus,
   Trash2,
+  Wallet,
 } from 'lucide-react';
 
 function normalizeVietnameseAddress(str: string): string {
@@ -43,16 +44,17 @@ import { authService } from '../../services/auth.service';
 import { customerService, type CustomerAddress } from '../../services/customer.service';
 import { GoogleOfficialButton } from '../auth/GoogleOfficialButton';
 import { toast } from '../../utils/toast';
-import { apiCache } from '../../utils/apiCache';
+import { apiCache } from '@/utils/api-cache.utils';
 import {
   loadShippingAddresses,
   type ShippingProvince,
 } from '../../services/order-address.service';
 import { useCart, type CartItem } from '../../context/CartContext';
 import { useScanmsChat } from '../../context/ScanmsChatContext';
-import { formatMoney, getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { CustomSelect } from '../ui/CustomSelect';
-import { resolveSavedShippingAddress } from '../../utils/checkoutAddress';
+import { resolveSavedShippingAddress } from '@/utils/checkout-address.utils';
+import { walletService, type WalletSummary } from '../../services/wallet.service';
 
 const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
@@ -121,14 +123,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const isSignedIn = Boolean(localStorage.getItem('token') && authService.getCurrentUser());
   const [currentUser, setCurrentUser] = useState<any>(() => authService.getCurrentUser());
 
-  // Bắt buộc đăng nhập khi vào Checkout: nếu chưa đăng nhập, tự động chuyển sang /login
+  // Cập nhật currentUser khi mở modal
   useEffect(() => {
-    if (isOpen && !isSignedIn) {
-      toast.info('Vui lòng đăng nhập để tiến hành mua hàng!');
-      onClose();
-      navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
+    if (isOpen) {
+      const user = authService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+      }
     }
-  }, [isOpen, isSignedIn, navigate, location, onClose]);
+  }, [isOpen]);
 
   // Khóa cuộn trang nền khi mở giao diện thanh toán toàn màn hình
   useEffect(() => {
@@ -141,8 +144,29 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
   }, [isOpen]);
 
-  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
-  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string>('');
+  // Khởi tạo sổ địa chỉ từ LocalStorage để render tức thì ngay khi mở modal
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string>(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          return def?.id || '';
+        }
+      }
+    } catch {}
+    return '';
+  });
 
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
@@ -164,9 +188,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         customerService.getAddresses().then((addrs) => {
           if (Array.isArray(addrs) && addrs.length > 0) {
             setCustomerAddresses(addrs);
+            try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs)); } catch {}
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
               setSelectedSavedAddressId(def.id);
+              if (def.fullName) setCustomerName(def.fullName);
+              if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+              setShippingAddress(def.detailAddress || '');
             }
           }
         }).catch(() => {});
@@ -198,9 +226,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         customerService.getAddresses().then((addrs) => {
           if (Array.isArray(addrs) && addrs.length > 0) {
             setCustomerAddresses(addrs);
+            try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs)); } catch {}
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
               setSelectedSavedAddressId(def.id);
+              if (def.fullName) setCustomerName(def.fullName);
+              if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+              setShippingAddress(def.detailAddress || '');
             }
           }
         }).catch(() => {});
@@ -213,14 +245,103 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
   };
 
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [shippingAddress, setShippingAddress] = useState('');
+  // Khởi tạo các trường thông tin từ địa chỉ mặc định đã lưu nếu có
+  const [customerName, setCustomerName] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.fullName) return def.fullName;
+        }
+      }
+      const user = authService.getCurrentUser();
+      return user?.fullName || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [customerPhone, setCustomerPhone] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.phoneNumber) return def.phoneNumber;
+        }
+      }
+      const user = authService.getCurrentUser();
+      return user?.phoneNumber || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [customerEmail, setCustomerEmail] = useState(() => {
+    const user = authService.getCurrentUser();
+    return user?.email || '';
+  });
+
+  const [shippingAddress, setShippingAddress] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.detailAddress) return def.detailAddress;
+        }
+      }
+    } catch {}
+    return '';
+  });
+
   const [shippingProvinces, setShippingProvinces] = useState<ShippingProvince[]>([]);
-  const [provinceCode, setProvinceCode] = useState('');
-  const [districtCode, setDistrictCode] = useState('');
-  const [wardCode, setWardCode] = useState('');
+  const [provinceCode, setProvinceCode] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.provinceCode) return String(def.provinceCode);
+        }
+      }
+    } catch {}
+    return '';
+  });
+
+  const [districtCode, setDistrictCode] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.districtCode) return String(def.districtCode);
+        }
+      }
+    } catch {}
+    return '';
+  });
+
+  const [wardCode, setWardCode] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scanms_cached_addresses');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          const def = list.find((a: any) => a.isDefault) || list[0];
+          if (def?.wardCode) return String(def.wardCode);
+        }
+      }
+    } catch {}
+    return '';
+  });
+
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
@@ -232,8 +353,42 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [policyLoading, setPolicyLoading] = useState(false);
   const [policyError, setPolicyError] = useState<string | null>(null);
 
-  // Payment Method: Default to COD (reliable & always available), with PayOS option
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS'>('COD');
+  // Payment Method: Default to WALLET if has enough balance, otherwise COD
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYOS' | 'WALLET'>('COD');
+  const [wallet, setWallet] = useState<WalletSummary | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [topUpLoading, setTopUpLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && isSignedIn) {
+      setWalletLoading(true);
+      walletService
+        .getMyWallet()
+        .then((w) => {
+          setWallet(w);
+          if (Number(w.availableBalance) > 0) {
+            setPaymentMethod('WALLET');
+          }
+        })
+        .catch(() => {})
+        .finally(() => setWalletLoading(false));
+    }
+  }, [isOpen, isSignedIn]);
+
+  const handleTopUpDemo = async (amount: number) => {
+    try {
+      setTopUpLoading(true);
+      await walletService.topUpDemo(amount);
+      toast.success(`Nạp thành công ${formatMoney(amount)} vào Ví SCANMS!`);
+      const updated = await walletService.getMyWallet();
+      setWallet(updated);
+      setPaymentMethod('WALLET');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể nạp tiền thử nghiệm');
+    } finally {
+      setTopUpLoading(false);
+    }
+  };
 
   // Single-product fallback state
   const [singleQuantity] = useState(initialQuantity);
@@ -474,27 +629,36 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const user = authService.getCurrentUser();
 
       if (user) {
-        setCustomerName(user.fullName || '');
         setCustomerEmail(user.email || '');
-        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
+        if (!customerName) setCustomerName(user.fullName || '');
+        if (!customerPhone && user.phoneNumber) setCustomerPhone(user.phoneNumber);
 
-        if (user.role === 'CUSTOMER') {
-          customerService
-            .getAddresses()
-            .then((addrs) => {
-              if (Array.isArray(addrs) && addrs.length > 0) {
-                setCustomerAddresses(addrs);
-                const def = addrs.find((a) => a.isDefault) || addrs[0];
-                if (def) {
-                  setSelectedSavedAddressId(def.id);
-                  setShippingAddress(def.detailAddress);
-                  if (def.fullName) setCustomerName(def.fullName);
-                  if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+        // Luôn tải sổ địa chỉ đã lưu cho mọi người dùng đã đăng nhập (không giới hạn role)
+        customerService
+          .getAddresses()
+          .then((addrs) => {
+            if (Array.isArray(addrs) && addrs.length > 0) {
+              setCustomerAddresses(addrs);
+              try {
+                localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs));
+              } catch {}
+
+              const def = addrs.find((a) => a.id === selectedSavedAddressId) || addrs.find((a) => a.isDefault) || addrs[0];
+              if (def) {
+                setSelectedSavedAddressId(def.id);
+                if (def.fullName) setCustomerName(def.fullName);
+                if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
+                setShippingAddress(def.detailAddress || '');
+                if (def.provinceCode) setProvinceCode(String(def.provinceCode));
+                if (def.districtCode) setDistrictCode(String(def.districtCode));
+                if (def.wardCode) setWardCode(String(def.wardCode));
+                if (shippingProvinces.length > 0) {
+                  populateAddressFromRecord(def, shippingProvinces);
                 }
               }
-            })
-            .catch(() => {});
-        }
+            }
+          })
+          .catch(() => {});
       }
 
       const newKey =
@@ -692,6 +856,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const updated = await customerService.getAddresses();
       const newAddresses = Array.isArray(updated) ? updated : [];
       setCustomerAddresses(newAddresses);
+      try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(newAddresses)); } catch {}
 
       // Nếu địa chỉ vừa xóa là địa chỉ đang được chọn
       if (selectedSavedAddressId === addr.id) {
@@ -766,6 +931,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const updated = await customerService.getAddresses();
       if (Array.isArray(updated)) {
         setCustomerAddresses(updated);
+        try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(updated)); } catch {}
         if (newAddr?.id) {
           setSelectedSavedAddressId(newAddr.id);
         }
@@ -1103,8 +1269,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </span>
             </Link>
             <div className="h-6 w-px bg-gray-300" />
-            <span className="text-lg sm:text-xl font-medium text-[#ee4d2d]">
-              Thanh Toán
+            <span className="text-lg sm:text-xl font-bold text-[#B88E4F]">
+              Thanh Toán An Toàn
             </span>
           </div>
 
@@ -1127,8 +1293,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         </div>
       </header>
 
-      {/* 2. Dải ruy băng phong bì thư chuyển phát (SCANMS Iconic Address Envelope Stripe) */}
-      <div className="h-1 w-full bg-[repeating-linear-gradient(45deg,#ee4d2d_0,#ee4d2d_30px,#3b82f6_30px,#3b82f6_60px,#f59e0b_60px,#f59e0b_90px)] opacity-85" />
+      {/* 2. Dải ruy băng phong bì thư chuyển phát (SCANMS Iconic Warm Sand Gold Stripe) */}
+      <div className="h-1.5 w-full bg-[repeating-linear-gradient(45deg,#C59B58_0,#C59B58_30px,#231D15_30px,#231D15_60px,#F3EFE6_60px,#F3EFE6_90px)] opacity-90" />
 
       {/* 3. Main Checkout Container */}
       <main className="max-w-6xl mx-auto px-4 py-5 sm:py-6 space-y-4 sm:space-y-5">
@@ -1201,7 +1367,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <Link
                         to={`/tracking?sn=${encodeURIComponent(subOrder.publicOrderCode)}`}
                         target="_blank"
-                        className="px-2.5 py-1.5 bg-[#ee4d2d] hover:bg-[#d03e1e] text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <span>Tra cứu</span>
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -1242,7 +1408,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     href={orderSuccess.payos.checkoutUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-[#ee4d2d] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#d03e1e]"
+                    className="mt-3 inline-flex items-center justify-center rounded-xl bg-[#C59B58] px-4 py-2.5 text-xs font-bold text-[#1A1612] hover:bg-[#B88E4F]"
                   >
                     Mở trang thanh toán PayOS ↗
                   </a>
@@ -1255,8 +1421,19 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               <div className="p-3.5 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-xs text-[#B88E4F] flex items-center gap-2.5 mb-5 text-left">
                 <Truck className="w-5 h-5 shrink-0" />
                 <div>
-                  <strong className="block text-[#1A1612]">Thanh toán tiền mặt khi nhận hàng (COD)</strong>
+                  <strong>Thanh toán tiền mặt khi nhận hàng (COD)</strong>
                   <span>Nhân viên giao vận sẽ liên hệ với bạn trước khi giao. Vui lòng kiểm tra kiện hàng trước khi thanh toán.</span>
+                </div>
+              </div>
+            )}
+
+            {/* WALLET Notice */}
+            {orderSuccess.paymentMethod === 'WALLET' && (
+              <div className="p-3.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#B88E4F] flex items-center gap-2.5 mb-5 text-left">
+                <Wallet className="w-5 h-5 shrink-0 text-[#B88E4F]" />
+                <div>
+                  <strong className="block text-[#1A1612]">Đã thanh toán 100% bằng Ví Mua Sắm SCANMS</strong>
+                  <span className="text-[#7D715E]">Đơn hàng đã được trừ trực tiếp từ số dư ví khả dụng của bạn. Bạn không cần thanh toán thêm bất kỳ khoản phí nào khi nhận hàng!</span>
                 </div>
               </div>
             )}
@@ -1266,7 +1443,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               <Link
                 to="/customer/orders"
                 onClick={onClose}
-                className="w-full py-3 bg-[#ee4d2d] hover:bg-[#d03e1e] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-3 bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] font-black text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Xem danh sách đơn mua trong tài khoản</span>
@@ -1418,13 +1595,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             {/* ========================================================================= */}
             <div className="bg-white rounded-lg p-5 sm:p-6 shadow-xs border border-gray-200 text-left">
               {/* Tiêu đề mục: 📍 Địa Chỉ Nhận Hàng */}
-              <div className="flex items-center gap-2 text-base font-bold text-[#ee4d2d] pb-3 border-b border-gray-100">
-                <MapPin className="w-5 h-5 text-[#ee4d2d] shrink-0" />
+              <div className="flex items-center gap-2 text-base font-bold text-[#B88E4F] pb-3 border-b border-gray-100">
+                <MapPin className="w-5 h-5 text-[#B88E4F] shrink-0" />
                 <span>Địa Chỉ Nhận Hàng</span>
               </div>
 
-              {/* Dòng tóm tắt địa chỉ người nhận Chuẩn SCANMS (Ảnh 2):
-                  kim ngọc (+84) 787 664 860   43/4f, Đường Giác Đạo, Xã Bà Điểm, Hóc Môn... [Mặc Định] [Thay Đổi] */}
+              {/* Dòng tóm tắt địa chỉ người nhận Chuẩn SCANMS */}
               <div className="pt-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-gray-800">
@@ -1435,7 +1611,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       {fullShippingAddressString || 'Vui lòng cung cấp địa chỉ nhận hàng để shop giao tận nơi'}
                     </span>
                     {customerAddresses.find((a) => a.id === selectedSavedAddressId)?.isDefault ? (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold text-[#ee4d2d] border border-[#ee4d2d] bg-[#FFF5F1]">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold text-[#B88E4F] border border-[#EEDFC6] bg-[#FBF5EB]">
                         Mặc Định
                       </span>
                     ) : !selectedSavedAddressId && fullShippingAddressString ? (
@@ -1468,7 +1644,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           <button
                             type="button"
                             onClick={handleStartNewAddress}
-                            className="px-2.5 py-1 text-xs font-bold text-[#ee4d2d] hover:bg-[#FFF5F1] rounded-md border border-[#ee4d2d] flex items-center gap-1 transition cursor-pointer"
+                            className="px-2.5 py-1 text-xs font-bold text-[#B88E4F] hover:bg-[#FBF5EB] rounded-md border border-[#EEDFC6] flex items-center gap-1 transition cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Giao đến địa chỉ khác</span>
@@ -1496,7 +1672,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                 onClick={() => handleSelectSavedAddress(a.id)}
                                 className={`p-3 rounded-lg border text-left cursor-pointer transition-all flex items-start justify-between gap-3 ${
                                   isSelected
-                                    ? 'bg-[#FFF5F1] border-[#ee4d2d] ring-1 ring-[#ee4d2d] shadow-2xs'
+                                    ? 'bg-[#FBF5EB] border-[#C59B58] ring-1 ring-[#C59B58] shadow-2xs'
                                     : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-[#FAF8F5]'
                                 }`}
                               >
@@ -1504,7 +1680,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                   <div className="flex flex-wrap items-center gap-2">
                                     <span
                                       className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
-                                        isSelected ? 'border-[#ee4d2d] bg-[#ee4d2d]' : 'border-gray-300 bg-white'
+                                        isSelected ? 'border-[#C59B58] bg-[#C59B58]' : 'border-gray-300 bg-white'
                                       }`}
                                     >
                                       {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -1512,7 +1688,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                     <strong className="text-[#1A1612] font-bold">{a.fullName}</strong>
                                     <span className="text-gray-500 font-mono">({a.phoneNumber})</span>
                                     {a.isDefault && (
-                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold text-[#ee4d2d] border border-[#ee4d2d] bg-[#FFF5F1]">
+                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold text-[#B88E4F] border border-[#EEDFC6] bg-[#FBF5EB]">
                                         Mặc Định
                                       </span>
                                     )}
@@ -1523,7 +1699,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0 self-center">
                                   {isSelected && (
-                                    <span className="text-[11px] font-bold text-[#ee4d2d]">
+                                    <span className="text-[11px] font-bold text-[#B88E4F]">
                                       Đang dùng ✓
                                     </span>
                                   )}
@@ -1533,11 +1709,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                       e.stopPropagation();
                                       setAddressToDelete(a);
                                     }}
-                                    className="w-7 h-7 rounded-md flex items-center justify-center text-[#ee4d2d] hover:bg-[#ffeae6] border border-transparent hover:border-[#ffd4cc] transition-colors cursor-pointer active:scale-90 shrink-0"
+                                    className="w-7 h-7 rounded-md flex items-center justify-center text-[#DC2626] hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer active:scale-90 shrink-0"
                                     title="Xóa địa chỉ này"
                                     aria-label="Xóa địa chỉ"
                                   >
-                                    <Trash2 className="w-4 h-4 text-[#ee4d2d]" />
+                                    <Trash2 className="w-4 h-4 text-[#DC2626]" />
                                   </button>
                                 </div>
                               </div>
@@ -1563,7 +1739,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                             setCustomerName(e.target.value);
                             if (selectedSavedAddressId) setSelectedSavedAddressId('');
                           }}
-                          className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#ee4d2d] transition"
+                          className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#C59B58] transition"
                         />
                       </div>
 
@@ -1584,7 +1760,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           className={`w-full px-3.5 py-2 bg-white border rounded-md text-xs text-[#1A1612] focus:outline-none transition font-mono ${
                             customerPhone && !isPhoneValid(customerPhone)
                               ? 'border-[#DC2626] focus:border-[#DC2626]'
-                              : 'border-gray-300 focus:border-[#ee4d2d]'
+                              : 'border-gray-300 focus:border-[#C59B58]'
                           }`}
                         />
                         {customerPhone && !isPhoneValid(customerPhone) && (
@@ -1607,7 +1783,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           placeholder="Ví dụ: khachhang@gmail.com"
                           value={customerEmail}
                           onChange={(e) => setCustomerEmail(e.target.value)}
-                          className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#ee4d2d] transition"
+                          className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#C59B58] transition"
                         />
                       </div>
                     </div>
@@ -1678,7 +1854,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           setShippingAddress(e.target.value);
                           if (selectedSavedAddressId) setSelectedSavedAddressId('');
                         }}
-                        className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#ee4d2d] transition resize-none"
+                        className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#C59B58] transition resize-none"
                       />
                     </div>
 
@@ -1745,7 +1921,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     {/* Header Shop (Chuẩn Ảnh 2: [Yêu thích] [Tên Shop] | Chat ngay) */}
                     <div className="px-5 sm:px-6 py-3 bg-[#FAF8F5]/80 border-b border-gray-100 flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ee4d2d] text-white shrink-0">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#C59B58] text-[#1A1612] shrink-0">
                           Yêu thích
                         </span>
                         <strong className="text-xs sm:text-sm font-bold text-[#1A1612] truncate">
@@ -1840,7 +2016,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           </div>
 
                           {/* Cột 4: Thành tiền */}
-                          <div className="sm:col-span-2 sm:text-right text-xs sm:text-sm font-semibold text-[#ee4d2d]">
+                          <div className="sm:col-span-2 sm:text-right text-xs sm:text-sm font-bold text-[#1A1612]">
                             <span className="sm:hidden font-medium text-gray-500 mr-2">Thành tiền:</span>
                             {formatMoney(item.price * item.quantity)}
                           </div>
@@ -1859,18 +2035,18 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                             placeholder="Lưu ý cho người bán (giờ giao, gọi trước...)"
                             value={orderNotes}
                             onChange={(e) => setOrderNotes(e.target.value)}
-                            className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#ee4d2d]"
+                            className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#C59B58]"
                           />
                         </div>
 
                         {/* Đơn vị vận chuyển */}
                         <div className="flex items-center gap-2 text-gray-700 shrink-0">
-                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                            <Truck className="w-4 h-4 text-emerald-600" />
+                          <span className="text-[#B88E4F] font-semibold flex items-center gap-1">
+                            <Truck className="w-4 h-4 text-[#B88E4F]" />
                             Vận Chuyển Nhanh
                           </span>
                           <span className="text-gray-500">(2-3 ngày)</span>
-                          <span className="font-bold text-emerald-700">Miễn phí toàn quốc</span>
+                          <span className="font-bold text-[#B88E4F]">Miễn phí toàn quốc</span>
                         </div>
                       </div>
 
@@ -1878,7 +2054,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         <span className="text-gray-600 mr-2">
                           Tổng số tiền ({shopGroup.items.reduce((s, i) => s + i.quantity, 0)} sản phẩm):
                         </span>
-                        <strong className="text-sm font-bold text-[#ee4d2d]">
+                        <strong className="text-sm font-bold text-[#B88E4F]">
                           {formatMoney(shopGroup.subtotal)}
                         </strong>
                       </div>
@@ -1944,12 +2120,78 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <span className="text-xs text-gray-500">Mọi giao dịch được bảo hộ 100% qua Quỹ Escrow SCANMS</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* SCANMS Wallet Option */}
+                <label
+                  className={`p-4 rounded-lg border text-left cursor-pointer transition-all ${
+                    paymentMethod === 'WALLET'
+                      ? 'bg-[#FBF5EB] border-[#C59B58] ring-1 ring-[#C59B58] shadow-2xs'
+                      : 'bg-white border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="WALLET"
+                        checked={paymentMethod === 'WALLET'}
+                        onChange={() => setPaymentMethod('WALLET')}
+                        className="w-4 h-4 text-[#C59B58] accent-[#C59B58]"
+                      />
+                      <strong className="text-xs sm:text-sm text-[#1A1612] flex items-center gap-1.5">
+                        <Wallet className="w-4 h-4 text-[#B88E4F]" />
+                        Ví SCANMS
+                      </strong>
+                    </div>
+                    <span className="text-[10px] font-bold text-[#B88E4F] bg-[#F3EFE6] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                      1-Chạm
+                    </span>
+                  </div>
+                  <div className="mt-2 pl-6.5 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-gray-500">Số dư khả dụng:</span>
+                      <strong className="text-[#B88E4F] font-bold">
+                        {walletLoading ? '...' : formatMoney(Number(wallet?.availableBalance || 0))}
+                      </strong>
+                    </div>
+                    {Number(wallet?.availableBalance || 0) >= finalTotal ? (
+                      <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                        ✓ Đủ số dư thanh toán ngay
+                      </span>
+                    ) : (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-medium text-amber-700 block">
+                          Thiếu {formatMoney(Math.max(0, finalTotal - Number(wallet?.availableBalance || 0)))}
+                        </span>
+                        <div className="text-[10px] text-gray-500 font-medium">Nạp nhanh Demo:</div>
+                        <div className="flex flex-wrap gap-1">
+                          {[200000, 500000, 1000000, 2000000].map((amt) => (
+                            <button
+                              key={amt}
+                              type="button"
+                              disabled={topUpLoading}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleTopUpDemo(amt);
+                              }}
+                              className="px-2 py-0.5 text-[10px] font-bold rounded bg-[#F3EFE6] text-[#B88E4F] hover:bg-[#EEDFC6] border border-[#EEDFC6] transition cursor-pointer"
+                            >
+                              +{amt >= 1000000 ? `${amt / 1000000}M` : `${amt / 1000}k`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </label>
+
                 {/* COD Option */}
                 <label
                   className={`p-4 rounded-lg border text-left cursor-pointer transition-all ${
                     paymentMethod === 'COD'
-                      ? 'bg-[#FFF5F1]/50 border-[#ee4d2d] ring-1 ring-[#ee4d2d] shadow-2xs'
+                      ? 'bg-[#FBF5EB] border-[#C59B58] ring-1 ring-[#C59B58] shadow-2xs'
                       : 'bg-white border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -1961,11 +2203,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         value="COD"
                         checked={paymentMethod === 'COD'}
                         onChange={() => setPaymentMethod('COD')}
-                        className="w-4 h-4 text-[#ee4d2d] accent-[#ee4d2d]"
+                        className="w-4 h-4 text-[#C59B58] accent-[#C59B58]"
                       />
                       <strong className="text-xs sm:text-sm text-[#1A1612]">Thanh toán khi nhận hàng (COD)</strong>
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <span className="text-[10px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
                       Khuyên dùng
                     </span>
                   </div>
@@ -1978,7 +2220,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <label
                   className={`p-4 rounded-lg border text-left cursor-pointer transition-all ${
                     paymentMethod === 'PAYOS'
-                      ? 'bg-[#FFF5F1]/50 border-[#ee4d2d] ring-1 ring-[#ee4d2d] shadow-2xs'
+                      ? 'bg-[#FBF5EB] border-[#C59B58] ring-1 ring-[#C59B58] shadow-2xs'
                       : 'bg-white border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -1990,11 +2232,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         value="PAYOS"
                         checked={paymentMethod === 'PAYOS'}
                         onChange={() => setPaymentMethod('PAYOS')}
-                        className="w-4 h-4 text-[#ee4d2d] accent-[#ee4d2d]"
+                        className="w-4 h-4 text-[#C59B58] accent-[#C59B58]"
                       />
                       <strong className="text-xs sm:text-sm text-[#1A1612]">Chuyển khoản PayOS (VietQR)</strong>
                     </div>
-                    <span className="text-[10px] font-bold text-[#B88E4F] bg-amber-50 px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                    <span className="text-[10px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
                       Tự động 24/7
                     </span>
                   </div>
@@ -2018,7 +2260,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               {/* Voucher sàn SCANMS */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1A1612]">
-                  <Tag className="w-4 h-4 text-[#ee4d2d]" />
+                  <Tag className="w-4 h-4 text-[#B88E4F]" />
                   <span>Voucher của SCANMS</span>
                 </div>
 
@@ -2035,7 +2277,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       setAppliedCoupon(null);
                       setCouponMessage(null);
                     }}
-                    className="px-3.5 py-1.5 bg-white border border-gray-300 rounded text-xs text-[#1A1612] uppercase font-bold focus:outline-none focus:border-[#ee4d2d] flex-1 sm:w-60"
+                    className="px-3.5 py-1.5 bg-white border border-gray-300 rounded text-xs text-[#1A1612] uppercase font-bold focus:outline-none focus:border-[#C59B58] flex-1 sm:w-60"
                   />
                   {appliedCoupon ? (
                     <button
@@ -2050,7 +2292,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       type="button"
                       disabled={!couponCode.trim() || couponLoading}
                       onClick={handleValidateCoupon}
-                      className="px-4 py-1.5 bg-[#ee4d2d] hover:bg-[#d03e1e] text-white disabled:opacity-50 font-bold text-xs rounded transition cursor-pointer shrink-0"
+                      className="px-4 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] disabled:opacity-50 font-bold text-xs rounded transition cursor-pointer shrink-0"
                     >
                       {couponLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Áp Dụng'}
                     </button>
@@ -2081,7 +2323,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </div>
 
                 {appliedCoupon && (
-                  <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto text-[#ee4d2d]">
+                  <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto text-[#B88E4F]">
                     <span>Giảm giá Voucher ({appliedCoupon.code}):</span>
                     <span className="font-bold min-w-[130px] text-right">-{formatMoney(discountAmount)}</span>
                   </div>
@@ -2094,7 +2336,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
                 <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto items-baseline pt-3 border-t border-gray-200">
                   <span className="text-sm font-medium text-gray-800">Tổng thanh toán:</span>
-                  <strong className="text-2xl sm:text-3xl font-black text-[#ee4d2d] min-w-[150px] text-right">
+                  <strong className="text-2xl sm:text-3xl font-black text-[#B88E4F] min-w-[150px] text-right">
                     {formatMoney(finalTotal)}
                   </strong>
                 </div>
@@ -2125,7 +2367,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         setErrorMessage(null);
                       }
                     }}
-                    className="w-4 h-4 mt-0.5 rounded text-[#ee4d2d] focus:ring-[#ee4d2d] cursor-pointer shrink-0"
+                    className="w-4 h-4 mt-0.5 rounded text-[#C59B58] focus:ring-[#C59B58] cursor-pointer shrink-0"
                   />
                   <span>
                     Tôi đã đọc, hiểu rõ và đồng ý với <b>Chính sách đổi trả 14 ngày</b> và điều kiện bảo hành của các gian hàng trên sàn SCANMS.
@@ -2153,11 +2395,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting || activeItems.length === 0}
-                  className="w-full sm:w-60 py-3.5 bg-[#ee4d2d] hover:bg-[#d03e1e] disabled:opacity-50 text-white font-bold text-base rounded shadow-md hover:shadow-lg transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
+                  className="w-full sm:w-64 py-3.5 bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-[#1A1612] font-black text-base rounded-xl shadow-md hover:shadow-lg transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider border border-[#B88E4F]"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <Loader2 className="w-4 h-4 animate-spin text-[#1A1612]" />
                       <span>ĐANG XỬ LÝ...</span>
                     </>
                   ) : (
@@ -2184,8 +2426,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             aria-labelledby="delete-address-title"
           >
             <div className="flex items-start gap-3.5 mb-4">
-              <div className="w-10 h-10 rounded-full bg-[#FFF5F1] text-[#ee4d2d] flex items-center justify-center shrink-0 mt-0.5">
-                <Trash2 className="w-5 h-5 text-[#ee4d2d]" />
+              <div className="w-10 h-10 rounded-full bg-rose-50 text-[#DC2626] flex items-center justify-center shrink-0 mt-0.5">
+                <Trash2 className="w-5 h-5 text-[#DC2626]" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 id="delete-address-title" className="text-base font-bold text-[#1A1612]">
@@ -2203,7 +2445,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <span className="text-gray-400">|</span>
                 <span className="font-mono text-gray-600 font-medium">{addressToDelete.phoneNumber}</span>
                 {addressToDelete.isDefault && (
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold text-[#ee4d2d] border border-[#ee4d2d] bg-[#FFF5F1]">
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold text-[#B88E4F] border border-[#EEDFC6] bg-[#FBF5EB]">
                     Mặc định
                   </span>
                 )}
@@ -2233,7 +2475,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 type="button"
                 disabled={isDeletingAddress}
                 onClick={() => handleExecuteDeleteAddress(addressToDelete)}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#ee4d2d] hover:bg-[#d03e1e] rounded-lg transition cursor-pointer select-none active:scale-95 disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2 text-xs font-bold text-white bg-[#DC2626] hover:bg-rose-700 rounded-lg transition cursor-pointer select-none active:scale-95 disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
               >
                 {isDeletingAddress ? (
                   <>

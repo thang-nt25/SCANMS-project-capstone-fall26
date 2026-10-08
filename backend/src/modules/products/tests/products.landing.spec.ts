@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ForbiddenException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserRole, ReviewStatus } from '@prisma/client';
 import { ProductsService } from '../products.service';
@@ -260,7 +264,9 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
     expect(result.videos.length).toBe(1);
     expect(result.videos[0].kol.name).toBe('Lê Hoàng Yến');
     expect(result.videos[0].kol.isVerified).toBe(true);
-    expect(result.videos[0].kol.disclosure).toContain('Nội dung có liên kết tiếp thị');
+    expect(result.videos[0].kol.disclosure).toContain(
+      'Nội dung có liên kết tiếp thị',
+    );
     expect(result.videos[0].videoUrl).toBe(
       'https://cdn.scanms.vn/videos/review-1.mp4',
     );
@@ -409,7 +415,9 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
       expect(result.message).toContain('Đã từ chối đánh giá');
       expect(result.review.status).toBe(ReviewStatus.REJECTED);
       expect(result.review.isApproved).toBe(false);
-      expect(result.review.rejectionReason).toBe('Nội dung chứa ngôn từ không phù hợp');
+      expect(result.review.rejectionReason).toBe(
+        'Nội dung chứa ngôn từ không phù hợp',
+      );
       expect(mockPrismaService.productReview.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'rev-uuid-1' },

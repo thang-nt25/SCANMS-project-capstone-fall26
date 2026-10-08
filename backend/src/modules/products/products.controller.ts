@@ -11,7 +11,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -52,17 +58,15 @@ export class ProductsController {
 
   @Get(':idOrSlug/landing')
   @ApiOperation({
-    summary: 'Lấy dữ liệu Landing Page công khai cho khách mua hàng (FR-15 chuẩn REST)',
+    summary:
+      'Lấy dữ liệu Landing Page công khai cho khách mua hàng (FR-15 chuẩn REST)',
   })
   @ApiParam({
     name: 'idOrSlug',
     description: 'UUID hoặc SKU của sản phẩm',
     example: 'TECH-001',
   })
-  async getLanding(
-    @Param('idOrSlug') idOrSlug: string,
-    @Req() req?: Request,
-  ) {
+  async getLanding(@Param('idOrSlug') idOrSlug: string, @Req() req?: Request) {
     const attrCookie =
       req?.cookies?.['scanms_attr'] || req?.cookies?.['scanms_attribution'];
     return this.productsService.getLandingPageData(idOrSlug, attrCookie);
@@ -172,7 +176,10 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Chủ Shop hoặc Quản trị viên cập nhật thông tin & hoa hồng sản phẩm' })
+  @ApiOperation({
+    summary:
+      'Chủ Shop hoặc Quản trị viên cập nhật thông tin & hoa hồng sản phẩm',
+  })
   async update(
     @CurrentUser('id') ownerId: string,
     @CurrentUser('role') role: UserRole,
@@ -186,7 +193,10 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cập nhật hạn mức mẫu riêng cho SKU hoặc kế thừa chính sách sản phẩm' })
+  @ApiOperation({
+    summary:
+      'Cập nhật hạn mức mẫu riêng cho SKU hoặc kế thừa chính sách sản phẩm',
+  })
   async updateVariantSamplePolicy(
     @CurrentUser('id') ownerId: string,
     @CurrentUser('role') role: UserRole,
@@ -194,28 +204,44 @@ export class ProductsController {
     @Param('variantId') variantId: string,
     @Body() dto: UpdateVariantSamplePolicyDto,
   ) {
-    return this.productsService.updateVariantSamplePolicy(ownerId, role, productId, variantId, dto);
+    return this.productsService.updateVariantSamplePolicy(
+      ownerId,
+      role,
+      productId,
+      variantId,
+      dto,
+    );
   }
 
   @Put(':id/variants')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Tạo/cập nhật phân loại SKU và ảnh riêng cho từng SKU' })
+  @ApiOperation({
+    summary: 'Tạo/cập nhật phân loại SKU và ảnh riêng cho từng SKU',
+  })
   async syncVariants(
     @CurrentUser('id') ownerId: string,
     @CurrentUser('role') role: UserRole,
     @Param('id') productId: string,
     @Body() dto: SyncProductVariantsDto,
   ) {
-    return this.productsService.syncProductVariants(ownerId, role, productId, dto);
+    return this.productsService.syncProductVariants(
+      ownerId,
+      role,
+      productId,
+      dto,
+    );
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Chủ Shop hoặc Quản trị viên xóa mềm sản phẩm (Bảo toàn lịch sử đơn)' })
+  @ApiOperation({
+    summary:
+      'Chủ Shop hoặc Quản trị viên xóa mềm sản phẩm (Bảo toàn lịch sử đơn)',
+  })
   async softDelete(
     @CurrentUser('id') ownerId: string,
     @CurrentUser('role') role: UserRole,

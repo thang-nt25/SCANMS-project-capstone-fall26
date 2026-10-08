@@ -20,6 +20,7 @@ export enum PaymentMethod {
   COD = 'COD',
   VIETQR = 'VIETQR',
   PAYOS = 'PAYOS',
+  WALLET = 'WALLET',
 }
 
 export class OrderItemInputDto {
@@ -47,12 +48,12 @@ export class OrderItemInputDto {
   quantity: number;
 
   @ApiPropertyOptional({
-    description: 'Bị bỏ qua bởi backend (giá luôn được chốt an toàn từ database)',
+    description:
+      'Bị bỏ qua bởi backend (giá luôn được chốt an toàn từ database)',
   })
   @IsOptional()
   unitPrice?: number;
 }
-
 
 export class CreateOrderDto {
   @ApiPropertyOptional({
@@ -113,11 +114,14 @@ export class CreateOrderDto {
   shippingAddress: string;
 
   @ApiProperty({
-    description: 'Khách đã đọc và đồng ý chính sách đổi trả/bảo hành của các Shop',
+    description:
+      'Khách đã đọc và đồng ý chính sách đổi trả/bảo hành của các Shop',
     example: true,
   })
   @IsBoolean()
-  @Equals(true, { message: 'Bạn phải đồng ý chính sách gian hàng trước khi đặt mua' })
+  @Equals(true, {
+    message: 'Bạn phải đồng ý chính sách gian hàng trước khi đặt mua',
+  })
   policyAccepted: boolean;
 
   @ApiPropertyOptional({
@@ -129,7 +133,8 @@ export class CreateOrderDto {
   couponCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Bản đồ coupon theo từng gian hàng trong đơn đa Shop { [storeId]: couponCode }',
+    description:
+      'Bản đồ coupon theo từng gian hàng trong đơn đa Shop { [storeId]: couponCode }',
   })
   @IsOptional()
   couponsByStore?: Record<string, string>;
@@ -148,7 +153,9 @@ export class CreateOrderDto {
     default: PaymentMethod.COD,
   })
   @IsOptional()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsEnum(PaymentMethod, {
     message: 'Phương thức thanh toán phải là COD, VIETQR hoặc PAYOS',
   })

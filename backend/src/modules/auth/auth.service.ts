@@ -115,7 +115,8 @@ export class AuthService {
 
     // Xác thực mã OTP
     const cached = this.otpCache.get(normalizedEmail);
-    const isDevBypass = process.env.NODE_ENV !== 'production' && dto.otp === '123456';
+    const isDevBypass =
+      process.env.NODE_ENV !== 'production' && dto.otp === '123456';
 
     if (!isDevBypass) {
       if (!cached) {
@@ -436,23 +437,23 @@ export class AuthService {
 
     // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng nếu có MailService
     if (this.mailService) {
-        const loginTime = new Date().toLocaleString('vi-VN', {
-          timeZone: 'Asia/Ho_Chi_Minh',
-        });
-        const device =
-          meta?.userAgent || 'Trình duyệt Web (Chrome / Safari / Edge)';
-        const ip = meta?.ipAddress || '127.0.0.1';
+      const loginTime = new Date().toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+      });
+      const device =
+        meta?.userAgent || 'Trình duyệt Web (Chrome / Safari / Edge)';
+      const ip = meta?.ipAddress || '127.0.0.1';
 
-        void this.mailService.sendLoginSecurityAlert(
-          user.email,
-          user.fullName,
-          {
-            ipAddress: ip,
-            userAgent: device,
-            time: loginTime,
-          },
-        ).catch((error) => {
-          this.logger.warn(`Không thể gửi email cảnh báo đăng nhập: ${error instanceof Error ? error.message : String(error)}`);
+      void this.mailService
+        .sendLoginSecurityAlert(user.email, user.fullName, {
+          ipAddress: ip,
+          userAgent: device,
+          time: loginTime,
+        })
+        .catch((error) => {
+          this.logger.warn(
+            `Không thể gửi email cảnh báo đăng nhập: ${error instanceof Error ? error.message : String(error)}`,
+          );
         });
     }
 
@@ -478,15 +479,23 @@ export class AuthService {
   ) {
     let payload: any;
 
-    if (dto.idToken.startsWith('ya29.') || dto.idToken.split('.').length !== 3) {
+    if (
+      dto.idToken.startsWith('ya29.') ||
+      dto.idToken.split('.').length !== 3
+    ) {
       let userInfoResponse: Response;
       try {
-        userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${dto.idToken}` },
-          signal: AbortSignal.timeout(8000),
-        });
+        userInfoResponse = await fetch(
+          'https://www.googleapis.com/oauth2/v3/userinfo',
+          {
+            headers: { Authorization: `Bearer ${dto.idToken}` },
+            signal: AbortSignal.timeout(8000),
+          },
+        );
       } catch (err: any) {
-        this.logger.warn(`Google userinfo unavailable: ${err?.message || String(err)}`);
+        this.logger.warn(
+          `Google userinfo unavailable: ${err?.message || String(err)}`,
+        );
         throw new ServiceUnavailableException(
           'Không thể kết nối Google để xác thực. Vui lòng thử lại sau hoặc đăng nhập bằng email.',
         );
@@ -498,7 +507,9 @@ export class AuthService {
         );
       }
       if (!userInfoResponse.ok) {
-        this.logger.warn(`Google userinfo returned HTTP ${userInfoResponse.status}`);
+        this.logger.warn(
+          `Google userinfo returned HTTP ${userInfoResponse.status}`,
+        );
         throw new ServiceUnavailableException(
           'Google đang tạm thời không xác thực được. Vui lòng thử lại sau.',
         );
@@ -545,10 +556,9 @@ export class AuthService {
     // Nếu người dùng chưa tồn tại -> Tự động khởi tạo tài khoản mới (Mặc định: CUSTOMER)
     if (!user) {
       const requestedShopRole = dto.role === 'SHOP_MANAGER';
-      const desiredRole =
-        requestedShopRole
-          ? UserRole.CUSTOMER
-          : dto.role === 'COLLABORATOR'
+      const desiredRole = requestedShopRole
+        ? UserRole.CUSTOMER
+        : dto.role === 'COLLABORATOR'
           ? UserRole.COLLABORATOR
           : UserRole.CUSTOMER;
 
@@ -671,23 +681,22 @@ export class AuthService {
 
     // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng
     if (this.mailService) {
-        const loginTime = new Date().toLocaleString('vi-VN', {
-          timeZone: 'Asia/Ho_Chi_Minh',
-        });
-        const device =
-          meta?.userAgent || 'Google OAuth (Chrome / Safari / Edge)';
-        const ip = meta?.ipAddress || '127.0.0.1';
+      const loginTime = new Date().toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+      });
+      const device = meta?.userAgent || 'Google OAuth (Chrome / Safari / Edge)';
+      const ip = meta?.ipAddress || '127.0.0.1';
 
-        void this.mailService.sendLoginSecurityAlert(
-          user.email,
-          user.fullName,
-          {
-            ipAddress: ip,
-            userAgent: device,
-            time: loginTime,
-          },
-        ).catch((error) => {
-          this.logger.warn(`Không thể gửi email cảnh báo đăng nhập Google: ${error instanceof Error ? error.message : String(error)}`);
+      void this.mailService
+        .sendLoginSecurityAlert(user.email, user.fullName, {
+          ipAddress: ip,
+          userAgent: device,
+          time: loginTime,
+        })
+        .catch((error) => {
+          this.logger.warn(
+            `Không thể gửi email cảnh báo đăng nhập Google: ${error instanceof Error ? error.message : String(error)}`,
+          );
         });
     }
 
@@ -819,7 +828,9 @@ export class AuthService {
     }
 
     if (!user.isActive) {
-      throw new ForbiddenException('Tài khoản đã bị tạm khóa. Vui lòng liên hệ Ban Quản Trị.');
+      throw new ForbiddenException(
+        'Tài khoản đã bị tạm khóa. Vui lòng liên hệ Ban Quản Trị.',
+      );
     }
 
     // Sinh mã ngẫu nhiên 6 chữ số
@@ -850,14 +861,20 @@ export class AuthService {
 
     if (!isDevBypass) {
       if (!cached) {
-        throw new BadRequestException('Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng yêu cầu gửi lại.');
+        throw new BadRequestException(
+          'Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng yêu cầu gửi lại.',
+        );
       }
       if (Date.now() > cached.expiresAt) {
         this.otpCache.delete(`reset_${normalizedEmail}`);
-        throw new BadRequestException('Mã OTP đã hết hạn (quá 5 phút). Vui lòng gửi lại mã mới.');
+        throw new BadRequestException(
+          'Mã OTP đã hết hạn (quá 5 phút). Vui lòng gửi lại mã mới.',
+        );
       }
       if (cached.code !== dto.otp.trim()) {
-        throw new BadRequestException('Mã OTP không chính xác. Vui lòng kiểm tra lại.');
+        throw new BadRequestException(
+          'Mã OTP không chính xác. Vui lòng kiểm tra lại.',
+        );
       }
     }
 
@@ -877,11 +894,15 @@ export class AuthService {
 
     if (!isDevBypass) {
       if (!cached) {
-        throw new BadRequestException('Phiên xác thực đã hết hạn. Vui lòng yêu cầu gửi mã OTP mới.');
+        throw new BadRequestException(
+          'Phiên xác thực đã hết hạn. Vui lòng yêu cầu gửi mã OTP mới.',
+        );
       }
       if (Date.now() > cached.expiresAt) {
         this.otpCache.delete(`reset_${normalizedEmail}`);
-        throw new BadRequestException('Mã OTP đã hết hạn. Vui lòng thực hiện lại.');
+        throw new BadRequestException(
+          'Mã OTP đã hết hạn. Vui lòng thực hiện lại.',
+        );
       }
       if (cached.code !== dto.otp.trim()) {
         throw new BadRequestException('Mã OTP không khớp.');
@@ -909,8 +930,8 @@ export class AuthService {
 
     return {
       success: true,
-      message: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.',
+      message:
+        'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.',
     };
   }
 }
-

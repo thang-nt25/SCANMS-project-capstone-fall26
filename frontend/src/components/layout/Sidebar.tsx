@@ -140,7 +140,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
     : 'Sửa Hồ Sơ';
 
   return (
-    <aside className="w-64 min-w-[256px] h-full shrink-0 flex flex-col bg-[#FAF8F5] border-r border-[#EAE4D7] z-30 text-left select-none overflow-hidden">
+    <aside className="w-full lg:w-[250px] shrink-0 bg-white border border-[#EAE4D7] rounded-2xl p-3.5 shadow-2xs sticky top-20 self-start text-left select-none flex flex-col gap-2.5 z-30">
       {/* Hidden file input for avatar upload */}
       <input
         type="file"
@@ -176,14 +176,14 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         className="hidden"
       />
 
-      {/* User Identity Header (SCANMS UI Reference Style) */}
-      <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+      {/* User Identity Header (SCANMS UI Reference Style matching Customer) */}
+      <div className="flex items-center gap-3 px-1 pt-1 pb-1">
         <div className="relative shrink-0 group">
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploading}
-            className="w-12 h-12 rounded-full border border-[#EAE4D7] overflow-hidden bg-white flex items-center justify-center text-[#8C6226] font-bold text-lg select-none relative cursor-pointer group-hover:opacity-90 transition shadow-2xs"
+            className="w-12 h-12 rounded-full border border-[#EAE4D7] overflow-hidden bg-[#FAF8F5] flex items-center justify-center text-[#8C6226] font-bold text-lg select-none relative cursor-pointer group-hover:opacity-90 transition shadow-2xs"
             title="Bấm vào để tải/đổi ảnh đại diện"
           >
             {uploading ? (
@@ -221,56 +221,69 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         </div>
       </div>
 
-      <div className="border-t border-[#EAE4D7] my-0.5" />
+      <div className="border-t border-[#EAE4D7] my-1" />
 
       {/* SCANMS UI Reference Minimalist Navigation List */}
-      <nav className="flex-1 px-3 py-2 flex flex-col gap-1 overflow-y-auto" aria-label="Menu chức năng">
-        {navConfig.items.map((item) => {
+      <nav className="flex flex-col gap-0.5 text-xs sm:text-[13px]" aria-label="Menu chức năng">
+        {navConfig.items.map((item, index) => {
           const active = isLinkActive(item.path);
           const Icon = item.icon;
+          const showSection = item.section && (index === 0 || navConfig.items[index - 1].section !== item.section);
+
           return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                active
-                  ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold border border-[#EEDFC6]/70 shadow-2xs'
-                  : 'text-[#1A1612] hover:bg-white hover:text-[#B88E4F]'
-              }`}
-            >
-              <Icon
-                className={`w-4 h-4 shrink-0 transition-colors ${
-                  active ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'
-                }`}
-              />
-              <span className="flex-1 truncate">{item.label}</span>
-              {item.numBadge && (
-                <span
-                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                    active
-                      ? 'bg-[#C59B58] text-white'
-                      : 'bg-[#FAF0DD] border border-[#E8D4B0] text-[#8C6226]'
-                  }`}
-                >
-                  {item.numBadge}
+            <div key={item.path} className="flex flex-col">
+              {showSection && (
+                <span className="text-[10px] font-bold text-[#A89D8E] uppercase tracking-wider px-3 pt-2 pb-1 select-none">
+                  {item.section}
                 </span>
               )}
-            </Link>
+              <Link
+                to={item.path}
+                className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
+                  active
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold border border-[#EEDFC6]/70 shadow-2xs'
+                    : 'text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F]'
+                }`}
+              >
+                <Icon
+                  className={`w-4 h-4 shrink-0 transition-colors ${
+                    active ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'
+                  }`}
+                />
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.numBadge && (
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                      active
+                        ? 'bg-[#C59B58] text-white'
+                        : 'bg-[#FAF0DD] border border-[#E8D4B0] text-[#8C6226]'
+                    }`}
+                  >
+                    {item.numBadge}
+                  </span>
+                )}
+                {item.badge && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#F3EFE6] text-[#B88E4F] border border-[#EEDFC6] shrink-0 uppercase">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            </div>
           );
         })}
       </nav>
 
       {/* Bottom Actions (SCANMS UI Reference Style) */}
-      <div className="p-3 border-t border-[#EAE4D7] flex flex-col gap-1.5 bg-[#FAF8F5]">
+      <div className="pt-2 border-t border-[#EAE4D7] flex flex-col gap-1 text-xs sm:text-[13px]">
         {currentUser ? (
           <>
             {/* Sàn Mua Sắm Link */}
             <Link
               to="/marketplace"
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium text-[#1A1612] hover:text-[#B88E4F] hover:bg-white transition cursor-pointer group"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition cursor-pointer group"
               title="Quay lại Sàn Mua Sắm SCANMS"
             >
-              <ArrowLeft className="w-4 h-4 text-[#B88E4F] shrink-0" aria-hidden="true" />
+              <ArrowLeft className="w-4 h-4 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors shrink-0" aria-hidden="true" />
               <Store className="w-4 h-4 text-[#7D715E] group-hover:text-[#B88E4F] shrink-0" />
               <span>Sàn Mua Sắm</span>
             </Link>
@@ -279,9 +292,9 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
             <button
               type="button"
               onClick={onLogout}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-semibold text-[#DC2626] hover:bg-rose-50/70 hover:text-red-700 transition cursor-pointer text-left w-full"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer text-left w-full"
             >
-              <LogOut className="w-4 h-4 text-[#DC2626] shrink-0" />
+              <LogOut className="w-4 h-4 text-rose-500 shrink-0" />
               <span>Đăng xuất</span>
             </button>
           </>

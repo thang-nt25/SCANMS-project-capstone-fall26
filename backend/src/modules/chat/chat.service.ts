@@ -18,7 +18,9 @@ function isExclusiveDealMessage(messageText?: string): boolean {
   if (!messageText) return false;
   try {
     const type = JSON.parse(messageText)?.type;
-    return type === 'EXCLUSIVE_DEAL_PROPOSAL' || type === 'EXCLUSIVE_DEAL_DECISION';
+    return (
+      type === 'EXCLUSIVE_DEAL_PROPOSAL' || type === 'EXCLUSIVE_DEAL_DECISION'
+    );
   } catch {
     return false;
   }
@@ -73,7 +75,9 @@ export class ChatService {
           (collaboratorId && collaboratorId !== userId) ||
           (customerId && customerId !== userId)
         ) {
-          throw new ForbiddenException('Không thể tạo hội thoại thay cho người dùng khác');
+          throw new ForbiddenException(
+            'Không thể tạo hội thoại thay cho người dùng khác',
+          );
         }
         if (actor.role === 'CUSTOMER') {
           customerId = userId;
@@ -82,26 +86,40 @@ export class ChatService {
           collaboratorId = userId;
           customerId = undefined;
         } else {
-          throw new ForbiddenException('Vai trò này không thể tạo hội thoại với Shop');
+          throw new ForbiddenException(
+            'Vai trò này không thể tạo hội thoại với Shop',
+          );
         }
-      } else if (actor.role !== 'SHOP_MANAGER' && actor.role !== 'SYSTEM_ADMIN') {
-        throw new ForbiddenException('Chỉ chủ Shop được mở hội thoại thay mặt Shop');
+      } else if (
+        actor.role !== 'SHOP_MANAGER' &&
+        actor.role !== 'SYSTEM_ADMIN'
+      ) {
+        throw new ForbiddenException(
+          'Chỉ chủ Shop được mở hội thoại thay mặt Shop',
+        );
       }
     }
 
-    if (!storeId || (!collaboratorId && !customerId) || (collaboratorId && customerId)) {
+    if (
+      !storeId ||
+      (!collaboratorId && !customerId) ||
+      (collaboratorId && customerId)
+    ) {
       throw new BadRequestException(
         'Thông tin cửa hàng hoặc người nhận không hợp lệ',
       );
     }
 
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const UUID_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (
       !UUID_REGEX.test(storeId) ||
       (collaboratorId ? !UUID_REGEX.test(collaboratorId) : false) ||
       (customerId ? !UUID_REGEX.test(customerId) : false)
     ) {
-      throw new BadRequestException('ID cửa hàng hoặc đối tác không đúng định dạng UUID');
+      throw new BadRequestException(
+        'ID cửa hàng hoặc đối tác không đúng định dạng UUID',
+      );
     }
 
     // Đảm bảo quan hệ đối tác StoreCollaborator được ghi nhận nếu là collaborator
@@ -117,8 +135,14 @@ export class ChatService {
 
     if (targetStoreOwnerId === userId) {
       const recipientId = customerId || collaboratorId!;
-      const recipient = await this.prisma.user.findUnique({ where: { id: recipientId }, select: { role: true, isActive: true } });
-      if (!recipient?.isActive || recipient.role !== (customerId ? 'CUSTOMER' : 'COLLABORATOR')) {
+      const recipient = await this.prisma.user.findUnique({
+        where: { id: recipientId },
+        select: { role: true, isActive: true },
+      });
+      if (
+        !recipient?.isActive ||
+        recipient.role !== (customerId ? 'CUSTOMER' : 'COLLABORATOR')
+      ) {
         throw new BadRequestException('Người nhận không hợp lệ');
       }
     }
@@ -167,13 +191,19 @@ export class ChatService {
 
     try {
       return await this.prisma.conversation.create({
-        data: { storeId, collaboratorId: collaboratorId || null, customerId: customerId || null },
+        data: {
+          storeId,
+          collaboratorId: collaboratorId || null,
+          customerId: customerId || null,
+        },
         include: convInclude,
       });
     } catch (error: any) {
       if (error?.code === 'P2002') {
         const concurrent = await this.prisma.conversation.findFirst({
-          where: customerId ? { storeId, customerId } : { storeId, collaboratorId },
+          where: customerId
+            ? { storeId, customerId }
+            : { storeId, collaboratorId },
           include: convInclude,
         });
         if (concurrent) return concurrent;
@@ -193,7 +223,10 @@ export class ChatService {
       ? {
           OR: [
             { customerId: userId },
-            { collaboratorId: userId, collaborator: { is: { role: 'CUSTOMER' } } },
+            {
+              collaboratorId: userId,
+              collaborator: { is: { role: 'CUSTOMER' } },
+            },
           ],
         }
       : {
@@ -206,7 +239,13 @@ export class ChatService {
     const conversations = await this.prisma.conversation.findMany({
       where: conversationWhere,
       include: {
-        _count: { select: { chatMessages: { where: { isRead: false, senderId: { not: userId } } } } },
+        _count: {
+          select: {
+            chatMessages: {
+              where: { isRead: false, senderId: { not: userId } },
+            },
+          },
+        },
         store: {
           select: {
             id: true,
@@ -256,7 +295,8 @@ export class ChatService {
   }
 
   async getConversationById(conversationId: string, userId: string) {
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const UUID_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!conversationId || !UUID_REGEX.test(conversationId)) {
       throw new BadRequestException('Mã hội thoại không đúng định dạng UUID');
     }
@@ -298,7 +338,9 @@ export class ChatService {
       conv.customerId !== userId &&
       (conv.collaboratorId !== userId || conv.collaborator?.role !== 'CUSTOMER')
     ) {
-      throw new ForbiddenException('Khách hàng không có quyền truy cập trao đổi nội bộ Shop–KOL.');
+      throw new ForbiddenException(
+        'Khách hàng không có quyền truy cập trao đổi nội bộ Shop–KOL.',
+      );
     }
 
     return conv;
@@ -313,8 +355,13 @@ export class ChatService {
     }
 
     if (card?.type === 'PRODUCT_INQUIRY') {
-      const productId = typeof card.productId === 'string' ? card.productId : '';
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId)) {
+      const productId =
+        typeof card.productId === 'string' ? card.productId : '';
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          productId,
+        )
+      ) {
         throw new BadRequestException('Sản phẩm được chia sẻ không hợp lệ.');
       }
 
@@ -325,7 +372,11 @@ export class ChatService {
           isDeleted: false,
           isActive: true,
           moderationStatus: 'APPROVED',
-          store: { isDeleted: false, isActive: true, owner: { isActive: true } },
+          store: {
+            isDeleted: false,
+            isActive: true,
+            owner: { isActive: true },
+          },
         },
         select: {
           id: true,
@@ -357,7 +408,11 @@ export class ChatService {
 
     if (card?.type === 'COUPON_VOUCHER') {
       const couponId = typeof card.couponId === 'string' ? card.couponId : '';
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(couponId)) {
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          couponId,
+        )
+      ) {
         throw new BadRequestException('Mã giảm giá được chia sẻ không hợp lệ.');
       }
 
@@ -478,10 +533,13 @@ export class ChatService {
 
     const orderedMessages = messages.reverse();
     const isCustomerConversation =
-      (conversation.collaboratorId === userId && conversation.collaborator?.role === 'CUSTOMER') ||
+      (conversation.collaboratorId === userId &&
+        conversation.collaborator?.role === 'CUSTOMER') ||
       conversation.customerId === userId;
     return isCustomerConversation
-      ? orderedMessages.filter((message) => !isExclusiveDealMessage(message.messageText))
+      ? orderedMessages.filter(
+          (message) => !isExclusiveDealMessage(message.messageText),
+        )
       : orderedMessages;
   }
 
@@ -494,7 +552,11 @@ export class ChatService {
   }
 
   async normalizeProductInquiry(card: any, storeId: string) {
-    if (!card?.productId || typeof card.message !== 'string' || !card.message.trim()) {
+    if (
+      !card?.productId ||
+      typeof card.message !== 'string' ||
+      !card.message.trim()
+    ) {
       throw new BadRequestException('Sản phẩm hoặc nội dung chat không hợp lệ');
     }
     const product = await this.prisma.product.findFirst({
@@ -507,7 +569,8 @@ export class ChatService {
       },
       select: { id: true, sku: true, title: true, imageUrl: true, price: true },
     });
-    if (!product) throw new BadRequestException('Sản phẩm không thuộc Shop này');
+    if (!product)
+      throw new BadRequestException('Sản phẩm không thuộc Shop này');
     return JSON.stringify({
       type: 'PRODUCT_INQUIRY',
       productId: product.id,
@@ -544,7 +607,10 @@ export class ChatService {
         },
       });
       if (existing) {
-        if (existing.senderId !== senderId || existing.conversationId !== conversationId) {
+        if (
+          existing.senderId !== senderId ||
+          existing.conversationId !== conversationId
+        ) {
           throw new ForbiddenException('Mã tin nhắn không hợp lệ');
         }
         return existing;
@@ -605,7 +671,11 @@ export class ChatService {
             },
           },
         });
-        if (existing?.senderId === senderId && existing.conversationId === conversationId) return existing;
+        if (
+          existing?.senderId === senderId &&
+          existing.conversationId === conversationId
+        )
+          return existing;
       }
       throw error;
     }
@@ -735,7 +805,9 @@ export class ChatService {
         id: true,
         name: true,
         logoUrl: true,
-        owner: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+        owner: {
+          select: { id: true, fullName: true, email: true, avatarUrl: true },
+        },
       },
       take: 20,
     });
@@ -748,7 +820,9 @@ export class ChatService {
       include: { store: true },
     });
     if (!conversation) {
-      throw new NotFoundException('Cuộc trò chuyện không tồn tại hoặc đã được xóa.');
+      throw new NotFoundException(
+        'Cuộc trò chuyện không tồn tại hoặc đã được xóa.',
+      );
     }
 
     const isStoreOwner = conversation.store.ownerId === userId;
@@ -756,7 +830,9 @@ export class ChatService {
     const isCustomer = conversation.customerId === userId;
 
     if (!isStoreOwner && !isCollaborator && !isCustomer) {
-      throw new ForbiddenException('Bạn không có quyền xóa cuộc trò chuyện này.');
+      throw new ForbiddenException(
+        'Bạn không có quyền xóa cuộc trò chuyện này.',
+      );
     }
 
     // Xóa tin nhắn và proposal liên quan trước khi xóa hội thoại
@@ -786,7 +862,9 @@ export class ChatService {
     const isCustomer = conversation.customerId === userId;
 
     if (!isStoreOwner && !isCollaborator && !isCustomer) {
-      throw new ForbiddenException('Bạn không có quyền xóa lịch sử tin nhắn của cuộc trò chuyện này.');
+      throw new ForbiddenException(
+        'Bạn không có quyền xóa lịch sử tin nhắn của cuộc trò chuyện này.',
+      );
     }
 
     await this.prisma.chatMessage.deleteMany({

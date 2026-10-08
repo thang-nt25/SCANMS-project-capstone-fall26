@@ -26,7 +26,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException ? exception.getResponse() : null;
 
     if (!(exception instanceof HttpException)) {
-      const errStack = exception instanceof Error ? exception.stack : String(exception);
+      const errStack =
+        exception instanceof Error ? exception.stack : String(exception);
       this.logger.error(`${request.method} ${request.url}`, errStack);
     }
 

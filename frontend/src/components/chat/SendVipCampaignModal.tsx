@@ -12,7 +12,7 @@ import {
   Crown,
 } from 'lucide-react';
 import api from '../../services/api';
-import type { Campaign } from '../../types/campaigns';
+import type { Campaign } from '@/types/campaigns.types';
 
 interface SendVipCampaignModalProps {
   conversationId: string;
@@ -108,7 +108,7 @@ export function SendVipCampaignModal({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-black uppercase tracking-wider px-2 py-0.5 bg-black/20 rounded-md">
-                  FR-27 VIP
+                  ĐẶC QUYỀN VIP
                 </span>
                 <h3 className="font-extrabold text-base tracking-tight text-white">
                   Mời Chiến Dịch Độc Quyền

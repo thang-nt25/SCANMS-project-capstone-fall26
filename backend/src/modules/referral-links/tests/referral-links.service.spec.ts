@@ -292,10 +292,10 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       });
 
       const result = await service.createReferralLink(validCollabId, {
-          productId: validProdId,
-          label: 'Review TikTok',
-          channel: SocialPlatform.TIKTOK,
-        });
+        productId: validProdId,
+        label: 'Review TikTok',
+        channel: SocialPlatform.TIKTOK,
+      });
 
       expect(result.shortUrl).toContain('/r/open1234');
       expect(prisma.storeCollaborator.findFirst).not.toHaveBeenCalled();
@@ -768,7 +768,11 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
           price: 100000,
         },
         store: { deletedAt: null, defaultCommissionRate: 10 },
-        campaign: { isActive: true, endDate: new Date(Date.now() + 60000), bonusCommissionRate: 8 },
+        campaign: {
+          isActive: true,
+          endDate: new Date(Date.now() + 60000),
+          bonusCommissionRate: 8,
+        },
         exclusiveDeal: { status: 'APPROVED', approvedCommissionRate: 25 },
       });
 

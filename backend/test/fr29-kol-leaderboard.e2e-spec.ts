@@ -54,7 +54,9 @@ describe('FR-29 — Gamified KOL Leaderboard & Hall of Fame Podium E2E Suite (Re
         },
         select: { id: true },
       });
-      const allUserIds = Array.from(new Set([...testUserIds, ...existingUsers.map((u) => u.id)]));
+      const allUserIds = Array.from(
+        new Set([...testUserIds, ...existingUsers.map((u) => u.id)]),
+      );
 
       const existingStores = await prisma.store.findMany({
         where: {
@@ -66,7 +68,9 @@ describe('FR-29 — Gamified KOL Leaderboard & Hall of Fame Podium E2E Suite (Re
         },
         select: { id: true },
       });
-      const allStoreIds = Array.from(new Set([...testStoreIds, ...existingStores.map((s) => s.id)]));
+      const allStoreIds = Array.from(
+        new Set([...testStoreIds, ...existingStores.map((s) => s.id)]),
+      );
 
       // Delete dependent data
       await prisma.commission.deleteMany({
@@ -177,7 +181,12 @@ describe('FR-29 — Gamified KOL Leaderboard & Hall of Fame Podium E2E Suite (Re
     for (const u of testUsers) {
       await prisma.user.upsert({
         where: { id: u.id },
-        update: { passwordHash, isActive: true, role: u.role, fullName: u.fullName },
+        update: {
+          passwordHash,
+          isActive: true,
+          role: u.role,
+          fullName: u.fullName,
+        },
         create: {
           id: u.id,
           email: u.email,
@@ -561,7 +570,9 @@ describe('FR-29 — Gamified KOL Leaderboard & Hall of Fame Podium E2E Suite (Re
       const body = res.body;
       expect(body.metric).toBe('REVENUE');
       expect(body.podium.rank1?.collaboratorId).toBe(kolId1);
-      expect(body.podium.rank1?.grossRevenue).toBeGreaterThanOrEqual(body.podium.rank2?.grossRevenue || 0);
+      expect(body.podium.rank1?.grossRevenue).toBeGreaterThanOrEqual(
+        body.podium.rank2?.grossRevenue || 0,
+      );
     });
 
     it('[TC-06] GET /api/leaderboard?metric=ORDERS - Sorts rankings descending by successful orders', async () => {
@@ -572,7 +583,9 @@ describe('FR-29 — Gamified KOL Leaderboard & Hall of Fame Podium E2E Suite (Re
 
       const body = res.body;
       expect(body.metric).toBe('ORDERS');
-      expect(body.podium.rank1?.totalOrders).toBeGreaterThanOrEqual(body.podium.rank2?.totalOrders || 0);
+      expect(body.podium.rank1?.totalOrders).toBeGreaterThanOrEqual(
+        body.podium.rank2?.totalOrders || 0,
+      );
     });
 
     it('[TC-07] GET /api/leaderboard?metric=CONVERSION_RATE - Sorts rankings descending by CR%', async () => {
@@ -594,7 +607,9 @@ describe('FR-29 — Gamified KOL Leaderboard & Hall of Fame Podium E2E Suite (Re
 
       const body = res.body;
       expect(body.metric).toBe('COMMISSION');
-      expect(body.podium.rank1?.totalCommission).toBeGreaterThanOrEqual(body.podium.rank2?.totalCommission || 0);
+      expect(body.podium.rank1?.totalCommission).toBeGreaterThanOrEqual(
+        body.podium.rank2?.totalCommission || 0,
+      );
     });
   });
 
@@ -671,9 +686,7 @@ describe('FR-29 — Gamified KOL Leaderboard & Hall of Fame Podium E2E Suite (Re
     });
 
     it('[TC-15] GET /api/leaderboard - Rejects unauthorized requests without JWT (401)', async () => {
-      await request(app.getHttpServer())
-        .get('/api/leaderboard')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/leaderboard').expect(401);
     });
 
     it('[TC-16] GET /api/leaderboard?metric=INVALID_METRIC - Returns 400 Bad Request on invalid metric', async () => {

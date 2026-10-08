@@ -25,7 +25,9 @@ describe('KycService shop onboarding', () => {
 
   beforeEach(() => {
     prisma = {
-      $transaction: jest.fn(async (callback: (tx: any) => unknown) => callback(prisma)),
+      $transaction: jest.fn(async (callback: (tx: any) => unknown) =>
+        callback(prisma),
+      ),
       $queryRaw: jest.fn().mockResolvedValue([]),
       user: { findUnique: jest.fn(), update: jest.fn() },
       store: {
@@ -57,7 +59,7 @@ describe('KycService shop onboarding', () => {
     prisma.user.findUnique.mockResolvedValue({ id: 'owner-1', stores: [] });
     prisma.store.create.mockResolvedValue({ id: 'store-1', ...application });
 
-    await service.applyShopUpgrade('owner-1', application as any);
+    await service.applyShopUpgrade('owner-1', application);
 
     expect(prisma.store.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -112,13 +114,18 @@ describe('KycService shop onboarding', () => {
         }),
       }),
     );
-    expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        userId: 'manager-1',
-        action: 'SHOP_ONBOARDING_REVIEWED',
-        details: expect.objectContaining({ storeId: 'store-1', status: 'NEEDS_INFO' }),
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'manager-1',
+          action: 'SHOP_ONBOARDING_REVIEWED',
+          details: expect.objectContaining({
+            storeId: 'store-1',
+            status: 'NEEDS_INFO',
+          }),
+        }),
       }),
-    }));
+    );
   });
 
   it('activates a Shop and promotes its owner only after Admin approval', async () => {
@@ -134,7 +141,9 @@ describe('KycService shop onboarding', () => {
     prisma.wallet.create.mockResolvedValue({ id: 'wallet-1' });
     prisma.storeWallet.findUnique.mockResolvedValue(null);
 
-    await service.reviewShopApplication('manager-1', 'store-1', { status: 'VERIFIED' });
+    await service.reviewShopApplication('manager-1', 'store-1', {
+      status: 'VERIFIED',
+    });
 
     expect(prisma.store.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -161,7 +170,9 @@ describe('KycService shop onboarding', () => {
     });
 
     await expect(
-      service.reviewShopApplication('manager-1', 'store-1', { status: 'VERIFIED' }),
+      service.reviewShopApplication('manager-1', 'store-1', {
+        status: 'VERIFIED',
+      }),
     ).rejects.toThrow(BadRequestException);
     expect(prisma.store.update).not.toHaveBeenCalled();
   });

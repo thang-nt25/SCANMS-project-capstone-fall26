@@ -64,7 +64,10 @@ export class NotificationsService {
         },
       });
     } catch (e) {
-      this.logger.debug('Cleanup expired live broadcast notifications error (non-fatal):', e);
+      this.logger.debug(
+        'Cleanup expired live broadcast notifications error (non-fatal):',
+        e,
+      );
     }
   }
 
@@ -73,7 +76,9 @@ export class NotificationsService {
    * (Chỉ gieo thông báo chào mừng & ưu đãi khách mới; KHÔNG gieo đơn ảo hay ví ảo)
    */
   private async ensureSeedNotifications(userId: string) {
-    const totalCount = await this.prisma.notification.count({ where: { userId } });
+    const totalCount = await this.prisma.notification.count({
+      where: { userId },
+    });
     if (totalCount === 0) {
       try {
         await this.prisma.notification.createMany({
@@ -81,15 +86,17 @@ export class NotificationsService {
             {
               userId,
               title: 'Chào mừng bạn đến với Hệ sinh thái Sàn SCANMS',
-              message: 'Sàn thương mại tiếp thị liên kết kết nối hàng trăm gian hàng chính hãng. Nâng cấp ngay tài khoản Đối tác để tăng thu nhập!',
+              message:
+                'Khám phá hàng ngàn sản phẩm chính hãng với ưu đãi độc quyền trên Sàn thương mại tiếp thị liên kết SCANMS!',
               type: 'WELCOME',
-              data: { actionUrl: '/customer/upgrade' },
+              data: { actionUrl: '/marketplace' },
               isRead: false,
             },
             {
               userId,
               title: 'Tặng bạn voucher giảm giá 15% bạn mới',
-              message: 'Chào mừng bạn đến với SCANMS! Khám phá kho voucher để nhận các ưu đãi hấp dẫn áp dụng toàn sàn.',
+              message:
+                'Chào mừng bạn đến với SCANMS! Khám phá kho voucher để nhận các ưu đãi hấp dẫn áp dụng toàn sàn.',
               type: 'PROMOTION_COUPON',
               data: { discount: '15%', actionUrl: '/customer/vouchers' },
               isRead: false,
@@ -118,7 +125,14 @@ export class NotificationsService {
       Object.assign(whereClause, getCategoryFilter(query.category));
     }
 
-    const [items, total, unreadCount, orderUnread, promotionUnread, systemUnread] = await Promise.all([
+    const [
+      items,
+      total,
+      unreadCount,
+      orderUnread,
+      promotionUnread,
+      systemUnread,
+    ] = await Promise.all([
       this.prisma.notification.findMany({
         where: whereClause,
         orderBy: { createdAt: 'desc' },
@@ -126,10 +140,15 @@ export class NotificationsService {
         take: limit,
       }),
       this.prisma.notification.count({ where: whereClause }),
-      this.prisma.notification.count({ where: { userId, isRead: false } }),
-      this.prisma.notification.count({ where: { userId, isRead: false, ...getCategoryFilter('ORDER') } }),
-      this.prisma.notification.count({ where: { userId, isRead: false, ...getCategoryFilter('PROMOTION') } }),
-      this.prisma.notification.count({ where: { userId, isRead: false, ...getCategoryFilter('SYSTEM') } }),
+      this.prisma.notification.count({
+        where: { userId, isRead: false, ...getCategoryFilter('ORDER') },
+      }),
+      this.prisma.notification.count({
+        where: { userId, isRead: false, ...getCategoryFilter('PROMOTION') },
+      }),
+      this.prisma.notification.count({
+        where: { userId, isRead: false, ...getCategoryFilter('SYSTEM') },
+      }),
     ]);
 
     return {
@@ -152,12 +171,19 @@ export class NotificationsService {
    */
   async getUnreadCount(userId: string) {
     await this.cleanupExpiredLiveBroadcasts();
-    const [unreadCount, orderUnread, promotionUnread, systemUnread] = await Promise.all([
-      this.prisma.notification.count({ where: { userId, isRead: false } }),
-      this.prisma.notification.count({ where: { userId, isRead: false, ...getCategoryFilter('ORDER') } }),
-      this.prisma.notification.count({ where: { userId, isRead: false, ...getCategoryFilter('PROMOTION') } }),
-      this.prisma.notification.count({ where: { userId, isRead: false, ...getCategoryFilter('SYSTEM') } }),
-    ]);
+    const [unreadCount, orderUnread, promotionUnread, systemUnread] =
+      await Promise.all([
+        this.prisma.notification.count({ where: { userId, isRead: false } }),
+        this.prisma.notification.count({
+          where: { userId, isRead: false, ...getCategoryFilter('ORDER') },
+        }),
+        this.prisma.notification.count({
+          where: { userId, isRead: false, ...getCategoryFilter('PROMOTION') },
+        }),
+        this.prisma.notification.count({
+          where: { userId, isRead: false, ...getCategoryFilter('SYSTEM') },
+        }),
+      ]);
 
     return {
       unreadCount,

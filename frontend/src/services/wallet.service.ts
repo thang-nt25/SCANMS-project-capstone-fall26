@@ -114,6 +114,19 @@ export const walletService = {
     ).data;
   },
 
+  async updateBankAccount(data: {
+    bankName: string;
+    bankAccountNumber: string;
+    bankAccountName: string;
+  }) {
+    return (
+      await api.put<
+        never,
+        ApiEnvelope<{ success: boolean; message: string }>
+      >("/wallets/me/bank-account", data)
+    ).data;
+  },
+
   async disconnectBankAccount() {
     return (
       await api.delete<
@@ -122,4 +135,18 @@ export const walletService = {
       >("/wallets/me/bank-account")
     ).data;
   },
+
+  async topUpDemo(amount: number) {
+    return (
+      await api.post<
+        never,
+        ApiEnvelope<{
+          message: string;
+          amount: number;
+          availableBalance: string;
+        }>
+      >("/wallets/top-up-demo", { amount })
+    ).data;
+  },
 };
+

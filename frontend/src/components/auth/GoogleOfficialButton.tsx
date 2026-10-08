@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { requestGoogleAccessToken, loadGoogleIdentityScript } from '../../utils/googleAuth';
+import { requestGoogleAccessToken, loadGoogleIdentityScript } from '@/utils/google-auth.utils';
 
 interface GoogleOfficialButtonProps {
   onSuccess: (idToken: string) => void;

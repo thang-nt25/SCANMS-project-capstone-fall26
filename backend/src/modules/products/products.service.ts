@@ -19,7 +19,11 @@ import { UpdateVariantSamplePolicyDto } from './dto/update-variant-sample-policy
 import { SyncProductVariantsDto } from './dto/sync-product-variants.dto';
 import { TrackAnalyticsEventDto } from './dto/track-event.dto';
 import { ProductLandingResponseDto } from './dto/landing-page-response.dto';
-import { UserRole, ReviewStatus, ProductModerationStatus } from '@prisma/client';
+import {
+  UserRole,
+  ReviewStatus,
+  ProductModerationStatus,
+} from '@prisma/client';
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import * as crypto from 'crypto';
@@ -63,29 +67,58 @@ export class ProductsService {
     );
   }
 
-  private buildProductEvidenceRows(input: {
-    originProofLinks?: string[];
-    originProofImages?: string[];
-    labelProofLinks?: string[];
-    labelProofImages?: string[];
-  }, storeId: string, productId: string, replaceKinds?: string[]) {
+  private buildProductEvidenceRows(
+    input: {
+      originProofLinks?: string[];
+      originProofImages?: string[];
+      labelProofLinks?: string[];
+      labelProofImages?: string[];
+    },
+    storeId: string,
+    productId: string,
+    replaceKinds?: string[],
+  ) {
     const groups = [
-      { kind: 'ORIGIN_LINK', title: 'Minh chứng nguồn gốc · Link', values: input.originProofLinks },
-      { kind: 'ORIGIN_IMAGE', title: 'Minh chứng nguồn gốc · Ảnh', values: input.originProofImages },
-      { kind: 'LABEL_LINK', title: 'Minh chứng nhãn mác · Link', values: input.labelProofLinks },
-      { kind: 'LABEL_IMAGE', title: 'Minh chứng nhãn mác · Ảnh', values: input.labelProofImages },
+      {
+        kind: 'ORIGIN_LINK',
+        title: 'Minh chứng nguồn gốc · Link',
+        values: input.originProofLinks,
+      },
+      {
+        kind: 'ORIGIN_IMAGE',
+        title: 'Minh chứng nguồn gốc · Ảnh',
+        values: input.originProofImages,
+      },
+      {
+        kind: 'LABEL_LINK',
+        title: 'Minh chứng nhãn mác · Link',
+        values: input.labelProofLinks,
+      },
+      {
+        kind: 'LABEL_IMAGE',
+        title: 'Minh chứng nhãn mác · Ảnh',
+        values: input.labelProofImages,
+      },
     ];
     return groups
-      .filter((group) => group.values !== undefined && (!replaceKinds || replaceKinds.includes(group.kind)))
-      .flatMap((group) => (group.values || []).map((url) => ({
-        storeId,
-        productId,
-        title: group.title,
-        assetType: 'COPYWRITE_TEXT' as const,
-        caption: `${ProductsService.PRODUCT_EVIDENCE_MARKER}${group.kind}`,
-        urlOrContent: url.trim(),
-        status: 'PENDING' as const,
-      })).filter((item) => item.urlOrContent));
+      .filter(
+        (group) =>
+          group.values !== undefined &&
+          (!replaceKinds || replaceKinds.includes(group.kind)),
+      )
+      .flatMap((group) =>
+        (group.values || [])
+          .map((url) => ({
+            storeId,
+            productId,
+            title: group.title,
+            assetType: 'COPYWRITE_TEXT' as const,
+            caption: `${ProductsService.PRODUCT_EVIDENCE_MARKER}${group.kind}`,
+            urlOrContent: url.trim(),
+            status: 'PENDING' as const,
+          }))
+          .filter((item) => item.urlOrContent),
+      );
   }
 
   private assertProductSubmissionComplete(dto: CreateProductDto): void {
@@ -110,21 +143,28 @@ export class ProductsService {
     if (!Number.isInteger(dto.stockQuantity) || dto.stockQuantity < 0) {
       issues.push('Số lượng tồn kho phải là số nguyên từ 0 trở lên');
     }
-    if (dto.sampleEnabled && (!Number.isInteger(dto.sampleQuota) || Number(dto.sampleQuota) <= 0)) {
-      issues.push('Nếu bật cấp sản phẩm mẫu, tổng suất mẫu phải là số nguyên lớn hơn 0');
+    if (
+      dto.sampleEnabled &&
+      (!Number.isInteger(dto.sampleQuota) || Number(dto.sampleQuota) <= 0)
+    ) {
+      issues.push(
+        'Nếu bật cấp sản phẩm mẫu, tổng suất mẫu phải là số nguyên lớn hơn 0',
+      );
     }
 
     const hasOriginEvidence = [
       ...(dto.originProofLinks || []),
       ...(dto.originProofImages || []),
     ].some((item) => typeof item === 'string' && item.trim());
-    if (!hasOriginEvidence) issues.push('Minh chứng nguồn gốc: thêm ít nhất một link hoặc ảnh');
+    if (!hasOriginEvidence)
+      issues.push('Minh chứng nguồn gốc: thêm ít nhất một link hoặc ảnh');
 
     const hasLabelEvidence = [
       ...(dto.labelProofLinks || []),
       ...(dto.labelProofImages || []),
     ].some((item) => typeof item === 'string' && item.trim());
-    if (!hasLabelEvidence) issues.push('Minh chứng nhãn mác: thêm ít nhất một link hoặc ảnh');
+    if (!hasLabelEvidence)
+      issues.push('Minh chứng nhãn mác: thêm ít nhất một link hoặc ảnh');
 
     const variants = dto.variants || [];
     if (!variants.length) {
@@ -133,42 +173,66 @@ export class ProductsService {
 
     const categoryFields: Record<string, Array<[string, string]>> = {
       'Mỹ phẩm & Chăm sóc da': [
-        ['volume', 'Dung tích / khối lượng'], ['formula', 'Dạng / công thức'], ['package', 'Quy cách'],
+        ['volume', 'Dung tích / khối lượng'],
+        ['formula', 'Dạng / công thức'],
+        ['package', 'Quy cách'],
       ],
       'Trang điểm & Làm đẹp': [
-        ['shade', 'Màu / tông'], ['finish', 'Chất / hiệu ứng'], ['volume', 'Dung tích / khối lượng'],
+        ['shade', 'Màu / tông'],
+        ['finish', 'Chất / hiệu ứng'],
+        ['volume', 'Dung tích / khối lượng'],
       ],
       'Chăm sóc cơ thể & Tóc': [
-        ['volume', 'Dung tích / khối lượng'], ['scent', 'Mùi hương'], ['formula', 'Dạng sản phẩm'],
+        ['volume', 'Dung tích / khối lượng'],
+        ['scent', 'Mùi hương'],
+        ['formula', 'Dạng sản phẩm'],
       ],
       'Thực phẩm chức năng & Sức khỏe': [
-        ['weight', 'Khối lượng / số lượng'], ['flavor', 'Vị / hương'], ['package', 'Quy cách đóng gói'],
+        ['weight', 'Khối lượng / số lượng'],
+        ['flavor', 'Vị / hương'],
+        ['package', 'Quy cách đóng gói'],
       ],
       'Thiết bị điện tử & Phụ kiện': [
-        ['model', 'Mẫu / phiên bản'], ['color', 'Màu sắc'], ['capacity', 'Cấu hình / dung lượng'],
+        ['model', 'Mẫu / phiên bản'],
+        ['color', 'Màu sắc'],
+        ['capacity', 'Cấu hình / dung lượng'],
       ],
       'Thời trang & Phụ kiện': [
-        ['color', 'Màu sắc'], ['size', 'Size'], ['style', 'Kiểu / mẫu'],
+        ['color', 'Màu sắc'],
+        ['size', 'Size'],
+        ['style', 'Kiểu / mẫu'],
       ],
     };
     const expectedFields = categoryFields[dto.categoryName?.trim()] || [
-      ['type', 'Loại / mẫu'], ['specification', 'Kích thước / quy cách'], ['color', 'Màu / phiên bản'],
+      ['type', 'Loại / mẫu'],
+      ['specification', 'Kích thước / quy cách'],
+      ['color', 'Màu / phiên bản'],
     ];
     for (const [index, variant] of variants.entries()) {
       const missingAttributes = expectedFields
         .filter(([key]) => !variant.attributes?.[key]?.trim())
         .map(([, label]) => label);
       if (missingAttributes.length) {
-        issues.push(`Phân loại ${index + 1}: thiếu ${missingAttributes.join(', ')}`);
+        issues.push(
+          `Phân loại ${index + 1}: thiếu ${missingAttributes.join(', ')}`,
+        );
       }
-      if (!variant.name?.trim()) issues.push(`Phân loại ${index + 1}: thiếu tên hiển thị`);
-      if (!variant.sku?.trim()) issues.push(`Phân loại ${index + 1}: thiếu mã SKU`);
-      if (!variant.imageUrl?.trim()) issues.push(`Phân loại ${index + 1}: thiếu ảnh riêng`);
+      if (!variant.name?.trim())
+        issues.push(`Phân loại ${index + 1}: thiếu tên hiển thị`);
+      if (!variant.sku?.trim())
+        issues.push(`Phân loại ${index + 1}: thiếu mã SKU`);
+      if (!variant.imageUrl?.trim())
+        issues.push(`Phân loại ${index + 1}: thiếu ảnh riêng`);
       if (!Number.isFinite(variant.price) || Number(variant.price) <= 0) {
         issues.push(`Phân loại ${index + 1}: giá bán phải lớn hơn 0`);
       }
-      if (!Number.isInteger(variant.stockQuantity) || variant.stockQuantity < 0) {
-        issues.push(`Phân loại ${index + 1}: tồn kho phải là số nguyên từ 0 trở lên`);
+      if (
+        !Number.isInteger(variant.stockQuantity) ||
+        variant.stockQuantity < 0
+      ) {
+        issues.push(
+          `Phân loại ${index + 1}: tồn kho phải là số nguyên từ 0 trở lên`,
+        );
       }
     }
 
@@ -183,9 +247,14 @@ export class ProductsService {
     product: T,
     evidence: Array<{ caption: string | null; urlOrContent: string }> = [],
   ) {
-    const evidenceUrls = (kind: string) => evidence
-      .filter((item) => item.caption === `${ProductsService.PRODUCT_EVIDENCE_MARKER}${kind}`)
-      .map((item) => item.urlOrContent);
+    const evidenceUrls = (kind: string) =>
+      evidence
+        .filter(
+          (item) =>
+            item.caption ===
+            `${ProductsService.PRODUCT_EVIDENCE_MARKER}${kind}`,
+        )
+        .map((item) => item.urlOrContent);
     return {
       ...product,
       originProofLinks: evidenceUrls('ORIGIN_LINK'),
@@ -196,7 +265,10 @@ export class ProductsService {
   }
 
   private async loadProductEvidence(productIds: string[]) {
-    const byProduct = new Map<string, Array<{ caption: string | null; urlOrContent: string }>>();
+    const byProduct = new Map<
+      string,
+      Array<{ caption: string | null; urlOrContent: string }>
+    >();
     if (!productIds.length) return byProduct;
     const rows = await this.prisma.mediaAsset.findMany({
       where: {
@@ -229,7 +301,8 @@ export class ProductsService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const UUID_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     if (query.storeId && !UUID_REGEX.test(query.storeId)) {
       return {
@@ -334,14 +407,25 @@ export class ProductsService {
       }),
     ]);
 
-    const canViewEvidence = viewer?.role === UserRole.SHOP_MANAGER || viewer?.role === UserRole.SYSTEM_MANAGER || viewer?.role === UserRole.SYSTEM_ADMIN;
+    const canViewEvidence =
+      viewer?.role === UserRole.SHOP_MANAGER ||
+      viewer?.role === UserRole.SYSTEM_MANAGER ||
+      viewer?.role === UserRole.SYSTEM_ADMIN;
     const evidenceByProduct = canViewEvidence
       ? await this.loadProductEvidence(items.map((product) => product.id))
-      : new Map<string, Array<{ caption: string | null; urlOrContent: string }>>();
+      : new Map<
+          string,
+          Array<{ caption: string | null; urlOrContent: string }>
+        >();
 
     return {
       items: canViewEvidence
-        ? items.map((product) => this.attachProductEvidence(product, evidenceByProduct.get(product.id)))
+        ? items.map((product) =>
+            this.attachProductEvidence(
+              product,
+              evidenceByProduct.get(product.id),
+            ),
+          )
         : items,
       pagination: {
         total,
@@ -404,10 +488,16 @@ export class ProductsService {
       throw new NotFoundException('Sản phẩm không tồn tại');
     }
 
-    const canViewEvidence = viewer?.role === UserRole.SHOP_MANAGER || viewer?.role === UserRole.SYSTEM_MANAGER || viewer?.role === UserRole.SYSTEM_ADMIN;
+    const canViewEvidence =
+      viewer?.role === UserRole.SHOP_MANAGER ||
+      viewer?.role === UserRole.SYSTEM_MANAGER ||
+      viewer?.role === UserRole.SYSTEM_ADMIN;
     if (!canViewEvidence) return product;
     const evidenceByProduct = await this.loadProductEvidence([product.id]);
-    return this.attachProductEvidence(product, evidenceByProduct.get(product.id));
+    return this.attachProductEvidence(
+      product,
+      evidenceByProduct.get(product.id),
+    );
   }
 
   /**
@@ -487,8 +577,10 @@ export class ProductsService {
 
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.price = {};
-      if (minPrice !== undefined && !isNaN(minPrice)) where.price.gte = minPrice;
-      if (maxPrice !== undefined && !isNaN(maxPrice)) where.price.lte = maxPrice;
+      if (minPrice !== undefined && !isNaN(minPrice))
+        where.price.gte = minPrice;
+      if (maxPrice !== undefined && !isNaN(maxPrice))
+        where.price.lte = maxPrice;
     }
 
     let orderBy: any = { createdAt: 'desc' };
@@ -686,11 +778,14 @@ export class ProductsService {
     if (dto.status) {
       targetStatus = dto.status;
     } else if (dto.approved !== undefined) {
-      targetStatus = dto.approved ? ReviewStatus.APPROVED : ReviewStatus.REJECTED;
+      targetStatus = dto.approved
+        ? ReviewStatus.APPROVED
+        : ReviewStatus.REJECTED;
     }
     const isApproved = targetStatus === ReviewStatus.APPROVED;
     const rejectionReason =
-      targetStatus === ReviewStatus.REJECTED || targetStatus === ReviewStatus.HIDDEN
+      targetStatus === ReviewStatus.REJECTED ||
+      targetStatus === ReviewStatus.HIDDEN
         ? dto.reason || null
         : null;
 
@@ -771,15 +866,27 @@ export class ProductsService {
         },
         variants: {
           where: { isActive: true },
-          select: { id: true, name: true, sku: true, attributes: true, price: true, imageUrl: true, stockQuantity: true },
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            attributes: true,
+            price: true,
+            imageUrl: true,
+            stockQuantity: true,
+          },
           orderBy: { createdAt: 'asc' },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
-    const evidenceByProduct = await this.loadProductEvidence(items.map((product) => product.id));
+    const evidenceByProduct = await this.loadProductEvidence(
+      items.map((product) => product.id),
+    );
     return {
-      items: items.map((product) => this.attachProductEvidence(product, evidenceByProduct.get(product.id))),
+      items: items.map((product) =>
+        this.attachProductEvidence(product, evidenceByProduct.get(product.id)),
+      ),
       total: items.length,
     };
   }
@@ -797,11 +904,15 @@ export class ProductsService {
     });
     if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
     if (product.moderationStatus !== ProductModerationStatus.DRAFT) {
-      throw new BadRequestException('Chỉ sản phẩm đang chờ kiểm duyệt mới được xử lý.');
+      throw new BadRequestException(
+        'Chỉ sản phẩm đang chờ kiểm duyệt mới được xử lý.',
+      );
     }
     const reason = dto.reason?.trim() || null;
     if (dto.status === 'REJECTED' && (!reason || reason.length < 3)) {
-      throw new BadRequestException('Vui lòng ghi rõ lý do từ chối (ít nhất 3 ký tự).');
+      throw new BadRequestException(
+        'Vui lòng ghi rõ lý do từ chối (ít nhất 3 ký tự).',
+      );
     }
 
     const reviewedAt = new Date();
@@ -819,19 +930,31 @@ export class ProductsService {
       await tx.notification.create({
         data: {
           userId: product.store.ownerId,
-          title: dto.status === 'APPROVED' ? 'Sản phẩm đã được duyệt' : 'Sản phẩm cần chỉnh sửa',
+          title:
+            dto.status === 'APPROVED'
+              ? 'Sản phẩm đã được duyệt'
+              : 'Sản phẩm cần chỉnh sửa',
           message:
             dto.status === 'APPROVED'
-              ? 'Sản phẩm "' + product.title + '" đã được SCANMS phê duyệt và có thể hiển thị trên sàn.'
-              : 'Sản phẩm "' + product.title + '" chưa được duyệt. Lý do: ' + reason,
-          type: dto.status === 'APPROVED' ? 'PRODUCT_APPROVED' : 'PRODUCT_REJECTED',
+              ? 'Sản phẩm "' +
+                product.title +
+                '" đã được SCANMS phê duyệt và có thể hiển thị trên sàn.'
+              : 'Sản phẩm "' +
+                product.title +
+                '" chưa được duyệt. Lý do: ' +
+                reason,
+          type:
+            dto.status === 'APPROVED' ? 'PRODUCT_APPROVED' : 'PRODUCT_REJECTED',
           data: { productId, storeId: product.store.id, status: dto.status },
         },
       });
       await tx.auditLog.create({
         data: {
           userId,
-          action: dto.status === 'APPROVED' ? 'PRODUCT_MODERATION_APPROVED' : 'PRODUCT_MODERATION_REJECTED',
+          action:
+            dto.status === 'APPROVED'
+              ? 'PRODUCT_MODERATION_APPROVED'
+              : 'PRODUCT_MODERATION_REJECTED',
           details: {
             productId,
             storeId: product.store.id,
@@ -846,9 +969,10 @@ export class ProductsService {
 
     await this.invalidateLandingCache(productId);
     return {
-      message: dto.status === 'APPROVED'
-        ? 'Đã phê duyệt và công khai sản phẩm.'
-        : 'Đã từ chối sản phẩm và gửi lý do cho Shop.',
+      message:
+        dto.status === 'APPROVED'
+          ? 'Đã phê duyệt và công khai sản phẩm.'
+          : 'Đã từ chối sản phẩm và gửi lý do cho Shop.',
       product: updated,
     };
   }
@@ -909,59 +1033,107 @@ export class ProductsService {
     }
 
     const variants = dto.variants || [];
-    const variantSkus = variants.map((variant) => variant.sku.trim().toUpperCase());
-    if (variants.some((variant) => variant.id || !variant.name.trim() || !variant.imageUrl?.trim()) ||
-        variantSkus.some((sku) => !sku) || new Set(variantSkus).size !== variantSkus.length) {
-      throw new BadRequestException('Mỗi phân loại mới cần tên, SKU duy nhất và ảnh riêng.');
+    const variantSkus = variants.map((variant) =>
+      variant.sku.trim().toUpperCase(),
+    );
+    if (
+      variants.some(
+        (variant) =>
+          variant.id || !variant.name.trim() || !variant.imageUrl?.trim(),
+      ) ||
+      variantSkus.some((sku) => !sku) ||
+      new Set(variantSkus).size !== variantSkus.length
+    ) {
+      throw new BadRequestException(
+        'Mỗi phân loại mới cần tên, SKU duy nhất và ảnh riêng.',
+      );
     }
     if (variantSkus.length) {
-      const conflicts = await this.prisma.productVariant.findMany({ where: { sku: { in: variantSkus } }, select: { sku: true } });
-      if (conflicts.length) throw new ConflictException(`SKU phân loại đã tồn tại: ${conflicts.map((item) => item.sku).join(', ')}`);
+      const conflicts = await this.prisma.productVariant.findMany({
+        where: { sku: { in: variantSkus } },
+        select: { sku: true },
+      });
+      if (conflicts.length)
+        throw new ConflictException(
+          `SKU phân loại đã tồn tại: ${conflicts.map((item) => item.sku).join(', ')}`,
+        );
     }
     const preparedVariants = variants.map((variant, index) => {
       const raw = variant.attributes || {};
-      if (Object.keys(raw).length > 4 || Object.entries(raw).some(([key, value]) =>
-        !/^[a-z][a-z0-9_]{0,29}$/.test(key) || typeof value !== 'string' || value.trim().length > 80)) {
+      if (
+        Object.keys(raw).length > 4 ||
+        Object.entries(raw).some(
+          ([key, value]) =>
+            !/^[a-z][a-z0-9_]{0,29}$/.test(key) ||
+            typeof value !== 'string' ||
+            value.trim().length > 80,
+        )
+      ) {
         throw new BadRequestException('Thuộc tính phân loại không hợp lệ.');
       }
       return {
-        sku: variantSkus[index], name: variant.name.trim(), attributes: Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, value.trim()]).filter(([, value]) => value)),
-        imageUrl: variant.imageUrl!.trim(), price: variant.price ?? dto.price, stockQuantity: variant.stockQuantity,
+        sku: variantSkus[index],
+        name: variant.name.trim(),
+        attributes: Object.fromEntries(
+          Object.entries(raw)
+            .map(([key, value]) => [key, value.trim()])
+            .filter(([, value]) => value),
+        ),
+        imageUrl: variant.imageUrl!.trim(),
+        price: variant.price ?? dto.price,
+        stockQuantity: variant.stockQuantity,
       };
     });
-    this.assertDistinctVariantAttributes(preparedVariants.map((variant) => variant.attributes));
+    this.assertDistinctVariantAttributes(
+      preparedVariants.map((variant) => variant.attributes),
+    );
 
     const product = await this.prisma.$transaction(async (tx) => {
       const created = await tx.product.create({
         data: {
-        storeId: store.id,
-        sku: dto.sku.trim().toUpperCase(),
-        title: dto.title.trim(),
-        categoryName: dto.categoryName?.trim() || null,
-        description: dto.description?.trim() || null,
-        imageUrl: dto.imageUrl?.trim() || null,
-        price: dto.price,
-        originalPrice: dto.originalPrice || null,
-        customCommissionRate: dto.customCommissionRate || null,
-        stockQuantity: preparedVariants.length ? preparedVariants.reduce((sum, variant) => sum + variant.stockQuantity, 0) : (dto.stockQuantity || 0),
-        isActive: false,
-        moderationStatus: ProductModerationStatus.DRAFT,
-        ingredients: dto.ingredients?.trim() || null,
-        origin: dto.origin?.trim() || null,
-        labelInfo: dto.labelInfo?.trim() || null,
-        isAffiliateEnabled: dto.isAffiliateEnabled ?? false,
-        sampleEnabled: dto.sampleEnabled ?? false,
-        sampleQuota: dto.sampleQuota ?? 0,
-        ...(preparedVariants.length ? { variants: { create: preparedVariants } } : {}),
+          storeId: store.id,
+          sku: dto.sku.trim().toUpperCase(),
+          title: dto.title.trim(),
+          categoryName: dto.categoryName?.trim() || null,
+          description: dto.description?.trim() || null,
+          imageUrl: dto.imageUrl?.trim() || null,
+          price: dto.price,
+          originalPrice: dto.originalPrice || null,
+          customCommissionRate: dto.customCommissionRate || null,
+          stockQuantity: preparedVariants.length
+            ? preparedVariants.reduce(
+                (sum, variant) => sum + variant.stockQuantity,
+                0,
+              )
+            : dto.stockQuantity || 0,
+          isActive: false,
+          moderationStatus: ProductModerationStatus.DRAFT,
+          ingredients: dto.ingredients?.trim() || null,
+          origin: dto.origin?.trim() || null,
+          labelInfo: dto.labelInfo?.trim() || null,
+          isAffiliateEnabled: dto.isAffiliateEnabled ?? false,
+          sampleEnabled: dto.sampleEnabled ?? false,
+          sampleQuota: dto.sampleQuota ?? 0,
+          ...(preparedVariants.length
+            ? { variants: { create: preparedVariants } }
+            : {}),
         },
       });
 
-      const evidenceRows = this.buildProductEvidenceRows(dto, store.id, created.id);
+      const evidenceRows = this.buildProductEvidenceRows(
+        dto,
+        store.id,
+        created.id,
+      );
       if (evidenceRows.length) {
         await tx.mediaAsset.createMany({ data: evidenceRows });
       }
 
-      if (dto.subImages && Array.isArray(dto.subImages) && dto.subImages.length > 0) {
+      if (
+        dto.subImages &&
+        Array.isArray(dto.subImages) &&
+        dto.subImages.length > 0
+      ) {
         for (const imgUrl of dto.subImages.slice(0, 4)) {
           if (!imgUrl || typeof imgUrl !== 'string' || !imgUrl.trim()) continue;
           await tx.mediaAsset.create({
@@ -1011,7 +1183,8 @@ export class ProductsService {
     }
 
     const isSystemAdminOrManager =
-      userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
+      userRole === UserRole.SYSTEM_ADMIN ||
+      userRole === UserRole.SYSTEM_MANAGER;
 
     if (!isSystemAdminOrManager && product.store.ownerId !== userId) {
       throw new ForbiddenException(
@@ -1021,7 +1194,8 @@ export class ProductsService {
 
     if (
       userRole === UserRole.SHOP_MANAGER &&
-      (!product.store.isVerified || product.store.onboardingStatus !== 'VERIFIED')
+      (!product.store.isVerified ||
+        product.store.onboardingStatus !== 'VERIFIED')
     ) {
       throw new ForbiddenException(
         'Gian hàng chưa được xác minh nên chưa thể cập nhật sản phẩm hoặc tồn kho.',
@@ -1034,39 +1208,68 @@ export class ProductsService {
     const evidenceByProduct = await this.loadProductEvidence([id]);
     const existingEvidenceRows = evidenceByProduct.get(id) || [];
 
-    const textChanged = (next: string | null | undefined, current: string | null | undefined) =>
-      next !== undefined && (next?.trim() || null) !== (current?.trim() || null);
-    const stringListChanged = (next: string[] | undefined, current: string[] | null | undefined) =>
-      next !== undefined && JSON.stringify(next.map((value) => value.trim())) !==
+    const textChanged = (
+      next: string | null | undefined,
+      current: string | null | undefined,
+    ) =>
+      next !== undefined &&
+      (next?.trim() || null) !== (current?.trim() || null);
+    const stringListChanged = (
+      next: string[] | undefined,
+      current: string[] | null | undefined,
+    ) =>
+      next !== undefined &&
+      JSON.stringify(next.map((value) => value.trim())) !==
         JSON.stringify((current ?? []).map((value) => value.trim()));
-    const existingEvidence = this.attachProductEvidence(product, existingEvidenceRows);
+    const existingEvidence = this.attachProductEvidence(
+      product,
+      existingEvidenceRows,
+    );
     const numberChanged = (next: number | null | undefined, current: unknown) =>
-      next !== undefined && (next === null ? null : Number(next)) !==
+      next !== undefined &&
+      (next === null ? null : Number(next)) !==
         (current === null || current === undefined ? null : Number(current));
-    const existingImages = (product.mediaAssets || []).map((asset) => asset.urlOrContent.trim()).filter(Boolean).slice(0, 4);
-    const requestedImages = dto.subImages?.slice(0, 4).map((url) => url.trim()).filter(Boolean);
-    const subImagesChanged = requestedImages !== undefined &&
+    const existingImages = (product.mediaAssets || [])
+      .map((asset) => asset.urlOrContent.trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    const requestedImages = dto.subImages
+      ?.slice(0, 4)
+      .map((url) => url.trim())
+      .filter(Boolean);
+    const subImagesChanged =
+      requestedImages !== undefined &&
       JSON.stringify(requestedImages) !== JSON.stringify(existingImages);
     const approvedShopContentChanged =
       userRole === UserRole.SHOP_MANAGER &&
       product.moderationStatus === ProductModerationStatus.APPROVED &&
-      (
-        textChanged(dto.sku, product.sku) ||
+      (textChanged(dto.sku, product.sku) ||
         textChanged(dto.title, product.title) ||
         textChanged(dto.categoryName, product.categoryName) ||
         textChanged(dto.description, product.description) ||
         textChanged(dto.ingredients, product.ingredients) ||
         textChanged(dto.origin, product.origin) ||
         textChanged(dto.labelInfo, product.labelInfo) ||
-        stringListChanged(dto.originProofLinks, existingEvidence.originProofLinks) ||
-        stringListChanged(dto.originProofImages, existingEvidence.originProofImages) ||
-        stringListChanged(dto.labelProofLinks, existingEvidence.labelProofLinks) ||
-        stringListChanged(dto.labelProofImages, existingEvidence.labelProofImages) ||
+        stringListChanged(
+          dto.originProofLinks,
+          existingEvidence.originProofLinks,
+        ) ||
+        stringListChanged(
+          dto.originProofImages,
+          existingEvidence.originProofImages,
+        ) ||
+        stringListChanged(
+          dto.labelProofLinks,
+          existingEvidence.labelProofLinks,
+        ) ||
+        stringListChanged(
+          dto.labelProofImages,
+          existingEvidence.labelProofImages,
+        ) ||
         textChanged(dto.imageUrl, product.imageUrl) ||
         numberChanged(dto.price, product.price) ||
         numberChanged(dto.originalPrice, product.originalPrice) ||
-        subImagesChanged
-      );
+        subImagesChanged);
     const requiresModeration = isResubmission || approvedShopContentChanged;
     const evidenceKindsToReplace = [
       dto.originProofLinks !== undefined ? 'ORIGIN_LINK' : null,
@@ -1074,9 +1277,17 @@ export class ProductsService {
       dto.labelProofLinks !== undefined ? 'LABEL_LINK' : null,
       dto.labelProofImages !== undefined ? 'LABEL_IMAGE' : null,
     ].filter((kind): kind is string => kind !== null);
-    const updatedEvidenceRows = this.buildProductEvidenceRows(dto, product.storeId, id, evidenceKindsToReplace);
+    const updatedEvidenceRows = this.buildProductEvidenceRows(
+      dto,
+      product.storeId,
+      id,
+      evidenceKindsToReplace,
+    );
 
-    if (dto.sampleQuota !== undefined && dto.sampleQuota < product.sampleGrantedCount) {
+    if (
+      dto.sampleQuota !== undefined &&
+      dto.sampleQuota < product.sampleGrantedCount
+    ) {
       throw new BadRequestException(
         `Hạn mức mẫu không thể thấp hơn số mẫu Shop đã duyệt (${product.sampleGrantedCount}).`,
       );
@@ -1087,7 +1298,9 @@ export class ProductsService {
         data: { sampleQuota: dto.sampleQuota },
       });
       if (!quotaGuard.count) {
-        throw new BadRequestException('Hạn mức vừa thay đổi do Shop duyệt mẫu đồng thời. Tải lại sản phẩm rồi thử lại.');
+        throw new BadRequestException(
+          'Hạn mức vừa thay đổi do Shop duyệt mẫu đồng thời. Tải lại sản phẩm rồi thử lại.',
+        );
       }
     }
 
@@ -1124,11 +1337,15 @@ export class ProductsService {
         ...(dto.stockQuantity !== undefined && {
           stockQuantity: dto.stockQuantity,
         }),
-        ...(dto.isActive !== undefined && product.moderationStatus === ProductModerationStatus.APPROVED && !approvedShopContentChanged && { isActive: dto.isActive }),
+        ...(dto.isActive !== undefined &&
+          product.moderationStatus === ProductModerationStatus.APPROVED &&
+          !approvedShopContentChanged && { isActive: dto.isActive }),
         ...(dto.isAffiliateEnabled !== undefined && {
           isAffiliateEnabled: dto.isAffiliateEnabled,
         }),
-        ...(dto.sampleEnabled !== undefined && { sampleEnabled: dto.sampleEnabled }),
+        ...(dto.sampleEnabled !== undefined && {
+          sampleEnabled: dto.sampleEnabled,
+        }),
         ...(requiresModeration && {
           moderationStatus: ProductModerationStatus.DRAFT,
           moderationReason: null,
@@ -1145,7 +1362,9 @@ export class ProductsService {
           productId: id,
           assetType: 'COPYWRITE_TEXT',
           caption: {
-            in: evidenceKindsToReplace.map((kind) => `${ProductsService.PRODUCT_EVIDENCE_MARKER}${kind}`),
+            in: evidenceKindsToReplace.map(
+              (kind) => `${ProductsService.PRODUCT_EVIDENCE_MARKER}${kind}`,
+            ),
           },
           isDeleted: false,
         },
@@ -1204,9 +1423,12 @@ export class ProductsService {
     });
     if (!product) throw new NotFoundException('Sản phẩm không tồn tại');
     const isSystemAdminOrManager =
-      userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
+      userRole === UserRole.SYSTEM_ADMIN ||
+      userRole === UserRole.SYSTEM_MANAGER;
     if (!isSystemAdminOrManager && product.store.ownerId !== userId) {
-      throw new ForbiddenException('Bạn không có quyền chỉnh SKU của cửa hàng khác');
+      throw new ForbiddenException(
+        'Bạn không có quyền chỉnh SKU của cửa hàng khác',
+      );
     }
 
     const variant = await this.prisma.productVariant.findFirst({
@@ -1216,7 +1438,10 @@ export class ProductsService {
     if (!variant) throw new NotFoundException('SKU không tồn tại hoặc đã tắt');
 
     const inheritProductPolicy = dto.inheritProductPolicy === true;
-    if (dto.sampleQuota !== undefined && dto.sampleQuota < variant.sampleGrantedCount) {
+    if (
+      dto.sampleQuota !== undefined &&
+      dto.sampleQuota < variant.sampleGrantedCount
+    ) {
       throw new BadRequestException(
         `Hạn mức SKU không thể thấp hơn số mẫu Shop đã duyệt (${variant.sampleGrantedCount}).`,
       );
@@ -1233,19 +1458,27 @@ export class ProductsService {
       data: inheritProductPolicy
         ? { sampleEnabled: null, sampleQuota: null }
         : {
-            ...(dto.sampleEnabled !== undefined && { sampleEnabled: dto.sampleEnabled }),
-            ...(dto.sampleQuota !== undefined && { sampleQuota: dto.sampleQuota }),
+            ...(dto.sampleEnabled !== undefined && {
+              sampleEnabled: dto.sampleEnabled,
+            }),
+            ...(dto.sampleQuota !== undefined && {
+              sampleQuota: dto.sampleQuota,
+            }),
           },
     });
     if (!update.count) {
-      throw new BadRequestException('Hạn mức SKU vừa thay đổi do Shop duyệt mẫu đồng thời. Tải lại sản phẩm rồi thử lại.');
+      throw new BadRequestException(
+        'Hạn mức SKU vừa thay đổi do Shop duyệt mẫu đồng thời. Tải lại sản phẩm rồi thử lại.',
+      );
     }
     await this.invalidateLandingCache(productId);
     return {
       message: inheritProductPolicy
         ? 'SKU đã kế thừa chính sách mẫu của sản phẩm.'
         : 'Đã cập nhật chính sách cấp mẫu cho SKU.',
-      variant: await this.prisma.productVariant.findUnique({ where: { id: variantId } }),
+      variant: await this.prisma.productVariant.findUnique({
+        where: { id: variantId },
+      }),
     };
   }
 
@@ -1260,48 +1493,92 @@ export class ProductsService {
       include: {
         store: true,
         variants: {
-          select: { id: true, sku: true, name: true, attributes: true, price: true, imageUrl: true, isActive: true, stockQuantity: true },
+          select: {
+            id: true,
+            sku: true,
+            name: true,
+            attributes: true,
+            price: true,
+            imageUrl: true,
+            isActive: true,
+            stockQuantity: true,
+          },
         },
       },
     });
     if (!product) throw new NotFoundException('Sản phẩm không tồn tại');
 
     const isSystemAdminOrManager =
-      userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
+      userRole === UserRole.SYSTEM_ADMIN ||
+      userRole === UserRole.SYSTEM_MANAGER;
     if (!isSystemAdminOrManager && product.store.ownerId !== userId) {
-      throw new ForbiddenException('Bạn không có quyền sửa phân loại của sản phẩm này');
+      throw new ForbiddenException(
+        'Bạn không có quyền sửa phân loại của sản phẩm này',
+      );
     }
     if (
       userRole === UserRole.SHOP_MANAGER &&
-      (!product.store.isVerified || product.store.onboardingStatus !== 'VERIFIED')
+      (!product.store.isVerified ||
+        product.store.onboardingStatus !== 'VERIFIED')
     ) {
-      throw new ForbiddenException('Gian hàng chưa được xác minh nên chưa thể cập nhật SKU');
+      throw new ForbiddenException(
+        'Gian hàng chưa được xác minh nên chưa thể cập nhật SKU',
+      );
     }
 
     const variants = dto.variants || [];
     const normalizedAttributes = variants.map((variant) => {
-      const raw = variant.attributes ?? (variant.id
-        ? product.variants.find((item) => item.id === variant.id)?.attributes
-        : {}) ?? {};
-      if (typeof raw !== 'object' || Array.isArray(raw) || !raw || Object.keys(raw).length > 4) {
+      const raw =
+        variant.attributes ??
+        (variant.id
+          ? product.variants.find((item) => item.id === variant.id)?.attributes
+          : {}) ??
+        {};
+      if (
+        typeof raw !== 'object' ||
+        Array.isArray(raw) ||
+        !raw ||
+        Object.keys(raw).length > 4
+      ) {
         throw new BadRequestException('Thuộc tính phân loại không hợp lệ.');
       }
-      const cleaned = Object.fromEntries(Object.entries(raw).map(([key, value]) => {
-        if (!/^[a-z][a-z0-9_]{0,29}$/.test(key) || typeof value !== 'string' || value.trim().length > 80) {
-          throw new BadRequestException('Thuộc tính phân loại không hợp lệ.');
-        }
-        return [key, value.trim()];
-      }).filter(([, value]) => value));
+      const cleaned = Object.fromEntries(
+        Object.entries(raw)
+          .map(([key, value]) => {
+            if (
+              !/^[a-z][a-z0-9_]{0,29}$/.test(key) ||
+              typeof value !== 'string' ||
+              value.trim().length > 80
+            ) {
+              throw new BadRequestException(
+                'Thuộc tính phân loại không hợp lệ.',
+              );
+            }
+            return [key, value.trim()];
+          })
+          .filter(([, value]) => value),
+      );
       return cleaned;
     });
     this.assertDistinctVariantAttributes(normalizedAttributes);
-    const normalizedSkus = variants.map((variant) => variant.sku.trim().toUpperCase());
-    if (normalizedSkus.some((sku) => !sku) || new Set(normalizedSkus).size !== normalizedSkus.length) {
-      throw new BadRequestException('Mỗi phân loại phải có SKU riêng và không được để trống');
+    const normalizedSkus = variants.map((variant) =>
+      variant.sku.trim().toUpperCase(),
+    );
+    if (
+      normalizedSkus.some((sku) => !sku) ||
+      new Set(normalizedSkus).size !== normalizedSkus.length
+    ) {
+      throw new BadRequestException(
+        'Mỗi phân loại phải có SKU riêng và không được để trống',
+      );
     }
-    const submittedIds = variants.flatMap((variant) => variant.id ? [variant.id] : []);
+    const submittedIds = variants.flatMap((variant) =>
+      variant.id ? [variant.id] : [],
+    );
     if (new Set(submittedIds).size !== submittedIds.length) {
-      throw new BadRequestException('Một SKU không thể xuất hiện nhiều lần trong danh sách');
+      throw new BadRequestException(
+        'Một SKU không thể xuất hiện nhiều lần trong danh sách',
+      );
     }
 
     const currentIds = new Set(product.variants.map((variant) => variant.id));
@@ -1309,20 +1586,35 @@ export class ProductsService {
       throw new BadRequestException('Có phân loại không thuộc sản phẩm này');
     }
 
-    const currentVariantsById = new Map(product.variants.map((variant) => [variant.id, variant]));
-    const variantsChanged = variants.length !== product.variants.filter((variant) => variant.isActive).length ||
+    const currentVariantsById = new Map(
+      product.variants.map((variant) => [variant.id, variant]),
+    );
+    const variantsChanged =
+      variants.length !==
+        product.variants.filter((variant) => variant.isActive).length ||
       variants.some((variant, index) => {
         const current = variant.id ? currentVariantsById.get(variant.id) : null;
-        return !current ||
+        return (
+          !current ||
           current.sku.toUpperCase() !== normalizedSkus[index] ||
           current.name !== variant.name.trim() ||
-          JSON.stringify(Object.entries((current.attributes || {}) as Record<string, string>).sort()) !==
-            JSON.stringify(Object.entries(normalizedAttributes[index]).sort()) ||
-          Number(current.price ?? product.price) !== Number(variant.price ?? product.price) ||
-          (current.imageUrl || null) !== (variant.imageUrl?.trim() || null);
+          JSON.stringify(
+            Object.entries(
+              (current.attributes || {}) as Record<string, string>,
+            ).sort(),
+          ) !==
+            JSON.stringify(
+              Object.entries(normalizedAttributes[index]).sort(),
+            ) ||
+          Number(current.price ?? product.price) !==
+            Number(variant.price ?? product.price) ||
+          (current.imageUrl || null) !== (variant.imageUrl?.trim() || null)
+        );
       });
-    const requiresModeration = userRole === UserRole.SHOP_MANAGER &&
-      product.moderationStatus === ProductModerationStatus.APPROVED && variantsChanged;
+    const requiresModeration =
+      userRole === UserRole.SHOP_MANAGER &&
+      product.moderationStatus === ProductModerationStatus.APPROVED &&
+      variantsChanged;
 
     const conflictingVariants = await this.prisma.productVariant.findMany({
       where: {
@@ -1363,7 +1655,10 @@ export class ProductsService {
         };
         saved.push(
           variant.id
-            ? await tx.productVariant.update({ where: { id: variant.id }, data })
+            ? await tx.productVariant.update({
+                where: { id: variant.id },
+                data,
+              })
             : await tx.productVariant.create({ data: { ...data, productId } }),
         );
       }
@@ -1378,7 +1673,12 @@ export class ProductsService {
       if (saved.length) {
         await tx.product.update({
           where: { id: productId },
-          data: { stockQuantity: saved.reduce((sum, variant) => sum + variant.stockQuantity, 0) },
+          data: {
+            stockQuantity: saved.reduce(
+              (sum, variant) => sum + variant.stockQuantity,
+              0,
+            ),
+          },
         });
       }
       return saved;
@@ -1394,12 +1694,21 @@ export class ProductsService {
     };
   }
 
-  private assertDistinctVariantAttributes(attributes: Record<string, string>[]) {
-    const signatures = attributes.map((item) => Object.entries(item)
-      .filter(([, value]) => value.trim())
-      .sort(([first], [second]) => first.localeCompare(second))
-      .map(([key, value]) => `${key}:${value.trim().toLocaleLowerCase('vi-VN')}`)
-      .join('|')).filter(Boolean);
+  private assertDistinctVariantAttributes(
+    attributes: Record<string, string>[],
+  ) {
+    const signatures = attributes
+      .map((item) =>
+        Object.entries(item)
+          .filter(([, value]) => value.trim())
+          .sort(([first], [second]) => first.localeCompare(second))
+          .map(
+            ([key, value]) =>
+              `${key}:${value.trim().toLocaleLowerCase('vi-VN')}`,
+          )
+          .join('|'),
+      )
+      .filter(Boolean);
     if (new Set(signatures).size !== signatures.length) {
       throw new BadRequestException('Có phân loại trùng tổ hợp thuộc tính.');
     }
@@ -1420,7 +1729,8 @@ export class ProductsService {
     }
 
     const isSystemAdminOrManager =
-      userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
+      userRole === UserRole.SYSTEM_ADMIN ||
+      userRole === UserRole.SYSTEM_MANAGER;
 
     if (!isSystemAdminOrManager && product.store.ownerId !== userId) {
       throw new ForbiddenException(
@@ -1455,7 +1765,8 @@ export class ProductsService {
     commissionRate: number,
   ) {
     const isSystemAdminOrManager =
-      userRole === UserRole.SYSTEM_ADMIN || userRole === UserRole.SYSTEM_MANAGER;
+      userRole === UserRole.SYSTEM_ADMIN ||
+      userRole === UserRole.SYSTEM_MANAGER;
 
     const where: any = {
       id: { in: productIds },
@@ -1622,8 +1933,15 @@ export class ProductsService {
                   {
                     AND: normalizedWords.map((word) => ({
                       OR: [
-                        { title: { contains: word, mode: 'insensitive' as const } },
-                        { sku: { contains: word, mode: 'insensitive' as const } },
+                        {
+                          title: {
+                            contains: word,
+                            mode: 'insensitive' as const,
+                          },
+                        },
+                        {
+                          sku: { contains: word, mode: 'insensitive' as const },
+                        },
                       ],
                     })),
                   },
@@ -1709,7 +2027,8 @@ export class ProductsService {
 
     // 2. Phân giải Attribution Cookie một cách an toàn qua HMAC Token và DB Session (FR-13)
     const cacheKey = `landing:v2:${product.id}:${visitorIdHash || 'anon'}`;
-    const cached = await this.cacheService.get<ProductLandingResponseDto>(cacheKey);
+    const cached =
+      await this.cacheService.get<ProductLandingResponseDto>(cacheKey);
     if (cached) return cached;
 
     if (visitorIdHash) {
@@ -1791,7 +2110,7 @@ export class ProductsService {
         if (this.isSafeUrl(asset.urlOrContent)) {
           const isReferredKol = Boolean(
             attributedCollaboratorId &&
-              asset.collaboratorId === attributedCollaboratorId,
+            asset.collaboratorId === attributedCollaboratorId,
           );
 
           const isKycVerified =
@@ -1835,9 +2154,7 @@ export class ProductsService {
       if (!a.isReferredKol && b.isReferredKol) return 1;
       if (a.isFeatured && !b.isFeatured) return -1;
       if (!a.isFeatured && b.isFeatured) return 1;
-      return (
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
     // 4. Xử lý đánh giá khách hàng (Reviews) & Che PII bảo vệ quyền riêng tư
@@ -1874,8 +2191,7 @@ export class ProductsService {
       sumRating += star;
 
       const isVerifiedBuyer = Boolean(
-        (r.orderId || (r as any).order?.id) &&
-          r.order?.status === 'COMPLETED',
+        (r.orderId || (r as any).order?.id) && r.order?.status === 'COMPLETED',
       );
 
       return {
@@ -1910,14 +2226,16 @@ export class ProductsService {
       shipping:
         product.store.policyShipping ||
         'Giao hàng toàn quốc - Được kiểm tra hàng trước khi thanh toán',
-      genuineCommitment:
-        'Cam kết 100% sản phẩm chính hãng từ đối tác SCANMS',
+      genuineCommitment: 'Cam kết 100% sản phẩm chính hãng từ đối tác SCANMS',
     };
 
     // 6. Trả về payload an toàn chuẩn hóa cho Landing Page (FR-15)
     const isProductActive = Boolean(product.isActive && !product.isDeleted);
     const availableStock = product.variants?.length
-      ? product.variants.reduce((sum, variant) => sum + variant.stockQuantity, 0)
+      ? product.variants.reduce(
+          (sum, variant) => sum + variant.stockQuantity,
+          0,
+        )
       : product.stockQuantity;
     const canPurchase = Boolean(isProductActive && availableStock > 0);
     const productStatus = !isProductActive
@@ -1945,40 +2263,48 @@ export class ProductsService {
         isActive: isProductActive,
         canPurchase,
         sampleEnabled: product.sampleEnabled,
-        sampleAvailable: Boolean(product.sampleEnabled && product.sampleGrantedCount < product.sampleQuota),
-        sampleQuotaRemaining: Math.max(0, product.sampleQuota - product.sampleGrantedCount),
-        variants: (product as any).variants?.map((v: any) => ({
-          id: v.id,
-          sku: v.sku,
-          name: v.name,
-          attributes: v.attributes || {},
-          imageUrl: this.isSafeUrl(v.imageUrl) ? v.imageUrl : null,
-          price: Number(v.price ?? product.price),
-          stockQuantity: v.stockQuantity,
-          isActive: v.isActive,
-          sampleEnabled: v.sampleEnabled ?? product.sampleEnabled,
-          sampleAvailable: Boolean(
-            (v.sampleEnabled ?? product.sampleEnabled) &&
-            (v.sampleQuota ?? product.sampleQuota) >
-              ((v.sampleEnabled !== null || v.sampleQuota !== null)
-                ? v.sampleGrantedCount
-                : product.sampleGrantedCount),
-          ),
-          sampleQuotaRemaining: Math.max(
-            0,
-            (v.sampleQuota ?? product.sampleQuota) -
-              ((v.sampleEnabled !== null || v.sampleQuota !== null)
-                ? v.sampleGrantedCount
-                : product.sampleGrantedCount),
-          ),
-        })) || [],
+        sampleAvailable: Boolean(
+          product.sampleEnabled &&
+          product.sampleGrantedCount < product.sampleQuota,
+        ),
+        sampleQuotaRemaining: Math.max(
+          0,
+          product.sampleQuota - product.sampleGrantedCount,
+        ),
+        variants:
+          (product as any).variants?.map((v: any) => ({
+            id: v.id,
+            sku: v.sku,
+            name: v.name,
+            attributes: v.attributes || {},
+            imageUrl: this.isSafeUrl(v.imageUrl) ? v.imageUrl : null,
+            price: Number(v.price ?? product.price),
+            stockQuantity: v.stockQuantity,
+            isActive: v.isActive,
+            sampleEnabled: v.sampleEnabled ?? product.sampleEnabled,
+            sampleAvailable: Boolean(
+              (v.sampleEnabled ?? product.sampleEnabled) &&
+              (v.sampleQuota ?? product.sampleQuota) >
+                (v.sampleEnabled !== null || v.sampleQuota !== null
+                  ? v.sampleGrantedCount
+                  : product.sampleGrantedCount),
+            ),
+            sampleQuotaRemaining: Math.max(
+              0,
+              (v.sampleQuota ?? product.sampleQuota) -
+                (v.sampleEnabled !== null || v.sampleQuota !== null
+                  ? v.sampleGrantedCount
+                  : product.sampleGrantedCount),
+            ),
+          })) || [],
       },
       store: {
         id: product.store.id,
         name: product.store.name,
         slug: product.store.slug,
         logoUrl:
-          product.store.logoUrl && !product.store.logoUrl.includes('unsplash.com')
+          product.store.logoUrl &&
+          !product.store.logoUrl.includes('unsplash.com')
             ? product.store.logoUrl
             : null,
         isVerified: isStoreVerified,
@@ -2022,7 +2348,8 @@ export class ProductsService {
     }
 
     if (lower.startsWith('/')) return true;
-    if (!lower.startsWith('http://') && !lower.startsWith('https://')) return false;
+    if (!lower.startsWith('http://') && !lower.startsWith('https://'))
+      return false;
 
     try {
       const parsed = new URL(trimmed);
@@ -2136,7 +2463,9 @@ export class ProductsService {
   }> {
     const trimmed = idOrSlug.trim();
     const isUuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed);
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        trimmed,
+      );
 
     const product = await this.prisma.product.findFirst({
       where: {

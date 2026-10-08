@@ -70,15 +70,19 @@ export class SamplesService {
         overdueAt: { not: null },
         status: SampleRequestStatus.OVERDUE,
       },
-      select: { id: true, product: { select: { title: true } }, deadlineAt: true },
+      select: {
+        id: true,
+        product: { select: { title: true } },
+        deadlineAt: true,
+      },
     });
     const blocked = Boolean(profile?.sampleRequestsBlockedAt);
     return {
       canRequest: Boolean(
         user?.isActive &&
-          profile?.kycStatus === 'VERIFIED' &&
-          channels.length > 0 &&
-          !blocked,
+        profile?.kycStatus === 'VERIFIED' &&
+        channels.length > 0 &&
+        !blocked,
       ),
       kycVerified: profile?.kycStatus === 'VERIFIED',
       hasSocialChannel: channels.length > 0,
@@ -108,9 +112,11 @@ export class SamplesService {
       );
     }
 
-    const socialChannel = await this.prisma.collaboratorSocialChannel.findFirst({
-      where: { id: dto.socialChannelId, collaboratorId },
-    });
+    const socialChannel = await this.prisma.collaboratorSocialChannel.findFirst(
+      {
+        where: { id: dto.socialChannelId, collaboratorId },
+      },
+    );
     if (!socialChannel) {
       throw new BadRequestException(
         'Kênh cam kết không thuộc hồ sơ mạng xã hội đã liên kết của bạn.',
@@ -119,9 +125,17 @@ export class SamplesService {
 
     const expectedVideoAt = new Date(dto.expectedVideoAt);
     const now = new Date();
-    const latestExpectedAt = new Date(now.getTime() + SAMPLE_COMMITMENT_DAYS * 24 * 60 * 60 * 1000);
-    if (Number.isNaN(expectedVideoAt.getTime()) || expectedVideoAt < now || expectedVideoAt > latestExpectedAt) {
-      throw new BadRequestException('Ngày dự kiến đăng video phải nằm trong 14 ngày kể từ hôm nay.');
+    const latestExpectedAt = new Date(
+      now.getTime() + SAMPLE_COMMITMENT_DAYS * 24 * 60 * 60 * 1000,
+    );
+    if (
+      Number.isNaN(expectedVideoAt.getTime()) ||
+      expectedVideoAt < now ||
+      expectedVideoAt > latestExpectedAt
+    ) {
+      throw new BadRequestException(
+        'Ngày dự kiến đăng video phải nằm trong 14 ngày kể từ hôm nay.',
+      );
     }
 
     const product = await this.prisma.product.findFirst({
@@ -134,21 +148,46 @@ export class SamplesService {
       },
       include: { store: { select: { id: true, name: true, ownerId: true } } },
     });
-    if (!product) throw new NotFoundException('Sản phẩm không tồn tại hoặc Shop đang tạm ngừng.');
+    if (!product)
+      throw new NotFoundException(
+        'Sản phẩm không tồn tại hoặc Shop đang tạm ngừng.',
+      );
 
-    let variant: { id: string; sku: string; name: string; isActive: boolean; sampleEnabled: boolean | null; sampleQuota: number | null; sampleGrantedCount: number } | null = null;
+    let variant: {
+      id: string;
+      sku: string;
+      name: string;
+      isActive: boolean;
+      sampleEnabled: boolean | null;
+      sampleQuota: number | null;
+      sampleGrantedCount: number;
+    } | null = null;
     if (dto.productVariantId) {
       variant = await this.prisma.productVariant.findFirst({
         where: { id: dto.productVariantId, productId: product.id },
-        select: { id: true, sku: true, name: true, isActive: true, sampleEnabled: true, sampleQuota: true, sampleGrantedCount: true },
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          isActive: true,
+          sampleEnabled: true,
+          sampleQuota: true,
+          sampleGrantedCount: true,
+        },
       });
-      if (!variant || !variant.isActive) throw new BadRequestException('Phân loại sản phẩm đã chọn không còn hoạt động.');
+      if (!variant || !variant.isActive)
+        throw new BadRequestException(
+          'Phân loại sản phẩm đã chọn không còn hoạt động.',
+        );
     }
     const sampleEnabled = variant?.sampleEnabled ?? product.sampleEnabled;
     const sampleQuota = variant?.sampleQuota ?? product.sampleQuota;
-    const sampleGrantedCount = variant?.sampleGrantedCount ?? product.sampleGrantedCount;
+    const sampleGrantedCount =
+      variant?.sampleGrantedCount ?? product.sampleGrantedCount;
     if (!sampleEnabled || sampleQuota <= sampleGrantedCount) {
-      throw new BadRequestException('Sản phẩm hiện không nhận đăng ký mẫu hoặc đã hết hạn mức mẫu.');
+      throw new BadRequestException(
+        'Sản phẩm hiện không nhận đăng ký mẫu hoặc đã hết hạn mức mẫu.',
+      );
     }
 
     const existing = await this.prisma.sampleProductRequest.findFirst({
@@ -244,7 +283,11 @@ export class SamplesService {
             sampleProductRequests: {
               where: { status: SampleRequestStatus.OVERDUE },
               orderBy: { deadlineAt: 'asc' },
-              include: { product: { select: { title: true, store: { select: { name: true } } } } },
+              include: {
+                product: {
+                  select: { title: true, store: { select: { name: true } } },
+                },
+              },
             },
           },
         },
@@ -261,104 +304,152 @@ export class SamplesService {
     if (userRole === 'COLLABORATOR' && req.collaboratorId !== userId) {
       throw new ForbiddenException('Bạn không có quyền xem yêu cầu này');
     }
-    if (userRole === 'SHOP_MANAGER') await this.ensureShopOwns(requestId, userId);
+    if (userRole === 'SHOP_MANAGER')
+      await this.ensureShopOwns(requestId, userId);
     return req;
   }
 
   async approveRequest(requestId: string, shopOwnerId: string) {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
     if (req.status !== SampleRequestStatus.PENDING) {
-      throw new BadRequestException(`Không thể duyệt yêu cầu đang ở trạng thái ${req.status}.`);
+      throw new BadRequestException(
+        `Không thể duyệt yêu cầu đang ở trạng thái ${req.status}.`,
+      );
     }
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const [creatorProfile, overdueObligations] = await Promise.all([
-        tx.collaboratorProfile.findUnique({
-          where: { userId: req.collaboratorId },
-          select: { sampleRequestsBlockedAt: true },
-        }),
-        tx.sampleProductRequest.count({
-          where: {
-            collaboratorId: req.collaboratorId,
-            OR: [
-              { status: SampleRequestStatus.OVERDUE },
-              {
-                status: SampleRequestStatus.RECEIVED,
-                deadlineAt: { lte: new Date() },
-                videoSubmittedAt: null,
-              },
-              {
-                status: SampleRequestStatus.REVISION_REQUIRED,
-                revisionDeadlineAt: { lte: new Date() },
-              },
-            ],
+    const updated = await this.prisma.$transaction(
+      async (tx) => {
+        const [creatorProfile, overdueObligations] = await Promise.all([
+          tx.collaboratorProfile.findUnique({
+            where: { userId: req.collaboratorId },
+            select: { sampleRequestsBlockedAt: true },
+          }),
+          tx.sampleProductRequest.count({
+            where: {
+              collaboratorId: req.collaboratorId,
+              OR: [
+                { status: SampleRequestStatus.OVERDUE },
+                {
+                  status: SampleRequestStatus.RECEIVED,
+                  deadlineAt: { lte: new Date() },
+                  videoSubmittedAt: null,
+                },
+                {
+                  status: SampleRequestStatus.REVISION_REQUIRED,
+                  revisionDeadlineAt: { lte: new Date() },
+                },
+              ],
+            },
+          }),
+        ]);
+        if (creatorProfile?.sampleRequestsBlockedAt || overdueObligations > 0) {
+          throw new ConflictException(
+            'KOL đang bị khóa quyền xin mẫu do còn nghĩa vụ video quá hạn.',
+          );
+        }
+
+        const product = await tx.product.findUnique({
+          where: { id: req.productId },
+          select: {
+            id: true,
+            isActive: true,
+            moderationStatus: true,
+            sampleEnabled: true,
+            sampleQuota: true,
+            sampleGrantedCount: true,
           },
-        }),
-      ]);
-      if (creatorProfile?.sampleRequestsBlockedAt || overdueObligations > 0) {
-        throw new ConflictException('KOL đang bị khóa quyền xin mẫu do còn nghĩa vụ video quá hạn.');
-      }
-
-      const product = await tx.product.findUnique({
-        where: { id: req.productId },
-        select: { id: true, isActive: true, moderationStatus: true, sampleEnabled: true, sampleQuota: true, sampleGrantedCount: true },
-      });
-      if (!product?.isActive) throw new ConflictException('Sản phẩm đã tạm ngừng nên không thể cấp mẫu.');
-
-      if (product.moderationStatus !== 'APPROVED') {
-        throw new ConflictException('Sản phẩm chưa được kiểm duyệt để cấp mẫu.');
-      }
-
-      let useVariantAllowance = false;
-      let variant: { id: string; isActive: boolean; sampleEnabled: boolean | null; sampleQuota: number | null; sampleGrantedCount: number } | null = null;
-      if (req.productVariantId) {
-        variant = await tx.productVariant.findUnique({
-          where: { id: req.productVariantId },
-          select: { id: true, isActive: true, sampleEnabled: true, sampleQuota: true, sampleGrantedCount: true },
         });
-        if (!variant?.isActive) throw new ConflictException('Phân loại sản phẩm đã tạm ngừng nên không thể cấp mẫu.');
-        useVariantAllowance = variant.sampleEnabled !== null || variant.sampleQuota !== null;
-      }
+        if (!product?.isActive)
+          throw new ConflictException(
+            'Sản phẩm đã tạm ngừng nên không thể cấp mẫu.',
+          );
 
-      const enabled = variant?.sampleEnabled ?? product.sampleEnabled;
-      const quota = variant?.sampleQuota ?? product.sampleQuota;
-      const grantedCount = useVariantAllowance && variant ? variant.sampleGrantedCount : product.sampleGrantedCount;
-      if (!enabled || quota <= grantedCount) {
-        throw new ConflictException('Hạn mức sản phẩm mẫu đã hết hoặc Shop đã tắt nhận đăng ký.');
-      }
+        if (product.moderationStatus !== 'APPROVED') {
+          throw new ConflictException(
+            'Sản phẩm chưa được kiểm duyệt để cấp mẫu.',
+          );
+        }
 
-      const allocation = useVariantAllowance && variant
-        ? await tx.productVariant.updateMany({
-            where: {
-              id: variant.id,
+        let useVariantAllowance = false;
+        let variant: {
+          id: string;
+          isActive: boolean;
+          sampleEnabled: boolean | null;
+          sampleQuota: number | null;
+          sampleGrantedCount: number;
+        } | null = null;
+        if (req.productVariantId) {
+          variant = await tx.productVariant.findUnique({
+            where: { id: req.productVariantId },
+            select: {
+              id: true,
               isActive: true,
-              sampleEnabled: variant.sampleEnabled,
-              sampleQuota: variant.sampleQuota,
-              sampleGrantedCount: variant.sampleGrantedCount,
+              sampleEnabled: true,
+              sampleQuota: true,
+              sampleGrantedCount: true,
             },
-            data: { sampleGrantedCount: { increment: 1 } },
-          })
-        : await tx.product.updateMany({
-            where: {
-              id: product.id,
-              isActive: true,
-              sampleEnabled: product.sampleEnabled,
-              sampleQuota: product.sampleQuota,
-              sampleGrantedCount: product.sampleGrantedCount,
-            },
-            data: { sampleGrantedCount: { increment: 1 } },
           });
-      if (!allocation.count) throw new ConflictException('Hạn mức mẫu vừa thay đổi. Tải lại yêu cầu trước khi duyệt.');
+          if (!variant?.isActive)
+            throw new ConflictException(
+              'Phân loại sản phẩm đã tạm ngừng nên không thể cấp mẫu.',
+            );
+          useVariantAllowance =
+            variant.sampleEnabled !== null || variant.sampleQuota !== null;
+        }
 
-      const changed = await tx.sampleProductRequest.updateMany({
-        where: { id: requestId, status: SampleRequestStatus.PENDING },
-        data: { status: SampleRequestStatus.APPROVED, grantedAt: new Date() },
-      });
-      if (!changed.count) throw new ConflictException('Yêu cầu đã được xử lý ở một phiên khác.');
-      return tx.sampleProductRequest.findUniqueOrThrow({
-        where: { id: requestId },
-        include: this.includeRelations(),
-      });
-    }, { isolationLevel: 'Serializable' });
+        const enabled = variant?.sampleEnabled ?? product.sampleEnabled;
+        const quota = variant?.sampleQuota ?? product.sampleQuota;
+        const grantedCount =
+          useVariantAllowance && variant
+            ? variant.sampleGrantedCount
+            : product.sampleGrantedCount;
+        if (!enabled || quota <= grantedCount) {
+          throw new ConflictException(
+            'Hạn mức sản phẩm mẫu đã hết hoặc Shop đã tắt nhận đăng ký.',
+          );
+        }
+
+        const allocation =
+          useVariantAllowance && variant
+            ? await tx.productVariant.updateMany({
+                where: {
+                  id: variant.id,
+                  isActive: true,
+                  sampleEnabled: variant.sampleEnabled,
+                  sampleQuota: variant.sampleQuota,
+                  sampleGrantedCount: variant.sampleGrantedCount,
+                },
+                data: { sampleGrantedCount: { increment: 1 } },
+              })
+            : await tx.product.updateMany({
+                where: {
+                  id: product.id,
+                  isActive: true,
+                  sampleEnabled: product.sampleEnabled,
+                  sampleQuota: product.sampleQuota,
+                  sampleGrantedCount: product.sampleGrantedCount,
+                },
+                data: { sampleGrantedCount: { increment: 1 } },
+              });
+        if (!allocation.count)
+          throw new ConflictException(
+            'Hạn mức mẫu vừa thay đổi. Tải lại yêu cầu trước khi duyệt.',
+          );
+
+        const changed = await tx.sampleProductRequest.updateMany({
+          where: { id: requestId, status: SampleRequestStatus.PENDING },
+          data: { status: SampleRequestStatus.APPROVED, grantedAt: new Date() },
+        });
+        if (!changed.count)
+          throw new ConflictException(
+            'Yêu cầu đã được xử lý ở một phiên khác.',
+          );
+        return tx.sampleProductRequest.findUniqueOrThrow({
+          where: { id: requestId },
+          include: this.includeRelations(),
+        });
+      },
+      { isolationLevel: 'Serializable' },
+    );
     await this.notify({
       userId: req.collaboratorId,
       title: 'Yêu cầu xin mẫu đã được duyệt',
@@ -373,11 +464,16 @@ export class SamplesService {
   async rejectRequest(requestId: string, shopOwnerId: string, reason: string) {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
     if (req.status !== SampleRequestStatus.PENDING) {
-      throw new BadRequestException(`Không thể từ chối yêu cầu đang ở trạng thái ${req.status}.`);
+      throw new BadRequestException(
+        `Không thể từ chối yêu cầu đang ở trạng thái ${req.status}.`,
+      );
     }
     const updated = await this.prisma.sampleProductRequest.update({
       where: { id: requestId },
-      data: { status: SampleRequestStatus.REJECTED, rejectedReason: reason.trim() },
+      data: {
+        status: SampleRequestStatus.REJECTED,
+        rejectedReason: reason.trim(),
+      },
       include: this.includeRelations(),
     });
     await this.notify({
@@ -387,14 +483,18 @@ export class SamplesService {
       type: 'SAMPLE_REQUEST_REJECTED',
       requestId,
     });
-    await this.audit(shopOwnerId, 'SAMPLE_REQUEST_REJECTED', requestId, { reason: reason.trim() });
+    await this.audit(shopOwnerId, 'SAMPLE_REQUEST_REJECTED', requestId, {
+      reason: reason.trim(),
+    });
     return updated;
   }
 
   async cancelRequest(requestId: string, collaboratorId: string) {
     const req = await this.getOwnedRequest(requestId, collaboratorId);
     if (req.status !== SampleRequestStatus.PENDING) {
-      throw new BadRequestException('Chỉ có thể hủy yêu cầu khi Shop chưa duyệt.');
+      throw new BadRequestException(
+        'Chỉ có thể hủy yêu cầu khi Shop chưa duyệt.',
+      );
     }
     const updated = await this.prisma.sampleProductRequest.update({
       where: { id: requestId },
@@ -405,10 +505,19 @@ export class SamplesService {
     return updated;
   }
 
-  async shipRequest(requestId: string, shopOwnerId: string, dto: ShipSampleRequestDto) {
+  async shipRequest(
+    requestId: string,
+    shopOwnerId: string,
+    dto: ShipSampleRequestDto,
+  ) {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
-    if (req.status !== SampleRequestStatus.APPROVED && req.status !== SampleRequestStatus.DELIVERY_ISSUE) {
-      throw new BadRequestException('Chỉ yêu cầu đã duyệt hoặc gặp sự cố giao hàng mới được cập nhật vận đơn.');
+    if (
+      req.status !== SampleRequestStatus.APPROVED &&
+      req.status !== SampleRequestStatus.DELIVERY_ISSUE
+    ) {
+      throw new BadRequestException(
+        'Chỉ yêu cầu đã duyệt hoặc gặp sự cố giao hàng mới được cập nhật vận đơn.',
+      );
     }
     const updated = await this.prisma.sampleProductRequest.update({
       where: { id: requestId },
@@ -437,10 +546,14 @@ export class SamplesService {
   async confirmReceived(requestId: string, collaboratorId: string) {
     const req = await this.getOwnedRequest(requestId, collaboratorId);
     if (req.status !== SampleRequestStatus.SHIPPED) {
-      throw new BadRequestException('Chỉ xác nhận nhận hàng khi kiện hàng đang được giao.');
+      throw new BadRequestException(
+        'Chỉ xác nhận nhận hàng khi kiện hàng đang được giao.',
+      );
     }
     const now = new Date();
-    const deadlineAt = new Date(now.getTime() + SAMPLE_COMMITMENT_DAYS * 24 * 60 * 60 * 1000);
+    const deadlineAt = new Date(
+      now.getTime() + SAMPLE_COMMITMENT_DAYS * 24 * 60 * 60 * 1000,
+    );
     const updated = await this.prisma.sampleProductRequest.update({
       where: { id: requestId },
       data: {
@@ -483,11 +596,16 @@ export class SamplesService {
   ) {
     const req = await this.getOwnedRequest(requestId, collaboratorId);
     if (req.status !== SampleRequestStatus.SHIPPED) {
-      throw new BadRequestException('Chỉ báo sự cố khi đơn hàng đang được giao.');
+      throw new BadRequestException(
+        'Chỉ báo sự cố khi đơn hàng đang được giao.',
+      );
     }
     const updated = await this.prisma.sampleProductRequest.update({
       where: { id: requestId },
-      data: { status: SampleRequestStatus.DELIVERY_ISSUE, rejectedReason: dto.reason.trim() },
+      data: {
+        status: SampleRequestStatus.DELIVERY_ISSUE,
+        rejectedReason: dto.reason.trim(),
+      },
       include: this.includeRelations(),
     });
     await this.notify({
@@ -497,18 +615,29 @@ export class SamplesService {
       type: 'SAMPLE_DELIVERY_ISSUE',
       requestId,
     });
-    await this.audit(collaboratorId, 'SAMPLE_DELIVERY_ISSUE_REPORTED', requestId, { reason: dto.reason.trim() });
+    await this.audit(
+      collaboratorId,
+      'SAMPLE_DELIVERY_ISSUE_REPORTED',
+      requestId,
+      { reason: dto.reason.trim() },
+    );
     return updated;
   }
 
-  async submitVideo(requestId: string, collaboratorId: string, dto: SubmitSampleVideoDto) {
+  async submitVideo(
+    requestId: string,
+    collaboratorId: string,
+    dto: SubmitSampleVideoDto,
+  ) {
     const req = await this.getOwnedRequest(requestId, collaboratorId);
     if (
       req.status !== SampleRequestStatus.RECEIVED &&
       req.status !== SampleRequestStatus.OVERDUE &&
       req.status !== SampleRequestStatus.REVISION_REQUIRED
     ) {
-      throw new BadRequestException('Bạn chỉ có thể nộp video sau khi đã nhận mẫu hoặc khi Shop yêu cầu sửa video.');
+      throw new BadRequestException(
+        'Bạn chỉ có thể nộp video sau khi đã nhận mẫu hoặc khi Shop yêu cầu sửa video.',
+      );
     }
     if (!dto.videoUrl.trim().toLowerCase().startsWith('https://')) {
       throw new BadRequestException('Link video phải sử dụng HTTPS.');
@@ -525,13 +654,16 @@ export class SamplesService {
       FACEBOOK: ['facebook.com', 'fb.watch'],
       INSTAGRAM: ['instagram.com'],
     };
-    const committedPlatform = req.socialPlatformSnapshot || req.socialChannel?.platformName;
+    const committedPlatform =
+      req.socialPlatformSnapshot || req.socialChannel?.platformName;
     const expectedHosts = committedPlatform
       ? platformHosts[committedPlatform]
       : undefined;
     if (
       expectedHosts &&
-      !expectedHosts.some((domain) => host === domain || host.endsWith(`.${domain}`))
+      !expectedHosts.some(
+        (domain) => host === domain || host.endsWith(`.${domain}`),
+      )
     ) {
       throw new BadRequestException(
         `Link video phải được đăng trên kênh ${committedPlatform} đã cam kết.`,
@@ -600,7 +732,12 @@ export class SamplesService {
       late,
       submittedAt: submittedAt.toISOString(),
     });
-    return { message: 'Đã nộp video và chuyển Shop kiểm duyệt.', request: updated.sample, asset: updated.asset, late };
+    return {
+      message: 'Đã nộp video và chuyển Shop kiểm duyệt.',
+      request: updated.sample,
+      asset: updated.asset,
+      late,
+    };
   }
 
   async getShopStats(shopOwnerId: string) {
@@ -644,9 +781,12 @@ export class SamplesService {
     const stats: Record<string, number> = {};
     for (const item of grouped) stats[item.status] = item._count._all;
     const grantedCount = grantedSamples.length;
-    const videoSubmittedCount = grantedSamples.filter((sample) => sample.videoSubmittedAt).length;
+    const videoSubmittedCount = grantedSamples.filter(
+      (sample) => sample.videoSubmittedAt,
+    ).length;
     const issuedValue = grantedSamples.reduce(
-      (sum, sample) => sum + Number(sample.productVariant?.price ?? sample.product.price),
+      (sum, sample) =>
+        sum + Number(sample.productVariant?.price ?? sample.product.price),
       0,
     );
     return {
@@ -665,24 +805,29 @@ export class SamplesService {
       grantedCount,
       issuedValue,
       videoSubmittedCount,
-      videoSubmissionRate: grantedCount ? Math.round((videoSubmittedCount / grantedCount) * 100) : 0,
-      completedRate: grantedCount ? Math.round(((stats.COMPLETED || 0) / grantedCount) * 100) : 0,
-      remainingSampleQuota: sampleProducts.reduce(
-        (sum, product) => {
-          const productRemaining = product.sampleEnabled
-            ? Math.max(0, product.sampleQuota - product.sampleGrantedCount)
-            : 0;
-          const skuRemaining = product.variants.reduce((skuSum, variant) => {
-            const hasOverride = variant.sampleEnabled !== null || variant.sampleQuota !== null;
-            if (!hasOverride) return skuSum;
-            const enabled = variant.sampleEnabled ?? product.sampleEnabled;
-            const quota = variant.sampleQuota ?? product.sampleQuota;
-            return skuSum + (enabled ? Math.max(0, quota - variant.sampleGrantedCount) : 0);
-          }, 0);
-          return sum + productRemaining + skuRemaining;
-        },
-        0,
-      ),
+      videoSubmissionRate: grantedCount
+        ? Math.round((videoSubmittedCount / grantedCount) * 100)
+        : 0,
+      completedRate: grantedCount
+        ? Math.round(((stats.COMPLETED || 0) / grantedCount) * 100)
+        : 0,
+      remainingSampleQuota: sampleProducts.reduce((sum, product) => {
+        const productRemaining = product.sampleEnabled
+          ? Math.max(0, product.sampleQuota - product.sampleGrantedCount)
+          : 0;
+        const skuRemaining = product.variants.reduce((skuSum, variant) => {
+          const hasOverride =
+            variant.sampleEnabled !== null || variant.sampleQuota !== null;
+          if (!hasOverride) return skuSum;
+          const enabled = variant.sampleEnabled ?? product.sampleEnabled;
+          const quota = variant.sampleQuota ?? product.sampleQuota;
+          return (
+            skuSum +
+            (enabled ? Math.max(0, quota - variant.sampleGrantedCount) : 0)
+          );
+        }, 0);
+        return sum + productRemaining + skuRemaining;
+      }, 0),
     };
   }
 
@@ -699,7 +844,9 @@ export class SamplesService {
     const reason = dto.reason.trim();
     if (dto.action === 'RESOLVE_DELIVERY_ISSUE') {
       if (req.status !== SampleRequestStatus.DELIVERY_ISSUE) {
-        throw new BadRequestException('Chỉ có thể xử lý tranh chấp giao hàng khi yêu cầu đang ở trạng thái sự cố.');
+        throw new BadRequestException(
+          'Chỉ có thể xử lý tranh chấp giao hàng khi yêu cầu đang ở trạng thái sự cố.',
+        );
       }
       const updated = await this.prisma.sampleProductRequest.update({
         where: { id: requestId },
@@ -720,7 +867,12 @@ export class SamplesService {
         type: 'SAMPLE_ADMIN_DELIVERY_ISSUE_RESOLVED',
         requestId,
       });
-      await this.audit(adminId, 'SAMPLE_ADMIN_DELIVERY_ISSUE_RESOLVED', requestId, { reason });
+      await this.audit(
+        adminId,
+        'SAMPLE_ADMIN_DELIVERY_ISSUE_RESOLVED',
+        requestId,
+        { reason },
+      );
       return updated;
     }
     if (dto.action === 'CANCEL_OBLIGATION') {
@@ -733,7 +885,9 @@ export class SamplesService {
         SampleRequestStatus.DELIVERY_ISSUE,
       ];
       if (!cancellable.includes(req.status)) {
-        throw new BadRequestException('Chỉ có thể miễn nghĩa vụ với yêu cầu đã được Shop duyệt cấp mẫu.');
+        throw new BadRequestException(
+          'Chỉ có thể miễn nghĩa vụ với yêu cầu đã được Shop duyệt cấp mẫu.',
+        );
       }
       const updated = await this.prisma.sampleProductRequest.update({
         where: { id: requestId },
@@ -748,16 +902,35 @@ export class SamplesService {
         type: 'SAMPLE_ADMIN_OBLIGATION_CANCELLED',
         requestId,
       });
-      await this.audit(adminId, 'SAMPLE_ADMIN_OBLIGATION_CANCELLED', requestId, { reason });
+      await this.audit(
+        adminId,
+        'SAMPLE_ADMIN_OBLIGATION_CANCELLED',
+        requestId,
+        { reason },
+      );
       return updated;
     }
 
     const deadlineAt = dto.deadlineAt ? new Date(dto.deadlineAt) : null;
-    if (!deadlineAt || Number.isNaN(deadlineAt.getTime()) || deadlineAt <= new Date()) {
-      throw new BadRequestException('Hạn mới phải là thời điểm trong tương lai.');
+    if (
+      !deadlineAt ||
+      Number.isNaN(deadlineAt.getTime()) ||
+      deadlineAt <= new Date()
+    ) {
+      throw new BadRequestException(
+        'Hạn mới phải là thời điểm trong tương lai.',
+      );
     }
-    if (![SampleRequestStatus.RECEIVED, SampleRequestStatus.REVISION_REQUIRED, SampleRequestStatus.OVERDUE].some((status) => status === req.status)) {
-      throw new BadRequestException('Chỉ có thể gia hạn yêu cầu đang chờ video hoặc đang quá hạn.');
+    if (
+      ![
+        SampleRequestStatus.RECEIVED,
+        SampleRequestStatus.REVISION_REQUIRED,
+        SampleRequestStatus.OVERDUE,
+      ].some((status) => status === req.status)
+    ) {
+      throw new BadRequestException(
+        'Chỉ có thể gia hạn yêu cầu đang chờ video hoặc đang quá hạn.',
+      );
     }
     const isRevision = Boolean(req.revisionDeadlineAt);
     const updated = await this.prisma.sampleProductRequest.update({
@@ -769,7 +942,11 @@ export class SamplesService {
             revisionReminderSentAt: null,
             revisionShopReminderSentAt: null,
           }
-        : { status: SampleRequestStatus.RECEIVED, deadlineAt, reminderSentAt: null },
+        : {
+            status: SampleRequestStatus.RECEIVED,
+            deadlineAt,
+            reminderSentAt: null,
+          },
       include: this.includeRelations(),
     });
     await this.clearBlockIfNoOverdue(req.collaboratorId);
@@ -806,12 +983,18 @@ export class SamplesService {
     });
   }
 
-  async unblockCollaborator(collaboratorId: string, adminId: string, reason?: string) {
+  async unblockCollaborator(
+    collaboratorId: string,
+    adminId: string,
+    reason?: string,
+  ) {
     if (typeof reason !== 'string' || !reason.trim()) {
       throw new BadRequestException('Cần ghi lý do mở khóa quyền xin mẫu.');
     }
     const normalizedReason = reason.trim().slice(0, 500);
-    const profile = await this.prisma.collaboratorProfile.findUnique({ where: { userId: collaboratorId } });
+    const profile = await this.prisma.collaboratorProfile.findUnique({
+      where: { userId: collaboratorId },
+    });
     if (!profile) throw new NotFoundException('Không tìm thấy hồ sơ KOL.');
     await this.prisma.collaboratorProfile.update({
       where: { userId: collaboratorId },
@@ -823,7 +1006,10 @@ export class SamplesService {
       message: `Admin đã mở lại quyền xin mẫu của bạn. Lý do: ${normalizedReason}`,
       type: 'SAMPLE_REQUESTS_UNBLOCKED',
     });
-    await this.audit(adminId, 'SAMPLE_REQUESTS_UNBLOCKED', undefined, { collaboratorId, reason: normalizedReason });
+    await this.audit(adminId, 'SAMPLE_REQUESTS_UNBLOCKED', undefined, {
+      collaboratorId,
+      reason: normalizedReason,
+    });
     return { success: true };
   }
 
@@ -835,7 +1021,12 @@ export class SamplesService {
 
     const expectedSoon = await this.prisma.sampleProductRequest.findMany({
       where: {
-        status: { in: [SampleRequestStatus.RECEIVED, SampleRequestStatus.REVISION_REQUIRED] },
+        status: {
+          in: [
+            SampleRequestStatus.RECEIVED,
+            SampleRequestStatus.REVISION_REQUIRED,
+          ],
+        },
         expectedVideoAt: { gt: now, lte: remindBefore },
         expectedReminderSentAt: null,
       },
@@ -843,7 +1034,9 @@ export class SamplesService {
         id: true,
         collaboratorId: true,
         expectedVideoAt: true,
-        product: { select: { title: true, store: { select: { ownerId: true } } } },
+        product: {
+          select: { title: true, store: { select: { ownerId: true } } },
+        },
       },
     });
     for (const req of expectedSoon) {
@@ -874,11 +1067,20 @@ export class SamplesService {
         deadlineAt: { gt: now, lte: remindBefore },
         reminderSentAt: null,
       },
-      select: { id: true, collaboratorId: true, product: { select: { title: true } }, deadlineAt: true },
+      select: {
+        id: true,
+        collaboratorId: true,
+        product: { select: { title: true } },
+        deadlineAt: true,
+      },
     });
     for (const req of dueForReminder) {
       const marked = await this.prisma.sampleProductRequest.updateMany({
-        where: { id: req.id, reminderSentAt: null, status: SampleRequestStatus.RECEIVED },
+        where: {
+          id: req.id,
+          reminderSentAt: null,
+          status: SampleRequestStatus.RECEIVED,
+        },
         data: { reminderSentAt: now },
       });
       if (!marked.count) continue;
@@ -891,22 +1093,29 @@ export class SamplesService {
       });
     }
 
-    const revisionsDueForReminder = await this.prisma.sampleProductRequest.findMany({
-      where: {
-        status: SampleRequestStatus.REVISION_REQUIRED,
-        revisionDeadlineAt: { gt: now, lte: remindBefore },
-        revisionReminderSentAt: null,
-      },
-      select: {
-        id: true,
-        collaboratorId: true,
-        product: { select: { title: true, store: { select: { ownerId: true } } } },
-        revisionDeadlineAt: true,
-      },
-    });
+    const revisionsDueForReminder =
+      await this.prisma.sampleProductRequest.findMany({
+        where: {
+          status: SampleRequestStatus.REVISION_REQUIRED,
+          revisionDeadlineAt: { gt: now, lte: remindBefore },
+          revisionReminderSentAt: null,
+        },
+        select: {
+          id: true,
+          collaboratorId: true,
+          product: {
+            select: { title: true, store: { select: { ownerId: true } } },
+          },
+          revisionDeadlineAt: true,
+        },
+      });
     for (const req of revisionsDueForReminder) {
       const marked = await this.prisma.sampleProductRequest.updateMany({
-        where: { id: req.id, status: SampleRequestStatus.REVISION_REQUIRED, revisionReminderSentAt: null },
+        where: {
+          id: req.id,
+          status: SampleRequestStatus.REVISION_REQUIRED,
+          revisionReminderSentAt: null,
+        },
         data: { revisionReminderSentAt: now },
       });
       if (!marked.count) continue;
@@ -928,13 +1137,19 @@ export class SamplesService {
       select: {
         id: true,
         collaborator: { select: { fullName: true } },
-        product: { select: { title: true, store: { select: { ownerId: true } } } },
+        product: {
+          select: { title: true, store: { select: { ownerId: true } } },
+        },
         deadlineAt: true,
       },
     });
     for (const req of shopDueSoon) {
       const marked = await this.prisma.sampleProductRequest.updateMany({
-        where: { id: req.id, status: SampleRequestStatus.RECEIVED, shopReminderSentAt: null },
+        where: {
+          id: req.id,
+          status: SampleRequestStatus.RECEIVED,
+          shopReminderSentAt: null,
+        },
         data: { shopReminderSentAt: now },
       });
       if (!marked.count) continue;
@@ -947,22 +1162,30 @@ export class SamplesService {
       });
     }
 
-    const revisionShopDueSoon = await this.prisma.sampleProductRequest.findMany({
-      where: {
-        status: SampleRequestStatus.REVISION_REQUIRED,
-        revisionDeadlineAt: { gt: now, lte: shopRemindBefore },
-        revisionShopReminderSentAt: null,
+    const revisionShopDueSoon = await this.prisma.sampleProductRequest.findMany(
+      {
+        where: {
+          status: SampleRequestStatus.REVISION_REQUIRED,
+          revisionDeadlineAt: { gt: now, lte: shopRemindBefore },
+          revisionShopReminderSentAt: null,
+        },
+        select: {
+          id: true,
+          collaborator: { select: { fullName: true } },
+          product: {
+            select: { title: true, store: { select: { ownerId: true } } },
+          },
+          revisionDeadlineAt: true,
+        },
       },
-      select: {
-        id: true,
-        collaborator: { select: { fullName: true } },
-        product: { select: { title: true, store: { select: { ownerId: true } } } },
-        revisionDeadlineAt: true,
-      },
-    });
+    );
     for (const req of revisionShopDueSoon) {
       const marked = await this.prisma.sampleProductRequest.updateMany({
-        where: { id: req.id, status: SampleRequestStatus.REVISION_REQUIRED, revisionShopReminderSentAt: null },
+        where: {
+          id: req.id,
+          status: SampleRequestStatus.REVISION_REQUIRED,
+          revisionShopReminderSentAt: null,
+        },
         data: { revisionShopReminderSentAt: now },
       });
       if (!marked.count) continue;
@@ -978,8 +1201,15 @@ export class SamplesService {
     const overdue = await this.prisma.sampleProductRequest.findMany({
       where: {
         OR: [
-          { status: SampleRequestStatus.RECEIVED, deadlineAt: { lte: now }, videoSubmittedAt: null },
-          { status: SampleRequestStatus.REVISION_REQUIRED, revisionDeadlineAt: { lte: now } },
+          {
+            status: SampleRequestStatus.RECEIVED,
+            deadlineAt: { lte: now },
+            videoSubmittedAt: null,
+          },
+          {
+            status: SampleRequestStatus.REVISION_REQUIRED,
+            revisionDeadlineAt: { lte: now },
+          },
         ],
       },
       select: {
@@ -988,7 +1218,9 @@ export class SamplesService {
         deadlineAt: true,
         revisionDeadlineAt: true,
         collaboratorId: true,
-        product: { select: { title: true, store: { select: { ownerId: true } } } },
+        product: {
+          select: { title: true, store: { select: { ownerId: true } } },
+        },
       },
     });
     for (const req of overdue) {
@@ -1022,14 +1254,21 @@ export class SamplesService {
       });
       await this.notify({
         userId: req.product.store.ownerId,
-        title: isRevision ? 'Video chỉnh sửa mẫu đã quá hạn' : 'Yêu cầu mẫu đã quá hạn',
+        title: isRevision
+          ? 'Video chỉnh sửa mẫu đã quá hạn'
+          : 'Yêu cầu mẫu đã quá hạn',
         message: isRevision
           ? `KOL chưa gửi lại video cho ${req.product.title} trước hạn chỉnh sửa. Quyền xin mẫu đã bị khóa.`
           : `KOL chưa nộp video cho ${req.product.title} trong 14 ngày. Quyền xin mẫu của KOL đã bị khóa.`,
         type: 'SAMPLE_REQUEST_OVERDUE',
         requestId: req.id,
       });
-      await this.audit(null, isRevision ? 'SAMPLE_REVISION_OVERDUE' : 'SAMPLE_REQUEST_OVERDUE', req.id, { collaboratorId: req.collaboratorId });
+      await this.audit(
+        null,
+        isRevision ? 'SAMPLE_REVISION_OVERDUE' : 'SAMPLE_REQUEST_OVERDUE',
+        req.id,
+        { collaboratorId: req.collaboratorId },
+      );
     }
   }
 
@@ -1090,7 +1329,14 @@ export class SamplesService {
           sampleEnabled: true,
           sampleQuota: true,
           sampleGrantedCount: true,
-          store: { select: { id: true, name: true, ownerId: true, defaultCommissionRate: true } },
+          store: {
+            select: {
+              id: true,
+              name: true,
+              ownerId: true,
+              defaultCommissionRate: true,
+            },
+          },
         },
       },
     };
@@ -1103,7 +1349,9 @@ export class SamplesService {
     });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu xin mẫu');
     if (req.collaboratorId !== collaboratorId) {
-      throw new ForbiddenException('Yêu cầu này không thuộc tài khoản của bạn.');
+      throw new ForbiddenException(
+        'Yêu cầu này không thuộc tài khoản của bạn.',
+      );
     }
     return req;
   }
@@ -1111,7 +1359,16 @@ export class SamplesService {
   private async ensureShopOwns(requestId: string, shopOwnerId: string) {
     const req = await this.prisma.sampleProductRequest.findUnique({
       where: { id: requestId },
-      include: { product: { select: { storeId: true, title: true, store: { select: { ownerId: true } } } }, collaborator: { select: { id: true, fullName: true } } },
+      include: {
+        product: {
+          select: {
+            storeId: true,
+            title: true,
+            store: { select: { ownerId: true } },
+          },
+        },
+        collaborator: { select: { id: true, fullName: true } },
+      },
     });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu xin mẫu');
     if (req.product.store.ownerId !== shopOwnerId) {
@@ -1143,7 +1400,9 @@ export class SamplesService {
           title: input.title,
           message: input.message,
           type: input.type,
-          data: input.requestId ? { sampleRequestId: input.requestId } : undefined,
+          data: input.requestId
+            ? { sampleRequestId: input.requestId }
+            : undefined,
         },
       });
     } catch {
@@ -1162,7 +1421,10 @@ export class SamplesService {
         data: {
           userId,
           action,
-          details: { ...(requestId ? { sampleRequestId: requestId } : {}), ...details },
+          details: {
+            ...(requestId ? { sampleRequestId: requestId } : {}),
+            ...details,
+          },
         },
       });
       if (requestId) {

@@ -117,7 +117,8 @@ export class ChatGateway
     @MessageBody() data: { conversationId: string },
   ) {
     const userId = client.data.userId;
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const UUID_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!data?.conversationId || !UUID_REGEX.test(data.conversationId)) {
       client.emit('chat_warning', { message: 'Mã hội thoại không hợp lệ' });
       return;
@@ -154,7 +155,8 @@ export class ChatGateway
       mediaName?: string;
       messageId?: string;
     },
-    @Ack() ack?: (result: { ok: boolean; error?: string; messageId?: string }) => void,
+    @Ack()
+    ack?: (result: { ok: boolean; error?: string; messageId?: string }) => void,
   ) {
     const userId = client.data.userId;
     let messageText = data.messageText?.trim() || '';
@@ -269,8 +271,14 @@ export class ChatGateway
     @MessageBody() data: { conversationId: string; isTyping: boolean },
   ) {
     if (!data?.conversationId || !client.data.userId) return;
-    try { await this.chatService.getConversationById(data.conversationId, client.data.userId); }
-    catch { return; }
+    try {
+      await this.chatService.getConversationById(
+        data.conversationId,
+        client.data.userId,
+      );
+    } catch {
+      return;
+    }
     client.to(`conv:${data.conversationId}`).emit('user_typing', {
       userId: client.data.userId,
       fullName: client.data.userFullName,
@@ -296,7 +304,11 @@ export class ChatGateway
   }
 
   // Utility: phát tin nhắn mới đồng thời tới phòng chat và các cá nhân liên quan
-  broadcastNewMessage(conversationId: string, message: any, recipientUserId?: string) {
+  broadcastNewMessage(
+    conversationId: string,
+    message: any,
+    recipientUserId?: string,
+  ) {
     if (this.server) {
       this.server.to(`conv:${conversationId}`).emit('new_message', message);
     }

@@ -391,7 +391,7 @@ export const KolCouponsPage: React.FC = () => {
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                 <Sparkles className="w-3.5 h-3.5" />
-                Mạng lưới Tiếp thị Liên kết (FR-12)
+                Mạng lưới Tiếp thị Liên kết
               </span>
             </div>
             

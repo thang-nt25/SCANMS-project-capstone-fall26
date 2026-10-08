@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import api from '../../services/api';
-import type { SampleRequest, SampleRequestStatus, ShopStats } from '../../types/samples';
+import type { SampleRequest, SampleRequestStatus, ShopStats } from '@/types/samples.types';
 import { Select } from '../../components/ui/Select';
 
 const STATUS_LABEL: Record<string, string> = {

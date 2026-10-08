@@ -75,7 +75,11 @@ export class CheckoutMetricsService {
     this.logger.error(`[CHECKOUT_ERROR] ${errorType} after ${latencyMs}ms`);
   }
 
-  recordStockAnomaly(productId: string, requested: number, available: number): void {
+  recordStockAnomaly(
+    productId: string,
+    requested: number,
+    available: number,
+  ): void {
     this.stockAnomalyCount++;
     this.incrementRedis('stockAnomalies').catch(() => {});
     this.logger.warn(

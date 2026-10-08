@@ -50,7 +50,10 @@ export class PublicCouponsController {
     summary: 'Lấy các mã giảm giá đang áp dụng công khai của một gian hàng',
   })
   @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
-  @ApiResponse({ status: 200, description: 'Danh sách mã giảm giá còn hiệu lực' })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách mã giảm giá còn hiệu lực',
+  })
   async getAvailableStoreCoupons(
     @Param('storeId', new ParseUUIDPipe({ version: '4' })) storeId: string,
   ) {
@@ -274,16 +277,24 @@ export class StoreCouponsController {
 
   @Post()
   @ApiOperation({
-    summary: 'Gian hàng chủ động phát hành mã giảm giá (Voucher) riêng để kích cầu',
+    summary:
+      'Gian hàng chủ động phát hành mã giảm giá (Voucher) riêng để kích cầu',
   })
   @ApiParam({ name: 'storeId', description: 'ID gian hàng' })
   @ApiResponse({
     status: 201,
-    description: 'Phát hành voucher thành công và kích hoạt ACTIVE ngay lập tức',
+    description:
+      'Phát hành voucher thành công và kích hoạt ACTIVE ngay lập tức',
   })
-  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc trùng lặp mã' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dữ liệu không hợp lệ hoặc trùng lặp mã',
+  })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
-  @ApiResponse({ status: 403, description: 'Không có quyền quản lý gian hàng này' })
+  @ApiResponse({
+    status: 403,
+    description: 'Không có quyền quản lý gian hàng này',
+  })
   async createStoreCoupon(
     @Param('storeId') storeId: string,
     @CurrentUser('id') userId: string,
@@ -291,7 +302,13 @@ export class StoreCouponsController {
     @Body() dto: CreateStoreCouponDto,
     @Ip() ipAddress: string,
   ) {
-    return this.service.createStoreCoupon(storeId, userId, role, dto, ipAddress);
+    return this.service.createStoreCoupon(
+      storeId,
+      userId,
+      role,
+      dto,
+      ipAddress,
+    );
   }
 
   @Get()

@@ -19,10 +19,7 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { AuditService } from './audit.service';
-import {
-  QueryAuditLogsDto,
-  ExportAuditLogsDto,
-} from './dto/audit.dto';
+import { QueryAuditLogsDto, ExportAuditLogsDto } from './dto/audit.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -47,7 +44,10 @@ export class AuditController {
     description:
       'Lọc đa chiều theo hành động, thời gian, người dùng, từ khóa IP/Email/Action, hỗ trợ phân trang.',
   })
-  @ApiResponse({ status: 200, description: 'Danh sách audit logs kèm thông tin phân trang' })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách audit logs kèm thông tin phân trang',
+  })
   async getAuditLogs(
     @Query() query: QueryAuditLogsDto,
     @CurrentUser() currentUser: any,
@@ -63,9 +63,14 @@ export class AuditController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
   @ApiOperation({
     summary: 'Lấy số liệu thống kê tổng quan Audit Logs',
-    description: 'Thống kê tổng số sự kiện, sự kiện hôm nay, tỷ lệ phân bổ theo nhóm nghiệp vụ.',
+    description:
+      'Thống kê tổng số sự kiện, sự kiện hôm nay, tỷ lệ phân bổ theo nhóm nghiệp vụ.',
   })
-  @ApiQuery({ name: 'timeframe', required: false, enum: ['24h', '7d', '30d', 'all'] })
+  @ApiQuery({
+    name: 'timeframe',
+    required: false,
+    enum: ['24h', '7d', '30d', 'all'],
+  })
   async getAuditStats(
     @Query('timeframe') timeframe: '24h' | '7d' | '30d' | 'all' = '30d',
   ) {
@@ -80,7 +85,8 @@ export class AuditController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
   @ApiOperation({
     summary: 'Lấy danh mục mã hành động kiểm toán (Action Codes)',
-    description: 'Cung cấp danh sách metadata phân loại, độ nghiêm trọng và tên tiếng Việt.',
+    description:
+      'Cung cấp danh sách metadata phân loại, độ nghiêm trọng và tên tiếng Việt.',
   })
   getAvailableActions() {
     return this.auditService.getAvailableActions();
@@ -94,7 +100,8 @@ export class AuditController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
   @ApiOperation({
     summary: 'Xuất dữ liệu kiểm toán ra file CSV',
-    description: 'Tải xuống file CSV chuẩn UTF-8 chứa toàn bộ dữ liệu kiểm toán theo bộ lọc.',
+    description:
+      'Tải xuống file CSV chuẩn UTF-8 chứa toàn bộ dữ liệu kiểm toán theo bộ lọc.',
   })
   async exportAuditLogs(
     @Query() query: ExportAuditLogsDto,
@@ -117,7 +124,8 @@ export class AuditController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
   @ApiOperation({
     summary: 'Xem chi tiết 1 bản ghi kiểm toán theo ID',
-    description: 'Bóc tách dữ liệu chi tiết JSON Before/After và đối tượng tác động.',
+    description:
+      'Bóc tách dữ liệu chi tiết JSON Before/After và đối tượng tác động.',
   })
   @ApiParam({ name: 'id', description: 'UUID của bản ghi AuditLog' })
   async getAuditLogById(@Param('id') id: string) {

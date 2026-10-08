@@ -59,7 +59,8 @@ export class AiRecommendationController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Danh sách Top KOLs gợi ý kèm điểm tương thích và lời giải thích AI.',
+    description:
+      'Danh sách Top KOLs gợi ý kèm điểm tương thích và lời giải thích AI.',
     type: AiRecommendationResponseDto,
   })
   getRecommendationsForProduct(
@@ -112,7 +113,8 @@ export class AiRecommendationController {
   )
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Phân tích chi tiết mức độ tương thích giữa 1 Sản phẩm và 1 KOL cụ thể',
+    summary:
+      'Phân tích chi tiết mức độ tương thích giữa 1 Sản phẩm và 1 KOL cụ thể',
     description:
       'Trả về biểu đồ radar 4 chiều và khuyến nghị hành động hợp tác cho Shop.',
   })

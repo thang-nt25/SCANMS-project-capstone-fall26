@@ -9,7 +9,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { CreateCampaignDto, InviteCollaboratorDto, InviteInChatDto } from './dto/campaign.dto';
+import {
+  CreateCampaignDto,
+  InviteCollaboratorDto,
+  InviteInChatDto,
+} from './dto/campaign.dto';
 import { CampaignParticipantStatus } from '@prisma/client';
 import { ChatGateway } from '../chat/chat.gateway';
 
@@ -37,11 +41,15 @@ export class CampaignsService {
     const end = new Date(dto.endDate);
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      throw new BadRequestException('Thời gian bắt đầu hoặc kết thúc không hợp lệ.');
+      throw new BadRequestException(
+        'Thời gian bắt đầu hoặc kết thúc không hợp lệ.',
+      );
     }
 
     if (end <= start) {
-      throw new BadRequestException('Thời điểm kết thúc phải diễn ra sau thời điểm bắt đầu.');
+      throw new BadRequestException(
+        'Thời điểm kết thúc phải diễn ra sau thời điểm bắt đầu.',
+      );
     }
 
     const campaign = await this.prisma.campaign.create({
@@ -66,18 +74,14 @@ export class CampaignsService {
     });
 
     // Ghi nhận AuditLog tạo chiến dịch
-    await this._createAuditLog(
-      userId,
-      'CAMPAIGN_CREATED',
-      {
-        campaignId: campaign.id,
-        campaignName: campaign.name,
-        storeId: store.id,
-        bonusCommissionRate: dto.bonusCommissionRate,
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-      },
-    );
+    await this._createAuditLog(userId, 'CAMPAIGN_CREATED', {
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      storeId: store.id,
+      bonusCommissionRate: dto.bonusCommissionRate,
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+    });
 
     return campaign;
   }
@@ -156,11 +160,15 @@ export class CampaignsService {
     });
 
     if (!campaign) {
-      throw new NotFoundException('Chiến dịch không tồn tại hoặc bạn không có quyền sở hữu.');
+      throw new NotFoundException(
+        'Chiến dịch không tồn tại hoặc bạn không có quyền sở hữu.',
+      );
     }
 
     if (!campaign.isActive) {
-      throw new BadRequestException('Chiến dịch này đã kết thúc hoặc đang tạm ngừng.');
+      throw new BadRequestException(
+        'Chiến dịch này đã kết thúc hoặc đang tạm ngừng.',
+      );
     }
 
     const now = new Date();
@@ -185,7 +193,9 @@ export class CampaignsService {
     });
 
     if (!collaborator) {
-      throw new NotFoundException('Không tìm thấy thông tin Cộng Tác Viên / KOL hợp lệ.');
+      throw new NotFoundException(
+        'Không tìm thấy thông tin Cộng Tác Viên / KOL hợp lệ.',
+      );
     }
 
     // 3. Kiểm tra trạng thái mời trước đó
@@ -200,10 +210,14 @@ export class CampaignsService {
 
     if (existing) {
       if (existing.status === CampaignParticipantStatus.INVITED) {
-        throw new BadRequestException('KOL này đã nhận được thẻ mời VIP trước đó và đang chờ phản hồi.');
+        throw new BadRequestException(
+          'KOL này đã nhận được thẻ mời VIP trước đó và đang chờ phản hồi.',
+        );
       }
       if (existing.status === CampaignParticipantStatus.ACCEPTED) {
-        throw new BadRequestException('KOL này đã là thành viên chính thức của chiến dịch.');
+        throw new BadRequestException(
+          'KOL này đã là thành viên chính thức của chiến dịch.',
+        );
       }
     }
 
@@ -237,18 +251,14 @@ export class CampaignsService {
     );
 
     // 6. Ghi AuditLog & Notification
-    await this._createAuditLog(
-      userId,
-      'CAMPAIGN_INVITE_SENT',
-      {
-        campaignId,
-        campaignName: campaign.name,
-        collaboratorId: collaborator.id,
-        collaboratorName: collaborator.fullName,
-        participantId: participant.id,
-        bonusCommissionRate: Number(campaign.bonusCommissionRate),
-      },
-    );
+    await this._createAuditLog(userId, 'CAMPAIGN_INVITE_SENT', {
+      campaignId,
+      campaignName: campaign.name,
+      collaboratorId: collaborator.id,
+      collaboratorName: collaborator.fullName,
+      participantId: participant.id,
+      bonusCommissionRate: Number(campaign.bonusCommissionRate),
+    });
 
     await this._createNotification(
       collaborator.id,
@@ -290,7 +300,9 @@ export class CampaignsService {
     }
 
     if (conv.store.ownerId !== userId) {
-      throw new ForbiddenException('Bạn không phải chủ sở hữu của cửa hàng trong cuộc hội thoại này.');
+      throw new ForbiddenException(
+        'Bạn không phải chủ sở hữu của cửa hàng trong cuộc hội thoại này.',
+      );
     }
 
     if (!conv.collaboratorId) {
@@ -317,7 +329,9 @@ export class CampaignsService {
   ) {
     // Tìm hoặc tạo conversation giữa store và KOL
     let conversation = presetConversationId
-      ? await this.prisma.conversation.findUnique({ where: { id: presetConversationId } })
+      ? await this.prisma.conversation.findUnique({
+          where: { id: presetConversationId },
+        })
       : await this.prisma.conversation.findFirst({
           where: {
             storeId: campaign.storeId,
@@ -440,15 +454,21 @@ export class CampaignsService {
     });
 
     if (!participant) {
-      throw new NotFoundException('Không tìm thấy thông tin lời mời chiến dịch.');
+      throw new NotFoundException(
+        'Không tìm thấy thông tin lời mời chiến dịch.',
+      );
     }
 
     if (participant.collaboratorId !== userId) {
-      throw new ForbiddenException('Bạn không có quyền xử lý lời mời của người khác.');
+      throw new ForbiddenException(
+        'Bạn không có quyền xử lý lời mời của người khác.',
+      );
     }
 
     if (participant.status === CampaignParticipantStatus.ACCEPTED) {
-      throw new BadRequestException('Bạn đã chấp nhận tham gia chiến dịch này trước đó.');
+      throw new BadRequestException(
+        'Bạn đã chấp nhận tham gia chiến dịch này trước đó.',
+      );
     }
 
     if (participant.status === CampaignParticipantStatus.REJECTED) {
@@ -474,16 +494,12 @@ export class CampaignsService {
     await this._sendAcceptNotice(participant, userId);
 
     // Ghi AuditLog & Notification
-    await this._createAuditLog(
-      userId,
-      'CAMPAIGN_INVITE_ACCEPTED',
-      {
-        campaignId: participant.campaignId,
-        campaignName: participant.campaign.name,
-        participantId: participant.id,
-        collaboratorId: userId,
-      },
-    );
+    await this._createAuditLog(userId, 'CAMPAIGN_INVITE_ACCEPTED', {
+      campaignId: participant.campaignId,
+      campaignName: participant.campaign.name,
+      participantId: participant.id,
+      collaboratorId: userId,
+    });
 
     await this._createNotification(
       participant.campaign.store.ownerId,
@@ -514,15 +530,21 @@ export class CampaignsService {
     });
 
     if (!participant) {
-      throw new NotFoundException('Không tìm thấy thông tin lời mời chiến dịch.');
+      throw new NotFoundException(
+        'Không tìm thấy thông tin lời mời chiến dịch.',
+      );
     }
 
     if (participant.collaboratorId !== userId) {
-      throw new ForbiddenException('Bạn không có quyền xử lý lời mời của người khác.');
+      throw new ForbiddenException(
+        'Bạn không có quyền xử lý lời mời của người khác.',
+      );
     }
 
     if (participant.status === CampaignParticipantStatus.ACCEPTED) {
-      throw new BadRequestException('Không thể từ chối chiến dịch mà bạn đã đồng ý tham gia.');
+      throw new BadRequestException(
+        'Không thể từ chối chiến dịch mà bạn đã đồng ý tham gia.',
+      );
     }
 
     if (participant.status === CampaignParticipantStatus.REJECTED) {
@@ -547,16 +569,12 @@ export class CampaignsService {
     await this._sendRejectNotice(participant, userId);
 
     // Ghi AuditLog & Notification
-    await this._createAuditLog(
-      userId,
-      'CAMPAIGN_INVITE_REJECTED',
-      {
-        campaignId: participant.campaignId,
-        campaignName: participant.campaign.name,
-        participantId: participant.id,
-        collaboratorId: userId,
-      },
-    );
+    await this._createAuditLog(userId, 'CAMPAIGN_INVITE_REJECTED', {
+      campaignId: participant.campaignId,
+      campaignName: participant.campaign.name,
+      participantId: participant.id,
+      collaboratorId: userId,
+    });
 
     await this._createNotification(
       participant.campaign.store.ownerId,

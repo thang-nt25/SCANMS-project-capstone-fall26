@@ -34,7 +34,9 @@ describe('AffiliateDealsService', () => {
         findFirst: jest.fn().mockResolvedValue({ id: conversationId }),
         create: jest.fn(),
       },
-      $transaction: jest.fn((callback: (client: any) => unknown) => callback(tx)),
+      $transaction: jest.fn((callback: (client: any) => unknown) =>
+        callback(tx),
+      ),
     };
     chatGateway = { broadcastNewMessage: jest.fn() };
     referralLinksService = {
@@ -44,7 +46,11 @@ describe('AffiliateDealsService', () => {
         shortUrl: 'http://localhost:5173/r/VIP12345',
       }),
     };
-    service = new AffiliateDealsService(prisma, chatGateway, referralLinksService);
+    service = new AffiliateDealsService(
+      prisma,
+      chatGateway,
+      referralLinksService,
+    );
   });
 
   it('blocks deal proposals until KOL KYC is verified', async () => {
@@ -106,7 +112,10 @@ describe('AffiliateDealsService', () => {
       store: { id: storeId, name: 'Sora Skin' },
     };
     tx.exclusiveDealProposal.create.mockResolvedValue(createdProposal);
-    tx.chatMessage.create.mockResolvedValue({ id: 'message-1', messageText: 'deal card' });
+    tx.chatMessage.create.mockResolvedValue({
+      id: 'message-1',
+      messageText: 'deal card',
+    });
 
     const result = await service.createProposal(collaboratorId, {
       productId,
@@ -116,10 +125,16 @@ describe('AffiliateDealsService', () => {
 
     expect(result.status).toBe('PENDING');
     expect(tx.exclusiveDealProposal.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ proposedCommissionRate: expect.anything() }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          proposedCommissionRate: expect.anything(),
+        }),
+      }),
     );
     expect(tx.chatMessage.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conversationId }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ conversationId }),
+      }),
     );
     expect(chatGateway.broadcastNewMessage).toHaveBeenCalledWith(
       conversationId,
@@ -154,12 +169,19 @@ describe('AffiliateDealsService', () => {
     });
     tx.chatMessage.create.mockResolvedValue({ id: 'decision-message' });
 
-    const result = await service.approveProposal(proposalId, shopOwnerId, 'SHOP_MANAGER' as any);
+    const result = await service.approveProposal(
+      proposalId,
+      shopOwnerId,
+      'SHOP_MANAGER',
+    );
 
     expect(prisma.exclusiveDealProposal.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: proposalId, status: 'PENDING' },
-        data: expect.objectContaining({ status: 'APPROVED', approvedCommissionRate: 30 }),
+        data: expect.objectContaining({
+          status: 'APPROVED',
+          approvedCommissionRate: 30,
+        }),
       }),
     );
     expect(referralLinksService.createReferralLink).toHaveBeenCalledWith(
@@ -167,11 +189,15 @@ describe('AffiliateDealsService', () => {
       expect.objectContaining({ productId, exclusiveDealId: proposalId }),
     );
     expect(result.approvedCommissionRate).toBe(30);
-    const decisionCard = JSON.parse(tx.chatMessage.create.mock.calls[0][0].data.messageText);
-    expect(decisionCard).toEqual(expect.objectContaining({
-      previousCommissionRate: 20,
-      approvedCommissionRate: 30,
-    }));
+    const decisionCard = JSON.parse(
+      tx.chatMessage.create.mock.calls[0][0].data.messageText,
+    );
+    expect(decisionCard).toEqual(
+      expect.objectContaining({
+        previousCommissionRate: 20,
+        approvedCommissionRate: 30,
+      }),
+    );
     expect(chatGateway.broadcastNewMessage).toHaveBeenCalledWith(
       conversationId,
       expect.objectContaining({ id: 'decision-message' }),
@@ -206,10 +232,11 @@ describe('AffiliateDealsService', () => {
         defaultCommissionRate: 10,
       },
     });
-    prisma.exclusiveDealProposal.findFirst.mockImplementation(({ where }: any) =>
-      where.status === 'APPROVED'
-        ? { id: 'previous-deal', approvedCommissionRate: 20 }
-        : null,
+    prisma.exclusiveDealProposal.findFirst.mockImplementation(
+      ({ where }: any) =>
+        where.status === 'APPROVED'
+          ? { id: 'previous-deal', approvedCommissionRate: 20 }
+          : null,
     );
     tx.exclusiveDealProposal.create.mockResolvedValue({
       id: proposalId,
@@ -233,12 +260,16 @@ describe('AffiliateDealsService', () => {
     });
 
     expect(result.status).toBe('PENDING');
-    const proposalCard = JSON.parse(tx.chatMessage.create.mock.calls[0][0].data.messageText);
-    expect(proposalCard).toEqual(expect.objectContaining({
-      currentCommissionRate: 20,
-      proposedCommissionRate: 30,
-      isRevision: true,
-    }));
+    const proposalCard = JSON.parse(
+      tx.chatMessage.create.mock.calls[0][0].data.messageText,
+    );
+    expect(proposalCard).toEqual(
+      expect.objectContaining({
+        currentCommissionRate: 20,
+        proposedCommissionRate: 30,
+        isRevision: true,
+      }),
+    );
   });
 
   it('does not approve a proposal if the Shop raised Open Offer above the proposed VIP rate', async () => {

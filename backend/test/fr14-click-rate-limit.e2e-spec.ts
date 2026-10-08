@@ -57,14 +57,13 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
       // 1. Tìm tất cả user IDs liên quan (theo ID hoặc Email)
       const existingUsers = await prisma.user.findMany({
         where: {
-          OR: [
-            { id: { in: testUserIds } },
-            { email: { in: testEmails } },
-          ],
+          OR: [{ id: { in: testUserIds } }, { email: { in: testEmails } }],
         },
         select: { id: true },
       });
-      const allUserIds = Array.from(new Set([...testUserIds, ...existingUsers.map((u) => u.id)]));
+      const allUserIds = Array.from(
+        new Set([...testUserIds, ...existingUsers.map((u) => u.id)]),
+      );
 
       // 2. Tìm tất cả store IDs liên quan (theo ID, slug, hoặc ownerId)
       const existingStores = await prisma.store.findMany({
@@ -77,7 +76,9 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
         },
         select: { id: true },
       });
-      const allStoreIds = Array.from(new Set([storeId, ...existingStores.map((s) => s.id)]));
+      const allStoreIds = Array.from(
+        new Set([storeId, ...existingStores.map((s) => s.id)]),
+      );
 
       // 3. Tìm tất cả referral link IDs liên quan (theo ID, shortCode, storeId, hoặc collaboratorId)
       const existingLinks = await prisma.referralLink.findMany({
@@ -91,7 +92,9 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
         },
         select: { id: true },
       });
-      const allLinkIds = Array.from(new Set([linkId1, linkId2, ...existingLinks.map((l) => l.id)]));
+      const allLinkIds = Array.from(
+        new Set([linkId1, linkId2, ...existingLinks.map((l) => l.id)]),
+      );
 
       // 4. Gỡ foreign key latest_click_id trong attribution_sessions để tránh FK cycle constraint
       if (allStoreIds.length > 0 || allLinkIds.length > 0) {
@@ -176,10 +179,7 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
       // 10. Xóa Store (theo id hoặc slug)
       await prisma.store.deleteMany({
         where: {
-          OR: [
-            { id: { in: allStoreIds } },
-            { slug: testStoreSlug },
-          ],
+          OR: [{ id: { in: allStoreIds } }, { slug: testStoreSlug }],
         },
       });
 
@@ -196,10 +196,7 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
       // 13. Xóa User (theo cả id và email)
       await prisma.user.deleteMany({
         where: {
-          OR: [
-            { id: { in: allUserIds } },
-            { email: { in: testEmails } },
-          ],
+          OR: [{ id: { in: allUserIds } }, { email: { in: testEmails } }],
         },
       });
     } catch (err: any) {
@@ -317,8 +314,16 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
 
       await prisma.storeCollaborator.createMany({
         data: [
-          { storeId, collaboratorId: kolId, status: StoreCollaboratorStatus.APPROVED },
-          { storeId, collaboratorId: kol2Id, status: StoreCollaboratorStatus.APPROVED },
+          {
+            storeId,
+            collaboratorId: kolId,
+            status: StoreCollaboratorStatus.APPROVED,
+          },
+          {
+            storeId,
+            collaboratorId: kol2Id,
+            status: StoreCollaboratorStatus.APPROVED,
+          },
         ],
       });
 
@@ -389,7 +394,9 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
         const cronJobs = schedulerRegistry.getCronJobs();
         cronJobs.forEach((job) => job.stop());
         const intervals = schedulerRegistry.getIntervals();
-        intervals.forEach((interval) => schedulerRegistry.deleteInterval(interval));
+        intervals.forEach((interval) =>
+          schedulerRegistry.deleteInterval(interval),
+        );
         const timeouts = schedulerRegistry.getTimeouts();
         timeouts.forEach((timeout) => schedulerRegistry.deleteTimeout(timeout));
       }
@@ -462,7 +469,10 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
         request(app.getHttpServer())
           .get(`/r/${shortCode1}`)
           .set('X-Forwarded-For', testIp)
-          .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TestBrowser/1.0'),
+          .set(
+            'User-Agent',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TestBrowser/1.0',
+          ),
       );
 
       const responses = await Promise.all(requests);
@@ -502,7 +512,9 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
 
       // Check DB logs: valid vs rate-limited
       const validLogs = logs.filter((l) => l.isValid);
-      const rateLimitedLogs = logs.filter((l) => !l.isValid && l.riskReason?.includes('CLICK_RATE_LIMITED'));
+      const rateLimitedLogs = logs.filter(
+        (l) => !l.isValid && l.riskReason?.includes('CLICK_RATE_LIMITED'),
+      );
 
       expect(validLogs.length).toBe(10);
       expect(rateLimitedLogs.length).toBeGreaterThanOrEqual(1);
@@ -516,7 +528,10 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
       const res = await request(app.getHttpServer())
         .get(`/r/${shortCode1}`)
         .set('X-Forwarded-For', anotherIp)
-        .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TestBrowser/2.0');
+        .set(
+          'User-Agent',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TestBrowser/2.0',
+        );
 
       expect(res.status).toBe(302);
       const cookies = getSetCookies(res.headers);
@@ -582,8 +597,13 @@ describe('FR-14 — Anti Click Spam via Redis Rate Limit E2E Test Suite (Product
       });
 
       // Exactly 10 have cookie, 1 is rate limited
-      const withCookie = responses.filter((r) => getSetCookies(r.headers).some((c) => c.includes('scanms_attr=')));
-      const withoutCookie = responses.filter((r) => !getSetCookies(r.headers).some((c) => c.includes('scanms_attr=')));
+      const withCookie = responses.filter((r) =>
+        getSetCookies(r.headers).some((c) => c.includes('scanms_attr=')),
+      );
+      const withoutCookie = responses.filter(
+        (r) =>
+          !getSetCookies(r.headers).some((c) => c.includes('scanms_attr=')),
+      );
 
       expect(withCookie.length).toBe(10);
       expect(withoutCookie.length).toBe(1);

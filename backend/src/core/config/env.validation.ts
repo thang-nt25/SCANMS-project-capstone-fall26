@@ -10,14 +10,18 @@ export function validateEnv(config: Record<string, any>): Record<string, any> {
   const secRaw = config.CLICK_RATE_LIMIT_SEC ?? '10';
   const secLimit = Number(secRaw);
   if (isNaN(secLimit) || !Number.isInteger(secLimit) || secLimit <= 0) {
-    errors.push(`CLICK_RATE_LIMIT_SEC phải là một số nguyên dương (> 0). Nhận được: "${secRaw}"`);
+    errors.push(
+      `CLICK_RATE_LIMIT_SEC phải là một số nguyên dương (> 0). Nhận được: "${secRaw}"`,
+    );
   }
 
   // 2. CLICK_RATE_LIMIT_MIN: phải là số nguyên dương
   const minRaw = config.CLICK_RATE_LIMIT_MIN ?? '60';
   const minLimit = Number(minRaw);
   if (isNaN(minLimit) || !Number.isInteger(minLimit) || minLimit <= 0) {
-    errors.push(`CLICK_RATE_LIMIT_MIN phải là một số nguyên dương (> 0). Nhận được: "${minRaw}"`);
+    errors.push(
+      `CLICK_RATE_LIMIT_MIN phải là một số nguyên dương (> 0). Nhận được: "${minRaw}"`,
+    );
   }
 
   // 3. Giới hạn phút không nhỏ hơn giới hạn giây
@@ -36,7 +40,9 @@ export function validateEnv(config: Record<string, any>): Record<string, any> {
     const redisHost = config.REDIS_HOST;
 
     if (!redisUrl && !redisHost) {
-      errors.push('Trong môi trường production, bắt buộc phải cấu hình REDIS_URL hoặc REDIS_HOST.');
+      errors.push(
+        'Trong môi trường production, bắt buộc phải cấu hình REDIS_URL hoặc REDIS_HOST.',
+      );
     }
 
     // Production không được dùng Redis không mật khẩu hoặc không TLS ngoài private network / localhost
@@ -64,7 +70,9 @@ export function validateEnv(config: Record<string, any>): Record<string, any> {
 
     const isLocalOrPrivate = isHostLocalOrPrivate || isUrlLocalOrPrivate;
 
-    const hasPassword = Boolean(config.REDIS_PASSWORD && String(config.REDIS_PASSWORD).trim());
+    const hasPassword = Boolean(
+      config.REDIS_PASSWORD && String(config.REDIS_PASSWORD).trim(),
+    );
     const urlHasPassword = Boolean(redisUrl && /:\S+@/.test(redisUrl));
 
     if (!isLocalOrPrivate && !hasPassword && !urlHasPassword) {
@@ -94,7 +102,11 @@ export function validateEnv(config: Record<string, any>): Record<string, any> {
       .filter(Boolean);
 
     for (const proxy of proxies) {
-      if (proxy === 'loopback' || proxy === 'linklocal' || proxy === 'uniquelocal') {
+      if (
+        proxy === 'loopback' ||
+        proxy === 'linklocal' ||
+        proxy === 'uniquelocal'
+      ) {
         continue;
       }
       if (proxy.includes('/')) {
@@ -107,16 +119,22 @@ export function validateEnv(config: Record<string, any>): Record<string, any> {
           (net.isIPv4(ip) && bitNum > 32) ||
           (net.isIPv6(ip) && bitNum > 128)
         ) {
-          errors.push(`TRUSTED_PROXIES chứa dải CIDR không hợp lệ: "${proxy}".`);
+          errors.push(
+            `TRUSTED_PROXIES chứa dải CIDR không hợp lệ: "${proxy}".`,
+          );
         }
       } else if (!net.isIP(proxy) && proxy !== 'localhost') {
-        errors.push(`TRUSTED_PROXIES chứa địa chỉ IP không hợp lệ: "${proxy}".`);
+        errors.push(
+          `TRUSTED_PROXIES chứa địa chỉ IP không hợp lệ: "${proxy}".`,
+        );
       }
     }
   }
 
   if (errors.length > 0) {
-    throw new Error(`[CONFIG_VALIDATION_ERROR] Phát hiện lỗi cấu hình biến môi trường:\n- ${errors.join('\n- ')}`);
+    throw new Error(
+      `[CONFIG_VALIDATION_ERROR] Phát hiện lỗi cấu hình biến môi trường:\n- ${errors.join('\n- ')}`,
+    );
   }
 
   return {

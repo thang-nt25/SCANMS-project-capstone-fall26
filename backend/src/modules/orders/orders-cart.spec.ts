@@ -55,9 +55,22 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         price: '250000',
         stockQuantity: 10,
         isActive: true,
-        store: { id: 'store-1', name: 'Shop A', slug: 'shop-a', isActive: true, isDeleted: false },
+        store: {
+          id: 'store-1',
+          name: 'Shop A',
+          slug: 'shop-a',
+          isActive: true,
+          isDeleted: false,
+        },
         variants: [
-          { id: 'var-1', name: 'Size L', sku: 'POLO-01-L', price: '260000', stockQuantity: 5, isActive: true },
+          {
+            id: 'var-1',
+            name: 'Size L',
+            sku: 'POLO-01-L',
+            price: '260000',
+            stockQuantity: 5,
+            isActive: true,
+          },
         ],
       },
     ]);
@@ -90,7 +103,13 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         price: '300000',
         stockQuantity: 1,
         isActive: true,
-        store: { id: 'store-2', name: 'Shop B', slug: 'shop-b', isActive: true, isDeleted: false },
+        store: {
+          id: 'store-2',
+          name: 'Shop B',
+          slug: 'shop-b',
+          isActive: true,
+          isDeleted: false,
+        },
         variants: [],
       },
     ]);
@@ -127,7 +146,13 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 50,
         isActive: true,
         isDeleted: false,
-        store: { id: storeId, name: 'Sora Shop', slug: 'sora-shop', isActive: true, isDeleted: false },
+        store: {
+          id: storeId,
+          name: 'Sora Shop',
+          slug: 'sora-shop',
+          isActive: true,
+          isDeleted: false,
+        },
       },
     ]);
 
@@ -136,48 +161,80 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
     // Mock productVariant findMany
     prisma.productVariant = {
       findMany: jest.fn().mockResolvedValue([
-        { id: variantId1, productId, name: 'Size M', price: '220000', stockQuantity: 10, isActive: true },
-        { id: variantId2, productId, name: 'Size L', price: '250000', stockQuantity: 10, isActive: true },
+        {
+          id: variantId1,
+          productId,
+          name: 'Size M',
+          price: '220000',
+          stockQuantity: 10,
+          isActive: true,
+        },
+        {
+          id: variantId2,
+          productId,
+          name: 'Size L',
+          price: '250000',
+          stockQuantity: 10,
+          isActive: true,
+        },
       ]),
     };
 
     let savedOrderData: any = null;
-    prisma.$transaction = jest.fn().mockImplementation(async (callback: any) => {
-      const txMock = {
-        store: {
-          findUnique: jest.fn().mockResolvedValue({ id: storeId, name: 'Sora Shop', isActive: true, isDeleted: false }),
-        },
-        $executeRaw: jest.fn().mockResolvedValue(1), // stock deduction successful
-        order: {
-          create: jest.fn().mockImplementation(async ({ data }: any) => {
-            savedOrderData = data;
-            return {
-              id: 'order-123',
-              storeId,
-              externalOrderSn: 'ORD-TEST-123',
-              subtotalAmount: data.subtotalAmount,
-              discountAmount: data.discountAmount,
-              shippingFee: data.shippingFee,
-              finalAmount: data.finalAmount,
-              status: 'PENDING',
-              rawPayload: data.rawPayload,
-              orderItems: data.orderItems.create.map((it: any) => ({
-                ...it,
-                product: { id: it.productId, title: 'Áo thun Polo Luxury', sku: 'POLO', imageUrl: '', categoryName: '' },
-                variant: { id: it.variantId, name: it.variantId === variantId1 ? 'Size M' : 'Size L', sku: 'POLO-V' },
-              })),
-              store: { id: storeId, name: 'Sora Shop', slug: 'sora-shop' },
-            };
-          }),
-        },
-      };
-      return callback(txMock);
-    });
+    prisma.$transaction = jest
+      .fn()
+      .mockImplementation(async (callback: any) => {
+        const txMock = {
+          store: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: storeId,
+              name: 'Sora Shop',
+              isActive: true,
+              isDeleted: false,
+            }),
+          },
+          $executeRaw: jest.fn().mockResolvedValue(1), // stock deduction successful
+          order: {
+            create: jest.fn().mockImplementation(async ({ data }: any) => {
+              savedOrderData = data;
+              return {
+                id: 'order-123',
+                storeId,
+                externalOrderSn: 'ORD-TEST-123',
+                subtotalAmount: data.subtotalAmount,
+                discountAmount: data.discountAmount,
+                shippingFee: data.shippingFee,
+                finalAmount: data.finalAmount,
+                status: 'PENDING',
+                rawPayload: data.rawPayload,
+                orderItems: data.orderItems.create.map((it: any) => ({
+                  ...it,
+                  product: {
+                    id: it.productId,
+                    title: 'Áo thun Polo Luxury',
+                    sku: 'POLO',
+                    imageUrl: '',
+                    categoryName: '',
+                  },
+                  variant: {
+                    id: it.variantId,
+                    name: it.variantId === variantId1 ? 'Size M' : 'Size L',
+                    sku: 'POLO-V',
+                  },
+                })),
+                store: { id: storeId, name: 'Sora Shop', slug: 'sora-shop' },
+              };
+            }),
+          },
+        };
+        return callback(txMock);
+      });
 
     const result = await service.createOrder({
       customerName: 'Nguyễn Văn A',
       customerPhone: '0987654321',
-      shippingAddress: '123 Đường Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
+      shippingAddress:
+        '123 Đường Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
       paymentMethod: 'COD',
       idempotencyKey: 'test-variant-order-1',
       items: [
@@ -210,7 +267,13 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 10,
         isActive: true,
         isDeleted: false,
-        store: { id: storeAId, name: 'Shop A', slug: 'shop-a', isActive: true, isDeleted: false },
+        store: {
+          id: storeAId,
+          name: 'Shop A',
+          slug: 'shop-a',
+          isActive: true,
+          isDeleted: false,
+        },
       },
       {
         id: prodBId,
@@ -220,7 +283,13 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 5,
         isActive: true,
         isDeleted: false,
-        store: { id: storeBId, name: 'Shop B', slug: 'shop-b', isActive: true, isDeleted: false },
+        store: {
+          id: storeBId,
+          name: 'Shop B',
+          slug: 'shop-b',
+          isActive: true,
+          isDeleted: false,
+        },
       },
     ]);
 
@@ -230,30 +299,43 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
 
     // Simulate Shop B out of stock error inside the single atomic transaction
     let transactionExecuted = false;
-    prisma.$transaction = jest.fn().mockImplementation(async (callback: any) => {
-      transactionExecuted = true;
-      let executeCount = 0;
-      const txMock = {
-        store: {
-          findUnique: jest.fn().mockImplementation(({ where }: any) => {
-            if (where.id === storeAId) return { id: storeAId, name: 'Shop A', isActive: true, isDeleted: false };
-            return { id: storeBId, name: 'Shop B', isActive: true, isDeleted: false };
+    prisma.$transaction = jest
+      .fn()
+      .mockImplementation(async (callback: any) => {
+        transactionExecuted = true;
+        let executeCount = 0;
+        const txMock = {
+          store: {
+            findUnique: jest.fn().mockImplementation(({ where }: any) => {
+              if (where.id === storeAId)
+                return {
+                  id: storeAId,
+                  name: 'Shop A',
+                  isActive: true,
+                  isDeleted: false,
+                };
+              return {
+                id: storeBId,
+                name: 'Shop B',
+                isActive: true,
+                isDeleted: false,
+              };
+            }),
+          },
+          $executeRaw: jest.fn().mockImplementation(() => {
+            executeCount++;
+            if (executeCount === 2) {
+              // Shop B out of stock
+              return 0;
+            }
+            return 1;
           }),
-        },
-        $executeRaw: jest.fn().mockImplementation(() => {
-          executeCount++;
-          if (executeCount === 2) {
-            // Shop B out of stock
-            return 0;
-          }
-          return 1;
-        }),
-        order: {
-          create: jest.fn().mockResolvedValue({ id: 'sub-order-1' }),
-        },
-      };
-      return callback(txMock);
-    });
+          order: {
+            create: jest.fn().mockResolvedValue({ id: 'sub-order-1' }),
+          },
+        };
+        return callback(txMock);
+      });
 
     await expect(
       service.createOrder({

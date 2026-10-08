@@ -27,7 +27,7 @@ import { Select } from '../../components/ui/Select';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { toast } from '../../utils/toast';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 
 export default function MediaHubBrowserPage() {
   const currentUser = authService.getCurrentUser();
@@ -224,7 +224,7 @@ export default function MediaHubBrowserPage() {
               icon={<Video className="w-3.5 h-3.5" />}
               onClick={() => setShowSubmitModal(true)}
             >
-              Nộp video review (FR-15)
+              Nộp video review
             </Button>
           )}
           <Button
@@ -232,7 +232,7 @@ export default function MediaHubBrowserPage() {
             size="sm"
             onClick={() => window.location.assign('/products/serum-vitamin-c')}
           >
-            Xem Landing Page FR-15
+            Xem Landing Page Review
           </Button>
           <Button
             variant="outline"

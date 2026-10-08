@@ -27,27 +27,43 @@ describe('ProfanityFilter (FR-25)', () => {
 
   describe('Legitimate business and normal conversation (False Positive Prevention)', () => {
     it('should NOT block everyday words with "đủ" (du)', () => {
-      expect(checkProfanity('Shop có đủ hàng giao không?').isProfane).toBe(false);
+      expect(checkProfanity('Shop có đủ hàng giao không?').isProfane).toBe(
+        false,
+      );
       expect(checkProfanity('Ví dụ như sản phẩm này').isProfane).toBe(false);
-      expect(checkProfanity('Dù sao thì tôi vẫn muốn đặt hàng').isProfane).toBe(false);
-      expect(checkProfanity('Giao ko đủ hàng rồi shop ơi').isProfane).toBe(false);
-      expect(checkProfanity('Shop giao không đủ số lượng').isProfane).toBe(false);
+      expect(checkProfanity('Dù sao thì tôi vẫn muốn đặt hàng').isProfane).toBe(
+        false,
+      );
+      expect(checkProfanity('Giao ko đủ hàng rồi shop ơi').isProfane).toBe(
+        false,
+      );
+      expect(checkProfanity('Shop giao không đủ số lượng').isProfane).toBe(
+        false,
+      );
       expect(checkProfanity('đủ').isProfane).toBe(false);
     });
 
     it('should NOT block words with "me" (contact me, cho me)', () => {
-      expect(checkProfanity('Gửi cho me sản phẩm mẫu nhé').isProfane).toBe(false);
+      expect(checkProfanity('Gửi cho me sản phẩm mẫu nhé').isProfane).toBe(
+        false,
+      );
       expect(checkProfanity('Please contact me soon').isProfane).toBe(false);
     });
 
     it('should NOT block words with "lớn", "lon" (lon sữa, kích thước lớn)', () => {
-      expect(checkProfanity('Sản phẩm này có kích thước lớn không?').isProfane).toBe(false);
+      expect(
+        checkProfanity('Sản phẩm này có kích thước lớn không?').isProfane,
+      ).toBe(false);
       expect(checkProfanity('Tôi muốn mua 2 lon sữa').isProfane).toBe(false);
     });
 
     it('should NOT block words with "cũ" (cu)', () => {
-      expect(checkProfanity('Mẫu mới hay mẫu cũ vậy shop?').isProfane).toBe(false);
-      expect(checkProfanity('Tôi là khách hàng cũ của shop').isProfane).toBe(false);
+      expect(checkProfanity('Mẫu mới hay mẫu cũ vậy shop?').isProfane).toBe(
+        false,
+      );
+      expect(checkProfanity('Tôi là khách hàng cũ của shop').isProfane).toBe(
+        false,
+      );
     });
 
     it('should NOT block "cc" (capacity / cc)', () => {

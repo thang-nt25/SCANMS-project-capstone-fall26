@@ -37,7 +37,7 @@ import './WalletPage.css';
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
 import { Select } from "../../components/ui/Select";
-import { type VietQrBank, findBankByQuery, VIETNAM_BANKS } from "../../constants/vietnamBanks";
+import { type VietQrBank, findBankByQuery, VIETNAM_BANKS } from "@/config/banks.config";
 import type {
   PayoutStatus,
   WalletSummary,
@@ -163,23 +163,14 @@ export default function WalletPage() {
         setSearchParams({ tab: 'kyc' });
         return;
       }
-      await kycService.submitKyc({
-        idCardNumber: p.idCardNumber,
-        frontCardUrl: p.socialLinksJson.frontCardUrl,
-        backCardUrl: p.socialLinksJson.backCardUrl,
-        channelProofUrl: p.socialLinksJson.channelProofUrl,
-        taxCode: p?.taxCode || "",
+      await walletService.updateBankAccount({
         bankName: `${bankToSave.shortName} (${bankToSave.name})`,
         bankAccountNumber: accountNumberInput.trim(),
         bankAccountName: accountNameInput.trim().toUpperCase(),
-        bio: p?.bio,
-        platform: (p?.socialLinksJson?.platform as any) || "TIKTOK",
-        channelName: p?.socialLinksJson?.channelName,
-        channelUrl: p?.socialLinksJson?.channelUrl,
-        followerCount: p?.socialLinksJson?.followerCount,
       });
       toast.success("Đăng ký tài khoản nhận tiền thành công!");
       setShowAddBankForm(false);
+      setAccountNumberInput("");
       await loadWallet();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || "Lỗi lưu tài khoản");

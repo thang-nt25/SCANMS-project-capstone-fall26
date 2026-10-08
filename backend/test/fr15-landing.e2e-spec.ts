@@ -56,125 +56,159 @@ describe('FR-15 — Landing Page & Video Review & Order Placement E2E', () => {
 
     try {
       if (prisma.commission) {
-        await prisma.commission.deleteMany({
-          where: { order: { storeId: { in: storeIds } } },
-        }).catch(() => {});
+        await prisma.commission
+          .deleteMany({
+            where: { order: { storeId: { in: storeIds } } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.attributionAdjustment) {
-        await prisma.attributionAdjustment.deleteMany({
-          where: { order: { storeId: { in: storeIds } } },
-        }).catch(() => {});
+        await prisma.attributionAdjustment
+          .deleteMany({
+            where: { order: { storeId: { in: storeIds } } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.couponRedemption) {
-        await prisma.couponRedemption.deleteMany({
-          where: { order: { storeId: { in: storeIds } } },
-        }).catch(() => {});
+        await prisma.couponRedemption
+          .deleteMany({
+            where: { order: { storeId: { in: storeIds } } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.couponProduct) {
-        await prisma.couponProduct.deleteMany({
-          where: { couponId: testCouponId },
-        }).catch(() => {});
+        await prisma.couponProduct
+          .deleteMany({
+            where: { couponId: testCouponId },
+          })
+          .catch(() => {});
       }
 
       if (prisma.coupon) {
-        await prisma.coupon.deleteMany({
-          where: { storeId: { in: storeIds } },
-        }).catch(() => {});
+        await prisma.coupon
+          .deleteMany({
+            where: { storeId: { in: storeIds } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.orderItem) {
-        await prisma.orderItem.deleteMany({
-          where: {
-            OR: [
-              { order: { storeId: { in: storeIds } } },
-              { product: { storeId: { in: storeIds } } },
-            ],
-          },
-        }).catch(() => {});
+        await prisma.orderItem
+          .deleteMany({
+            where: {
+              OR: [
+                { order: { storeId: { in: storeIds } } },
+                { product: { storeId: { in: storeIds } } },
+              ],
+            },
+          })
+          .catch(() => {});
       }
 
       if (prisma.order) {
-        await prisma.order.deleteMany({
-          where: { storeId: { in: storeIds } },
-        }).catch(() => {});
+        await prisma.order
+          .deleteMany({
+            where: { storeId: { in: storeIds } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.mediaAsset) {
-        await prisma.mediaAsset.deleteMany({
-          where: {
-            OR: [
-              { storeId: { in: storeIds } },
-              { collaboratorId: { in: userIds } },
-            ],
-          },
-        }).catch(() => {});
+        await prisma.mediaAsset
+          .deleteMany({
+            where: {
+              OR: [
+                { storeId: { in: storeIds } },
+                { collaboratorId: { in: userIds } },
+              ],
+            },
+          })
+          .catch(() => {});
       }
 
       if (prisma.productReview) {
-        await prisma.productReview.deleteMany({
-          where: { product: { storeId: { in: storeIds } } },
-        }).catch(() => {});
+        await prisma.productReview
+          .deleteMany({
+            where: { product: { storeId: { in: storeIds } } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.attributionSession) {
-        await prisma.attributionSession.deleteMany({
-          where: {
-            OR: [
-              { storeId: { in: storeIds } },
-              { collaboratorId: { in: userIds } },
-            ],
-          },
-        }).catch(() => {});
+        await prisma.attributionSession
+          .deleteMany({
+            where: {
+              OR: [
+                { storeId: { in: storeIds } },
+                { collaboratorId: { in: userIds } },
+              ],
+            },
+          })
+          .catch(() => {});
       }
 
       if (prisma.referralLink) {
-        await prisma.referralLink.deleteMany({
-          where: {
-            OR: [
-              { storeId: { in: storeIds } },
-              { collaboratorId: { in: userIds } },
-            ],
-          },
-        }).catch(() => {});
+        await prisma.referralLink
+          .deleteMany({
+            where: {
+              OR: [
+                { storeId: { in: storeIds } },
+                { collaboratorId: { in: userIds } },
+              ],
+            },
+          })
+          .catch(() => {});
       }
 
       if (prisma.product) {
-        await prisma.product.deleteMany({
-          where: { storeId: { in: storeIds } },
-        }).catch(() => {});
+        await prisma.product
+          .deleteMany({
+            where: { storeId: { in: storeIds } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.storeCollaborator) {
-        await prisma.storeCollaborator.deleteMany({
-          where: { storeId: { in: storeIds } },
-        }).catch(() => {});
+        await prisma.storeCollaborator
+          .deleteMany({
+            where: { storeId: { in: storeIds } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.store) {
-        await prisma.store.deleteMany({
-          where: { id: { in: storeIds } },
-        }).catch(() => {});
+        await prisma.store
+          .deleteMany({
+            where: { id: { in: storeIds } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.collaboratorProfile) {
-        await prisma.collaboratorProfile.deleteMany({
-          where: { userId: { in: userIds } },
-        }).catch(() => {});
+        await prisma.collaboratorProfile
+          .deleteMany({
+            where: { userId: { in: userIds } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.auditLog) {
-        await prisma.auditLog.deleteMany({
-          where: { userId: { in: userIds } },
-        }).catch(() => {});
+        await prisma.auditLog
+          .deleteMany({
+            where: { userId: { in: userIds } },
+          })
+          .catch(() => {});
       }
 
       if (prisma.user) {
-        await prisma.user.deleteMany({
-          where: { id: { in: userIds } },
-        }).catch(() => {});
+        await prisma.user
+          .deleteMany({
+            where: { id: { in: userIds } },
+          })
+          .catch(() => {});
       }
     } catch (e) {
       console.warn('Cleanup error (ignored):', e);
@@ -414,7 +448,9 @@ describe('FR-15 — Landing Page & Video Review & Order Placement E2E', () => {
         const cronJobs = schedulerRegistry.getCronJobs();
         cronJobs.forEach((job) => job.stop());
         const intervals = schedulerRegistry.getIntervals();
-        intervals.forEach((interval) => schedulerRegistry.deleteInterval(interval));
+        intervals.forEach((interval) =>
+          schedulerRegistry.deleteInterval(interval),
+        );
         const timeouts = schedulerRegistry.getTimeouts();
         timeouts.forEach((timeout) => schedulerRegistry.deleteTimeout(timeout));
       }

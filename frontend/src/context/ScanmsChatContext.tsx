@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { getChatSocket } from '../services/chat-socket.service';
-import type { ChatAttachmentType } from '../types/chat';
+import type { ChatAttachmentType } from '@/types/chat.types';
 import { toast } from '../utils/toast';
 
 export interface ChatProductInfo {

@@ -1,4 +1,14 @@
-import { Controller, Get, Put, Post, Delete, Body, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Post,
+  Delete,
+  Body,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StoresService } from './stores.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -20,19 +30,28 @@ export class StoresController {
 
   @Get('public/id/:storeId/follow')
   @UseGuards(JwtAuthGuard)
-  getFollowStatus(@Param('storeId', ParseUUIDPipe) storeId: string, @CurrentUser('id') userId: string) {
+  getFollowStatus(
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.storesService.getFollowStatus(storeId, userId);
   }
 
   @Post('public/id/:storeId/follow')
   @UseGuards(JwtAuthGuard)
-  follow(@Param('storeId', ParseUUIDPipe) storeId: string, @CurrentUser('id') userId: string) {
+  follow(
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.storesService.setFollow(storeId, userId, true);
   }
 
   @Delete('public/id/:storeId/follow')
   @UseGuards(JwtAuthGuard)
-  unfollow(@Param('storeId', ParseUUIDPipe) storeId: string, @CurrentUser('id') userId: string) {
+  unfollow(
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.storesService.setFollow(storeId, userId, false);
   }
 
@@ -64,7 +83,8 @@ export class StoresController {
 
   @Get('marketplace')
   @ApiOperation({
-    summary: 'Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối',
+    summary:
+      'Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối',
   })
   async getMarketplaceStores() {
     return this.storesService.getMarketplaceStores();

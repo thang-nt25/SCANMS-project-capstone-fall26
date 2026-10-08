@@ -84,7 +84,8 @@ export class AuthController {
 
   @Post('forgot-password/send-otp')
   @ApiOperation({
-    summary: 'Gửi mã OTP xác thực khôi phục mật khẩu qua Email (Thời hạn 5 phút)',
+    summary:
+      'Gửi mã OTP xác thực khôi phục mật khẩu qua Email (Thời hạn 5 phút)',
   })
   @ApiResponse({ status: 200, description: 'Mã OTP đã được gửi' })
   async sendForgotPasswordOtp(@Body() dto: SendForgotPasswordOtpDto) {
@@ -102,7 +103,8 @@ export class AuthController {
 
   @Post('forgot-password/reset')
   @ApiOperation({
-    summary: 'Đặt lại mật khẩu mới được băm bằng thuật toán Argon2id chuẩn OWASP',
+    summary:
+      'Đặt lại mật khẩu mới được băm bằng thuật toán Argon2id chuẩn OWASP',
   })
   @ApiResponse({ status: 200, description: 'Đổi mật khẩu thành công' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
@@ -133,7 +135,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Cập nhật ảnh đại diện (Avatar) cho mọi vai trò (User, KOL, Shop, Admin)',
+    summary:
+      'Cập nhật ảnh đại diện (Avatar) cho mọi vai trò (User, KOL, Shop, Admin)',
   })
   async updateAvatar(
     @CurrentUser('id') currentUserId: string,
@@ -144,4 +147,3 @@ export class AuthController {
     return this.authService.updateAvatar(userId, avatarUrl);
   }
 }
-

@@ -20,6 +20,7 @@ const isZipContainer = (buffer: Buffer) =>
 
 export function sanitizeChatAttachmentName(name: string): string {
   const safeName = basename(name || 'tep-tin')
+    // eslint-disable-next-line no-control-regex
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
     .trim()
     .slice(0, 255);
@@ -79,18 +80,29 @@ export function validateChatAttachment(
   const isOleDocument =
     hasPrefix(buffer, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) &&
     ['.doc', '.xls', '.ppt'].includes(extension) &&
-    ['application/msword', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint'].includes(mimetype);
+    [
+      'application/msword',
+      'application/vnd.ms-excel',
+      'application/vnd.ms-powerpoint',
+    ].includes(mimetype);
   const officeMimeByExtension: Record<string, string> = {
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.docx':
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xlsx':
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.pptx':
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   };
   const isOfficeOpenXml =
-    isZipContainer(buffer) &&
-    officeMimeByExtension[extension] === mimetype;
+    isZipContainer(buffer) && officeMimeByExtension[extension] === mimetype;
   const isTextDocument =
     ['.txt', '.csv'].includes(extension) &&
-    ['text/plain', 'text/csv', 'application/csv', 'application/vnd.ms-excel'].includes(mimetype);
+    [
+      'text/plain',
+      'text/csv',
+      'application/csv',
+      'application/vnd.ms-excel',
+    ].includes(mimetype);
 
   if (isPdf || isOleDocument || isOfficeOpenXml || isTextDocument) {
     if (size > MAX_DOCUMENT_BYTES)

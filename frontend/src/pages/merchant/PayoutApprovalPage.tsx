@@ -19,13 +19,13 @@ import PayoutBillUpload from "../../components/payouts/PayoutBillUpload";
 import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { Select } from "../../components/ui/Select";
-import { type VietQrBank, findBankByQuery } from "../../constants/vietnamBanks";
+import { type VietQrBank, findBankByQuery } from "@/config/banks.config";
 import { toast } from "../../utils/toast";
 import {
   maskBankAccount,
   MAX_PAYOUT_BILL_BYTES,
   validatePayoutBill,
-} from "../../components/payouts/payoutBillValidation";
+} from "@/utils/validations/payout-bill.validation";
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",
@@ -513,24 +513,39 @@ export default function PayoutApprovalPage() {
       return;
     }
     await runAction(async () => {
-      let isApiSuccess = false;
-      try {
-        if (history && history.requests.length > 0) {
-          if (dialog.action === "approve" && bill) {
+      const isSeedRequest = FIGMA13_PAYOUT_SEEDS.some((s) => s.id === dialog.request.id);
+
+      // Nếu là yêu cầu chi trả thực tế trong Database (không phải dữ liệu seed tĩnh)
+      if (!isSeedRequest && storeId) {
+        try {
+          if (dialog.action === "approve") {
+            if (!bill) {
+              setError("Vui lòng tải lên hóa đơn hoặc chứng từ ủy nhiệm chi hợp lệ.");
+              return;
+            }
             await payoutService.approve(dialog.request.id, bill, {
               bankRefCode: bankRefCode.trim(),
               note: note.trim(),
             });
-            isApiSuccess = true;
-          } else if (dialog.action === "reject") {
+            setSuccess(`Đã xác nhận chi trả thành công cho ${dialog.request.collaboratorName}`);
+            toast.success(`Duyệt chi trả thành công cho ${dialog.request.collaboratorName}!`);
+          } else {
             await payoutService.reject(storeId, dialog.request.id, reason.trim());
-            isApiSuccess = true;
+            setSuccess(`Đã từ chối yêu cầu chi trả của ${dialog.request.collaboratorName}`);
+            toast.success("Đã từ chối và hoàn tiền về ví shop.");
           }
+          setDialog(null);
+          await load();
+          return;
+        } catch (err: unknown) {
+          const errMsg = await getPayoutErrorMessage(err);
+          setError(`Thao tác chi trả thất bại: ${errMsg}`);
+          toast.error(`Chi trả thất bại: ${errMsg}`);
+          return; // Dừng lại ngay, TUYỆT ĐỐI KHÔNG cập nhật trạng thái giả mạo
         }
-      } catch (err) {
-        console.warn("API payout action failed, updating locally:", err);
       }
 
+      // Trường hợp dữ liệu kiểm thử (Seed demo)
       if (dialog.action === "approve") {
         const approvedCode = bankRefCode.trim() || `MBB${Date.now().toString().slice(-8)}`;
         if (bill) {
@@ -565,12 +580,11 @@ export default function PayoutApprovalPage() {
               : item
           )
         );
-        setSuccess("Đã từ chối yêu cầu và hoàn tiền về đúng ví shop.");
+        setSuccess("Đã từ chối yêu cầu và hoàn tiền về ví shop.");
         toast.success("Đã từ chối và hoàn tiền về ví shop.");
       }
 
       setDialog(null);
-      if (isApiSuccess) await load();
     });
   }
 

@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { MediaService } from '../media.service';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { ReviewActionStatus } from '../dto/review-media.dto';
@@ -66,7 +70,10 @@ describe('FR-15 / FR-08: Media Submission & Moderation Flow (Unit Tests)', () =>
 
     it('nên từ chối URL localhost hoặc private IP (SSRF protection)', () => {
       expect(() =>
-        service.validateAllowedUrl('http://127.0.0.1:8080/exploit.mp4', 'Video URL'),
+        service.validateAllowedUrl(
+          'http://127.0.0.1:8080/exploit.mp4',
+          'Video URL',
+        ),
       ).toThrow(ForbiddenException);
 
       expect(() =>
@@ -74,27 +81,42 @@ describe('FR-15 / FR-08: Media Submission & Moderation Flow (Unit Tests)', () =>
       ).toThrow(ForbiddenException);
 
       expect(() =>
-        service.validateAllowedUrl('http://192.168.1.10/video.mp4', 'Video URL'),
+        service.validateAllowedUrl(
+          'http://192.168.1.10/video.mp4',
+          'Video URL',
+        ),
       ).toThrow(ForbiddenException);
     });
 
     it('nên từ chối domain lạ không nằm trong allowlist', () => {
       expect(() =>
-        service.validateAllowedUrl('https://website-lua-dao.example/video.mp4', 'Video URL'),
+        service.validateAllowedUrl(
+          'https://website-lua-dao.example/video.mp4',
+          'Video URL',
+        ),
       ).toThrow(ForbiddenException);
     });
 
     it('nên chấp nhận URL từ các domain hợp lệ đã được phê duyệt (CDN SCANMS, Cloudinary, YouTube, TikTok)', () => {
       expect(() =>
-        service.validateAllowedUrl('https://cdn.scanms.vn/videos/review.mp4', 'Video URL'),
+        service.validateAllowedUrl(
+          'https://cdn.scanms.vn/videos/review.mp4',
+          'Video URL',
+        ),
       ).not.toThrow();
 
       expect(() =>
-        service.validateAllowedUrl('https://res.cloudinary.com/scanms/video/upload/demo.mp4', 'Video URL'),
+        service.validateAllowedUrl(
+          'https://res.cloudinary.com/scanms/video/upload/demo.mp4',
+          'Video URL',
+        ),
       ).not.toThrow();
 
       expect(() =>
-        service.validateAllowedUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'Video URL'),
+        service.validateAllowedUrl(
+          'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          'Video URL',
+        ),
       ).not.toThrow();
     });
   });
@@ -272,7 +294,9 @@ describe('FR-15 / FR-08: Media Submission & Moderation Flow (Unit Tests)', () =>
       const errors = await validate(dto);
       const campaignError = errors.find((e) => e.property === 'campaignId');
       expect(campaignError).toBeDefined();
-      expect(campaignError?.constraints?.isUuid).toContain('campaignId phải là định dạng UUID hợp lệ');
+      expect(campaignError?.constraints?.isUuid).toContain(
+        'campaignId phải là định dạng UUID hợp lệ',
+      );
     });
 
     it('nên chấp nhận campaignId là UUID v4 hợp lệ', async () => {
@@ -298,7 +322,9 @@ describe('FR-15 / FR-08: Media Submission & Moderation Flow (Unit Tests)', () =>
 
       expect(dto.requiresCampaignParticipation).toBe(false);
       const errors = await validate(dto);
-      const propError = errors.find((e) => e.property === 'requiresCampaignParticipation');
+      const propError = errors.find(
+        (e) => e.property === 'requiresCampaignParticipation',
+      );
       expect(propError).toBeUndefined();
     });
 
@@ -312,7 +338,9 @@ describe('FR-15 / FR-08: Media Submission & Moderation Flow (Unit Tests)', () =>
 
       expect(dto.requiresCampaignParticipation).toBe(true);
       const errors = await validate(dto);
-      const propError = errors.find((e) => e.property === 'requiresCampaignParticipation');
+      const propError = errors.find(
+        (e) => e.property === 'requiresCampaignParticipation',
+      );
       expect(propError).toBeUndefined();
     });
 
@@ -325,9 +353,13 @@ describe('FR-15 / FR-08: Media Submission & Moderation Flow (Unit Tests)', () =>
       });
 
       const errors = await validate(dto);
-      const propError = errors.find((e) => e.property === 'requiresCampaignParticipation');
+      const propError = errors.find(
+        (e) => e.property === 'requiresCampaignParticipation',
+      );
       expect(propError).toBeDefined();
-      expect(propError?.constraints?.isBoolean).toContain('requiresCampaignParticipation phải là kiểu boolean');
+      expect(propError?.constraints?.isBoolean).toContain(
+        'requiresCampaignParticipation phải là kiểu boolean',
+      );
     });
   });
 });

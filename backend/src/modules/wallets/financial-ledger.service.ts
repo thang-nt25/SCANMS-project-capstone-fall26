@@ -3,7 +3,15 @@ import { Prisma, TransactionType, WalletBalanceBucket } from '@prisma/client';
 
 export interface LedgerReference {
   id: string;
-  type: 'COMMISSION' | 'PAYOUT_REQUEST' | 'MONTHLY_BONUS' | 'ORDER_REFUND';
+  type:
+    | 'COMMISSION'
+    | 'PAYOUT_REQUEST'
+    | 'MONTHLY_BONUS'
+    | 'ORDER_REFUND'
+    | 'ORDER_PAYMENT'
+    | 'TOPUP_DEMO'
+    | 'TOPUP_PAYOS'
+    | string;
 }
 
 export interface LedgerBalanceChange {

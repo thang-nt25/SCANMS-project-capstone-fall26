@@ -139,6 +139,7 @@ export interface StoreOrdersResponse {
 export const orderService = {
   async getMyStoreOrders(params?: {
     status?: string;
+    paymentStatus?: string;
     search?: string;
     page?: number;
     limit?: number;

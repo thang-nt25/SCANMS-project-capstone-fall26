@@ -23,7 +23,7 @@ import { PublicHeader } from '../../components/layout/PublicHeader';
 import { useScanmsChat } from '../../context/ScanmsChatContext';
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
-import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
 
 function getPublicWebsiteUrl(value: unknown): URL | null {

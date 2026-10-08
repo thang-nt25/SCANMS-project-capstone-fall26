@@ -101,7 +101,8 @@ export class ReturnController {
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: UserRole,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ReturnZodPipe(simulatePickupSchema)) body: { status: 'picked' | 'delivered' },
+    @Body(new ReturnZodPipe(simulatePickupSchema))
+    body: { status: 'picked' | 'delivered' },
   ) {
     return this.returns.simulatePickup(userId, role, id, body.status);
   }

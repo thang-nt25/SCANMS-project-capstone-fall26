@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import {
   LeaderboardQueryDto,
@@ -37,7 +42,8 @@ export class LeaderboardService {
       switch (dto.timeRange) {
         case LeaderboardTimeRange.LAST_MONTH: {
           const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-          const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+          const prevYear =
+            now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
           startDate = new Date(prevYear, prevMonth, 1, 0, 0, 0, 0);
           endDate = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59, 999);
           label = `Tháng ${prevMonth + 1}/${prevYear}`;
@@ -45,8 +51,24 @@ export class LeaderboardService {
         }
         case LeaderboardTimeRange.THIS_QUARTER: {
           const currentQuarter = Math.floor(now.getMonth() / 3);
-          startDate = new Date(now.getFullYear(), currentQuarter * 3, 1, 0, 0, 0, 0);
-          endDate = new Date(now.getFullYear(), (currentQuarter + 1) * 3, 0, 23, 59, 59, 999);
+          startDate = new Date(
+            now.getFullYear(),
+            currentQuarter * 3,
+            1,
+            0,
+            0,
+            0,
+            0,
+          );
+          endDate = new Date(
+            now.getFullYear(),
+            (currentQuarter + 1) * 3,
+            0,
+            23,
+            59,
+            59,
+            999,
+          );
           label = `Quý ${currentQuarter + 1}/${now.getFullYear()}`;
           break;
         }
@@ -58,8 +80,24 @@ export class LeaderboardService {
         }
         case LeaderboardTimeRange.THIS_MONTH:
         default: {
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+          startDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1,
+            0,
+            0,
+            0,
+            0,
+          );
+          endDate = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+            999,
+          );
           label = `Tháng ${now.getMonth() + 1}/${now.getFullYear()}`;
           break;
         }
@@ -80,7 +118,8 @@ export class LeaderboardService {
     currentUserRole: string,
     dto: LeaderboardQueryDto,
   ): Promise<LeaderboardFullResponseDto> {
-    const { startDate, endDate, prevStartDate, prevEndDate, label } = this.resolveLeaderboardPeriod(dto);
+    const { startDate, endDate, prevStartDate, prevEndDate, label } =
+      this.resolveLeaderboardPeriod(dto);
 
     // Điều kiện lọc phạm vi (Global vs Store)
     const baseOrderWhere: any = {
@@ -107,14 +146,22 @@ export class LeaderboardService {
           },
           select: { id: true },
         });
-        if (!store) throw new NotFoundException('Không tìm thấy gian hàng của bạn.');
+        if (!store)
+          throw new NotFoundException('Không tìm thấy gian hàng của bạn.');
         scopedStoreId = store.id;
-      } else if (currentUserRole !== UserRole.SYSTEM_ADMIN && currentUserRole !== UserRole.SYSTEM_MANAGER) {
-        throw new ForbiddenException('Bạn không có quyền xem bảng xếp hạng theo gian hàng.');
+      } else if (
+        currentUserRole !== UserRole.SYSTEM_ADMIN &&
+        currentUserRole !== UserRole.SYSTEM_MANAGER
+      ) {
+        throw new ForbiddenException(
+          'Bạn không có quyền xem bảng xếp hạng theo gian hàng.',
+        );
       }
 
       if (!scopedStoreId) {
-        throw new BadRequestException('Cần chọn gian hàng để lọc bảng xếp hạng.');
+        throw new BadRequestException(
+          'Cần chọn gian hàng để lọc bảng xếp hạng.',
+        );
       }
       baseOrderWhere.storeId = scopedStoreId;
       prevOrderWhere.storeId = scopedStoreId;
@@ -137,7 +184,13 @@ export class LeaderboardService {
       isValid: true,
       ...(scopedStoreId ? { storeId: scopedStoreId } : {}),
     };
-    const [orderGroups, prevOrderGroups, clickGroups, commissionGroups, collaborators] = await Promise.all([
+    const [
+      orderGroups,
+      prevOrderGroups,
+      clickGroups,
+      commissionGroups,
+      collaborators,
+    ] = await Promise.all([
       this.prisma.order.groupBy({
         by: ['attributedCollaboratorId'],
         where: baseOrderWhere,
@@ -162,7 +215,11 @@ export class LeaderboardService {
         _sum: { commissionAmount: true },
       }),
       this.prisma.user.findMany({
-        where: { role: UserRole.COLLABORATOR, isActive: true, isDeleted: false },
+        where: {
+          role: UserRole.COLLABORATOR,
+          isActive: true,
+          isDeleted: false,
+        },
         select: {
           id: true,
           fullName: true,
@@ -182,18 +239,21 @@ export class LeaderboardService {
     ]);
 
     // 2. Gom nhóm số liệu theo từng Collaborator
-    const statsMap = new Map<string, {
-      collaboratorId: string;
-      fullName: string;
-      avatarUrl?: string;
-      primaryChannelHandle?: string;
-      primaryPlatform?: string;
-      tierName: string;
-      grossRevenue: number;
-      totalOrders: number;
-      totalClicks: number;
-      totalCommission: number;
-    }>();
+    const statsMap = new Map<
+      string,
+      {
+        collaboratorId: string;
+        fullName: string;
+        avatarUrl?: string;
+        primaryChannelHandle?: string;
+        primaryPlatform?: string;
+        tierName: string;
+        grossRevenue: number;
+        totalOrders: number;
+        totalClicks: number;
+        totalCommission: number;
+      }
+    >();
 
     // Khởi tạo danh sách từ bảng người dùng
     for (const c of collaborators) {
@@ -202,7 +262,9 @@ export class LeaderboardService {
         collaboratorId: c.id,
         fullName: c.fullName || 'Creator SCANMS',
         avatarUrl: c.avatarUrl || c.collaboratorProfile?.avatarUrl || undefined,
-        primaryChannelHandle: primarySocial?.channelName ? `@${primarySocial.channelName}` : undefined,
+        primaryChannelHandle: primarySocial?.channelName
+          ? `@${primarySocial.channelName}`
+          : undefined,
         primaryPlatform: primarySocial?.platformName || undefined,
         tierName: c.collaboratorProfile?.tier?.name || 'Cấp Bạc',
         grossRevenue: 0,
@@ -220,7 +282,10 @@ export class LeaderboardService {
     }
 
     for (const group of orderGroups) {
-      if (group.attributedCollaboratorId && statsMap.has(group.attributedCollaboratorId)) {
+      if (
+        group.attributedCollaboratorId &&
+        statsMap.has(group.attributedCollaboratorId)
+      ) {
         const item = statsMap.get(group.attributedCollaboratorId)!;
         item.totalOrders = group._count._all;
         item.grossRevenue = Number(group._sum.finalAmount || 0);
@@ -228,7 +293,9 @@ export class LeaderboardService {
     }
     for (const group of commissionGroups) {
       if (statsMap.has(group.collaboratorId)) {
-        statsMap.get(group.collaboratorId)!.totalCommission = Number(group._sum.commissionAmount || 0);
+        statsMap.get(group.collaboratorId)!.totalCommission = Number(
+          group._sum.commissionAmount || 0,
+        );
       }
     }
 
@@ -236,11 +303,16 @@ export class LeaderboardService {
     const prevRevenueMap = new Map<string, number>();
     for (const group of prevOrderGroups) {
       if (group.attributedCollaboratorId) {
-        prevRevenueMap.set(group.attributedCollaboratorId, Number(group._sum.finalAmount || 0));
+        prevRevenueMap.set(
+          group.attributedCollaboratorId,
+          Number(group._sum.finalAmount || 0),
+        );
       }
     }
 
-    const prevRankSorted = Array.from(prevRevenueMap.entries()).sort((a, b) => b[1] - a[1]);
+    const prevRankSorted = Array.from(prevRevenueMap.entries()).sort(
+      (a, b) => b[1] - a[1],
+    );
     const prevRankMap = new Map<string, number>();
     prevRankSorted.forEach(([collabId], index) => {
       prevRankMap.set(collabId, index + 1);
@@ -250,70 +322,84 @@ export class LeaderboardService {
     const sortedList = Array.from(statsMap.values()).sort((a, b) => {
       switch (metric) {
         case LeaderboardMetricType.ORDERS:
-          return b.totalOrders - a.totalOrders || b.grossRevenue - a.grossRevenue;
+          return (
+            b.totalOrders - a.totalOrders || b.grossRevenue - a.grossRevenue
+          );
         case LeaderboardMetricType.CONVERSION_RATE: {
-          const crA = a.totalClicks > 0 ? (a.totalOrders / a.totalClicks) * 100 : 0;
-          const crB = b.totalClicks > 0 ? (b.totalOrders / b.totalClicks) * 100 : 0;
+          const crA =
+            a.totalClicks > 0 ? (a.totalOrders / a.totalClicks) * 100 : 0;
+          const crB =
+            b.totalClicks > 0 ? (b.totalOrders / b.totalClicks) * 100 : 0;
           return crB - crA || b.grossRevenue - a.grossRevenue;
         }
         case LeaderboardMetricType.COMMISSION:
-          return b.totalCommission - a.totalCommission || b.grossRevenue - a.grossRevenue;
+          return (
+            b.totalCommission - a.totalCommission ||
+            b.grossRevenue - a.grossRevenue
+          );
         case LeaderboardMetricType.REVENUE:
         default:
-          return b.grossRevenue - a.grossRevenue || b.totalOrders - a.totalOrders;
+          return (
+            b.grossRevenue - a.grossRevenue || b.totalOrders - a.totalOrders
+          );
       }
     });
 
     // 4. Định hình DTO và tính toán Rank Delta
-    const allRankedItems: LeaderboardItemDto[] = sortedList.map((item, index) => {
-      const currentRank = index + 1;
-      const prevRank = prevRankMap.get(item.collaboratorId);
-      let rankDelta = 0;
-      if (prevRank !== undefined) {
-        rankDelta = prevRank - currentRank; // rank cũ 5, rank mới 3 => +2 bậc
-      } else {
-        rankDelta = 0; // NEW
-      }
+    const allRankedItems: LeaderboardItemDto[] = sortedList.map(
+      (item, index) => {
+        const currentRank = index + 1;
+        const prevRank = prevRankMap.get(item.collaboratorId);
+        let rankDelta = 0;
+        if (prevRank !== undefined) {
+          rankDelta = prevRank - currentRank; // rank cũ 5, rank mới 3 => +2 bậc
+        } else {
+          rankDelta = 0; // NEW
+        }
 
-      const conversionRate = item.totalClicks > 0
-        ? parseFloat(((item.totalOrders / item.totalClicks) * 100).toFixed(2))
-        : 0;
+        const conversionRate =
+          item.totalClicks > 0
+            ? parseFloat(
+                ((item.totalOrders / item.totalClicks) * 100).toFixed(2),
+              )
+            : 0;
 
-      let bonusPrizeAmount: number | undefined;
-      let badgeTitle: string | undefined;
+        let bonusPrizeAmount: number | undefined;
+        let badgeTitle: string | undefined;
 
-      if (currentRank === 1) {
-        bonusPrizeAmount = 5000000;
-        badgeTitle = '🏆 Quán Quân Doanh Số';
-      } else if (currentRank === 2) {
-        bonusPrizeAmount = 2500000;
-        badgeTitle = '🥈 Á Quân Bán Hàng';
-      } else if (currentRank === 3) {
-        bonusPrizeAmount = 1000000;
-        badgeTitle = '🥉 Top 3 Bứt Phá';
-      } else if (currentRank <= 10) {
-        badgeTitle = '⭐ Top 10 Tinh Hoa';
-      }
+        if (currentRank === 1) {
+          bonusPrizeAmount = 5000000;
+          badgeTitle = '🏆 Quán Quân Doanh Số';
+        } else if (currentRank === 2) {
+          bonusPrizeAmount = 2500000;
+          badgeTitle = '🥈 Á Quân Bán Hàng';
+        } else if (currentRank === 3) {
+          bonusPrizeAmount = 1000000;
+          badgeTitle = '🥉 Top 3 Bứt Phá';
+        } else if (currentRank <= 10) {
+          badgeTitle = '⭐ Top 10 Tinh Hoa';
+        }
 
-      return {
-        rank: currentRank,
-        rankDelta,
-        collaboratorId: item.collaboratorId,
-        fullName: item.fullName,
-        avatarUrl: item.avatarUrl,
-        primaryChannelHandle: item.primaryChannelHandle,
-        primaryPlatform: item.primaryPlatform,
-        tierName: item.tierName,
-        grossRevenue: item.grossRevenue,
-        totalOrders: item.totalOrders,
-        totalClicks: item.totalClicks,
-        conversionRate,
-        totalCommission: item.totalCommission,
-        bonusPrizeAmount,
-        badgeTitle,
-        isCurrentUser: item.collaboratorId === currentUserId,
-      };
-    });
+        return {
+          rank: currentRank,
+          rankDelta,
+          collaboratorId: item.collaboratorId,
+          fullName: item.fullName,
+          avatarUrl: item.avatarUrl,
+          primaryChannelHandle: item.primaryChannelHandle,
+          primaryPlatform: item.primaryPlatform,
+          tierName: item.tierName,
+          grossRevenue: item.grossRevenue,
+          totalOrders: item.totalOrders,
+          totalClicks: item.totalClicks,
+          conversionRate,
+          totalCommission: item.totalCommission,
+          bonusPrizeAmount,
+          badgeTitle,
+          isCurrentUser: item.collaboratorId === currentUserId,
+        };
+      },
+    );
 
     // 5. Tách Podium (Top 1, 2, 3) và Bảng Top 4 - N
     const podium: LeaderboardPodiumDto = {
@@ -327,15 +413,19 @@ export class LeaderboardService {
 
     // 6. Tính toán vị trí cá nhân của người dùng hiện tại (My Rank Status)
     let myRankStatus: MyRankStatusDto | undefined;
-    const myItemIndex = allRankedItems.findIndex((i) => i.collaboratorId === currentUserId);
+    const myItemIndex = allRankedItems.findIndex(
+      (i) => i.collaboratorId === currentUserId,
+    );
     if (myItemIndex !== -1) {
       const myItem = allRankedItems[myItemIndex];
       const rank10Item = allRankedItems[9];
-      const nextRankItem = myItemIndex > 0 ? allRankedItems[myItemIndex - 1] : null;
+      const nextRankItem =
+        myItemIndex > 0 ? allRankedItems[myItemIndex - 1] : null;
 
-      const gapToTop10 = rank10Item && myItem.rank > 10
-        ? Math.max(0, rank10Item.grossRevenue - myItem.grossRevenue + 100000)
-        : 0;
+      const gapToTop10 =
+        rank10Item && myItem.rank > 10
+          ? Math.max(0, rank10Item.grossRevenue - myItem.grossRevenue + 100000)
+          : 0;
 
       const gapToNextRank = nextRankItem
         ? Math.max(0, nextRankItem.grossRevenue - myItem.grossRevenue + 50000)
@@ -372,7 +462,11 @@ export class LeaderboardService {
   }
 
   // ─── 4. TRẠNG THÁI THỨ HẠNG CỦA TÔI (MY RANK) ─────────────────────────
-  async getMyRankStatus(userId: string, userRole: string, dto: LeaderboardQueryDto): Promise<MyRankStatusDto> {
+  async getMyRankStatus(
+    userId: string,
+    userRole: string,
+    dto: LeaderboardQueryDto,
+  ): Promise<MyRankStatusDto> {
     const full = await this.getLeaderboard(userId, userRole, dto);
     if (!full.myRankStatus) {
       return {
@@ -403,11 +497,18 @@ export class LeaderboardService {
     });
 
     if (!creator) {
-      throw new NotFoundException('Không tìm thấy Creator trong danh sách vinh danh.');
+      throw new NotFoundException(
+        'Không tìm thấy Creator trong danh sách vinh danh.',
+      );
     }
 
     // Thống kê thành tích trọn đời
-    const [lifetimeOrdersCount, lifetimeRevenueAgg, lifetimeCommissionAgg, totalSampleRequests] = await Promise.all([
+    const [
+      lifetimeOrdersCount,
+      lifetimeRevenueAgg,
+      lifetimeCommissionAgg,
+      totalSampleRequests,
+    ] = await Promise.all([
       this.prisma.order.count({
         where: {
           attributedCollaboratorId: creatorId,
@@ -442,7 +543,9 @@ export class LeaderboardService {
         },
       },
       include: {
-        product: { select: { id: true, title: true, imageUrl: true, price: true } },
+        product: {
+          select: { id: true, title: true, imageUrl: true, price: true },
+        },
       },
       take: 5,
     });
@@ -451,8 +554,13 @@ export class LeaderboardService {
       creatorId: creator.id,
       fullName: creator.fullName,
       email: creator.email,
-      avatarUrl: creator.avatarUrl || creator.collaboratorProfile?.avatarUrl || undefined,
-      bio: creator.collaboratorProfile?.bio || 'Top Creator chuyên nghiệp hệ sinh thái SCANMS',
+      avatarUrl:
+        creator.avatarUrl ||
+        creator.collaboratorProfile?.avatarUrl ||
+        undefined,
+      bio:
+        creator.collaboratorProfile?.bio ||
+        'Top Creator chuyên nghiệp hệ sinh thái SCANMS',
       tierName: creator.collaboratorProfile?.tier?.name || 'Cấp Bạc',
       socialChannels: creator.socialChannels.map((s) => ({
         platform: s.platformName,
@@ -464,7 +572,9 @@ export class LeaderboardService {
       lifetimeStats: {
         totalOrders: lifetimeOrdersCount,
         totalRevenue: Number(lifetimeRevenueAgg._sum?.finalAmount || 0),
-        totalCommission: Number(lifetimeCommissionAgg._sum?.commissionAmount || 0),
+        totalCommission: Number(
+          lifetimeCommissionAgg._sum?.commissionAmount || 0,
+        ),
         totalSamplesReceived: totalSampleRequests,
       },
       topProducts: topItems.map((ti) => ({
@@ -475,9 +585,24 @@ export class LeaderboardService {
         quantitySold: ti.quantity,
       })),
       badges: [
-        { id: 'b1', name: '🏆 Top 10 Seller of the Year', icon: 'trophy', color: 'amber' },
-        { id: 'b2', name: '⚡ High Conversion Creator (CR > 5%)', icon: 'zap', color: 'emerald' },
-        { id: 'b3', name: '💎 Diamond Ambassador', icon: 'diamond', color: 'blue' },
+        {
+          id: 'b1',
+          name: '🏆 Top 10 Seller of the Year',
+          icon: 'trophy',
+          color: 'amber',
+        },
+        {
+          id: 'b2',
+          name: '⚡ High Conversion Creator (CR > 5%)',
+          icon: 'zap',
+          color: 'emerald',
+        },
+        {
+          id: 'b3',
+          name: '💎 Diamond Ambassador',
+          icon: 'diamond',
+          color: 'blue',
+        },
       ],
     };
   }

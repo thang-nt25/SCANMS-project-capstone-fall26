@@ -25,22 +25,59 @@ export class DashboardService {
     const now = new Date();
     let startDate: Date;
     let endDate: Date = new Date();
-    let interval: AnalyticsTimeInterval = dto.interval || AnalyticsTimeInterval.DAILY;
+    let interval: AnalyticsTimeInterval =
+      dto.interval || AnalyticsTimeInterval.DAILY;
 
-    const range = dto.range || (dto.days ? AnalyticsQuickRange.CUSTOM : AnalyticsQuickRange.LAST_30_DAYS);
+    const range =
+      dto.range ||
+      (dto.days
+        ? AnalyticsQuickRange.CUSTOM
+        : AnalyticsQuickRange.LAST_30_DAYS);
 
     switch (range) {
       case AnalyticsQuickRange.TODAY: {
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        startDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          0,
+          0,
+          0,
+          0,
+        );
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59,
+          999,
+        );
         interval = AnalyticsTimeInterval.HOURLY;
         break;
       }
       case AnalyticsQuickRange.YESTERDAY: {
         const y = new Date(now);
         y.setDate(y.getDate() - 1);
-        startDate = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0, 0);
-        endDate = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59, 999);
+        startDate = new Date(
+          y.getFullYear(),
+          y.getMonth(),
+          y.getDate(),
+          0,
+          0,
+          0,
+          0,
+        );
+        endDate = new Date(
+          y.getFullYear(),
+          y.getMonth(),
+          y.getDate(),
+          23,
+          59,
+          59,
+          999,
+        );
         interval = AnalyticsTimeInterval.HOURLY;
         break;
       }
@@ -63,8 +100,24 @@ export class DashboardService {
         break;
       }
       case AnalyticsQuickRange.LAST_MONTH: {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        startDate = new Date(
+          now.getFullYear(),
+          now.getMonth() - 1,
+          1,
+          0,
+          0,
+          0,
+          0,
+        );
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
         interval = AnalyticsTimeInterval.DAILY;
         break;
       }
@@ -74,7 +127,9 @@ export class DashboardService {
           startDate = new Date(dto.startDate);
           endDate = new Date(dto.endDate);
           if (startDate > endDate) {
-            throw new BadRequestException('Ngày bắt đầu không thể sau ngày kết thúc.');
+            throw new BadRequestException(
+              'Ngày bắt đầu không thể sau ngày kết thúc.',
+            );
           }
         } else if (dto.days) {
           startDate = new Date(now.getTime() - dto.days * 24 * 60 * 60 * 1000);
@@ -102,8 +157,13 @@ export class DashboardService {
   }
 
   // ─── 1. TỔNG QUAN HIỆU SUẤT REAL-TIME (KPI OVERVIEW) ─────────────────
-  async getRealtimeOverview(userId: string, role: string, dto: DashboardAnalyticsQueryDto) {
-    const { startDate, endDate, prevStartDate, prevEndDate } = this.resolveDateRange(dto);
+  async getRealtimeOverview(
+    userId: string,
+    role: string,
+    dto: DashboardAnalyticsQueryDto,
+  ) {
+    const { startDate, endDate, prevStartDate, prevEndDate } =
+      this.resolveDateRange(dto);
 
     let storeId: string | null = null;
     let isShop = false;
@@ -181,22 +241,34 @@ export class DashboardService {
       this.prisma.order.count({ where: prevOrderWhere }),
       // Số đơn hàng thành công (DELIVERED / COMPLETED)
       this.prisma.order.count({
-        where: { ...currentOrderWhere, status: { in: ['DELIVERED', 'COMPLETED'] } },
+        where: {
+          ...currentOrderWhere,
+          status: { in: ['DELIVERED', 'COMPLETED'] },
+        },
       }),
       // Doanh thu GMV kỳ này (finalAmount)
       this.prisma.order.aggregate({
         _sum: { finalAmount: true },
-        where: { ...currentOrderWhere, status: { in: ['DELIVERED', 'COMPLETED'] } },
+        where: {
+          ...currentOrderWhere,
+          status: { in: ['DELIVERED', 'COMPLETED'] },
+        },
       }),
       // Doanh thu GMV kỳ trước
       this.prisma.order.aggregate({
         _sum: { finalAmount: true },
-        where: { ...prevOrderWhere, status: { in: ['DELIVERED', 'COMPLETED'] } },
+        where: {
+          ...prevOrderWhere,
+          status: { in: ['DELIVERED', 'COMPLETED'] },
+        },
       }),
       // Hoa hồng kỳ này
       this.prisma.commission.aggregate({
         _sum: { commissionAmount: true },
-        where: { ...currentCommissionWhere, status: { in: ['APPROVED', 'PAID'] } },
+        where: {
+          ...currentCommissionWhere,
+          status: { in: ['APPROVED', 'PAID'] },
+        },
       }),
       // Hoa hồng kỳ trước
       this.prisma.commission.aggregate({
@@ -211,34 +283,62 @@ export class DashboardService {
 
     const currRevenue = Number(currRevenueAgg._sum?.finalAmount ?? 0);
     const prevRevenue = Number(prevRevenueAgg._sum?.finalAmount ?? 0);
-    const currCommission = Number(currCommissionAgg._sum?.commissionAmount ?? 0);
-    const prevCommission = Number(prevCommissionAgg._sum?.commissionAmount ?? 0);
+    const currCommission = Number(
+      currCommissionAgg._sum?.commissionAmount ?? 0,
+    );
+    const prevCommission = Number(
+      prevCommissionAgg._sum?.commissionAmount ?? 0,
+    );
 
     // Tỷ lệ chuyển đổi Conversion Rate (CR%) = (Orders / Clicks) * 100
-    const conversionRate = currClicksCount > 0
-      ? parseFloat(((currOrdersCount / currClicksCount) * 100).toFixed(2))
-      : 0;
+    const conversionRate =
+      currClicksCount > 0
+        ? parseFloat(((currOrdersCount / currClicksCount) * 100).toFixed(2))
+        : 0;
 
-    const prevConversionRate = prevClicksCount > 0
-      ? parseFloat(((prevOrdersCount / prevClicksCount) * 100).toFixed(2))
-      : 0;
+    const prevConversionRate =
+      prevClicksCount > 0
+        ? parseFloat(((prevOrdersCount / prevClicksCount) * 100).toFixed(2))
+        : 0;
 
     // Giá trị đơn hàng trung bình (Average Order Value - AOV)
-    const averageOrderValue = currCompletedOrdersCount > 0
-      ? Math.round(currRevenue / currCompletedOrdersCount)
-      : 0;
+    const averageOrderValue =
+      currCompletedOrdersCount > 0
+        ? Math.round(currRevenue / currCompletedOrdersCount)
+        : 0;
 
     // Tính % tăng trưởng so với kỳ trước
-    const growthClicks = this._calcGrowthPercent(currClicksCount, prevClicksCount);
-    const growthOrders = this._calcGrowthPercent(currOrdersCount, prevOrdersCount);
+    const growthClicks = this._calcGrowthPercent(
+      currClicksCount,
+      prevClicksCount,
+    );
+    const growthOrders = this._calcGrowthPercent(
+      currOrdersCount,
+      prevOrdersCount,
+    );
     const growthRevenue = this._calcGrowthPercent(currRevenue, prevRevenue);
-    const growthCommission = this._calcGrowthPercent(currCommission, prevCommission);
-    const growthConversionRate = this._calcGrowthPercent(conversionRate, prevConversionRate);
+    const growthCommission = this._calcGrowthPercent(
+      currCommission,
+      prevCommission,
+    );
+    const growthConversionRate = this._calcGrowthPercent(
+      conversionRate,
+      prevConversionRate,
+    );
 
     // Số liên kết tiếp thị đang hoạt động
-    const activeLinksCount = isShop && storeId
-      ? await this.prisma.referralLink.count({ where: { product: { storeId }, status: 'ACTIVE', deletedAt: null } })
-      : await this.prisma.referralLink.count({ where: { collaboratorId: userId, status: 'ACTIVE', deletedAt: null } });
+    const activeLinksCount =
+      isShop && storeId
+        ? await this.prisma.referralLink.count({
+            where: { product: { storeId }, status: 'ACTIVE', deletedAt: null },
+          })
+        : await this.prisma.referralLink.count({
+            where: {
+              collaboratorId: userId,
+              status: 'ACTIVE',
+              deletedAt: null,
+            },
+          });
 
     return {
       period: {
@@ -278,7 +378,11 @@ export class DashboardService {
   }
 
   // ─── 2. CHUỖI THỜI GIAN BIỂU ĐỒ (TIME-SERIES METRICS) ────────────────
-  async getTimeSeriesMetrics(userId: string, role: string, dto: DashboardAnalyticsQueryDto) {
+  async getTimeSeriesMetrics(
+    userId: string,
+    role: string,
+    dto: DashboardAnalyticsQueryDto,
+  ) {
     const { startDate, endDate, interval } = this.resolveDateRange(dto);
 
     let storeId: string | null = null;
@@ -293,14 +397,30 @@ export class DashboardService {
     }
 
     if (interval === AnalyticsTimeInterval.HOURLY) {
-      return this._getHourlyTimeSeries(userId, isShop, storeId, startDate, endDate);
+      return this._getHourlyTimeSeries(
+        userId,
+        isShop,
+        storeId,
+        startDate,
+        endDate,
+      );
     } else {
-      return this._getDailyTimeSeries(userId, isShop, storeId, startDate, endDate);
+      return this._getDailyTimeSeries(
+        userId,
+        isShop,
+        storeId,
+        startDate,
+        endDate,
+      );
     }
   }
 
   // ─── 3. TOP SẢN PHẨM BÁN CHẠY NHẤT (TOP PRODUCTS BREAKDOWN) ───────────
-  async getTopProductsBreakdown(userId: string, role: string, dto: TopBreakdownQueryDto) {
+  async getTopProductsBreakdown(
+    userId: string,
+    role: string,
+    dto: TopBreakdownQueryDto,
+  ) {
     const { startDate, endDate } = this.resolveDateRange({
       range: dto.range,
       startDate: dto.startDate,
@@ -309,7 +429,8 @@ export class DashboardService {
     const limit = dto.limit || 5;
 
     let storeId: string | null = null;
-    const isShop = role === UserRole.SHOP_MANAGER || role === UserRole.SYSTEM_ADMIN;
+    const isShop =
+      role === UserRole.SHOP_MANAGER || role === UserRole.SYSTEM_ADMIN;
 
     if (role === UserRole.SHOP_MANAGER) {
       storeId = await this.getStoreId(userId);
@@ -346,12 +467,15 @@ export class DashboardService {
     });
 
     // Gom nhóm theo productId
-    const productMap = new Map<string, {
-      product: any;
-      orderCount: number;
-      quantitySold: number;
-      grossRevenue: number;
-    }>();
+    const productMap = new Map<
+      string,
+      {
+        product: any;
+        orderCount: number;
+        quantitySold: number;
+        grossRevenue: number;
+      }
+    >();
 
     for (const item of orderItems) {
       if (!item.product) continue;
@@ -365,7 +489,8 @@ export class DashboardService {
 
       existing.orderCount += 1;
       existing.quantitySold += item.quantity;
-      existing.grossRevenue += Number(item.unitPrice || item.product.price) * item.quantity;
+      existing.grossRevenue +=
+        Number(item.unitPrice || item.product.price) * item.quantity;
       productMap.set(pid, existing);
     }
 
@@ -388,7 +513,11 @@ export class DashboardService {
   }
 
   // ─── 4. TOP KÊNH TRUYỀN THÔNG HIỆU QUẢ (CHANNELS BREAKDOWN) ───────────
-  async getTopChannelsBreakdown(userId: string, role: string, dto: TopBreakdownQueryDto) {
+  async getTopChannelsBreakdown(
+    userId: string,
+    role: string,
+    dto: TopBreakdownQueryDto,
+  ) {
     const { startDate, endDate } = this.resolveDateRange({
       range: dto.range,
       startDate: dto.startDate,
@@ -422,8 +551,18 @@ export class DashboardService {
       },
     });
 
-    const channelMap = new Map<string, { channel: string; clicks: number; orders: number }>();
-    const defaultChannels = ['TIKTOK', 'FACEBOOK', 'YOUTUBE', 'INSTAGRAM', 'ZALO', 'DIRECT'];
+    const channelMap = new Map<
+      string,
+      { channel: string; clicks: number; orders: number }
+    >();
+    const defaultChannels = [
+      'TIKTOK',
+      'FACEBOOK',
+      'YOUTUBE',
+      'INSTAGRAM',
+      'ZALO',
+      'DIRECT',
+    ];
 
     defaultChannels.forEach((c) => {
       channelMap.set(c, { channel: c, clicks: 0, orders: 0 });
@@ -431,7 +570,11 @@ export class DashboardService {
 
     for (const log of logs) {
       const ch = (log.referralLink?.channel || 'DIRECT').toUpperCase();
-      const existing = channelMap.get(ch) || { channel: ch, clicks: 0, orders: 0 };
+      const existing = channelMap.get(ch) || {
+        channel: ch,
+        clicks: 0,
+        orders: 0,
+      };
       existing.clicks += 1;
       channelMap.set(ch, existing);
     }
@@ -453,7 +596,11 @@ export class DashboardService {
 
     for (const ord of orders) {
       const ch = (ord.sourcePlatform || 'DIRECT').toUpperCase();
-      const existing = channelMap.get(ch) || { channel: ch, clicks: 0, orders: 0 };
+      const existing = channelMap.get(ch) || {
+        channel: ch,
+        clicks: 0,
+        orders: 0,
+      };
       existing.orders += 1;
       channelMap.set(ch, existing);
     }
@@ -466,15 +613,25 @@ export class DashboardService {
         channel: c.channel,
         clicks: c.clicks,
         orders: c.orders,
-        conversionRate: c.clicks > 0 ? parseFloat(((c.orders / c.clicks) * 100).toFixed(2)) : 0,
-        trafficSharePercent: totalClicks > 0 ? parseFloat(((c.clicks / totalClicks) * 100).toFixed(1)) : 0,
+        conversionRate:
+          c.clicks > 0
+            ? parseFloat(((c.orders / c.clicks) * 100).toFixed(2))
+            : 0,
+        trafficSharePercent:
+          totalClicks > 0
+            ? parseFloat(((c.clicks / totalClicks) * 100).toFixed(1))
+            : 0,
       }));
 
     return result;
   }
 
   // ─── 5. PHỄU CHUYỂN ĐỔI (CONVERSION FUNNEL) ──────────────────────────
-  async getConversionFunnel(userId: string, role: string, dto: DashboardAnalyticsQueryDto) {
+  async getConversionFunnel(
+    userId: string,
+    role: string,
+    dto: DashboardAnalyticsQueryDto,
+  ) {
     const { startDate, endDate } = this.resolveDateRange(dto);
 
     let storeId: string | null = null;
@@ -512,22 +669,38 @@ export class DashboardService {
           stage: 'ORDERS_PLACED',
           label: 'Đơn Hàng Khởi Tạo (Orders Placed)',
           count: totalOrders,
-          percentage: totalClicks > 0 ? parseFloat(((totalOrders / totalClicks) * 100).toFixed(2)) : 0,
+          percentage:
+            totalClicks > 0
+              ? parseFloat(((totalOrders / totalClicks) * 100).toFixed(2))
+              : 0,
         },
         {
           stage: 'ORDERS_COMPLETED',
           label: 'Đơn Giao Thành Công (Completed)',
           count: completedOrders,
-          percentage: totalOrders > 0 ? parseFloat(((completedOrders / totalOrders) * 100).toFixed(2)) : 0,
+          percentage:
+            totalOrders > 0
+              ? parseFloat(((completedOrders / totalOrders) * 100).toFixed(2))
+              : 0,
         },
       ],
-      conversionRate: totalClicks > 0 ? parseFloat(((totalOrders / totalClicks) * 100).toFixed(2)) : 0,
-      fulfillmentRate: totalOrders > 0 ? parseFloat(((completedOrders / totalOrders) * 100).toFixed(2)) : 0,
+      conversionRate:
+        totalClicks > 0
+          ? parseFloat(((totalOrders / totalClicks) * 100).toFixed(2))
+          : 0,
+      fulfillmentRate:
+        totalOrders > 0
+          ? parseFloat(((completedOrders / totalOrders) * 100).toFixed(2))
+          : 0,
     };
   }
 
   // ─── 6. HIỆU SUẤT CHIẾN DỊCH ĐỘC QUYỀN VIP (CAMPAIGN PERFORMANCE) ─────
-  async getCampaignPerformanceMetrics(userId: string, role: string, dto: DashboardAnalyticsQueryDto) {
+  async getCampaignPerformanceMetrics(
+    userId: string,
+    role: string,
+    dto: DashboardAnalyticsQueryDto,
+  ) {
     const { startDate, endDate } = this.resolveDateRange(dto);
 
     let rawCampaigns: any[] = [];
@@ -590,9 +763,16 @@ export class DashboardService {
       });
 
       const totalOrders = orders.length;
-      const totalRevenue = orders.reduce((sum, o) => sum + Number(o.finalAmount || 0), 0);
+      const totalRevenue = orders.reduce(
+        (sum, o) => sum + Number(o.finalAmount || 0),
+        0,
+      );
       const totalCommissions = orders.reduce((sum, o) => {
-        const commSum = o.commissions?.reduce((cSum, c) => cSum + Number(c.commissionAmount || 0), 0) || 0;
+        const commSum =
+          o.commissions?.reduce(
+            (cSum, c) => cSum + Number(c.commissionAmount || 0),
+            0,
+          ) || 0;
         return sum + commSum;
       }, 0);
 
@@ -681,7 +861,10 @@ export class DashboardService {
 
     return hours.map((item) => ({
       ...item,
-      conversionRate: item.clicks > 0 ? parseFloat(((item.orders / item.clicks) * 100).toFixed(2)) : 0,
+      conversionRate:
+        item.clicks > 0
+          ? parseFloat(((item.orders / item.clicks) * 100).toFixed(2))
+          : 0,
     }));
   }
 
@@ -692,14 +875,17 @@ export class DashboardService {
     startDate: Date,
     endDate: Date,
   ) {
-    const dayMap = new Map<string, {
-      date: string;
-      label: string;
-      clicks: number;
-      orders: number;
-      revenue: number;
-      commission: number;
-    }>();
+    const dayMap = new Map<
+      string,
+      {
+        date: string;
+        label: string;
+        clicks: number;
+        orders: number;
+        revenue: number;
+        commission: number;
+      }
+    >();
 
     const curr = new Date(startDate);
     while (curr <= endDate) {
@@ -760,7 +946,9 @@ export class DashboardService {
     });
 
     // Query commissions
-    const commissionWhere: any = { createdAt: { gte: startDate, lte: endDate } };
+    const commissionWhere: any = {
+      createdAt: { gte: startDate, lte: endDate },
+    };
     if (isShop && storeId) {
       commissionWhere.order = { storeId };
     } else if (!isShop) {
@@ -782,7 +970,8 @@ export class DashboardService {
 
     return Array.from(dayMap.values()).map((p) => ({
       ...p,
-      conversionRate: p.clicks > 0 ? parseFloat(((p.orders / p.clicks) * 100).toFixed(2)) : 0,
+      conversionRate:
+        p.clicks > 0 ? parseFloat(((p.orders / p.clicks) * 100).toFixed(2)) : 0,
     }));
   }
 
@@ -796,8 +985,16 @@ export class DashboardService {
 
   // ─── CÁC HÀM CŨ ĐỂ TƯƠNG THÍCH NGƯỢC (BACKWARD COMPATIBILITY) ───────
   async getShopDashboard(userId: string, days = 30) {
-    const overview = await this.getRealtimeOverview(userId, UserRole.SHOP_MANAGER, { days });
-    const timeseries = await this.getTimeSeriesMetrics(userId, UserRole.SHOP_MANAGER, { days });
+    const overview = await this.getRealtimeOverview(
+      userId,
+      UserRole.SHOP_MANAGER,
+      { days },
+    );
+    const timeseries = await this.getTimeSeriesMetrics(
+      userId,
+      UserRole.SHOP_MANAGER,
+      { days },
+    );
 
     return {
       summary: {
@@ -809,15 +1006,29 @@ export class DashboardService {
       },
       charts: {
         ordersByDay: timeseries.map((t) => ({ date: t.date, count: t.orders })),
-        revenueByDay: timeseries.map((t) => ({ date: t.date, revenue: t.revenue })),
-        clicksByDay: timeseries.map((t) => ({ date: t.date, clicks: t.clicks })),
+        revenueByDay: timeseries.map((t) => ({
+          date: t.date,
+          revenue: t.revenue,
+        })),
+        clicksByDay: timeseries.map((t) => ({
+          date: t.date,
+          clicks: t.clicks,
+        })),
       },
     };
   }
 
   async getKolDashboard(userId: string, days = 30) {
-    const overview = await this.getRealtimeOverview(userId, UserRole.COLLABORATOR, { days });
-    const timeseries = await this.getTimeSeriesMetrics(userId, UserRole.COLLABORATOR, { days });
+    const overview = await this.getRealtimeOverview(
+      userId,
+      UserRole.COLLABORATOR,
+      { days },
+    );
+    const timeseries = await this.getTimeSeriesMetrics(
+      userId,
+      UserRole.COLLABORATOR,
+      { days },
+    );
 
     return {
       summary: {
@@ -828,8 +1039,14 @@ export class DashboardService {
         pendingCommission: 0,
       },
       charts: {
-        commissionsByDay: timeseries.map((t) => ({ date: t.date, commission: t.commission })),
-        clicksByDay: timeseries.map((t) => ({ date: t.date, clicks: t.clicks })),
+        commissionsByDay: timeseries.map((t) => ({
+          date: t.date,
+          commission: t.commission,
+        })),
+        clicksByDay: timeseries.map((t) => ({
+          date: t.date,
+          clicks: t.clicks,
+        })),
       },
     };
   }

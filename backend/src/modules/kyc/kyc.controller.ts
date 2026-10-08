@@ -81,7 +81,9 @@ export class KycController {
 
   @Get('admin/applications')
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  @ApiOperation({ summary: 'Admin xem toàn bộ hồ sơ xin nâng cấp (KOL và Gian Hàng)' })
+  @ApiOperation({
+    summary: 'Admin xem toàn bộ hồ sơ xin nâng cấp (KOL và Gian Hàng)',
+  })
   async getUpgradeApplications() {
     return this.kycService.getUpgradeApplications();
   }
