@@ -14,7 +14,7 @@ import {
   formatMoney,
   getSafeProductImageUrl,
   normalizeSearch,
-} from '../../features/marketplace/marketplaceUtils';
+} from '@/utils/marketplace.utils';
 import type { CustomerWishlistItem } from '../../services/customer.service';
 import './CustomerWishlistTab.css';
 

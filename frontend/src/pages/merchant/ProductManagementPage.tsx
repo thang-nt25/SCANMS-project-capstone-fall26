@@ -2751,7 +2751,6 @@ export default function ProductManagementPage() {
                 </div>
               </div>
             </div>
-            </div>
 
             {/* READONLY COMMISSION FIELDS */}
             <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)]">
@@ -2948,7 +2947,7 @@ export default function ProductManagementPage() {
           </div>
 
           {/* KHỐI 6: THÔNG TIN PHÁP LÝ, XUẤT XỨ & KIỂM DUYỆT SẢN PHẨM (COMPLIANCE) */}
-          <div id="product-section-legal" className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.03)] sm:p-5">
+          <div id="product-section-legal" className="product-editor-section product-editor-evidence rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.03)] sm:p-5">
             <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3 mb-4">
               <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#1A1612]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
@@ -2957,11 +2956,6 @@ export default function ProductManagementPage() {
                 6. Thông tin pháp lý, Xuất xứ & Kiểm duyệt sản phẩm
               </span>
             </div>
-
-<<<<<<< HEAD
-          <div className="product-editor-section product-editor-evidence rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.03)] sm:p-5">
-=======
->>>>>>> origin/dev
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0">
                 <label className="mb-2 block text-xs font-semibold text-[#1A1612]">Thành phần <span className="text-[#DC2626]">*</span></label>

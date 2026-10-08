@@ -349,6 +349,7 @@ export default function KycSubmissionPage() {
               <p className="text-[11px] text-[#7D715E] mt-0.5 m-0">
                 Cung cấp link mạng xã hội và ảnh chụp màn hình studio để chứng minh quyền sở hữu kênh.
               </p>
+            </div>
           </div>
           <button
             type="button"

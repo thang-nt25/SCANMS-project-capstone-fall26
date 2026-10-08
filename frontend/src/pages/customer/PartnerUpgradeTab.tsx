@@ -155,11 +155,11 @@ export const PartnerUpgradeTab: React.FC = () => {
       toast.error('Vui lòng chọn nền tảng mạng xã hội chính');
       return;
     }
-    if (!kolForm.channelUrl.trim()) {
+    if (!kolForm.channelUrl?.trim()) {
       toast.error('Vui lòng nhập đường link kênh mạng xã hội');
       return;
     }
-    if (!kolForm.idCardNumber.trim() || kolForm.idCardNumber.length < 9) {
+    if (!kolForm.idCardNumber?.trim() || kolForm.idCardNumber.length < 9) {
       toast.error('Vui lòng nhập số CCCD/CMND hợp lệ');
       return;
     }
@@ -171,7 +171,7 @@ export const PartnerUpgradeTab: React.FC = () => {
       toast.error('Vui lòng chọn ngân hàng thụ hưởng');
       return;
     }
-    if (!kolForm.bankAccountNumber.trim() || !kolForm.bankAccountName.trim()) {
+    if (!kolForm.bankAccountNumber?.trim() || !kolForm.bankAccountName?.trim()) {
       toast.error(
         'Vui lòng nhập đầy đủ thông tin tài khoản ngân hàng để nhận hoa hồng',
       );

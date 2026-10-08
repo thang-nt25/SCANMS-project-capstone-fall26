@@ -140,6 +140,7 @@ export class NotificationsService {
         take: limit,
       }),
       this.prisma.notification.count({ where: whereClause }),
+      this.prisma.notification.count({ where: { userId, isRead: false } }),
       this.prisma.notification.count({
         where: { userId, isRead: false, ...getCategoryFilter('ORDER') },
       }),

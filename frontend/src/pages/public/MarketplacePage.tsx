@@ -36,6 +36,7 @@ import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { uploadService } from '../../services/upload.service';
 import { customerService } from '../../services/customer.service';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
+import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { ChatBell } from '../../components/chat/ChatBell';
 import { formatMoney } from '@/utils/marketplace.utils';
 import type { Product } from '@/types/marketplace.types';

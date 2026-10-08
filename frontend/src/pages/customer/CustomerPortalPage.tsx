@@ -18,8 +18,6 @@ import {
   Store,
   Store as StoreIcon,
   ShieldCheck,
-  ExternalLink,
-  Wallet,
   RotateCcw,
   Sparkles,
   X,
@@ -360,12 +358,6 @@ export default function CustomerPortalPage() {
     return () => window.clearInterval(interval);
   }, [currentUser?.id, currentTab, activeNotifCategory, notificationsPage]);
 
-  // Keep submenu open if active tab is in account
-  useEffect(() => {
-    if (currentTab === 'profile' || currentTab === 'identity' || currentTab === 'addresses' || currentTab === 'security') {
-      setIsAccountSubmenuOpen(true);
-    }
-  }, [currentTab]);
   // Load Vietnam Administrative Divisions
   useEffect(() => {
     const controller = new AbortController();
@@ -2108,6 +2100,7 @@ export default function CustomerPortalPage() {
                       Nhập thông tin trùng khớp với CCCD để đơn hàng được thông quan theo quy định từ ngày 9/7.
                       Thông tin được bảo mật theo Chính sách Bảo mật SCANMS.
                     </p>
+                  </div>
                 </header>
 
                 <div className="identity-form-content">

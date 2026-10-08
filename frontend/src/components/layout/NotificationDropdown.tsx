@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { notificationsService, type AppNotification } from '../../services/notifications.service';
+import { authService } from '../../services/auth.service';
 import { liveBroadcastService } from '@/services/live-broadcast.service';
 import { getNotificationSection } from '../../utils/notificationCategories';
 import './NotificationDropdown.css';

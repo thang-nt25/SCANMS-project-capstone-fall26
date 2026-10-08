@@ -273,7 +273,7 @@ export function KolUpgradeForm({
             <Field label="Nền tảng chính" id="kol-platform" required>
               <CustomSelect
                 id="kol-platform"
-                value={form.platform}
+                value={form.platform || ''}
                 onChange={(value) =>
                   patch('platform', value as ApplyKolData['platform'])
                 }
