@@ -77,12 +77,12 @@
 
 ::selection {
   background-color: #EEDFC6;
-  color: #1A1612;
+  color: var(--theme-ink, #1A1612);
 }
 
 ::-moz-selection {
   background-color: #EEDFC6;
-  color: #1A1612;
+  color: var(--theme-ink, #1A1612);
 }
 
 input, select, textarea {
@@ -290,7 +290,7 @@ img {
     inset 0 -1.5px 2px 0 rgba(140, 85, 15, 0.3),
     0 10px 24px -3px rgba(195, 140, 40, 0.42),
     0 3px 8px rgba(184, 125, 35, 0.2);
-  color: #1A1612;
+  color: var(--theme-ink, #1A1612);
   font-weight: 600;
   font-size: 14.5px;
   letter-spacing: 0.01em;
@@ -372,9 +372,9 @@ button {
 select {
   color-scheme: light !important;
   accent-color: #C59B58 !important;
-  background-color: #FFFFFF !important;
-  color: #1A1612 !important;
-  border-color: #EAE4D7 !important;
+  background-color: var(--theme-surface, #FFFFFF) !important;
+  color: var(--theme-ink, #1A1612) !important;
+  border-color: var(--theme-line, #EAE4D7) !important;
 }
 
 select:focus,
@@ -387,32 +387,32 @@ select:focus-visible {
 select option,
 select optgroup {
   color-scheme: light !important;
-  background-color: #FFFFFF !important;
-  color: #1A1612 !important;
+  background-color: var(--theme-surface, #FFFFFF) !important;
+  color: var(--theme-ink, #1A1612) !important;
   padding: 8px 12px !important;
 }
 
 select option:checked,
 select option[selected] {
-  background-color: #FBF5EB !important;
-  color: #B88E4F !important;
+  background-color: var(--theme-brand-soft, #FBF5EB) !important;
+  color: var(--theme-accent, #B88E4F) !important;
   font-weight: 600 !important;
 }
 
 select option:hover,
 select option:focus {
-  background-color: #F3EFE6 !important;
-  color: #1A1612 !important;
+  background-color: var(--theme-surface-sand, #F3EFE6) !important;
+  color: var(--theme-ink, #1A1612) !important;
 }
 
 ::selection {
   background-color: #EEDFC6 !important;
-  color: #1A1612 !important;
+  color: var(--theme-ink, #1A1612) !important;
 }
 
 ::-moz-selection {
   background-color: #EEDFC6 !important;
-  color: #1A1612 !important;
+  color: var(--theme-ink, #1A1612) !important;
 }
 
 input[type="checkbox"],
@@ -440,18 +440,18 @@ input[type="range"] {
 button[class~="bg-amber-600"] {
   background-color: #EBD08C !important;
   border-color: #DEC07A !important;
-  color: #231D15 !important;
+  color: var(--theme-ink, #231D15) !important;
 }
 
 button[class~="hover:bg-amber-700"]:hover {
   background-color: #DEC07A !important;
-  color: #231D15 !important;
+  color: var(--theme-ink, #231D15) !important;
 }
 
 button[class~="hover:bg-brand-strong"]:hover,
 button[class~="hover:!bg-brand-strong"]:hover {
   background-color: var(--brand-hover) !important;
-  color: #231D15 !important;
+  color: var(--theme-ink, #231D15) !important;
 }
 
 /* Keep primary actions a deeper SCANMS gold across legacy utility classes. */
@@ -489,7 +489,7 @@ button[class~="hover:!bg-brand-strong"]:hover {
   border-radius: 9999px !important;
   background: rgba(255, 255, 255, 0.96) !important;
   backdrop-filter: blur(16px) !important;
-  border: 1px solid #EEDFC6 !important;
+  border: 1px solid var(--theme-line, #EEDFC6) !important;
   box-shadow: 0 8px 24px -2px rgba(26, 22, 18, 0.16), 0 2px 6px -1px rgba(26, 22, 18, 0.05) !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -525,7 +525,7 @@ button[class~="hover:!bg-brand-strong"]:hover {
 [data-sonner-toast] [data-title] {
   font-size: 11.5px !important;
   font-weight: 700 !important;
-  color: #1A1612 !important;
+  color: var(--theme-ink, #1A1612) !important;
   line-height: 1.35 !important;
   letter-spacing: -0.01em !important;
   white-space: nowrap !important;
@@ -537,7 +537,7 @@ button[class~="hover:!bg-brand-strong"]:hover {
 [data-sonner-toast] [data-description] {
   font-size: 10.5px !important;
   font-weight: 500 !important;
-  color: #7D715E !important;
+  color: var(--theme-muted, #7D715E) !important;
 }
 
 /* Accent borders for distinct toast types */
@@ -557,7 +557,7 @@ button[class~="hover:!bg-brand-strong"]:hover {
 }
 
 [data-sonner-toast][data-type="info"] {
-  border-color: #EEDFC6 !important;
+  border-color: var(--theme-line, #EEDFC6) !important;
   background: rgba(255, 255, 255, 0.97) !important;
 }
 

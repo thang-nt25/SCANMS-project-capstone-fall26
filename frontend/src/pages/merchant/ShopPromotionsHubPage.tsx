@@ -6,6 +6,7 @@ import ShopCouponsPage from './ShopCouponsPage';
 import { CommissionRulesPage } from './CommissionRulesPage';
 import StoreReferralLinksPage from './StoreReferralLinksPage';
 import LiveSessionsPage from './LiveSessionsPage';
+import './ShopPromotionsHubPage.css';
 
 export default function ShopPromotionsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,22 +39,22 @@ export default function ShopPromotionsHubPage() {
   const tabs: HubTabItem[] = [
     {
       id: 'coupons',
-      label: 'Mã giảm giá (Coupons)',
+      label: 'Mã giảm giá',
       icon: Tag,
     },
     {
       id: 'commission-rules',
-      label: 'Cấu hình % Hoa hồng',
+      label: 'Hoa hồng & thưởng',
       icon: Trophy,
     },
     {
       id: 'referral-links',
-      label: 'Link Tiếp thị của Shop',
+      label: 'Link tiếp thị',
       icon: Link2,
     },
     {
       id: 'live-sessions',
-      label: 'Voucher Livestream',
+      label: 'Voucher livestream',
       icon: Radio,
     },
   ];
@@ -66,8 +67,8 @@ export default function ShopPromotionsHubPage() {
         onChange={handleTabChange}
         compact
         stretchTabs
-        tone="light"
-        className="mb-0"
+        tone="white"
+        className="promotions-tabs mb-0"
         actions={
           <button
             type="button"

@@ -1,0 +1,172 @@
+.kol-live-sessions {
+  color: var(--theme-ink, #1a1612);
+}
+
+.kol-live-sessions .kol-live-toolbar {
+  align-items: stretch;
+  padding: 16px 18px 12px;
+  gap: 12px;
+  background: var(--theme-surface, #fff);
+  box-shadow: none;
+}
+
+.kol-live-toolbar > div:first-child {
+  padding-left: 0;
+}
+
+.kol-live-toolbar > div:first-child > div:first-child {
+  width: 40px;
+  height: 40px;
+  background: var(--theme-surface, #fff);
+  box-shadow: none;
+}
+
+.kol-live-toolbar h1 {
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+  margin-bottom: 3px;
+}
+
+.kol-live-filters {
+  padding-top: 10px;
+  border-top: 1px solid var(--theme-line, #eae4d7);
+  min-width: 0;
+}
+
+.kol-live-tabs {
+  min-width: 0;
+}
+
+.kol-live-tabs button {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 11px;
+  border-radius: 9px;
+  box-shadow: none;
+}
+
+.kol-live-tabs button[aria-pressed='true'] {
+  background: var(--theme-surface, #fff);
+  border-color: #c59b58;
+  color: var(--theme-ink, #1a1612);
+}
+
+.kol-live-tabs button > span:last-child {
+  background: var(--theme-brand-soft, #fbf5eb);
+  color: var(--theme-muted, #7d715e);
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.kol-live-sessions .kol-live-card {
+  padding: 16px;
+  box-shadow: none;
+}
+
+.kol-live-session-heading h2 {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.kol-live-session-heading img,
+.kol-live-session-heading > div > div:first-child {
+  border-radius: 12px;
+  box-shadow: none;
+  background: var(--theme-surface, #fff);
+}
+
+.kol-live-sessions .kol-live-room {
+  background: var(--theme-surface, #fff);
+  border-color: var(--theme-line, #eedfc6);
+  color: var(--theme-ink, #1a1612);
+  min-height: 36px;
+  box-shadow: none;
+}
+
+.kol-live-sessions .kol-live-room svg {
+  color: var(--theme-accent, #b88e4f);
+}
+
+.kol-live-sessions .kol-live-room:hover {
+  background: var(--theme-brand-soft, #fbf5eb);
+  border-color: #c59b58;
+}
+
+.kol-live-voucher > div:first-child {
+  flex: 1;
+}
+
+.kol-live-voucher > div:first-child > div:last-child {
+  flex-shrink: 1;
+  flex-wrap: wrap;
+}
+
+.kol-live-voucher button,
+.kol-live-voucher code,
+.kol-live-voucher > div:first-child > div {
+  box-shadow: none;
+}
+
+.kol-live-metrics > div {
+  min-width: 0;
+  padding: 11px 12px;
+  background: var(--theme-surface, #fff);
+  box-shadow: none;
+  border-color: var(--theme-line, #eae4d7);
+  grid-column: auto;
+}
+
+.kol-live-metrics > div:hover {
+  box-shadow: none;
+  border-color: var(--theme-line, #eae4d7);
+}
+
+.kol-live-metrics p,
+.kol-live-metrics > div > div > span:first-child {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--theme-ink, #1a1612);
+  font-variant-numeric: tabular-nums;
+}
+
+.kol-live-metrics > div:last-child {
+  border-color: var(--theme-line, #eedfc6);
+}
+
+.kol-live-governance > div {
+  margin-top: 0;
+  padding: 11px 12px;
+  background: var(--theme-surface, #fff);
+  box-shadow: none;
+}
+
+.kol-live-governance > div > div:empty {
+  display: none;
+}
+
+.kol-live-sessions button:focus-visible,
+.kol-live-sessions a:focus-visible {
+  outline: 2px solid #b88e4f;
+  outline-offset: 3px;
+}
+
+@media (min-width: 1280px) {
+  .kol-live-metrics {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .kol-live-sessions .kol-live-toolbar,
+  .kol-live-sessions .kol-live-card {
+    padding: 12px;
+  }
+
+  .kol-live-toolbar h1 {
+    font-size: 17px;
+  }
+
+  .kol-live-metrics p {
+    font-size: 16px;
+  }
+}

@@ -411,7 +411,7 @@ export const CommissionRulesPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto box-border flex w-full max-w-[1520px] flex-col gap-5 pb-10 pt-4 font-sans sm:pt-5">
+    <div className="promotions-commission mx-auto box-border flex w-full max-w-[1520px] flex-col gap-5 pb-10 pt-4 font-sans sm:pt-5">
 
 
 
@@ -485,7 +485,7 @@ export const CommissionRulesPage: React.FC = () => {
       )}
 
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
+      <div className="commission-metrics grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
         <article className="flex min-h-[142px] flex-col justify-between rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_3px_12px_rgba(35,29,21,0.04)] sm:p-5">
           <div className="flex items-center justify-between gap-3 text-sm font-semibold text-[#7D715E]">
             <span>Số mốc cấu hình</span>
@@ -503,7 +503,7 @@ export const CommissionRulesPage: React.FC = () => {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Layers size={18} /></span>
           </div>
           <div>
-            <div className="text-xl font-extrabold tracking-tight text-[#8A642C]">Lũy tiến theo khoảng</div>
+            <div className="text-lg font-bold tracking-tight text-[#1A1612]">Lũy tiến theo khoảng</div>
             <div className="mt-1 text-xs text-[#7D715E]">Cộng thưởng cố định khi đạt KPI</div>
           </div>
         </article>
@@ -527,7 +527,7 @@ export const CommissionRulesPage: React.FC = () => {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#059669]"><CheckCircle2 size={18} /></span>
           </div>
           <div>
-            <div className="text-xl font-extrabold tracking-tight text-[#8A642C]">Có lưu snapshot</div>
+            <div className="text-lg font-bold tracking-tight text-[#1A1612]">Lưu lịch sử</div>
             <div className="mt-1 text-xs text-[#7D715E]">Giữ nguyên lịch sử chốt thưởng</div>
           </div>
         </article>
@@ -592,7 +592,7 @@ export const CommissionRulesPage: React.FC = () => {
               {rules.map((rule, idx) => (
                 <div
                   key={rule.id}
-                  className={`grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-2xl border p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.035)] transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-4 sm:p-4 ${rule.isActive ? 'border-[#EAE4D7] bg-white' : 'border-[#ECE1CD] bg-[#FAF8F5] opacity-80'}`}
+                  className={`commission-rule-card grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-2xl border p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.035)] transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-4 sm:p-4 ${rule.isActive ? 'border-[#EAE4D7] bg-white' : 'border-[#ECE1CD] bg-[#FAF8F5] opacity-80'}`}
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-sm font-extrabold text-[#8A642C] sm:h-11 sm:w-11">
                     #{idx + 1}
@@ -712,7 +712,7 @@ export const CommissionRulesPage: React.FC = () => {
             </div>
 
             {simResult && (
-              <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+              <div className="commission-simulation-result rounded-2xl border border-[#EAE4D7] bg-white p-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5">
                     <span className="block text-[11px] text-[#7D715E]">Mốc cao nhất đạt</span>

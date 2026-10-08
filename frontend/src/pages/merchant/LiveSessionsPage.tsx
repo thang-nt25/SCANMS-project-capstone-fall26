@@ -451,15 +451,15 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
   if (loading) return <div className="p-8 text-center text-[#7D715E]">Đang tải quản lý livestream…</div>;
 
   return (
-    <div className="mx-auto w-full max-w-[1560px] space-y-6 pt-1 pb-6 text-[#1A1612]">
-      <form onSubmit={createSession} className="space-y-5 rounded-3xl border border-[#EAE4D7] bg-white p-4 shadow-sm sm:p-6 lg:p-7">
+    <div className="promotions-live mx-auto w-full max-w-[1560px] space-y-6 pt-1 pb-6 text-[#1A1612]">
+      <form onSubmit={createSession} className="live-session-form space-y-5 rounded-3xl border border-[#EAE4D7] bg-white p-4 shadow-sm sm:p-6 lg:p-7">
         <div className="flex flex-col gap-4 border-b border-[#EAE4D7] pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3.5">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Radio className="h-5 w-5" /></span>
             <div>
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#B88E4F]">Voucher Livestream</p>
+              <p className="mb-1 text-xs font-medium text-[#B88E4F]">Voucher livestream</p>
               <h2 className="text-lg font-extrabold sm:text-xl">Tạo phiên & gửi lời mời KOL</h2>
-              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-[#7D715E] sm:text-sm">Voucher dành cho KOL đã được Shop duyệt hợp tác và chỉ áp dụng cho những sản phẩm được chọn.</p>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-[#7D715E] sm:text-sm">Mời KOL đã duyệt hợp tác và chọn sản phẩm áp dụng voucher.</p>
             </div>
           </div>
           <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-xs font-semibold text-[#7D715E]">
@@ -487,7 +487,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">
               Nền tảng phát sóng
               <Select value={form.platform} onChange={(e) => setField('platform', e.target.value)} className="h-11 w-full font-normal">
-                <option value="SCANMS">🔴 Sàn SCANMS Live</option><option value="TIKTOK">TikTok Live</option><option value="YOUTUBE">YouTube Live</option><option value="FACEBOOK">Facebook Live</option><option value="OTHER">Nền tảng khác</option>
+                <option value="SCANMS">Sàn SCANMS Live</option><option value="TIKTOK">TikTok Live</option><option value="YOUTUBE">YouTube Live</option><option value="FACEBOOK">Facebook Live</option><option value="OTHER">Nền tảng khác</option>
               </Select>
             </label>
             {form.platform === 'SCANMS' && (
@@ -497,7 +497,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
                   <input readOnly value={form.scanmsLiveUrl} placeholder={form.creatorId ? 'Đang tạo mã phiên...' : 'Chọn KOL hợp tác để tạo link'} aria-label="Link SCANMS Live tự sinh" className="min-w-0 flex-1 bg-transparent text-xs font-normal text-[#1A1612] outline-none sm:text-sm" />
                   <button type="button" disabled={!form.scanmsLiveUrl} onClick={() => void copyScanmsLiveUrl()} title="Sao chép link SCANMS Live" aria-label="Sao chép link SCANMS Live" className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#B88E4F] transition hover:bg-[#FBF5EB] disabled:opacity-40"><Copy className="h-4 w-4" /></button>
                 </div>
-                <span className="text-[11px] font-normal leading-relaxed text-[#7D715E]">Link dùng được sau khi tạo phiên; Shop và Admin có thể tra cứu KOL trong hồ sơ phiên.</span>
+                <span className="text-[11px] font-normal leading-relaxed text-[#7D715E]">Link được kích hoạt sau khi tạo phiên.</span>
               </div>
             )}
             {form.platform !== 'SCANMS' && (

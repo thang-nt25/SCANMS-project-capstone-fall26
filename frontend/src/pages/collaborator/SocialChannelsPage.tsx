@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import './KolProfile.css';
 import {
   Share2,
   Users,
@@ -121,7 +122,7 @@ export default function SocialChannelsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 text-left">
+    <div className="kol-social-page flex flex-col gap-4 text-left">
 
       {toastMsg && (
         <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 border border-[#EEDFC6]">
@@ -130,14 +131,15 @@ export default function SocialChannelsPage() {
         </div>
       )}
 
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <header className="kol-social-heading flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
+          <h1 className="text-lg font-bold text-[#1A1612] mb-1">Kênh mạng xã hội</h1>
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]">
               {filtered.length} / {displayChannels.length} kênh
             </span>
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-              Attribution Tracking v2
+              Quản lý các kênh sáng tạo của bạn
             </span>
           </div>
           
@@ -150,7 +152,7 @@ export default function SocialChannelsPage() {
             icon={<RotateCcw className="w-3.5 h-3.5" />}
             onClick={loadChannels}
           >
-            Khôi phục mẫu
+            Làm mới
           </Button>
           <Button
             variant="gold"
@@ -163,7 +165,7 @@ export default function SocialChannelsPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="kol-social-stats grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="p-4 flex flex-col justify-between gap-2 bg-white">
           <div className="flex justify-between items-center">
             <span className="text-xs text-[#7D715E] font-medium">Tổng kênh liên kết</span>
@@ -181,7 +183,7 @@ export default function SocialChannelsPage() {
 
         <Card className="p-4 flex flex-col justify-between gap-2 bg-white">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-[#7D715E] font-medium">Tổng lượt tiếp cận (Followers)</span>
+            <span className="text-xs text-[#7D715E] font-medium">Tổng người theo dõi</span>
             <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
@@ -189,7 +191,7 @@ export default function SocialChannelsPage() {
           <strong className="text-2xl font-extrabold text-[#1A1612]">
             {totalFollowers >= 1000 ? `${(totalFollowers / 1000).toFixed(1)}K` : totalFollowers.toString()}
           </strong>
-          <span className="text-[11px] text-[#7D715E]">Độ phủ nội dung trên mạng xã hội</span>
+          <span className="text-[11px] text-[#7D715E]">Tổng cộng từ các kênh đã liên kết</span>
         </Card>
 
         <Card className="p-4 flex flex-col justify-between gap-2 bg-white">
@@ -208,8 +210,8 @@ export default function SocialChannelsPage() {
         </Card>
       </div>
 
-      <Card className="p-3.5 bg-white flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex-1 min-w-[280px] relative">
+      <Card className="kol-social-filters p-3 bg-white flex flex-wrap gap-3 items-center justify-between">
+        <div className="flex-1 min-w-[200px] relative">
           <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -236,7 +238,7 @@ export default function SocialChannelsPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="kol-social-channel-list grid grid-cols-1 md:grid-cols-2 gap-3">
         {filtered.length === 0 ? (
           <Card className="col-span-full p-12 text-center bg-white border border-[#EAE4D7] rounded-2xl">
             <div className="text-4xl mb-3">📱</div>

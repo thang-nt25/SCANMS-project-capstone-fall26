@@ -5,6 +5,7 @@ import CreatorAccountDetails from './CreatorAccountDetails';
 import KycSubmissionPage from './KycSubmissionPage';
 import SocialChannelsPage from './SocialChannelsPage';
 import KolTierStatusPage from './KolTierStatusPage';
+import './KolProfile.css';
 
 export default function CreatorProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -17,17 +18,17 @@ export default function CreatorProfilePage() {
   const tabs: HubTabItem[] = [
     {
       id: 'profile',
-      label: 'Hồ Sơ Của Tôi',
+      label: 'Hồ sơ của tôi',
       icon: User,
     },
     {
       id: 'kyc',
-      label: 'Định danh điện tử KYC',
+      label: 'Định danh KYC',
       icon: ShieldCheck,
     },
     {
       id: 'social',
-      label: 'Kênh Mạng Xã Hội',
+      label: 'Kênh mạng xã hội',
       icon: Share2,
     },
     {
@@ -40,6 +41,9 @@ export default function CreatorProfilePage() {
   return (
     <div className="w-full flex flex-col" id="creator-profile-hub">
       <HubTabs
+        className="kol-profile-tabs"
+        tone="white"
+        compact
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}

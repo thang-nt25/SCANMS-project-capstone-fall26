@@ -37,7 +37,6 @@ import { uploadService } from '../../services/upload.service';
 import { customerService } from '../../services/customer.service';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
-import { ChatBell } from '../../components/chat/ChatBell';
 import { formatMoney } from '../../features/marketplace/marketplaceUtils';
 import type { Product } from '../../features/marketplace/marketplace.types';
 import { toast } from '../../utils/toast';
@@ -139,13 +138,6 @@ export default function MarketplacePage() {
 
   // Cart & Gateways
   const { totalCount: totalCartCount, openCart } = useCart();
-
-  const formatSoldCount = (sold?: number | string) => {
-    const count = Number(sold) || 600000;
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1).replace('.0', '')}tr+`;
-    if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1).replace('.0', '')}k+`;
-    return `${count}`;
-  };
 
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -551,8 +543,6 @@ export default function MarketplacePage() {
 
               {/* Icon Chuông Thông Báo & Live Stream Broadcast Cho Tất Cả Các Tài Khoản */}
               <NotificationDropdown />
-
-              {currentUser?.role === 'CUSTOMER' && <ChatBell userId={currentUser.id} />}
 
               {/* Customer / Partner Gateways Dropdown */}
               {currentUser ? (
@@ -1112,12 +1102,12 @@ export default function MarketplacePage() {
                     title={p.name}
                   >
                     {/* Image Container with Discount Badge & Wishlist Heart */}
-                    <div className="relative aspect-square bg-[#F3EFE6] overflow-hidden">
+                    <div className="relative aspect-square bg-white overflow-hidden">
                       <LiveSessionDealBadge deal={liveDeals[p.id]} now={liveDealsNow} />
                       <img
                         src={p.image}
                         alt={p.name}
-                        className="w-full h-full object-cover object-center transition-transform duration-300 scale-[1.02] group-hover:scale-[1.06]"
+                        className="w-full h-full object-contain object-center p-2 transition-transform duration-300 group-hover:scale-[1.03]"
                         loading="lazy"
                         onError={(e) => {
                           const target = e.currentTarget as HTMLImageElement;
@@ -1128,7 +1118,7 @@ export default function MarketplacePage() {
                         }}
                       />
                       {p.origPrice > p.price && (
-                        <span className="absolute top-0 left-0 px-1.5 py-0.5 rounded-br-md bg-[#FEE2E2] text-[#DC2626] text-[9.5px] sm:text-[10px] font-bold border-r border-b border-[#FADCD5] shadow-2xs z-10">
+                        <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[9.5px] sm:text-[10px] font-bold border border-[#EEDFC6] z-10">
                           -{Math.round(((p.origPrice - p.price) / p.origPrice) * 100)}%
                         </span>
                       )}
@@ -1164,7 +1154,7 @@ export default function MarketplacePage() {
                             title={p.brand || 'Gian hàng đối tác'}
                           >
                             <Store className="w-3 h-3 text-[#B88E4F] shrink-0" />
-                            <span className="truncate max-w-[85px] sm:max-w-[105px]">
+                            <span className="truncate">
                               {p.brand || 'Gian hàng đối tác'}
                             </span>
                           </Link>
@@ -1173,22 +1163,22 @@ export default function MarketplacePage() {
                           </span>
                         </div>
 
-                        {/* Row 2: Product Title (Strictly fixed height 34px - 2 lines, so 1-line and 2-line titles are 100% evenly aligned) */}
+                        {/* Keep titles aligned while allowing longer product names to remain readable. */}
                         <h3
-                          className="text-xs font-semibold text-[#1A1612] group-hover:text-[#B88E4F] transition-colors line-clamp-2 h-[34px] leading-[17px] mb-1 overflow-hidden"
+                          className="text-xs font-semibold text-[#1A1612] group-hover:text-[#B88E4F] transition-colors line-clamp-3 h-[54px] leading-[18px] mb-1 overflow-hidden"
                           title={p.name}
                         >
                           {p.name}
                         </h3>
 
-                        {/* Row 3: SCANMS Badge Row - "Rẻ Vô Địch" / "Hoa hồng" (Fixed height h-5 to keep all cards uniform) */}
+                        {/* Availability from inventory and partner commission. */}
                         <div className="flex items-center gap-1 h-5 mb-1.5 min-w-0">
                           <span
                             className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[9px] font-black text-[#B88E4F] shrink-0 shadow-2xs tracking-tight"
-                            title="Bảo chứng giá tốt nhất sàn - Rẻ Vô Địch"
+                            title={(p.stockQuantity ?? 0) > 0 ? 'Sản phẩm còn hàng' : 'Sản phẩm tạm hết hàng'}
                           >
                             <Zap className="w-2.5 h-2.5 fill-[#B88E4F] text-[#B88E4F] shrink-0" />
-                            <span>Rẻ Vô Địch</span>
+                            <span>{(p.stockQuantity ?? 0) > 0 ? 'Sẵn hàng' : 'Hết hàng'}</span>
                           </span>
 
                           {isKolUser && (p.commissionRate || 0) > 0 && (
@@ -1199,15 +1189,17 @@ export default function MarketplacePage() {
                         </div>
                       </div>
 
-                      {/* Row 4: SCANMS Standard Bottom Bar: Big Bold Price on Left, Sold Count on Right */}
+                      {/* Show catalogue prices without an invented sales count. */}
                       <div className="pt-1.5 border-t border-[#EAE4D7]/60 flex items-center justify-between gap-1">
-                        <span className="text-xs sm:text-sm font-black text-[#B88E4F] tracking-tight truncate">
+                        <span className="text-xs sm:text-sm font-black text-[#1A1612] tracking-tight truncate">
                           {formatMoney(p.price)}
                         </span>
 
-                        <span className="text-[10px] text-[#7D715E] font-medium shrink-0 whitespace-nowrap">
-                          {formatSoldCount(p.sold)} đã bán
-                        </span>
+                        {p.origPrice > p.price && (
+                          <del className="text-[10px] text-[#7D715E] font-medium shrink-0 whitespace-nowrap">
+                            {formatMoney(p.origPrice)}
+                          </del>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -1,0 +1,45 @@
+.merchant-customer-chat { padding-top: 16px; }
+.merchant-customer-chat #chat-page {
+  height: calc(100dvh - 136px);
+  min-height: 460px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgb(35 29 21 / 3%);
+}
+.merchant-customer-chat aside[aria-label],
+.merchant-customer-chat main[aria-label],
+.merchant-customer-chat aside[aria-label] > div,
+.merchant-customer-chat #chat-message-input { background: var(--theme-surface, #fff); }
+.merchant-customer-chat main > header { padding: 14px 20px; box-shadow: none; }
+.merchant-customer-chat aside [role="list"] { padding: 10px; }
+.merchant-customer-chat [role="listitem"] {
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.merchant-customer-chat [role="listitem"][class*="bg-[#FBF5EB]"] {
+  background: var(--theme-brand-soft, #FBF5EB);
+  border-color: var(--theme-line, #EEDFC6);
+}
+.merchant-customer-chat .chat-message-list { padding: 16px 22px; background: var(--theme-canvas, #FAF8F5); }
+.merchant-customer-chat .chat-message-bubble { padding: 10px 14px; box-shadow: none; }
+.merchant-customer-chat .chat-message-own { background: var(--theme-brand-soft, #FBF5EB); border-color: var(--theme-line, #EEDFC6); color: var(--theme-ink, #1A1612); }
+.merchant-customer-chat #chat-search-input { box-shadow: none; }
+.merchant-customer-chat #chat-message-input { min-height: 42px; }
+.merchant-customer-chat :is(#chat-attach-btn, #btn-composer-vip-invite) {
+  background: var(--theme-surface, #fff);
+  border: 1px solid var(--theme-line, #EAE4D7);
+  color: var(--theme-accent, #B88E4F);
+}
+.merchant-customer-chat #btn-open-vip-invite { background: var(--theme-surface, #fff); border-color: var(--theme-line, #EEDFC6); box-shadow: none; }
+.merchant-customer-chat button:focus-visible,
+.merchant-customer-chat [role="listitem"]:focus-visible { outline: 2px solid #C59B58; outline-offset: 2px; }
+@media (min-width: 640px) {
+  .merchant-customer-chat { padding-top: 24px; }
+  .merchant-customer-chat aside[aria-label][class*="sm:w-"] { width: 290px; }
+}
+@media (max-width: 639px) {
+  .merchant-customer-chat #chat-page { height: calc(100dvh - 116px); border-radius: 16px; }
+  .merchant-customer-chat main > header { flex-wrap: wrap; padding: 12px; }
+  .merchant-customer-chat .chat-message-list { padding: 12px; }
+}

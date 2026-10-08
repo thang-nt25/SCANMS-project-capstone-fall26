@@ -13,6 +13,7 @@ import { OrderStatus } from '@prisma/client';
 import { PayOS, type Webhook } from '@payos/node';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
+import { notifyCustomerOrderEvent } from './customer-order-notifications';
 
 type PayosDetails = {
   orderCode: number;
@@ -264,8 +265,9 @@ export class PayosPaymentService {
         status: OrderStatus;
         final_amount: unknown;
         raw_payload: any;
+        customer_id: string | null;
       }>>`
-        SELECT id, external_order_sn, status, final_amount, raw_payload
+        SELECT id, external_order_sn, status, final_amount, raw_payload, customer_id
         FROM orders
         WHERE raw_payload->'payos'->>'orderCode' = ${String(data.orderCode)}
         FOR UPDATE
@@ -312,6 +314,11 @@ export class PayosPaymentService {
           sourceUpdatedAt: new Date(),
         },
       });
+      await notifyCustomerOrderEvent(tx, {
+        id: order.id,
+        externalOrderSn: order.external_order_sn,
+        customerId: order.customer_id,
+      }, 'ORDER_PAYMENT_CONFIRMED');
       await tx.auditLog.create({
         data: {
           action: 'PAYMENT_RECONCILED',

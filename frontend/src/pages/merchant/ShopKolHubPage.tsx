@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import './ShopKolHubPage.css';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -1087,7 +1088,7 @@ return true;
   }
 
   return (
-    <div className="w-full flex flex-col pt-3 sm:pt-4 pb-4" id="shop-kol-hub-workspace">
+    <div className="w-full flex flex-col pb-4" id="shop-kol-hub-workspace">
       {/* Mode 1: AI Recommendation Mode */}
       {isAiMatchingMode ? (
         <div className="space-y-3 animate-in fade-in-50 duration-200">
@@ -1114,10 +1115,10 @@ return true;
         </div>
       ) : (
         /* Mode 2: Partner-Centric 2-Column Workspace */
-        <div className="bg-white border border-[#EAE4D7] rounded-3xl shadow-sm overflow-hidden flex flex-row h-[calc(100vh-125px)] sm:h-[calc(100vh-130px)] min-h-[620px] max-h-[960px]">
+        <div className="shop-kol-shell bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-row h-[calc(100dvh-110px)] min-h-[480px] max-h-[960px]">
           {/* LEFT COLUMN: KOL List & Filters */}
           <div
-            className={`${
+            className={`shop-kol-sidebar ${
               isSidebarCollapsed ? 'w-[72px]' : 'w-full sm:w-[285px] lg:w-[305px] xl:w-[325px]'
             } flex-shrink-0 border-r border-[#EAE4D7] bg-[#FAF8F5] flex flex-col h-full transition-all duration-300 ease-in-out`}
           >
@@ -1237,7 +1238,7 @@ return true;
                     </div>
                     <div className="flex items-center gap-1.5 min-w-0">
                       <h1 className="truncate text-sm font-extrabold tracking-tight text-[#1A1612] uppercase">
-                        Nhà Sáng Tạo
+                        Nhà sáng tạo
                       </h1>
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
                         {filteredKols.length}
@@ -1373,7 +1374,7 @@ return true;
                         <div
                           key={kol.id}
                           onClick={() => handleSelectKol(kol.id)}
-                          className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition-all duration-150 ${
+                          className={`shop-kol-person group relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-150 ${
                             isSelected
                               ? 'border-[#EEDFC6] bg-[#FBF5EB] shadow-xs'
                               : 'hover:bg-white border-transparent'
@@ -1511,23 +1512,23 @@ return true;
           </div>
 
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
-          <div className="flex-1 flex flex-col min-w-0 bg-[#FAF8F5]/30">
+          <div className="shop-kol-detail flex-1 flex flex-col min-w-0 bg-white">
             {/* 1. Header of Selected KOL (Ultra-Compact Single-Row SCANMS Creator Style) */}
-            <div className="h-14 px-4 bg-white border-b border-[#EAE4D7] flex items-center justify-between gap-3 shrink-0">
+            <div className="shop-kol-detail-heading px-4 py-3 bg-white border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 shrink-0">
               {/* Left: Avatar + (Name & Badges on top) + (TikTok & Followers below) */}
-              <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+              <div className="kol-profile-identity flex items-center gap-3 min-w-0 flex-1">
                 <div className="relative shrink-0">
                   <button
                     type="button"
                     onClick={() => openKolProfile(selectedKol.id)}
                     title={`Xem hồ sơ ${selectedKol.fullName}`}
                     aria-label={`Xem hồ sơ ${selectedKol.fullName}`}
-                    className="rounded-lg border border-[#E8D4B0] bg-gradient-to-br from-[#FAF0DD] to-[#F3EFE6] p-0.5 cursor-pointer shadow-2xs transition hover:scale-105"
+                    className="kol-profile-avatar rounded-xl border border-[#EEDFC6] bg-white p-1 cursor-pointer transition hover:border-[#C59B58]"
                   >
                     <KolAvatar
                       src={selectedKol.avatarUrl}
                       name={selectedKol.fullName}
-                      className="w-9 h-9 rounded-md object-cover text-xs font-black text-[#8C6226]"
+                      className="w-10 h-10 rounded-lg object-cover text-xs font-bold text-[#B88E4F]"
                     />
                   </button>
                   <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-2xs border border-white">
@@ -1535,25 +1536,26 @@ return true;
                   </span>
                 </div>
 
-                <div className="min-w-0 flex flex-col justify-center gap-0.5">
+                <div className="kol-profile-copy min-w-0 flex flex-col justify-center gap-1.5">
                   {/* Row 1: Full Name + Badges */}
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="kol-profile-name-row flex flex-wrap items-center gap-2 min-w-0">
                     <h2
-                      onClick={() => openKolProfile(selectedKol.id)}
-                      className="text-sm font-black text-[#1A1612] tracking-tight truncate min-w-0 max-w-[150px] sm:max-w-[200px] cursor-pointer hover:text-[#B88E4F] transition-colors"
+                      className="kol-profile-name min-w-0"
                       title={selectedKol.fullName}
                     >
-                      {selectedKol.fullName.replace(/\s*\([^)]*\)/g, '').trim() || selectedKol.fullName}
+                      <button type="button" onClick={() => openKolProfile(selectedKol.id)} className="text-left hover:text-[#B88E4F] transition-colors">
+                        {selectedKol.fullName.replace(/\s*\([^)]*\)/g, '').trim() || selectedKol.fullName}
+                      </button>
                     </h2>
 
                     {selectedKol.kycStatus === 'VERIFIED' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] shrink-0 whitespace-nowrap">
+                      <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-white text-[#7D715E] border border-[#EAE4D7] shrink-0 whitespace-nowrap">
                         <CheckCircle2 className="w-3 h-3 text-[#059669]" />
                         <span>Đã xác thực</span>
                       </span>
                     )}
 
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap">
+                    <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap">
                       <Sparkles className="w-2.5 h-2.5 text-[#B88E4F]" />
                       <span>{selectedKol.commissionRate != null ? `VIP: ${selectedKol.commissionRate}%` : 'Chuẩn sàn'}</span>
                     </span>
@@ -1561,11 +1563,13 @@ return true;
 
                   {/* Row 2: TikTok Handle & Followers Count (Clear, no clipping or overlapping behind buttons!) */}
                   {selectedKol.handle && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E] truncate">
-                      <span>{selectedKol.primaryChannel?.platform || 'Kênh'}: <strong className="text-[#1A1612] font-semibold">{selectedKol.handle.replace(/^@+/, '@')}</strong></span>
-                      {selectedKol.primaryChannel?.followers && (
-                        <span>
-                          • {selectedKol.primaryChannel.followers >= 1000
+                    <div className="kol-profile-channel flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#7D715E]">
+                      <span className="kol-profile-platform">{selectedKol.primaryChannel?.platform ? { TIKTOK: 'TikTok', INSTAGRAM: 'Instagram', YOUTUBE: 'YouTube', FACEBOOK: 'Facebook' }[selectedKol.primaryChannel.platform] || selectedKol.primaryChannel.platform : 'Kênh'}</span>
+                      <span className="kol-profile-handle">{selectedKol.handle.replace(/^@+/, '@')}</span>
+                      {selectedKol.primaryChannel?.followers != null && (
+                        <span className="inline-flex items-center gap-1">
+                          <Users className="h-3 w-3 text-[#B88E4F]" />
+                          {selectedKol.primaryChannel.followers >= 1000
                             ? `${(selectedKol.primaryChannel.followers / 1000).toLocaleString('vi-VN')}K`
                             : selectedKol.primaryChannel.followers}{' '}
                           người theo dõi
@@ -1573,7 +1577,7 @@ return true;
                       )}
                       {selectedKol.primaryChannel?.engagementRate && (
                         <span className="text-[#059669] font-medium hidden lg:inline">
-                          • Tương tác: {selectedKol.primaryChannel.engagementRate}
+                          Tương tác: {selectedKol.primaryChannel.engagementRate}
                         </span>
                       )}
                     </div>
@@ -1599,7 +1603,7 @@ return true;
                   title="Sử dụng AI phân tích sản phẩm và tìm kiếm KOL phù hợp"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span className="hidden xl:inline">AI Tìm Kiếm KOL Mới</span>
+                  <span className="hidden xl:inline">Tìm KOL với AI</span>
                   <span className="xl:hidden">AI Tìm KOL</span>
                 </button>
 
@@ -1612,14 +1616,14 @@ return true;
                   title="Khám phá danh bạ và gửi lời mời đến KOL trên sàn"
                 >
                   <Users className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span className="hidden xl:inline">Khám Phá & Mời KOL</span>
+                  <span className="hidden xl:inline">Khám phá & mời KOL</span>
                   <span className="xl:hidden">Khám Phá KOL</span>
                 </button>
               </div>
             </div>
 
             {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
-            <div className="h-10 px-4 bg-[#FAF8F5] border-b border-[#EAE4D7] flex items-center justify-between overflow-x-auto no-scrollbar shrink-0">
+            <div className="shop-kol-tabs px-3 py-2 bg-white border-b border-[#EAE4D7] flex items-center justify-between gap-3 overflow-x-auto no-scrollbar shrink-0">
               <div className="flex items-center h-full gap-1 sm:gap-2">
                 <button
                   type="button"
@@ -1632,7 +1636,7 @@ return true;
                   }`}
                 >
                   <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Trao đổi tin nhắn</span>
+                  <span>Tin nhắn & deal</span>
                 </button>
 
                 <button
@@ -1665,7 +1669,7 @@ return true;
                   }`}
                 >
                   <BarChart3 className={`w-3.5 h-3.5 ${activeTab === 'performance' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Hiệu suất doanh số</span>
+                  <span>Hiệu suất</span>
                 </button>
 
                 <button
@@ -1679,7 +1683,7 @@ return true;
                   }`}
                 >
                   <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Hồ sơ & Mạng xã hội</span>
+                  <span>Hồ sơ & kênh</span>
                 </button>
               </div>
 

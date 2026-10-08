@@ -1,0 +1,61 @@
+#shop-promotions-hub { padding-top: 0; }
+#shop-promotions-hub .promotions-tabs > div { padding: 10px; border-radius: 16px; box-shadow: none; }
+#shop-promotions-hub .promotions-tabs [role="tab"] { min-height: 42px; border-radius: 10px; box-shadow: none; }
+#shop-promotions-hub .promotions-tabs [role="tab"] svg { padding: 3px; width: 26px; height: 26px; border: 1px solid var(--theme-line, #EEDFC6); border-radius: 8px; color: var(--theme-accent, #B88E4F); background: var(--theme-brand-soft, #FBF5EB); }
+#shop-promotions-hub :is(.promotions-commission, .promotions-links, .promotions-live) { padding-top: 0; gap: 16px; }
+#shop-promotions-hub :is(section, article, .store-referral-panel) { box-shadow: none; }
+#shop-promotions-hub :is(input:not([type="checkbox"]), select, textarea) { background-color: var(--theme-surface, #fff); }
+#shop-promotions-hub :is(h1, h2) { font-size: 18px; line-height: 1.4; letter-spacing: -.02em; color: var(--theme-ink, #1A1612); }
+#shop-promotions-hub h3 { line-height: 1.45; }
+#shop-promotions-hub :is(h1, h2, h3, h4) { font-family: var(--font-sans); font-weight: 700; }
+#shop-promotions-hub .promotions-coupons [class*="min-h-[112px]"] { min-height: 100px; padding: 16px; box-shadow: none; }
+#shop-promotions-hub .promotions-commission article { min-height: 124px; padding: 16px; }
+#shop-promotions-hub .promotions-commission section { padding: 20px; }
+#shop-promotions-hub .promotions-links thead tr { background: var(--theme-surface, #fff); text-transform: none; letter-spacing: 0; }
+#shop-promotions-hub .promotions-links td { padding-top: 14px; padding-bottom: 14px; }
+#shop-promotions-hub .promotions-live > form { padding: 20px; border-radius: 18px; box-shadow: none; }
+#shop-promotions-hub .promotions-live > form > div:first-child { padding-bottom: 16px; }
+#shop-promotions-hub .promotions-live section { padding: 16px; background: var(--theme-surface, #fff); border-radius: 14px; }
+#shop-promotions-hub .promotions-live { --tw-space-y-reverse: 0; }
+#shop-promotions-hub .promotions-live > :not(:last-child) { margin-bottom: 16px; }
+#shop-promotions-hub .coupon-metrics { gap: 12px; }
+#shop-promotions-hub .coupon-metrics > div { display: flex; flex-direction: column; justify-content: space-between; }
+#shop-promotions-hub .coupon-metrics p { color: var(--theme-ink, #1A1612); font-size: 26px; line-height: 1.2; }
+#shop-promotions-hub .coupon-filters { gap: 12px; margin-bottom: 16px; border-radius: 16px; box-shadow: none; }
+#shop-promotions-hub .coupon-filters > div:first-child { gap: 6px; }
+#shop-promotions-hub .coupon-filters > div:last-child { gap: 8px; }
+#shop-promotions-hub .coupon-filters button { min-height: 34px; box-shadow: none; }
+#shop-promotions-hub .coupon-filters > div:last-child > div:first-child { background: var(--theme-surface, #fff); }
+#shop-promotions-hub .coupon-card { min-width: 0; border-radius: 16px; box-shadow: none; transition: border-color .15s ease; }
+#shop-promotions-hub .coupon-card:hover { box-shadow: none; border-color: #C59B58; }
+#shop-promotions-hub .coupon-card-heading > div:first-child { flex-wrap: wrap; gap: 10px; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > div { min-width: 0; gap: 10px; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > div > div:last-child { min-width: 0; }
+#shop-promotions-hub .coupon-card-heading [class*="uppercase"] { overflow-wrap: anywhere; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > span { text-transform: none; padding: 4px 8px; }
+#shop-promotions-hub .coupon-card-actions button { min-height: 34px; box-shadow: none; }
+#shop-promotions-hub .commission-metrics article { gap: 16px; }
+#shop-promotions-hub .commission-metrics article > div:last-child > div:first-child { color: var(--theme-ink, #1A1612); }
+#shop-promotions-hub .commission-rule-card { box-shadow: none; border-radius: 12px; padding: 14px; }
+#shop-promotions-hub .commission-rule-card h3 { font-size: 16px; }
+#shop-promotions-hub .commission-rule-card button { box-shadow: none; background: var(--theme-surface, #fff); }
+#shop-promotions-hub .commission-simulation-result { border: 0; padding: 0; }
+#shop-promotions-hub .promotions-links > div:first-child { box-shadow: none; padding: 14px; }
+#shop-promotions-hub .promotions-links table { font-size: 13px; }
+#shop-promotions-hub .promotions-links th { font-size: 11px; font-weight: 600; }
+#shop-promotions-hub .promotions-links td [class*="text-[#8A642C]"] { color: var(--theme-ink, #1A1612); }
+#shop-promotions-hub .live-session-form > div:first-child { align-items: center; }
+#shop-promotions-hub .live-session-form > section { margin-top: 0; }
+#shop-promotions-hub .live-session-form > section > div:first-child { margin-bottom: 12px; }
+#shop-promotions-hub .live-session-form label { font-size: 13px; }
+#shop-promotions-hub .live-session-form :is(input:not([type="checkbox"]), select) { font-size: 13px; }
+@media (min-width: 768px) and (max-width: 1399px) {
+  #shop-promotions-hub .coupon-filters { flex-direction: column; align-items: stretch; }
+  #shop-promotions-hub .coupon-filters > div:last-child { width: 100%; }
+}
+#shop-promotions-hub :is(button, [role="region"]):focus-visible { outline: 2px solid #C59B58; outline-offset: 2px; }
+@media (max-width: 639px) {
+  #shop-promotions-hub .promotions-tabs [role="tab"] { justify-content: flex-start; font-size: 11px; }
+  #shop-promotions-hub .promotions-live > form,
+  #shop-promotions-hub .promotions-commission section { padding: 14px; }
+}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import './KolProfile.css';
 import { Link } from 'react-router-dom';
 import {
   Crown,
@@ -66,7 +67,7 @@ export default function KolTierStatusPage() {
   const progressPct = Number(tierStatus?.progressPercentage ?? 0);
 
   return (
-    <div className="flex flex-col gap-6 text-left">
+    <div className="kol-tier-page flex flex-col gap-4 text-left">
       {toastMsg && (
         <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 border border-[#EEDFC6]">
           <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
@@ -75,8 +76,11 @@ export default function KolTierStatusPage() {
       )}
 
       {/* Header & Sub-Navigation Tabs */}
-      <div className="flex items-center justify-end gap-4">
-
+      <div className="kol-tier-heading flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold text-[#1A1612]">Cấp bậc & vinh danh</h1>
+          <p className="mt-1 text-xs text-[#7D715E]">Theo dõi quyền lợi, tiến độ thăng hạng và thành tích của bạn.</p>
+        </div>
         <Button
           variant="gold"
           size="md"
@@ -89,10 +93,10 @@ export default function KolTierStatusPage() {
       </div>
 
       {/* Consolidated Feature Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#EAE4D7] pb-3">
+      <div className="kol-tier-nav flex items-center gap-2">
         <Link
           to="/collaborator/tiers"
-          className="px-4 py-2 rounded-xl text-xs font-bold bg-[#EBD08C] text-white shadow-2xs flex items-center gap-2"
+          className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-[#1A1612] border border-[#C59B58] flex items-center gap-2"
         >
           <Award className="w-3.5 h-3.5" />
           <span>Cấp bậc &amp; Quyền lợi</span>
@@ -114,15 +118,15 @@ export default function KolTierStatusPage() {
       </div>
 
       {/* Podium Top 3 (Real Data from Leaderboard API) */}
-      <Card className="p-6 bg-white border border-[#EAE4D7]">
-        <div className="flex items-center justify-between mb-6">
+      <Card className="kol-tier-leaderboard p-4 bg-white border border-[#EAE4D7]">
+        <div className="flex flex-wrap gap-3 items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center">
               <Trophy className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-extrabold text-[#1A1612] m-0">
-                Bảng Vinh Danh Top Creator Tháng Này
+                Nhà sáng tạo nổi bật tháng này
               </h2>
               <span className="text-xs text-[#7D715E]">Dữ liệu đối soát thời gian thực từ doanh số bán hàng</span>
             </div>
@@ -135,11 +139,11 @@ export default function KolTierStatusPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div className="kol-tier-podium grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
           {/* Hạng 2 */}
           <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col items-center text-center gap-3 order-2 md:order-1">
             <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
-              🥈 HẠNG 2
+              Hạng 2
             </span>
             <div className="w-16 h-16 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-xl font-black text-slate-700">
               {podium?.rank2?.fullName?.charAt(0) || '2'}
@@ -161,9 +165,9 @@ export default function KolTierStatusPage() {
           </div>
 
           {/* Hạng 1 (Quán quân) */}
-          <div className="bg-[#FBF5EB] border-2 border-[#B88E4F] rounded-2xl p-6 flex flex-col items-center text-center gap-3 relative order-1 md:order-2 shadow-sm scale-105">
-            <div className="absolute -top-3.5 px-3 py-0.5 rounded-full bg-[#EBD08C] text-white text-xs font-black flex items-center gap-1 shadow-xs">
-              <Crown className="w-3.5 h-3.5" /> QUÁN QUÂN
+          <div className="bg-white border border-[#B88E4F] rounded-2xl p-4 flex flex-col items-center text-center gap-3 relative order-1 md:order-2">
+            <div className="kol-tier-rank-label px-3 py-0.5 rounded-full bg-[#FBF5EB] text-[#B88E4F] text-xs font-semibold flex items-center gap-1">
+              <Crown className="w-3.5 h-3.5" /> Hạng 1
             </div>
             <div className="w-20 h-20 rounded-full bg-[#EAE4D7] border-4 border-[#B88E4F] flex items-center justify-center text-2xl font-black text-[#B88E4F] mt-2">
               {podium?.rank1?.fullName?.charAt(0) || '1'}
@@ -192,7 +196,7 @@ export default function KolTierStatusPage() {
           {/* Hạng 3 */}
           <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col items-center text-center gap-3 order-3">
             <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
-              🥉 HẠNG 3
+              Hạng 3
             </span>
             <div className="w-16 h-16 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center text-xl font-black text-amber-800">
               {podium?.rank3?.fullName?.charAt(0) || '3'}

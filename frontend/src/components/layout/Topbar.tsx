@@ -6,6 +6,7 @@ import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { NotificationDropdown } from './NotificationDropdown';
 import { ChatBell } from '../chat/ChatBell';
+import './Topbar.css';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
@@ -63,20 +64,23 @@ export function Topbar({
   const displayName =
     currentUser?.fullName ||
     (isShop ? 'Chủ gian hàng' : isCustomer ? 'Khách mua sắm' : isAdmin ? 'Quản trị viên' : 'Cộng tác viên');
+  const compactDisplayName = isAdmin
+    ? displayName.replace(/\s*\((?:Vận Hành & Tuân Thủ|Super Admin|Admin|Ban Quản Trị Tối Cao|Quản trị viên Hệ thống)\)\s*$/iu, '').trim() || displayName
+    : displayName;
 
   const displaySub = isShop
     ? currentUser?.stores?.[0]?.name || 'Chủ gian hàng'
     : isCustomer
     ? 'Khách mua sắm'
     : isAdmin
-    ? 'Quản trị viên Hệ thống'
+    ? role === 'SYSTEM_MANAGER' ? 'Vận hành & tuân thủ' : 'Quản trị hệ thống'
     : currentUser?.collaboratorProfile?.tier?.name
     ? `KOL Hạng ${currentUser.collaboratorProfile.tier.name}`
     : 'KOL / KOC Đối Tác';
 
   const userProfile = {
     avatar: currentUser?.fullName?.charAt(0).toUpperCase() || (isShop ? 'S' : isCustomer ? 'K' : isAdmin ? 'A' : 'K'),
-    name: displayName,
+    name: compactDisplayName,
     sub: displaySub,
   };
 
@@ -193,24 +197,17 @@ export function Topbar({
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Hệ thống trực tuyến</span>
+        <div className="topbar-system-status hidden lg:inline-flex" title="Hệ thống trực tuyến">
+          <span className="topbar-system-status-mark" aria-hidden="true"><span /></span>
+          <span className="topbar-system-status-label">Hệ thống <strong>trực tuyến</strong></span>
         </div>
-
-        <Link
-          to="/marketplace"
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] hover:bg-[#ECE1CD] transition shadow-2xs group"
-          title="Xem Sàn Mua Sắm & Tiếp Thị Đa Gian Hàng"
-        >
-          <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
-          <span>Sàn mua sắm</span>
-        </Link>
 
         <button
           type="button"
           onClick={onToggleTheme}
-          aria-label="Đổi giao diện"
+          aria-label={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+          title={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+          aria-pressed={theme === 'dark'}
           className="w-8.5 h-8.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] flex items-center justify-center transition cursor-pointer shadow-2xs"
         >
           {theme === 'dark' ? <Sun className="w-4 h-4 text-[#B88E4F]" /> : <Moon className="w-4 h-4 text-[#7D715E]" />}
@@ -220,9 +217,14 @@ export function Topbar({
         {(isCustomer || isShop || currentUser?.role === 'CUSTOMER' || currentUser?.role === 'SHOP_MANAGER') && currentUser?.id && <ChatBell userId={currentUser.id} isShop={isShop} />}
 
         <div className="relative" ref={menuRef}>
-          <div
+          <button
+            type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
+            aria-expanded={isMenuOpen}
+            aria-controls="topbar-account-menu"
+            aria-label={`Tài khoản ${userProfile.name} · ${userProfile.sub}`}
+            title={`${displayName} · ${displaySub}`}
+            className={`flex items-center gap-2 border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] ${isAdmin ? 'pl-1.5 pr-2.5 py-1.5 rounded-2xl bg-white max-w-[230px] hover:bg-[#FAF8F5]' : 'gap-2.5 px-3 py-1.5 rounded-full bg-[#FAF8F5] shadow-2xs'}`}
           >
             {currentUser?.avatarUrl ? (
               <img
@@ -232,24 +234,24 @@ export function Topbar({
               />
             ) : (
               <span
-                className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-[#EAE4D7] text-[#B88E4F]"
+                className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs shrink-0 text-[#B88E4F] ${isAdmin ? 'bg-[#FBF5EB] border border-[#EEDFC6]' : 'bg-[#EAE4D7]'}`}
               >
                 {userProfile.avatar}
               </span>
             )}
-            <div className="text-left hidden md:block">
-              <strong className="block text-xs font-bold text-[#1A1612] leading-none">
+            <div className={`text-left hidden md:block ${isAdmin ? 'min-w-0 max-w-[160px]' : ''}`}>
+              <strong className={`block text-xs text-[#1A1612] leading-none ${isAdmin ? 'font-semibold truncate' : 'font-bold'}`}>
                 {userProfile.name}
               </strong>
-              <small className="text-[11px] font-semibold text-[#B88E4F] leading-tight block mt-0.5">
+              <small className={isAdmin ? 'block w-fit max-w-full truncate mt-1 px-1.5 py-0.5 rounded-md bg-[#FBF5EB] text-[#7D715E] text-[10px] font-medium leading-none' : 'text-[11px] font-semibold text-[#B88E4F] leading-tight block mt-0.5'}>
                 {userProfile.sub}
               </small>
             </div>
-            <ChevronDown className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
-          </div>
+            <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[#7D715E] transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
+          </button>
 
           {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div id="topbar-account-menu" className="absolute right-0 top-full mt-2 w-64 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
               <div className="p-2.5 border-b border-[#EAE4D7] flex items-center gap-2.5">
                 <div className="relative group shrink-0">
                   {currentUser?.avatarUrl ? (
@@ -338,4 +340,3 @@ export function Topbar({
     </header>
   );
 }
-

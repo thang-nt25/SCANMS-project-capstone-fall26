@@ -13,10 +13,10 @@
   .store-referral-panel tbody td:nth-child(6) { grid-column: 1; grid-row: 3; }
   .store-referral-panel tbody td:nth-child(7) { position: static; grid-column: 1; grid-row: 4; text-align: left; box-shadow: none; background: transparent; }
   .store-referral-panel tbody td[data-label] { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .store-referral-panel tbody td[data-label]::before { content: attr(data-label); font-size: 11px; color: #7D715E; }
+  .store-referral-panel tbody td[data-label]::before { content: attr(data-label); font-size: 11px; color: var(--theme-muted, #7D715E); }
 }
 @container (max-width: 479px) {
   .store-referral-panel tbody tr { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .store-referral-panel tbody td:nth-child(n) { grid-column: 1; grid-row: auto; }
-  .store-referral-panel tbody td:nth-child(7) { border-top: 1px solid #EAE4D7; padding-top: 12px; }
+  .store-referral-panel tbody td:nth-child(7) { border-top: 1px solid var(--theme-line, #EAE4D7); padding-top: 12px; }
 }

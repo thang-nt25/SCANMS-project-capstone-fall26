@@ -26,7 +26,6 @@ import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
-import { ChatBell } from '../chat/ChatBell';
 import { NotificationDropdown } from './NotificationDropdown';
 
 export interface PublicHeaderProps {
@@ -260,8 +259,6 @@ export function PublicHeader({
 
           {/* Trung tâm thông báo & Live stream notification cho toàn bộ Khách hàng & Người dùng */}
           <NotificationDropdown />
-
-          {isCustomer && currentUser?.id && <ChatBell userId={currentUser.id} />}
 
           {/* AUTHENTICATION & ROLE SECTION */}
           {currentUser ? (

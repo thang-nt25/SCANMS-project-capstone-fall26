@@ -24,6 +24,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Select } from '../components/ui/Select';
+import './KolOverview.css';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -80,13 +81,14 @@ export default function HomePage() {
   const maxValue = Math.max(...timeSeries.map(getMetricValue), 1);
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {/* Filter & Action Bar - Không khung bọc ngoài, chừa icon và tên sạch đẹp */}
-      <div className="flex flex-wrap items-center justify-between gap-4 py-1 px-0.5">
+    <div className="kol-overview flex flex-col text-left">
+      <div className="kol-overview-toolbar flex flex-wrap items-center justify-between gap-3 bg-white border border-[#EAE4D7] rounded-2xl">
         <div className="flex items-center gap-2.5">
           <label className="text-xs font-bold text-[#7D715E] flex items-center gap-1.5 shrink-0 select-none">
-            <Calendar className="w-3.5 h-3.5 text-[#B88E4F]" />
-            <span>Khoảng thời gian phân tích:</span>
+            <span className="kol-overview-filter-icon" aria-hidden="true">
+              <Calendar className="w-4 h-4" />
+            </span>
+            <span>Thời gian phân tích</span>
           </label>
           <div className="shrink-0 min-w-[170px]">
             <Select
@@ -101,7 +103,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-xs font-semibold text-[#7D715E]">
             {overview?.period ? (
               <span>
@@ -116,7 +118,8 @@ export default function HomePage() {
             <button
               type="button"
               onClick={loadData}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer select-none"
+              disabled={loading}
+              className="kol-overview-action inline-flex items-center gap-1.5 text-xs font-bold"
               title="Làm mới dữ liệu"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
@@ -126,7 +129,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => navigate('/collaborator/referral-links')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#B88E4F] hover:text-[#A47B3E] transition cursor-pointer select-none"
+              className="kol-overview-action kol-overview-action-primary inline-flex items-center gap-1.5 text-xs font-bold"
               title="Tạo link tiếp thị"
             >
               <PlusCircle className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -137,20 +140,19 @@ export default function HomePage() {
       </div>
 
       {/* Real Wallet Balance Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#FAF5EB] border border-[#EEDFC6] text-[#1A1612] p-6 sm:p-7 shadow-2xs">
+      <div className="kol-overview-wallet relative overflow-hidden rounded-2xl border border-[#EEDFC6] text-[#1A1612]">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div className="flex flex-col gap-1">
             <span className="text-xs sm:text-sm font-semibold text-[#7D715E] flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-[#B88E4F]" />
-              Số dư khả dụng trong ví • Sẵn sàng rút
+              Số dư khả dụng
             </span>
             <strong className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#1A1612] mt-1">
               {availBal.toLocaleString('vi-VN')}{' '}
-              <span className="underline decoration-2 decoration-[#B88E4F]">₫</span>
+              <span>₫</span>
             </strong>
             <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-[#7D715E] mt-2">
-              <span>Chờ đối soát Escrow: <strong className="text-[#1A1612]">{pendingBal.toLocaleString('vi-VN')} ₫</strong></span>
-              <span>•</span>
+              <span>Chờ đối soát: <strong className="text-[#1A1612]">{pendingBal.toLocaleString('vi-VN')} ₫</strong></span>
               <span>
                 Trạng thái KYC: <strong className={wallet?.kycStatus === 'VERIFIED' ? 'text-emerald-700' : 'text-amber-700'}>
                   {wallet?.kycStatus === 'VERIFIED' ? 'Đã xác thực' : 'Chưa KYC'}
@@ -162,7 +164,7 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => navigate('/collaborator/wallet')}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#B88E4F] hover:text-[#9A7233] transition cursor-pointer shrink-0 group select-none"
+            className="kol-overview-action kol-overview-action-primary inline-flex items-center gap-1.5 text-xs font-bold shrink-0 group"
             title="Quản lý ví & Rút tiền"
           >
             <span className="group-hover:underline">Quản lý ví &amp; Rút tiền</span>
@@ -170,16 +172,14 @@ export default function HomePage() {
           </button>
         </div>
 
-        <div className="absolute -right-12 -top-12 w-72 h-72 rounded-full border-24 border-[#EAE4D7]/40 pointer-events-none" />
-        <div className="absolute right-4 top-2 w-52 h-52 rounded-full border-16 border-[#EAE4D7]/50 pointer-events-none" />
       </div>
 
       {/* 4 Real Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="kol-overview-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Lượt click tiếp thị */}
         <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
           <div className="flex justify-between items-center">
-            <div className="w-8 h-8 rounded-xl bg-[#EBF3FE] text-[#2563EB] flex items-center justify-center">
+            <div className="kol-overview-metric-icon w-8 h-8 rounded-xl flex items-center justify-center">
               <MousePointerClick className="w-4 h-4" />
             </div>
             {metrics?.growthClicks !== undefined && (
@@ -193,20 +193,20 @@ export default function HomePage() {
             )}
           </div>
           <div>
-            <span className="text-xs text-[#7D715E] font-medium block">Lượt nhấp tiếp thị (Traffic)</span>
+            <span className="text-xs text-[#7D715E] font-medium block">Lượt nhấp tiếp thị</span>
             <strong className="text-2xl font-extrabold text-[#1A1612] tracking-tight block mt-0.5">
               {(metrics?.totalClicks || 0).toLocaleString('vi-VN')}
             </strong>
           </div>
           <span className="text-[11px] text-[#7D715E]">
-            {metrics?.activeReferralLinks || 0} link tiếp thị đang phát sinh lượt xem
+            {metrics?.activeReferralLinks || 0} link có lượt xem
           </span>
         </Card>
 
         {/* Đơn hàng thành công */}
         <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
           <div className="flex justify-between items-center">
-            <div className="w-8 h-8 rounded-xl bg-[#FEF5E7] text-[#B88E4F] flex items-center justify-center">
+            <div className="kol-overview-metric-icon w-8 h-8 rounded-xl flex items-center justify-center">
               <ShoppingBag className="w-4 h-4" />
             </div>
             {metrics?.growthOrders !== undefined && (
@@ -233,15 +233,15 @@ export default function HomePage() {
         {/* Tỷ lệ chuyển đổi */}
         <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
           <div className="flex justify-between items-center">
-            <div className="w-8 h-8 rounded-xl bg-[#F3EBFD] text-[#7C3AED] flex items-center justify-center">
+            <div className="kol-overview-metric-icon w-8 h-8 rounded-xl flex items-center justify-center">
               <Target className="w-4 h-4" />
             </div>
-            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
+            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
               CR%
             </span>
           </div>
           <div>
-            <span className="text-xs text-[#7D715E] font-medium block">Tỷ lệ chuyển đổi (Conversion)</span>
+            <span className="text-xs text-[#7D715E] font-medium block">Tỷ lệ chuyển đổi</span>
             <strong className="text-2xl font-extrabold text-[#1A1612] tracking-tight block mt-0.5">
               {(metrics?.conversionRate || 0).toFixed(2)}%
             </strong>
@@ -254,7 +254,7 @@ export default function HomePage() {
         {/* Doanh thu GMV & Hoa hồng */}
         <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
           <div className="flex justify-between items-center">
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center">
+            <div className="kol-overview-metric-icon w-8 h-8 rounded-xl flex items-center justify-center">
               <Wallet className="w-4 h-4" />
             </div>
             {metrics?.growthRevenue !== undefined && (
@@ -280,9 +280,9 @@ export default function HomePage() {
       </div>
 
       {/* Real Chart and Commission Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="kol-overview-details grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
         {/* Biểu đồ diễn biến */}
-        <Card className="lg:col-span-8 p-5 sm:p-6 flex flex-col gap-5 bg-white">
+        <Card className="kol-overview-chart lg:col-span-8 p-4 sm:p-5 flex flex-col gap-4 bg-white">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center">
@@ -317,7 +317,7 @@ export default function HomePage() {
             <div className="flex items-end justify-between h-48 pt-4 pb-2 border-b border-[#EAE4D7] gap-2">
               {timeSeries.map((d, idx) => {
                 const val = getMetricValue(d);
-                const heightPct = maxValue > 0 ? Math.max(6, Math.round((val / maxValue) * 100)) : 6;
+                const barHeight = val > 0 ? Math.max(3, Math.round((val / maxValue) * 125)) : 0;
                 const formattedVal =
                   metric === 'revenue' || metric === 'commission'
                     ? `${val.toLocaleString('vi-VN')} ₫`
@@ -326,17 +326,17 @@ export default function HomePage() {
                 return (
                   <div
                     key={idx}
-                    className="flex flex-col items-center gap-1.5 flex-1 group"
+                    className="kol-overview-chart-column flex flex-col items-center gap-1.5 flex-1 group"
                     title={`${d.label}: ${formattedVal}`}
                   >
                     <span className="text-[10px] font-bold text-[#7D715E] group-hover:text-[#1A1612] transition truncate max-w-[50px]">
                       {val > 1000 ? `${(val / 1000).toFixed(1)}k` : val}
                     </span>
                     <div
-                      style={{ height: `${heightPct}%` }}
-                      className="w-full max-w-[36px] rounded-t-lg bg-[#EAE4D7] group-hover:bg-[#C59B58] transition-all"
+                      style={{ height: `${barHeight}px` }}
+                      className="w-full max-w-[28px] shrink-0 rounded-t-md bg-[#C59B58] group-hover:bg-[#B88E4F] transition-colors"
                     />
-                    <span className="text-xs font-bold text-[#7D715E] transition group-hover:text-[#B88E4F]">
+                    <span className="kol-overview-chart-label text-[10px] font-medium text-[#7D715E] transition group-hover:text-[#B88E4F]">
                       {d.label}
                     </span>
                   </div>
@@ -347,7 +347,7 @@ export default function HomePage() {
         </Card>
 
         {/* Lịch sử hoa hồng từ Ledger */}
-        <Card className="lg:col-span-4 p-5 sm:p-6 flex flex-col justify-between gap-5 bg-white">
+        <Card className="kol-overview-commissions lg:col-span-4 p-4 sm:p-5 flex flex-col justify-between gap-4 bg-white">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-[#1A1612] m-0">Hoa hồng gần đây</h3>
             <Button
@@ -370,7 +370,7 @@ export default function HomePage() {
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-center justify-between p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]"
+                    className="kol-overview-ledger-row flex items-center justify-between gap-2 p-3 bg-white rounded-xl border border-[#EAE4D7]"
                   >
                     <div>
                       <strong className="text-xs font-bold text-[#1A1612] block">

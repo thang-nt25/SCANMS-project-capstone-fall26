@@ -206,7 +206,7 @@ export default function KolRecommendationPage() {
     : { ring: 'text-[#C59B58]', bg: 'bg-[#FAF8F5]', text: 'text-[#7D715E]', badge: 'bg-[#FAF8F5] text-[#7D715E] border-[#EAE4D7]' };
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="kol-recommendation-page space-y-4 pb-24">
       <section className="flex flex-col gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-2.5">
           <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Sparkles className="h-4 w-4" /></span>
@@ -223,7 +223,7 @@ export default function KolRecommendationPage() {
       </section>
       {scanError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-[#DC2626]">{scanError}<button type="button" onClick={() => void fetchRecommendations()} className="font-medium text-[#B88E4F] underline">Thử quét lại</button></div>}
       {/* 2. Target Product Selector & Profile Summary */}
-      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-12">
+      <div className="kol-matching-controls grid grid-cols-1 items-start gap-3 lg:grid-cols-12">
         {/* Left: Product Dropdown & Quick Config */}
         <div className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm lg:col-span-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-[#1A1612]">
@@ -233,6 +233,7 @@ export default function KolRecommendationPage() {
 
           <div className="min-w-0">
             <Select
+              aria-label="Sản phẩm đối sánh"
               value={selectedProductId}
               onChange={(e) => setSelectedProductId(e.target.value)}
               className="w-full text-xs sm:text-sm"
@@ -289,6 +290,7 @@ export default function KolRecommendationPage() {
             <div>
               <label className="mb-1 block font-medium text-[#7D715E]">Ngành hàng</label>
               <Select
+                aria-label="Ngành hàng"
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="w-full text-xs"
@@ -304,6 +306,7 @@ export default function KolRecommendationPage() {
             <div>
               <label className="mb-1 block font-medium text-[#7D715E]">Khoảng giá</label>
               <Select
+                aria-label="Khoảng giá"
                 value={selectedPriceRange}
                 onChange={(e) => setSelectedPriceRange(e.target.value)}
                 className="w-full text-xs"
@@ -319,6 +322,7 @@ export default function KolRecommendationPage() {
             <div>
               <label className="mb-1 block font-medium text-[#7D715E]">Hạng KOL tối thiểu</label>
               <Select
+                aria-label="Hạng KOL tối thiểu"
                 value={selectedMinTier}
                 onChange={(e) => setSelectedMinTier(e.target.value)}
                 className="w-full text-xs"
@@ -336,6 +340,7 @@ export default function KolRecommendationPage() {
                 Tỷ lệ chuyển đổi CR% tối thiểu: <span className="font-bold text-[#B88E4F]">{minConversionRate}%</span>
               </label>
               <input
+                aria-label="Tỷ lệ chuyển đổi tối thiểu"
                 type="range"
                 min="0"
                 max="15"
@@ -349,6 +354,7 @@ export default function KolRecommendationPage() {
             <div>
               <label className="mb-1 block font-medium text-[#7D715E]">Số lượng gợi ý</label>
               <Select
+                aria-label="Số lượng gợi ý"
                 value={String(limit)}
                 onChange={(e) => setLimit(parseInt(e.target.value))}
                 className="w-full text-xs"
@@ -366,7 +372,7 @@ export default function KolRecommendationPage() {
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7D715E]" />
                 <input
                   type="text"
-                  placeholder="Gõ tên KOL..."
+                  aria-label="Tìm nhà sáng tạo" placeholder="Tìm tên hoặc nội dung giới thiệu…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 w-full rounded-xl border border-[#EAE4D7] bg-white py-2 pl-9 pr-3 text-xs text-[#1A1612] placeholder:text-[#A89D8B] focus:border-[#C59B58] focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
@@ -441,7 +447,7 @@ export default function KolRecommendationPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="kol-matching-results grid grid-cols-1 items-start gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {displayedKols.map((kol, idx) => {
               const colorInfo = getScoreColor(kol.matchScore);
               const breakdown = [
@@ -463,7 +469,7 @@ export default function KolRecommendationPage() {
                     </div>
                     <span className={'shrink-0 rounded-lg border px-2 py-1 text-sm font-bold ' + colorInfo.badge}>{kol.matchScore}<span className="text-[10px] font-normal">/100</span></span>
                   </div>
-                  <p className="mt-2 min-h-[40px] text-xs text-[#7D715E] leading-5">{kol.lifetimeStats?.primaryCategory || 'Chưa có lịch sử ngành hàng'}<span className="mx-1.5">·</span>{kol.matchLevel}</p>
+                  <p className="kol-matching-category mt-2 text-xs text-[#7D715E] leading-5">{kol.lifetimeStats?.primaryCategory || 'Chưa có lịch sử ngành hàng'}<span className="mx-1.5">·</span>{kol.matchLevel}</p>
                   <dl className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-[#FAF8F5] px-3 py-2.5">
                     <div><dt className="text-[11px] text-[#7D715E]">Đơn hoàn tất</dt><dd className="mt-0.5 text-sm font-semibold text-[#1A1612]">{Number(kol.lifetimeStats?.totalOrders || 0).toLocaleString('vi-VN')}</dd></div>
                     <div><dt className="text-[11px] text-[#7D715E]">Nhấp hợp lệ</dt><dd className="mt-0.5 text-sm font-semibold text-[#1A1612]">{Number(kol.lifetimeStats?.totalClicks || 0).toLocaleString('vi-VN')}</dd></div>

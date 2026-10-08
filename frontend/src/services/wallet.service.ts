@@ -79,13 +79,13 @@ export const walletService = {
     return (
       await api.get<LedgerHistory, ApiEnvelope<LedgerHistory>>(
         "/wallets/me/ledger",
-        { params: { page, limit: 10 } },
+        { params: { page, limit: 10 }, headers: { 'x-skip-cache': 'true' } },
       )
     ).data;
   },
   async getMyWallet(): Promise<WalletSummary> {
     return (
-      await api.get<WalletSummary, ApiEnvelope<WalletSummary>>("/wallets/me")
+      await api.get<WalletSummary, ApiEnvelope<WalletSummary>>("/wallets/me", { headers: { 'x-skip-cache': 'true' } })
     ).data;
   },
 
@@ -95,6 +95,7 @@ export const walletService = {
         "/wallets/withdrawals",
         {
           params: { page, limit: 10 },
+          headers: { 'x-skip-cache': 'true' },
         },
       )
     ).data;

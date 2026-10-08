@@ -139,7 +139,6 @@ export default function ProductModerationPage() {
             </div>
           </div>
         </section>
-        <p role="status" className="text-xs text-[#7D715E]">{loading ? 'Đang tải danh sách…' : filteredProducts.length + ' sản phẩm'}</p>
 
         {loading ? (
           <div className="rounded-2xl border border-[#EAE4D7] bg-white p-12 text-center text-sm text-[#7D715E]">Đang tải hồ sơ sản phẩm...</div>

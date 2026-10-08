@@ -591,7 +591,7 @@ export const ShopCouponsPage: React.FC = () => {
   });
 
   return (
-    <div className="w-full text-[#1A1612]">
+    <div className="promotions-coupons w-full text-[#1A1612]">
       <div className="max-w-[1520px] mx-auto space-y-4 pt-1 pb-8">
         <section aria-label="Phát hành voucher gian hàng" className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -646,7 +646,7 @@ export const ShopCouponsPage: React.FC = () => {
         </section>
 
         {/* Top 4 Stat Cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="coupon-metrics grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="min-h-[112px] rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">
@@ -708,14 +708,14 @@ export const ShopCouponsPage: React.FC = () => {
         </div>
 
         {/* Tab Selection & Search Filters */}
-        <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="coupon-filters bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setActiveTab('ACTIVE')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'ACTIVE'
-                  ? 'bg-[#F5E7CC] text-[#1A1612] border border-[#DEBE85] shadow-xs'
-                  : 'bg-[#F3EFE6] text-[#7D715E] hover:bg-[#EEDFC6] hover:text-[#1A1612] border border-transparent'
+                  ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
+                  : 'bg-white text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -726,12 +726,12 @@ export const ShopCouponsPage: React.FC = () => {
               onClick={() => setActiveTab('PENDING')}
               className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'PENDING'
-                  ? 'bg-[#F5E7CC] text-[#1A1612] border border-[#DEBE85] shadow-xs'
-                  : 'bg-[#F3EFE6] text-[#7D715E] hover:bg-[#EEDFC6] hover:text-[#1A1612] border border-transparent'
+                  ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
+                  : 'bg-white text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
             >
               <Clock className="w-3.5 h-3.5 text-amber-600" />
-              <span>Chờ duyệt từ KOL</span>
+              <span>KOL chờ duyệt</span>
               {pendingCoupons.length > 0 && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] bg-red-500 text-white font-extrabold shadow-2xs">
                   {pendingCoupons.length}
@@ -743,12 +743,12 @@ export const ShopCouponsPage: React.FC = () => {
               onClick={() => setActiveTab('HISTORY')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'HISTORY'
-                  ? 'bg-[#F5E7CC] text-[#1A1612] border border-[#DEBE85] shadow-xs'
-                  : 'bg-[#F3EFE6] text-[#7D715E] hover:bg-[#EEDFC6] hover:text-[#1A1612] border border-transparent'
+                  ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
+                  : 'bg-white text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
             >
               <Tag className="w-3.5 h-3.5 text-[#7D715E]" />
-              <span>Lịch sử / Đã đóng ({historyCoupons.length})</span>
+              <span>Lịch sử ({historyCoupons.length})</span>
             </button>
           </div>
 
@@ -864,10 +864,10 @@ export const ShopCouponsPage: React.FC = () => {
               return (
                 <div
                   key={coupon.id}
-                  className="bg-white rounded-2xl border border-[#EAE4D7] hover:border-[#C59B58]/60 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
+                  className="coupon-card bg-white rounded-2xl border border-[#EAE4D7] hover:border-[#C59B58]/60 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
                 >
                   {/* Top Ticket Header Banner */}
-                  <div className="p-4.5 border-b border-[#F3EFE6] bg-gradient-to-br from-[#FAF8F5] to-white relative">
+                  <div className="coupon-card-heading p-4 border-b border-[#EAE4D7] bg-white relative">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#8C6B32] font-black text-sm shrink-0 shadow-2xs">
@@ -875,7 +875,7 @@ export const ShopCouponsPage: React.FC = () => {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-base font-black text-[#1A1612] tracking-wider uppercase">
+                            <span className="text-base font-bold text-[#1A1612] tracking-normal uppercase">
                               {coupon.displayCode}
                             </span>
                             <button
@@ -901,7 +901,7 @@ export const ShopCouponsPage: React.FC = () => {
                       <span
                         className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0 border ${
                           coupon.status === 'ACTIVE'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            ? 'bg-white text-[#1A1612] border-[#EEDFC6]'
                             : coupon.status === 'PENDING_APPROVAL'
                             ? 'bg-amber-50 text-amber-700 border-amber-200'
                             : coupon.status === 'PAUSED'
@@ -927,8 +927,8 @@ export const ShopCouponsPage: React.FC = () => {
                           Voucher Gian Hàng
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-semibold border border-purple-200">
-                          <Sparkles className="w-3 h-3 text-purple-600" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FBF5EB] text-[#7D715E] font-semibold border border-[#EEDFC6]">
+                          <Sparkles className="w-3 h-3 text-[#B88E4F]" />
                           KOL: {coupon.collaborator?.fullName || 'Nhà sáng tạo'}
                         </span>
                       )}
@@ -1017,7 +1017,7 @@ export const ShopCouponsPage: React.FC = () => {
                   </div>
 
                   {/* Footer Action Buttons */}
-                  <div className="p-3 border-t border-[#F3EFE6] bg-[#FAF8F5] flex items-center justify-between gap-2">
+                  <div className="coupon-card-actions p-3 border-t border-[#EAE4D7] bg-white flex items-center justify-between gap-2">
                     {coupon.status === 'PENDING_APPROVAL' ? (
                       <>
                         <button

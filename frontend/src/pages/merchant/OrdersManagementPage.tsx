@@ -50,6 +50,7 @@ import {
 } from "../../components/orders/ShippingLabel";
 import { shippingService, type GhnTrackingDetail } from "../../services/shipping.service";
 import { CustomSelect } from "../../components/ui/CustomSelect";
+import './OrdersManagementPage.css';
 
 type OrderAction = "manual" | "excel";
 interface Props {
@@ -741,9 +742,16 @@ export default function OrdersManagementPage({
     </div>
   );
   return (
-    <div className="space-y-6 text-ink text-left pt-3 sm:pt-4 pb-6">
+    <div className="merchant-orders-page space-y-4 text-ink text-left pb-6">
       {!initialAction && (
         <>
+          <header className="merchant-orders-heading">
+            <div className="merchant-orders-heading-icon"><ShoppingBag size={20} /></div>
+            <div>
+              <h1>Quản lý đơn hàng</h1>
+              <p>Theo dõi đơn mua, đóng gói và cập nhật tiến độ giao hàng.</p>
+            </div>
+          </header>
           {/* Success Alert Banner */}
           {actionSuccessMsg && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold">
@@ -753,7 +761,7 @@ export default function OrdersManagementPage({
           )}
 
           {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="merchant-orders-metrics grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
               <span className="text-xs font-bold text-[#7D715E] block">Tổng đơn hàng</span>
               <strong className="text-xl sm:text-2xl font-black text-[#1A1612] mt-1 block">
@@ -781,9 +789,9 @@ export default function OrdersManagementPage({
           </div>
 
           {/* Filter & Search Bar */}
-          <div className="p-3 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+          <div className="merchant-orders-filters p-3 bg-white border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
             {/* Status Tabs - Modern Segmented Control */}
-            <div className="inline-flex items-center p-1 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] overflow-x-auto no-scrollbar max-w-full shrink-0">
+            <div className="merchant-orders-tabs inline-flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full">
               {[
                 { id: "ALL", label: "Tất cả" },
                 { id: "PENDING", label: "Chờ lấy hàng" },
@@ -796,6 +804,7 @@ export default function OrdersManagementPage({
                   <button
                     key={tab.id}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => {
                       setStatusFilter(tab.id);
                       setOrdersPage(1);
@@ -814,7 +823,7 @@ export default function OrdersManagementPage({
             </div>
 
             {/* Search Input & Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="merchant-orders-actions flex flex-wrap items-center gap-2.5">
               {/* Search input */}
               <div className="relative flex-1 sm:w-56 lg:w-64">
                 <Search className="w-3.5 h-3.5 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -862,7 +871,7 @@ export default function OrdersManagementPage({
                 className="h-9 px-3.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#1A1612] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>Import Excel</span>
+                <span>Nhập Excel</span>
               </button>
 
               {/* Tạo đơn thủ công button */}
@@ -879,7 +888,11 @@ export default function OrdersManagementPage({
           </div>
 
           {/* Orders Table */}
-          <div className="bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs overflow-hidden">
+          <div className="merchant-orders-table bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
+            <div className="merchant-orders-table-heading">
+              <h2>Danh sách đơn hàng <span>{ordersTotal} đơn</span></h2>
+              <p>Cuộn ngang để xem vận đơn, hoa hồng và thao tác.</p>
+            </div>
             {ordersLoading ? (
               <div className="p-12 text-center text-sm font-semibold text-[#7D715E]">
                 Đang tải dữ liệu đơn hàng thực tế...
@@ -899,8 +912,8 @@ export default function OrdersManagementPage({
                 </div>
               </div>
             ) : (
-              <div className="overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#EAE4D7] hover:[&::-webkit-scrollbar-thumb]:bg-[#C59B58]/40">
-                <table className="w-full min-w-[1420px] table-fixed border-collapse text-left text-xs">
+              <div className="merchant-orders-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Bảng đơn hàng, có thể cuộn ngang">
+                <table className="w-full min-w-[1280px] table-fixed border-collapse text-left text-xs">
                   <colgroup>
                     <col style={{ width: '12%' }} />
                     <col style={{ width: '13.5%' }} />
@@ -1051,7 +1064,7 @@ export default function OrdersManagementPage({
                                   <div key={idx} className="flex items-center gap-2.5">
                                     <ProductThumbnail src={thumb} alt={item.title} quantity={item.quantity} />
                                     <div className="flex flex-col min-w-0 flex-1">
-                                      <span className="font-bold text-[13px] text-[#1A1612] truncate block" title={item.title}>
+                                      <span className="merchant-order-product-name font-semibold text-[13px] text-[#1A1612] block" title={item.title}>
                                         {item.title}
                                       </span>
                                       <div className="flex items-center gap-2 mt-0.5">
@@ -1105,7 +1118,7 @@ export default function OrdersManagementPage({
                           {/* Trạng thái */}
                           <td className="py-3.5 px-2.5 align-middle whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs whitespace-nowrap shrink-0 ${badge.bg} ${badge.text} ${badge.border}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-[#EAE4D7] bg-white text-[#1A1612] whitespace-nowrap shrink-0"
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                               <span>{badge.label}</span>

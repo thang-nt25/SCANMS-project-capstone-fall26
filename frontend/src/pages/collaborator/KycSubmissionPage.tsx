@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './KolProfile.css';
 import {
   Sparkles,
   Link as LinkIcon,
@@ -252,7 +253,7 @@ export default function KycSubmissionPage() {
   const isPending = (rawStatus === 'UNVERIFIED' && hasSubmitted) || rawStatus === 'PENDING';
 
   return (
-    <div className="flex flex-col gap-6 w-full text-left">
+    <div className="kol-kyc-page flex flex-col gap-4 w-full text-left">
       {/* 1. KHỐI TRẠNG THÁI XÁC MINH CỦA HỆ THỐNG */}
       <Card
         className={`p-4 sm:p-5 border transition rounded-2xl w-full ${
@@ -289,7 +290,7 @@ export default function KycSubmissionPage() {
               <div className="flex flex-wrap items-center gap-2 mb-0.5">
                 <strong className="text-sm sm:text-base font-extrabold text-[#1A1612]">
                   {isVerified
-                    ? 'Hồ sơ đã được Ban Quản Trị SCANMS phê duyệt chính thức'
+                    ? 'Hồ sơ KOL đã được phê duyệt'
                     : isRejected
                     ? 'Hồ sơ bị từ chối phê duyệt'
                     : isPending
@@ -317,7 +318,7 @@ export default function KycSubmissionPage() {
               </div>
               <p className="text-xs text-[#7D715E] leading-relaxed m-0">
                 {isVerified
-                  ? 'Tài khoản của bạn đã đạt chuẩn đối tác uy tín. Bạn có thể cập nhật lại tài khoản ngân hàng, mã số thuế hoặc ảnh CCCD mới bất cứ lúc nào bên dưới.'
+                    ? 'Bạn có thể cập nhật thông tin ngân hàng, mã số thuế và giấy tờ định danh bên dưới.'
                   : isRejected
                   ? 'Thông tin định danh chưa hợp lệ hoặc hình ảnh CCCD không rõ. Vui lòng kiểm tra lại số liệu và gửi lại hồ sơ.'
                   : isPending
@@ -332,14 +333,14 @@ export default function KycSubmissionPage() {
       {/* 2. FORM ĐỊNH DANH TOÀN DIỆN (CHÍNH XÁC THEO GIAO DIỆN ẢNH 2 BÊN USER) */}
       <form onSubmit={handleSubmit} className="bg-white border border-[#EAE4D7] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 w-full">
         {/* BANNER TIÊU ĐỀ + NẠP DỮ LIỆU MẪU (CHUẨN IMAGE 2) */}
-        <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
+        <div className="kol-kyc-heading bg-white border-b border-[#EAE4D7] pb-3 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] shadow-2xs">
               <Sparkles className="w-3.5 h-3.5" />
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-black text-[#1A1612] tracking-tight m-0">
-                Hồ sơ Chứng Minh Kênh Sáng Tạo &amp; Thông Tin Định Danh KOL
+                Kênh sáng tạo & thông tin định danh
               </h3>
               <p className="text-[11px] text-[#7D715E] mt-0.5 m-0">
                 Cung cấp link mạng xã hội và ảnh chụp màn hình studio để chứng minh quyền sở hữu kênh.
@@ -359,7 +360,7 @@ export default function KycSubmissionPage() {
         <div className="space-y-4">
           <h4 className="text-xs font-black text-[#B88E4F] uppercase tracking-wider flex items-center gap-1.5 m-0">
             <LinkIcon className="w-3.5 h-3.5" />
-            1. Bằng chứng sở hữu kênh truyền thông
+            1. Thông tin kênh sáng tạo
           </h4>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -394,7 +395,7 @@ export default function KycSubmissionPage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Số lượng Followers (Người theo dõi) *</label>
+              <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Số người theo dõi *</label>
               <input
                 type="number"
                 min="0"
@@ -409,7 +410,7 @@ export default function KycSubmissionPage() {
 
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-              Đường dẫn liên kết kênh (URL Profile / Kênh) *
+              Liên kết kênh *
             </label>
             <input
               type="url"
@@ -422,8 +423,8 @@ export default function KycSubmissionPage() {
           </div>
 
           <ImageUploadDropzone
-            label="Ảnh chụp màn hình trang quản trị kênh (TikTok Studio / Meta Business Suite)"
-            helperText="💡 Admin sẽ đối chiếu ảnh chụp màn hình quyền quản trị với URL kênh để đảm bảo tính chính chủ, tránh mạo danh KOL."
+            label="Ảnh trang quản trị kênh"
+            helperText="Ảnh TikTok Studio hoặc Meta Business Suite thể hiện tên kênh và quyền quản trị."
             value={channelProofUrl}
             onChange={(url) => setChannelProofUrl(url)}
             iconType="camera"
@@ -623,6 +624,7 @@ export default function KycSubmissionPage() {
             <div>
               <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Tên ngân hàng *</label>
               <BankSelectTrigger
+                className="kol-kyc-bank-select w-full"
                 value={bankName}
                 onChange={(val) => setBankName(val)}
                 placeholder="-- Chọn ngân hàng thụ hưởng --"

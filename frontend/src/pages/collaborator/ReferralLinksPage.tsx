@@ -1003,18 +1003,15 @@ export default function ReferralLinksPage() {
     switch (link.status) {
       case 'ACTIVE':
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 shadow-2xs whitespace-nowrap">
-            <span className="relative flex h-2 w-2 flex-shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
+          <span className="kol-link-status inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold bg-white text-[#1A1612] border border-[#EAE4D7] whitespace-nowrap">
+            <CheckCircle2 className="h-3.5 w-3.5 text-[#059669] shrink-0" />
             <span>Đang hoạt động</span>
           </span>
         );
       case 'PAUSED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50/90 text-amber-800 border border-amber-200/80 shadow-2xs whitespace-nowrap">
-            <PauseCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+          <span className="kol-link-status inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold bg-white text-[#7D715E] border border-[#EAE4D7] whitespace-nowrap">
+            <PauseCircle className="w-3.5 h-3.5 text-[#B88E4F] flex-shrink-0" />
             <span>Tạm ngừng</span>
           </span>
         );
@@ -1090,10 +1087,10 @@ export default function ReferralLinksPage() {
   );
 
   return (
-    <div className="space-y-2.5 text-[#1A1612] font-sans pb-6">
+    <div className="kol-referral-links space-y-3 text-[#1A1612] font-sans pb-6">
 
       {/* Dải thống kê 4 chỉ số gọn gàng, sạch sẽ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="kol-link-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="flex items-center gap-2 p-2 sm:p-2.5 rounded-xl bg-white border border-[#EAE4D7] shadow-2xs hover:border-[#DEBE85] transition-all">
           <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center shrink-0">
             <Layers className="w-4 h-4 text-[#B88E4F]" />
@@ -1107,11 +1104,11 @@ export default function ReferralLinksPage() {
         </div>
 
         <div className="flex items-center gap-2 p-2 sm:p-2.5 rounded-xl bg-white border border-[#EAE4D7] shadow-2xs hover:border-[#DEBE85] transition-all">
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200/60 flex items-center justify-center shrink-0">
-            <MousePointerClick className="w-4 h-4 text-emerald-600" />
+          <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0">
+            <MousePointerClick className="w-4 h-4 text-[#B88E4F]" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-[#7D715E] truncate">Tổng lượt nhấp (Clicks)</div>
+            <div className="text-[11px] font-semibold text-[#7D715E] truncate">Tổng lượt nhấp</div>
             <div className="text-sm font-extrabold text-[#1A1612] leading-tight">
               {totalClicks.toLocaleString('vi-VN')}
             </div>
@@ -1157,7 +1154,7 @@ export default function ReferralLinksPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 id="exclusive-deals-heading" className="text-base font-extrabold text-[#1A1612]">
-                  Đề xuất Exclusive Deal
+                  Deal độc quyền
                 </h2>
                 {dealStats.total > 0 && (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
@@ -1178,7 +1175,7 @@ export default function ReferralLinksPage() {
                 )}
               </div>
               <p className="mt-0.5 text-xs text-[#7D715E] line-clamp-1">
-                Đề xuất mức hoa hồng độc quyền và cam kết doanh số cho Shop; link tiếp thị độc quyền sẽ được kích hoạt sau khi Shop duyệt.
+                Đề xuất hoa hồng và doanh số với Shop. Link được kích hoạt khi Shop duyệt.
               </p>
             </div>
           </div>
@@ -1461,7 +1458,7 @@ export default function ReferralLinksPage() {
       </section>
 
       {/* Thanh tìm kiếm & bộ lọc trực tiếp, không khung bọc to cồng kềnh */}
-      <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-2">
+      <form onSubmit={handleSearchSubmit} className="kol-link-filters flex flex-col md:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
           <input
@@ -1502,7 +1499,7 @@ export default function ReferralLinksPage() {
 
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] border border-[#C59B58] text-xs sm:text-sm text-white font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] border border-[#C59B58] text-xs sm:text-sm text-[#231D15] font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
           >
             Áp dụng
           </button>
@@ -1510,7 +1507,14 @@ export default function ReferralLinksPage() {
       </form>
 
 
-      <div className="bg-white rounded-2xl border border-[#EAE4D7] shadow-sm overflow-hidden">
+      <div className="kol-link-table bg-white rounded-2xl border border-[#EAE4D7] shadow-sm overflow-hidden">
+        <div className="kol-link-table-heading">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-[#B88E4F]" aria-hidden="true" />
+            <h2>Liên kết tiếp thị</h2>
+          </div>
+          <span>{totalLinks.toLocaleString('vi-VN')} link</span>
+        </div>
         {loading ? (
           <div className="p-16 text-center text-[#7D715E]">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-[#B88E4F]" />
@@ -1575,17 +1579,17 @@ export default function ReferralLinksPage() {
                             className="w-11 h-11 rounded-lg object-cover border border-[#EAE4D7] flex-shrink-0 bg-[#FAF8F5]"
                           />
                           <div className="min-w-0">
-                            <div className="font-bold text-[#1A1612] text-xs sm:text-[13px] truncate" title={link.product?.title}>
+                            <div className="kol-link-product-name font-semibold text-[#1A1612] text-xs line-clamp-2" title={link.product?.title}>
                               {link.product?.title}
                             </div>
                             <div className="flex items-center gap-1 text-[11px] text-[#7D715E] mt-0.5 min-w-0">
                               <Store className="w-3 h-3 text-[#7D715E] flex-shrink-0" />
                               <span className="truncate">{link.store?.name}</span>
                             </div>
-                            <div className="text-xs font-bold text-emerald-600 mt-0.5 flex items-center gap-1.5">
+                            <div className="text-xs font-bold text-[#1A1612] mt-0.5 flex items-center gap-1.5">
                               <span>{Number(link.product?.price || 0).toLocaleString('vi-VN')} đ</span>
                               {link.commissionRate && (
-                                <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-1.5 py-0.5 rounded-md font-bold">
+                                <span className="text-[10px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] px-1.5 py-0.5 rounded-md font-bold">
                                   HH: {link.commissionRate}%
                                 </span>
                               )}
@@ -1605,7 +1609,7 @@ export default function ReferralLinksPage() {
                               onClick={() => handleCopyLink(link.shortUrl, link.shortCode)}
                               className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center gap-1 shrink-0 ${isCopied
                                   ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-[#FAF8F5] hover:bg-[#ECE1CD] text-[#7D715E] hover:text-[#B88E4F] border border-[#EAE4D7]'
+                                  : 'bg-white hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#B88E4F] border border-[#EAE4D7]'
                                 }`}
                               title="Sao chép link"
                             >
@@ -1635,7 +1639,7 @@ export default function ReferralLinksPage() {
 
 
                       <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-lg text-left">
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-[#EAE4D7] rounded-lg text-left">
                           <div className="w-5 h-5 rounded-md bg-white border border-[#EAE4D7]/60 flex items-center justify-center text-[#B88E4F] flex-shrink-0">
                             <MousePointerClick className="w-3 h-3" />
                           </div>
@@ -1644,7 +1648,7 @@ export default function ReferralLinksPage() {
                               {link.totalClicks}
                             </div>
                             <div className="text-[10px] font-medium text-[#7D715E] leading-none mt-0.5">
-                              {link.uniqueClicks} unique
+                              {link.uniqueClicks} duy nhất
                             </div>
                           </div>
                         </div>
@@ -1652,7 +1656,7 @@ export default function ReferralLinksPage() {
 
 
                       <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-[#FAF8F5] border border-[#DEBE85] text-[#B88E4F] rounded-lg font-bold text-[11px]">
+                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-[#EAE4D7] text-[#7D715E] rounded-lg font-semibold text-[11px]">
                           <ShoppingBag className="w-3 h-3 text-[#B88E4F] flex-shrink-0" />
                           <span>{link.totalOrders} đơn</span>
                         </div>

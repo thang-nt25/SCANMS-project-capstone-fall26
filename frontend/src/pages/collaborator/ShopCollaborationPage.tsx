@@ -33,6 +33,7 @@ import ChatBoxPage from '../chat/ChatBoxPage';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
 import QRCode from 'qrcode';
+import './ShopCollaborationPage.css';
 
 export interface PartnerStore {
   id: string;
@@ -608,7 +609,7 @@ export default function ShopCollaborationPage() {
 
   return (
     <div
-      className="w-full flex flex-col gap-3 max-w-[1600px] mx-auto h-[calc(100vh-85px)] min-h-[620px] max-h-[900px]"
+      className="w-full flex flex-col gap-3 max-w-[1600px] mx-auto h-[calc(100dvh-110px)] min-h-[480px] max-h-[900px]"
       id="partner-collaboration-workspace"
     >
       {/* Top Warning Banner nếu KOL chưa xác minh */}
@@ -632,10 +633,10 @@ export default function ShopCollaborationPage() {
       )}
 
       {/* Main Unified Workspace */}
-      <div className="flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-3xl shadow-sm overflow-hidden flex flex-row">
+      <div className="collaboration-shell flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-row">
         {/* LEFT COLUMN: Danh Sách Gian Hàng Tinh Gọn (Có thể thu nhỏ chỉ hiện icon) */}
         <div
-          className={`${
+          className={`collaboration-store-list ${
             isSidebarCollapsed ? 'w-[64px]' : 'w-[260px] xl:w-[275px]'
           } shrink-0 border-r border-[#EAE4D7] bg-[#FAF8F5]/60 flex flex-col h-full transition-all duration-300 select-none`}
         >
@@ -856,7 +857,7 @@ export default function ShopCollaborationPage() {
         {/* RIGHT COLUMN: Không Gian Làm Việc 1-1 Với Shop */}
         <div className="flex-1 h-full flex flex-col min-w-0 bg-white overflow-hidden">
           {/* Shop Context Header Bar */}
-          <div className="shrink-0 px-5 py-2.5 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+          <div className="collaboration-shop-heading shrink-0 px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 type="button"
@@ -883,7 +884,7 @@ export default function ShopCollaborationPage() {
                     {selectedStore.name}
                   </button>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                    <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> Gian Hàng Xác Minh
+                    <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> Đã xác minh
                   </span>
                 </div>
 
@@ -914,9 +915,9 @@ export default function ShopCollaborationPage() {
                   : `/marketplace?shop=${encodeURIComponent(selectedStore.id)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-1 py-1 text-xs font-bold text-[#B88E4F] hover:text-[#9A7233] transition cursor-pointer group shrink-0 select-none" title={`Xem gian hàng ${selectedStore.name} trên Sàn`}
+                className="collaboration-action inline-flex items-center gap-1.5 text-xs font-semibold transition cursor-pointer group shrink-0 select-none" title={`Xem gian hàng ${selectedStore.name} trên Sàn`}
               >
-                <span>Xem Gian Hàng Trên Sàn</span>
+                <span>Xem gian hàng</span>
                 <ExternalLink className="w-3 h-3 text-[#B88E4F]" />
               </a>
             </div>
@@ -924,14 +925,14 @@ export default function ShopCollaborationPage() {
 
           {/* Sub-Tabs Bar: Vừa Vặn 100%, Nhãn Ngắn Gọn, Không Bị Tràn Chữ */}
           <div
-            className="shrink-0 px-5 py-2 border-b border-[#EAE4D7] bg-[#FAF8F5]/80 flex items-center gap-2 overflow-hidden"
+            className="collaboration-tabs shrink-0 px-4 py-2 border-b border-[#EAE4D7] bg-white flex items-center gap-2 overflow-x-auto"
             role="tablist"
           >
             {[
-              { id: 'messages', label: 'Tin Nhắn & Deal', icon: MessageSquare },
-              { id: 'products', label: 'Kho Sản Phẩm', icon: Package },
-              { id: 'samples', label: 'Hàng Mẫu 4 Bước', icon: Truck },
-              { id: 'media', label: 'Creator Toolkit', icon: Sparkles },
+              { id: 'messages', label: 'Tin nhắn & Deal', icon: MessageSquare },
+              { id: 'products', label: 'Sản phẩm', icon: Package },
+              { id: 'samples', label: 'Hàng mẫu', icon: Truck },
+              { id: 'media', label: 'Kho nội dung', icon: Sparkles },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
@@ -965,11 +966,11 @@ export default function ShopCollaborationPage() {
             {activeTab === 'messages' && (
               <div className="h-full w-full overflow-hidden animate-in fade-in-50 duration-200 flex flex-col">
                 {/* Thanh Deal Bar Đàm Phán Hoa Hồng VIP Tinh Tế */}
-                <div className="bg-[#FBF5EB] border-b border-[#EAE4D7] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
+                <div className="collaboration-deal-bar bg-white border-b border-[#EAE4D7] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
                   <div className="flex items-center gap-2 text-[#B88E4F]">
                     <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0" />
                     <span>
-                      <strong>Đàm Phán Hoa Hồng VIP:</strong> Thỏa thuận mức chiết khấu riêng trực tiếp với Chủ Shop.
+                      <strong>Thỏa thuận hoa hồng</strong> · Trao đổi mức hoa hồng riêng với Shop.
                     </span>
                   </div>
                   <button
@@ -977,9 +978,9 @@ export default function ShopCollaborationPage() {
                     onClick={() => {
                       toast.info('Đã gửi đề xuất hoa hồng đối tác VIP 30% vào khung chat!');
                     }}
-                    className="px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] font-extrabold hover:bg-[#FAF8F5] transition shadow-2xs shrink-0 cursor-pointer"
+                    className="collaboration-action px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
                   >
-                    + Đề xuất deal VIP 30%
+                    + Đề xuất deal 30%
                   </button>
                 </div>
 

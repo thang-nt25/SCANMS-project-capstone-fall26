@@ -3,11 +3,13 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/database/prisma.service';
 import { OrderStatus } from '@prisma/client';
 import { CreateGhnOrderDto, CalculateShippingFeeDto, GhnRequiredNote } from './dto/shipping.dto';
+import { notifyCustomerOrderEvent } from '../orders/customer-order-notifications';
 
 interface GhnProvince {
   ProvinceID: number;
@@ -455,12 +457,25 @@ export class GhnService {
       ghnShippedAt: new Date().toISOString(),
     };
 
-    const updatedOrder = await this.prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: OrderStatus.SHIPPING,
-        rawPayload: updatedRawPayload,
-      },
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.order.updateMany({
+        where: { id: order.id, status: order.status },
+        data: {
+          status: OrderStatus.SHIPPING,
+          rawPayload: updatedRawPayload,
+        },
+      });
+      if (changed.count !== 1) {
+        throw new ConflictException('Đơn hàng đã thay đổi trạng thái trong lúc tạo vận đơn.');
+      }
+      const current = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
+      if (order.status !== OrderStatus.SHIPPING) {
+        await notifyCustomerOrderEvent(tx, current, 'ORDER_SHIPPED', {
+          carrierName: 'Giao Hàng Nhanh (GHN Express)',
+          trackingNumber: orderCode,
+        });
+      }
+      return current;
     });
 
     return {
@@ -618,20 +633,46 @@ export class GhnService {
 
     // Nếu GHN báo đã giao hàng thành công -> Chuyển đơn sang DELIVERED
     if (ghnStatus === 'delivered') {
-      await this.prisma.order.update({
-        where: { id: order.id },
-        data: {
-          status: OrderStatus.DELIVERED,
-          deliveredAt: new Date(),
-        },
-      });
-      this.logger.log(`✅ Webhook GHN: Đơn #${order.externalOrderSn} đã được chuyển sang DELIVERED.`);
+      const finalStatuses: OrderStatus[] = [
+        OrderStatus.DELIVERED,
+        OrderStatus.COMPLETED,
+        OrderStatus.CANCELLED,
+        OrderStatus.RETURN_REQUESTED,
+        OrderStatus.DISPUTED,
+        OrderStatus.RETURNED,
+      ];
+      if (!finalStatuses.includes(order.status)) {
+        const changed = await this.prisma.$transaction(async (tx) => {
+          const result = await tx.order.updateMany({
+            where: { id: order.id, status: order.status },
+            data: {
+              status: OrderStatus.DELIVERED,
+              deliveredAt: new Date(),
+            },
+          });
+          if (result.count === 1) {
+            await notifyCustomerOrderEvent(tx, order, 'ORDER_DELIVERED', {
+              carrierName: 'Giao Hàng Nhanh (GHN Express)',
+              trackingNumber: orderCode,
+            });
+          }
+          return result.count === 1;
+        });
+        if (changed) {
+          this.logger.log(`✅ Webhook GHN: Đơn #${order.externalOrderSn} đã được chuyển sang DELIVERED.`);
+        }
+      }
     } else if (ghnStatus === 'cancel' && order.status === OrderStatus.PENDING) {
-      await this.prisma.order.update({
-        where: { id: order.id },
-        data: {
-          status: OrderStatus.CANCELLED,
-        },
+      await this.prisma.$transaction(async (tx) => {
+        const changed = await tx.order.updateMany({
+          where: { id: order.id, status: OrderStatus.PENDING },
+          data: { status: OrderStatus.CANCELLED },
+        });
+        if (changed.count === 1) {
+          await notifyCustomerOrderEvent(tx, order, 'ORDER_CANCELLED', {
+            reason: 'Đơn vận chuyển bị GHN hủy',
+          });
+        }
       });
     }
 

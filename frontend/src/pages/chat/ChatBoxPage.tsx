@@ -33,6 +33,7 @@ import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '../../types/chat';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
+import './CustomerChat.css';
 
 function removeAccents(str: string): string {
   return str
@@ -267,7 +268,7 @@ function ExclusiveDealCardBubble({ card, isMine, isShop }: { card: any; isMine: 
   const isRejected = status === 'REJECTED';
 
   return (
-    <div className="max-w-sm space-y-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-[#1A1612] shadow-2xs">
+    <div className="exclusive-deal-bubble max-w-sm space-y-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-[#1A1612] shadow-2xs">
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1 rounded-full border border-[#EEDFC6] bg-white px-2 py-0.5 text-[10px] font-extrabold text-[#B88E4F]">
           <Sparkles className="h-3 w-3" /> EXCLUSIVE DEAL
@@ -1383,7 +1384,7 @@ export default function ChatBoxPage({
     (currentUser?.role === 'SHOP_MANAGER' && Boolean(conv.collaborator?.id));
 
   return (
-    <div className={embedded ? 'h-full w-full' : 'mx-auto flex w-full max-w-[1520px] flex-col pt-3 pb-4 sm:pt-4'}>
+    <div className={`${onlyCustomerChats && !embedded ? 'merchant-customer-chat ' : ''}${embedded ? 'h-full w-full' : 'mx-auto flex w-full max-w-[1520px] flex-col pt-3 pb-4 sm:pt-4'}`}>
       <div
         className={`flex min-h-0 min-w-0 ${embedded ? 'h-full w-full' : 'h-[calc(100dvh-130px)] min-h-[460px] sm:min-h-[560px]'} overflow-hidden rounded-3xl border border-[#EAE4D7] bg-white shadow-[0_12px_36px_rgba(35,29,21,0.08)] ${className}`}
         id="chat-page"
@@ -1723,7 +1724,7 @@ export default function ChatBoxPage({
 
 
             <div
-              className={`min-h-0 flex-1 overflow-y-auto ${embedded ? 'space-y-3 p-3 sm:p-4' : 'space-y-5 p-4 sm:p-7 lg:p-8'}`}
+              className={`chat-message-list min-h-0 flex-1 overflow-y-auto ${embedded ? 'space-y-3 p-3 sm:p-4' : 'space-y-5 p-4 sm:p-7 lg:p-8'}`}
               ref={messagesContainerRef}
               onScroll={e => {
                 if ((e.target as HTMLElement).scrollTop < 60 && hasMore) {
@@ -1823,8 +1824,8 @@ export default function ChatBoxPage({
 
                           return (
                             <div
-                              className={`rounded-2xl p-3.5 text-sm leading-relaxed shadow-xs ${isMine
-                                  ? 'rounded-tr-md border border-[#B88E4F] bg-[#C59B58] text-[#231D15]'
+                              className={`chat-message-bubble ${isMine ? 'chat-message-own' : ''} rounded-2xl p-3.5 text-sm leading-relaxed ${isMine
+                                  ? 'rounded-tr-md border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
                                   : 'rounded-tl-md border border-[#EAE4D7] bg-white text-[#1A1612]'
                                 }`}
                             >

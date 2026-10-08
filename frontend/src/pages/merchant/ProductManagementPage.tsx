@@ -27,7 +27,6 @@ import {
   ShieldCheck,
   EyeOff,
   Ban,
-  Crown,
   ArrowLeftRight,
   Sparkles,
   RefreshCw,
@@ -101,7 +100,7 @@ function ProductEvidenceEditor({
   onLinksChange, onImagesChange, onUpload,
 }: ProductEvidenceEditorProps) {
   return (
-    <section className="group min-w-0 overflow-hidden rounded-2xl border border-[#E7DDCC] bg-white shadow-[0_4px_16px_rgba(35,29,21,0.045)] transition-shadow hover:shadow-[0_8px_24px_rgba(35,29,21,0.075)] lg:row-span-3 lg:grid lg:grid-rows-subgrid">
+    <section className="product-evidence-editor group min-w-0 overflow-hidden rounded-2xl border border-[#E7DDCC] bg-white shadow-[0_4px_16px_rgba(35,29,21,0.045)] transition-shadow hover:shadow-[0_8px_24px_rgba(35,29,21,0.075)] lg:row-span-3 lg:grid lg:grid-rows-subgrid">
       <header className="flex items-start gap-3 border-b border-[#EEE6D9] bg-gradient-to-br from-[#FBF5EB] via-[#FFFCF7] to-white px-4 py-4">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-white text-[#B88E4F] shadow-[0_2px_5px_rgba(35,29,21,0.04)]">
           <ShieldCheck className="h-[19px] w-[19px]" strokeWidth={1.8} />
@@ -358,6 +357,17 @@ export default function ProductManagementPage() {
   const [rejectionReasonInput, setRejectionReasonInput] = useState('');
   const [rejectionActionType, setRejectionActionType] = useState<'REJECTED' | 'HIDDEN'>('REJECTED');
 
+  useEffect(() => {
+    if (!selectedVideoProduct) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (rejectionModalMedia) setRejectionModalMedia(null);
+      else setSelectedVideoProduct(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [selectedVideoProduct, rejectionModalMedia]);
+
   const localKolVideoStorageKey = 'scanms_kol_video_submissions';
   const readLocalKolVideos = () => {
     try {
@@ -434,6 +444,17 @@ export default function ProductManagementPage() {
     'REJECTED' | 'HIDDEN'
   >('REJECTED');
   const [reviewRejectionReasonInput, setReviewRejectionReasonInput] = useState('');
+
+  useEffect(() => {
+    if (!showReviewModeration) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (rejectionModalReview) setRejectionModalReview(null);
+      else setShowReviewModeration(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [showReviewModeration, rejectionModalReview]);
 
   const getReviewStatus = (review: any): 'PENDING' | 'APPROVED' | 'REJECTED' | 'HIDDEN' => {
     if (review?.status) return review.status;
@@ -1912,13 +1933,42 @@ export default function ProductManagementPage() {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         icon={<Package className="h-4 w-4" />}
-        title={editingProduct ? 'Cập Nhật Sản Phẩm & Hoa Hồng' : 'Thêm Sản Phẩm Mới'}
-        subtitle="Hoàn thiện hồ sơ sản phẩm để gửi Ban Quản Trị kiểm duyệt"
+        title={editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
+        subtitle="Hoàn thiện thông tin và gửi kiểm duyệt."
         maxWidth="3xl"
         stickyHeader
-        className="max-h-[90vh] overflow-y-auto rounded-3xl border-[#EAE4D7] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+        className="product-editor-modal rounded-3xl border-[#EAE4D7] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+        footer={(<div className="product-editor-actions flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-[#7D715E] bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="submit"
+              form="product-editor-form"
+              disabled={uploadingImage || savingProduct}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#231D15] bg-[#C59B58] hover:bg-[#B88E4F] shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {savingProduct ? (
+                <span>Đang lưu sản phẩm...</span>
+              ) : uploadingImage ? (
+                <>
+                  <UploadCloud size={14} className="animate-spin" />
+                  <span>Đang xử lý ảnh...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} />
+                  <span>{editingProduct ? 'Lưu thay đổi sản phẩm' : 'Gửi duyệt sản phẩm'}</span>
+                </>
+              )}
+            </button>
+          </div>)}
       >
-        <form noValidate onSubmit={handleSave} className="flex flex-col gap-5">
+        <form id="product-editor-form" noValidate onSubmit={handleSave} className="product-editor-form flex flex-col gap-5">
           {saveError && (
             (() => {
               const missingItems = saveError.split('\n').slice(1)
@@ -1953,8 +2003,8 @@ export default function ProductManagementPage() {
             })()
           )}
           {!editingProduct && (
-            <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3.5 py-3 text-xs leading-relaxed text-[#6F4E20]">
-              Hoàn tất thông tin sản phẩm và minh chứng có dấu <span className="font-bold text-[#DC2626]">*</span> trước khi gửi duyệt. Cấp mẫu và hoa hồng là tùy chọn, có thể thiết lập sau.
+            <div className="product-editor-note">
+              Điền các mục có dấu <span className="text-[#DC2626]">*</span> để gửi duyệt. Cấp mẫu và hoa hồng có thể thiết lập sau.
             </div>
           )}
           {editingProduct?.moderationStatus === 'REJECTED' && (
@@ -1965,13 +2015,13 @@ export default function ProductManagementPage() {
             </div>
           )}
           {/* SECTION 1: THÔNG TIN CƠ BẢN SẢN PHẨM */}
-          <div className="flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:p-5">
+          <div className="product-editor-section flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:p-5">
             <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
-              <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#1A1612]">
+              <span className="flex items-center gap-2 text-xs font-bold product-editor-section-title text-[#1A1612]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
                   <FolderTree className="h-4 w-4 text-[#B88E4F]" />
                 </span>
-                1. Thông tin cơ bản sản phẩm
+                1. Thông tin cơ bản
               </span>
             </div>
 
@@ -2072,232 +2122,77 @@ export default function ProductManagementPage() {
             </div>
           </div>
 
-          {/* SECTION 2: BỘ SƯU TẬP 5 ẢNH (1 CHÍNH + 4 PHỤ) */}
-          <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-4 flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <section className="product-editor-section product-editor-gallery">
+            <div className="product-gallery-heading">
               <div>
-                <span className="text-xs font-bold text-[#1A1612] uppercase tracking-wider flex items-center gap-1.5">
-                  <Camera className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  2. Thư viện hình ảnh sản phẩm (Tối đa 5 ảnh)
-                </span>
-                <p className="text-[11px] text-[#7D715E] mt-0.5">
-                  Gồm 1 ảnh chính bắt buộc (ảnh bìa marketplace) và tối đa 4 ảnh phụ cho gallery.
-                </p>
+                <h4 className="product-editor-section-title flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-[#B88E4F]" />
+                  2. Hình ảnh sản phẩm
+                </h4>
+                <p>1 ảnh chính bắt buộc, tối đa 4 ảnh phụ. JPG, PNG hoặc WEBP.</p>
               </div>
-
-              <div>
-                <input
-                  id="bulk-images-input"
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  disabled={uploadingImage}
-                  onChange={(e) => {
-                    void handleBulkUpload(e.target.files);
-                    e.target.value = '';
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('bulk-images-input')?.click()}
-                  disabled={uploadingImage}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-white hover:bg-[#F3EFE6] border border-[#EAE4D7] shadow-2xs transition cursor-pointer disabled:opacity-50"
-                >
-                  <UploadCloud size={13} className="text-[#B88E4F]" />
-                  <span>{uploadingSlot === 'bulk' ? 'Đang tải hàng loạt...' : 'Tải lên nhiều ảnh'}</span>
-                </button>
-              </div>
+              <input id="bulk-images-input" type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" disabled={uploadingImage}
+                onChange={(event) => { void handleBulkUpload(event.target.files); event.target.value = ''; }} />
+              <button type="button" disabled={uploadingImage} className="product-gallery-upload"
+                onClick={() => document.getElementById('bulk-images-input')?.click()}>
+                <UploadCloud size={14} /> {uploadingSlot === 'bulk' ? 'Đang tải…' : 'Tải nhiều ảnh'}
+              </button>
             </div>
-
-            {/* 5 IMAGE SLOTS GRID */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
-              {/* SLOT 0: MAIN IMAGE (REQUIRED) */}
-              <div className="flex flex-col gap-1.5">
-                <input
-                  id="main-image-input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  disabled={uploadingImage}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleUploadSingleImage(f, true);
-                    e.target.value = '';
-                  }}
-                />
-
-                <div
-                  className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all flex flex-col items-center justify-center text-center p-2 group ${
-                    formImage
-                      ? 'border-[#C59B58] bg-white shadow-xs'
-                      : 'border-dashed border-[#C59B58] bg-[#FFFBF4] hover:bg-[#FFF8EB] cursor-pointer'
-                  }`}
-                  onClick={() => {
-                    if (!formImage && !uploadingImage) {
-                      document.getElementById('main-image-input')?.click();
-                    }
-                  }}
-                >
-                  {formImage ? (
-                    <>
-                      <img
-                        src={formImage}
-                        alt="Ảnh chính sản phẩm"
-                        className="w-full h-full object-cover transition duration-200 group-hover:scale-105"
-                      />
-                      <div className="absolute top-1.5 left-1.5 bg-[#EBD08C] text-white text-[9.5px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-1">
-                        <span>⭐</span>
-                        <span>CHÍNH</span>
-                      </div>
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1 backdrop-blur-xs">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            document.getElementById('main-image-input')?.click();
-                          }}
-                          className="px-2 py-1 rounded-lg bg-white/90 hover:bg-white text-[10px] font-bold text-[#1A1612] shadow-xs cursor-pointer"
-                        >
-                          Đổi ảnh
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFormImage('');
-                          }}
-                          className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-[10px] font-bold text-white shadow-xs cursor-pointer"
-                        >
-                          Gỡ ảnh
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-1">
-                      <div className="w-8 h-8 rounded-xl bg-[#EBD08C]/60 flex items-center justify-center text-[#991B1B]">
-                        <ImagePlus size={16} />
-                      </div>
-                      <span className="text-[10px] font-extrabold text-[#991B1B] leading-tight">
-                        ⭐ ẢNH CHÍNH
-                      </span>
-                      <span className="text-[9px] text-[#A89066] font-medium leading-tight">
-                        {uploadingSlot === 'main' ? 'Đang tải...' : 'Bắt buộc'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-[10.5px] font-bold text-center text-[#B88E4F]">Ảnh bìa chính</span>
-              </div>
-
-              {/* SLOTS 1 TO 4: SUB IMAGES */}
-              {[0, 1, 2, 3].map((subIdx) => {
-                const subUrl = formSubImages[subIdx];
-                const inputId = `sub-image-input-${subIdx}`;
-                const isCurrentUploading = uploadingSlot === `sub-${subIdx}`;
-
+            <div className="product-image-grid">
+              {[0, 1, 2, 3, 4].map((slot) => {
+                const isMain = slot === 0;
+                const subIndex = slot - 1;
+                const url = isMain ? formImage : formSubImages[subIndex];
+                const inputId = isMain ? 'main-image-input' : 'sub-image-input-' + subIndex;
+                const label = isMain ? 'Ảnh chính' : 'Ảnh phụ ' + slot;
+                const isUploading = uploadingSlot === (isMain ? 'main' : 'sub-' + subIndex);
                 return (
-                  <div key={subIdx} className="flex flex-col gap-1.5">
-                    <input
-                      id={inputId}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      disabled={uploadingImage}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void handleUploadSingleImage(f, false, subIdx);
-                        e.target.value = '';
-                      }}
-                    />
-
-                    <div
-                      className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all flex flex-col items-center justify-center text-center p-2 group ${
-                        subUrl
-                          ? 'border-[#EAE4D7] bg-white shadow-xs hover:border-[#C59B58]'
-                          : 'border-dashed border-slate-200 bg-white hover:border-[#C59B58]/60 hover:bg-[#FAF8F5] cursor-pointer'
-                      }`}
-                      onClick={() => {
-                        if (!subUrl && !uploadingImage) {
-                          document.getElementById(inputId)?.click();
-                        }
-                      }}
-                    >
-                      {subUrl ? (
+                  <div key={slot} className="product-image-slot">
+                    <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={uploadingImage}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void handleUploadSingleImage(file, isMain, isMain ? undefined : subIndex);
+                        event.target.value = '';
+                      }} />
+                    <button type="button" disabled={uploadingImage}
+                      className={'product-image-preview' + (isMain ? ' product-image-main' : '') + (url ? ' has-image' : '')}
+                      aria-label={(url ? 'Đổi ' : 'Tải ') + label.toLowerCase()}
+                      onClick={() => document.getElementById(inputId)?.click()}>
+                      {url ? <img src={url} alt={label + ' sản phẩm'} /> : (
                         <>
-                          <img
-                            src={subUrl}
-                            alt={`Ảnh phụ ${subIdx + 1}`}
-                            className="w-full h-full object-cover transition duration-200 group-hover:scale-105"
-                          />
-                          <div className="absolute top-1.5 left-1.5 bg-slate-800/80 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-md shadow-xs">
-                            Phụ {subIdx + 1}
-                          </div>
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1 backdrop-blur-xs">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSetAsMain(subIdx);
-                              }}
-                              className="w-full py-1 rounded-lg bg-[#EBD08C] hover:bg-[#DEC07A] text-[9.5px] font-bold text-white shadow-xs flex items-center justify-center gap-1 cursor-pointer"
-                              title="Chuyển ảnh này thành ảnh bìa chính"
-                            >
-                              <Crown size={11} />
-                              <span>Đặt làm chính</span>
-                            </button>
-                            <div className="flex items-center gap-1 w-full">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  document.getElementById(inputId)?.click();
-                                }}
-                                className="flex-1 py-1 rounded-lg bg-white/90 hover:bg-white text-[9.5px] font-bold text-[#1A1612] shadow-xs cursor-pointer"
-                              >
-                                Đổi
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveSubImage(subIdx);
-                                }}
-                                className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-[9.5px] font-bold text-white shadow-xs cursor-pointer"
-                                title="Xóa ảnh này"
-                              >
-                                <X size={11} />
-                              </button>
-                            </div>
-                          </div>
+                          {isMain ? <ImagePlus size={21} /> : <Plus size={20} />}
+                          <span>{isUploading ? 'Đang tải…' : 'Chọn ảnh'}</span>
                         </>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center gap-1 text-slate-400 group-hover:text-[#B88E4F]">
-                          <Plus size={18} strokeWidth={2.5} />
-                          <span className="text-[10px] font-bold">
-                            {isCurrentUploading ? 'Đang tải...' : `Ảnh phụ ${subIdx + 1}`}
-                          </span>
+                      )}
+                    </button>
+                    <div className="product-image-label">
+                      <span>{label}{isMain && <span className="ml-1 text-[#DC2626]">*</span>}</span>
+                      {url && (
+                        <div className="product-image-tools">
+                          {!isMain && <button type="button" disabled={uploadingImage} onClick={() => handleSetAsMain(subIndex)}
+                            aria-label={'Đặt ảnh phụ ' + slot + ' làm ảnh chính'} title="Đặt làm ảnh chính"><Star size={12} /></button>}
+                          <button type="button" disabled={uploadingImage} aria-label={'Gỡ ' + label.toLowerCase()} title="Gỡ ảnh"
+                            onClick={() => isMain ? setFormImage('') : handleRemoveSubImage(subIndex)}>
+                            <Trash2 size={12} />
+                          </button>
                         </div>
                       )}
                     </div>
-                    <span className="text-[10.5px] font-medium text-center text-slate-500">
-                      Ảnh phụ {subIdx + 1}
-                    </span>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </section>
 
-          <div className="flex flex-col gap-5 rounded-[22px] border border-[#EAE4D7] bg-[#FAF8F5] p-4 shadow-[0_2px_12px_rgba(35,29,21,0.03)] sm:p-5">
+          <div className="product-editor-section product-editor-variants flex flex-col gap-5 rounded-[22px] border border-[#EAE4D7] bg-[#FAF8F5] p-4 shadow-[0_2px_12px_rgba(35,29,21,0.03)] sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#EAE4D7] pb-4">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
                   <Package className="h-4 w-4 text-[#B88E4F]" />
                 </span>
                 <div>
-                <span className="text-xs font-bold text-[#1A1612] uppercase tracking-wide">
-                  3. Phân loại sản phẩm và ảnh riêng theo SKU <span className="text-[#DC2626]">*</span>
+                <span className="text-xs font-bold text-[#1A1612] product-editor-section-title">
+                  3. Phân loại & SKU <span className="text-[#DC2626]">*</span>
                 </span>
                 <p className="mt-1.5 text-xs leading-relaxed text-[#7D715E]">
                   {formCategory
@@ -2339,7 +2234,7 @@ export default function ProductManagementPage() {
             </label>
 
             {formCategory && (
-              <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.03)] sm:p-5">
+              <div className="product-editor-section product-editor-evidence rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.03)] sm:p-5">
                 <p className="text-sm font-bold text-[#1A1612]">Nhập các lựa chọn để tạo tổ hợp phân loại</p>
                 <p className="mt-1 text-xs leading-relaxed text-[#7D715E]">Ngăn cách nhiều giá trị bằng dấu phẩy. Ví dụ màu Đen, Trắng và size S, M sẽ tạo 4 SKU. Giá, tồn kho và ảnh điền riêng sau khi tạo.</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -2489,12 +2384,12 @@ export default function ProductManagementPage() {
           </div>
 
           {/* SECTION 4: ĐỊNH GIÁ BÁN SẢN PHẨM & TỒN KHO */}
-          <div className="flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:p-5">
-            <span className="flex items-center gap-2 border-b border-[#EAE4D7] pb-3 text-xs font-bold uppercase tracking-wide text-[#1A1612]">
+          <div className="product-editor-section flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:p-5">
+            <span className="flex items-center gap-2 border-b border-[#EAE4D7] pb-3 text-xs font-bold product-editor-section-title text-[#1A1612]">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
                 <Coins className="h-4 w-4 text-[#B88E4F]" />
               </span>
-              4. Giá bán sản phẩm & Số lượng kho
+              4. Giá bán & tồn kho
             </span>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -2541,10 +2436,10 @@ export default function ProductManagementPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
+          <div className="product-editor-section product-editor-samples flex flex-col gap-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#1A1612]">
+                <span className="flex items-center gap-2 text-xs font-bold product-editor-section-title text-[#1A1612]">
                   <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-white">
                     <Package className="h-4 w-4 text-[#B88E4F]" />
                   </span>
@@ -2653,16 +2548,16 @@ export default function ProductManagementPage() {
           </div>
 
           {/* SECTION 5: THIẾT LẬP HOA HỒNG KOL/CTV (QUY ĐỔI 2 CHIỀU % ⇄ VNĐ) */}
-          <div className="flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_3px_14px_rgba(35,29,21,0.045)] sm:p-5">
+          <div className="product-editor-section product-editor-commission flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_3px_14px_rgba(35,29,21,0.045)] sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
-              <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#1A1612]">
+              <span className="flex items-center gap-2 text-xs font-bold product-editor-section-title text-[#1A1612]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
                   <Percent className="h-4 w-4 text-[#B88E4F]" />
                 </span>
-                5. Chính sách hoa hồng cho KOL/CTV (Quy đổi 2 chiều)
+                5. Hoa hồng KOL/CTV
               </span>
               <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1.5 text-[11px] font-semibold text-[#8C6226]">
-                Tùy chọn · Có thể bổ sung sau khi duyệt
+                Tùy chọn
               </span>
             </div>
 
@@ -2676,7 +2571,7 @@ export default function ProductManagementPage() {
                   onClick={() => handleCommissionRateChange(pct)}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                     formCommission === pct
-                      ? 'border-[#C59B58] bg-[#C59B58] text-[#231D15] shadow-sm'
+                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
                       : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#C59B58] hover:bg-[#FBF5EB]'
                   }`}
                 >
@@ -2691,7 +2586,7 @@ export default function ProductManagementPage() {
                   onClick={() => handleCommissionAmountChange(amt)}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                     formCommissionAmount === amt
-                      ? 'border-[#C59B58] bg-[#C59B58] text-[#231D15] shadow-sm'
+                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
                       : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#C59B58] hover:bg-[#FBF5EB]'
                   }`}
                 >
@@ -2749,7 +2644,7 @@ export default function ProductManagementPage() {
             {/* REAL-TIME COMMISSIONS SUMMARY BANNER */}
             <div className="flex flex-col justify-between gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 text-xs sm:flex-row sm:items-center">
               <div className="flex items-center gap-2">
-                <span className="text-base">💰</span>
+                <Coins className="h-4 w-4 text-[#B88E4F]" />
                 <div>
                   <span className="font-bold text-[#1A1612]">KOL/CTV nhận được: </span>
                   <span className="font-extrabold text-[#B88E4F] text-sm">
@@ -2786,7 +2681,7 @@ export default function ProductManagementPage() {
             </span>
           </label>
 
-          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.03)] sm:p-5">
+          <div className="product-editor-section product-editor-evidence rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.03)] sm:p-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="min-w-0">
               <label className="mb-2 block text-xs font-semibold text-[#1A1612]">Thành phần <span className="text-[#DC2626]">*</span></label>
@@ -2850,14 +2745,14 @@ export default function ProductManagementPage() {
           </div>
 
           {/* SECTION 6: MÔ TẢ CHI TIẾT SẢN PHẨM */}
-          <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5">
+          <div className="product-editor-section product-editor-description rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5">
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <label className="text-sm font-bold text-[#1A1612]">
-                Mô tả chi tiết sản phẩm & Điểm nổi bật (KOL Sales Brief) <span className="text-[#DC2626]">*</span>
+                Mô tả & điểm nổi bật <span className="text-[#DC2626]">*</span>
               </label>
               <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-white px-2.5 py-1 text-[11px] font-medium text-[#7D715E]">
                 <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" />
-                Hỗ trợ KOL hiểu rõ để quảng bá tốt hơn
+                Thông tin dành cho KOL
               </span>
             </div>
             <AutoGrowTextarea
@@ -2869,35 +2764,6 @@ export default function ProductManagementPage() {
             />
           </div>
 
-          {/* FOOTER ACTIONS */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#EAE4D7]/60">
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-[#7D715E] bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              disabled={uploadingImage || savingProduct}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#231D15] bg-gradient-to-r from-[#EBD08C] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#D4B26F] shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {savingProduct ? (
-                <span>Đang lưu sản phẩm...</span>
-              ) : uploadingImage ? (
-                <>
-                  <UploadCloud size={14} className="animate-spin" />
-                  <span>Đang xử lý ảnh...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} />
-                  <span>{editingProduct ? 'Lưu thay đổi sản phẩm' : 'Đăng bán sản phẩm mới'}</span>
-                </>
-              )}
-            </button>
-          </div>
         </form>
       </Modal>
 
@@ -3102,32 +2968,32 @@ export default function ProductManagementPage() {
           onClick={() => setSelectedVideoProduct(null)}
         >
           <div
-            className="bg-[#FAF8F5] rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-4xl text-left animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-hidden flex flex-col"
+            className="kol-video-review-modal bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full text-left animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kol-video-review-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 sm:px-6 py-4 bg-white border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-3">
+            <div className="kol-video-review-header flex items-center justify-between bg-white border-b border-[#EAE4D7]">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="w-10 h-10 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl flex items-center justify-center text-[#B88E4F] shrink-0">
                   <Video className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#1A1612] m-0 flex items-center gap-2">
-                    {selectedVideoProduct.id === '__ALL__'
-                      ? 'Duyệt video KOL gửi đến Shop'
-                      : 'Kiểm duyệt Video KOL Review'}
-                    <Badge variant="amber" className="text-[10px] font-mono">
-                      {selectedVideoProduct.sku}
-                    </Badge>
+                <div className="min-w-0">
+                  <h3 id="kol-video-review-title" className="text-base font-semibold text-[#1A1612] m-0 flex flex-wrap items-center gap-2">
+                    Duyệt video KOL
+                    <span className="kol-video-scope">{selectedVideoProduct.id === '__ALL__' ? 'Tất cả sản phẩm' : selectedVideoProduct.sku}</span>
                   </h3>
-                  <p className="text-xs text-[#7D715E] m-0 mt-0.5 truncate max-w-md">
+                  <p className="text-xs text-[#7D715E] m-0 mt-0.5">
                     {selectedVideoProduct.id === '__ALL__'
-                      ? 'Xem và xử lý toàn bộ video theo từng sản phẩm trong gian hàng.'
+                      ? 'Xem video và phản hồi cho nhà sáng tạo.'
                       : `Sản phẩm: ${selectedVideoProduct.title || (selectedVideoProduct as any).name}`}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
+                aria-label="Đóng cửa sổ duyệt video"
                 onClick={() => setSelectedVideoProduct(null)}
                 className="w-8 h-8 rounded-lg text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] flex items-center justify-center cursor-pointer transition"
               >
@@ -3135,7 +3001,7 @@ export default function ProductManagementPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+            <div className="kol-video-review-list flex-1 overflow-y-auto">
               {loadingVideos ? (
                 <div className="text-center py-10 text-xs text-[#7D715E]">
                   Đang tải danh sách video review từ máy chủ...
@@ -3160,67 +3026,62 @@ export default function ProductManagementPage() {
                   return (
                     <article
                       key={v.id}
-                      className="overflow-hidden bg-white rounded-2xl border border-[#EAE4D7] shadow-[0_5px_18px_rgba(95,74,43,0.06)] text-xs"
+                      className="kol-video-review-card bg-white rounded-xl border border-[#EAE4D7] text-xs"
                     >
-                      <div className="grid lg:grid-cols-[minmax(300px,1.05fr)_minmax(0,1fr)]">
-                        <div className="bg-[#1A1612] min-h-[210px] flex items-center justify-center relative">
+                      <div className="kol-video-review-layout">
+                        <div className="kol-video-player">
                           <video
                             src={v.urlOrContent}
                             poster={v.posterUrl || undefined}
                             controls
                             playsInline
                             preload="metadata"
-                            className="w-full aspect-video max-h-[330px] bg-black object-contain"
+                            className="w-full aspect-video object-contain"
                             aria-label={`Video review ${v.title || 'của KOL'}`}
                           >
                             Trình duyệt của bạn không hỗ trợ phát video này.
                           </video>
-                          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/70 text-white text-[10px] font-bold backdrop-blur-sm pointer-events-none">
-                            <Video className="w-3 h-3" /> Video KOL gửi
-                          </span>
                         </div>
 
-                        <div className="p-4 sm:p-5 flex flex-col min-w-0">
+                        <div className="kol-video-info flex flex-col min-w-0">
                       <div className="space-y-2 min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <strong className="text-sm font-bold text-[#1A1612] truncate">
-                            {v.title}
+                          <strong className="kol-video-title text-sm font-semibold text-[#1A1612]" title={v.title}>
+                            {v.title || 'Video review sản phẩm'}
                           </strong>
-                          {isPending && <Badge variant="amber">Chờ duyệt</Badge>}
-                          {isApproved && <Badge variant="success">Đã duyệt</Badge>}
+                          {isPending && <Badge variant="neutral" className="kol-video-status"><Clock3 className="h-3 w-3 text-[#B88E4F]" />Chờ duyệt</Badge>}
+                          {isApproved && <Badge variant="neutral" className="kol-video-status"><CheckCircle2 className="h-3 w-3 text-[#059669]" />Đã duyệt</Badge>}
                           {isRejected && <Badge variant="danger">Bị từ chối</Badge>}
                           {isHidden && <Badge variant="neutral">Đã ẩn</Badge>}
                           {v.isFeatured && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EBD08C] text-white">
-                              <Star className="w-2.5 h-2.5 fill-current" /> Nổi bật Landing
+                            <span className="kol-video-featured inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]">
+                              <Star className="w-2.5 h-2.5" /> Đã ghim
                             </span>
                           )}
                         </div>
 
-                        <div className="text-[11px] text-[#7D715E] flex items-center gap-2 flex-wrap">
-                          <span>KOL: <strong>{v.collaborator?.fullName || 'Nhà sáng tạo'}</strong></span>
-                          <span>•</span>
-                          <span>
+                        <div className="kol-video-metadata text-[11px] text-[#7D715E]">
+                          <p>KOL: <strong>{v.collaborator?.fullName || 'Nhà sáng tạo'}</strong></p>
+                          <p>
                             Sản phẩm:{' '}
                             <strong className="text-[#1A1612]">
                               {v.product?.title || v.productName || selectedVideoProduct.title}
                             </strong>
                             {v.product?.sku ? ` (${v.product.sku})` : ''}
-                          </span>
-                          <span>•</span>
+                          </p>
                           <a
                             href={v.urlOrContent}
                             target="_blank"
                             rel="noreferrer"
                             className="text-[#B88E4F] hover:underline flex items-center gap-1 font-semibold"
                           >
-                            <ExternalLink className="w-3 h-3" /> Mở video trong tab mới
+                            <ExternalLink className="w-3 h-3" /> Mở video
                           </a>
                         </div>
 
                         {v.caption && (
-                          <p className="text-[11px] text-[#7D715E] bg-white p-2 rounded-lg border border-[#EAE4D7] italic m-0">
-                            "{v.caption}"
+                          <p className="kol-video-caption text-[11px] text-[#7D715E] m-0">
+                            {v.caption}
                           </p>
                         )}
 
@@ -3231,14 +3092,14 @@ export default function ProductManagementPage() {
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 shrink-0 mt-4 pt-4 border-t border-[#EAE4D7]">
+                      <div className="kol-video-actions flex flex-wrap items-center gap-2 shrink-0">
                         {isPending && (
                           <>
                             <button
                               type="button"
                               disabled={reviewingMediaId === v.id}
                               onClick={() => handleApproveVideo(v.id, false)}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#EBD08C] text-white font-bold text-xs hover:bg-[#DEC07A] transition cursor-pointer disabled:opacity-50"
+                              className="kol-video-approve px-2.5 py-1.5 rounded-lg font-semibold text-xs transition cursor-pointer disabled:opacity-50"
                             >
                               Duyệt
                             </button>
@@ -3249,7 +3110,7 @@ export default function ProductManagementPage() {
                               className="px-2.5 py-1.5 rounded-lg bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] font-bold text-xs hover:bg-[#F3EFE6] transition cursor-pointer disabled:opacity-50"
                               title="Duyệt và đặt làm video nổi bật nhất trên Landing"
                             >
-                              ⭐ Duyệt & Ghim
+                              <Star className="h-3.5 w-3.5" /> Duyệt &amp; ghim
                             </button>
                             <button
                               type="button"
@@ -3304,7 +3165,7 @@ export default function ProductManagementPage() {
               )}
             </div>
 
-            <div className="px-5 sm:px-6 py-3.5 bg-white border-t border-[#EAE4D7] flex justify-end">
+            <div className="kol-video-review-footer bg-white border-t border-[#EAE4D7] flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -3374,17 +3235,16 @@ export default function ProductManagementPage() {
 
       {showReviewModeration && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1612]/45 p-2 backdrop-blur-[3px] animate-fadeIn sm:p-5">
-          <section className="flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-[#EAE4D7] bg-[#FAF8F5] shadow-[0_24px_80px_rgba(77,57,31,0.24)]">
-            <header className="flex items-start justify-between gap-4 border-b border-[#EAE4D7] bg-white px-4 py-4 sm:px-7 sm:py-5">
+          <section className="customer-review-modal flex w-full flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_24px_80px_rgba(77,57,31,0.18)]" role="dialog" aria-modal="true" aria-labelledby="customer-review-title">
+            <header className="customer-review-header flex items-center justify-between gap-4 border-b border-[#EAE4D7] bg-white">
               <div className="flex min-w-0 items-start gap-3.5">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] sm:h-12 sm:w-12">
                   <MessageSquareText className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 pt-0.5">
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#B88E4F]">Quản lý nội dung khách hàng</p>
-                  <h2 className="m-0 text-lg font-extrabold tracking-tight text-[#1A1612] sm:text-xl">Kiểm duyệt đánh giá</h2>
-                  <p className="mb-0 mt-1 max-w-2xl text-xs leading-relaxed text-[#7D715E] sm:text-sm">
-                    Đánh giá được duyệt mới hiển thị công khai trên trang sản phẩm.
+                  <h2 id="customer-review-title" className="m-0 text-base font-semibold text-[#1A1612]">Kiểm duyệt đánh giá</h2>
+                  <p className="mb-0 mt-0.5 text-xs text-[#7D715E]">
+                    Duyệt nội dung trước khi hiển thị trên sản phẩm.
                   </p>
                 </div>
               </div>
@@ -3398,8 +3258,8 @@ export default function ProductManagementPage() {
               </button>
             </header>
 
-            <div className="border-b border-[#EAE4D7] bg-white px-4 py-3 sm:px-7">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="customer-review-tabs border-b border-[#EAE4D7] bg-white">
+              <div>
                 {[
                 { key: 'ALL', label: 'Tất cả', count: customerReviews.length, icon: MessageSquareText },
                 {
@@ -3430,11 +3290,12 @@ export default function ProductManagementPage() {
                   <button
                     key={tab.key}
                     type="button"
+                    aria-pressed={reviewFilterStatus === tab.key}
                     onClick={() => setReviewFilterStatus(tab.key as any)}
                     className={`flex min-w-0 min-h-10 items-center justify-between gap-2 rounded-xl border px-2.5 py-2 text-xs font-bold transition sm:px-3 ${
                       reviewFilterStatus === tab.key
-                        ? 'border-[#C59B58] bg-[#C59B58] text-[#231D15] shadow-sm'
-                        : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#1A1612]'
+                        ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#231D15]'
+                        : 'border-transparent bg-white text-[#7D715E] hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#1A1612]'
                     }`}
                   >
                     <span className="flex min-w-0 items-center gap-2"><tab.icon className="h-4 w-4 shrink-0" /><span className="truncate">{tab.label}</span></span>
@@ -3444,7 +3305,7 @@ export default function ProductManagementPage() {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 sm:px-7 sm:py-5">
+            <div className="customer-review-list min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {loadingReviews ? (
                 <p className="rounded-2xl border border-[#EAE4D7] bg-white py-12 text-center text-sm text-[#7D715E]">Đang tải danh sách đánh giá...</p>
               ) : customerReviews.length === 0 ? (
@@ -3475,11 +3336,11 @@ export default function ProductManagementPage() {
                     return (
                       <article
                         key={review.id}
-                        className="grid min-w-0 gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_3px_12px_rgba(35,29,21,0.035)] transition-colors hover:border-[#DCC69F] sm:p-5 lg:grid-cols-[minmax(0,1fr)_148px] lg:gap-6 lg:p-5"
+                        className="customer-review-card min-w-0 rounded-xl border border-[#EAE4D7] bg-white"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
-                            <strong className="min-w-0 text-sm font-bold leading-snug text-[#1A1612] sm:text-base">
+                          <div className="customer-review-card-heading flex flex-wrap items-center gap-x-2.5 gap-y-2">
+                            <strong className="min-w-0 text-sm font-semibold leading-snug text-[#1A1612]">
                               {review.product?.title || 'Sản phẩm'}
                             </strong>
                             {review.product?.sku && (
@@ -3487,21 +3348,21 @@ export default function ProductManagementPage() {
                                 ({review.product.sku})
                               </span>
                             )}
-                            <span className="text-sm font-bold text-[#B88E4F] tracking-[1px]" aria-label={`${review.rating || 5} trên 5 sao`}>
-                              {'★'.repeat(Math.max(1, Math.min(5, review.rating || 5)))}
+                            <span className="customer-review-rating" aria-label={`${review.rating || 5} trên 5 sao`}>
+                              {Array.from({length: Math.max(1, Math.min(5, review.rating || 5))}, (_, index) => <Star key={index} className="h-3 w-3 fill-current" aria-hidden="true" />)}
                             </span>
-                            {currentStatus === 'APPROVED' && <Badge variant="amber">Đã duyệt</Badge>}
+                            {currentStatus === 'APPROVED' && <Badge variant="neutral" className="customer-review-status"><CheckCircle2 className="h-3 w-3 text-[#059669]" />Đã duyệt</Badge>}
                             {currentStatus === 'REJECTED' && <Badge variant="danger">Bị từ chối</Badge>}
-                            {currentStatus === 'HIDDEN' && <Badge variant="neutral">Đã ẩn</Badge>}
-                            {currentStatus === 'PENDING' && <Badge variant="amber">Chờ duyệt</Badge>}
+                            {currentStatus === 'HIDDEN' && <Badge variant="neutral" className="customer-review-status">Đã ẩn</Badge>}
+                            {currentStatus === 'PENDING' && <Badge variant="neutral" className="customer-review-status"><Clock3 className="h-3 w-3 text-[#B88E4F]" />Chờ duyệt</Badge>}
                           </div>
 
-                          <p className="my-3 max-w-[76ch] rounded-xl bg-[#FAF8F5] px-3.5 py-3 text-sm leading-6 text-[#3B3127]">
+                          <p className="customer-review-comment">
                             {review.comment || 'Khách không để lại nội dung bình luận.'}
                           </p>
 
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[#7D715E]">
-                            <span className="font-semibold text-[#1A1612]">
+                          <div className="customer-review-author flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[#7D715E]">
+                            <span className="font-medium text-[#1A1612]">
                               {review.customerName || 'Khách hàng ẩn danh'}
                             </span>
                             {review.createdAt && (
@@ -3527,14 +3388,14 @@ export default function ProductManagementPage() {
                             )}
                         </div>
 
-                        <div className="flex flex-row gap-2 border-t border-[#F0EAE0] pt-3 sm:justify-end lg:flex-col lg:items-stretch lg:justify-center lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                        <div className="customer-review-actions">
                           {currentStatus === 'PENDING' && (
                             <>
                               <Button
                                 size="sm"
-                                variant="amber"
+                                variant="outline"
                                 icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                                className="min-w-0 flex-1 justify-center lg:w-full lg:flex-none"
+                                className="customer-review-approve min-w-0 justify-center"
                                 disabled={reviewActionId === review.id}
                                 onClick={() => handleApproveCustomerReview(review)}
                               >
@@ -3581,9 +3442,9 @@ export default function ProductManagementPage() {
                           {currentStatus === 'REJECTED' && (
                             <Button
                               size="sm"
-                              variant="amber"
+                              variant="outline"
                               icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                              className="w-full justify-center"
+                              className="customer-review-approve w-full justify-center"
                               disabled={reviewActionId === review.id}
                               onClick={() => handleApproveCustomerReview(review)}
                             >
@@ -3594,9 +3455,9 @@ export default function ProductManagementPage() {
                           {currentStatus === 'HIDDEN' && (
                             <Button
                               size="sm"
-                              variant="amber"
+                              variant="outline"
                               icon={<ShieldCheck className="w-3.5 h-3.5" />}
-                              className="w-full justify-center"
+                              className="customer-review-approve w-full justify-center"
                               disabled={reviewActionId === review.id}
                               onClick={() => handleApproveCustomerReview(review)}
                             >
@@ -3610,6 +3471,9 @@ export default function ProductManagementPage() {
                 })()
               )}
             </div>
+            <footer className="customer-review-footer">
+              <Button variant="outline" size="sm" onClick={() => setShowReviewModeration(false)}>Đóng</Button>
+            </footer>
           </section>
         </div>
       )}
@@ -3617,19 +3481,19 @@ export default function ProductManagementPage() {
 
       {rejectionModalReview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px] animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6 text-left animate-in zoom-in-95 duration-150 flex flex-col gap-4">
+          <div className="customer-review-rejection bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6 text-left animate-in zoom-in-95 duration-150 flex flex-col gap-4" role="dialog" aria-modal="true" aria-labelledby="customer-review-rejection-title">
             <div className="flex items-center gap-3 text-rose-600">
               <div className="w-10 h-10 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-center shrink-0">
                 <AlertCircle className="w-5 h-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#1A1612] m-0">
+                <h3 id="customer-review-rejection-title" className="text-base font-semibold text-[#1A1612] m-0">
                   {reviewRejectionActionType === 'REJECTED'
                     ? 'Từ chối đánh giá khách hàng'
-                    : 'Ẩn đánh giá khỏi landing sản phẩm'}
+                    : 'Ẩn đánh giá sản phẩm'}
                 </h3>
                 <p className="text-xs text-[#7D715E] m-0 mt-0.5">
-                  Bắt buộc cung cấp lý do kiểm duyệt để lưu AuditLog
+                  Nhập lý do để khách hàng biết nội dung cần điều chỉnh.
                 </p>
               </div>
             </div>

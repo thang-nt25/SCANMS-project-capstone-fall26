@@ -151,21 +151,21 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
   const myRank = data?.myRankStatus;
 
   return (
-    <div className={`w-full min-w-0 space-y-4 bg-[#FAF8F5] text-[#1A1612] antialiased ${alignToContainer ? 'px-0 pt-3 pb-24' : 'p-4 pb-24 sm:p-5 sm:pb-24 lg:p-6 lg:pb-24'}`}>
+    <div className={`leaderboard-page w-full min-w-0 space-y-4 bg-[#FAF8F5] text-[#1A1612] antialiased ${alignToContainer ? 'px-0 pt-3 pb-24' : 'p-4 pb-24 sm:p-5 sm:pb-24 lg:p-6 lg:pb-24'}`}>
       {/* Gọn phần bộ lọc, bỏ banner giới thiệu để tập trung vào bảng xếp hạng */}
       <section className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-sm">
         <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1 sm:grid-cols-4 sm:flex-1 sm:max-w-2xl">
-            <button onClick={() => setTimeRange('this_month')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'this_month' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
+            <button aria-pressed={timeRange === 'this_month'} onClick={() => setTimeRange('this_month')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'this_month' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
               Tháng này
             </button>
-            <button onClick={() => setTimeRange('last_month')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'last_month' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
+            <button aria-pressed={timeRange === 'last_month'} onClick={() => setTimeRange('last_month')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'last_month' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
               Tháng trước
             </button>
-            <button onClick={() => setTimeRange('this_quarter')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'this_quarter' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
+            <button aria-pressed={timeRange === 'this_quarter'} onClick={() => setTimeRange('this_quarter')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'this_quarter' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
               Quý này
             </button>
-            <button onClick={() => setTimeRange('all_time')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'all_time' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
+            <button aria-pressed={timeRange === 'all_time'} onClick={() => setTimeRange('all_time')} className={`flex min-h-9 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors ${timeRange === 'all_time' ? 'bg-[#C59B58] font-semibold text-[#1A1612] shadow-sm' : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'}`}>
               Toàn thời gian
             </button>
           </div>
@@ -216,9 +216,11 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
       {loadError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white px-3 py-2 text-xs text-[#DC2626]">{loadError}</div>}
 
       {/* ─── 2. BỤC VINH DANH PODIUM TOP 1 - 2 - 3 ──────────────────────── */}
-      <div className="grid grid-cols-1 items-stretch gap-4 pt-1 md:auto-rows-fr md:grid-cols-3">
+      <div className="leaderboard-podium grid grid-cols-1 items-stretch gap-4 pt-1 md:auto-rows-fr md:grid-cols-3">
         {/* RANK 2: Á QUÂN 1 (SILVER MEDAL) */}
         <div
+          role="button" tabIndex={podium?.rank2 ? 0 : -1} aria-label={podium?.rank2 ? `Xem hồ sơ ${podium.rank2.fullName}` : undefined}
+          onKeyDown={event => { if ((event.key === "Enter" || event.key === " ") && podium?.rank2) { event.preventDefault(); void handleOpenCreatorModal(podium.rank2.collaboratorId); } }}
           onClick={() => podium?.rank2 && handleOpenCreatorModal(podium.rank2.collaboratorId)}
           className={`cursor-pointer group relative bg-white border border-[#EAE4D7] hover:border-[#C59B58] rounded-2xl p-4 text-center space-y-3 shadow-sm transition-colors order-2 md:order-1 ${
             podium?.rank2?.isCurrentUser ? 'ring-2 ring-[#C59B58] bg-white' : ''
@@ -272,6 +274,8 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
 
         {/* RANK 1: QUÁN QUÂN (GOLD CROWN / DIAMOND GLOW) */}
         <div
+          role="button" tabIndex={podium?.rank1 ? 0 : -1} aria-label={podium?.rank1 ? `Xem hồ sơ ${podium.rank1.fullName}` : undefined}
+          onKeyDown={event => { if ((event.key === "Enter" || event.key === " ") && podium?.rank1) { event.preventDefault(); void handleOpenCreatorModal(podium.rank1.collaboratorId); } }}
           onClick={() => podium?.rank1 && handleOpenCreatorModal(podium.rank1.collaboratorId)}
           className={`cursor-pointer group relative bg-[#FBF5EB] border border-[#EEDFC6] hover:border-[#C59B58] rounded-2xl p-4 sm:p-5 text-center space-y-3 shadow-sm transition-colors order-1 md:order-2 ${
             podium?.rank1?.isCurrentUser ? 'ring-4 ring-amber-400/50' : ''
@@ -333,6 +337,8 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
 
         {/* RANK 3: Á QUÂN 2 (BRONZE SHIELD) */}
         <div
+          role="button" tabIndex={podium?.rank3 ? 0 : -1} aria-label={podium?.rank3 ? `Xem hồ sơ ${podium.rank3.fullName}` : undefined}
+          onKeyDown={event => { if ((event.key === "Enter" || event.key === " ") && podium?.rank3) { event.preventDefault(); void handleOpenCreatorModal(podium.rank3.collaboratorId); } }}
           onClick={() => podium?.rank3 && handleOpenCreatorModal(podium.rank3.collaboratorId)}
           className={`cursor-pointer group relative bg-white border border-[#EAE4D7] hover:border-[#C59B58] rounded-2xl p-4 text-center space-y-3 shadow-sm transition-colors order-3 ${
             podium?.rank3?.isCurrentUser ? 'ring-2 ring-[#C59B58] bg-white' : ''

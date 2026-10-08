@@ -4,6 +4,7 @@ import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import ReferralLinksPage from './ReferralLinksPage';
 import MediaHubBrowserPage from './MediaHubBrowserPage';
 import KolCouponsPage from './KolCouponsPage';
+import './MarketingToolkitPage.css';
 
 export default function MarketingToolkitPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,17 +17,17 @@ export default function MarketingToolkitPage() {
   const tabs: HubTabItem[] = [
     {
       id: 'links',
-      label: 'Link & QR Tiếp thị',
+      label: 'Link & QR tiếp thị',
       icon: Link2,
     },
     {
       id: 'media',
-      label: 'Kho Nội dung Media',
+      label: 'Kho nội dung',
       icon: Images,
     },
     {
       id: 'coupons',
-      label: 'Mã Giảm Giá Độc Quyền',
+      label: 'Mã giảm giá độc quyền',
       icon: Tag,
     },
   ];
@@ -41,7 +42,7 @@ export default function MarketingToolkitPage() {
       <button
         type="button"
         onClick={() => window.dispatchEvent(new CustomEvent('scanms_open_submit_video'))}
-        className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer select-none whitespace-nowrap shrink-0"
+        className="kol-marketing-action inline-flex items-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0"
         title="Nộp video review sản phẩm"
       >
         <Video className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -58,11 +59,11 @@ export default function MarketingToolkitPage() {
             window.dispatchEvent(new CustomEvent('scanms_open_create_link'));
           }
         }}
-        className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold text-[#B88E4F] hover:text-[#A47B3E] transition cursor-pointer select-none whitespace-nowrap shrink-0"
+        className="kol-marketing-action kol-marketing-primary inline-flex items-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0"
         title="Tạo link tiếp thị mới"
       >
         <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
-        <span>Tạo link tiếp thị mới</span>
+        <span>Tạo link mới</span>
       </button>
     </div>
   );
@@ -76,7 +77,7 @@ export default function MarketingToolkitPage() {
         variant="pills"
         actions={actions}
         compact
-        className="mb-1.5"
+        className="kol-marketing-toolbar mb-3 bg-white border border-[#EAE4D7] rounded-2xl"
       />
 
       <div className="w-full min-h-[500px]">

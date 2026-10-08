@@ -1,0 +1,211 @@
+#shop-kol-hub-workspace {
+  padding-top: 16px;
+}
+
+#shop-kol-hub-workspace .shop-kol-shell {
+  height: calc(100dvh - 126px);
+  box-shadow: none;
+}
+
+@media (min-width: 640px) {
+  #shop-kol-hub-workspace {
+    padding-top: 24px;
+  }
+
+  #shop-kol-hub-workspace .shop-kol-shell {
+    height: calc(100dvh - 134px);
+  }
+}
+
+#shop-kol-hub-workspace .shop-kol-sidebar {
+  background: var(--theme-surface, #fff);
+}
+
+#shop-kol-hub-workspace .shop-kol-sidebar > div {
+  background: var(--theme-surface, #fff);
+}
+
+#shop-kol-hub-workspace .shop-kol-sidebar h1 {
+  text-transform: none;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+#shop-kol-hub-workspace .shop-kol-sidebar input,
+#shop-kol-hub-workspace .shop-kol-sidebar button {
+  box-shadow: none;
+}
+
+#shop-kol-hub-workspace .shop-kol-person {
+  background: var(--theme-surface, #fff);
+  box-shadow: none;
+  gap: 10px;
+}
+
+#shop-kol-hub-workspace .shop-kol-person:hover {
+  background: var(--theme-canvas, #faf8f5);
+}
+
+#shop-kol-hub-workspace .shop-kol-person > div:last-child > div:first-child > span:first-child {
+  color: var(--theme-ink, #1a1612);
+  font-weight: 600;
+}
+
+#shop-kol-hub-workspace .shop-kol-person > div:last-child > div:first-child > span:last-child {
+  background: var(--theme-surface, #fff);
+  color: var(--theme-muted, #7d715e);
+  border-color: var(--theme-line, #eae4d7);
+  box-shadow: none;
+}
+
+#shop-kol-hub-workspace .shop-kol-detail-heading > div:first-child {
+  min-width: 230px;
+}
+
+#shop-kol-hub-workspace .kol-profile-copy { min-width: 0; }
+#shop-kol-hub-workspace .kol-profile-name {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: -.025em;
+  color: var(--theme-ink, #1A1612);
+}
+#shop-kol-hub-workspace .kol-profile-name button { overflow-wrap: anywhere; }
+#shop-kol-hub-workspace .kol-profile-badge { line-height: 1.2; }
+#shop-kol-hub-workspace .kol-profile-platform {
+  border: 1px solid var(--theme-line, #EAE4D7);
+  background: var(--theme-surface, #fff);
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 500;
+}
+#shop-kol-hub-workspace .kol-profile-handle { color: #5F5547; font-weight: 500; overflow-wrap: anywhere; }
+@media (max-width: 639px) {
+  #shop-kol-hub-workspace .kol-profile-name { font-size: 15px; }
+  #shop-kol-hub-workspace .kol-profile-name-row { gap: 6px; }
+  #shop-kol-hub-workspace .kol-profile-channel { column-gap: 8px; }
+}
+
+#shop-kol-hub-workspace .shop-kol-detail-heading > div:last-child {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#shop-kol-hub-workspace #btn-toggle-ai-mode,
+#shop-kol-hub-workspace #btn-open-creator-directory,
+#shop-kol-hub-workspace #btn-quick-cap-vip,
+#shop-kol-hub-workspace .shop-kol-tabs > div:last-child > a {
+  padding: 8px 10px;
+  min-height: 32px;
+  background: var(--theme-surface, #fff);
+  border: 1px solid var(--theme-line, #eedfc6);
+  border-radius: 9px;
+  color: var(--theme-ink, #1a1612);
+  box-shadow: none;
+  margin-left: 0;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+#shop-kol-hub-workspace .shop-kol-tabs > div:first-child {
+  gap: 4px;
+}
+
+#shop-kol-hub-workspace .shop-kol-tabs button[id^='tab-btn-'] {
+  padding: 8px 10px;
+  height: auto;
+  border-radius: 8px;
+  background: var(--theme-surface, #fff);
+  font-weight: 600;
+}
+
+#shop-kol-hub-workspace .shop-kol-tabs > div:last-child {
+  gap: 6px;
+}
+
+#shop-kol-hub-workspace main[aria-label='Khung chat'] {
+  background: var(--theme-surface, #fff);
+}
+
+#shop-kol-hub-workspace .exclusive-deal-bubble {
+  background: var(--theme-surface, #fff);
+  box-shadow: none;
+  border-color: var(--theme-line, #eedfc6);
+  max-width: min(400px, 100%);
+  padding: 12px;
+}
+
+#shop-kol-hub-workspace .exclusive-deal-bubble > div:nth-child(2) > div:first-child {
+  white-space: normal;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+#shop-kol-hub-workspace .exclusive-deal-bubble button {
+  box-shadow: none;
+}
+
+#shop-kol-hub-workspace #chat-message-input {
+  background: var(--theme-surface, #fff);
+  min-height: 40px;
+  padding: 9px 12px;
+  font-size: 13px;
+  box-shadow: none;
+}
+
+#shop-kol-hub-workspace #chat-message-input:focus {
+  border-color: #c59b58;
+}
+
+#shop-kol-hub-workspace #chat-send-btn {
+  box-shadow: none;
+  border: 1px solid var(--theme-line, #eedfc6);
+}
+
+#shop-kol-hub-workspace #chat-send-btn:disabled {
+  background: var(--theme-surface, #fff);
+  color: var(--theme-muted, #7d715e);
+}
+
+#shop-kol-hub-workspace button:focus-visible,
+#shop-kol-hub-workspace a:focus-visible {
+  outline: 2px solid #b88e4f;
+  outline-offset: 2px;
+}
+
+@media (min-width: 640px) {
+  #shop-kol-hub-workspace .shop-kol-sidebar:not(.w-\[72px\]) {
+    width: 275px;
+  }
+}
+
+@media (max-width: 639px) {
+  #shop-kol-hub-workspace .shop-kol-sidebar {
+    width: 72px;
+    min-width: 72px;
+  }
+
+  #shop-kol-hub-workspace .shop-kol-person {
+    padding: 8px 4px;
+    justify-content: center;
+  }
+
+  #shop-kol-hub-workspace .shop-kol-person > div:last-child {
+    display: none;
+  }
+
+  #shop-kol-hub-workspace .shop-kol-detail-heading > div:first-child {
+    min-width: 0;
+  }
+
+  #shop-kol-hub-workspace .shop-kol-detail-heading {
+    padding: 10px;
+  }
+}

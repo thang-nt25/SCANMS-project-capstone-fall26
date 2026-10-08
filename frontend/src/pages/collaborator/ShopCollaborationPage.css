@@ -1,0 +1,126 @@
+#partner-collaboration-workspace .collaboration-shell {
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgb(35 29 21 / 3%);
+}
+
+#partner-collaboration-workspace .collaboration-store-list {
+  background: var(--theme-surface, #fff);
+}
+
+#partner-collaboration-workspace .collaboration-store-list button {
+  box-shadow: none;
+}
+
+#partner-collaboration-workspace .collaboration-shop-heading {
+  gap: 12px;
+}
+
+#partner-collaboration-workspace .collaboration-shop-heading span.rounded-full {
+  background: var(--theme-surface, #fff);
+  border-color: var(--theme-line, #eedfc6);
+}
+
+#partner-collaboration-workspace .collaboration-action {
+  min-height: 31px;
+  padding: 6px 10px;
+  border: 1px solid var(--theme-line, #eedfc6);
+  border-radius: 9px;
+  color: var(--theme-muted, #7d715e);
+  background: var(--theme-surface, #fff);
+  line-height: 1.4;
+}
+
+#partner-collaboration-workspace .collaboration-action:hover {
+  color: var(--theme-ink, #231d15);
+  background: var(--theme-brand-soft, #fbf5eb);
+  border-color: #c59b58;
+}
+
+#partner-collaboration-workspace .collaboration-tabs {
+  background: var(--theme-surface, #fff);
+  gap: 5px;
+}
+
+#partner-collaboration-workspace .collaboration-tabs button {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 650;
+  box-shadow: none;
+}
+
+#partner-collaboration-workspace .collaboration-tabs button[aria-selected='true'] {
+  background: var(--theme-surface, #fff);
+  border-color: #c59b58;
+}
+
+#partner-collaboration-workspace .collaboration-tabs svg {
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border: 1px solid var(--theme-line, #eedfc6);
+  border-radius: 7px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #b88e4f);
+}
+
+#partner-collaboration-workspace .collaboration-deal-bar {
+  padding: 9px 16px;
+  color: var(--theme-muted, #7d715e);
+  background: #fffdfa;
+}
+
+#partner-collaboration-workspace .collaboration-deal-bar > div {
+  color: var(--theme-muted, #7d715e);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+#partner-collaboration-workspace .collaboration-deal-bar strong {
+  color: var(--theme-ink, #1a1612);
+  font-weight: 650;
+}
+
+#partner-collaboration-workspace main[aria-label='Khung chat'] {
+  background: var(--theme-surface, #fff);
+}
+
+#partner-collaboration-workspace #chat-message-input {
+  min-height: 40px;
+  border-radius: 11px;
+  background: var(--theme-surface, #fff);
+  font-size: 12px;
+}
+
+#partner-collaboration-workspace #chat-attach-btn {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 2px;
+  border: 1px solid var(--theme-line, #eae4d7);
+  border-radius: 10px;
+  background: var(--theme-surface, #fff);
+}
+
+#partner-collaboration-workspace #chat-send-btn {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 2px;
+  border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+  #partner-collaboration-workspace .collaboration-shop-heading {
+    padding: 12px;
+  }
+
+  #partner-collaboration-workspace .collaboration-tabs {
+    padding: 8px 12px;
+  }
+
+  #partner-collaboration-workspace .collaboration-deal-bar {
+    flex-wrap: wrap;
+    padding: 9px 12px;
+    gap: 7px;
+  }
+}

@@ -21,6 +21,7 @@ import {
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '../../features/marketplace/marketplaceUtils';
+import './LiveSessionsPage.css';
 
 type Session = {
   governance?: LiveGovernance;
@@ -184,6 +185,7 @@ export default function CollaboratorLiveSessionsPage() {
         key={key}
         type="button"
         onClick={() => setStatusFilter(key)}
+        aria-pressed={isActive}
         className={`px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-[13px] font-bold transition-all duration-200 cursor-pointer select-none whitespace-nowrap flex items-center gap-1.5 sm:gap-2 ${
           isActive
             ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] shadow-2xs font-extrabold'
@@ -211,23 +213,23 @@ export default function CollaboratorLiveSessionsPage() {
   };
 
   return (
-    <div className="space-y-4 text-[#1A1612] pb-12 w-full">
+    <div className="kol-live-sessions space-y-4 text-[#1A1612] pb-12 w-full">
       {/* Top Unified Hub Navigation Bar (Đồng bộ chuẩn sáng giống Trung tâm Tiếp thị) */}
-      <div className="bg-white rounded-2xl border border-[#EAE4D7] p-3 sm:p-3.5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="kol-live-toolbar bg-white rounded-2xl border border-[#EAE4D7] p-3 sm:p-3.5 flex flex-col items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 pl-1.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FFFDF9] to-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0 shadow-2xs">
             <Radio className="w-4 h-4 text-[#B88E4F]" />
           </div>
           <div>
-            <div className="text-xs sm:text-sm font-bold text-[#1A1612]">Phiên Livestream & Voucher Độc Quyền</div>
-            <div className="text-[11px] text-[#7D715E] hidden md:block">
-              Theo dõi lịch live, nhận voucher độc quyền và số liệu đối soát hoa hồng phiên
+            <h1 className="text-lg font-bold text-[#1A1612]">Livestream & voucher</h1>
+            <div className="text-xs text-[#7D715E]">
+              Theo dõi lịch phát, ưu đãi và hoa hồng của từng phiên.
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
-          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <div className="kol-live-filters flex items-center gap-2 w-full justify-between">
+          <div className="kol-live-tabs flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
             {renderTab('ALL', 'Tất cả', counts.all)}
             {counts.live > 0 && renderTab('LIVE', 'Đang live', counts.live, true)}
             {renderTab('UPCOMING', 'Sắp diễn ra', counts.upcoming)}
@@ -285,7 +287,7 @@ export default function CollaboratorLiveSessionsPage() {
             return (
               <article
                 key={session.id}
-                className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-[#C59B58]/40 transition-all duration-200 relative overflow-hidden group space-y-3 sm:space-y-3.5"
+                className="kol-live-card rounded-2xl border border-[#EAE4D7] bg-white p-4 relative overflow-hidden group space-y-3"
               >
                 {/* Accent top border stripe */}
                 <div
@@ -295,7 +297,7 @@ export default function CollaboratorLiveSessionsPage() {
                 />
 
                 {/* Header: Shop & Session Info */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="kol-live-session-heading flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                     {/* Shop Avatar / Logo (Thiết kế sáng & viền mềm mại) */}
                     {session.store.logoUrl ? (
@@ -365,8 +367,8 @@ export default function CollaboratorLiveSessionsPage() {
                             ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]'
                             : 'bg-white text-[#1A1612] border border-[#EAE4D7]'
                         }`}>
-                          <Radio className={`w-3 h-3 ${session.platform === 'SCANMS' ? 'text-rose-500 animate-pulse' : 'text-[#B88E4F]'}`} />
-                          {session.platform === 'SCANMS' ? '🔴 Sàn SCANMS Live' : session.platform}
+                          <Radio className={`w-3 h-3 ${isLive ? 'text-rose-500 animate-pulse' : 'text-[#B88E4F]'}`} />
+                          {session.platform === 'SCANMS' ? 'SCANMS Live' : session.platform}
                         </span>
                         <span className="text-[#EAE4D7]">|</span>
                         <span className="inline-flex items-center gap-1 text-[11px] text-[#7D715E]">
@@ -383,7 +385,7 @@ export default function CollaboratorLiveSessionsPage() {
                       href={session.liveUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-2xs shrink-0 cursor-pointer select-none ${
+                      className={`kol-live-room inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 cursor-pointer select-none ${
                         session.platform === 'SCANMS'
                           ? 'border border-[#C59B58] bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white hover:from-[#B88E4F] hover:to-[#A47B3E]'
                           : 'border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] hover:border-[#C59B58]'
@@ -405,10 +407,10 @@ export default function CollaboratorLiveSessionsPage() {
                 )}
 
                 {/* Exclusive Voucher Ribbon (Tông màu sáng, nền trắng kem nhạt tươi mới) */}
-                <div className="rounded-xl border border-[#EAE4D7] bg-[#FFFDF9] hover:bg-[#FBF5EB]/40 px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition shadow-2xs">
+                <div className="kol-live-voucher rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 min-w-0">
                     {/* Golden Discount Badge */}
-                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white text-xs font-black shrink-0 shadow-2xs">
+                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] text-xs font-bold shrink-0">
                       <Ticket className="w-3.5 h-3.5" />
                       <span>{discount}</span>
                     </div>
@@ -465,7 +467,7 @@ export default function CollaboratorLiveSessionsPage() {
                       disabled={!accepted}
                       className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer select-none active:scale-95 ${
                         isCopied
-                          ? 'bg-emerald-600 text-white border border-emerald-600'
+                          ? 'bg-white text-[#1A1612] border border-[#EEDFC6]'
                           : accepted
                           ? 'bg-white hover:bg-[#FAF8F5] text-[#B88E4F] hover:text-[#A47B3E] border border-[#EEDFC6] hover:border-[#DEBE85]'
                           : 'bg-white text-stone-400 border border-stone-200 cursor-not-allowed opacity-60'
@@ -478,7 +480,7 @@ export default function CollaboratorLiveSessionsPage() {
                     >
                       {isCopied ? (
                         <>
-                          <Check className="h-3.5 w-3.5 text-white" />
+                          <Check className="h-3.5 w-3.5 text-[#059669]" />
                           <span>Đã sao chép</span>
                         </>
                       ) : (
@@ -493,7 +495,7 @@ export default function CollaboratorLiveSessionsPage() {
 
                 {/* Performance Metrics Strip (Tone trắng sáng, viền tinh tế, nổi bật số liệu giống Trung tâm Tiếp thị) */}
                 {session.report && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                  <div className="kol-live-metrics grid grid-cols-2 sm:grid-cols-3 gap-2">
                     <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5 sm:p-3">
                       <div className="text-[11px] font-semibold text-[#7D715E]">Người mua</div>
                       <p className="mt-1 text-sm sm:text-base font-black text-[#1A1612]">{session.report.buyers ?? 0}</p>
@@ -608,7 +610,9 @@ export default function CollaboratorLiveSessionsPage() {
                     </div>
                   </div>
                 )}
-                <LiveGovernancePanel session={session} audience="kol" onChanged={() => void load(false)} />
+                <div className="kol-live-governance">
+                  <LiveGovernancePanel session={session} audience="kol" onChanged={() => void load(false)} />
+                </div>
             </article>
             );
           })}

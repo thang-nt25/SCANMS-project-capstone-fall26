@@ -37,7 +37,11 @@ if (-not $redisReady) {
   }
   if ($redisExe -and (Test-Path $redisExe)) {
     $redisDir = Split-Path -Parent $redisExe
-    Start-Process -FilePath $redisExe -WorkingDirectory $redisDir -WindowStyle Hidden
+    try {
+      Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "`"$redisExe`""; CurrentDirectory = $redisDir } | Out-Null
+    } catch {
+      Start-Process -FilePath $redisExe -WorkingDirectory $redisDir -WindowStyle Hidden
+    }
     Start-Sleep -Milliseconds 800
   }
 }
@@ -59,8 +63,13 @@ $services = @(
 )
 
 foreach ($service in $services) {
-  $argStr = "-NoProfile -ExecutionPolicy Bypass -File .\scripts\watch-dev-service.ps1 -ServiceName $($service.Name) -Port $($service.Port)"
-  Start-Process -FilePath 'powershell.exe' -ArgumentList $argStr -WorkingDirectory $projectRoot -WindowStyle Hidden
+  $cmdLine = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$watcherScript`" -ServiceName $($service.Name) -Port $($service.Port)"
+  try {
+    Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $cmdLine; CurrentDirectory = $projectRoot } | Out-Null
+  } catch {
+    $argStr = "-NoProfile -ExecutionPolicy Bypass -File .\scripts\watch-dev-service.ps1 -ServiceName $($service.Name) -Port $($service.Port)"
+    Start-Process -FilePath 'powershell.exe' -ArgumentList $argStr -WorkingDirectory $projectRoot -WindowStyle Hidden
+  }
 }
 
 $deadline = (Get-Date).AddSeconds(45)

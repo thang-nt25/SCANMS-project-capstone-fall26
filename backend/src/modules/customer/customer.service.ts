@@ -20,6 +20,7 @@ import { SyncCustomerCartDto } from './dto/sync-cart.dto';
 import { CreateReturnRequestDto } from './dto/create-return-request.dto';
 import { CreateCustomerReviewDto } from './dto/create-customer-review.dto';
 import { CustomerOrdersQueryDto } from './dto/customer-orders-query.dto';
+import { notifyCustomerOrderEvent } from '../orders/customer-order-notifications';
 
 const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -279,8 +280,8 @@ export class CustomerService {
     };
 
     if (query.status) {
-      if (query.status === 'DELIVERED' || query.status === 'COMPLETED') {
-        where.status = { in: ['DELIVERED', 'COMPLETED'] };
+      if (query.status === 'RETURNED') {
+        where.status = { in: ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'] };
       } else {
         where.status = query.status;
       }
@@ -444,7 +445,13 @@ export class CustomerService {
         data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
       });
       if (changed.count !== 1) throw new BadRequestException('Đơn đã thay đổi trạng thái hoặc có yêu cầu đổi trả');
-      return tx.order.findUniqueOrThrow({ where: { id: orderId } });
+      const completed = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+      await notifyCustomerOrderEvent(tx, {
+        id: completed.id,
+        externalOrderSn: completed.externalOrderSn,
+        customerId: completed.customerId || userId,
+      }, 'ORDER_COMPLETED');
+      return completed;
     });
     return { message: 'Đã xác nhận nhận hàng. Bạn có thể đánh giá sản phẩm.', order: updated };
   }

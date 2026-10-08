@@ -90,6 +90,7 @@ describe('PayOS checkout', () => {
     });
     const raw = { paymentMethod: 'PAYOS', paymentStatus: 'WAITING_PAYMENT', payos: { paymentLinkId: 'link-1' } };
     const createTransaction = jest.fn();
+    const createNotification = jest.fn();
     const updateOrder = jest.fn().mockImplementation(async ({ data }) => {
       Object.assign(raw, data.rawPayload);
     });
@@ -97,10 +98,11 @@ describe('PayOS checkout', () => {
       $transaction: jest.fn(async (callback) => callback({
         $queryRaw: jest.fn().mockImplementation(async () => [{
           id: orderId, external_order_sn: publicCode, status: 'PENDING',
-          final_amount: 2000, raw_payload: { ...raw },
+          final_amount: 2000, raw_payload: { ...raw }, customer_id: 'customer-1',
         }]),
         paymentTransaction: { create: createTransaction },
         order: { update: updateOrder },
+        notification: { create: createNotification },
         auditLog: { create: jest.fn() },
       })),
     } as any;
@@ -109,6 +111,10 @@ describe('PayOS checkout', () => {
     await service.handleWebhook(signed);
     await service.handleWebhook(signed);
     expect(createTransaction).toHaveBeenCalledTimes(1);
+    expect(createNotification).toHaveBeenCalledTimes(1);
+    expect(createNotification).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: 'customer-1', type: 'ORDER_PAYMENT_CONFIRMED' }),
+    });
     expect(raw.paymentStatus).toBe('PAID');
   });
 });
