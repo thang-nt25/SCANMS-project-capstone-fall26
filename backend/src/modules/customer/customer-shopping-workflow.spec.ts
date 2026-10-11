@@ -94,6 +94,43 @@ describe('Customer shopping rules', () => {
     expect(prisma.productReview.create).not.toHaveBeenCalled();
   });
 
+  it('notifies the customer when they confirm receipt and complete the order', async () => {
+    const notificationCreate = jest.fn();
+    const completedOrder = {
+      id: 'order-1',
+      externalOrderSn: 'DH-2026-ABC123',
+      customerId: 'customer-1',
+      status: OrderStatus.COMPLETED,
+    };
+    const tx = {
+      order: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(completedOrder),
+      },
+      notification: { create: notificationCreate },
+    };
+    const service = serviceWith({
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
+    });
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({
+      id: 'order-1',
+      externalOrderSn: 'DH-2026-ABC123',
+      customerId: 'customer-1',
+      status: OrderStatus.DELIVERED,
+      returnRequest: null,
+    } as any);
+
+    await service.confirmReceipt('customer-1', 'order-1');
+
+    expect(notificationCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'customer-1',
+        type: 'ORDER_COMPLETED',
+        data: expect.objectContaining({ actionUrl: '/customer/orders' }),
+      }),
+    });
+  });
+
   it('replaces only the signed-in customer cart in PostgreSQL', async () => {
     const tx = {
       customerCartItem: {

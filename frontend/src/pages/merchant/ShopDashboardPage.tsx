@@ -20,6 +20,7 @@ import {
 } from '../../services/analytics.service';
 import { productService, type Product } from '../../services/product.service';
 import { orderService, type StoreOrderRecord } from '../../services/order.service';
+import './ShopDashboardPage.css';
 
 export default function ShopDashboardPage() {
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
@@ -57,12 +58,13 @@ export default function ShopDashboardPage() {
   }, []);
 
   const metrics = overview?.metrics;
-  const maxRevenue = Math.max(...(timeSeries.map((t) => t.revenue) || [1]), 1);
+  const chartSeries = timeSeries.slice(-7);
+  const maxRevenue = Math.max(...chartSeries.flatMap(t => [t.revenue, t.commission]), 1);
 
   return (
-    <div className="flex flex-col gap-5 text-left pt-3 sm:pt-4 pb-6">
+    <div className="shop-overview flex flex-col gap-4 text-left pb-6">
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="shop-overview-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Doanh thu liên kết */}
         <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
           <div className="flex justify-between items-center">
@@ -137,49 +139,49 @@ export default function ShopDashboardPage() {
       </div>
 
       {/* Main Content Grid: Chart & Real Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="shop-overview-content grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* Doanh thu 7 ngày gần nhất (Biểu đồ thực tế) */}
-        <div className="lg:col-span-8 p-5 sm:p-6 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col gap-4">
-          <div className="flex justify-between items-center">
+        <div className="shop-overview-chart lg:col-span-8 p-4 bg-white border border-[#EAE4D7] rounded-2xl flex flex-col gap-4">
+          <div className="flex flex-wrap gap-3 justify-between items-center">
             <div>
               <h2 className="text-base font-extrabold text-[#1A1612] m-0">Doanh thu và hoa hồng 7 ngày qua</h2>
-              <p className="text-xs text-[#7D715E] m-0 mt-0.5">Biểu đồ tổng hợp đối soát tự động từ database</p>
+              <p className="text-xs text-[#7D715E] m-0 mt-0.5">Doanh thu và hoa hồng ghi nhận theo ngày.</p>
             </div>
             <div className="flex items-center gap-3 text-xs text-[#7D715E] font-bold">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#C59B58]" /> Doanh thu (GMV)
+                <span className="shop-overview-swatch shop-overview-revenue" /> Doanh thu (GMV)
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#EAE4D7]" /> Hoa hồng KOL
+                <span className="shop-overview-swatch shop-overview-commission" /> Hoa hồng KOL
               </span>
             </div>
           </div>
 
-          {timeSeries.length === 0 ? (
+          {chartSeries.length === 0 ? (
             <div className="h-44 flex flex-col items-center justify-center text-xs text-[#7D715E]">
               <TrendingUp className="w-8 h-8 text-[#EAE4D7] mb-2" />
               Chưa có dữ liệu giao dịch trong 7 ngày gần nhất.
             </div>
           ) : (
-            <div className="flex items-end justify-between h-44 pt-4 pb-2 border-b border-[#EAE4D7] gap-2">
-              {timeSeries.map((col, idx) => {
-                const revHeight = maxRevenue > 0 ? Math.max(8, (col.revenue / maxRevenue) * 100) : 8;
-                const commHeight = maxRevenue > 0 ? Math.max(4, (col.commission / maxRevenue) * 100) : 4;
+            <div className="shop-overview-plot" style={{ gridTemplateColumns: `repeat(${chartSeries.length}, minmax(0, 1fr))` }}>
+              {chartSeries.map((col, idx) => {
+                const revHeight = Math.max(0, (col.revenue / maxRevenue) * 140);
+                const commHeight = Math.max(0, (col.commission / maxRevenue) * 140);
                 return (
-                  <div key={idx} className="flex flex-col items-center gap-2 flex-1">
-                    <div className="flex items-end gap-1 h-36">
+                  <div key={idx} className="shop-overview-plot-column">
+                    <div className="shop-overview-bars">
                       <div
-                        style={{ height: `${revHeight}%` }}
+                        style={{ height: `${revHeight}px` }}
                         title={`Doanh thu: ${col.revenue.toLocaleString('vi-VN')} ₫`}
-                        className="w-3.5 sm:w-5 bg-[#C59B58] rounded-t-sm transition-all hover:bg-[#B88E4F]"
+                        className="shop-overview-bar shop-overview-revenue"
                       />
                       <div
-                        style={{ height: `${commHeight}%` }}
+                        style={{ height: `${commHeight}px` }}
                         title={`Hoa hồng: ${col.commission.toLocaleString('vi-VN')} ₫`}
-                        className="w-3.5 sm:w-5 bg-[#EAE4D7] rounded-t-sm transition-all hover:bg-[#D8C7B0]"
+                        className="shop-overview-bar shop-overview-commission"
                       />
                     </div>
-                    <span className="text-[11px] font-bold text-[#7D715E]">{col.label}</span>
+                    <span className="shop-overview-date" title={col.label}>{col.label}</span>
                   </div>
                 );
               })}
@@ -188,7 +190,7 @@ export default function ShopDashboardPage() {
         </div>
 
         {/* Đơn hàng mới nhất (Dữ liệu thật) */}
-        <div className="lg:col-span-4 p-5 sm:p-6 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col gap-4">
+        <div className="shop-overview-orders lg:col-span-4 p-4 bg-white border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
           <div className="flex justify-between items-center">
             <h3 className="text-base font-extrabold text-[#1A1612] m-0">Đơn hàng mới nhất</h3>
             <Link
@@ -252,36 +254,36 @@ export default function ShopDashboardPage() {
       </div>
 
       {/* Sản phẩm của gian hàng (Dữ liệu thật) */}
-      <div className="bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs overflow-hidden">
+      <div className="shop-overview-products bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 border-b border-[#EAE4D7]">
           <div>
             <h3 className="text-base font-extrabold text-[#1A1612] m-0">Sản phẩm của gian hàng</h3>
-            <p className="text-xs text-[#7D715E] mt-0.5 m-0">Danh sách sản phẩm thực tế đang mở bán trên sàn tiếp thị</p>
+            <p className="text-xs text-[#7D715E] mt-0.5 m-0">Quản lý giá bán, tồn kho và hoa hồng tiếp thị.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={loadData}
               title="Tải lại dữ liệu gian hàng"
-              className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+              className="shop-overview-action"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>Làm mới</span>
             </button>
             <Link
               to="/merchant/promotions?tab=coupons"
               title="Tạo chiến dịch khuyến mãi mới"
-              className="h-8 px-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#C59B58] text-[#B88E4F] hover:text-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+              className="shop-overview-action"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tạo chiến dịch</span>
             </Link>
             <Link
               to="/merchant/products"
-              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              className="shop-overview-action shop-overview-action-primary"
             >
               <span>Quản lý danh mục</span>
-              <ArrowRight className="w-3.5 h-3.5 text-white" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>

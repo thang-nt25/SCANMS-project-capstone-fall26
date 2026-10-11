@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HelpCircle, User, Camera, Loader2 } from 'lucide-react';
+import { User, Camera, Loader2, Save, ShieldCheck } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { customerService } from '../../services/customer.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
+import './CreatorAccountDetails.css';
 
 export default function CreatorAccountDetails() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
@@ -165,264 +166,140 @@ export default function CreatorAccountDetails() {
   };
 
   return (
-    <div className="bg-white border border-[#EAE4D7] rounded-xl p-6 sm:p-8 shadow-2xs text-left">
-      {/* Header */}
-      <div className="pb-4 border-b border-[#EAE4D7]">
-        <h1 className="text-xl font-bold text-[#1A1612] m-0 font-display">
-          Hồ Sơ Của Tôi
-        </h1>
-        <p className="text-xs text-[#7D715E] mt-1 m-0">
-          Quản lý thông tin hồ sơ để bảo mật tài khoản
-        </p>
-      </div>
+    <section className="creator-account" aria-labelledby="creator-account-title">
+      <header className="creator-account-heading">
+        <span className="creator-account-heading-icon"><User size={18} /></span>
+        <div>
+          <h1 id="creator-account-title">Hồ sơ của tôi</h1>
+          <p>Cập nhật thông tin cá nhân và ảnh đại diện của bạn.</p>
+        </div>
+      </header>
 
-      {/* Form & Avatar Body */}
-      <div className="pt-6 flex flex-col-reverse md:flex-row items-start gap-8 lg:gap-12">
-        {/* Left Column: Form Fields (SCANMS Style - Image 1) */}
-        <form onSubmit={handleUpdateProfile} className="flex-1 w-full space-y-5">
-          {/* 1. Tên đăng nhập */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-            <label className="sm:w-32 sm:text-right text-xs text-[#7D715E] font-medium shrink-0">
-              Tên đăng nhập
-            </label>
-            <div className="flex-1">
-              <span className="text-xs sm:text-sm text-[#1A1612] font-semibold">
-                {username}
-              </span>
-              <p className="text-[11px] text-[#A89D8E] mt-0.5 m-0">
-                Tên đăng nhập chỉ có thể thay đổi một lần.
-              </p>
+      <div className="creator-account-body">
+        <form onSubmit={handleUpdateProfile} className="creator-account-form" id="creator-account-form">
+          <div className="creator-account-fields">
+            <div className="creator-account-field">
+              <span className="creator-account-label">Tên đăng nhập</span>
+              <div className="creator-account-readonly">{username}</div>
+              <p className="creator-account-hint">Tên đăng nhập chỉ có thể thay đổi một lần.</p>
             </div>
-          </div>
-
-          {/* 2. Tên */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-            <label className="sm:w-32 sm:text-right text-xs text-[#7D715E] font-medium shrink-0">
-              Tên
-            </label>
-            <div className="flex-1 max-w-md">
+            <div className="creator-account-field">
+              <label htmlFor="creator-account-name">Họ và tên</label>
               <input
+                id="creator-account-name"
                 type="text"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 required
+                autoComplete="name"
                 placeholder="Nhập họ và tên"
-                className="w-full bg-white border border-[#EAE4D7] focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] rounded-md px-3.5 py-2 text-xs sm:text-sm text-[#1A1612] outline-none transition"
               />
             </div>
-          </div>
-
-          {/* 3. Email */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-            <label className="sm:w-32 sm:text-right text-xs text-[#7D715E] font-medium shrink-0">
-              Email
-            </label>
-            <div className="flex-1 flex items-center gap-3">
-              <span className="text-xs sm:text-sm text-[#1A1612]">
-                {maskEmail(currentUser?.email)}
-              </span>
-              <button
-                type="button"
-                onClick={() => toast.info('Email đã được bảo mật theo chuẩn định danh')}
-                className="text-xs text-blue-600 hover:text-blue-700 underline font-medium cursor-pointer"
-              >
-                Thay Đổi
-              </button>
+            <div className="creator-account-field">
+              <span className="creator-account-label">Email</span>
+              <div className="creator-account-contact">
+                <span>{maskEmail(currentUser?.email)}</span>
+                <button type="button" onClick={() => toast.info('Email đã được bảo mật theo chuẩn định danh')}>
+                  <ShieldCheck size={13} /> Bảo mật
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* 4. Số điện thoại */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-            <label className="sm:w-32 sm:text-right text-xs text-[#7D715E] font-medium shrink-0">
-              Số điện thoại
-            </label>
-            <div className="flex-1">
+            <div className="creator-account-field">
+              <label htmlFor={isEditingPhone ? 'creator-account-phone' : undefined}>Số điện thoại</label>
               {isEditingPhone ? (
-                <div className="flex items-center gap-2 max-w-xs">
+                <div className="creator-account-phone-editor">
                   <input
+                    id="creator-account-phone"
                     type="tel"
                     value={phoneInput}
                     onChange={(e) => setPhoneInput(e.target.value)}
                     placeholder="0912345678"
-                    className="w-full bg-white border border-[#C59B58] rounded-md px-3 py-1.5 text-xs text-[#1A1612] outline-none"
+                    autoComplete="tel"
                     autoFocus
                   />
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingPhone(false)}
-                    className="px-2.5 py-1.5 rounded bg-[#FAF5EB] text-xs font-semibold text-[#8C6226] border border-[#EEDFC6] hover:bg-[#C59B58] hover:text-white transition cursor-pointer shrink-0"
-                  >
-                    Xong
-                  </button>
+                  <button type="button" onClick={() => setIsEditingPhone(false)}>Xong</button>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs sm:text-sm text-[#1A1612]">
-                    {phoneInput ? maskPhone(phoneInput) : 'Chưa cập nhật'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingPhone(true)}
-                    className="text-xs text-blue-600 hover:text-blue-700 underline font-medium cursor-pointer"
-                  >
-                    Thay Đổi
-                  </button>
+                <div className="creator-account-contact">
+                  <span>{phoneInput ? maskPhone(phoneInput) : 'Chưa cập nhật'}</span>
+                  <button type="button" onClick={() => setIsEditingPhone(true)}>Thay đổi</button>
                 </div>
               )}
             </div>
-          </div>
-
-          {/* 5. Giới tính */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-            <label className="sm:w-32 sm:text-right text-xs text-[#7D715E] font-medium shrink-0 flex items-center sm:justify-end gap-1">
-              <span>Giới tính</span>
-              <HelpCircle className="w-3 h-3 text-[#A89D8E]" />
-            </label>
-            <div className="flex items-center gap-5 text-xs sm:text-sm text-[#1A1612]">
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="gender"
-                  checked={gender === 'MALE'}
-                  onChange={() => setGender('MALE')}
-                  className="accent-[#C59B58] w-4 h-4 cursor-pointer"
-                />
-                <span>Nam</span>
-              </label>
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="gender"
-                  checked={gender === 'FEMALE'}
-                  onChange={() => setGender('FEMALE')}
-                  className="accent-[#C59B58] w-4 h-4 cursor-pointer"
-                />
-                <span>Nữ</span>
-              </label>
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="gender"
-                  checked={gender === 'OTHER'}
-                  onChange={() => setGender('OTHER')}
-                  className="accent-[#C59B58] w-4 h-4 cursor-pointer"
-                />
-                <span>Khác</span>
-              </label>
-            </div>
-          </div>
-
-          {/* 6. Ngày sinh */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-            <label className="sm:w-32 sm:text-right text-xs text-[#7D715E] font-medium shrink-0 flex items-center sm:justify-end gap-1">
-              <span>Ngày sinh</span>
-              <HelpCircle className="w-3 h-3 text-[#A89D8E]" />
-            </label>
-            <div className="flex items-center gap-2">
-              <Select
-                value={birthDay}
-                onChange={(e) => setBirthDay(e.target.value)}
-                className="w-28 text-xs font-semibold"
-              >
-                {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => (
-                  <option key={d} value={d}>
-                    Ngày {d}
-                  </option>
+            <fieldset className="creator-account-field">
+              <legend>Giới tính</legend>
+              <div className="creator-account-genders">
+                {([
+                  ['MALE', 'Nam'], ['FEMALE', 'Nữ'], ['OTHER', 'Khác'],
+                ] as const).map(([value, label]) => (
+                  <label key={value}>
+                    <input type="radio" name="gender" value={value} checked={gender === value} onChange={() => setGender(value)} />
+                    <span>{label}</span>
+                  </label>
                 ))}
-              </Select>
-              <Select
-                value={birthMonth}
-                onChange={(e) => setBirthMonth(e.target.value)}
-                className="w-28 text-xs font-semibold"
-              >
-                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
-                  <option key={m} value={m}>
-                    Tháng {m}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                value={birthYear}
-                onChange={(e) => setBirthYear(e.target.value)}
-                className="w-28 text-xs font-semibold"
-              >
-                {Array.from({ length: 70 }, (_, i) => String(2015 - i)).map((y) => (
-                  <option key={y} value={y}>
-                    Năm {y}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          {/* 7. Nút Lưu (SCANMS Style) */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 pt-3">
-            <div className="sm:w-32 shrink-0" />
-            <button
-              type="submit"
-              disabled={updatingProfile}
-              className="px-8 py-2.5 rounded-md bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs sm:text-sm font-semibold transition cursor-pointer shadow-xs flex items-center justify-center gap-2 self-start"
-            >
-              {updatingProfile && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>Lưu</span>
-            </button>
+              </div>
+            </fieldset>
+            <fieldset className="creator-account-field">
+              <legend>Ngày sinh</legend>
+              <div className="creator-account-birthday">
+                <Select aria-label="Ngày sinh" value={birthDay} onChange={(e) => setBirthDay(e.target.value)}>
+                  {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => (
+                    <option key={d} value={d}>Ngày {d}</option>
+                  ))}
+                </Select>
+                <Select aria-label="Tháng sinh" value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)}>
+                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
+                    <option key={m} value={m}>Tháng {m}</option>
+                  ))}
+                </Select>
+                <Select aria-label="Năm sinh" value={birthYear} onChange={(e) => setBirthYear(e.target.value)}>
+                  {Array.from({ length: 70 }, (_, i) => String(2015 - i)).map((y) => (
+                    <option key={y} value={y}>Năm {y}</option>
+                  ))}
+                </Select>
+              </div>
+            </fieldset>
           </div>
         </form>
 
-        {/* Vertical Divider */}
-        <div className="hidden md:block w-px bg-[#EAE4D7] self-stretch mx-2" />
-
-        {/* Right Column: Avatar Upload (SCANMS Style - Image 1) */}
-        <div className="w-full md:w-64 flex flex-col items-center justify-center py-4 px-2">
-          <div className="relative group">
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={uploadingAvatar}
-              className="w-28 h-28 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] overflow-hidden flex items-center justify-center relative shadow-xs cursor-pointer group hover:border-[#C59B58] transition"
-              title="Bấm để chọn ảnh đại diện mới"
-            >
-              {uploadingAvatar ? (
-                <Loader2 className="w-8 h-8 text-[#B88E4F] animate-spin" />
-              ) : currentUser?.avatarUrl ? (
-                <img
-                  src={currentUser.avatarUrl}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-12 h-12 text-[#A89D8E]" />
-              )}
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
-                <Camera className="w-5 h-5 text-white drop-shadow" />
-                <span className="text-[10px] font-bold mt-1">Đổi ảnh</span>
-              </div>
-            </button>
-          </div>
-
+        <aside className="creator-account-avatar-panel" aria-label="Ảnh đại diện">
+          <h2>Ảnh đại diện</h2>
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploadingAvatar}
-            className="mt-4 px-5 py-2 rounded-md border border-[#EAE4D7] hover:border-[#C59B58] bg-white hover:bg-[#FAF8F5] text-xs font-medium text-[#1A1612] hover:text-[#C59B58] transition cursor-pointer shadow-2xs"
+            className="creator-account-avatar"
+            aria-label="Chọn ảnh đại diện mới"
           >
-            {uploadingAvatar ? 'Đang tải...' : 'Chọn Ảnh'}
+            {uploadingAvatar ? <Loader2 className="animate-spin" size={24} /> : currentUser?.avatarUrl ? (
+              <img src={currentUser.avatarUrl} alt="Ảnh đại diện của bạn" />
+            ) : <User size={36} />}
+            {!uploadingAvatar && <span className="creator-account-camera"><Camera size={13} /></span>}
           </button>
-
-          <div className="mt-3 text-center text-[11px] text-[#7D715E] leading-relaxed space-y-0.5">
-            <p className="m-0">Dụng lượng file tối đa 1 MB</p>
-            <p className="m-0">Định dạng:.JPEG, .PNG</p>
+          <div className="creator-account-avatar-controls">
+            <button className="creator-account-button" type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar}>
+              <Camera size={14} /> {uploadingAvatar ? 'Đang tải...' : 'Chọn ảnh'}
+            </button>
+            <p>JPEG, PNG, WEBP · Tối đa 1 MB</p>
           </div>
-
           <input
             type="file"
             ref={avatarInputRef}
             onChange={handleAvatarFileSelected}
             accept="image/png,image/jpeg,image/webp,image/jpg"
-            className="hidden"
+            className="creator-account-file"
+            aria-label="Tải ảnh đại diện"
           />
-        </div>
+        </aside>
       </div>
-    </div>
+
+      <footer className="creator-account-footer">
+        <span><ShieldCheck size={14} /> Thông tin liên hệ được ẩn để bảo vệ tài khoản.</span>
+        <button type="submit" form="creator-account-form" disabled={updatingProfile} className="creator-account-button creator-account-save">
+          {updatingProfile ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+          {updatingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}
+        </button>
+      </footer>
+    </section>
   );
 }

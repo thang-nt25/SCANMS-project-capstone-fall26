@@ -6,13 +6,17 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Interval } from '@nestjs/schedule';
 import { OrderStatus } from '@prisma/client';
 import { PayOS, type Webhook } from '@payos/node';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
+import { notifyCustomerOrderEvent } from './customer-order-notifications';
+import { WalletPayosService } from '../wallets/wallet-payos.service';
 
 type PayosDetails = {
   orderCode: number;
@@ -24,14 +28,18 @@ type PayosDetails = {
   accountName?: string;
   amount?: number;
 };
+type PayosLinkResult = PayosDetails & { paymentStatus: string };
 
 @Injectable()
 export class PayosPaymentService {
   private readonly logger = new Logger(PayosPaymentService.name);
+  private readonly creatingLinks = new Map<string, Promise<PayosLinkResult>>();
+  private reconciling = false;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly walletPayos?: WalletPayosService,
   ) {}
 
   private client(): PayOS {
@@ -83,39 +91,11 @@ export class PayosPaymentService {
     return url.origin;
   }
 
-  private webhookUrl(): string {
-    const configured = this.config.get<string>('PAYOS_WEBHOOK_URL')?.trim();
-    if (!configured) {
-      throw new ServiceUnavailableException(
-        'PayOS chưa có webhook HTTPS công khai để xác nhận thanh toán',
-      );
-    }
-    let url: URL;
-    try {
-      url = new URL(configured);
-    } catch {
-      throw new InternalServerErrorException('PAYOS_WEBHOOK_URL không hợp lệ');
-    }
-    if (
-      url.protocol !== 'https:' ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash ||
-      !url.pathname.endsWith('/api/orders/payos/webhook') ||
-      ['localhost', '127.0.0.1'].includes(url.hostname)
-    ) {
-      throw new InternalServerErrorException(
-        'PAYOS_WEBHOOK_URL phải là URL HTTPS công khai của /api/orders/payos/webhook',
-      );
-    }
-    return url.toString();
-  }
-
   assertReady(): void {
     this.client();
     this.storefrontBaseUrl();
-    this.webhookUrl();
+    // Authenticated status checks and the scheduled job reconcile with PayOS
+    // directly, including local development without a public webhook.
   }
 
   isAvailable(): { available: boolean } {
@@ -150,19 +130,31 @@ export class PayosPaymentService {
 
     try {
       const payos = this.client();
-      const link = details.paymentLinkId
-        ? await payos.paymentRequests.cancel(
-            details.paymentLinkId,
-            'Livestream ended; the unpaid order was repriced.',
-          )
-        : await payos.paymentRequests.cancel(
-            details.orderCode,
-            'Livestream ended; the unpaid order was repriced.',
-          );
-      return link.status === 'CANCELLED' || link.status === 'EXPIRED';
-    } catch (error) {
+      const identifier = details.paymentLinkId || details.orderCode!;
+      const current = typeof identifier === 'string'
+        ? await payos.paymentRequests.get(identifier)
+        : await payos.paymentRequests.get(identifier);
+      if (
+        current.amountPaid > 0 ||
+        current.status === 'PAID' ||
+        (details.orderCode && current.orderCode !== details.orderCode) ||
+        (details.paymentLinkId && current.id !== details.paymentLinkId)
+      )
+        return false;
+      if (['CANCELLED', 'EXPIRED'].includes(current.status)) return true;
+      if (current.status !== 'PENDING') return false;
+      const reason = 'Livestream ended; the unpaid order was repriced.';
+      const link = typeof identifier === 'string'
+        ? await payos.paymentRequests.cancel(identifier, reason)
+        : await payos.paymentRequests.cancel(identifier, reason);
+      return (
+        link.amountPaid === 0 &&
+        link.id === current.id &&
+        (link.status === 'CANCELLED' || link.status === 'EXPIRED')
+      );
+    } catch {
       this.logger.warn(
-        `Could not cancel PayOS link before repricing order ${orderId}: ${error instanceof Error ? error.message : String(error)}`,
+        `Could not cancel PayOS link before repricing order ${orderId}`,
       );
       return false;
     }
@@ -185,6 +177,23 @@ export class PayosPaymentService {
   }
 
   async createLink(publicCode: string, userId: string) {
+    const key = `${userId}:${publicCode}`;
+    const inFlight = this.creatingLinks.get(key);
+    if (inFlight) return inFlight;
+    const request = this.createOwnedLink(publicCode, userId);
+    this.creatingLinks.set(key, request);
+    try {
+      return await request;
+    } finally {
+      this.creatingLinks.delete(key);
+    }
+  }
+
+  private async createOwnedLink(
+    publicCode: string,
+    userId: string,
+    recovering = false,
+  ): Promise<PayosLinkResult> {
     this.assertReady();
     const payos = this.client();
     const { order, raw } = await this.ownedOrder(publicCode, userId);
@@ -199,14 +208,24 @@ export class PayosPaymentService {
       );
     }
     let existing = raw.payos as PayosDetails | undefined;
+    let orderCode = existing?.orderCode || this.numericCode(order.id);
     if (
       existing?.checkoutUrl &&
       existing.qrCode &&
       existing.amount === amount
     ) {
-      return { ...existing, paymentStatus: raw.paymentStatus };
+      const status = await this.reconcileOrder(order, raw);
+      if (!['CANCELLED', 'EXPIRED'].includes(status.providerStatus || '')) {
+        return { ...existing, ...status };
+      }
+      if (status.amountPaid > 0) {
+        throw new ConflictException(
+          'Mã cũ đã nhận tiền; vui lòng liên hệ hỗ trợ đối soát.',
+        );
+      }
+      orderCode = this.newPaymentOrderCode();
+      existing = undefined;
     }
-    let orderCode = existing?.orderCode || this.numericCode(order.id);
     if (existing?.paymentLinkId && existing.amount !== amount) {
       const cancelled = await this.cancelPendingLinkForLivePriceReset(order.id);
       if (!cancelled) {
@@ -243,10 +262,81 @@ export class PayosPaymentService {
         returnUrl,
         cancelUrl,
       });
-    } catch (error) {
-      this.logger.error(
-        `PayOS link creation failed for order ${publicCode}: ${error instanceof Error ? error.message : String(error)}`,
-      );
+    } catch {
+      // A timeout can happen after PayOS creates the link. Recover that numeric
+      // code before retrying, rather than repeatedly attempting a duplicate.
+      if (!recovering) {
+        let previous;
+        try {
+          previous = await payos.paymentRequests.get(orderCode);
+        } catch {
+          /* Provider unavailable or link not created. */
+        }
+        if (
+          previous?.orderCode === orderCode &&
+          previous.amount === amount &&
+          previous.id
+        ) {
+          if (previous.status === 'PAID') {
+            const status = await this.reconcileOrder(order, {
+              ...raw,
+              payos: { orderCode, paymentLinkId: previous.id },
+            });
+            return { orderCode, amount, paymentStatus: status.paymentStatus };
+          }
+          if (
+            previous.amountPaid === 0 &&
+            ['PENDING', 'CANCELLED', 'EXPIRED'].includes(previous.status)
+          ) {
+            let closed = previous;
+            if (previous.status === 'PENDING') {
+              try {
+                closed = await payos.paymentRequests.cancel(
+                  orderCode,
+                  'Retry QR creation after interrupted response',
+                );
+              } catch {
+                throw new ServiceUnavailableException(
+                  'Chưa khôi phục được mã PayOS. Vui lòng thử lại sau.',
+                );
+              }
+            }
+            if (
+              closed.id === previous.id &&
+              closed.orderCode === orderCode &&
+              closed.amount === amount &&
+              closed.amountPaid === 0 &&
+              ['CANCELLED', 'EXPIRED'].includes(closed.status)
+            ) {
+              await this.prisma.$transaction(async (tx) => {
+                const rows = await tx.$queryRaw<
+                  Array<{ raw_payload: any }>
+                >`SELECT raw_payload FROM orders WHERE id = ${order.id}::uuid FOR UPDATE`;
+                const latest = rows[0]?.raw_payload || {};
+                if (
+                  latest.paymentStatus === 'PAID' ||
+                  latest.payos?.orderCode !== orderCode
+                ) {
+                  throw new ConflictException(
+                    'Thanh toán đã thay đổi. Vui lòng kiểm tra lại đơn hàng.',
+                  );
+                }
+                await tx.order.update({
+                  where: { id: order.id },
+                  data: {
+                    rawPayload: {
+                      ...latest,
+                      payos: { orderCode: this.newPaymentOrderCode() },
+                    },
+                  },
+                });
+              });
+              return this.createOwnedLink(publicCode, userId, true);
+            }
+          }
+        }
+      }
+      this.logger.error(`PayOS link creation failed for order ${publicCode}`);
       throw new ServiceUnavailableException(
         'Chưa tạo được mã PayOS. Đơn đã được ghi nhận; vui lòng thử tạo mã lại.',
       );
@@ -273,10 +363,22 @@ export class PayosPaymentService {
       amount,
     };
     const paymentStatus = await this.prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<Array<{ raw_payload: any }>>`
-        SELECT raw_payload FROM orders WHERE id = ${order.id}::uuid FOR UPDATE
+      const rows = await tx.$queryRaw<
+        Array<{ raw_payload: any; status: OrderStatus; final_amount: unknown }>
+      >`
+        SELECT raw_payload, status, final_amount FROM orders WHERE id = ${order.id}::uuid FOR UPDATE
       `;
       const latest = (rows[0]?.raw_payload || {}) as Record<string, any>;
+      if (
+        rows[0]?.status === OrderStatus.CANCELLED ||
+        (rows[0]?.final_amount !== undefined &&
+          Number(rows[0].final_amount) !== amount) ||
+        (latest.payos?.orderCode && latest.payos.orderCode !== orderCode)
+      ) {
+        throw new ConflictException(
+          'Đơn hàng đã thay đổi. Vui lòng tải lại trước khi thanh toán.',
+        );
+      }
       await tx.order.update({
         where: { id: order.id },
         data: {
@@ -293,12 +395,112 @@ export class PayosPaymentService {
 
   async getStatus(publicCode: string, userId: string) {
     const { order, raw } = await this.ownedOrder(publicCode, userId);
+    const result = await this.reconcileOrder(order, raw);
     return {
       publicOrderCode: order.externalOrderSn,
-      paymentStatus: raw.paymentStatus || 'WAITING_PAYMENT',
+      ...result,
       orderStatus: order.status,
       checkoutUrl: raw.payos?.checkoutUrl || null,
     };
+  }
+
+  private async reconcileOrder(
+    order: { finalAmount: unknown; status: OrderStatus },
+    raw: Record<string, any>,
+  ) {
+    const current = {
+      paymentStatus: raw.paymentStatus || 'WAITING_PAYMENT',
+      providerStatus: '',
+      amountPaid: 0,
+    };
+    if (
+      raw.paymentStatus === 'PAID' ||
+      order.status === OrderStatus.CANCELLED ||
+      !raw.payos?.orderCode
+    )
+      return current;
+    let link;
+    try {
+      link = await this.client().paymentRequests.get(raw.payos.orderCode);
+    } catch {
+      throw new ServiceUnavailableException(
+        'Chưa kiểm tra được PayOS. Vui lòng kiểm tra lại; đơn chưa được xác nhận thanh toán.',
+      );
+    }
+    const amount = Number(order.finalAmount);
+    if (
+      link.orderCode !== raw.payos.orderCode ||
+      link.amount !== amount ||
+      !link.id ||
+      (raw.payos.paymentLinkId && link.id !== raw.payos.paymentLinkId)
+    ) {
+      throw new BadRequestException('Thông tin PayOS không khớp đơn hàng');
+    }
+    if (link.status === 'PAID') {
+      if (link.amountPaid !== amount || link.amountRemaining !== 0) {
+        throw new BadRequestException(
+          'Số tiền PayOS thực nhận không khớp đơn hàng',
+        );
+      }
+      await this.recordPayment({
+        orderCode: link.orderCode,
+        amount,
+        paymentLinkId: link.id,
+        reference: `LINK:${link.id}`,
+      });
+      current.paymentStatus = 'PAID';
+    }
+    return {
+      ...current,
+      providerStatus: link.status,
+      amountPaid: link.amountPaid,
+    };
+  }
+
+  @Interval(60000)
+  async reconcilePending() {
+    if (this.reconciling || !this.isAvailable().available) return;
+    this.reconciling = true;
+    try {
+      // Rotate oldest checks so unpaid orders cannot starve the remaining queue.
+      const orders = await this.prisma.$queryRaw<
+        Array<{
+          id: string;
+          status: OrderStatus;
+          final_amount: unknown;
+          raw_payload: any;
+        }>
+      >`
+        SELECT id, status, final_amount, raw_payload FROM orders
+        WHERE source_platform = 'INTERNAL' AND status <> 'CANCELLED'
+          AND raw_payload->>'paymentMethod' = 'PAYOS'
+          AND COALESCE(raw_payload->>'paymentStatus', '') <> 'PAID'
+          AND raw_payload->'payos'->>'orderCode' IS NOT NULL
+        ORDER BY COALESCE(raw_payload->'payos'->>'checkedAt', '') ASC LIMIT 10
+      `;
+      for (const order of orders) {
+        let providerStatus: string | undefined;
+        try {
+          const result = await this.reconcileOrder(
+            { status: order.status, finalAmount: order.final_amount },
+            order.raw_payload,
+          );
+          providerStatus = result.providerStatus;
+        } catch {
+          this.logger.warn(
+            `Cannot reconcile PayOS order ${order.id}; will retry.`,
+          );
+        } finally {
+          await this.prisma.$executeRaw`
+            UPDATE orders SET raw_payload = jsonb_set(raw_payload, '{payos}',
+              (raw_payload->'payos') || ${JSON.stringify({ checkedAt: new Date().toISOString(), ...(providerStatus ? { lastProviderStatus: providerStatus } : {}) })}::jsonb)
+            WHERE id = ${order.id}::uuid AND raw_payload->'payos'->>'orderCode' = ${String(order.raw_payload.payos.orderCode)}
+          `;
+        }
+      }
+    } finally {
+      this.reconciling = false;
+    }
   }
 
   async handleWebhook(body: Webhook) {
@@ -316,11 +518,24 @@ export class PayosPaymentService {
       !Number.isSafeInteger(data.amount) ||
       data.amount <= 0 ||
       data.currency !== 'VND' ||
-      !data.reference
+      !data.reference ||
+      !data.paymentLinkId
     ) {
       throw new BadRequestException('Dữ liệu thanh toán PayOS không hợp lệ');
     }
 
+    if (await this.walletPayos?.handleVerifiedWebhook(data))
+      return { success: true };
+
+    return this.recordPayment(data);
+  }
+
+  private async recordPayment(data: {
+    orderCode: number;
+    amount: number;
+    reference: string;
+    paymentLinkId: string;
+  }) {
     return this.prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<
         Array<{
@@ -329,11 +544,12 @@ export class PayosPaymentService {
           status: OrderStatus;
           final_amount: unknown;
           raw_payload: any;
+          customer_id: string | null;
         }>
       >`
-        SELECT id, external_order_sn, status, final_amount, raw_payload
+        SELECT id, external_order_sn, status, final_amount, raw_payload, customer_id
         FROM orders
-        WHERE raw_payload->'payos'->>'orderCode' = ${String(data.orderCode)}
+        WHERE source_platform = 'INTERNAL' AND raw_payload->'payos'->>'orderCode' = ${String(data.orderCode)}
         FOR UPDATE
       `;
       const order = rows[0];
@@ -355,7 +571,11 @@ export class PayosPaymentService {
       }
       const transactionId = `PAYOS:${data.reference}`;
       if (raw.paymentStatus === 'PAID') {
-        if (raw.transactionId === transactionId) return { success: true };
+        if (
+          raw.transactionId === transactionId ||
+          raw.payos?.paymentLinkId === data.paymentLinkId
+        )
+          return { success: true };
         throw new ConflictException(
           'Đơn hàng đã được thanh toán bởi giao dịch khác',
         );
@@ -388,6 +608,15 @@ export class PayosPaymentService {
           sourceUpdatedAt: new Date(),
         },
       });
+      await notifyCustomerOrderEvent(
+        tx,
+        {
+          id: order.id,
+          externalOrderSn: order.external_order_sn,
+          customerId: order.customer_id,
+        },
+        'ORDER_PAYMENT_CONFIRMED',
+      );
       await tx.auditLog.create({
         data: {
           action: 'PAYMENT_RECONCILED',

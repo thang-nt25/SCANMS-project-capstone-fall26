@@ -1,33 +1,43 @@
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, ShieldCheck, Share2, Award } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import CreatorAccountDetails from './CreatorAccountDetails';
 import KycSubmissionPage from './KycSubmissionPage';
 import SocialChannelsPage from './SocialChannelsPage';
 import KolTierStatusPage from './KolTierStatusPage';
+import './KolProfile.css';
 
 export default function CreatorProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'profile';
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const isLeaderboard = pathname === '/collaborator/leaderboard';
+  const isBonusProgress = pathname === '/collaborator/bonus-progress';
+  const isTierPage = isLeaderboard || isBonusProgress;
+  const activeTab = isTierPage ? 'tiers' : searchParams.get('tab') || 'profile';
 
   const handleTabChange = (tabId: string) => {
+    if (isTierPage) {
+      navigate(`/collaborator/profile?tab=${tabId}`);
+      return;
+    }
     setSearchParams({ tab: tabId }, { replace: true });
   };
 
   const tabs: HubTabItem[] = [
     {
       id: 'profile',
-      label: 'Hồ Sơ Của Tôi',
+      label: 'Hồ sơ của tôi',
       icon: User,
     },
     {
       id: 'kyc',
-      label: 'Định danh điện tử KYC',
+      label: 'Định danh KYC',
       icon: ShieldCheck,
     },
     {
       id: 'social',
-      label: 'Kênh Mạng Xã Hội',
+      label: 'Kênh mạng xã hội',
       icon: Share2,
     },
     {
@@ -38,14 +48,19 @@ export default function CreatorProfilePage() {
   ];
 
   return (
-    <div className="w-full flex flex-col" id="creator-profile-hub">
+    <div className="w-full flex flex-col" id="creator-profile-hub" data-profile-tab={activeTab}>
       <HubTabs
+        className="kol-profile-tabs"
+        tone="white"
+        compact
+        stretchTabs
+        stretchTabColumns={4}
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}
       />
 
-      <div className="w-full min-h-[500px]">
+      <div className="w-full min-w-0">
         {activeTab === 'profile' && (
           <div className="animate-in fade-in-50 duration-200">
             <CreatorAccountDetails />
@@ -66,7 +81,7 @@ export default function CreatorProfilePage() {
 
         {activeTab === 'tiers' && (
           <div className="animate-in fade-in-50 duration-200">
-            <KolTierStatusPage />
+            <KolTierStatusPage view={isLeaderboard ? 'leaderboard' : isBonusProgress ? 'bonus' : 'tiers'} />
           </div>
         )}
       </div>

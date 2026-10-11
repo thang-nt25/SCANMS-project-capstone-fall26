@@ -1,0 +1,90 @@
+.scanms-payment-confirmation { max-width: 744px; margin: 0 auto; padding: 24px; border: 1px solid #EAE4D7; border-radius: 20px; background: #FFFFFF; color: #1A1612; box-shadow: 0 10px 40px #231D1506; }
+.scanms-payment-heading { display: flex; align-items: center; gap: 12px; padding-bottom: 18px; }
+.scanms-payment-heading-icon { width: 44px; height: 44px; display: grid; place-items: center; flex-shrink: 0; border: 1px solid #EEDFC6; border-radius: 14px; background: #FFFFFF; color: #B88E4F; }
+.scanms-payment-heading h2 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.5px; line-height: 1.3; }
+.scanms-payment-heading p { margin: 4px 0 0; font-size: 12px; line-height: 1.6; color: #7D715E; }
+.scanms-payment-layout { display: grid; gap: 16px; }
+.scanms-payment-summary { min-width: 0; padding: 16px; background: #FAF8F5; border: 1px solid #EAE4D7; border-radius: 12px; }
+.scanms-payment-summary h3 { margin: 0 0 12px; font-size: 14px; font-weight: 650; }
+.scanms-payment-receipt { padding: 12px 14px; background: #FFFFFF; border: 1px solid #EAE4D7; border-radius: 12px; }
+.scanms-payment-summary-total { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #EAE4D7; }
+.scanms-payment-summary-label { font-size: 12px; color: #7D715E; }
+.scanms-payment-summary-total strong { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.scanms-payment-order { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid #EAE4D7; }
+.scanms-payment-order:first-of-type { padding-top: 0; }
+.scanms-payment-order:last-child { padding-bottom: 0; border-bottom: 0; }
+.scanms-payment-store { grid-column: 1; display: flex; gap: 7px; align-items: center; font-size: 13px; line-height: 1.5; font-weight: 650; }
+.scanms-payment-store svg { flex-shrink: 0; color: #B88E4F; }
+.scanms-payment-store-icon { width: 28px; height: 28px; display: grid; place-items: center; flex-shrink: 0; border-radius: 8px; background: #FBF5EB; }
+.scanms-payment-order-code { grid-column: 1; display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.scanms-payment-order-code strong { font-size: 12px; font-weight: 500; color: #7D715E; overflow-wrap: anywhere; }
+.scanms-payment-icon-button { display: grid; place-items: center; min-width: 28px; height: 28px; flex-shrink: 0; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #B88E4F; cursor: pointer; transition: background .15s, border-color .15s; }
+.scanms-payment-icon-button:hover { background: #FBF5EB; border-color: #EEDFC6; }
+.scanms-payment-order-meta { grid-column: 2; grid-row: 1 / span 2; display: grid; justify-items: end; gap: 6px; font-size: 11px; color: #7D715E; }
+.scanms-payment-order-meta span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; background: #FBF5EB; border-radius: 6px; }
+.scanms-payment-order-meta a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 9px; color: #7D715E; font-weight: 500; border: 1px solid #EAE4D7; border-radius: 7px; background: #FFFFFF; }
+.scanms-payment-order-meta a:hover { color: #B88E4F; border-color: #EEDFC6; background: #FBF5EB; }
+.scanms-payment-order-amount { grid-column: 1; margin-top: 5px; font-size: 12px; font-weight: 600; }
+.scanms-payment-email { margin-top: 10px; display: flex; align-items: start; gap: 7px; font-size: 12px; line-height: 1.6; color: #7D715E; }
+.scanms-payment-email svg { flex-shrink: 0; margin-top: 2px; color: #B88E4F; }
+.scanms-payment-email p { margin: 0; }
+.scanms-payment-email strong { color: #1A1612; font-weight: 500; overflow-wrap: anywhere; }
+.scanms-payment-content { min-width: 0; }
+.scanms-payment-multi-note { margin: 0 0 12px; font-size: 12px; line-height: 1.6; color: #7D715E; }
+.scanms-payment-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; padding-top: 14px; margin-top: 14px; border-top: 1px solid #EAE4D7; }
+.scanms-payment-button { min-height: 38px; display: inline-flex; justify-content: center; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid #EAE4D7; border-radius: 10px; font-size: 12px; font-weight: 550; line-height: 1.5; background: #FFFFFF; color: #1A1612; cursor: pointer; text-decoration: none; transition: background .15s, border-color .15s, box-shadow .15s; }
+.scanms-payment-button:hover { background: #FBF5EB; border-color: #EEDFC6; }
+.scanms-payment-button-primary { border-color: #EEDFC6; background: #FBF5EB; color: #1A1612; }
+.scanms-payment-button-primary:hover { background: #F3EFE6; border-color: #C59B58; box-shadow: 0 2px 6px #231D1506; }
+.scanms-payment-button-primary svg { color: #B88E4F; }
+.scanms-payment-confirmation :is(button, a):focus-visible, .scanms-payos :is(button, a):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
+.scanms-payos { container-type: inline-size; min-width: 0; margin-bottom: 14px; padding: 18px; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; color: #1A1612; text-align: left; }
+.scanms-payment-content .scanms-payos { padding: 0; border: 0; border-radius: 0; }
+.scanms-payos:last-child { margin-bottom: 0; }
+.scanms-payos-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid #EAE4D7; }
+.scanms-payos-title { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 14px; font-weight: 650; }
+.scanms-payos-title svg { color: #B88E4F; flex-shrink: 0; }
+.scanms-payos-title .scanms-payos-paid-icon { color: #059669; }
+.scanms-payos-subtitle { margin: 4px 0 0; font-size: 11px; color: #7D715E; overflow-wrap: anywhere; }
+.scanms-payos-status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 6px; background: #FBF5EB; font-size: 11px; color: #7D715E; }
+.scanms-payos-status svg { color: #B88E4F; }
+.scanms-payos-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.scanms-payos-header + .scanms-payos-grid { padding-top: 14px; }
+.scanms-payos-qr { display: flex; flex-direction: column; align-items: center; align-self: start; padding: 0; border: 0; border-radius: 0; background: #FFFFFF; }
+.scanms-payos-qr-label { padding: 4px 10px; border-radius: 6px; background: #FBF5EB; font-size: 10px; letter-spacing: 1.1px; font-weight: 650; color: #B88E4F; }
+.scanms-payos-qr-frame { display: grid; place-items: center; max-width: 100%; margin: 9px 0; padding: 10px; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; }
+.scanms-payos-qr img { width: 208px; height: 208px; max-width: 100%; object-fit: contain; margin: 0; border-radius: 0; background: #FFFFFF; }
+.scanms-payos-qr p { margin: 0; font-size: 11px; color: #7D715E; text-align: center; }
+.scanms-payos-details { min-width: 0; }
+.scanms-payos-amount-panel { padding: 10px 14px; border-radius: 10px; background: #FBF5EB; }
+.scanms-payos-amount-label { margin: 0; font-size: 12px; color: #7D715E; }
+.scanms-payos-amount { display: block; margin-top: 2px; font-size: 25px; letter-spacing: -.6px; font-weight: 650; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.scanms-payos-bank { margin: 12px 0; padding: 0 0 12px; border: 0; border-bottom: 1px solid #EAE4D7; display: grid; gap: 8px; }
+.scanms-payos-bank div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 12px; line-height: 1.5; }
+.scanms-payos-bank dt { color: #7D715E; flex-shrink: 0; }
+.scanms-payos-bank dd { margin: 0; text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+.scanms-payos-steps { padding: 0; margin: 0 0 12px; list-style: none; display: grid; gap: 5px; }
+.scanms-payos-steps li { display: flex; align-items: start; gap: 7px; font-size: 12px; line-height: 1.5; color: #7D715E; }
+.scanms-payos-steps span { display: grid; place-items: center; flex-shrink: 0; width: 18px; height: 18px; border: 1px solid #EAE4D7; border-radius: 5px; background: #FFFFFF; font-size: 10px; font-weight: 500; color: #B88E4F; }
+.scanms-payos-details .scanms-payment-button { width: 100%; }
+.scanms-payos-note { margin: 14px 0 0; padding: 10px 12px; border: 0; border-radius: 8px; background: #FAF8F5; display: flex; align-items: start; gap: 7px; font-size: 12px; line-height: 1.6; color: #7D715E; }
+.scanms-payos-note svg { flex-shrink: 0; margin-top: 2px; color: #B88E4F; }
+.scanms-payos-message { display: flex; align-items: center; gap: 8px; padding: 14px 0 0; margin: 0; font-size: 13px; line-height: 1.6; color: #7D715E; }
+.scanms-payos-error { padding: 10px 12px; margin: 12px 0 0; border: 1px solid #EAE4D7; border-radius: 8px; font-size: 12px; line-height: 1.6; color: #DC2626; }
+.scanms-payos-retry { margin-top: 12px; }
+@container (min-width: 490px) {
+  .scanms-payos-grid { grid-template-columns: 234px minmax(0, 1fr); }
+}
+@media (max-width: 540px) {
+  .scanms-payment-confirmation { padding: 16px; border-radius: 14px; }
+  .scanms-payment-heading { align-items: start; gap: 10px; padding-bottom: 14px; }
+  .scanms-payment-heading-icon { width: 36px; height: 36px; border-radius: 10px; }
+  .scanms-payment-heading h2 { font-size: 19px; letter-spacing: -.5px; }
+  .scanms-payment-heading p { font-size: 12px; }
+  .scanms-payment-receipt { padding: 10px; }
+  .scanms-payment-order { column-gap: 10px; }
+  .scanms-payos-qr { width: 234px; max-width: 100%; justify-self: center; }
+  .scanms-payos-grid { gap: 16px; }
+  .scanms-payment-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .scanms-payment-actions .scanms-payment-button { padding: 8px; font-size: 11px; }
+}

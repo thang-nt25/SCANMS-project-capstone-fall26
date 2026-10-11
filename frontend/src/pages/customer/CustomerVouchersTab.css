@@ -1,0 +1,62 @@
+.customer-vouchers {
+  container: vouchers / inline-size;
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  max-width: 1120px;
+  min-width: 0;
+  color: var(--theme-ink, #1A1612);
+  text-align: left;
+}
+.customer-vouchers .cv-heading { display: flex; align-items: center; gap: 11px; padding: 4px 0 14px; border-bottom: 1px solid var(--theme-line, #EAE4D7); }
+.customer-vouchers .cv-heading-icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 42px; border: 1px solid #EEDFC6; border-radius: 11px; background: var(--theme-surface, #FFFFFF); color: var(--theme-accent, #B88E4F); }
+.customer-vouchers .cv-heading > div { min-width: 0; }
+.customer-vouchers .cv-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.customer-vouchers h1 { margin: 0; font-family: inherit; font-size: 20px; font-weight: 650; line-height: 1.4; letter-spacing: -.4px; }
+.customer-vouchers .cv-count { padding: 3px 7px; border-radius: 6px; background: var(--theme-sand, #F3EFE6); color: var(--theme-muted, #7D715E); font-size: 11px; line-height: 1.5; white-space: nowrap; }
+.customer-vouchers .cv-heading p { margin: 3px 0 0; color: var(--theme-muted, #7D715E); font-size: 12px; line-height: 1.5; }
+.customer-vouchers .cv-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; min-width: 0; }
+.customer-vouchers .cv-card { display: grid; grid-template-columns: 68px minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; min-width: 0; padding: 14px 16px 0; border: 1px solid var(--theme-line, #EAE4D7); border-radius: 13px; background: var(--theme-surface, #FFFFFF); box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
+.customer-vouchers .cv-card:hover { border-color: #EEDFC6; }
+.customer-vouchers .cv-discount { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 68px; padding: 8px 4px; border: 1px solid #EEDFC6; border-radius: 10px; background: var(--theme-brand-soft, #FBF5EB); color: var(--theme-accent, #B88E4F); }
+.customer-vouchers .cv-discount strong { font-size: 27px; line-height: 1.15; letter-spacing: -.8px; font-weight: 650; }
+.customer-vouchers .cv-discount > span { font-size: 10px; line-height: 1.5; color: var(--theme-muted, #7D715E); }
+.customer-vouchers .cv-body { display: grid; gap: 3px; min-width: 0; }
+.customer-vouchers .cv-category { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; line-height: 1.5; color: var(--theme-accent, #B88E4F); }
+.customer-vouchers .cv-category svg { flex-shrink: 0; }
+.customer-vouchers .cv-body h2 { margin: 0; font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.customer-vouchers .cv-minimum { margin: 0; color: var(--theme-muted, #7D715E); font-size: 11px; line-height: 1.5; }
+.customer-vouchers .cv-actions { display: flex; flex-direction: column; align-items: stretch; gap: 5px; min-width: 0; }
+.customer-vouchers :is(.cv-code, .cv-use) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 6px 9px; border: 1px solid var(--theme-line, #EAE4D7); border-radius: 8px; font-family: inherit; font-size: 11px; font-weight: 550; line-height: 1.4; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.customer-vouchers .cv-code { border-color: transparent; padding-inline: 0; background: var(--theme-surface, #FFFFFF); color: var(--theme-ink, #1A1612); }
+.customer-vouchers .cv-code > span { letter-spacing: .3px; }
+.customer-vouchers :is(.cv-code, .cv-use) > svg { flex-shrink: 0; color: var(--theme-accent, #B88E4F); }
+.customer-vouchers .cv-code:hover, .customer-vouchers .cv-code.is-copied { border-color: #C59B58; background: var(--theme-brand-soft, #FBF5EB); }
+.customer-vouchers .cv-code.is-copied { color: var(--theme-accent, #B88E4F); }
+.customer-vouchers .cv-use { border-color: #EEDFC6; background: var(--theme-brand-soft, #FBF5EB); color: var(--theme-ink, #1A1612); }
+.customer-vouchers .cv-use:hover { border-color: #C59B58; background: var(--theme-sand, #F3EFE6); }
+.customer-vouchers .cv-details { grid-column: 1 / -1; min-width: 0; border-top: 1px solid var(--theme-line, #EAE4D7); }
+.customer-vouchers .cv-details > summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 5px 10px; min-height: 34px; padding: 8px 0; list-style: none; font-size: 10px; line-height: 1.5; color: var(--theme-muted, #7D715E); cursor: pointer; }
+.customer-vouchers .cv-details > summary::-webkit-details-marker { display: none; }
+.customer-vouchers :is(.cv-details-label, .cv-expiry) { display: inline-flex; align-items: center; gap: 5px; }
+.customer-vouchers .cv-expiry { white-space: nowrap; }
+.customer-vouchers .cv-details[open] .cv-details-label svg { transform: rotate(180deg); }
+.customer-vouchers .cv-details > summary:hover .cv-details-label { color: var(--theme-accent, #B88E4F); }
+.customer-vouchers .cv-details dl { display: grid; gap: 7px; margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; background: var(--theme-canvas, #FAF8F5); font-size: 11px; line-height: 1.6; }
+.customer-vouchers .cv-details dl > div { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 8px; }
+.customer-vouchers .cv-details dt { color: var(--theme-muted, #7D715E); }
+.customer-vouchers .cv-details dd { margin: 0; color: var(--theme-ink, #1A1612); overflow-wrap: anywhere; }
+.customer-vouchers :is(a, button, summary):focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; border-radius: 5px; }
+@container vouchers (max-width: 899px) {
+  .customer-vouchers .cv-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@container vouchers (max-width: 499px) {
+  .customer-vouchers h1 { font-size: 19px; }
+  .customer-vouchers .cv-card { grid-template-columns: 66px minmax(0, 1fr); gap: 10px 12px; padding: 14px 14px 0; }
+  .customer-vouchers .cv-discount strong { font-size: 26px; }
+  .customer-vouchers .cv-actions { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .customer-vouchers .cv-code { padding-inline: 0; }
+}
+@media (max-width: 767px) {
+  .customer-vouchers { padding-bottom: 64px; }
+}

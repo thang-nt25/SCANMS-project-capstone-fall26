@@ -1,0 +1,185 @@
+.shop-overview .shop-overview-metrics > div {
+  padding: 14px 16px;
+  gap: 10px;
+  box-shadow: none;
+}
+
+.shop-overview-metrics > div > div:first-child > div {
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #b88e4f);
+  border-color: var(--theme-line, #eedfc6);
+}
+
+.shop-overview-metrics strong {
+  color: var(--theme-ink, #1a1612);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-overview-metrics > div > div:last-child > span {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.shop-overview-content > div {
+  min-width: 0;
+  box-shadow: none;
+}
+
+.shop-overview h2,
+.shop-overview h3 {
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.shop-overview-plot {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 10px;
+}
+
+.shop-overview-plot-column {
+  min-width: 0;
+  text-align: center;
+}
+
+.shop-overview-bars {
+  display: flex;
+  height: 150px;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--theme-line, #eae4d7);
+  background: repeating-linear-gradient(to top, transparent 0, transparent 49px, var(--theme-canvas, #faf8f5) 49px, var(--theme-canvas, #faf8f5) 50px);
+}
+
+.shop-overview-bars > div {
+  width: min(20px, 35%);
+  flex-shrink: 0;
+}
+
+.shop-overview-revenue {
+  background: #eedfc6;
+  border: 1px solid #c59b58;
+}
+
+.shop-overview-commission {
+  background: #f3efe6;
+  border: 1px solid #eae4d7;
+}
+
+.shop-overview-bar {
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  transition: border-color 150ms ease;
+}
+
+.shop-overview-bar:hover {
+  border-color: #b88e4f;
+}
+
+.shop-overview-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.shop-overview-date {
+  display: block;
+  margin-top: 8px;
+  color: var(--theme-muted, #7d715e);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-overview-orders > div:nth-child(2) > div,
+.shop-overview-orders > div:nth-child(2) > button {
+  background: var(--theme-surface, #fff);
+  box-shadow: none;
+  padding: 10px;
+  gap: 8px;
+}
+
+.shop-overview-orders > div:nth-child(2) > div > strong {
+  color: var(--theme-ink, #1a1612);
+  font-weight: 600;
+}
+
+.shop-overview-orders > div:nth-child(2) > div > div:first-child {
+  background: var(--theme-surface, #fff);
+}
+
+.shop-overview-products > div:first-child {
+  padding: 16px;
+}
+
+.shop-overview-products thead tr {
+  background: var(--theme-surface, #fff);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.shop-overview-products th,
+.shop-overview-products td {
+  padding-block: 11px;
+}
+
+.shop-overview-products button,
+.shop-overview-products a {
+  box-shadow: none;
+}
+
+.shop-overview .shop-overview-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid #eedfc6;
+  border-radius: 9px;
+  background: #fbf5eb;
+  color: #1a1612;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.shop-overview .shop-overview-action-primary {
+  background: #f3efe6;
+}
+
+.shop-overview .shop-overview-action svg {
+  color: #b88e4f;
+}
+
+.shop-overview .shop-overview-action:hover {
+  background: #f3efe6;
+  border-color: #c59b58;
+}
+
+.shop-overview button:focus-visible,
+.shop-overview a:focus-visible {
+  outline: 2px solid #b88e4f;
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  .shop-overview-content > div {
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-overview-bar,
+  .shop-overview .shop-overview-action {
+    transition: none;
+  }
+}

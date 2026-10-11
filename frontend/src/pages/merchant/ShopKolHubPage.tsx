@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import './ShopKolHubPage.css';
+import './ShopKolWorkspace.css';
+import './CreatorDirectory.css';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -28,7 +31,6 @@ import {
   Mail,
   X,
   Crown,
-  Info,
   ArrowUpRight,
 } from 'lucide-react';
 import api from '../../services/api';
@@ -36,6 +38,7 @@ import ChatBoxPage from '../chat/ChatBoxPage';
 import KolRecommendationPage from './KolRecommendationPage';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
+import { VipCommissionModal } from '../../components/affiliate/VipCommissionModal';
 
 export interface PartnerKol {
   id: string;
@@ -180,11 +183,11 @@ export default function ShopKolHubPage() {
   const tabParam = searchParams.get('tab') || 'messages';
   const modeParam = searchParams.get('mode'); // 'ai-matching' or null
 
-  const [isAiMatchingMode, setIsAiMatchingMode] = useState(modeParam === 'ai-matching');
+  const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'ai-matching';
   const [kols, setKols] = useState<PartnerKol[]>([]);
   const [selectedKolId, setSelectedKolId] = useState<string>(kolParam || '');
   const [activeTab, setActiveTab] = useState<'messages' | 'samples' | 'performance' | 'profile'>(
-    (tabParam as any) || 'messages'
+    (['messages', 'samples', 'performance', 'profile'].includes(tabParam) ? tabParam : 'messages') as 'messages' | 'samples' | 'performance' | 'profile'
   );
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -241,11 +244,6 @@ export default function ShopKolHubPage() {
     }
     if (tabParam && ['messages', 'samples', 'performance', 'profile'].includes(tabParam)) {
       setActiveTab(tabParam as any);
-    }
-    if (modeParam === 'ai-matching') {
-      setIsAiMatchingMode(true);
-    } else {
-      setIsAiMatchingMode(false);
     }
   }, [kolParam, tabParam, modeParam]);
 
@@ -513,6 +511,17 @@ return true;
   }, [samplesMap, selectedKol, sampleFilter]);
 
   // Handler: Select KOL
+  const setAiMatchingMode = (enabled: boolean) => {
+    const params = new URLSearchParams(searchParams);
+    const kolId = selectedKol?.id || selectedKolId;
+    if (kolId) params.set('kol', kolId);
+    else params.delete('kol');
+    params.set('tab', activeTab);
+    if (enabled) params.set('mode', 'ai-matching');
+    else params.delete('mode');
+    setSearchParams(params, { replace: !enabled });
+  };
+
   const handleSelectKol = (kolId: string) => {
     setSelectedKolId(kolId);
     setSearchParams(
@@ -821,8 +830,8 @@ return true;
   }, [directoryCreators, discoverySearch, discoveryFilter, discoveryTier]);
 
   const inviteModal = showInviteModal && createPortal(
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#231D15]/35 p-4 backdrop-blur-xs" onClick={() => { if (!inviting) setShowInviteModal(false); }}>
-      <section role="dialog" aria-modal="true" aria-labelledby="invite-kol-title" className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_24px_70px_rgba(35,29,21,0.18)]" onClick={(event) => event.stopPropagation()}>
+    <div className="kol-invite-overlay fixed inset-0 z-[110] flex items-center justify-center bg-[#231D15]/35 p-4 backdrop-blur-xs" onClick={() => { if (!inviting) setShowInviteModal(false); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="invite-kol-title" className="kol-invite-dialog flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_24px_70px_rgba(35,29,21,0.18)]" onKeyDown={event => { if (event.key === 'Escape' && !inviting) setShowInviteModal(false); }} onClick={(event) => event.stopPropagation()}>
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[#EAE4D7] px-5 py-4">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><UserPlus className="h-5 w-5" /></span>
@@ -831,18 +840,19 @@ return true;
           <button type="button" disabled={inviting} onClick={() => setShowInviteModal(false)} aria-label="Đóng lời mời KOL" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#7D715E] transition hover:bg-[#FBF5EB] disabled:opacity-40"><X className="h-4 w-4" /></button>
         </header>
         <form onSubmit={handleInviteKol} className="min-h-0 overflow-y-auto px-5 py-5">
-          <p className="mb-4 text-sm leading-relaxed text-[#7D715E]">Nhập email tài khoản KOL/CTV đã có trên SCANMS. Lời mời được gửi trong hệ thống để KOL xác nhận hợp tác.</p>
+          <p className="kol-invite-description mb-4 text-sm leading-relaxed text-[#7D715E]">Gửi lời mời tới email tài khoản SCANMS của KOL/CTV.</p>
           <label htmlFor="kol-invite-email" className="mb-1.5 block text-sm font-medium text-[#1A1612]">Email của KOL/CTV <span className="text-[#DC2626]">*</span></label>
           <div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#B88E4F]" /><input id="kol-invite-email" type="email" required autoComplete="email" maxLength={254} disabled={inviting} placeholder="tenkol@example.com" value={inviteEmail} onChange={(event) => { setInviteEmail(event.target.value); setInviteError(''); setInviteSuccess(''); }} aria-invalid={!!inviteError} aria-describedby="kol-invite-help" className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white pl-10 pr-3 text-sm text-[#1A1612] outline-none transition placeholder:text-[#A79B89] focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10 disabled:opacity-60" /></div>
-          <p id="kol-invite-help" className="mt-2 text-xs leading-relaxed text-[#7D715E]">KOL cần chấp nhận lời mời trước khi trở thành thành viên của gian hàng.</p>
+          <p id="kol-invite-help" className="mt-2 text-xs leading-relaxed text-[#7D715E]">Hợp tác được xác nhận khi KOL chấp nhận lời mời.</p>
           {inviteError && <p role="alert" className="mt-3 text-sm text-[#DC2626]">{inviteError}</p>}
           {inviteSuccess && <div role="status" className="mt-3 flex items-start gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#1A1612]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" /><p>{inviteSuccess}</p></div>}
           <button type="submit" disabled={inviting || !inviteEmail.trim()} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#C59B58] text-sm font-semibold text-[#231D15] transition hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-50"><UserPlus className="h-4 w-4" />{inviting ? 'Đang gửi…' : 'Gửi lời mời hợp tác'}</button>
-          <div className="mt-5 border-t border-[#EAE4D7] pt-4">
-            <p className="text-xs leading-relaxed text-[#7D715E]">Muốn giới thiệu shop? Chia sẻ trang gian hàng trên SCANMS. Liên kết này không tự tạo lời mời hợp tác.</p>
+          <details className="kol-invite-share mt-5 border-t border-[#EAE4D7] pt-4">
+            <summary><Share2 className="h-3.5 w-3.5" /><span>Chia sẻ gian hàng</span><span className="kol-invite-share-toggle" aria-hidden="true">+</span></summary>
+            <p className="text-xs leading-relaxed text-[#7D715E]">Gửi trang shop để KOL tìm hiểu. Liên kết này không tạo lời mời hợp tác.</p>
             <button type="button" disabled={copyingLink} onClick={handleCopyInviteLink} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-medium text-[#1A1612] transition hover:bg-[#FBF5EB] disabled:opacity-50">{copiedLink ? <Check className="h-4 w-4 text-[#059669]" /> : <Copy className="h-4 w-4 text-[#B88E4F]" />}{copyingLink ? 'Đang lấy liên kết…' : copiedLink ? 'Đã sao chép' : 'Sao chép trang gian hàng'}</button>
             {sharedShopLink && <input readOnly aria-label="Liên kết trang gian hàng" value={sharedShopLink} onFocus={(event) => event.target.select()} className="mt-2 h-9 w-full rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs text-[#7D715E] outline-none" />}
-          </div>
+          </details>
         </form>
       </section>
     </div>, document.body
@@ -850,26 +860,27 @@ return true;
 
   const discoveryModal = showDiscoveryModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-[100] animate-in fade-in-50 duration-200"
+          className="creator-directory-overlay fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-[100] animate-in fade-in-50 duration-200"
           onClick={() => setShowDiscoveryModal(false)}
         >
           <div
-            className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-4xl max-h-[84dvh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            className="creator-directory bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-4xl max-h-[84dvh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
             role="dialog"
             aria-modal="true"
             aria-labelledby="creator-directory-title"
+            onKeyDown={event => { if (event.key === 'Escape') setShowDiscoveryModal(false); }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="shrink-0 px-4 py-4 sm:px-5 border-b border-[#EAE4D7] bg-white flex items-start justify-between gap-3">
+            <div className="creator-directory-header shrink-0 px-4 py-4 sm:px-5 border-b border-[#EAE4D7] bg-white flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Users className="h-5 w-5" /></span>
                 <div className="min-w-0">
                 <h3 id="creator-directory-title" className="m-0 text-lg font-bold text-[#1A1612]">
-                  Tìm nhà sáng tạo KOL/KOC
+                  Khám phá nhà sáng tạo
                 </h3>
                 <p className="text-xs text-[#7D715E] mt-0.5">
-                  Khám phá hồ sơ trên SCANMS và nhắn tin trao đổi hợp tác.
+                  Tìm đối tác phù hợp và kết nối hợp tác.
                 </p>
                 </div>
               </div>
@@ -884,7 +895,7 @@ return true;
             </div>
 
             {/* Filter & Search Bar */}
-            <div className="px-4 py-3 sm:px-5 border-b border-[#EAE4D7] bg-white grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_155px_145px] sm:items-end">
+            <div className="creator-directory-filters px-4 py-3 sm:px-5 border-b border-[#EAE4D7] bg-white grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_155px_145px] sm:items-end">
               <div className="relative flex-1 w-full">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
                 <input
@@ -902,7 +913,7 @@ return true;
                   <option value="ALL">Tất cả nền tảng</option><option value="TIKTOK">TikTok</option><option value="YOUTUBE">YouTube</option><option value="INSTAGRAM">Instagram</option><option value="FACEBOOK">Facebook</option>
                 </Select>
               </label>
-              <label className="grid gap-1 text-[11px] font-medium text-[#7D715E]">Hạng nhà sáng tạo
+              <label className="grid gap-1 text-[11px] font-medium text-[#7D715E]">Hạng
                 <Select value={discoveryTier} onChange={(event) => setDiscoveryTier(event.target.value)} className="h-10 w-full text-xs">
                   <option value="ALL">Tất cả hạng</option><option value="DIAMOND">Kim cương</option><option value="GOLD">Vàng</option><option value="SILVER">Bạc</option><option value="BRONZE">Đồng</option>
                 </Select>
@@ -910,7 +921,7 @@ return true;
             </div>
 
             {/* Creators Grid */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 bg-[#FAF8F5]/50">
+            <div className="creator-directory-results min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 bg-[#FAF8F5]/50">
               <p className="mb-3 text-xs text-[#7D715E]">{loadingDirectory ? 'Đang tìm kiếm…' : `${filteredDirectoryCreators.length} nhà sáng tạo phù hợp`}</p>
               {loadingDirectory ? (
                 <div className="py-16 text-center text-xs text-[#7D715E]">
@@ -927,7 +938,7 @@ return true;
                   Không tìm thấy nhà sáng tạo nào phù hợp với bộ lọc.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
+                <div className="creator-directory-grid grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
                   {filteredDirectoryCreators.map((creator) => {
                     const profile = creator.collaboratorProfile || {};
                     const channels = (creator.socialChannels || []).filter((channel: any, index: number, list: any[]) =>
@@ -955,11 +966,11 @@ return true;
                     return (
                       <div
                         key={creator.id}
-                        className="bg-white border border-[#EAE4D7] rounded-2xl p-4 hover:border-[#DCC69F] transition shadow-[0_2px_8px_rgba(35,29,21,0.025)] flex flex-col justify-between gap-2 min-w-0"
+                        className="creator-directory-card bg-white border border-[#EAE4D7] rounded-2xl p-4 hover:border-[#DCC69F] transition shadow-[0_2px_8px_rgba(35,29,21,0.025)] flex flex-col justify-between gap-2 min-w-0"
                       >
                         <div>
                           {/* Top: Avatar + Name + Tier */}
-                          <div className="flex items-start gap-3">
+                          <div className="creator-directory-identity flex items-start gap-3">
                             <div className="relative flex-shrink-0">
                               {creator.avatarUrl ? <img src={creator.avatarUrl} alt={creator.fullName} className="w-10 h-10 rounded-full object-cover border border-[#EAE4D7]" /> : <span className="grid h-10 w-10 place-items-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#B88E4F]">{(creator.fullName || 'KOL').split(' ').filter(Boolean).slice(-2).map((part: string) => part[0]).join('')}</span>}
                               {profile.kycStatus === 'VERIFIED' && (
@@ -981,7 +992,14 @@ return true;
                                   {tier === 'DIAMOND' ? 'Kim cương' : tier === 'GOLD' ? 'Vàng' : tier === 'SILVER' ? 'Bạc' : tier === 'BRONZE' ? 'Đồng' : 'Chưa xếp hạng'}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-[#7D715E] truncate mt-0.5">
+
+                            </div>
+                          </div>
+
+                                                    <details className="creator-directory-profile-details">
+                            <summary>Chi tiết <span aria-hidden="true">+</span></summary>
+                            <div className="creator-directory-detail-content">
+<p className="text-[11px] text-[#7D715E] truncate mt-0.5">
                                 {creator.email} {creator.phoneNumber ? `· ${creator.phoneNumber}` : ''}
                               </p>
                               {profile.kycStatus === 'VERIFIED' && (
@@ -990,21 +1008,8 @@ return true;
                                   Đã xác minh danh tính
                                 </span>
                               )}
-                            </div>
-                          </div>
-
-                          <details className="mt-3 space-y-2">
-                            <summary className="cursor-pointer text-xs font-medium text-[#8C6226]">{channels.length} kênh mạng xã hội · Xem chi tiết</summary>
-                            {channels.length > 0 ? (
-                              <div className="space-y-1.5">
-                                {channels.slice(0, 2).map(renderChannel)}
-                                {channels.length > 2 && <details className="text-xs text-[#7D715E]"><summary className="cursor-pointer py-1 hover:text-[#B88E4F]">Xem thêm {channels.length - 2} kênh</summary><div className="mt-1 space-y-1.5">{channels.slice(2).map(renderChannel)}</div></details>}
-                              </div>
-                            ) : <p className="text-xs text-[#7D715E]">Chưa liên kết kênh mạng xã hội</p>}
-                          </details>
-
                           {/* Quick Stats */}
-                          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#EAE4D7]/70">
+                          <div className="creator-directory-stats grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#EAE4D7]/70">
                             <div>
                               <div className="text-[11px] text-[#7D715E]">Người theo dõi</div>
                               <div className="text-xs font-extrabold text-[#1A1612]">
@@ -1019,10 +1024,23 @@ return true;
                             </div>
 
                           </div>
+<details className="creator-directory-channels mt-3 space-y-2">
+                            <summary className="cursor-pointer text-xs font-medium text-[#8C6226]">{channels.length} kênh mạng xã hội · Xem chi tiết</summary>
+                            {channels.length > 0 ? (
+                              <div className="space-y-1.5">
+                                {channels.slice(0, 2).map(renderChannel)}
+                                {channels.length > 2 && <details className="text-xs text-[#7D715E]"><summary className="cursor-pointer py-1 hover:text-[#B88E4F]">Xem thêm {channels.length - 2} kênh</summary><div className="mt-1 space-y-1.5">{channels.slice(2).map(renderChannel)}</div></details>}
+                              </div>
+                            ) : <p className="text-xs text-[#7D715E]">Chưa liên kết kênh mạng xã hội</p>}
+                          </details>
+
+
+                            </div>
+                          </details>
                         </div>
 
                         {/* CTA button */}
-                        <div className="pt-3 border-t border-[#EAE4D7]/70 flex justify-end">
+                        <div className="creator-directory-action pt-3 border-t border-[#EAE4D7]/70 flex justify-end">
                           <button
                             type="button"
                             onClick={() => handleConnectCreator(creator)}
@@ -1030,7 +1048,7 @@ return true;
                             className="h-9 px-3 rounded-lg text-xs font-semibold bg-[#C59B58] text-[#231D15] hover:bg-[#B88E4F] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
-                            {isConnecting ? 'Đang kết nối…' : 'Nhắn tin hợp tác'}
+                            {isConnecting ? 'Đang kết nối…' : 'Nhắn tin'}
                           </button>
                         </div>
                       </div>
@@ -1041,9 +1059,9 @@ return true;
             </div>
 
             {/* Footer */}
-            <div className="px-4 py-3 sm:px-5 border-t border-[#EAE4D7] bg-white flex flex-wrap gap-3 items-center justify-between">
+            <div className="creator-directory-footer px-4 py-3 sm:px-5 border-t border-[#EAE4D7] bg-white flex flex-wrap gap-3 items-center justify-between">
               <span className="text-xs text-[#7D715E]">
-                Đã có email tài khoản KOL? Gửi lời mời hợp tác trên SCANMS.
+                Kết nối đối tác bằng email.
               </span>
               <button
                 type="button"
@@ -1076,7 +1094,7 @@ return true;
         <button type="button" onClick={() => setShowDiscoveryModal(true)} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-semibold text-[#231D15] hover:bg-[#B88E4F]">
           <Plus className="h-4 w-4" /> Tìm nhà sáng tạo
         </button>
-        <button type="button" onClick={() => { setIsAiMatchingMode(true); setSearchParams({ mode: 'ai-matching' }, { replace: true }); }} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-white px-4 py-2.5 text-sm font-semibold text-[#B88E4F] hover:bg-[#FBF5EB]">
+        <button type="button" onClick={() => setAiMatchingMode(true)} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-white px-4 py-2.5 text-sm font-semibold text-[#B88E4F] hover:bg-[#FBF5EB]">
           <Sparkles className="h-4 w-4" /> AI Tìm Kiếm KOL Mới
         </button>
         {discoveryModal}
@@ -1086,37 +1104,19 @@ return true;
   }
 
   return (
-    <div className="w-full flex flex-col pt-3 sm:pt-4 pb-4" id="shop-kol-hub-workspace">
+    <div className="w-full flex flex-col pb-4" id="shop-kol-hub-workspace">
       {/* Mode 1: AI Recommendation Mode */}
       {isAiMatchingMode ? (
-        <div className="space-y-3 animate-in fade-in-50 duration-200">
-          <div className="flex items-center justify-between bg-white border border-[#EAE4D7] rounded-2xl px-4 py-2.5 shadow-xs">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#B88E4F]" />
-              <span className="text-xs font-black text-[#1A1612] uppercase tracking-wider">
-                Hệ Thống AI Đề Xuất & Tìm Kiếm KOL
-              </span>
-            </div>
-            <button
-              type="button"
-              id="btn-return-workspace"
-              onClick={() => {
-                setIsAiMatchingMode(false);
-                setSearchParams({ kol: selectedKolId, tab: activeTab }, { replace: true });
-              }}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#C59B58] text-white hover:bg-[#B88E4F] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <span>← Quay lại Không Gian 1-1</span>
-            </button>
-          </div>
-          <KolRecommendationPage />
+        <div className="kol-ai-workspace">
+
+          <KolRecommendationPage onReturn={() => setAiMatchingMode(false)} />
         </div>
       ) : (
         /* Mode 2: Partner-Centric 2-Column Workspace */
-        <div className="bg-white border border-[#EAE4D7] rounded-3xl shadow-sm overflow-hidden flex flex-row h-[calc(100vh-125px)] sm:h-[calc(100vh-130px)] min-h-[620px] max-h-[960px]">
+        <div className="shop-kol-shell bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-row h-[calc(100dvh-110px)] min-h-[480px] max-h-[960px]">
           {/* LEFT COLUMN: KOL List & Filters */}
           <div
-            className={`${
+            className={`shop-kol-sidebar ${
               isSidebarCollapsed ? 'w-[72px]' : 'w-full sm:w-[285px] lg:w-[305px] xl:w-[325px]'
             } flex-shrink-0 border-r border-[#EAE4D7] bg-[#FAF8F5] flex flex-col h-full transition-all duration-300 ease-in-out`}
           >
@@ -1229,14 +1229,14 @@ return true;
               /* EXPANDED VIEW: Full list, search, filter tags, cleaner formatting */
               <>
                 {/* Header left */}
-                <div className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] bg-white px-4 py-3 shrink-0">
+                <div className="kol-list-heading flex items-center justify-between gap-2 border-b border-[#EAE4D7] bg-white px-4 py-3 shrink-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-7 h-7 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shadow-2xs shrink-0">
                       <Users className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex items-center gap-1.5 min-w-0">
                       <h1 className="truncate text-sm font-extrabold tracking-tight text-[#1A1612] uppercase">
-                        Nhà Sáng Tạo
+                        Nhà sáng tạo
                       </h1>
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
                         {filteredKols.length}
@@ -1244,7 +1244,15 @@ return true;
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-1">
+                  <details className="kol-list-tools" onKeyDown={event => {
+                    if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
+                  }}>
+                    <summary aria-label="Thao tác danh sách nhà sáng tạo">&bull;&bull;&bull;</summary>
+                    <div className="kol-list-tools-menu" onClick={event => {
+                      if ((event.target as HTMLElement).closest('button')) {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                      }
+                    }}>
                     <button
                       type="button"
                       id="btn-discover-creators"
@@ -1274,11 +1282,12 @@ return true;
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
-                  </div>
+                    </div>
+                  </details>
                 </div>
 
                 {/* Search Bar */}
-                <div className="border-b border-[#EAE4D7] bg-[#FAF8F5] p-3 shrink-0">
+                <div className="kol-list-search border-b border-[#EAE4D7] bg-[#FAF8F5] p-3 shrink-0">
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
                     <input
@@ -1301,7 +1310,7 @@ return true;
                   </div>
 
                   {/* Filter Tabs Under Search */}
-                  <div className="flex items-center gap-3 mt-2.5 pt-1 text-xs">
+                  <div className="kol-list-filters flex items-center gap-3 mt-2.5 pt-1 text-xs">
                     <button
                       type="button"
                       onClick={() => setFilterTag('ALL')}
@@ -1329,7 +1338,7 @@ return true;
                 </div>
 
                 {/* KOL items list - Exact ChatBoxPage Card Style */}
-                <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2.5 py-2.5 no-scrollbar" role="list">
+                <div className="kol-contact-list min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2.5 py-2.5 no-scrollbar" role="list">
                   {filteredKols.length === 0 ? (
                     <div className="py-12 text-center text-[#7D715E] text-xs space-y-2">
                       <Users className="w-7 h-7 mx-auto text-[#C59B58]/40 stroke-1" />
@@ -1372,7 +1381,17 @@ return true;
                         <div
                           key={kol.id}
                           onClick={() => handleSelectKol(kol.id)}
-                          className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition-all duration-150 ${
+                          data-selected={isSelected}
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={isSelected}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              handleSelectKol(kol.id);
+                            }
+                          }}
+                          className={`shop-kol-person group relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-150 ${
                             isSelected
                               ? 'border-[#EEDFC6] bg-[#FBF5EB] shadow-xs'
                               : 'hover:bg-white border-transparent'
@@ -1510,23 +1529,23 @@ return true;
           </div>
 
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
-          <div className="flex-1 flex flex-col min-w-0 bg-[#FAF8F5]/30">
+          <div className="shop-kol-detail flex-1 flex flex-col min-w-0 bg-white">
             {/* 1. Header of Selected KOL (Ultra-Compact Single-Row SCANMS Creator Style) */}
-            <div className="h-14 px-4 bg-white border-b border-[#EAE4D7] flex items-center justify-between gap-3 shrink-0">
+            <div className="shop-kol-detail-heading px-4 py-3 bg-white border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 shrink-0">
               {/* Left: Avatar + (Name & Badges on top) + (TikTok & Followers below) */}
-              <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+              <div className="kol-profile-identity flex items-center gap-3 min-w-0 flex-1">
                 <div className="relative shrink-0">
                   <button
                     type="button"
                     onClick={() => openKolProfile(selectedKol.id)}
                     title={`Xem hồ sơ ${selectedKol.fullName}`}
                     aria-label={`Xem hồ sơ ${selectedKol.fullName}`}
-                    className="rounded-lg border border-[#E8D4B0] bg-gradient-to-br from-[#FAF0DD] to-[#F3EFE6] p-0.5 cursor-pointer shadow-2xs transition hover:scale-105"
+                    className="kol-profile-avatar rounded-xl border border-[#EEDFC6] bg-white p-1 cursor-pointer transition hover:border-[#C59B58]"
                   >
                     <KolAvatar
                       src={selectedKol.avatarUrl}
                       name={selectedKol.fullName}
-                      className="w-9 h-9 rounded-md object-cover text-xs font-black text-[#8C6226]"
+                      className="w-10 h-10 rounded-lg object-cover text-xs font-bold text-[#B88E4F]"
                     />
                   </button>
                   <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-2xs border border-white">
@@ -1534,25 +1553,26 @@ return true;
                   </span>
                 </div>
 
-                <div className="min-w-0 flex flex-col justify-center gap-0.5">
+                <div className="kol-profile-copy min-w-0 flex flex-col justify-center gap-1.5">
                   {/* Row 1: Full Name + Badges */}
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="kol-profile-name-row flex flex-wrap items-center gap-2 min-w-0">
                     <h2
-                      onClick={() => openKolProfile(selectedKol.id)}
-                      className="text-sm font-black text-[#1A1612] tracking-tight truncate min-w-0 max-w-[150px] sm:max-w-[200px] cursor-pointer hover:text-[#B88E4F] transition-colors"
+                      className="kol-profile-name min-w-0"
                       title={selectedKol.fullName}
                     >
-                      {selectedKol.fullName.replace(/\s*\([^)]*\)/g, '').trim() || selectedKol.fullName}
+                      <button type="button" onClick={() => openKolProfile(selectedKol.id)} className="text-left hover:text-[#B88E4F] transition-colors">
+                        {selectedKol.fullName.replace(/\s*\([^)]*\)/g, '').trim() || selectedKol.fullName}
+                      </button>
                     </h2>
 
                     {selectedKol.kycStatus === 'VERIFIED' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] shrink-0 whitespace-nowrap">
+                      <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-white text-[#7D715E] border border-[#EAE4D7] shrink-0 whitespace-nowrap">
                         <CheckCircle2 className="w-3 h-3 text-[#059669]" />
                         <span>Đã xác thực</span>
                       </span>
                     )}
 
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap">
+                    <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap">
                       <Sparkles className="w-2.5 h-2.5 text-[#B88E4F]" />
                       <span>{selectedKol.commissionRate != null ? `VIP: ${selectedKol.commissionRate}%` : 'Chuẩn sàn'}</span>
                     </span>
@@ -1560,11 +1580,13 @@ return true;
 
                   {/* Row 2: TikTok Handle & Followers Count (Clear, no clipping or overlapping behind buttons!) */}
                   {selectedKol.handle && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E] truncate">
-                      <span>{selectedKol.primaryChannel?.platform || 'Kênh'}: <strong className="text-[#1A1612] font-semibold">{selectedKol.handle.replace(/^@+/, '@')}</strong></span>
-                      {selectedKol.primaryChannel?.followers && (
-                        <span>
-                          • {selectedKol.primaryChannel.followers >= 1000
+                    <div className="kol-profile-channel flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#7D715E]">
+                      <span className="kol-profile-platform">{selectedKol.primaryChannel?.platform ? { TIKTOK: 'TikTok', INSTAGRAM: 'Instagram', YOUTUBE: 'YouTube', FACEBOOK: 'Facebook' }[selectedKol.primaryChannel.platform] || selectedKol.primaryChannel.platform : 'Kênh'}</span>
+                      <span className="kol-profile-handle">{selectedKol.handle.replace(/^@+/, '@')}</span>
+                      {selectedKol.primaryChannel?.followers != null && (
+                        <span className="inline-flex items-center gap-1">
+                          <Users className="h-3 w-3 text-[#B88E4F]" />
+                          {selectedKol.primaryChannel.followers >= 1000
                             ? `${(selectedKol.primaryChannel.followers / 1000).toLocaleString('vi-VN')}K`
                             : selectedKol.primaryChannel.followers}{' '}
                           người theo dõi
@@ -1572,7 +1594,7 @@ return true;
                       )}
                       {selectedKol.primaryChannel?.engagementRate && (
                         <span className="text-[#059669] font-medium hidden lg:inline">
-                          • Tương tác: {selectedKol.primaryChannel.engagementRate}
+                          Tương tác: {selectedKol.primaryChannel.engagementRate}
                         </span>
                       )}
                     </div>
@@ -1581,25 +1603,24 @@ return true;
               </div>
 
               {/* Right: Quick Action Buttons & Discovery CTAs (Borderless) */}
-              <div className="flex items-center gap-3 shrink-0">
-                {/* 1. Nút AI Tìm Kiếm KOL Mới */}
-                <button
+              <details className="kol-more-actions" onKeyDown={event => {
+                if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
+              }}>
+                <summary aria-label="Thao tác với nhà sáng tạo"><span>Thêm</span><span aria-hidden="true">···</span></summary>
+                <div className="kol-more-menu" onClick={event => {
+                  if ((event.target as HTMLElement).closest('button, a')) {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                  }
+                }}>
+                  <button
                   type="button"
                   id="btn-toggle-ai-mode"
-                  onClick={() => {
-                    const nextMode = !isAiMatchingMode;
-                    setIsAiMatchingMode(nextMode);
-                    setSearchParams(
-                      nextMode ? { mode: 'ai-matching' } : { kol: selectedKolId, tab: activeTab },
-                      { replace: true }
-                    );
-                  }}
+                  onClick={() => setAiMatchingMode(true)}
                   className="text-xs font-bold transition flex items-center gap-1.5 cursor-pointer text-[#B88E4F] hover:text-[#1A1612] shrink-0 whitespace-nowrap bg-transparent border-0 p-0"
                   title="Sử dụng AI phân tích sản phẩm và tìm kiếm KOL phù hợp"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span className="hidden xl:inline">AI Tìm Kiếm KOL Mới</span>
-                  <span className="xl:hidden">AI Tìm KOL</span>
+                  <span>Tìm KOL với AI</span>
                 </button>
 
                 {/* 2. Nút Khám Phá & Mời KOL */}
@@ -1611,80 +1632,9 @@ return true;
                   title="Khám phá danh bạ và gửi lời mời đến KOL trên sàn"
                 >
                   <Users className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span className="hidden xl:inline">Khám Phá & Mời KOL</span>
-                  <span className="xl:hidden">Khám Phá KOL</span>
+                  <span>Khám phá & mời KOL</span>
                 </button>
-              </div>
-            </div>
-
-            {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
-            <div className="h-10 px-4 bg-[#FAF8F5] border-b border-[#EAE4D7] flex items-center justify-between overflow-x-auto no-scrollbar shrink-0">
-              <div className="flex items-center h-full gap-1 sm:gap-2">
-                <button
-                  type="button"
-                  id="tab-btn-messages"
-                  onClick={() => handleTabChange('messages')}
-                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                    activeTab === 'messages'
-                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
-                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Trao đổi tin nhắn</span>
-                </button>
-
-                <button
-                  type="button"
-                  id="tab-btn-samples"
-                  onClick={() => handleTabChange('samples')}
-                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                    activeTab === 'samples'
-                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
-                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <Package className={`w-3.5 h-3.5 ${activeTab === 'samples' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Duyệt hàng mẫu</span>
-                  {(samplesMap[selectedKol.id] || []).length > 0 && (
-                    <span className="min-w-4 h-4 px-1 rounded-full text-[10px] font-black bg-[#C59B58] text-white inline-flex items-center justify-center shadow-2xs">
-                      {(samplesMap[selectedKol.id] || []).length}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  id="tab-btn-performance"
-                  onClick={() => handleTabChange('performance')}
-                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                    activeTab === 'performance'
-                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
-                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <BarChart3 className={`w-3.5 h-3.5 ${activeTab === 'performance' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Hiệu suất doanh số</span>
-                </button>
-
-                <button
-                  type="button"
-                  id="tab-btn-profile"
-                  onClick={() => handleTabChange('profile')}
-                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                    activeTab === 'profile'
-                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
-                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Hồ sơ & Mạng xã hội</span>
-                </button>
-              </div>
-
-              {/* Right: Nút Cấp VIP & Kênh MXH (Borderless) */}
-              <div className="flex items-center gap-3 shrink-0 ml-auto">
-                <button
+                  <button
                   type="button"
                   id="btn-quick-cap-vip"
                   onClick={() => {
@@ -1710,7 +1660,81 @@ return true;
                     <span>Kênh MXH</span>
                   </a>
                 )}
+                </div>
+              </details>
+            </div>
+
+            {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
+            <div className="shop-kol-tabs px-3 py-2 bg-white border-b border-[#EAE4D7] flex items-center justify-between gap-3 overflow-x-auto no-scrollbar shrink-0">
+              <div className="flex items-center h-full gap-1 sm:gap-2">
+                <button
+                  type="button"
+                  id="tab-btn-messages"
+                  aria-pressed={activeTab === 'messages'}
+                  onClick={() => handleTabChange('messages')}
+                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    activeTab === 'messages'
+                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
+                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                  }`}
+                >
+                  <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Tin nhắn & deal</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="tab-btn-samples"
+                  aria-pressed={activeTab === 'samples'}
+                  onClick={() => handleTabChange('samples')}
+                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    activeTab === 'samples'
+                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
+                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                  }`}
+                >
+                  <Package className={`w-3.5 h-3.5 ${activeTab === 'samples' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Hàng mẫu</span>
+                  {(samplesMap[selectedKol.id] || []).length > 0 && (
+                    <span className="min-w-4 h-4 px-1 rounded-full text-[10px] font-black bg-[#C59B58] text-white inline-flex items-center justify-center shadow-2xs">
+                      {(samplesMap[selectedKol.id] || []).length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  id="tab-btn-performance"
+                  aria-pressed={activeTab === 'performance'}
+                  onClick={() => handleTabChange('performance')}
+                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    activeTab === 'performance'
+                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
+                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                  }`}
+                >
+                  <BarChart3 className={`w-3.5 h-3.5 ${activeTab === 'performance' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Hiệu suất</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="tab-btn-profile"
+                  aria-pressed={activeTab === 'profile'}
+                  onClick={() => handleTabChange('profile')}
+                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    activeTab === 'profile'
+                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
+                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                  }`}
+                >
+                  <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Hồ sơ & kênh</span>
+                </button>
               </div>
+
+              {/* Right: Nút Cấp VIP & Kênh MXH (Borderless) */}
+
             </div>
 
             {/* 3. Sub-Tab Content Areas */}
@@ -2008,7 +2032,7 @@ return true;
                 const rawRevenue = selectedKol.stats?.totalRevenue || 0;
                 const rawOrders = selectedKol.stats?.totalOrders || 0;
                 const hasOrders = rawOrders > 0;
-                
+
                 // Numbers
                 const displayRevenue = rawRevenue;
                 const displayOrders = rawOrders;
@@ -2018,9 +2042,9 @@ return true;
                 const ordersList: AffiliateOrderItem[] = [];
 
                 return (
-                  <div className="animate-in fade-in-50 duration-200 space-y-4">
+                  <div className="kol-performance animate-in fade-in-50 duration-200 space-y-4">
                     {/* 1. Header Policy & Strategic Overview Bar */}
-                    <div className="rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FAF8F5] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                    <div className="kol-performance-heading rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FAF8F5] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-white text-[#B88E4F] shadow-xs">
                           <Award className="h-5 w-5" />
@@ -2064,7 +2088,7 @@ return true;
                     </div>
 
                     {/* 2. Range Filter & Realtime Indicator */}
-                    <div className="flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="kol-performance-toolbar flex flex-wrap items-center justify-between gap-2.5">
                       <div className="flex items-center gap-1 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
                         {[
                           { key: '7d', label: '7 ngày qua' },
@@ -2075,6 +2099,7 @@ return true;
                           <button
                             key={tab.key}
                             type="button"
+                            aria-pressed={performanceRange === tab.key}
                             onClick={() => setPerformanceRange(tab.key as any)}
                             className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                               performanceRange === tab.key
@@ -2096,7 +2121,7 @@ return true;
                     </div>
 
                     {/* 3. Top 4 Metric Cards (Tone Sáng, Sang Trọng, Chuẩn Vàng Be) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div className="kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                       {/* Card 1: Doanh thu thuần */}
                       <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
                         <div className="flex items-center justify-between mb-2">
@@ -2185,11 +2210,11 @@ return true;
                     </div>
 
                     {/* 4. Mini Funnel Tracker (Phễu chuyển đổi tiếp thị 4 bước) */}
-                    <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 sm:p-5">
+                    <div className="kol-performance-funnel rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 sm:p-5">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold uppercase tracking-wider text-[#1A1612] flex items-center gap-1.5">
                           <BarChart3 className="h-4 w-4 text-[#B88E4F]" />
-                          Phễu hiệu quả tiếp thị qua kênh của {selectedKol.fullName}
+                          Phễu chuyển đổi tiếp thị
                         </span>
                         <span className="text-[11px] text-[#7D715E]">Cập nhật từ pixel theo dõi & UTM link</span>
                       </div>
@@ -2218,7 +2243,7 @@ return true;
                     </div>
 
                     {/* 5. Orders List Table or Empty State (Tone Sáng Tuyệt Đẹp) */}
-                    <div className="rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
+                    <div className="kol-performance-orders rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
                       <div className="border-b border-[#EAE4D7] bg-[#FAF8F5]/60 px-4 py-3.5 sm:px-5 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#1A1612] m-0">
@@ -2264,7 +2289,7 @@ return true;
                               <DollarSign className="w-3.5 h-3.5" />
                               <span>Nâng mức hoa hồng VIP</span>
                             </button>
-                            
+
                           </div>
                         </div>
                       ) : (
@@ -2324,18 +2349,18 @@ return true;
 
               {/* TAB 4: PROFILE & SOCIAL CHANNELS */}
               {activeTab === 'profile' && (
-                <div className="animate-in fade-in-50 duration-200 space-y-5">
-                  <div className="bg-white border border-[#EAE4D7] rounded-2xl p-6 shadow-xs space-y-6">
+                <div className="kol-channel-profile animate-in fade-in-50 duration-200 space-y-5">
+                  <div className="kol-channel-panel bg-white border border-[#EAE4D7] rounded-2xl p-6 shadow-xs space-y-6">
                     <div>
                       <h3 className="text-sm font-extrabold text-[#1A1612] uppercase tracking-wider mb-3">
-                        Hồ Sơ Nhà Sáng Tạo & Kênh Truyền Thông
+                        Hồ sơ nhà sáng tạo & kênh truyền thông
                       </h3>
                       <p className="text-xs text-[#7D715E]">
                         Thông tin chi tiết về các kênh quảng bá, độ uy tín và định danh điện tử của KOL.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="kol-channel-info grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
                         <div className="text-xs font-bold text-[#7D715E]">Họ và tên</div>
                         <div className="text-sm font-extrabold text-[#1A1612]">{selectedKol.fullName}</div>
@@ -2365,9 +2390,9 @@ return true;
                     {/* Social Channels Details */}
                     <div>
                       <h4 className="text-xs font-extrabold text-[#1A1612] mb-3">
-                        Kênh Mạng Xã Hội Đã Liên Kết & Được Xác Minh
+                        Kênh mạng xã hội liên kết
                       </h4>
-                      <div className="space-y-3">
+                      <div className="kol-channel-list space-y-3">
                         {selectedKol.socialChannels && selectedKol.socialChannels.length > 0 ? (
                           selectedKol.socialChannels.map((ch, idx) => (
                             <div
@@ -2544,197 +2569,7 @@ return true;
 
       {inviteModal}
 
-      {/* MODAL 3: Nâng Cấp Hoa Hồng VIP (Tone Sáng Sang Trọng) */}
-      {showCommissionModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#1A1612]/35 backdrop-blur-sm animate-fadeIn"
-          onClick={() => setShowCommissionModal(false)}
-        >
-          <div
-            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-[#EEDFC6] bg-white shadow-[0_24px_70px_rgba(77,57,31,0.18)] transition-all animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Soft Ambient Glow (Tone Sáng) */}
-            <div className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full bg-gradient-to-br from-[#FBF5EB] to-[#F3EFE6] opacity-90 blur-2xl" />
-
-            {/* Header */}
-            <div className="relative flex items-center justify-between border-b border-[#EAE4D7] bg-white px-5 py-4 sm:px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-gradient-to-br from-[#FBF5EB] to-[#F3EFE6] text-[#B88E4F] shadow-xs">
-                  <Crown className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="m-0 text-[10px] font-bold uppercase tracking-[0.14em] text-[#B88E4F]">Đặc quyền đối tác chiến lược</p>
-                  <h3 className="m-0 text-base font-extrabold tracking-tight text-[#1A1612] sm:text-lg">Cấp Mức Hoa Hồng VIP Riêng</h3>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCommissionModal(false)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] transition-all hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer"
-                aria-label="Đóng"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCommission} className="relative p-5 sm:p-6 space-y-4">
-              {/* Creator Profile Card (Tone Sáng) */}
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-[#FBF5EB] to-[#FAF8F5] p-3.5 sm:p-4 shadow-xs">
-                <div className="flex min-w-0 items-center gap-3">
-                  {selectedKol.avatarUrl ? (
-                    <img
-                      src={selectedKol.avatarUrl}
-                      alt={selectedKol.fullName}
-                      className="h-11 w-11 rounded-2xl border-2 border-white object-cover shadow-xs shrink-0"
-                    />
-                  ) : (
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-white text-sm font-black text-[#B88E4F] shadow-xs">
-                      {selectedKol.fullName?.charAt(0) || 'K'}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <strong className="truncate text-sm font-extrabold text-[#1A1612]">{selectedKol.fullName}</strong>
-                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#059669]" />
-                    </div>
-                    <p className="m-0 truncate text-xs text-[#7D715E]">
-                      {(selectedKol.handle || selectedKol.email || 'Nhà Sáng Tạo SCANMS').replace(/^@+/, '@')}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[#EEDFC6] bg-white px-2.5 py-1 text-[11px] font-black text-[#B88E4F] shadow-xs">
-                    <Crown className="h-3 w-3" />
-                    {selectedKol.tier || 'KOL VIP'}
-                  </span>
-                  <p className="m-0 mt-1 text-[10px] text-[#7D715E]">
-                    Mức hiện tại: <span className="font-bold text-[#1A1612]">{selectedKol.commissionRate || 18}%</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Commission Rate Control Box (Tone Sáng Đẳng Cấp) */}
-              <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-[#1A1612]">
-                      Mức hoa hồng đặc quyền (%)
-                    </label>
-                    <span className="text-[11px] text-[#7D715E]">Áp dụng tự động cho mọi đơn hàng chốt qua KOL</span>
-                  </div>
-                  <div className="flex items-baseline gap-1 rounded-2xl border border-[#EEDFC6] bg-gradient-to-br from-[#FBF5EB] to-[#FAF8F5] px-4 py-1.5 shadow-xs">
-                    <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#B88E4F]">{newCommissionRate}</span>
-                    <span className="text-sm font-bold text-[#B88E4F]">%</span>
-                  </div>
-                </div>
-
-                {/* Range Slider */}
-                <div className="space-y-1.5">
-                  <input
-                    type="range"
-                    min="10"
-                    max="45"
-                    step="1"
-                    value={newCommissionRate}
-                    onChange={(e) => setNewCommissionRate(Number(e.target.value))}
-                    className="h-2.5 w-full cursor-pointer appearance-none rounded-lg bg-[#EAE4D7] accent-[#C59B58] transition"
-                  />
-                  <div className="flex justify-between text-[10px] font-medium text-[#7D715E]">
-                    <span>10% (Sàn tối thiểu)</span>
-                    <span className="font-semibold text-[#B88E4F]">{newCommissionRate}% đã chọn</span>
-                    <span>45% (Trần tối đa)</span>
-                  </div>
-                </div>
-
-                {/* Quick Presets Chips */}
-                <div>
-                  <span className="mb-2 block text-[11px] font-semibold text-[#7D715E]">Chọn nhanh mức đề xuất:</span>
-                  <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-4">
-                    {[
-                      { rate: 18, label: '18% Bạc' },
-                      { rate: 22, label: '22% Vàng' },
-                      { rate: 28, label: '28% Kim Cương' },
-                      { rate: 35, label: '35% VIP Max' },
-                    ].map((item) => (
-                      <button
-                        key={item.rate}
-                        type="button"
-                        onClick={() => setNewCommissionRate(item.rate)}
-                        className={`rounded-xl border py-1.5 px-2 text-center text-xs font-bold transition cursor-pointer ${
-                          newCommissionRate === item.rate
-                            ? 'border-[#C59B58] bg-[#C59B58] text-white shadow-xs'
-                            : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#1A1612]'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Smart Simulation Preview (Dự tính hoa hồng thực tế) */}
-                <div className="flex items-center justify-between rounded-xl border border-[#EEDFC6] bg-[#FAF8F5] px-3.5 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-[#B88E4F]" />
-                    <div>
-                      <span className="block text-xs font-semibold text-[#1A1612]">Hoa hồng dự tính / đơn 500.000 ₫:</span>
-                      <span className="text-[10px] text-[#7D715E]">KOL nhận được khi khách hoàn tất đơn</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-[#B88E4F]">
-                      {(Math.round((500000 * newCommissionRate) / 100)).toLocaleString('vi-VN')} ₫
-                    </span>
-                    {newCommissionRate > (selectedKol.commissionRate || 18) && (
-                      <span className="block text-[10px] font-bold text-[#059669]">
-                        +{((newCommissionRate - (selectedKol.commissionRate || 18)) * 5000).toLocaleString('vi-VN')} ₫
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Policy Note */}
-              <div className="flex items-start gap-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs leading-relaxed text-[#7D715E]">
-                <Info className="h-4 w-4 shrink-0 text-[#B88E4F] mt-0.5" />
-                <span>
-                  Tỷ lệ hoa hồng này áp dụng tự động cho mọi đơn hàng tiếp thị liên kết và phiên Live của KOL này ngay sau khi lưu.
-                </span>
-              </div>
-
-              {/* Footer Buttons */}
-              <div className="flex items-center justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCommissionModal(false)}
-                  className="rounded-xl border border-[#EAE4D7] bg-white px-4 py-2.5 text-xs font-bold text-[#7D715E] transition hover:border-[#C59B58] hover:bg-[#FAF8F5] hover:text-[#1A1612] cursor-pointer"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={updatingCommission}
-                  className="flex items-center gap-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-5 py-2.5 text-xs font-extrabold text-white shadow-[0_4px_16px_rgba(197,155,88,0.28)] transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-                >
-                  {updatingCommission ? (
-                    <>
-                      <Clock className="h-4 w-4 animate-spin" />
-                      <span>Đang lưu...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4" />
-                      <span>Lưu Tỷ Lệ Hoa Hồng</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showCommissionModal && <VipCommissionModal creator={selectedKol} rate={newCommissionRate} saving={updatingCommission} onRateChange={setNewCommissionRate} onClose={() => setShowCommissionModal(false)} onSubmit={handleSaveCommission} />}
 
       {/* MODAL 4: Danh Bạ & Khám Phá Nhà Sáng Tạo (KOL/KOC) SCANMS */}
       {discoveryModal}

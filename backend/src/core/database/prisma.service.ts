@@ -40,7 +40,9 @@ export class PrismaService
 
     const adapter = new PrismaPg(pool);
 
-    super({ adapter });
+    // Allow concurrent requests to queue for the small connection pool.
+    // Prisma's default 2s acquisition limit is shorter than the pg pool limit.
+    super({ adapter, transactionOptions: { maxWait: 15000 } });
     this.pool = pool;
   }
 

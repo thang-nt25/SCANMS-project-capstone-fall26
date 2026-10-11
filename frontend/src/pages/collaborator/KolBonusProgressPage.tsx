@@ -9,19 +9,19 @@ import {
   Coins,
   Store,
   Layers,
-  ShieldCheck,
   RotateCcw,
-  Sparkles,
   Wallet,
   FileText,
   BadgePercent,
   Check,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { commissionRulesService } from '../../services/commission-rules.service';
 import api from '../../services/api';
 import { getVietnamCurrentMonthYear } from '@/utils/date-time.utils';
 import { Select } from '../../components/ui/Select';
+import './KolBonusProgressPage.css';
 
 interface MilestoneItem {
   id: string;
@@ -88,7 +88,7 @@ interface BonusProgressData {
   };
 }
 
-export const KolBonusProgressPage: React.FC = () => {
+export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { year: currentVnYear, month: currentVnMonth } = getVietnamCurrentMonthYear();
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>(currentVnYear);
@@ -204,17 +204,20 @@ export const KolBonusProgressPage: React.FC = () => {
       return;
     }
 
+    let active = true;
     async function fetchProgress() {
       setLoading(true);
       setErrorMessage(null);
       try {
         const res = await commissionRulesService.getMyBonusProgress(selectedStoreId, currentYearMonth);
+        if (!active) return;
         if (res && (res.validRevenue !== undefined || res.estimatedTotalBonus !== undefined)) {
           setData(res);
         } else {
           throw new Error('Dữ liệu không đúng định dạng');
         }
       } catch {
+        if (!active) return;
         if (isDevMockEnabled) {
           setData({
             storeId: selectedStoreId,
@@ -277,28 +280,32 @@ export const KolBonusProgressPage: React.FC = () => {
           setErrorMessage('Không thể tải dữ liệu thưởng. Vui lòng đăng nhập lại hoặc thử lại sau.');
         }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
     fetchProgress();
+    return () => { active = false; };
   }, [selectedStoreId, currentYearMonth, isDevMockEnabled, stores]);
 
 
   useEffect(() => {
     if (activeTab !== 'history' || !selectedStoreId) return;
 
+    let active = true;
     async function fetchHistory() {
       setHistoryLoading(true);
       setHistoryError(null);
       try {
         const res = await commissionRulesService.getMyBonusHistory(selectedStoreId);
+        if (!active) return;
         if (Array.isArray(res)) {
           setHistoryList(res);
         } else {
           throw new Error('Dữ liệu không hợp lệ');
         }
       } catch {
+        if (!active) return;
         if (isDevMockEnabled) {
           setHistoryList([
             {
@@ -321,10 +328,11 @@ export const KolBonusProgressPage: React.FC = () => {
           setHistoryError('Không thể tải lịch sử nhận thưởng. Vui lòng đăng nhập lại hoặc thử lại sau.');
         }
       } finally {
-        setHistoryLoading(false);
+        if (active) setHistoryLoading(false);
       }
     }
     fetchHistory();
+    return () => { active = false; };
   }, [activeTab, selectedStoreId, isDevMockEnabled, stores]);
 
   const formatVnd = (amount: string | number) => {
@@ -413,27 +421,25 @@ export const KolBonusProgressPage: React.FC = () => {
     if (nextMinNum > prevMinNum) {
       const span = nextMinNum - prevMinNum;
       const done = Math.max(0, validRevNum - prevMinNum);
-      progressPercent = Math.min(100, Math.max(5, Math.round((done / span) * 100)));
+      progressPercent = Math.min(100, Math.max(0, Math.round((done / span) * 100)));
     } else {
-      progressPercent = Math.min(100, Math.round((validRevNum / nextMinNum) * 100));
+      progressPercent = Math.min(100, Math.max(0, Math.round((validRevNum / nextMinNum) * 100)));
     }
   }
-
-  const statusInfo = getStatusBadge(data?.settlementStatus || 'ACCUMULATING');
 
   return (
     <div
       id="kol-bonus-root"
       style={{
-        minHeight: '100vh',
-        backgroundColor: '#FAF8F5',
-        padding: '24px 24px 72px',
-        fontFamily: "'Plus Jakarta Sans', Inter, -apple-system, sans-serif",
+        minHeight: embedded ? 'auto' : '100vh',
+        backgroundColor: embedded ? 'transparent' : '#FAF8F5',
+        padding: embedded ? 0 : '24px 24px 72px',
+        fontFamily: embedded ? 'inherit' : "'Plus Jakarta Sans', Inter, -apple-system, sans-serif",
         color: '#1A1612',
         boxSizing: 'border-box',
       }}
     >
-      <style>{`
+      {!embedded && <style>{`
         html, body {
           scrollbar-width: thin;
           scrollbar-color: rgba(180, 140, 75, 0.45) transparent;
@@ -464,23 +470,8 @@ export const KolBonusProgressPage: React.FC = () => {
           width: 0 !important;
           height: 0 !important;
         }
-        .kol-kpi-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 12px;
-        }
-        @media (max-width: 1100px) {
-          .kol-kpi-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          }
-        }
-        @media (max-width: 600px) {
-          .kol-kpi-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
-      <div style={{ maxWidth: 1260, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      `}</style>}
+      <div className="kol-bonus-content">
         {storeInvitations.map((invitation) => (
           <div key={invitation.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 18px', background: '#FFF7E7', border: '1.5px solid #DEBE85', borderRadius: 12, flexWrap: 'wrap' }}>
             <div>
@@ -489,68 +480,33 @@ export const KolBonusProgressPage: React.FC = () => {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, false)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D8C6A8', background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Từ chối</button>
-              <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, true)} style={{ padding: '7px 14px', borderRadius: 8, border: 0, background: '#EBD08C', color: '#231D15', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{invitationLoading === invitation.id ? 'Đang xử lý…' : 'Chấp nhận'}</button>
+              <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, true)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--action-border)', background: 'var(--action-bg)', color: 'var(--action-ink)', fontWeight: 800, fontSize: 13, cursor: 'pointer' }} className="scanms-brand-action">{invitationLoading === invitation.id ? 'Đang xử lý…' : 'Chấp nhận'}</button>
             </div>
           </div>
         ))}
 
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 14,
-            background: '#FFFFFF',
-            padding: '16px 22px',
-            borderRadius: 14,
-            border: '1.5px solid #EAE4D7',
-            boxShadow: '0 3px 14px rgba(110, 84, 39, 0.05)',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 11.5,
-                  fontWeight: 800,
-                  background: '#ECE1CD',
-                  color: '#B88E4F',
-                  border: '1px solid #DEBE85',
-                }}
-              >
-                <Sparkles size={13} color="#B88E4F" /> DÀNH CHO KOL / CTV
-              </span>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  background: '#FBF5EB',
-                  color: '#15803d',
-                  border: '1px solid #EAE4D7',
-                }}
-              >
-                <ShieldCheck size={13} color="#15803d" /> ĐỐI SOÁT TỰ ĐỘNG
-              </span>
-            </div>
+        <div className="kol-bonus-toolbar">
+          <header className="bonus-toolbar-heading">
+            <div className="bonus-heading"><span className="bonus-icon"><BadgePercent aria-hidden="true" /></span><div><h2>Thưởng doanh số</h2><p>Tháng {Number(selectedMonth)}/{selectedYear} · Theo chính sách từng gian hàng</p></div></div>
+            {data && !loading && <span className="bonus-badge">{getStatusBadge(data.settlementStatus).icon}{getStatusBadge(data.settlementStatus).label}</span>}
+          </header>
+          <div className="kol-bonus-tabs" role="group" aria-label="Nội dung thưởng doanh số">
+            <button type="button" aria-pressed={activeTab === 'progress'} onClick={() => setActiveTab('progress')}>
+              {loading ? <Loader2 size={15} className="animate-spin" /> : <TrendingUp size={15} />}
+              Tiến độ &amp; mốc thưởng
+            </button>
+            <button type="button" aria-pressed={activeTab === 'history'} onClick={() => setActiveTab('history')}>
+              {historyLoading ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />}
+              Lịch sử nhận thưởng
+            </button>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div className="kol-bonus-filters">
             <Select
+              aria-label="Gian hàng tính thưởng"
               value={selectedStoreId}
               onChange={(e) => setSelectedStoreId(e.target.value)}
               disabled={storesLoading || stores.length === 0}
-              className="w-48 text-xs font-bold"
+              className="w-48"
             >
               {stores.length === 0 ? (
                 <option value="">Chưa có Shop liên kết</option>
@@ -564,9 +520,10 @@ export const KolBonusProgressPage: React.FC = () => {
             </Select>
 
             <Select
+              aria-label="Tháng tính thưởng"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-32 text-xs font-bold"
+              className="w-32"
             >
               {Array.from({ length: 12 }, (_, i) => {
                 const m = String(i + 1).padStart(2, '0');
@@ -579,13 +536,14 @@ export const KolBonusProgressPage: React.FC = () => {
             </Select>
 
             <Select
+              aria-label="Năm tính thưởng"
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-28 text-xs font-bold"
+              className="w-32"
             >
               {[Number(currentVnYear) - 1, Number(currentVnYear), Number(currentVnYear) + 1].map((y) => (
                 <option key={y} value={String(y)}>
-                  Năm {y}
+                  {y}
                 </option>
               ))}
             </Select>
@@ -593,59 +551,9 @@ export const KolBonusProgressPage: React.FC = () => {
         </div>
 
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button
-            onClick={() => setActiveTab('progress')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 10,
-              fontWeight: 800,
-              fontSize: 13.5,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              border: activeTab === 'progress' ? '1px solid #DEBE85' : '1.5px solid #EAE4D7',
-              background:
-                activeTab === 'progress'
-                  ? 'linear-gradient(135deg, #DEBE85 0%, #DEBE85 100%)'
-                  : '#FFFFFF',
-              color: activeTab === 'progress' ? '#1A1612' : '#7D715E',
-              boxShadow: activeTab === 'progress' ? '0 3px 10px rgba(201, 163, 99, 0.22)' : 'none',
-            }}
-          >
-            {loading ? <Loader2 size={15} className="animate-spin" /> : <TrendingUp size={15} />}
-            Tiến Độ & Mốc Thưởng Tháng ({selectedMonth}/{selectedYear})
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 10,
-              fontWeight: 800,
-              fontSize: 13.5,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              border: activeTab === 'history' ? '1px solid #DEBE85' : '1.5px solid #EAE4D7',
-              background:
-                activeTab === 'history'
-                  ? 'linear-gradient(135deg, #DEBE85 0%, #DEBE85 100%)'
-                  : '#FFFFFF',
-              color: activeTab === 'history' ? '#1A1612' : '#7D715E',
-              boxShadow: activeTab === 'history' ? '0 3px 10px rgba(201, 163, 99, 0.22)' : 'none',
-            }}
-          >
-            {historyLoading ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />}
-            Lịch Sử Nhận Thưởng
-          </button>
-        </div>
-
-
-        {!storesLoading && stores.length === 0 ? (
+        {storesLoading || (activeTab === 'progress' && loading) || (activeTab === 'history' && historyLoading) ? (
+          <section className="bonus-panel bonus-loading-state" role="status"><Loader2 className="animate-spin" size={18} aria-hidden="true" />Đang tải {activeTab === 'progress' ? 'tiến độ thưởng' : 'lịch sử nhận thưởng'}…</section>
+        ) : !storesLoading && stores.length === 0 ? (
           <div
             style={{
               background: '#FFFFFF',
@@ -717,14 +625,14 @@ export const KolBonusProgressPage: React.FC = () => {
                 onClick={() => window.location.reload()}
                 style={{
                   padding: '8px 18px',
-                  background: 'linear-gradient(135deg, #DEBE85 0%, #DEBE85 100%)',
-                  color: '#1A1612',
-                  border: 'none',
+                  background: 'var(--action-bg)',
+                  color: 'var(--action-ink)',
+                  border: '1px solid var(--action-border)',
                   borderRadius: 8,
                   fontWeight: 750,
                   fontSize: 13,
                   cursor: 'pointer',
-                }}
+                }} className="scanms-brand-action"
               >
                 Thử lại
               </button>
@@ -747,476 +655,95 @@ export const KolBonusProgressPage: React.FC = () => {
           </div>
         ) : activeTab === 'progress' ? (
           <>
-
-            <div
-              style={{
-                background: statusInfo.bg,
-                border: `1.5px solid ${statusInfo.border}`,
-                borderRadius: 13,
-                padding: '12px 18px',
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                color: statusInfo.color,
-                boxShadow: '0 2px 10px rgba(110, 84, 39, 0.03)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    padding: 8,
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  }}
-                >
-                  {statusInfo.icon}
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 850, letterSpacing: 0.6, opacity: 0.85 }}>
-                    TRẠNG THÁI KỲ THƯỞNG THÁNG {selectedMonth}/{selectedYear}
-                  </div>
-                  <div style={{ fontSize: 15.5, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                    {statusInfo.label}
-                    {data?.hasRefundAdjustment && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          padding: '2px 8px',
-                          borderRadius: 20,
-                          background: '#FEE2E2',
-                          color: '#991B1B',
-                          border: '1px solid #DC2626',
-                          fontWeight: 750,
-                        }}
-                      >
-                        Có hoàn tiền
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12.5, marginTop: 2, opacity: 0.9, lineHeight: 1.4 }}>{statusInfo.desc}</div>
-                </div>
-              </div>
-
-              {data?.settlement?.paidAt && (
-                <div
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    padding: '8px 16px',
-                    borderRadius: 10,
-                    textAlign: 'right',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                  }}
-                >
-                  <div style={{ fontSize: 11.5, color: '#7D715E', fontWeight: 650 }}>Thời gian chi trả:</div>
-                  <div style={{ fontSize: 14, fontWeight: 900, color: '#15803d', marginTop: 1 }}>
-                    {new Date(data.settlement.paidAt).toLocaleDateString('vi-VN')}
-                  </div>
-                </div>
-              )}
-            </div>
-
-
+            <section className="bonus-panel bonus-overview" aria-label="Tổng quan thưởng doanh số" aria-busy={loading}>
             <div className="kol-kpi-grid">
-
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  padding: '14px 16px',
-                  borderRadius: 13,
-                  border: '1.5px solid #EAE4D7',
-                  boxShadow: '0 3px 12px rgba(110, 84, 39, 0.04)',
-                  position: 'relative',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 850, color: '#7D715E', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                    Doanh Số Hợp Lệ
-                  </span>
-                  <div style={{ background: '#ECE1CD', padding: 7, borderRadius: 10 }}>
-                    <Coins size={17} color="#B88E4F" />
-                  </div>
-                </div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: '#1A1612', letterSpacing: '-0.3px' }}>
-                  {formatVnd(data?.validRevenue || '0')}
-                </div>
-                <div style={{ fontSize: 12, color: '#7D715E', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
-                  Từ <strong style={{ color: '#1A1612' }}>{data?.validOrdersCount || 0} đơn hàng</strong> thành công
-                </div>
-              </div>
-
-
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  padding: '14px 16px',
-                  borderRadius: 13,
-                  border: '1.5px solid #EAE4D7',
-                  boxShadow: '0 3px 12px rgba(110, 84, 39, 0.04)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 850, color: '#7D715E', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                    Mốc Đã Đạt
-                  </span>
-                  <div style={{ background: '#ECE1CD', padding: 7, borderRadius: 10 }}>
-                    <Award size={17} color="#B88E4F" />
-                  </div>
-                </div>
-                <div style={{ fontSize: 17, fontWeight: 900, color: '#B88E4F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {data?.currentMilestone ? data.currentMilestone.name : 'Chưa đạt mốc nào'}
-                </div>
-                <div style={{ fontSize: 12, color: '#7D715E', marginTop: 6 }}>
-                  {data?.currentMilestone
-                    ? `Ngưỡng: ${formatVnd(data.currentMilestone.minMonthlyRevenue)}`
-                    : 'Cần đạt tối thiểu mốc đầu tiên để nhận thưởng'}
-                </div>
-              </div>
-
-
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  padding: '14px 16px',
-                  borderRadius: 13,
-                  border: '1.5px solid #EAE4D7',
-                  boxShadow: '0 3px 12px rgba(110, 84, 39, 0.04)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 850, color: '#7D715E', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                    Thưởng KPI & Phần Vượt
-                  </span>
-                  <div style={{ background: '#EFF6FF', padding: 7, borderRadius: 10 }}>
-                    <BadgePercent size={17} color="#2563EB" />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                  <span style={{ fontSize: 17, fontWeight: 900, color: '#1D4ED8' }}>
-                    {formatVnd(data?.achievementBonus || '0')}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#9CA3AF' }}>+</span>
-                  <span style={{ fontSize: 17, fontWeight: 900, color: '#4338CA' }}>
-                    {formatVnd(
-                      (
-                        parseFloat(data?.estimatedTotalBonus || '0') -
-                        parseFloat(data?.achievementBonus || '0')
-                      ).toString()
-                    )}
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, color: '#7D715E', marginTop: 6 }}>
-                  KPI cố định + Thưởng % phần vượt
-                </div>
-              </div>
-
-
-              <div
-                style={{
-                  background: 'linear-gradient(135deg, #DEBE85 0%, #DEBE85 100%)',
-                  padding: '14px 16px',
-                  borderRadius: 13,
-                  border: '1px solid #DEBE85',
-                  boxShadow: '0 4px 16px rgba(201, 163, 99, 0.25)',
-                  color: '#1A1612',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 850, color: '#1A1612', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                    Tổng Thưởng Dự Kiến
-                  </span>
-                  <div style={{ background: 'rgba(255, 255, 255, 0.45)', padding: 7, borderRadius: 10 }}>
-                    <Trophy size={17} color="#1A1612" />
-                  </div>
-                </div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: '#1A1612', letterSpacing: '-0.3px' }}>
-                  {formatVnd(data?.estimatedTotalBonus || '0')}
-                </div>
-                <div style={{ fontSize: 12, color: '#7D715E', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontWeight: 750 }}>
-                  <Wallet size={14} color="#7D715E" /> Sẽ cộng vào Ví sau khi Shop duyệt
-                </div>
-              </div>
+              <article className="bonus-kpi">
+                <div className="bonus-kpi-heading"><h2>Doanh số hợp lệ</h2><span className="bonus-icon"><Coins aria-hidden="true" /></span></div>
+                <strong className="bonus-amount">{formatVnd(data?.validRevenue || '0')}</strong>
+                <p><span>Từ <strong>{data?.validOrdersCount || 0} đơn hàng</strong> thành công</span></p>
+              </article>
+              <article className="bonus-kpi">
+                <div className="bonus-kpi-heading"><h2>Mốc đã đạt</h2><span className="bonus-icon"><Award aria-hidden="true" /></span></div>
+                <strong className="bonus-kpi-name">{data?.currentMilestone?.name || 'Chưa đạt mốc nào'}</strong>
+                <p>{data?.currentMilestone ? `Ngưỡng: ${formatVnd(data.currentMilestone.minMonthlyRevenue)}` : 'Đạt mốc đầu tiên để nhận thưởng'}</p>
+              </article>
+              <article className="bonus-kpi">
+                <div className="bonus-kpi-heading"><h2>Thưởng KPI & phần vượt</h2><span className="bonus-icon"><BadgePercent aria-hidden="true" /></span></div>
+                <div className="bonus-kpi-split"><strong>{formatVnd(data?.achievementBonus || '0')}</strong><span>+</span><strong>{formatVnd(parseFloat(data?.estimatedTotalBonus || '0') - parseFloat(data?.achievementBonus || '0'))}</strong></div>
+                <p>KPI cố định + phần vượt</p>
+              </article>
+              <article className="bonus-kpi bonus-kpi-total">
+                <div className="bonus-kpi-heading"><h2>Tổng thưởng dự kiến</h2><span className="bonus-icon"><Trophy aria-hidden="true" /></span></div>
+                <strong className="bonus-amount">{formatVnd(data?.estimatedTotalBonus || '0')}</strong>
+                <p><Wallet size={14} aria-hidden="true" /><span>{data ? getStatusBadge(data.settlementStatus).label : 'Chưa có dữ liệu'}</span></p>
+              </article>
             </div>
-
+            </section>
 
             {data?.nextMilestone ? (
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: 14,
-                  border: '1.5px solid #EAE4D7',
-                  padding: '16px 20px',
-                  boxShadow: '0 3px 14px rgba(110, 84, 39, 0.05)',
-                }}
-              >
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ background: '#ECE1CD', padding: 8, borderRadius: 10 }}>
-                      <TrendingUp size={19} color="#B88E4F" />
-                    </div>
+              <section className="bonus-panel bonus-progress" aria-labelledby="bonus-progress-title">
+                <div className="bonus-progress-header">
+                  <div className="bonus-heading">
+                    <span className="bonus-icon"><TrendingUp aria-hidden="true" /></span>
                     <div>
-                      <h2 style={{ margin: 0, fontSize: 16, fontWeight: 850, color: '#1A1612' }}>
-                        Tiến Độ Tới Mốc Tiếp Theo: {data.nextMilestone.name}
-                      </h2>
-                      <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#7D715E' }}>
-                        Ngưỡng đạt mốc: <strong style={{ color: '#1A1612' }}>{formatVnd(data.nextMilestone.minMonthlyRevenue)}</strong>.
-                        Thưởng thêm: <strong style={{ color: '#15803d' }}>{formatVnd(data.nextMilestone.achievementBonus)}</strong> +{' '}
-                        <strong style={{ color: '#DEBE85' }}>{data.nextMilestone.bonusPercentage}%</strong> phần vượt.
-                      </p>
+                      <h2 id="bonus-progress-title">Mốc tiếp theo: {data.nextMilestone.name}</h2>
+                      <p>Tích lũy doanh số để mở mốc thưởng mới.</p>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: 11.5, color: '#7D715E', display: 'block' }}>Còn thiếu</span>
-                    <span style={{ fontSize: 19, fontWeight: 900, color: '#DC2626' }}>
-                      {formatVnd(data.nextMilestone.missingRevenue)}
-                    </span>
+                  <div className="bonus-missing"><span>Doanh số còn thiếu</span><strong>{formatVnd(data.nextMilestone.missingRevenue)}</strong></div>
+                </div>
+                <div className="bonus-progress-body">
+                <div className="bonus-progress-meter">
+                <div className="bonus-meter-label"><span>Tiến độ đạt mốc</span><strong>{progressPercent}%</strong></div>
+                <div className="bonus-progress-track" role="progressbar" aria-label="Tiến độ tới mốc tiếp theo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}>
+                  <div className="bonus-progress-fill" style={{ width: `${progressPercent}%` }} />
+                </div>
+                <div className="bonus-progress-footer">
+                  <span><strong>{formatVnd(data.validRevenue)}</strong> / {formatVnd(data.nextMilestone.minMonthlyRevenue)}</span>
+                  <span>Doanh số mục tiêu</span>
+                </div>
+                </div>
+                <aside className="bonus-next-reward" aria-label="Quyền lợi tại mốc tiếp theo">
+                  <span>Quyền lợi tại mốc {data.nextMilestone.name}</span>
+                  <dl><div><dt>Thưởng KPI</dt><dd>{formatVnd(data.nextMilestone.achievementBonus)}</dd></div><div><dt>Phần vượt mốc</dt><dd>+{data.nextMilestone.bonusPercentage}%</dd></div></dl>
+                </aside>
+                </div>
+                {data.milestones.length > 1 && <ol className="bonus-roadmap" aria-label="Lộ trình mốc thưởng">{data.milestones.map((milestone,index) => <li key={milestone.id} data-reached={milestone.isReached || undefined} data-next={milestone.id === data.nextMilestone?.id || undefined}><span>{milestone.isReached ? <Check size={13} aria-hidden="true" /> : index + 1}</span><div><strong>{milestone.name}</strong><small>{formatVnd(milestone.minMonthlyRevenue)}</small></div></li>)}</ol>}
+              </section>
+            ) : (
+              <section className="bonus-panel bonus-complete">
+                <div className="bonus-heading">
+                  <span className="bonus-icon">{data?.milestones?.length ? <CheckCircle2 aria-hidden="true" /> : <Layers aria-hidden="true" />}</span>
+                  <div>
+                    <h2>{loading ? 'Đang tải tiến độ thưởng…' : data?.milestones?.length ? 'Bạn đã đạt mốc thưởng cao nhất' : 'Chưa có mốc thưởng được thiết lập'}</h2>
+                    <p>{data?.milestones?.length ? 'Tiếp tục tích lũy doanh số để nhận thưởng phần vượt theo chính sách gian hàng.' : 'Các mốc thưởng sẽ hiển thị khi gian hàng cập nhật chính sách.'}</p>
                   </div>
                 </div>
-
-
-                <div
-                  style={{
-                    width: '100%',
-                    height: 12,
-                    background: '#F6EFE3',
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    border: '1px solid #EAE4D7',
-                    position: 'relative',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${progressPercent}%`,
-                      background: 'linear-gradient(90deg, #EAD2A3 0%, #DEBE85 50%, #B88E4F 100%)',
-                      borderRadius: 12,
-                      transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#7D715E', marginTop: 8 }}>
-                  <span>
-                    Hiện tại: <strong style={{ color: '#1A1612' }}>{formatVnd(data.validRevenue)}</strong>
-                  </span>
-                  <span style={{ fontWeight: 800, color: '#B88E4F' }}>
-                    Đã hoàn thành {progressPercent}%
-                  </span>
-                  <span>
-                    Mục tiêu: <strong style={{ color: '#1A1612' }}>{formatVnd(data.nextMilestone.minMonthlyRevenue)}</strong>
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  background: '#FBF5EB',
-                  border: '1.5px solid #EAE4D7',
-                  borderRadius: 13,
-                  padding: '14px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  color: '#15803d',
-                }}
-              >
-                <CheckCircle2 size={20} color="#15803d" />
-                <div>
-                  <h2 style={{ margin: 0, fontSize: 14.5, fontWeight: 800 }}>
-                    Xuất sắc! Bạn đã đạt mốc thưởng cao nhất của Shop
-                  </h2>
-                  <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#166534' }}>
-                    Bạn hiện đang hưởng mức thưởng cao nhất và nhận tối đa tỷ lệ % thưởng phần vượt doanh số.
-                  </p>
-                </div>
-              </div>
+              </section>
             )}
 
-
-            <div
-              style={{
-                background: '#FFFFFF',
-                borderRadius: 14,
-                border: '1.5px solid #EAE4D7',
-                overflow: 'hidden',
-                boxShadow: '0 3px 14px rgba(110, 84, 39, 0.05)',
-              }}
-            >
-              <div
-                style={{
-                  padding: '14px 18px',
-                  borderBottom: '1px solid #ECE1CD',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 10,
-                }}
-              >
-                <div>
-                  <h2
-                    style={{
-                      margin: 0,
-                      fontSize: 16,
-                      fontWeight: 850,
-                      color: '#1A1612',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <Layers size={18} color="#B88E4F" /> Chính Sách & Danh Sách Các Mốc Thưởng Của Shop
-                  </h2>
-                  <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#7D715E' }}>
-                    Các mốc do {data?.storeName} áp dụng trong kỳ tháng {selectedMonth}/{selectedYear}.
-                  </p>
+            <details className="bonus-panel bonus-policy">
+              <summary className="bonus-section-header">
+                <div className="bonus-heading">
+                  <span className="bonus-icon"><Layers aria-hidden="true" /></span>
+                  <div><h2>Chính sách & mốc thưởng</h2><p>{data?.milestones?.length || 0} mốc · {data?.storeName || stores.find(store => store.id === selectedStoreId)?.name} · Tháng {selectedMonth}/{selectedYear}</p></div>
                 </div>
-                <span
-                  style={{
-                    fontSize: 11.5,
-                    fontWeight: 750,
-                    padding: '3px 10px',
-                    borderRadius: 20,
-                    background: '#ECE1CD',
-                    color: '#B88E4F',
-                    border: '1px solid #DEBE85',
-                  }}
-                >
-                  {data?.milestones?.length || 0} Mốc Thưởng
-                </span>
+                <span className="bonus-policy-action"><span className="bonus-policy-open-label">Xem các mốc</span><span className="bonus-policy-close-label">Thu gọn</span><ChevronDown size={16} aria-hidden="true" /></span>
+              </summary>
+              <div className="bonus-policy-list" aria-label="Danh sách mốc thưởng">
+                    {data?.milestones?.length ? data.milestones.map((m, idx) => (
+                      <article className="bonus-policy-row" key={m.id || idx} data-reached={m.isReached || undefined}>
+                        <div className="bonus-milestone-name"><span className="bonus-milestone-index">{idx + 1}</span><div><h3>{m.name}</h3><p>{m.description || 'Áp dụng theo doanh số hợp lệ tháng'}</p></div></div>
+                        <dl><div><dt>Doanh số tối thiểu</dt><dd>{formatVnd(m.minMonthlyRevenue)}</dd></div><div><dt>Thưởng KPI</dt><dd>{formatVnd(m.achievementBonus)}</dd></div><div><dt>Phần vượt</dt><dd>+{m.bonusPercentage}%</dd></div></dl>
+                        <span className={`bonus-badge ${m.isReached ? 'bonus-badge-reached' : ''}`}>{m.isReached && <Check size={13} aria-hidden="true" />}{m.isReached ? 'Đã đạt' : 'Chưa đạt'}</span>
+                      </article>
+                    )) : <p className="bonus-empty">Chưa có mốc thưởng nào được cấu hình cho gian hàng này.</p>}
               </div>
-
-              <div data-scrollable-x="true" style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#1A1612' }}>
-                  <thead>
-                    <tr style={{ background: '#FAF8F5', color: '#7D715E', borderBottom: '1.5px solid #EAE4D7', textAlign: 'left' }}>
-                      <th style={{ padding: '9px 14px', fontWeight: 800, fontSize: 12 }}>Tên Mốc Thưởng</th>
-                      <th style={{ padding: '9px 14px', fontWeight: 800, fontSize: 12 }}>Doanh Số Tối Thiểu</th>
-                      <th style={{ padding: '9px 14px', fontWeight: 800, fontSize: 12 }}>Thưởng Đạt KPI</th>
-                      <th style={{ padding: '9px 14px', fontWeight: 800, fontSize: 12 }}>% Thưởng Phần Vượt</th>
-                      <th style={{ padding: '9px 14px', fontWeight: 800, fontSize: 12 }}>Mô Tả / Chi Tiết</th>
-                      <th style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 800, fontSize: 12 }}>Trạng Thái Của Bạn</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data?.milestones && data.milestones.length > 0 ? (
-                      data.milestones.map((m, idx) => (
-                        <tr
-                          key={m.id || idx}
-                          style={{
-                            borderBottom: '1px solid #ECE1CD',
-                            background: m.isReached ? 'rgba(234, 248, 240, 0.45)' : '#FFFFFF',
-                          }}
-                        >
-                          <td style={{ padding: '10px 14px', fontWeight: 850 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span
-                                style={{
-                                  width: 22,
-                                  height: 22,
-                                  borderRadius: '50%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: 11,
-                                  fontWeight: 850,
-                                  background: m.isReached ? '#DEBE85' : '#F6EFE3',
-                                  color: m.isReached ? '#FFFFFF' : '#7D715E',
-                                }}
-                              >
-                                {idx + 1}
-                              </span>
-                              {m.name}
-                            </div>
-                          </td>
-                          <td style={{ padding: '10px 14px', fontWeight: 850 }}>
-                            {formatVnd(m.minMonthlyRevenue)}
-                          </td>
-                          <td style={{ padding: '10px 14px', fontWeight: 850, color: '#1D4ED8' }}>
-                            {parseFloat(m.achievementBonus) > 0 ? formatVnd(m.achievementBonus) : 'Không'}
-                          </td>
-                          <td style={{ padding: '10px 14px', fontWeight: 850, color: '#4338CA' }}>
-                            +{m.bonusPercentage}%
-                          </td>
-                          <td style={{ padding: '10px 14px', fontSize: 12, color: '#7D715E', maxWidth: 300, lineHeight: 1.4 }}>
-                            {m.description || 'Áp dụng theo doanh số hợp lệ tháng'}
-                          </td>
-                          <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                            {m.isReached ? (
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 5,
-                                  padding: '3px 10px',
-                                  borderRadius: 20,
-                                  fontSize: 11.5,
-                                  fontWeight: 850,
-                                  background: '#FBF5EB',
-                                  color: '#15803d',
-                                  border: '1px solid #EAE4D7',
-                                }}
-                              >
-                                <Check size={13} color="#15803d" /> ĐÃ ĐẠT
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  padding: '3px 10px',
-                                  borderRadius: 20,
-                                  fontSize: 11.5,
-                                  fontWeight: 700,
-                                  background: '#F6EFE3',
-                                  color: '#7D715E',
-                                  border: '1px solid #EAE4D7',
-                                }}
-                              >
-                                Chưa đạt
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} style={{ padding: '24px 14px', textAlign: 'center', color: '#7D715E', fontSize: 13 }}>
-                          Chưa có mốc thưởng nào được cấu hình cho cửa hàng này.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-
-              <div
-                style={{
-                  padding: '10px 16px',
-                  background: '#FAF8F5',
-                  borderTop: '1px solid #ECE1CD',
-                  fontSize: 12,
-                  color: '#7D715E',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  lineHeight: 1.45,
-                }}
-              >
-                <AlertCircle size={15} color="#DEBE85" style={{ flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <strong style={{ color: '#1A1612' }}>Nguyên tắc tính thưởng lũy tiến:</strong> Khi vượt qua ngưỡng doanh số, bạn được nhận <strong>Tiền thưởng đạt KPI</strong> của mốc cao nhất đạt được, cộng thêm <strong>% thưởng phần vượt</strong> tính trên số tiền vượt mốc. Tiền thưởng sẽ được Chủ Shop phê duyệt và chuyển vào Ví sau khi kết thúc kỳ đối soát tháng.
-                </div>
-              </div>
-            </div>
+              <details className="bonus-calculation">
+                <summary>Cách tính thưởng lũy tiến</summary>
+                <p>Khi vượt qua ngưỡng doanh số, bạn được nhận <strong>tiền thưởng đạt KPI</strong> của mốc cao nhất đạt được, cộng thêm <strong>% thưởng phần vượt</strong> tính trên số tiền vượt mốc. Tiền thưởng sẽ được chủ gian hàng phê duyệt và chuyển vào ví sau khi kết thúc kỳ đối soát tháng.</p>
+              </details>
+            </details>
           </>
         ) : historyError && historyList.length === 0 ? (
           <div
@@ -1256,14 +783,14 @@ export const KolBonusProgressPage: React.FC = () => {
                 onClick={() => window.location.reload()}
                 style={{
                   padding: '8px 18px',
-                  background: 'linear-gradient(135deg, #DEBE85 0%, #DEBE85 100%)',
-                  color: '#1A1612',
-                  border: 'none',
+                  background: 'var(--action-bg)',
+                  color: 'var(--action-ink)',
+                  border: '1px solid var(--action-border)',
                   borderRadius: 8,
                   fontWeight: 750,
                   fontSize: 13,
                   cursor: 'pointer',
-                }}
+                }} className="scanms-brand-action"
               >
                 Thử lại
               </button>
@@ -1285,122 +812,31 @@ export const KolBonusProgressPage: React.FC = () => {
             </div>
           </div>
         ) : (
-
-          <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 14,
-              border: '1.5px solid #EAE4D7',
-              overflow: 'hidden',
-              boxShadow: '0 3px 14px rgba(110, 84, 39, 0.05)',
-            }}
-          >
-            <div
-              style={{
-                padding: '14px 18px',
-                borderBottom: '1px solid #ECE1CD',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <h2
-                  style={{
-                    margin: 0,
-                    fontSize: 16,
-                    fontWeight: 850,
-                    color: '#1A1612',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <FileText size={18} color="#B88E4F" /> Lịch Sử Các Kỳ Chốt Thưởng Doanh Số
-                </h2>
-                <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#7D715E' }}>
-                  Danh sách kết quả chốt thưởng, trạng thái phê duyệt và thời gian giải ngân vào ví.
-                </p>
-              </div>
-            </div>
-
-            <div data-scrollable-x="true" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#1A1612' }}>
-                <thead>
-                  <tr style={{ background: '#FAF8F5', color: '#7D715E', borderBottom: '1.5px solid #EAE4D7', textAlign: 'left' }}>
-                    <th style={{ padding: '9px 14px', fontSize: 12 }}>Kỳ Tháng</th>
-                    <th style={{ padding: '9px 14px', fontSize: 12 }}>Cửa Hàng</th>
-                    <th style={{ padding: '9px 14px', fontSize: 12 }}>Doanh Số Hợp Lệ</th>
-                    <th style={{ padding: '9px 14px', fontSize: 12 }}>Mốc Áp Dụng</th>
-                    <th style={{ padding: '9px 14px', fontSize: 12 }}>Thưởng KPI</th>
-                    <th style={{ padding: '9px 14px', fontSize: 12 }}>Tổng Thưởng</th>
-                    <th style={{ padding: '9px 14px', fontSize: 12 }}>Trạng Thái</th>
-                    <th style={{ padding: '9px 14px', fontSize: 12 }}>Thời Gian</th>
-                  </tr>
-                </thead>
+          <section className="bonus-panel bonus-history" aria-labelledby="bonus-history-title" aria-busy={historyLoading}>
+            <header className="bonus-section-header">
+              <div className="bonus-heading"><span className="bonus-icon"><FileText aria-hidden="true" /></span><div><h2 id="bonus-history-title">Lịch sử nhận thưởng</h2><p>Kết quả chốt thưởng, trạng thái phê duyệt và thời gian chuyển vào ví.</p></div></div>
+              <span className="bonus-badge">{historyList.length} kỳ thưởng</span>
+            </header>
+            <div className="bonus-table-scroll" data-scrollable-x="true" role="region" aria-label="Lịch sử các kỳ thưởng" tabIndex={0}>
+              <table className="bonus-table">
+                <thead><tr>
+                  <th scope="col">Kỳ tháng</th><th scope="col">Gian hàng</th><th scope="col" className="bonus-number">Doanh số hợp lệ</th><th scope="col">Mốc áp dụng</th>
+                  <th scope="col" className="bonus-number">Thưởng KPI</th><th scope="col" className="bonus-number">Tổng thưởng</th><th scope="col">Trạng thái</th><th scope="col">Thời gian</th>
+                </tr></thead>
                 <tbody>
-                  {historyList.length > 0 ? (
-                    historyList.map((item) => {
-                      const badge = getStatusBadge(item.status);
-                      return (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #ECE1CD' }}>
-                          <td style={{ padding: '10px 14px', fontWeight: 850, color: '#B88E4F' }}>
-                            {item.yearMonth}
-                          </td>
-                          <td style={{ padding: '10px 14px', fontWeight: 650 }}>
-                            {item.storeName}
-                          </td>
-                          <td style={{ padding: '10px 14px', fontWeight: 850 }}>
-                            {formatVnd(item.validRevenue)}
-                          </td>
-                          <td style={{ padding: '10px 14px', fontSize: 12.5, fontWeight: 700, color: '#7D715E' }}>
-                            {item.appliedRuleName || 'N/A'}
-                          </td>
-                          <td style={{ padding: '10px 14px', fontWeight: 800, color: '#1D4ED8' }}>
-                            {formatVnd(item.achievementBonus || '0')}
-                          </td>
-                          <td style={{ padding: '10px 14px', fontWeight: 900, color: '#15803d' }}>
-                            {formatVnd(item.bonusAmount)}
-                          </td>
-                          <td style={{ padding: '10px 14px' }}>
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                padding: '3px 10px',
-                                borderRadius: 20,
-                                fontSize: 11.5,
-                                fontWeight: 800,
-                                background: badge.bg,
-                                color: badge.color,
-                                border: `1px solid ${badge.border}`,
-                              }}
-                            >
-                              {badge.icon} {badge.label}
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 14px', fontSize: 12, color: '#7D715E' }}>
-                            {item.paidAt
-                              ? new Date(item.paidAt).toLocaleDateString('vi-VN')
-                              : item.settledAt
-                              ? `Chốt ${new Date(item.settledAt).toLocaleDateString('vi-VN')}`
-                              : 'Chưa có'}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={8} style={{ padding: '24px 14px', textAlign: 'center', color: '#7D715E', fontSize: 13 }}>
-                        Chưa có lượt chốt thưởng nào cho cửa hàng này.
-                      </td>
-                    </tr>
-                  )}
+                  {historyList.length ? historyList.map(item => {
+                    const badge = getStatusBadge(item.status);
+                    return <tr key={item.id}>
+                      <td>{item.yearMonth}</td><td>{item.storeName}</td><td className="bonus-number">{formatVnd(item.validRevenue)}</td>
+                      <td className="bonus-description">{item.appliedRuleName || 'N/A'}</td><td className="bonus-number">{formatVnd(item.achievementBonus || '0')}</td>
+                      <td className="bonus-number">{formatVnd(item.bonusAmount)}</td><td><span className="bonus-badge">{badge.icon}{badge.label}</span></td>
+                      <td className="bonus-description">{item.paidAt ? new Date(item.paidAt).toLocaleDateString('vi-VN') : item.settledAt ? `Chốt ${new Date(item.settledAt).toLocaleDateString('vi-VN')}` : 'Chưa có'}</td>
+                    </tr>;
+                  }) : <tr><td colSpan={8} className="bonus-empty">{historyLoading ? 'Đang tải lịch sử nhận thưởng…' : 'Chưa có lượt chốt thưởng nào cho gian hàng này.'}</td></tr>}
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
         )}
       </div>
     </div>

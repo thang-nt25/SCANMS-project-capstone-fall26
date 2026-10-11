@@ -9,7 +9,7 @@ const products = [
   ['dfc570d9-b785-4ad1-8c09-9561723f1e0c', 'TEST-1789551790400', '/assets/products/real/hydro-boost-50g.jpg'],
   ['3e0164eb-7e62-417e-bb13-ee97d7b47803', 'E2E-762084', '/assets/products/real/centella-b5-serum.jpg'],
   ['44444444-4444-4444-8444-444444444402', 'GB-GRANOLA-500', '/assets/products/real/granola-500g.jpg'],
-  ['44444444-4444-4444-8444-444444444401', 'GB-TEA-CHAMOMILE', '/assets/products/real/chamomile-tea-50g.webp'],
+  ['44444444-4444-4444-8444-444444444401', 'GB-TEA-CHAMOMILE', '/assets/products/illustrations/greenbio-herbal-tea.png'],
   ['55555555-5555-4555-8555-555555555501', 'LL-AMPOULE-PEP', '/assets/products/real/multi-peptide-ampoule.png'],
   ['11111111-1111-4111-8111-111111111102', 'SS-SUN-60ML', '/assets/products/real/spf50-oil-control.jpg'],
   ['f0c70846-296e-41c4-99d8-f13f0d1cb64b', 'SKIN-TQL7O', '/assets/products/real/hydro-boost-50g.jpg'],

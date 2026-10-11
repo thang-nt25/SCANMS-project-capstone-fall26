@@ -1,0 +1,41 @@
+.vip-chat-card { width:330px; max-width:100%; border:1px solid #EEDFC6; border-radius:16px; overflow:hidden; background:#FFF; color:#1A1612; box-shadow:0 3px 12px #231D1506; text-align:left; }
+.vip-chat-card-header { display:flex; align-items:center; gap:9px; padding:12px 14px; background:#FAF8F5; border-bottom:1px solid #EAE4D7; }
+.vip-chat-crown { display:grid; place-items:center; flex-shrink:0; width:34px; height:34px; border:1px solid #EEDFC6; border-radius:10px; background:#FBF5EB; color:#B88E4F; }
+.vip-chat-card-header>div { display:flex; flex-direction:column; gap:2px; }
+.vip-chat-card-header>div>span { font-size:10px; line-height:14px; color:#7D715E; }
+.vip-chat-card-header>div>strong { font-size:13px; line-height:18px; font-weight:600; }
+.vip-chat-tag { margin-left:auto; padding:3px 7px; border:1px solid #EEDFC6; border-radius:6px; color:#8C6226; background:#FBF5EB; font-size:9px; font-weight:600; letter-spacing:.5px; }
+.vip-chat-card-body { padding:13px 14px; }
+.vip-chat-card-body h3 { margin:0; font-size:15px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+.vip-chat-store { margin:5px 0 0; font-size:11px; color:#7D715E; line-height:1.6; overflow-wrap:anywhere; }
+.vip-chat-store strong { font-weight:500; color:#1A1612; margin-left:4px; }
+.vip-chat-bonus { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 0; padding:11px; border:1px solid #EEDFC6; background:#FBF5EB; border-radius:10px; }
+.vip-chat-bonus>span { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:500; }
+.vip-chat-bonus svg { flex-shrink:0; color:#B88E4F; }
+.vip-chat-bonus small { display:block; margin-top:3px; color:#7D715E; font-size:9px; font-weight:400; }
+.vip-chat-bonus>strong { color:#B88E4F; font-size:25px; font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.vip-chat-bonus>strong>small { display:inline; font-size:14px; font-weight:500; color:inherit; }
+.vip-chat-period { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.vip-chat-period>div { display:flex; flex-direction:column; gap:4px; }
+.vip-chat-period>div+div { padding-left:12px; border-left:1px solid #EAE4D7; }
+.vip-chat-period span { display:flex; align-items:center; gap:4px; color:#7D715E; font-size:10px; }
+.vip-chat-period strong { font-size:11px; font-weight:500; font-variant-numeric:tabular-nums; }
+.vip-chat-period small { color:#7D715E; font-size:10px; font-variant-numeric:tabular-nums; }
+.vip-chat-note { margin:0 0 12px; padding:0 0 0 9px; border-left:2px solid #EEDFC6; color:#7D715E; font-size:11px; line-height:1.65; overflow-wrap:anywhere; white-space:pre-wrap; }
+.vip-chat-card-footer { padding:10px 14px; border-top:1px solid #EAE4D7; background:#FAF8F5; }
+.vip-chat-status { display:flex; align-items:center; gap:7px; font-size:11px; color:#7D715E; }
+.vip-chat-status svg { color:#B88E4F; flex-shrink:0; }
+.vip-chat-status small { display:block; font-size:10px; margin-top:2px; }
+.vip-chat-actions { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; }
+.vip-chat-actions button { min-height:34px; padding:7px 10px; border:1px solid #EAE4D7; border-radius:8px; background:#FFF; color:#7D715E; font-size:11px; cursor:pointer; }
+.vip-chat-actions button:last-child { color:#1A1612; border-color:#EEDFC6; background:#FBF5EB; font-weight:500; }
+.vip-chat-actions button:hover { background:#F3EFE6; }
+.vip-chat-actions button:disabled { opacity:.55; cursor:wait; }
+.vip-chat-actions button:focus-visible { outline:2px solid #B88E4F; outline-offset:2px; }
+.vip-chat-error { margin:10px 0 0; font-size:11px; line-height:1.5; color:#DC2626; }
+.vip-chat-response { display:flex; align-items:flex-start; gap:9px; width:330px; max-width:100%; padding:12px 14px; border:1px solid #EAE4D7; border-radius:12px; background:#FFF; color:#1A1612; }
+.vip-chat-response>svg { color:#7D715E; flex-shrink:0; margin-top:1px; }
+.vip-chat-response.is-accepted>svg { color:#059669; }
+.vip-chat-response strong { font-size:12px; font-weight:600; }
+.vip-chat-response p { margin:3px 0; font-size:11px; overflow-wrap:anywhere; }
+.vip-chat-response span { font-size:10px; line-height:1.6; color:#7D715E; }

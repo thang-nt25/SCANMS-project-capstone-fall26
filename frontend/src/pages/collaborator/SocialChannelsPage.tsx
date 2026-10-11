@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import './KolProfile.css';
+import './SocialChannelsPage.css';
 import {
   Share2,
   Users,
@@ -12,14 +14,21 @@ import {
   X,
   Link2,
   Video,
+  Loader2,
 } from 'lucide-react';
 import { socialService, type SocialChannel } from '../../services/social.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { toast } from '../../utils/toast';
 
-export default function SocialChannelsPage() {
+interface SocialChannelsPageProps {
+  loadedData?: SocialChannel[];
+  isRefreshing?: boolean;
+}
+
+const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialChannelsPageProps>(function SocialChannelsPage({ loadedData, isRefreshing = false }, ref) {
 
   const [channels, setChannels] = useState<SocialChannel[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -28,6 +37,12 @@ export default function SocialChannelsPage() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [channelToDelete, setChannelToDelete] = useState<SocialChannel | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const refreshInFlight = useRef(false);
+  const loadSequence = useRef(0);
 
   const [platformName, setPlatformName] = useState('TIKTOK');
   const [channelName, setChannelName] = useState('');
@@ -36,17 +51,54 @@ export default function SocialChannelsPage() {
   const [isPrimary, setIsPrimary] = useState(false);
 
   useEffect(() => {
-    loadChannels();
-  }, []);
+    if (loadedData) {
+      setChannels(loadedData);
+      setHasLoaded(true);
+      setLoading(false);
+      setLoadError('');
+      return;
+    }
+    void loadChannels().catch((err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Không thể tải các kênh xã hội.');
+    });
+    return () => { loadSequence.current++; };
+  }, [loadedData]);
 
-  const loadChannels = async () => {
+  const loadChannels = async (forceRefresh = false) => {
+    const sequence = ++loadSequence.current;
+    setLoading(true);
+    setLoadError('');
     try {
-      const list = await socialService.getMyChannels();
+      const list = await socialService.getMyChannels({ forceRefresh });
+      if (sequence !== loadSequence.current) return;
+      if (!Array.isArray(list)) throw new Error('Dữ liệu danh sách kênh không hợp lệ.');
       setChannels(list);
-    } catch (err) {
-      console.error('Lỗi tải kênh MXH:', err);
+      setHasLoaded(true);
+    } catch (err: unknown) {
+      if (sequence === loadSequence.current) {
+        setLoadError(err instanceof Error ? err.message : 'Không thể tải các kênh xã hội.');
+      }
+      throw err;
+    } finally {
+      if (sequence === loadSequence.current) setLoading(false);
     }
   };
+
+  const refreshChannels = async () => {
+    if (loading || isRefreshing || refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    setRefreshing(true);
+    try {
+      await loadChannels(true);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Không thể tải lại kênh xã hội.');
+    } finally {
+      refreshInFlight.current = false;
+      setRefreshing(false);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({ refresh: () => loadChannels(true) }));
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -69,7 +121,7 @@ export default function SocialChannelsPage() {
       setChannelUrl('');
       setFollowerCount('');
       setIsPrimary(false);
-      loadChannels();
+      await loadChannels(true);
     } catch (err: any) {
       showToast(err.message || 'Lỗi liên kết kênh');
     }
@@ -82,7 +134,7 @@ export default function SocialChannelsPage() {
       await socialService.deleteChannel(channelToDelete.id);
       showToast('Đã ngắt kết nối kênh mạng xã hội thành công.');
       setChannelToDelete(null);
-      loadChannels();
+      await loadChannels(true);
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi ngắt kết nối kênh');
     } finally {
@@ -106,22 +158,31 @@ export default function SocialChannelsPage() {
   const primaryChannel = channels.find((c) => c.isPrimary) || channels[0];
 
   const getPlatformBadge = (plat: string) => {
-    switch (plat.toUpperCase()) {
-      case 'TIKTOK':
-        return <span className="px-2 py-0.5 rounded-md bg-black text-white text-[10px] font-bold">TikTok</span>;
-      case 'FACEBOOK':
-        return <span className="px-2 py-0.5 rounded-md bg-[#1877f2] text-white text-[10px] font-bold">Facebook</span>;
-      case 'YOUTUBE':
-        return <span className="px-2 py-0.5 rounded-md bg-[#ff0000] text-white text-[10px] font-bold">YouTube</span>;
-      case 'INSTAGRAM':
-        return <span className="px-2 py-0.5 rounded-md bg-[#e1306c] text-white text-[10px] font-bold">Instagram</span>;
-      default:
-        return <span className="px-2 py-0.5 rounded-md bg-[#7D715E] text-white text-[10px] font-bold">{plat}</span>;
-    }
+    const labels: Record<string, string> = { TIKTOK: 'TikTok', FACEBOOK: 'Facebook', YOUTUBE: 'YouTube', INSTAGRAM: 'Instagram', THREADS: 'Threads', ZALO: 'Zalo' };
+    return <span className="sc-platform-badge">{labels[plat.toUpperCase()] || plat}</span>;
   };
 
+  if (loading && !hasLoaded) {
+    return (
+      <section className="kol-profile-loading" role="status" aria-busy="true">
+        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+        <span>Đang tải dữ liệu kênh xã hội…</span>
+      </section>
+    );
+  }
+
+  if (!hasLoaded && loadError) {
+    return <section className="kol-profile-load-error" role="alert">{loadError}</section>;
+  }
+
   return (
-    <div className="flex flex-col gap-6 text-left">
+    <div className="kol-social-page flex flex-col gap-4 text-left" aria-busy={loading || isRefreshing}>
+      {loading && (
+        <section className="kol-profile-loading" role="status">
+          <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+          <span>Đang tải dữ liệu kênh xã hội…</span>
+        </section>
+      )}
 
       {toastMsg && (
         <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 border border-[#EEDFC6]">
@@ -130,99 +191,49 @@ export default function SocialChannelsPage() {
         </div>
       )}
 
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]">
-              {filtered.length} / {displayChannels.length} kênh
-            </span>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-              Attribution Tracking v2
-            </span>
+      <section className="sc-summary" aria-label="Tổng quan kênh mạng xã hội">
+        <div className="sc-summary-item">
+          <span className="sc-summary-icon"><Share2 size={17} /></span>
+          <div>
+            <span className="sc-summary-label">Kênh đã liên kết</span>
+            <strong>{channels.length} <small>kênh</small></strong>
+            <p>{verifiedChannelsCount > 0 ? `${verifiedChannelsCount} kênh đã xác minh` : 'Chưa có kênh xác minh'}</p>
           </div>
-          
         </div>
-
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={<RotateCcw className="w-3.5 h-3.5" />}
-            onClick={loadChannels}
-          >
-            Khôi phục mẫu
-          </Button>
-          <Button
-            variant="gold"
-            size="sm"
-            icon={<Plus className="w-3.5 h-3.5" />}
-            onClick={() => setShowModal(true)}
-          >
-            Thêm kênh mới
-          </Button>
+        <div className="sc-summary-item">
+          <span className="sc-summary-icon"><Users size={17} /></span>
+          <div>
+            <span className="sc-summary-label">Tổng người theo dõi</span>
+            <strong>{totalFollowers.toLocaleString('vi-VN')}</strong>
+            <p>Từ tất cả kênh đã liên kết</p>
+          </div>
         </div>
-      </header>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4 flex flex-col justify-between gap-2 bg-white">
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-[#7D715E] font-medium">Tổng kênh liên kết</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Share2 className="w-4 h-4" />
-            </div>
+        <div className="sc-summary-item sc-primary-summary">
+          <span className="sc-summary-icon"><Star size={17} /></span>
+          <div>
+            <span className="sc-summary-label">Kênh chính</span>
+            <strong title={primaryChannel?.channelName}>{primaryChannel?.channelName || 'Chưa thiết lập'}</strong>
+            <p>{primaryChannel ? `${primaryChannel.platformName} · ${(primaryChannel.followerCount || 0).toLocaleString('vi-VN')} người theo dõi` : 'Thêm kênh để bắt đầu kết nối'}</p>
           </div>
-          <strong className="text-2xl font-extrabold text-[#1A1612]">
-            {channels.length} <span className="text-sm font-normal text-[#7D715E]">kênh</span>
-          </strong>
-          <span className="text-[11px] text-emerald-600 font-semibold">
-            {verifiedChannelsCount > 0 ? `${verifiedChannelsCount} kênh đã xác minh` : 'Chưa có kênh xác minh'}
-          </span>
-        </Card>
-
-        <Card className="p-4 flex flex-col justify-between gap-2 bg-white">
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-[#7D715E] font-medium">Tổng lượt tiếp cận (Followers)</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <strong className="text-2xl font-extrabold text-[#1A1612]">
-            {totalFollowers >= 1000 ? `${(totalFollowers / 1000).toFixed(1)}K` : totalFollowers.toString()}
-          </strong>
-          <span className="text-[11px] text-[#7D715E]">Độ phủ nội dung trên mạng xã hội</span>
-        </Card>
-
-        <Card className="p-4 flex flex-col justify-between gap-2 bg-white">
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-[#7D715E] font-medium">Kênh chính hoạt động</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center">
-              <Star className="w-4 h-4 fill-current" />
-            </div>
-          </div>
-          <strong className="text-base font-extrabold text-[#1A1612] truncate">
-            {primaryChannel?.channelName || 'Chưa thiết lập'}
-          </strong>
-          <span className="text-[11px] text-[#7D715E]">
-            {primaryChannel ? `${primaryChannel.platformName} • ${(primaryChannel.followerCount || 0).toLocaleString('vi-VN')} followers` : 'Bấm thêm kênh để liên kết'}
-          </span>
-        </Card>
-      </div>
-
-      <Card className="p-3.5 bg-white flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex-1 min-w-[280px] relative">
+        </div>
+      </section>
+      <Card className="kol-social-filters p-3 bg-white">
+        <div className="kol-social-search relative">
           <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Tìm theo tên hiển thị, handle (@username) hoặc lĩnh vực..."
+            aria-label="Tìm kênh mạng xã hội"
+            placeholder="Tìm tên kênh, @username hoặc liên kết..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-9 pr-3 py-2 text-xs text-[#1A1612] outline-none hover:border-[#B88E4F]/50 focus:border-[#B88E4F] transition"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-[#7D715E]">Nền tảng:</span>
+        <div className="kol-social-platform flex items-center gap-2">
+          <label htmlFor="social-platform-filter" className="text-xs font-semibold text-[#7D715E]">Nền tảng:</label>
           <Select
+            id="social-platform-filter"
             value={filterPlatform}
             onChange={(e) => setFilterPlatform(e.target.value)}
             className="w-44 text-xs font-bold"
@@ -234,136 +245,102 @@ export default function SocialChannelsPage() {
             <option value="INSTAGRAM">Instagram</option>
           </Select>
         </div>
+
+        <div className="kol-social-filter-actions">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            icon={<RotateCcw className="w-3.5 h-3.5" />}
+            loading={refreshing || loading || isRefreshing}
+            onClick={() => void refreshChannels()}
+          >
+            Làm mới
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            icon={<Plus className="w-3.5 h-3.5" />}
+            onClick={() => setShowModal(true)}
+          >
+            Thêm kênh mới
+          </Button>
+        </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.length === 0 ? (
-          <Card className="col-span-full p-12 text-center bg-white border border-[#EAE4D7] rounded-2xl">
-            <div className="text-4xl mb-3">📱</div>
-            <h3 className="text-base font-bold text-[#1A1612]">Chưa có kênh mạng xã hội nào</h3>
-            <p className="text-xs text-[#7D715E] mt-1 max-w-md mx-auto mb-4">
-              {channels.length === 0
-                ? 'Liên kết các tài khoản TikTok, Facebook, YouTube hoặc Instagram để gian hàng xác thực độ uy tín và duyệt mẫu thử nhanh hơn.'
-                : 'Không tìm thấy kênh mạng xã hội nào khớp với từ khóa tìm kiếm hoặc bộ lọc nền tảng.'}
-            </p>
-            <Button
-              variant="gold"
-              size="sm"
-              icon={<Plus className="w-3.5 h-3.5" />}
-              onClick={() => setShowModal(true)}
-            >
-              + Kết Nối Kênh Mới
+      <section className="sc-list" aria-label="Danh sách kênh mạng xã hội">
+        {!loading && filtered.length === 0 ? (
+          <div className="sc-empty">
+            <span className="sc-summary-icon"><Share2 size={20} /></span>
+            <h3>{channels.length === 0 ? 'Chưa có kênh mạng xã hội' : 'Không tìm thấy kênh phù hợp'}</h3>
+            <p>{channels.length === 0
+              ? 'Liên kết kênh sáng tạo để gian hàng tìm hiểu nội dung và kết nối với bạn.'
+              : 'Thử một tên kênh khác hoặc thay đổi bộ lọc nền tảng.'}</p>
+            <Button variant="outline" size="sm" onClick={() => {
+              if (channels.length === 0) setShowModal(true);
+              else { setSearch(''); setFilterPlatform('ALL'); }
+            }}>
+              {channels.length === 0 ? 'Thêm kênh mới' : 'Xóa bộ lọc'}
             </Button>
-          </Card>
-        ) : (
-          filtered.map((c, idx) => (
-            <Card key={c.id || idx} className="p-5 flex flex-col justify-between gap-4 bg-white">
-
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center">
-                    <Video className="w-5 h-5 text-[#B88E4F]" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <strong className="text-sm font-bold text-[#1A1612]">{c.channelName}</strong>
-                      {c.isPrimary && (
-                        <span title="Kênh chính">
-                          <Star className="w-3.5 h-3.5 text-[#B88E4F] fill-current" />
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {getPlatformBadge(c.platformName)}
-                      <span className="text-xs text-[#7D715E]">
-                        {c.followerCount ? `${(c.followerCount / 1000).toFixed(1)}K followers` : c.channelUrl}
-                      </span>
-                    </div>
-                  </div>
+          </div>
+        ) : filtered.map((c, idx) => (
+          <article key={c.id || idx} className="sc-row">
+            <div className="sc-channel-identity">
+              <span className="sc-channel-icon"><Video size={17} /></span>
+              <div className="sc-channel-copy">
+                <div className="sc-channel-title">
+                  <h3>{c.channelName || c.platformName}</h3>
+                  {c.isPrimary && <span className="sc-role"><Star size={11} /> Kênh chính</span>}
                 </div>
-
-                <div>
-                  {(c as any).verifiedAt ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                      <CheckCircle2 className="w-3 h-3" /> Đã xác minh
-                    </span>
-                  ) : (
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#FAF8F5] text-[#7D715E] border border-[#EAE4D7]">
-                      Tự khai báo
-                    </span>
-                  )}
+                <div className="sc-channel-link">
+                  {getPlatformBadge(c.platformName)}
+                  <span title={c.channelUrl}>{c.channelUrl}</span>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-2 bg-[#FAF8F5] p-2.5 rounded-xl border border-[#EAE4D7] text-center">
-                <div>
-                  <span className="text-[11px] text-[#7D715E] block">Lượt theo dõi</span>
-                  <strong className="text-xs font-bold text-[#1A1612]">
-                    {(c.followerCount || 0).toLocaleString('vi-VN')}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-[11px] text-[#7D715E] block">Trạng thái kênh</span>
-                  <strong className="text-xs font-bold text-[#B88E4F]">
-                    {c.isPrimary ? 'Kênh chính' : 'Kênh phụ'}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-[#EAE4D7]">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<Link2 className="w-3.5 h-3.5" />}
-                    onClick={() => window.location.href = '/collaborator/referral-links'}
-                  >
-                    Tạo link
-                  </Button>
-                  <a
-                    href={c.channelUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5] transition"
-                  >
-                    <span>Xem kênh</span>
-                    <ExternalLink className="w-3 h-3 text-[#7D715E]" />
-                  </a>
-                </div>
-
-                {c.id && (
-                  <button
-                    type="button"
-                    onClick={() => setChannelToDelete(c)}
-                    className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                    title="Ngắt kết nối kênh"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </Card>
-          ))
-        )}
-      </div>
-
+            </div>
+            <div className="sc-followers">
+              <span>Người theo dõi</span>
+              <strong>{(c.followerCount || 0).toLocaleString('vi-VN')}</strong>
+            </div>
+            <div className="sc-verification">
+              <span>Xác minh kênh</span>
+              {(c as any).verifiedAt ? (
+                <strong className="sc-verified"><CheckCircle2 size={12} /> Đã xác minh</strong>
+              ) : <strong>Tự khai báo</strong>}
+            </div>
+            <div className="sc-actions">
+              <Button variant="outline" size="sm" icon={<Link2 size={13} />} onClick={() => window.location.href = '/collaborator/referral-links'}>Tạo link</Button>
+              <a href={c.channelUrl} target="_blank" rel="noreferrer"><span>Xem kênh</span><ExternalLink size={13} /></a>
+              {c.id && (
+                <button type="button" className="sc-disconnect" onClick={() => setChannelToDelete(c)} title="Ngắt kết nối kênh" aria-label={`Ngắt kết nối ${c.channelName || c.platformName}`}>
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+      </section>
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-[#EAE4D7] shadow-xl">
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="text-base font-extrabold text-[#1A1612] m-0">
-                Thêm Kênh Mạng Xã Hội Mới
-              </h3>
+        <div className="kol-channel-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="kol-channel-modal" role="dialog" aria-modal="true" aria-labelledby="add-social-channel-title">
+            <div className="kol-channel-modal-heading">
+              <span className="kol-channel-modal-icon" aria-hidden="true"><Share2 /></span>
+              <div>
+                <h3 id="add-social-channel-title">Thêm kênh mạng xã hội</h3>
+                <p>Kết nối kênh sáng tạo của bạn với SCANMS.</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
+                aria-label="Đóng cửa sổ thêm kênh"
                 className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAdd} className="flex flex-col gap-4">
+            <form onSubmit={handleAdd} className="kol-channel-modal-form flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-[#1A1612] mb-1.5 block">
                   Nền tảng truyền thông
@@ -398,7 +375,7 @@ export default function SocialChannelsPage() {
 
               <div>
                 <label className="text-xs font-bold text-[#1A1612] mb-1.5 block">
-                  Đường dẫn (URL) hoặc Handle (@username)
+                  Đường dẫn kênh (URL)
                 </label>
                 <input
                   type="url"
@@ -412,7 +389,7 @@ export default function SocialChannelsPage() {
 
               <div>
                 <label className="text-xs font-bold text-[#1A1612] mb-1.5 block">
-                  Lượng người theo dõi (Followers)
+                  Số người theo dõi
                 </label>
                 <input
                   type="number"
@@ -424,7 +401,7 @@ export default function SocialChannelsPage() {
                 />
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer py-1">
+              <label className="kol-channel-primary-option flex items-center gap-2 cursor-pointer py-1">
                 <input
                   type="checkbox"
                   checked={isPrimary}
@@ -432,11 +409,11 @@ export default function SocialChannelsPage() {
                   className="rounded border-[#EAE4D7] text-[#B88E4F] focus:ring-[#B88E4F]"
                 />
                 <span className="text-xs font-medium text-[#1A1612]">
-                  Đặt làm kênh truyền thông chính thức (Primary channel)
+                  Đặt làm kênh chính
                 </span>
               </label>
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="kol-channel-modal-footer grid grid-cols-2 gap-3 pt-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -471,4 +448,6 @@ export default function SocialChannelsPage() {
       />
     </div>
   );
-}
+});
+
+export default SocialChannelsPage;

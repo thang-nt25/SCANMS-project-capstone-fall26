@@ -50,6 +50,22 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
+export interface PayosWalletTopUp {
+  id: string;
+  orderCode: number;
+  amount: number;
+  status: 'CREATING' | 'PENDING' | 'UNDERPAID' | 'PROCESSING' | 'PAID' | 'CANCELLED' | 'EXPIRED' | 'FAILED';
+  paymentLinkId: string | null;
+  checkoutUrl: string | null;
+  qrCode: string | null;
+  bin: string | null;
+  accountNumber: string | null;
+  accountName: string | null;
+  description: string | null;
+  expiresAt: string;
+  paidAt: string | null;
+}
+
 export interface LedgerEntry {
   id: string;
   transactionType:
@@ -75,17 +91,32 @@ export interface LedgerHistory {
 }
 
 export const walletService = {
+  async payosAvailability() {
+    return (await api.get<never, ApiEnvelope<{ available: boolean }>>('/wallets/top-up-payos/availability', { headers: { 'x-skip-cache': 'true' } })).data;
+  },
+  async createPayosTopUp(amount: number) {
+    return (await api.post<never, ApiEnvelope<PayosWalletTopUp>>('/wallets/top-up-payos', { amount }, { timeout: 20000 })).data;
+  },
+  async pendingPayosTopUp() {
+    return (await api.get<never, ApiEnvelope<PayosWalletTopUp | null>>('/wallets/top-up-payos/pending', { headers: { 'x-skip-cache': 'true' } })).data;
+  },
+  async payosTopUpStatus(id: string) {
+    return (await api.get<never, ApiEnvelope<PayosWalletTopUp>>(`/wallets/top-up-payos/${encodeURIComponent(id)}/status`, { timeout: 20000, headers: { 'x-skip-cache': 'true' } })).data;
+  },
   async getMyLedger(page = 1): Promise<LedgerHistory> {
     return (
       await api.get<LedgerHistory, ApiEnvelope<LedgerHistory>>(
         "/wallets/me/ledger",
-        { params: { page, limit: 10 } },
+        { params: { page, limit: 10 }, headers: { 'x-skip-cache': 'true' } },
       )
     ).data;
   },
+  async cancelPayosTopUp(id: string) {
+    return (await api.post<never, ApiEnvelope<PayosWalletTopUp>>(`/wallets/top-up-payos/${encodeURIComponent(id)}/cancel`, {}, { timeout: 30000 })).data;
+  },
   async getMyWallet(): Promise<WalletSummary> {
     return (
-      await api.get<WalletSummary, ApiEnvelope<WalletSummary>>("/wallets/me")
+      await api.get<WalletSummary, ApiEnvelope<WalletSummary>>("/wallets/me", { headers: { 'x-skip-cache': 'true' } })
     ).data;
   },
 
@@ -95,6 +126,7 @@ export const walletService = {
         "/wallets/withdrawals",
         {
           params: { page, limit: 10 },
+          headers: { 'x-skip-cache': 'true' },
         },
       )
     ).data;

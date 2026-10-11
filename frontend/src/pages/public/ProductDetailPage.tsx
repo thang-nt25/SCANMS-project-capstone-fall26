@@ -43,6 +43,7 @@ import { toast } from '@/utils/toast';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { LiveSessionDealCard } from '@/components/product/LiveSessionDealCard';
+import './ProductFeedback.css';
 
 
 function getSmartFallbackImage(title?: string, categoryName?: string): string {
@@ -1827,29 +1828,24 @@ export default function ProductDetailPage() {
         </div>
 
 
-        <section className={`${activeVideo ? 'mt-8 bg-[#F3EFE6] p-5 sm:p-7' : 'mt-6 bg-white p-4 sm:p-5'} rounded-2xl border border-[#EAE4D7] relative overflow-hidden shadow-xs`}>
-          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${activeVideo ? 'mb-5' : 'mb-2'}`}>
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-full text-xs font-bold text-[#B88E4F] mb-2">
-                <Play className="w-3.5 h-3.5 fill-[#B88E4F]" />
-                <span>VIDEO REVIEW TRẢI NGHIỆM THẬT</span>
+        <div className={'scanms-product-feedback' + (!activeVideo && !reviews.items?.length ? ' sf-empty-layout' : '')}>
+        <section className="sf-section sf-video-section" aria-labelledby="product-creator-reviews-title">
+          <div className="sf-heading">
+            <div className="sf-heading-content">
+              <span className="sf-heading-icon"><Play size={20} strokeWidth={1.7} /></span>
+              <div>
+                <h2 id="product-creator-reviews-title">Video từ nhà sáng tạo</h2>
+                <p>{activeVideo ? 'Video review đã được gian hàng ' + store.name + ' phê duyệt.' : 'Khám phá trải nghiệm thực tế về sản phẩm.'}</p>
               </div>
-              <h2 className={`${activeVideo ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'} font-extrabold text-[#1A1612]`}>
-                Trải Nghiệm & Đánh Giá Thực Tế từ Nhà Sáng Tạo
-              </h2>
-              {activeVideo && (
-                <p className="text-xs sm:text-sm text-[#7D715E] mt-0.5">
-                  Video review đã qua phê duyệt chính thức từ gian hàng {store.name}
-                </p>
-              )}
             </div>
-
-
+            {videos.length <= 1 && <span className="sf-count">{videos.length} video</span>}
             {videos && videos.length > 1 && (
               <div className="flex flex-wrap gap-2">
                 {videos.map((vid, vIdx) => (
                   <button
                     key={vid.id || vIdx}
+                    type="button"
+                    aria-pressed={activeVideoIndex === vIdx}
                     onClick={() => {
                       setActiveVideoIndex(vIdx);
                       setIsPlaying(false);
@@ -1857,7 +1853,7 @@ export default function ProductDetailPage() {
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                       activeVideoIndex === vIdx
-                        ? 'bg-[#EBD08C] text-white shadow-xs'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
                         : 'bg-white text-[#7D715E] border border-[#EAE4D7] hover:bg-[#FAF8F5]'
                     }`}
                   >
@@ -1872,7 +1868,7 @@ export default function ProductDetailPage() {
           </div>
 
           {activeVideo ? (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div className="sf-video-body grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
 
               <div className="lg:col-span-7 bg-[#1A1612] rounded-2xl overflow-hidden aspect-video relative group shadow-lg border border-[#EAE4D7]">
                 <video
@@ -1900,7 +1896,7 @@ export default function ProductDetailPage() {
                 )}
 
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-4 z-20">
+                <div className="sf-player-controls absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex flex-col justify-between p-4 z-20">
                   <div className="flex items-center justify-between text-white text-xs font-semibold">
                     <span className="bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-md line-clamp-1 max-w-[70%]">
                       {activeVideo.title}
@@ -1921,6 +1917,7 @@ export default function ProductDetailPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={togglePlay}
+                        aria-label={isPlaying ? 'Tạm dừng video' : 'Phát video'}
                         className="w-10 h-10 rounded-full bg-[#EBD08C] hover:bg-[#DEC07A] flex items-center justify-center text-white transition-all shadow-md active:scale-95"
                       >
                         {isPlaying ? (
@@ -1982,6 +1979,7 @@ export default function ProductDetailPage() {
                 {!isPlaying && (
                   <button
                     onClick={togglePlay}
+                    aria-label="Phát video"
                     className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#EBD08C]/90 hover:bg-[#DEC07A] text-white flex items-center justify-center shadow-xl transition-all transform hover:scale-105 z-10"
                   >
                     <Play className="w-8 h-8 fill-white ml-1" />
@@ -1990,7 +1988,7 @@ export default function ProductDetailPage() {
               </div>
 
 
-              <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-[#EAE4D7] shadow-xs space-y-4">
+              <div className="sf-creator-card lg:col-span-5 bg-white rounded-xl p-4 border border-[#EAE4D7] space-y-4">
                 <div className="flex items-center gap-3">
                   {activeVideo.kol.avatarUrl ? (
                     <img
@@ -2023,7 +2021,7 @@ export default function ProductDetailPage() {
                 <div className="p-3 bg-[#FBF5EB] rounded-xl border border-[#EAE4D7] text-xs text-[#7D715E] leading-relaxed">
                   <div className="font-bold text-[#B88E4F] mb-1 flex items-center gap-1">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Minh bạch tiếp thị (Section 17)
+                    Minh bạch tiếp thị
                   </div>
                   {activeVideo.kol.disclosure}. Video đánh giá trải nghiệm thực tế sau khi sử dụng mẫu thử từ gian hàng đối tác.
                 </div>
@@ -2035,7 +2033,7 @@ export default function ProductDetailPage() {
                   <button
                     type="button"
                     onClick={() => handleBuyNow('video_card')}
-                    className="w-full p-3 bg-gradient-to-r from-[#FAF8F5] via-[#FBF5EB] to-[#F3EFE6] hover:from-[#F3EFE6] hover:to-[#EAE4D7] border border-[#DEBE85] hover:border-[#B88E4F] rounded-2xl flex items-center justify-between gap-3 transition-all duration-200 shadow-xs hover:shadow-md hover:shadow-[#C59B58]/15 group cursor-pointer text-left"
+                    className="w-full p-3 bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] hover:border-[#C59B58] rounded-xl flex items-center justify-between gap-3 transition-colors group cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
 
@@ -2061,75 +2059,43 @@ export default function ProductDetailPage() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-[#7D715E]">
-              <Play className="w-4 h-4 shrink-0 text-[#B88E4F]" />
-              <span>Chưa có video review cho sản phẩm này.</span>
+            <div className="sf-empty">
+              <span className="sf-empty-icon"><Play size={22} strokeWidth={1.5} /></span>
+              <div><h3>Chưa có video review</h3><p>Video trải nghiệm sẽ hiển thị tại đây sau khi được gian hàng phê duyệt.</p></div>
             </div>
           )}
         </section>
 
 
-        <section className="mt-12 bg-white rounded-3xl border border-[#EAE4D7] p-6 sm:p-10 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#EAE4D7]">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#1A1612]">
-                Đánh Giá Thực Tế Từ Khách Hàng
-              </h2>
-              <p className="text-xs sm:text-sm text-[#7D715E] mt-0.5">
-                Chỉ hiển thị phản hồi đã kiểm duyệt từ người mua hàng thực tế
-              </p>
+        <section className="sf-section sf-customer-section" aria-labelledby="product-customer-reviews-title">
+          <div className="sf-heading">
+            <div className="sf-heading-content">
+              <span className="sf-heading-icon"><Star size={20} strokeWidth={1.7} /></span>
+              <div><h2 id="product-customer-reviews-title">Đánh giá khách hàng</h2><p>Phản hồi đã kiểm duyệt từ người mua thực tế.</p></div>
             </div>
-
-            <div className="flex items-center gap-3">
-              {reviews.averageRating !== null && reviews.totalReviews > 0 ? (
-                <div className="text-right">
-                  <div className="text-3xl font-extrabold text-[#B88E4F]">
-                    {reviews.averageRating}{' '}
-                    <span className="text-base text-[#7D715E]">/ 5</span>
-                  </div>
-                  <div className="flex gap-0.5 justify-end text-[#B88E4F]">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`w-3.5 h-3.5 ${
-                          s <= Math.round(reviews.averageRating || 0)
-                            ? 'fill-[#C59B58] text-[#B88E4F]'
-                            : 'text-[#EAE4D7]'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-right">
-                  <div className="text-sm font-bold text-[#7D715E]">
-                    Chưa có đánh giá
-                  </div>
-                  <div className="flex gap-0.5 justify-end text-[#EAE4D7] mt-1">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className="w-3.5 h-3.5 text-[#EAE4D7]" />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            {reviews.averageRating !== null && reviews.totalReviews > 0 ? (
+              <div className="sf-rating" aria-label={reviews.averageRating + ' trên 5 sao, ' + reviews.totalReviews + ' đánh giá'}>
+                <strong>{reviews.averageRating}<span>/5</span></strong>
+                <div><span className="sf-stars" aria-hidden="true">{[1, 2, 3, 4, 5].map(value => <Star key={value} size={13} className={value <= Math.round(reviews.averageRating || 0) ? 'sf-star-filled' : 'sf-star-empty'} />)}</span><span className="sf-rating-count">{reviews.totalReviews} đánh giá</span></div>
+              </div>
+            ) : <span className="sf-count">{reviews.totalReviews} đánh giá</span>}
           </div>
 
-
-          <div className="space-y-4">
+          <div className="sf-review-list">
             {reviews.items && reviews.items.length > 0 ? (
               reviews.items.map((rev) => (
                 <div
                   key={rev.id}
-                  className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] transition-all hover:bg-white"
+                  className="sf-review"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                  <div className="sf-review-heading">
+                    <div className="sf-review-person">
+                      <span className="sf-review-avatar" aria-hidden="true">{rev.customerName.trim().charAt(0).toLocaleUpperCase('vi-VN') || 'K'}</span>
                       <span className="font-bold text-sm text-[#1A1612]">
                         {rev.customerName}
                       </span>
                       {rev.isVerifiedBuyer && (
-                        <span className="inline-flex items-center gap-1 bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="sf-verified-buyer">
                           <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" />
                           Đã mua hàng
                         </span>
@@ -2173,12 +2139,14 @@ export default function ProductDetailPage() {
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-xs text-[#7D715E]">
-                Chưa có đánh giá nào cho sản phẩm này. Hãy là người đầu tiên trải nghiệm!
+              <div className="sf-empty">
+                <span className="sf-empty-icon"><MessageSquare size={22} strokeWidth={1.5} /></span>
+                <div><h3>Chưa có đánh giá</h3><p>Chia sẻ từ người mua sẽ xuất hiện tại đây sau khi được kiểm duyệt.</p></div>
               </div>
             )}
           </div>
         </section>
+        </div>
       </main>
 
       {analyticsConsent === null && (
@@ -2265,6 +2233,14 @@ export default function ProductDetailPage() {
           initialQuantity={quantity}
           initialCouponCode={appliedCoupon?.code || ''}
           onOrderPlaced={(order) => {
+            if (order.paymentMethod === 'PAYOS') return;
+            trackAnalytics('purchase', {
+              orderId: order.orderId,
+              orderCode: order.publicOrderCode,
+              total: order.totalAmount,
+            });
+          }}
+          onPaymentConfirmed={(order) => {
             trackAnalytics('purchase', {
               orderId: order.orderId,
               orderCode: order.publicOrderCode,

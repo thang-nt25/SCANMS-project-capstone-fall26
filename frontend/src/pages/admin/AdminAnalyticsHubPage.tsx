@@ -4,6 +4,7 @@ import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import RealtimeAnalyticsPage from '../dashboard/RealtimeAnalyticsPage';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
 import KolRecommendationPage from '../merchant/KolRecommendationPage';
+import './AdminAnalyticsHubPage.css';
 
 export default function AdminAnalyticsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,28 +17,31 @@ export default function AdminAnalyticsHubPage() {
   const tabs: HubTabItem[] = [
     {
       id: 'realtime',
-      label: 'Analytics Thời Gian Thực',
+      label: 'Analytics thời gian thực',
       icon: TrendingUp,
     },
     {
       id: 'leaderboard',
-      label: 'Bảng Vinh Danh Top KOL',
+      label: 'Bảng vinh danh Top KOL',
       icon: Trophy,
     },
     {
       id: 'ai-matching',
-      label: 'AI Khớp Nối Toàn Sàn',
+      label: 'AI khớp nối toàn sàn',
       icon: Sparkles,
     },
   ];
 
   return (
-    <div className="w-full min-w-0 flex flex-col pt-4 text-[#1A1612] sm:pt-5" id="admin-analytics-hub">
+    <div className="w-full min-w-0 flex flex-col text-[#1A1612]" id="admin-analytics-hub">
       <HubTabs
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}
         tone="white"
+        compact
+        stretchTabs
+        className="admin-analytics-tabs"
       />
 
       <div className="w-full min-h-[500px]">

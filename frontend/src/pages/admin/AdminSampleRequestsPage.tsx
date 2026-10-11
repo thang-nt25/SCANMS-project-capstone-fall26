@@ -18,11 +18,14 @@ import {
   History,
   Ban,
   ShieldAlert,
+  Mail,
+  Phone,
 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { Select } from '../../components/ui/Select';
+import './AdminSampleRequestsPage.css';
 
 interface StatusConfig {
   label: string;
@@ -296,15 +299,15 @@ export default function AdminSampleRequestsPage() {
 
   const resolutionTitle =
     resolution?.action === 'EXTEND_DEADLINE'
-      ? 'Gia hạn thời hạn nộp video cam kết'
+      ? 'Gia hạn nộp video'
       : resolution?.action === 'CANCEL_OBLIGATION'
-      ? 'Miễn nghĩa vụ video mẫu (Đóng tranh chấp)'
-      : 'Mở lại xuất gửi bù hàng mẫu';
+      ? 'Miễn nghĩa vụ video mẫu'
+      : 'Mở gửi bù hàng mẫu';
 
   return (
-    <main className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-0 py-5 text-[#1A1612]">
-      <div className="mx-0 w-full min-w-0 max-w-none space-y-4">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+    <main className="admin-samples-page text-[#1A1612]">
+      <div className="mx-0 w-full min-w-0 space-y-4">
+        <div className="sample-metrics grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
             {label:'Tổng yêu cầu',value:stats.total,filter:'ALL',icon:Package},
             {label:'Đang xử lý',value:stats.shipping,filter:'IN_PROGRESS',icon:Truck},
@@ -315,7 +318,7 @@ export default function AdminSampleRequestsPage() {
           ].map((item) => {
             const Icon = item.icon;
             const active = item.filter === 'BLOCKED' ? view === 'blocked' : view === 'requests' && statusFilter === item.filter;
-            return <button key={item.filter} type="button" aria-pressed={active} onClick={() => { setView(item.filter === 'BLOCKED' ? 'blocked' : 'requests'); if(item.filter !== 'BLOCKED')setStatusFilter(item.filter); }} className={'rounded-xl border bg-white px-3 py-3 text-left transition cursor-pointer ' + (active ? 'border-[#C59B58] ring-1 ring-[#EEDFC6]' : 'border-[#EAE4D7] hover:border-[#C59B58]')}>
+            return <button key={item.filter} type="button" aria-pressed={active} onClick={() => { setView(item.filter === 'BLOCKED' ? 'blocked' : 'requests'); setSearchQuery(''); if(item.filter !== 'BLOCKED')setStatusFilter(item.filter); }} className={'rounded-xl border bg-white px-3 py-3 text-left transition cursor-pointer ' + (active ? 'border-[#C59B58]' : 'border-[#EAE4D7] hover:border-[#C59B58]')}>
               <div className="flex items-center justify-between gap-2 text-[11px] text-[#7D715E]"><span>{item.label}</span><Icon className={'h-3.5 w-3.5 ' + (['RISK_GROUP','BLOCKED'].includes(item.filter) && item.value > 0 ? 'text-[#DC2626]' : 'text-[#B88E4F]')} /></div>
               <div className="mt-2 text-xl font-semibold text-[#1A1612]">{item.value}</div>
             </button>;
@@ -323,10 +326,11 @@ export default function AdminSampleRequestsPage() {
         </div>
 
         {/* Toolbar: Tabs, Search & Status Dropdown */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="sample-toolbar rounded-xl border border-[#EAE4D7] bg-white p-3">
+          <div className="sample-view-tabs flex flex-wrap items-center gap-2">
             <button
               type="button"
+              aria-pressed={view === 'requests'}
               onClick={() => setView('requests')}
               className={`rounded-lg px-3 py-2 text-xs font-semibold transition flex items-center gap-2 cursor-pointer ${view === 'requests' ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]'}`}
             >
@@ -338,6 +342,7 @@ export default function AdminSampleRequestsPage() {
             </button>
             <button
               type="button"
+              aria-pressed={view === 'blocked'}
               onClick={() => setView('blocked')}
               className={`rounded-lg px-3 py-2 text-xs font-semibold transition flex items-center gap-2 cursor-pointer ${view === 'blocked' ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]'}`}
             >
@@ -351,11 +356,11 @@ export default function AdminSampleRequestsPage() {
             </button>
           </div>
 
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2.5 lg:w-auto lg:justify-end">
+          <div className="sample-filter-controls">
             {view === 'requests' && (
               <>
                 {/* Search input */}
-                <div className="relative w-full min-w-0 sm:w-64">
+                <div className="sample-search relative min-w-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7D715E]" />
                   <input
                     type="text"
@@ -366,16 +371,18 @@ export default function AdminSampleRequestsPage() {
                   />
                   {searchQuery && (
                     <button
+                      type="button"
+                      aria-label="Xóa từ khóa tìm kiếm"
                       onClick={() => setSearchQuery('')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#7D715E] hover:text-[#1A1612]"
                     >
-                      ✕
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
 
                 {/* Status filter dropdown */}
-                <div className="w-full min-w-0 sm:w-52">
+                <div className="sample-status-filter min-w-0">
                   <Select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value)}
@@ -430,7 +437,7 @@ export default function AdminSampleRequestsPage() {
                 return (
                   <article
                     key={creator.id}
-                    className="rounded-xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_8px_rgba(35,29,21,0.025)]"
+                    className="sample-blocked-card rounded-xl border border-[#EAE4D7] bg-white p-4"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div className="flex items-start gap-3.5">
@@ -448,8 +455,8 @@ export default function AdminSampleRequestsPage() {
                             </span>
                           </div>
                           <div className="text-xs text-[#7D715E] mt-0.5 flex items-center gap-2 flex-wrap">
-                            <span>📧 {creator.email}</span>
-                            {creator.phoneNumber && <span>📞 {creator.phoneNumber}</span>}
+                            <span className="inline-flex min-w-0 items-center gap-1.5 break-all"><Mail className="h-3.5 w-3.5 shrink-0" />{creator.email}</span>
+                            {creator.phoneNumber && <span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{creator.phoneNumber}</span>}
                           </div>
                           <div className="mt-2.5 p-2.5 rounded-xl bg-rose-50/70 border border-rose-100 text-xs text-rose-800">
                             <strong>Lý do hệ thống khóa:</strong> {entry.sampleRequestsBlockReason || 'Quá hạn nộp video cam kết nhiều lần mà không hoàn thành nghĩa vụ.'}
@@ -508,7 +515,7 @@ export default function AdminSampleRequestsPage() {
           </div>
         ) : (
           /* RICH SAMPLE REQUEST CARDS LIST */
-          <div className="space-y-4">
+          <div className="sample-request-list space-y-4">
             {filteredRequests.map((request) => {
               const statusCfg = STATUS_CONFIGS[request.status] || {
                 label: request.status,
@@ -537,37 +544,47 @@ export default function AdminSampleRequestsPage() {
               const tierName = kolProfile?.tier?.name || 'KOL Tiếp thị';
 
               return (
-                <article key={request.id} className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white p-4 text-left shadow-[0_2px_8px_rgba(35,29,21,0.025)]">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                <article key={request.id} data-status={request.status} className="sample-request-card min-w-0 rounded-xl border border-[#EAE4D7] bg-white p-4 text-left">
+                  <div className="sample-card-heading flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ' + statusCfg.badgeBg + ' ' + statusCfg.badgeText + ' ' + statusCfg.badgeBorder}><StatusIcon className="h-3 w-3" />{statusCfg.label}</span>
+                      <span className={'sample-status-badge inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ' + statusCfg.badgeBg + ' ' + statusCfg.badgeText + ' ' + statusCfg.badgeBorder}><StatusIcon className="h-3 w-3" />{statusCfg.label}</span>
                       <span className="text-[11px] text-[#7D715E]">{new Date(request.createdAt).toLocaleDateString('vi-VN')}</span>
                       <code className="text-[10px] text-[#7D715E]" title={request.id}>#{request.id.slice(0,8).toUpperCase()}</code>
                     </div>
                     <span className="text-xs text-[#7D715E]">Giá mẫu <strong className="ml-1 text-sm font-semibold text-[#1A1612]">{formatMoney(request.productVariant?.price ?? request.product?.price)}</strong></span>
                   </div>
-                  <div className="mt-3 grid min-w-0 grid-cols-1 gap-4 border-t border-[#EAE4D7] pt-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                    <div className="flex min-w-0 items-start gap-3">
+                  <div className="sample-card-body mt-3 grid min-w-0 grid-cols-1 gap-4 border-t border-[#EAE4D7] pt-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                    <div className="sample-product flex min-w-0 items-start gap-3">
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[#EAE4D7] bg-[#FAF8F5]"><Package className="absolute inset-0 m-auto h-5 w-5 text-[#C59B58]" /><img src={prodImage} alt={request.product?.title || 'Sản phẩm mẫu'} className="relative h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none'; }} /></div>
                       <div className="min-w-0"><h2 className="text-sm font-semibold leading-5 text-[#1A1612] line-clamp-2" title={request.product?.title}>{request.product?.title || 'Sản phẩm mẫu'}</h2>{request.productVariant?.name && <p className="mt-1 text-[11px] text-[#8C6226]">{request.productVariant.name}</p>}<p className="mt-1 flex items-center gap-1 text-[11px] text-[#7D715E]"><Store className="h-3 w-3 shrink-0" /><span className="truncate" title={request.product?.store?.name}>{request.product?.store?.name || 'Gian hàng SCANMS'}</span></p></div>
                     </div>
-                    <div className="min-w-0 lg:border-l lg:border-[#EAE4D7] lg:pl-4"><p className="text-[11px] text-[#7D715E]">Nhà sáng tạo</p><p className="mt-1 text-xs font-semibold leading-5 text-[#1A1612]">{request.collaborator?.fullName || 'KOL tiếp thị'}</p><p className="mt-0.5 truncate text-[11px] text-[#7D715E]" title={request.collaborator?.email}>{request.collaborator?.email || 'Chưa có email'}</p><span className="mt-1 inline-block text-[10px] text-[#8C6226]">{tierName}</span></div>
-                    <div className="min-w-0 md:col-span-2 lg:col-span-1 lg:border-l lg:border-[#EAE4D7] lg:pl-4">
+                    <div className="sample-creator min-w-0">
+                      <p className="sample-field-label">Nhà sáng tạo</p>
+                      <div className="sample-creator-identity">
+                        <span className="sample-creator-avatar" aria-hidden="true">{(request.collaborator?.fullName || 'K')[0].toUpperCase()}</span>
+                        <div className="min-w-0">
+                          <p className="sample-creator-name">{request.collaborator?.fullName || 'KOL tiếp thị'}</p>
+                          <p className="sample-creator-email truncate" title={request.collaborator?.email}>{request.collaborator?.email || 'Chưa có email'} <span>· {tierName}</span></p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="sample-deadlines min-w-0 md:col-span-2 lg:col-span-1">
                       <dl className="space-y-1.5 text-xs"><div className="flex flex-wrap justify-between gap-2"><dt className="text-[#7D715E]">Dự kiến đăng</dt><dd className="font-medium">{request.expectedVideoAt ? new Date(request.expectedVideoAt).toLocaleDateString('vi-VN') : 'Chưa thiết lập'}</dd></div><div className="flex flex-wrap justify-between gap-2"><dt className="text-[#7D715E]">{revisionStage ? 'Hạn sửa video' : 'Hạn nộp video'}</dt><dd className={request.status === 'OVERDUE' ? 'font-semibold text-[#DC2626]' : 'font-medium'}>{activeDeadline ? new Date(activeDeadline).toLocaleDateString('vi-VN') : 'Chưa xác lập'}</dd></div></dl>
                       {request.videoUrl && <a href={request.videoUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[#8C6226] hover:underline"><Video className="h-3.5 w-3.5" />Xem video<ExternalLink className="h-3 w-3" /></a>}
                       {request.status === 'OVERDUE' && <p className="mt-2 text-[11px] text-[#DC2626]">Quá hạn nộp video · Cần xử lý</p>}
                     </div>
                   </div>
                   {(request.rejectedReason || request.videoRejectionReason) && <div className="mt-3 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs leading-5 text-[#7D715E]">{request.rejectedReason && <p>Ghi chú xử lý: {request.rejectedReason}</p>}{request.videoRejectionReason && <p>Yêu cầu sửa video: {request.videoRejectionReason}</p>}</div>}
-                  <details className="mt-3 border-t border-[#EAE4D7] pt-2.5 text-xs">
-                    <summary className="w-fit cursor-pointer font-medium text-[#8C6226]">Thông tin giao nhận & kênh cam kết</summary>
+                  <div className="sample-card-footer">
+                  <details className="sample-delivery-details text-xs">
+                    <summary className="w-fit cursor-pointer font-medium text-[#7D715E]">Giao nhận &amp; kênh cam kết</summary>
                     <div className="mt-3 grid gap-3 rounded-lg bg-[#FAF8F5] p-3 sm:grid-cols-2 text-[#7D715E] leading-5">
                       <div><p className="flex items-start gap-1"><MapPin className="mt-1 h-3 w-3 shrink-0" /><span>{request.recipientName || 'Người nhận'} · {request.recipientPhone || 'Chưa có số điện thoại'}</span></p><p>{request.shippingAddress || 'Chưa cung cấp địa chỉ'}</p>{request.trackingNumber && <div className="mt-1 flex flex-wrap items-center gap-2"><span className="break-all">{request.carrier || 'Vận chuyển'}: {request.trackingNumber}</span><button type="button" onClick={() => copyToClipboard(request.trackingNumber, 'mã vận đơn')} className="inline-flex items-center gap-1 text-[#8C6226]"><Copy className="h-3 w-3" />Sao chép</button></div>}</div>
                       <div><p className="font-medium text-[#1A1612]">{platformBadge.name} · {request.socialChannelNameSnapshot || request.socialChannel?.channelName || 'Chưa định danh kênh'}</p><p>{Number(request.socialFollowerSnapshot ?? request.socialChannel?.followerCount ?? 0).toLocaleString('vi-VN')} người theo dõi</p><p>Tạo lúc: {new Date(request.createdAt).toLocaleString('vi-VN')}</p>{activeDeadline && <p>Hạn nộp: {new Date(activeDeadline).toLocaleString('vi-VN')}</p>}</div>
                     </div>
                   </details>
                       {/* Admin Resolution Action Buttons */}
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="sample-card-actions flex flex-wrap items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => setSelectedHistoryRequest(request)}
@@ -616,13 +633,14 @@ export default function AdminSampleRequestsPage() {
                           )}
 
                           {request.status === 'COMPLETED' && (
-                            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-[#059669] bg-white px-2.5 py-1 rounded-lg border border-[#EAE4D7]">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#7D715E] bg-white px-2.5 py-1 rounded-lg border border-[#EAE4D7]">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-[#059669]" />
                               <span>Hoàn tất</span>
                             </span>
                           )}
                         </div>
                       </div>
+                  </div>
                 </article>
               );
             })}
@@ -816,7 +834,7 @@ export default function AdminSampleRequestsPage() {
                   <History className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-[#1A1612] m-0">Lịch sử sự kiện & Video nộp</h2>
+                  <h2 className="text-sm font-semibold text-[#1A1612] m-0">Lịch sử yêu cầu &amp; video</h2>
                   <p className="text-xs text-[#7D715E] mt-0.5 m-0">
                     Đơn mẫu #{selectedHistoryRequest.id.slice(0, 8).toUpperCase()} • {selectedHistoryRequest.product?.title}
                   </p>

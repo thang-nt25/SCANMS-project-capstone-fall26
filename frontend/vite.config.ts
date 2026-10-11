@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 
+const devPort = Number(process.env.VITE_DEV_PORT || 5173);
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -13,13 +15,13 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
-    port: 5173,
+    port: devPort,
     strictPort: true,
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
     },
     hmr: {
-      clientPort: 5173,
+      clientPort: devPort,
     },
     proxy: {
       "/api": {
