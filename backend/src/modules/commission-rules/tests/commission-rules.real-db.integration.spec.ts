@@ -131,7 +131,7 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
     await safeDelete(() =>
       prisma.wallet.updateMany({
         where: { collaboratorId: testKolId },
-        data: { availableBalance: 0, pendingBalance: 0, totalWithdrawn: 0 },
+        data: { availableBalance: 0, pendingBalance: 0 },
       }),
     );
     await safeDelete(() =>

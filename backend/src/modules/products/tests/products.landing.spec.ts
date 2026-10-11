@@ -253,12 +253,14 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
 
     // Tên phải được che một phần theo chuẩn FR-15
     const rev1 = result.reviews.items.find((i: any) => i.id === 'rev-1');
-    expect(rev1.customerName).toBe('Nguyễn Đ*** T***');
-    expect(rev1.isVerifiedBuyer).toBe(true); // Chỉ đơn COMPLETED được xác minh đánh giá
+    expect(rev1).toBeDefined();
+    expect(rev1!.customerName).toBe('Nguyễn Đ*** T***');
+    expect(rev1!.isVerifiedBuyer).toBe(true); // Chỉ đơn COMPLETED được xác minh đánh giá
 
     const rev2 = result.reviews.items.find((i: any) => i.id === 'rev-2');
-    expect(rev2.customerName).toBe('Trần V*** N***');
-    expect(rev2.isVerifiedBuyer).toBe(false); // PENDING order is NOT verified buyer
+    expect(rev2).toBeDefined();
+    expect(rev2!.customerName).toBe('Trần V*** N***');
+    expect(rev2!.isVerifiedBuyer).toBe(false); // PENDING order is NOT verified buyer
 
     // 5. Kiểm tra Video review có KOL thật và nhãn minh bạch
     expect(result.videos.length).toBe(1);

@@ -17,7 +17,8 @@ import type { AuthenticatedUser } from '../../common/interfaces/authenticated-re
 import { WalletSummaryService } from './wallet-summary.service';
 import { WalletsService } from './wallets.service';
 import { QueryLedgerDto } from './dto/query-ledger.dto';
-import { IsInt, Max, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { WalletPayosService } from './wallet-payos.service';
 
 class PayosTopUpDto {
@@ -28,7 +29,25 @@ class PayosTopUpDto {
 }
 
 class TopUpDemoDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(50000000)
   amount: number;
+}
+
+class UpdateBankAccountDto {
+  @IsString()
+  @IsNotEmpty()
+  bankName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  bankAccountNumber: string;
+
+  @IsString()
+  @IsNotEmpty()
+  bankAccountName: string;
 }
 
 @ApiTags('Wallets')
@@ -78,7 +97,7 @@ export class WalletsController {
   @ApiOperation({ summary: 'Cập nhật tài khoản ngân hàng nhận tiền của KOL' })
   updateBankAccount(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { bankName: string; bankAccountNumber: string; bankAccountName: string },
+    @Body() body: UpdateBankAccountDto,
   ) {
     return this.summaryService.updateBankAccount(user.id, body);
   }

@@ -406,6 +406,38 @@
 
 ---
 
+### [2026-10-11] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (Tối ưu Form Sản Phẩm Gian Hàng, Tinh gọn UI AI Fraud & Audit Logs cho Người Dùng Cuối, và Chuẩn hóa Phân Quyền Menu Điều Hướng)
+- **Hạng mục đã thực hiện**:
+  1. **Tái thiết kế & Mở rộng Form Thêm/Cập nhật Sản phẩm (`ProductManagementPage.tsx`, `.css`)**:
+     - Mở rộng form gấp đôi (full-width), bố cục 2 cột cân xứng trái phải hoàn hảo; lược bỏ các đoạn văn bản hướng dẫn rườm rà.
+     - Cho phép thêm ảnh sản phẩm tự do (bắt buộc 1 ảnh chính 1:1, ảnh phụ không giới hạn).
+     - Bổ sung ô nhập Giá gốc (giá niêm yết) và Giá bán khuyến mãi trực tiếp, tự động tính và hiển thị % giảm giá nổi bật.
+     - Bố cục 6 khối logic chuẩn sàn TMĐT: Thông tin cơ bản, Thư viện ảnh/video, Biến thể & Kho hàng, Quy cách đóng gói/Vận chuyển, Chính sách KOL, Pháp lý & Giấy tờ kiểm duyệt.
+  2. **Tinh gọn & Việt hóa toàn diện Trang AI Chống Gian Lận Traffic (`AiFraudSentinelPage.tsx`)**:
+     - Thay thế toàn bộ thuật ngữ máy chủ/dev (`Zombie Traffic`, `Click Burst Bot`, `IP Cluster`, `CR`, `CDN & Redis`) bằng thuật ngữ thương mại điện tử thuần Việt thân thiện với người dùng cuối.
+     - 4 thẻ KPI chỉ số rõ ràng: Tổng lượt click đã quét, Cảnh báo đáng ngờ, Hoa hồng giữ an toàn, Tỷ lệ khách thật.
+     - Bảng theo dõi và modal thao tác trực diện: Tạm khóa hoa hồng, Tạm ngưng link, Bỏ qua cảnh báo (Khách thật).
+  3. **Chuẩn hóa & Thân thiện hóa Trang Nhật Ký Hoạt Động / Kiểm Toán (`AuditLogsPage.tsx`)**:
+     - Ẩn khối JSON thô rườm rà, thay bằng bảng thuộc tính 2 cột thân thiện hiển thị rõ số tiền VND và trạng thái.
+     - Việt hóa 100% tên hành động (loại bỏ hoàn toàn các mã event viết hoa tiếng Anh như `ANALYTICS_PAGE_VIEW`).
+     - Đưa khối JSON kỹ thuật gốc vào mục mở rộng thu gọn `[+] Xem dữ liệu kỹ thuật gốc (JSON)` cho đội ngũ kỹ thuật.
+  4. **Chuẩn hóa Phân Quyền & Vai Trò Điều Hướng (`navigation.config.ts`, `AppRoutes.tsx`, `Sidebar.tsx`)**:
+     - Thu hồi hoàn toàn 2 mục *AI Chống gian lận traffic* và *Nhật ký kiểm toán* khỏi menu của Chủ Shop (`SHOP_MANAGER`), đưa về đúng bổn phận của Quản trị sàn.
+     - Quy về 2 vai trò quản trị: `SYSTEM_ADMIN` (Quản trị tối cao) và `SYSTEM_MANAGER` (Chuyên viên vận hành sàn).
+     - Lược bỏ mục thừa `/merchant/products` khỏi menu `SYSTEM_MANAGER`.
+     - Đổi tên `/admin/sample-requests` thành *Trọng tài hàng mẫu KOL*.
+     - Tự động chuyển hướng và chặn truy cập trái phép đối với các route quản trị sàn.
+  5. **Khắc phục Lỗi API Ví Sandbox (`wallets.controller.ts`)**:
+     - Sửa lỗi nạp tiền demo phục vụ kiểm thử đơn hàng và luồng luân chuyển dòng tiền.
+- **Màn hình UI**: `frontend/src/pages/merchant/ProductManagementPage.tsx`, `frontend/src/pages/merchant/AiFraudSentinelPage.tsx`, `frontend/src/pages/admin/AuditLogsPage.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/config/navigation.config.ts`, `frontend/src/routes/AppRoutes.tsx`
+- **API Endpoint**: `POST /api/wallets/top-up-demo`, `GET /api/v1/audit/logs`, `GET /api/v1/audit/stats`, `POST /api/v1/products`
+- **Backend File**: `backend/src/modules/wallets/wallets.controller.ts`, `backend/src/modules/audit/audit.service.ts`
+- **CSDL**: Bảng `products`, `product_variants`, `wallets`, `wallet_transactions`, `audit_logs`
+- **Ghi chú**: Đã kiểm tra build Frontend (`vite build`) và Backend (`nest build`) thành công 100% với 0 lỗi, kiểm thử trực quan trên trình duyệt mượt mà.
+
+---
+
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:
 
 Mỗi khi bạn hoặc thành viên trong nhóm hoàn thành một đoạn code / màn hình UI / API mới, chỉ cần gõ lệnh:

@@ -8,6 +8,7 @@ import { NotificationDropdown } from './NotificationDropdown';
 import './Topbar.css';
 import { ScanMSLogo } from '../common/ScanMSLogo';
 import { HeaderAccountButton } from './HeaderAccountButton';
+import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
@@ -155,6 +156,8 @@ export function Topbar({
 
         {/* Right: Actions, Switcher, Notifications & User Card */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <WorkspaceSwitcher variant="header" />
+
           <div className="topbar-system-status hidden lg:inline-flex" title="Hệ thống trực tuyến">
             <span className="topbar-system-status-mark" aria-hidden="true"><span /></span>
             <span className="topbar-system-status-label">Hệ thống <strong>trực tuyến</strong></span>
