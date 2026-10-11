@@ -100,9 +100,9 @@ export default function SamplesPage() {
           </button>
           <button
             type="button"
-            className="btn"
+            className="btn scanms-brand-action"
             onClick={() => setShowRequestModal(true)}
-            style={{ background: 'var(--brand)', color: '#231D15', border: 'none', padding: '9px 18px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ background: 'var(--action-bg)', color: 'var(--action-ink)', border: '1px solid var(--action-border)', padding: '9px 18px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <i className="ph ph-plus"></i> Xin mẫu mới
           </button>
@@ -360,7 +360,7 @@ export default function SamplesPage() {
                     showToast('Đã gửi yêu cầu nhận hàng mẫu tới Shop!');
                     setShowRequestModal(false);
                   }}
-                  style={{ padding: '10px', borderRadius: '8px', border: 'none', background: 'var(--brand)', color: '#231D15', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--action-border)', background: 'var(--action-bg)', color: 'var(--action-ink)', fontWeight: 700, cursor: 'pointer' }} className="scanms-brand-action"
                 >
                   Gửi yêu cầu
                 </button>

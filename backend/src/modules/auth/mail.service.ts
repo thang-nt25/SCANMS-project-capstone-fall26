@@ -31,6 +31,7 @@ export class MailService {
     publicOrderCode: string;
     finalAmount: number;
     paymentMethod: string;
+    paymentStatus?: string;
     storeName: string;
   }) {
     const webUrl = (
@@ -47,19 +48,25 @@ export class MailService {
         ? 'PayOS'
         : input.paymentMethod === 'VIETQR'
           ? 'VietQR'
-          : 'COD';
+          : input.paymentMethod === 'WALLET' ? 'Ví SCANMS' : 'COD';
+    const awaitingPayosPayment = input.paymentMethod === 'PAYOS' && input.paymentStatus !== 'PAID';
+    const heading = awaitingPayosPayment ? 'Đơn hàng chờ thanh toán' : 'Đơn hàng đã được tạo';
+    const paymentNotice = awaitingPayosPayment
+      ? 'Đơn hàng chưa thanh toán. Vui lòng quét mã QR PayOS; trạng thái chỉ cập nhật khi PayOS xác nhận đã nhận đủ tiền.'
+      : input.paymentStatus === 'PAID' ? 'Thanh toán đã được xác nhận.' : '';
     const amount = new Intl.NumberFormat('vi-VN').format(input.finalAmount);
     const subject = `[SCANMS] Xác nhận đơn hàng ${input.publicOrderCode}`;
     const html = `
       <div style="font-family:Arial,sans-serif;background:#FAF8F5;padding:30px;color:#1A1612">
         <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #EAE4D7;border-radius:16px;padding:28px">
           <div style="font-size:24px;font-weight:800;color:#B88E4F;text-align:center">SCANMS</div>
-          <h1 style="font-size:20px;text-align:center;margin:18px 0 8px">Đặt hàng thành công</h1>
+          <h1 style="font-size:20px;text-align:center;margin:18px 0 8px">${heading}</h1>
           <p style="color:#7D715E;line-height:1.6">Xin chào <strong>${name}</strong>, đơn hàng của bạn tại <strong>${storeName}</strong> đã được ghi nhận.</p>
           <div style="background:#FBF5EB;border:1px solid #EEDFC6;border-radius:12px;padding:16px;line-height:1.8">
             <div>Mã đơn: <strong>${orderCode}</strong></div>
             <div>Tổng thanh toán: <strong>${amount} ₫</strong></div>
             <div>Phương thức: <strong>${paymentMethod}</strong></div>
+            ${paymentNotice ? `<div>${paymentNotice}</div>` : ''}
           </div>
           <div style="text-align:center;margin-top:22px">
             <a href="${trackingUrl}" style="display:inline-block;background:#C59B58;color:#FFFFFF;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px">Theo dõi đơn hàng</a>
@@ -72,7 +79,7 @@ export class MailService {
       input.email,
       subject,
       html,
-      `Đơn hàng ${input.publicOrderCode} đã được ghi nhận. Tổng thanh toán: ${amount} ₫. Theo dõi tại: ${trackingUrl}`,
+      `Đơn hàng ${input.publicOrderCode} đã được ghi nhận. ${paymentNotice} Tổng thanh toán: ${amount} ₫. Theo dõi tại: ${trackingUrl}`,
     );
   }
 

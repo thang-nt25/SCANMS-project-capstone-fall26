@@ -14,7 +14,7 @@ export class TiersController {
 
   @Get()
   @ApiOperation({
-    summary: 'Lấy bảng danh mục 4 cấp bậc KOL (Đồng, Bạc, Vàng, Kim Cương)',
+    summary: 'Lấy danh mục chính sách cấp bậc KOL đang được cấu hình',
   })
   async getAllTiers() {
     return this.tiersService.getAllTiers();

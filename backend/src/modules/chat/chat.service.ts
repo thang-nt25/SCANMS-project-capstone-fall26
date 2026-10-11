@@ -747,6 +747,7 @@ export class ChatService {
         fullName: true,
         email: true,
         phoneNumber: true,
+        avatarUrl: true,
         collaboratorProfile: {
           select: {
             avatarUrl: true,
@@ -773,7 +774,7 @@ export class ChatService {
 
     return list.map((u) => ({
       ...u,
-      avatarUrl: u.collaboratorProfile?.avatarUrl || null,
+      avatarUrl: u.collaboratorProfile?.avatarUrl || u.avatarUrl || null,
     }));
   }
 

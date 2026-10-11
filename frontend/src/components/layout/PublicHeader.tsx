@@ -6,7 +6,6 @@ import {
   Package,
   User,
   LogOut,
-  ChevronRight,
   Store,
   Sparkles,
   Shield,
@@ -22,13 +21,12 @@ import {
   Loader2,
 } from 'lucide-react';
 import { ScanMSLogo } from '../common/ScanMSLogo';
+import { HeaderAccountButton } from './HeaderAccountButton';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
-import { ChatBell } from '../chat/ChatBell';
 import { NotificationDropdown } from './NotificationDropdown';
-import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface PublicHeaderProps {
   cartCount?: number;
@@ -176,19 +174,19 @@ export function PublicHeader({
   const storeName = currentUser?.stores?.[0]?.name || 'Gian Hàng Đối Tác';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
+    <header className="scanms-site-header sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
       <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
-            <ScanMSLogo size="md" />
+            <ScanMSLogo size="md" className="scanms-header-logo" />
           </Link>
         </div>
 
         {/* Center: Search Form - SCANMS Standard Minimalist with Gold Tone */}
         <form
           onSubmit={handleSearch}
-          className="hidden md:flex min-w-[280px] w-full flex-1 max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-2 sm:mx-6 items-center rounded-[3px] border border-[#EAE4D7] bg-white p-[3px] shadow-2xs transition-all duration-200 focus-within:border-[#C59B58]"
+          className="hidden lg:flex min-w-0 w-full flex-1 max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-2 items-center rounded-[3px] border border-[#EAE4D7] bg-white p-[3px] shadow-2xs transition-all duration-200 focus-within:border-[#C59B58]"
         >
           <div className="flex min-w-0 flex-1 items-center px-3.5">
             <input
@@ -262,55 +260,24 @@ export function PublicHeader({
           {/* Trung tâm thông báo & Live stream notification cho toàn bộ Khách hàng & Người dùng */}
           <NotificationDropdown />
 
-          {isCustomer && currentUser?.id && <ChatBell userId={currentUser.id} />}
-
           {/* AUTHENTICATION & ROLE SECTION */}
           {currentUser ? (
             /* Logged in User Profile & Workspace Link */
             <div className="flex items-center gap-2">
-              {/* Nút chuyển đổi vai trò 1-chạm thống nhất toàn sàn cho cả 3 role */}
-              <WorkspaceSwitcher variant="header" />
-
-              {/* User Dropdown Pill - Framed VIP Card */}
+              {/* Shared account trigger for every role */}
               <div className="relative" ref={userMenuRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className={`flex items-center gap-2 sm:gap-2.5 pl-1.5 pr-3 py-1.5 sm:pl-2 sm:pr-3.5 sm:py-1.5 rounded-2xl bg-white/95 border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group active:scale-[0.98] min-w-[160px] sm:min-w-[190px] ${
-                    isUserMenuOpen
-                      ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 bg-[#FAF8F5]'
-                      : 'border-[#EAE4D7] hover:border-[#C59B58]/60 hover:bg-[#FAF8F5]'
-                  }`}
-                  title="Xem thông tin tài khoản và đăng xuất"
-                >
-                  <div className="relative shrink-0">
-                    {currentUser.avatarUrl ? (
-                      <img
-                        src={currentUser.avatarUrl}
-                        alt={currentUser.fullName || 'Avatar'}
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 border border-[#E8D4B0] shadow-2xs"
-                      />
-                    ) : (
-                      <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#FAF0DD] to-[#F3EFE6] text-[#8C6226] flex items-center justify-center font-black text-xs shrink-0 border border-[#E8D4B0] shadow-2xs">
-                        {currentUser.fullName?.[0]?.toUpperCase() || 'U'}
-                      </span>
-                    )}
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#059669] border-2 border-white" />
-                  </div>
-                  <div className="text-left hidden md:block max-w-[130px] sm:max-w-[155px] flex-1 min-w-0">
-                    <strong className="block text-xs font-bold text-[#1A1612] truncate leading-none mb-1">
-                      {currentUser.fullName || currentUser.email}
-                    </strong>
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[#FAF0DD] border border-[#E8D4B0] text-[9.5px] font-black text-[#8C6226] truncate leading-none">
-                      {isCustomer ? '🛍️ Khách Mua' : isKol ? '⭐ KOL/KOC' : isShop ? `🏪 ${storeName}` : '🛡️ Admin'}
-                    </span>
-                  </div>
-                  <ChevronRight className={`w-3.5 h-3.5 text-[#7D715E] shrink-0 transition-transform duration-200 group-hover:text-[#B88E4F] ml-auto ${isUserMenuOpen ? 'rotate-90 text-[#B88E4F]' : ''}`} />
-                </button>
+                <HeaderAccountButton
+                  user={currentUser}
+                  role={currentUser.role}
+                  expanded={isUserMenuOpen}
+                  menuId="public-account-menu"
+                  detail={isShop ? storeName : undefined}
+                  onClick={() => setIsUserMenuOpen((open) => !open)}
+                />
 
                 {/* Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+                  <div id="public-account-menu" className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
                     {/* User Identity Box with Avatar Upload */}
                     <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] mb-2">
                       <div className="flex items-center gap-2.5">
@@ -555,8 +522,8 @@ export function PublicHeader({
         </div>
       </div>
 
-      {/* Mobile search bar */}
-      <div className="md:hidden px-4 pb-3 pt-1 border-t border-[#F3EFE6] bg-[#FFFEFC]">
+      {/* Search row for mobile and tablet */}
+      <div className="lg:hidden px-4 pb-3 pt-1 border-t border-[#F3EFE6] bg-[#FFFEFC]">
         <form
           onSubmit={handleSearch}
           className="flex min-w-0 items-center rounded-[3px] border border-[#EAE4D7] bg-white p-[2px] shadow-2xs focus-within:border-[#C59B58]"

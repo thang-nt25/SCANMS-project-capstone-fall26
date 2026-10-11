@@ -1,0 +1,77 @@
+.creator-account { container: creator-account / inline-size; min-width: 0; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; color: #1A1612; text-align: left; box-shadow: 0 2px 6px #231D1503; }
+.creator-account-heading { display: flex; align-items: center; gap: 10px; padding: 15px 18px; border-bottom: 1px solid #EAE4D7; }
+.creator-account-heading-icon { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px; background: #FBF5EB; color: #B88E4F; }
+#creator-profile-hub .creator-account-heading h1 { margin: 0; font-size: 18px; line-height: 1.4; font-weight: 650; letter-spacing: -.35px; }
+.creator-account-heading p { margin: 3px 0 0; color: #7D715E; font-size: 12px; line-height: 1.5; }
+.creator-account-body { display: grid; grid-template-columns: minmax(0, 1fr) 225px; align-items: stretch; gap: 24px; padding: 18px; }
+.creator-account-form { min-width: 0; }
+.creator-account-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px 20px; }
+.creator-account-field { min-width: 0; margin: 0; padding: 0; border: 0; }
+.creator-account-field > label, .creator-account-label, .creator-account-field legend { display: block; margin: 0 0 6px; padding: 0; color: #7D715E; font-size: 12px; line-height: 1.5; font-weight: 500; }
+.creator-account-field input:not([type='radio']) { width: 100%; min-width: 0; height: 38px; padding: 8px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #1A1612; font-size: 13px; font-family: inherit; transition: border-color 150ms; }
+.creator-account-field input:not([type='radio']):focus { border-color: #C59B58; outline: none; box-shadow: 0 0 0 3px #C59B5815; }
+.creator-account-field input::placeholder { color: #A89D8E; }
+.creator-account-readonly { display: flex; align-items: center; min-height: 38px; padding: 8px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FAF8F5; font-size: 13px; font-weight: 550; overflow-wrap: anywhere; }
+.creator-account-hint { margin: 5px 0 0; font-size: 10px; line-height: 1.5; color: #7D715E; }
+.creator-account-contact { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 4px 5px 4px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FAF8F5; }
+.creator-account-contact > span { flex: 1; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+.creator-account-contact button, .creator-account-phone-editor button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; min-height: 28px; padding: 5px 8px; border: 1px solid #EAE4D7; border-radius: 6px; background: #FFFFFF; color: #7D715E; font-size: 11px; font-weight: 500; cursor: pointer; }
+.creator-account-contact button svg { color: #B88E4F; }
+.creator-account-contact button:hover, .creator-account-phone-editor button:hover { background: #FBF5EB; border-color: #EEDFC6; color: #1A1612; }
+.creator-account-phone-editor { display: flex; align-items: center; gap: 6px; }
+.creator-account-phone-editor button { min-height: 38px; background: #FBF5EB; border-color: #EEDFC6; color: #1A1612; }
+.creator-account-genders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.creator-account-genders label { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 8px; border: 1px solid #EAE4D7; border-radius: 8px; color: #7D715E; font-size: 12px; cursor: pointer; }
+.creator-account-genders label:has(input:checked) { background: #FBF5EB; border-color: #EEDFC6; color: #1A1612; }
+.creator-account-genders input { width: 13px; height: 13px; margin: 0; accent-color: #C59B58; cursor: pointer; }
+.creator-account-birthday { display: grid; grid-template-columns: 1fr 1.08fr 1.12fr; gap: 7px; }
+.creator-account-birthday > div { width: 100%; min-width: 0; }
+.creator-account-birthday button[aria-haspopup] { width: 100%; min-width: 0; min-height: 38px; height: 38px; padding: 8px 9px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; font-size: 12px; font-weight: 500; box-shadow: none; }
+.creator-account-birthday button[aria-haspopup] > span { padding-right: 0; }
+.creator-account-birthday button[aria-haspopup] > svg { width: 13px; height: 13px; }
+.creator-account-birthday [role='listbox'] { min-width: 100%; border-radius: 8px; }
+.creator-account-birthday [role='option'] { padding: 8px; font-size: 11px; }
+.creator-account-avatar-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-width: 0; padding: 16px 12px; border: 1px solid #EAE4D7; border-radius: 10px; background: #FAF8F5; }
+.creator-account-avatar-panel h2 { margin: 0; color: #7D715E; font-size: 12px; font-weight: 500; }
+.creator-account-avatar { position: relative; display: grid; place-items: center; flex-shrink: 0; width: 86px; height: 86px; border: 1px solid #EAE4D7; border-radius: 50%; background: #FFFFFF; color: #B88E4F; cursor: pointer; }
+.creator-account-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.creator-account-avatar:hover { border-color: #C59B58; }
+.creator-account-camera { position: absolute; right: -1px; bottom: 1px; display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid #EEDFC6; border-radius: 50%; background: #FBF5EB; color: #B88E4F; }
+.creator-account-avatar-controls { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.creator-account-avatar-controls p { margin: 0; color: #7D715E; font-size: 10px; line-height: 1.6; text-align: center; }
+.creator-account .creator-account-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 12px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #1A1612; font-size: 12px; font-weight: 500; cursor: pointer; transition: border-color 150ms, background-color 150ms; }
+.creator-account-button svg { color: #B88E4F; }
+.creator-account .creator-account-button:hover:not(:disabled) { background: #FBF5EB; border-color: #C59B58; }
+.creator-account button:disabled { opacity: .6; cursor: not-allowed; }
+.creator-account-file { display: none; }
+.creator-account-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; border-top: 1px solid #EAE4D7; }
+.creator-account-footer > span { display: flex; align-items: center; gap: 6px; color: #7D715E; font-size: 11px; }
+.creator-account-footer > span svg { color: #B88E4F; flex-shrink: 0; }
+.creator-account .creator-account-save { background: #FBF5EB; border-color: #EEDFC6; font-weight: 600; min-width: 142px; }
+.creator-account :is(button, input):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
+@container creator-account (max-width: 1049px) {
+  .creator-account-body { grid-template-columns: minmax(0, 1fr) 190px; gap: 18px; }
+  .creator-account-fields { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+@container creator-account (max-width: 639px) {
+  .creator-account-heading { padding: 13px 14px; align-items: flex-start; }
+  #creator-profile-hub .creator-account-heading h1 { font-size: 16px; }
+  .creator-account-heading p { font-size: 11px; }
+  .creator-account-body { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 16px; }
+  .creator-account-avatar-panel { grid-row: 1; display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 5px 12px; padding: 12px; }
+  .creator-account-avatar-panel h2 { grid-column: 2; grid-row: 1; align-self: end; }
+  .creator-account-avatar { grid-column: 1; grid-row: 1 / 3; width: 58px; height: 58px; }
+  .creator-account-camera { width: 21px; height: 21px; }
+  .creator-account-avatar-controls { grid-column: 2; grid-row: 2; align-items: flex-start; gap: 5px; }
+  .creator-account-avatar-controls p { text-align: left; font-size: 9px; }
+  .creator-account-avatar-controls .creator-account-button { min-height: 29px; padding: 4px 8px; font-size: 11px; }
+  .creator-account-fields { gap: 14px; }
+  .creator-account-footer { padding: 12px 14px; }
+  .creator-account-footer > span { font-size: 10px; }
+  .creator-account .creator-account-save { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .creator-account .creator-account-button, .creator-account input { transition: none; } }
+@container creator-account (max-width: 339px) {
+  .creator-account-birthday { gap: 5px; }
+  .creator-account-birthday button[aria-haspopup] { padding-inline: 6px; gap: 3px; font-size: 11px; }
+}

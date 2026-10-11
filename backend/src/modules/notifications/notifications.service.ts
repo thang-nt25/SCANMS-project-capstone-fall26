@@ -9,35 +9,31 @@ export interface GetNotificationsQuery {
   limit?: number;
 }
 
-const ORDER_TYPES = [
-  'ORDER_CREATED',
-  'ORDER_SHIPPING',
-  'ORDER_DELIVERED',
-  'ORDER_COMPLETED',
-  'ORDER_CANCELLED',
-  'DISPUTE_OPENED',
-  'DISPUTE_RESOLVED',
+const ORDER_TYPE_PREFIXES = ['ORDER_', 'DISPUTE_', 'RETURN_', 'LIVE_ORDER_'];
+const PROMOTION_TYPE_PREFIXES = [
+  'PROMOTION_',
+  'PROMO_',
+  'VOUCHER_',
+  'CAMPAIGN_',
+  'LIVE_SESSION_',
 ];
 
-const PROMOTION_TYPES = [
-  'PROMOTION_COUPON',
-  'VOUCHER_RECEIVED',
-  'FLASH_SALE',
-  'CAMPAIGN_INVITE',
-  'PROMO_DISCOUNT',
-  'VOUCHER_EXPIRED',
-  'LIVE_SESSION_BROADCAST',
-];
+function getCategoryFilter(category: Exclude<NotificationCategory, 'ALL'>) {
+  const orderFilters = ORDER_TYPE_PREFIXES.map((prefix) => ({
+    type: { startsWith: prefix },
+  }));
+  const promotionFilters = [
+    ...PROMOTION_TYPE_PREFIXES.map((prefix) => ({
+      type: { startsWith: prefix },
+    })),
+    { type: { contains: 'COUPON' } },
+    { type: 'FLASH_SALE' },
+  ];
 
-const SYSTEM_TYPES = [
-  'KYC_SUBMITTED',
-  'KYC_VERIFIED',
-  'KYC_REJECTED',
-  'SECURITY_ALERT',
-  'SYSTEM_NOTICE',
-  'WELCOME',
-  'PARTNER_UPGRADE',
-];
+  if (category === 'ORDER') return { OR: orderFilters };
+  if (category === 'PROMOTION') return { OR: promotionFilters };
+  return { NOT: [...orderFilters, ...promotionFilters] };
+}
 
 @Injectable()
 export class NotificationsService {
@@ -125,19 +121,8 @@ export class NotificationsService {
     const skip = (page - 1) * limit;
 
     const whereClause: any = { userId };
-
     if (query?.category && query.category !== 'ALL') {
-      switch (query.category) {
-        case 'ORDER':
-          whereClause.type = { in: ORDER_TYPES };
-          break;
-        case 'PROMOTION':
-          whereClause.type = { in: PROMOTION_TYPES };
-          break;
-        case 'SYSTEM':
-          whereClause.type = { in: SYSTEM_TYPES };
-          break;
-      }
+      Object.assign(whereClause, getCategoryFilter(query.category));
     }
 
     const [
@@ -157,13 +142,13 @@ export class NotificationsService {
       this.prisma.notification.count({ where: whereClause }),
       this.prisma.notification.count({ where: { userId, isRead: false } }),
       this.prisma.notification.count({
-        where: { userId, isRead: false, type: { in: ORDER_TYPES } },
+        where: { userId, isRead: false, ...getCategoryFilter('ORDER') },
       }),
       this.prisma.notification.count({
-        where: { userId, isRead: false, type: { in: PROMOTION_TYPES } },
+        where: { userId, isRead: false, ...getCategoryFilter('PROMOTION') },
       }),
       this.prisma.notification.count({
-        where: { userId, isRead: false, type: { in: SYSTEM_TYPES } },
+        where: { userId, isRead: false, ...getCategoryFilter('SYSTEM') },
       }),
     ]);
 
@@ -191,13 +176,13 @@ export class NotificationsService {
       await Promise.all([
         this.prisma.notification.count({ where: { userId, isRead: false } }),
         this.prisma.notification.count({
-          where: { userId, isRead: false, type: { in: ORDER_TYPES } },
+          where: { userId, isRead: false, ...getCategoryFilter('ORDER') },
         }),
         this.prisma.notification.count({
-          where: { userId, isRead: false, type: { in: PROMOTION_TYPES } },
+          where: { userId, isRead: false, ...getCategoryFilter('PROMOTION') },
         }),
         this.prisma.notification.count({
-          where: { userId, isRead: false, type: { in: SYSTEM_TYPES } },
+          where: { userId, isRead: false, ...getCategoryFilter('SYSTEM') },
         }),
       ]);
 

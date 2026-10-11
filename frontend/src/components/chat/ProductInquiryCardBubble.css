@@ -1,0 +1,21 @@
+.product-chat-card { width:320px; max-width:min(100%,calc(100vw - 48px)); overflow:hidden; border:1px solid #EAE4D7; border-radius:15px; background:#FFF; color:#1A1612; text-align:left; box-shadow:0 3px 12px #231D1505; }
+.product-chat-header { display:flex; align-items:center; gap:7px; padding:11px 12px 0; }
+.product-chat-icon { display:grid; place-items:center; width:24px; height:24px; flex-shrink:0; border-radius:7px; background:#FBF5EB; color:#B88E4F; }
+.product-chat-header>strong { font-size:10px; font-weight:500; color:#7D715E; }
+.product-chat-commission { display:flex; flex-wrap:wrap; justify-content:center; gap:3px; align-items:center; margin-left:auto; padding:4px 7px; border:1px solid #EEDFC6; border-radius:99px; background:#FBF5EB; color:#8C6226; font-size:9px; line-height:13px; }
+.product-chat-commission strong { font-weight:600; }
+.product-chat-body { padding:12px; }
+.product-chat-preview { display:flex; align-items:center; gap:11px; }
+.product-chat-preview>img,.product-chat-placeholder { width:64px; height:64px; flex-shrink:0; border:1px solid #EAE4D7; border-radius:11px; background:#FAF8F5; }
+.product-chat-preview>img { object-fit:contain; padding:3px; }
+.product-chat-placeholder { display:grid; place-items:center; color:#B88E4F; }
+.product-chat-preview>div:last-child { min-width:0; }
+.product-chat-preview h4 { margin:0; font-size:12px; line-height:1.5; font-weight:600; overflow-wrap:anywhere; }
+.product-chat-sku { margin:3px 0 0; font-size:9px; line-height:1.4; color:#7D715E; overflow-wrap:anywhere; }
+.product-chat-price { display:block; margin-top:5px; font-size:13px; font-weight:600; color:#B88E4F; font-variant-numeric:tabular-nums; }
+.product-chat-message { margin:12px 0 0; padding:10px 11px; border:1px solid #F0EAE0; border-radius:10px; background:#FAF8F5; color:#7D715E; font-size:11px; line-height:1.65; white-space:pre-wrap; overflow-wrap:anywhere; }
+.product-chat-footer { padding:0 12px 12px; }
+.product-chat-footer a { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:32px; padding:7px 10px; border:1px solid #EEDFC6; border-radius:8px; background:#FBF5EB; color:#8C6226; font-size:10px; font-weight:500; text-decoration:none; transition:background .15s; }
+.product-chat-footer a svg { color:#B88E4F; flex-shrink:0; }
+.product-chat-footer a:hover { background:#F3EFE6; }
+.product-chat-footer a:focus-visible { outline:2px solid #B88E4F; outline-offset:3px; border-radius:3px; }

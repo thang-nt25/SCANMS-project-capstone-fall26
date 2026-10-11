@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ShieldCheck,
   Search,
@@ -28,6 +28,7 @@ import {
   type AuditSeverity,
 } from '../../services/audit.service';
 import { Select } from '../../components/ui/Select';
+import './AuditLogsPage.css';
 
 export const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
@@ -51,7 +52,28 @@ export const AuditLogsPage: React.FC = () => {
 
   // Selected Log for Modal
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedLog) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    detailRef.current?.focus();
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedLog(null);
+      if (event.key === 'Tab') {
+        const controls = detailRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]');
+        if (!controls?.length) return;
+        const first = controls[0]; const last = controls[controls.length - 1];
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === detailRef.current)) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    };
+    window.addEventListener('keydown', dismiss);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', dismiss); previousFocus?.focus(); };
+  }, [selectedLog]);
 
   // Debounce search keyword
   useEffect(() => {
@@ -148,10 +170,12 @@ export const AuditLogsPage: React.FC = () => {
     }
   };
 
-  const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch { toast.error('Không thể sao chép. Vui lòng thử lại.'); }
   };
 
   // Severity Badge Helper
@@ -186,13 +210,13 @@ export const AuditLogsPage: React.FC = () => {
   const getCategoryInfo = (cat: AuditCategory) => {
     switch (cat) {
       case 'AUTH':
-        return { label: 'Xác thực & IAM', icon: Lock, color: 'text-[#8A642C] bg-[#FBF5EB] border-[#EEDFC6]' };
+        return { label: 'Xác thực', icon: Lock, color: 'text-[#8A642C] bg-[#FBF5EB] border-[#EEDFC6]' };
       case 'FINANCIAL':
-        return { label: 'Tài chính & Payout', icon: DollarSign, color: 'text-[#8A642C] bg-[#FBF5EB] border-[#EEDFC6]' };
+        return { label: 'Tài chính', icon: DollarSign, color: 'text-[#8A642C] bg-[#FBF5EB] border-[#EEDFC6]' };
       case 'AI_SECURITY':
         return { label: 'An ninh & AI', icon: Sparkles, color: 'text-[#B91C1C] bg-[#FEF2F2] border-[#FECACA]' };
       case 'PRODUCT':
-        return { label: 'Sản phẩm & Media', icon: Layers, color: 'text-[#8A642C] bg-[#FBF5EB] border-[#EEDFC6]' };
+        return { label: 'Sản phẩm & nội dung', icon: Layers, color: 'text-[#8A642C] bg-[#FBF5EB] border-[#EEDFC6]' };
       case 'SAMPLE_CAMPAIGN':
         return { label: 'Chiến dịch & Hàng mẫu', icon: FileText, color: 'text-[#5F5547] bg-[#F3EFE6] border-[#EAE4D7]' };
       default:
@@ -201,20 +225,20 @@ export const AuditLogsPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-w-0 pt-4 text-[#1A1612] sm:pt-5">
-      <div className="mb-8 w-full min-w-0">
+    <div className="audit-logs-page mx-auto w-full min-w-0 max-w-[1520px] pt-4 text-[#1A1612] sm:pt-5">
+      <div className="audit-content mb-4 w-full min-w-0">
         {/* 4 KPI Cards - Nhỏ gọn, cân xứng, chuẩn 4 cột trên desktop */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+        <div className="audit-metrics grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
           {/* Card 1: Total Events */}
           <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-2xs hover:border-[#C59B58]/40 transition">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E] truncate">Tổng sự kiện đã ghi</span>
+              <span className="text-xs font-medium text-[#7D715E]">Tổng sự kiện</span>
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <FileText className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-2.5">
-              <div className="text-xl sm:text-2xl font-black tracking-tight text-[#1A1612]">
+              <div className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612]">
                 {stats?.totalEvents?.toLocaleString('vi-VN') || 0}
               </div>
               <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-[#7D715E]">
@@ -226,13 +250,13 @@ export const AuditLogsPage: React.FC = () => {
           {/* Card 2: Financial Events */}
           <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-2xs hover:border-[#C59B58]/40 transition">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E] truncate">Thao tác tài chính</span>
+              <span className="text-xs font-medium text-[#7D715E]">Tài chính</span>
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <DollarSign className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-2.5">
-              <div className="text-xl sm:text-2xl font-black tracking-tight text-[#8A642C]">
+              <div className="text-xl sm:text-2xl font-bold tracking-tight text-[#8A642C]">
                 {stats?.financialEventsCount?.toLocaleString('vi-VN') || 0}
               </div>
               <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">Duyệt payout, hoa hồng, ví tiền</div>
@@ -242,13 +266,13 @@ export const AuditLogsPage: React.FC = () => {
           {/* Card 3: Security & AI Flags */}
           <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-2xs hover:border-[#C59B58]/40 transition">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E] truncate">An ninh & AI gian lận</span>
+              <span className="text-xs font-medium text-[#7D715E]">An ninh & AI</span>
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]">
                 <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-2.5">
-              <div className="text-xl sm:text-2xl font-black tracking-tight text-[#B91C1C]">
+              <div className="text-xl sm:text-2xl font-bold tracking-tight text-[#B91C1C]">
                 {stats?.securityEventsCount?.toLocaleString('vi-VN') || 0}
               </div>
               <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">Cảnh báo traffic, đóng băng ví</div>
@@ -258,13 +282,13 @@ export const AuditLogsPage: React.FC = () => {
           {/* Card 4: Auth & Identity */}
           <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-2xs hover:border-[#C59B58]/40 transition">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E] truncate">Xác thực & quản trị</span>
+              <span className="text-xs font-medium text-[#7D715E]">Xác thực & quản trị</span>
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]">
                 <Lock className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-2.5">
-              <div className="text-xl sm:text-2xl font-black tracking-tight text-[#1A1612]">
+              <div className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612]">
                 {stats?.authEventsCount?.toLocaleString('vi-VN') || 0}
               </div>
               <div className="mt-0.5 text-[11.5px] text-[#7D715E] truncate">Đăng nhập, KYC, đổi quyền</div>
@@ -273,20 +297,22 @@ export const AuditLogsPage: React.FC = () => {
         </div>
 
         {/* Filters & Search Toolbar */}
-        <div className="mt-5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:p-5 xl:mt-6">
-          <div className="grid grid-cols-1 items-stretch gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,1fr)_220px] xl:items-center">
+        <div className="audit-filters mt-5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.035)] sm:p-5 xl:mt-6">
+          <div className="audit-filter-main">
             {/* Search Input */}
-            <div className="relative min-w-0">
+            <div className="audit-search relative min-w-0">
               <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
               <input
+                aria-label="Tìm nhật ký"
                 type="text"
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="Tìm theo Action, IP, Email hoặc Tên người thao tác..."
+                placeholder="Tìm hành động, người thực hiện, email hoặc IP..."
                 className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] pl-10 pr-10 text-sm text-[#1A1612] outline-none transition focus:border-[#C59B58] focus:bg-white"
               />
               {searchKeyword && (
                 <button
+                  aria-label="Xóa từ khóa"
                   onClick={() => setSearchKeyword('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-600 hover:text-stone-800"
                 >
@@ -296,41 +322,41 @@ export const AuditLogsPage: React.FC = () => {
             </div>
 
             {/* Filter Controls */}
-            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_180px] xl:contents">
+            <div className="audit-filter-controls">
               {/* Timeframe Selector */}
-              <div className="grid h-11 grid-cols-4 items-center gap-1 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
+              <div className="audit-timeframes">
                 <button
-                  onClick={() => setSelectedTimeframe('24h')}
+                  aria-pressed={selectedTimeframe === '24h'} onClick={() => { setSelectedTimeframe('24h'); setCurrentPage(1); }}
                   className={`h-full rounded-lg px-2 text-xs font-semibold transition-all ${
                     selectedTimeframe === '24h'
                       ? 'bg-[#C59B58] text-white shadow-sm'
                       : 'text-[#7D715E] hover:text-[#1A1612]'
                   }`}
                 >
-                  24 Giờ
+                  24 giờ
                 </button>
                 <button
-                  onClick={() => setSelectedTimeframe('7d')}
+                  aria-pressed={selectedTimeframe === '7d'} onClick={() => { setSelectedTimeframe('7d'); setCurrentPage(1); }}
                   className={`h-full rounded-lg px-2 text-xs font-semibold transition-all ${
                     selectedTimeframe === '7d'
                       ? 'bg-[#C59B58] text-white shadow-sm'
                       : 'text-[#7D715E] hover:text-[#1A1612]'
                   }`}
                 >
-                  7 Ngày
+                  7 ngày
                 </button>
                 <button
-                  onClick={() => setSelectedTimeframe('30d')}
+                  aria-pressed={selectedTimeframe === '30d'} onClick={() => { setSelectedTimeframe('30d'); setCurrentPage(1); }}
                   className={`h-full rounded-lg px-2 text-xs font-semibold transition-all ${
                     selectedTimeframe === '30d'
                       ? 'bg-[#C59B58] text-white shadow-sm'
                       : 'text-[#7D715E] hover:text-[#1A1612]'
                   }`}
                 >
-                  30 Ngày
+                  30 ngày
                 </button>
                 <button
-                  onClick={() => setSelectedTimeframe('all')}
+                  aria-pressed={selectedTimeframe === 'all'} onClick={() => { setSelectedTimeframe('all'); setCurrentPage(1); }}
                   className={`h-full rounded-lg px-2 text-xs font-semibold transition-all ${
                     selectedTimeframe === 'all'
                       ? 'bg-[#C59B58] text-white shadow-sm'
@@ -343,6 +369,7 @@ export const AuditLogsPage: React.FC = () => {
 
               {/* Severity Filter */}
               <Select
+                aria-label="Mức độ nhật ký"
                 value={selectedSeverity}
                 onChange={(e) => {
                   setSelectedSeverity(e.target.value);
@@ -359,19 +386,20 @@ export const AuditLogsPage: React.FC = () => {
           </div>
 
           {/* Category Tabs & Actions */}
-          <div className="mt-4 flex flex-col gap-4 border-t border-[#EAE4D7] pt-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <div className="audit-filter-bottom">
+            <div className="audit-category-tabs">
               {[
-                { id: 'ALL', label: 'Tất cả danh mục' },
-                { id: 'AUTH', label: 'Xác thực & IAM' },
-                { id: 'FINANCIAL', label: 'Tài chính & Payout' },
+                { id: 'ALL', label: 'Tất cả' },
+                { id: 'AUTH', label: 'Xác thực' },
+                { id: 'FINANCIAL', label: 'Tài chính' },
                 { id: 'AI_SECURITY', label: 'An ninh & AI' },
-                { id: 'PRODUCT', label: 'Sản phẩm & Media' },
+                { id: 'PRODUCT', label: 'Sản phẩm & nội dung' },
                 { id: 'SAMPLE_CAMPAIGN', label: 'Chiến dịch & Mẫu' },
                 { id: 'SYSTEM', label: 'Hệ thống chung' },
               ].map((tab) => (
                 <button
                   key={tab.id}
+                  aria-pressed={selectedCategory === tab.id}
                   onClick={() => {
                     setSelectedCategory(tab.id);
                     setCurrentPage(1);
@@ -379,7 +407,7 @@ export const AuditLogsPage: React.FC = () => {
                   className={`min-h-9 rounded-xl border px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
                     selectedCategory === tab.id
                       ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8A642C] shadow-sm'
-                      : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#5F5547] hover:border-[#C59B58] hover:text-[#1A1612]'
+                      : 'border-[#EAE4D7] bg-white text-[#5F5547] hover:border-[#C59B58] hover:text-[#1A1612]'
                   }`}
                 >
                   {tab.label}
@@ -387,14 +415,14 @@ export const AuditLogsPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="flex shrink-0 items-center gap-2 xl:pl-3">
+            <div className="audit-toolbar-actions">
               <button
                 onClick={handleExportCsv}
                 disabled={exporting}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C59B58] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#B88E4F] disabled:cursor-wait disabled:opacity-50"
+                className="audit-export"
               >
                 <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce' : ''}`} />
-                <span>{exporting ? 'Đang xuất CSV...' : 'Xuất Báo Cáo CSV'}</span>
+                <span>{exporting ? 'Đang xuất CSV...' : 'Xuất CSV'}</span>
               </button>
               <button
                 onClick={() => {
@@ -402,7 +430,7 @@ export const AuditLogsPage: React.FC = () => {
                   loadLogs();
                 }}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] shadow-sm transition hover:border-[#C59B58] hover:text-[#1A1612]"
-                title="Làm mới dữ liệu"
+                aria-label="Làm mới nhật ký" title="Làm mới dữ liệu"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#B88E4F]' : ''}`} />
               </button>
@@ -411,7 +439,7 @@ export const AuditLogsPage: React.FC = () => {
         </div>
 
         {/* Audit Logs Table */}
-        <div className="mt-5 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.04)] xl:mt-6">
+        <div className="audit-table-panel mt-5 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.04)] xl:mt-6">
           {error && (
             <div className="flex items-center gap-2 border-b border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C]">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -419,7 +447,11 @@ export const AuditLogsPage: React.FC = () => {
             </div>
           )}
 
-          <div className="overflow-x-auto">
+          <div className="audit-table-heading flex items-center justify-between gap-3 border-b border-[#EAE4D7] px-4 py-3">
+            <h2 className="text-sm font-bold">Nhật ký hoạt động</h2>
+            <span className="text-xs text-[#7D715E]">{totalCount.toLocaleString('vi-VN')} sự kiện</span>
+          </div>
+          <div className="audit-table-scroll overflow-x-auto" role="region" aria-label="Bảng nhật ký hệ thống, có thể cuộn ngang" tabIndex={0}>
             <table className="w-full min-w-[1180px] table-fixed border-collapse text-left">
               <colgroup>
                 <col className="w-[12%]" />
@@ -432,13 +464,13 @@ export const AuditLogsPage: React.FC = () => {
               </colgroup>
               <thead>
                 <tr className="border-b border-[#EAE4D7] bg-[#F3EFE6] text-[11px] font-bold uppercase tracking-[0.07em] text-[#5F5547]">
-                  <th className="px-4 py-4">Thời gian</th>
-                  <th className="px-4 py-4">Người thực hiện</th>
-                  <th className="px-4 py-4">Hành động & Nghiệp vụ</th>
-                  <th className="px-4 py-4">Phân loại</th>
-                  <th className="px-4 py-4">Mức độ</th>
-                  <th className="px-4 py-4">Địa chỉ IP</th>
-                  <th className="px-4 py-4 text-right">Thao tác</th>
+                  <th scope="col" className="px-4 py-4">Thời gian</th>
+                  <th scope="col" className="px-4 py-4">Người thực hiện</th>
+                  <th scope="col" className="px-4 py-4">Hành động</th>
+                  <th scope="col" className="px-4 py-4">Phân loại</th>
+                  <th scope="col" className="px-4 py-4">Mức độ</th>
+                  <th scope="col" className="px-4 py-4">Địa chỉ IP</th>
+                  <th scope="col" className="px-4 py-4 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAE4D7]/60 text-sm">
@@ -472,7 +504,7 @@ export const AuditLogsPage: React.FC = () => {
                         onClick={() => setSelectedLog(log)}
                       >
                         {/* Timestamp */}
-                        <td className="whitespace-nowrap px-4 py-4">
+                        <td data-label="Thời gian" className="whitespace-nowrap px-4 py-4">
                           <div className="text-xs font-semibold text-[#1A1612]">
                             {new Date(log.createdAt).toLocaleTimeString('vi-VN', {
                               hour: '2-digit',
@@ -486,7 +518,7 @@ export const AuditLogsPage: React.FC = () => {
                         </td>
 
                         {/* Actor */}
-                        <td className="whitespace-nowrap px-4 py-4">
+                        <td data-label="Người thực hiện" className="whitespace-nowrap px-4 py-4">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-full bg-[#EBD08C]/15 text-[#B88E4F] border border-[#C59B58]/30 flex items-center justify-center font-bold text-xs flex-shrink-0">
                               {log.actor.avatarUrl ? (
@@ -511,17 +543,19 @@ export const AuditLogsPage: React.FC = () => {
                         </td>
 
                         {/* Action Name */}
-                        <td className="px-4 py-4">
+                        <td data-label="Hành động" className="px-4 py-4">
                           <div className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
-                            <span>{log.actionNameVi}</span>
+                            <span className="audit-action-name" title={log.actionNameVi || log.action}>{log.actionNameVi || log.action}</span>
                           </div>
-                          <div className="truncate text-[11px] font-mono tracking-tight text-[#7D715E]">
-                            {log.action}
-                          </div>
+                          {log.actionNameVi && log.actionNameVi !== log.action && (
+                            <div className="truncate text-[11px] font-mono tracking-tight text-[#7D715E]" title={log.action}>
+                              {log.action}
+                            </div>
+                          )}
                         </td>
 
                         {/* Category */}
-                        <td className="whitespace-nowrap px-4 py-4">
+                        <td data-label="Phân loại" className="whitespace-nowrap px-4 py-4">
                           <span
                             className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${catInfo.color}`}
                           >
@@ -531,17 +565,17 @@ export const AuditLogsPage: React.FC = () => {
                         </td>
 
                         {/* Severity */}
-                        <td className="whitespace-nowrap px-4 py-4">
+                        <td data-label="Mức độ" className="whitespace-nowrap px-4 py-4">
                           {renderSeverityBadge(log.severity)}
                         </td>
 
                         {/* IP Address */}
-                        <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-[#5F5547]">
+                        <td data-label="Địa chỉ IP" className="whitespace-nowrap px-4 py-4 font-mono text-xs text-[#5F5547]">
                           {log.ipAddress}
                         </td>
 
                         {/* Actions */}
-                        <td className="whitespace-nowrap px-4 py-4 text-right">
+                        <td data-label="Thao tác" className="whitespace-nowrap px-4 py-4 text-right">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -562,7 +596,7 @@ export const AuditLogsPage: React.FC = () => {
           </div>
 
           {/* Pagination Controls */}
-          <div className="p-4 border-t border-[#EAE4D7] bg-[#FAF8F5] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-700">
+          <div className="audit-pagination">
             <div>
               Hiển thị <span className="font-bold text-[#1A1612]">{logs.length}</span> trên tổng số{' '}
               <span className="font-bold text-[#1A1612]">{totalCount.toLocaleString('vi-VN')}</span> sự kiện
@@ -570,7 +604,7 @@ export const AuditLogsPage: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Trang trước" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage <= 1 || loading}
                 className="p-1.5 rounded-lg border border-[#EAE4D7] bg-white text-stone-700 hover:border-[#C59B58] disabled:opacity-40 transition-all cursor-pointer"
               >
@@ -580,7 +614,7 @@ export const AuditLogsPage: React.FC = () => {
                 Trang {currentPage} / {totalPages}
               </span>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Trang sau" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages || loading}
                 className="p-1.5 rounded-lg border border-[#EAE4D7] bg-white text-stone-700 hover:border-[#C59B58] disabled:opacity-40 transition-all cursor-pointer"
               >
@@ -593,8 +627,8 @@ export const AuditLogsPage: React.FC = () => {
 
       {/* Modal: Audit Log Inspector (JSON & Diff Details) */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-[#EAE4D7] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div className="audit-modal-backdrop">
+          <div ref={detailRef} role="dialog" aria-modal="true" aria-labelledby="audit-detail-title" tabIndex={-1} className="audit-detail-modal bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-[#EAE4D7] flex flex-col animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="p-5 border-b border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -602,8 +636,8 @@ export const AuditLogsPage: React.FC = () => {
                   <ShieldCheck className="w-5 h-5 text-[#B88E4F]" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#1A1612] flex items-center gap-2">
-                    {selectedLog.actionNameVi}
+                  <h3 id="audit-detail-title" className="text-base font-bold text-[#1A1612] flex items-center gap-2">
+                    {selectedLog.actionNameVi || selectedLog.action}
                     {renderSeverityBadge(selectedLog.severity)}
                   </h3>
                   <p className="text-xs text-stone-700 font-mono mt-0.5">
@@ -612,7 +646,7 @@ export const AuditLogsPage: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => setSelectedLog(null)}
+                aria-label="Đóng chi tiết nhật ký" onClick={() => setSelectedLog(null)}
                 className="p-2 rounded-xl text-stone-600 hover:text-stone-800 hover:bg-stone-100 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -670,7 +704,7 @@ export const AuditLogsPage: React.FC = () => {
                   <button
                     onClick={() =>
                       copyToClipboard(
-                        JSON.stringify(selectedLog.details, null, 2),
+                        JSON.stringify(selectedLog.details || {}, null, 2),
                         'json',
                       )
                     }

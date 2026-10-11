@@ -287,7 +287,7 @@ export default function OrderTrackingPage() {
           </nav>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7]">
             <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
-            HỆ THỐNG TRA CỨU ĐƠN HÀNG & ĐÁNH GIÁ 5 SAO (FR-17 & FR-18)
+            HỆ THỐNG TRA CỨU ĐƠN HÀNG & ĐÁNH GIÁ 5 SAO
           </span>
 
           <h1 className="text-2xl sm:text-3xl font-black text-[#1A1612] tracking-tight leading-tight m-0">

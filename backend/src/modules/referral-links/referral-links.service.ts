@@ -127,10 +127,10 @@ export class ReferralLinksService {
   /**
    * 1. Lấy danh sách sản phẩm hợp lệ để KOL tạo link tiếp thị
    * - BẮT BUỘC nhận collaboratorId
-   * - Chỉ trả về các sản phẩm thuộc:
-   *   a. Cửa hàng mà KOL đã được duyệt làm cộng tác viên chính thức (StoreCollaborator: APPROVED)
-   *   b. HOẶC Cửa hàng/Chiến dịch mà KOL đã được duyệt tham gia (CampaignParticipant: ACCEPTED) còn hiệu lực
-   *   c. Sản phẩm phải có isAffiliateEnabled = true và tỷ lệ hoa hồng > 0
+   * - Sản phẩm phải được SCANMS duyệt, cửa hàng đang hoạt động,
+   *   bật tiếp thị liên kết và có tỷ lệ hoa hồng > 0.
+   * - Open Offer khả dụng ngay cho KOL đã KYC, không cần Shop duyệt quan hệ.
+   * - Khi gắn chiến dịch, KOL vẫn phải được duyệt tham gia (ACCEPTED).
    */
   async getEligibleProducts(
     collaboratorId: string,
@@ -238,7 +238,8 @@ export class ReferralLinksService {
    * 2. Tạo link tiếp thị rút gọn mới cho KOL
    * - Kiểm tra hồ sơ KOL, vai trò COLLABORATOR
    * - Kiểm tra sản phẩm và shop
-   * - Kiểm tra quan hệ KOL–Shop hoặc chiến dịch (ACCEPTED)
+   * - Open Offer không yêu cầu quan hệ KOL–Shop được duyệt.
+   * - Chiến dịch cần participant ACCEPTED; Exclusive Deal cần Shop duyệt.
    * - Kiểm tra hạn mức tạo link (10 link/phút, 500 link/KOL, 20 link/sản phẩm)
    * - Chống race condition với retry lỗi P2002 của PostgreSQL (tối đa 5 lần)
    * - Giao dịch transaction giữa tạo link và AuditLog

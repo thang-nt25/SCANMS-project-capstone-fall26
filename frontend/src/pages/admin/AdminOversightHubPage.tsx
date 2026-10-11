@@ -5,6 +5,7 @@ import { authService } from '../../services/auth.service';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import AdminCouponsPage from './AdminCouponsPage';
 import AdminLiveSessionsPage from './AdminLiveSessionsPage';
+import './AdminOversightHubPage.css';
 
 export default function AdminOversightHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,6 +50,8 @@ export default function AdminOversightHubPage() {
   return (
     <div className="w-full min-w-0 flex flex-col pt-4 text-[#1A1612] sm:pt-5" id="admin-oversight-hub">
       <HubTabs
+        className="admin-oversight-tabs"
+        compact
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}

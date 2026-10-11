@@ -1,339 +1,193 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Crown,
-  Zap,
-  Trophy,
-  CheckCircle2,
-  Sparkles,
-  Award,
-  Target,
-} from 'lucide-react';
-import { tierService, type TierStatus } from '../../services/tier.service';
+import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, ShoppingBag, TrendingUp, Check } from 'lucide-react';
+import { tierService, type TierStatus, type TierPolicy } from '../../services/tier.service';
 import { leaderboardService, type LeaderboardPodium } from '../../services/leaderboard.service';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+import LeaderboardPage from '../dashboard/LeaderboardPage';
+import KolBonusProgressPage from './KolBonusProgressPage';
+import './KolProfile.css';
+import './KolTierStatusPage.css';
+import './CreatorRewards.css';
 
-export default function KolTierStatusPage() {
+const currency = (value: number) => `${value.toLocaleString('vi-VN')} ₫`;
+const samePolicy = (left: TierPolicy, right: TierPolicy) =>
+  left.id === right.id || (
+    left.name.trim().toLowerCase() === right.name.trim().toLowerCase() &&
+    Number(left.minRevenueThreshold) === Number(right.minRevenueThreshold) &&
+    Number(left.extraBonusPercentage) === Number(right.extraBonusPercentage)
+  );
+
+export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' | 'leaderboard' | 'bonus' } = {}) {
   const [tierStatus, setTierStatus] = useState<TierStatus | null>(null);
   const [podium, setPodium] = useState<LeaderboardPodium | null>(null);
-  const [evaluating, setEvaluating] = useState(false);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  const loadData = async () => {
-    try {
-      const [status, podiumData] = await Promise.all([
-        tierService.getMyTierStatus().catch(() => null),
-        leaderboardService.getPodium({ metric: 'REVENUE', timeRange: 'this_month' }).catch(() => null),
-      ]);
-      if (status) setTierStatus(status);
-      if (podiumData) setPodium(podiumData);
-    } catch (err) {
-      console.error('Lỗi tải dữ liệu cấp bậc & vinh danh:', err);
-    }
-  };
+  const [tierPolicies, setTierPolicies] = useState<TierPolicy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusError, setStatusError] = useState(false);
+  const [policyError, setPolicyError] = useState(false);
+  const [podiumError, setPodiumError] = useState(false);
+  const [loadRevision, setLoadRevision] = useState(0);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (view !== 'tiers') return;
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      const [status, policies, podiumData] = await Promise.allSettled([
+        tierService.getMyTierStatus(),
+        tierService.getAllTiers(),
+        leaderboardService.getPodium({ metric: 'REVENUE', timeRange: 'this_month' }),
+      ]);
+      if (cancelled) return;
+      setTierStatus(status.status === 'fulfilled' ? status.value : null);
+      setTierPolicies(policies.status === 'fulfilled' ? policies.value : []);
+      setPodium(podiumData.status === 'fulfilled' ? podiumData.value : null);
+      setStatusError(status.status === 'rejected');
+      setPolicyError(policies.status === 'rejected');
+      setPodiumError(podiumData.status === 'rejected');
+      setLoading(false);
+    };
+    void loadData();
+    return () => { cancelled = true; };
+  }, [view, loadRevision]);
 
-  const handleEvaluate = async () => {
-    setEvaluating(true);
-    try {
-      const res = await tierService.triggerEvaluation();
-      setToastMsg(`Đã quét doanh số! Cập nhật thăng hạng cho ${res.updatedCount || 0} CTV.`);
-      setTimeout(() => setToastMsg(null), 3500);
-      loadData();
-    } catch (err: any) {
-      setToastMsg(err.message || 'Quét thăng hạng thất bại');
-      setTimeout(() => setToastMsg(null), 3000);
-    } finally {
-      setEvaluating(false);
-    }
-  };
-
-  const currentTier = tierStatus?.currentTier || {
-    id: '',
-    name: 'Đồng',
-    extraBonusPercentage: 0,
-    minRevenueThreshold: 0,
-  };
-
+  const currentTier = tierStatus?.currentTier;
   const currentRevenue = Number(tierStatus?.currentRevenue || 0);
   const totalOrders = Number(tierStatus?.totalOrders || 0);
   const nextTier = tierStatus?.nextTier;
-  const targetSales = Number(nextTier?.minRevenueThreshold || 50000000);
+  const targetSales = Number(nextTier?.minRevenueThreshold || 0);
   const progressPct = Number(tierStatus?.progressPercentage ?? 0);
+  const podiumEntries = [
+    { slot: 2, creator: podium?.rank2 },
+    { slot: 1, creator: podium?.rank1 },
+    { slot: 3, creator: podium?.rank3 },
+  ].filter(entry => entry.creator);
+  const retry = () => setLoadRevision(revision => revision + 1);
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 bg-white text-[#1A1612] px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 border border-[#EEDFC6]">
-          <CheckCircle2 className="w-4 h-4 text-[#B88E4F]" />
-          <span>{toastMsg}</span>
+    <div className="kol-tier-page tier-overview creator-rewards">
+      <nav className="kol-tier-nav tier-section-nav" aria-label="Cấp bậc và vinh danh">
+        <Link to="/collaborator/tiers" aria-current={view === 'tiers' ? 'page' : undefined}>
+          <Award aria-hidden="true" /><span>Cấp bậc &amp; Quyền lợi</span>
+        </Link>
+        <Link to="/collaborator/leaderboard" aria-current={view === 'leaderboard' ? 'page' : undefined}>
+          <Trophy aria-hidden="true" /><span>Bảng vinh danh Top Creator</span>
+        </Link>
+        <Link to="/collaborator/bonus-progress" aria-current={view === 'bonus' ? 'page' : undefined}>
+          <Target aria-hidden="true" /><span>Tiến độ thưởng doanh số</span>
+        </Link>
+      </nav>
+
+      {view === 'leaderboard' ? <LeaderboardPage alignToContainer /> : view === 'bonus' ? <KolBonusProgressPage embedded /> : (
+        <div className="tier-dashboard-layout">
+          {loading ? <section className="tier-panel tier-current tier-state" role="status">Đang tải cấp bậc và tiến độ…</section>
+            : statusError || !currentTier || !tierStatus ? <section className="tier-panel tier-current tier-state" role="status">Chưa tải được cấp bậc đang áp dụng. <button className="tier-retry" onClick={retry}>Thử lại</button></section>
+            : <section className="tier-panel tier-current" aria-labelledby="tier-current-title">
+            <div className="tier-current-heading">
+              <div className="tier-current-identity">
+                <span className="tier-current-icon"><Crown aria-hidden="true" /></span>
+                <div>
+                  <p className="tier-label">Cấp bậc hiện tại</p>
+                  <h2 id="tier-current-title">{currentTier.name}</h2>
+                  <p className="tier-current-bonus">Thưởng <strong>+{Number(currentTier.extraBonusPercentage)}%</strong> cho đơn hàng đủ điều kiện</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="tier-current-stats">
+              <div><TrendingUp aria-hidden="true" /><span>Doanh số tích lũy</span><strong>{currency(currentRevenue)}</strong></div>
+              <div><ShoppingBag aria-hidden="true" /><span>Đơn thành công</span><strong>{totalOrders.toLocaleString('vi-VN')} đơn</strong></div>
+              <div><Award aria-hidden="true" /><span>Hoa hồng thưởng</span><strong>+{currentTier.extraBonusPercentage || 0}%</strong></div>
+            </div>
+
+            {nextTier ? (
+              <div className="tier-progress" id="tier-promotion-progress">
+                <div className="tier-progress-heading">
+                  <div><span className="tier-label">Hạng tiếp theo</span><h3>{nextTier.name} <span>+{nextTier.extraBonusPercentage || 0}% thưởng</span></h3></div>
+                  <span className="tier-progress-percentage">{progressPct}%</span>
+                </div>
+                <div className="tier-progress-track" role="progressbar" aria-label={`Tiến độ lên hạng ${nextTier.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, progressPct))}>
+                  <span style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }} />
+                </div>
+                <div className="tier-progress-caption"><span>{currency(currentRevenue)} / {currency(targetSales)}</span><span>Còn {currency(tierStatus.revenueNeeded)} để đạt ngưỡng</span></div>
+                {tierStatus.qualifiedTier && Number(tierStatus.qualifiedTier.minRevenueThreshold) > Number(currentTier.minRevenueThreshold) && (
+                  <p className="tier-upgrade-note">Bạn đã đạt ngưỡng hạng {tierStatus.qualifiedTier.name}. Hạng mới có hiệu lực sau khi được đánh giá cấp bậc.</p>
+                )}
+              </div>
+            ) : (
+              <p className="tier-highest"><Check aria-hidden="true" /> Bạn đang ở cấp bậc cao nhất trong hệ thống đối tác.</p>
+            )}
+            <div className="tier-current-perks">
+              <Gift aria-hidden="true" /><span>Sản phẩm mẫu</span><strong>Theo xét duyệt của Shop</strong>
+            </div>
+          </section>}
+
+          <section className="tier-panel tier-policy" aria-labelledby="tier-policy-title">
+            <header className="tier-panel-heading">
+              <div className="tier-heading-title">
+                <span className="tier-heading-icon"><Award aria-hidden="true" /></span>
+                <div><h2 id="tier-policy-title">Cấp bậc &amp; quyền lợi</h2><p>Ngưỡng doanh số tích lũy để xét hạng.</p></div>
+              </div>
+              <span className="tier-policy-count">{loading ? 'Đang tải…' : policyError ? 'Chưa tải được' : `${tierPolicies.length} cấp bậc`}</span>
+            </header>
+            <div className="tier-policy-grid" aria-label="Chính sách cấp bậc">
+                  {loading || policyError || !tierPolicies.length ? <p className="tier-policy-empty">
+                    {loading ? 'Đang tải chính sách cấp bậc…' : policyError ? <>Chưa tải được chính sách. <button className="tier-retry" onClick={retry}>Thử lại</button></> : 'Chưa có chính sách cấp bậc được cấu hình.'}
+                  </p> : tierPolicies.map(policy => {
+                    const isCurrent = !statusError && currentTier && samePolicy(currentTier, policy);
+                    return (
+                      <article className="tier-policy-card" key={policy.id} data-current={isCurrent || undefined}>
+                        <div className="tier-policy-card-heading"><h3>{policy.name}</h3>{isCurrent && <span className="tier-policy-current"><Check aria-hidden="true" /> Hiện tại</span>}</div>
+                        <div className="tier-policy-card-bonus"><strong>+{Number(policy.extraBonusPercentage)}%</strong><span>hoa hồng thưởng</span></div>
+                        <p>Từ <strong>{currency(Number(policy.minRevenueThreshold))}</strong></p>
+                      </article>
+                    );
+                  })}
+            </div>
+            <p className="tier-policy-note">Hạng có hiệu lực sau khi hệ thống đánh giá. Hạn mức mẫu do từng Shop xét duyệt.</p>
+          </section>
+          <section className="tier-panel tier-featured" aria-labelledby="tier-featured-title">
+            <header className="tier-panel-heading">
+              <div className="tier-heading-title">
+                <span className="tier-heading-icon"><Trophy aria-hidden="true" /></span>
+                <div>
+                  <h2 id="tier-featured-title">Nhà sáng tạo nổi bật tháng này</h2>
+                  <p>Xếp hạng theo doanh số ghi nhận khi giao / hoàn tất trong tháng (giờ Việt Nam).</p>
+                </div>
+              </div>
+              <Link className="tier-text-link" to="/collaborator/leaderboard">
+                Xem bảng xếp hạng <ArrowUpRight aria-hidden="true" />
+              </Link>
+            </header>
+            {loading ? <p className="tier-state" role="status">Đang tải nhà sáng tạo nổi bật…</p>
+              : podiumError ? <div className="tier-state" role="status">Chưa tải được bảng vinh danh. <button className="tier-retry" onClick={retry}>Thử lại</button></div>
+              : !podiumEntries.length ? <p className="tier-state">Chưa có Creator đủ điều kiện vinh danh trong tháng này.</p>
+              : <div className="tier-featured-grid">
+              {podiumEntries.map(({ slot, creator }) => {
+                const rank = creator!.rank;
+                return <article className={`tier-creator ${rank === 1 ? 'tier-creator-first' : ''}`} data-featured-rank={slot} key={creator!.collaboratorId}>
+                  <div className="tier-creator-identity">
+                    <span className="tier-creator-avatar" aria-hidden="true">
+                      {creator?.fullName?.charAt(0) || rank}
+                      {creator?.avatarUrl && <img src={creator.avatarUrl} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}
+                    </span>
+                    <div className="tier-creator-name">
+                      <h3>{creator?.fullName || 'Đang cập nhật'}</h3>
+                      <p>{creator?.tierName || 'KOL Tiếp thị'}</p>
+                    </div>
+                    <span className="tier-rank-badge">
+                      {rank === 1 && <Crown aria-hidden="true" />} Hạng {rank}
+                    </span>
+                  </div>
+                  <div className="tier-creator-revenue">
+                    <div><span>Doanh số GMV{rank === 1 ? ' xuất sắc' : ''}</span><strong>{currency(Number(creator?.grossRevenue || 0))}</strong></div>
+                    {rank === 1 && creator?.totalOrders !== undefined && <span className="tier-creator-orders">{creator.totalOrders} đơn đã giao / hoàn tất</span>}
+                  </div>
+                </article>;
+              })}
+            </div>}
+          </section>
         </div>
       )}
-
-      {/* Header & Sub-Navigation Tabs */}
-      <div className="flex items-center justify-end gap-4">
-
-        <Button
-          variant="gold"
-          size="md"
-          icon={<Zap className="w-4 h-4" />}
-          onClick={handleEvaluate}
-          loading={evaluating}
-        >
-          {evaluating ? 'Đang quét...' : 'Kiểm tra thăng hạng ngay'}
-        </Button>
-      </div>
-
-      {/* Consolidated Feature Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#EAE4D7] pb-3">
-        <Link
-          to="/collaborator/tiers"
-          className="px-4 py-2 rounded-xl text-xs font-bold bg-[#EBD08C] text-white shadow-2xs flex items-center gap-2"
-        >
-          <Award className="w-3.5 h-3.5" />
-          <span>Cấp bậc &amp; Quyền lợi</span>
-        </Link>
-        <Link
-          to="/collaborator/leaderboard"
-          className="px-4 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-white border border-[#EAE4D7] hover:bg-[#F3EFE6] transition flex items-center gap-2"
-        >
-          <Trophy className="w-3.5 h-3.5 text-[#B88E4F]" />
-          <span>Bảng vinh danh Top Creator</span>
-        </Link>
-        <Link
-          to="/collaborator/bonus-progress"
-          className="px-4 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-white border border-[#EAE4D7] hover:bg-[#F3EFE6] transition flex items-center gap-2"
-        >
-          <Target className="w-3.5 h-3.5 text-[#B88E4F]" />
-          <span>Tiến độ thưởng doanh số</span>
-        </Link>
-      </div>
-
-      {/* Podium Top 3 (Real Data from Leaderboard API) */}
-      <Card className="p-6 bg-white border border-[#EAE4D7]">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center">
-              <Trophy className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-extrabold text-[#1A1612] m-0">
-                Bảng Vinh Danh Top Creator Tháng Này
-              </h2>
-              <span className="text-xs text-[#7D715E]">Dữ liệu đối soát thời gian thực từ doanh số bán hàng</span>
-            </div>
-          </div>
-          <Link
-            to="/collaborator/leaderboard"
-            className="text-xs font-bold text-[#B88E4F] hover:text-[#B88E4F]"
-          >
-            Xem bảng xếp hạng đầy đủ →
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          {/* Hạng 2 */}
-          <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col items-center text-center gap-3 order-2 md:order-1">
-            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
-              🥈 HẠNG 2
-            </span>
-            <div className="w-16 h-16 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-xl font-black text-slate-700">
-              {podium?.rank2?.fullName?.charAt(0) || '2'}
-            </div>
-            <div>
-              <strong className="text-sm font-extrabold text-[#1A1612] block">
-                {podium?.rank2?.fullName || 'Đang cập nhật'}
-              </strong>
-              <span className="text-xs text-[#7D715E]">
-                {podium?.rank2?.tierName || 'KOL Tiếp thị'}
-              </span>
-            </div>
-            <div className="w-full bg-white rounded-xl p-2.5 border border-[#EAE4D7]">
-              <span className="text-[11px] text-[#7D715E] block">Doanh số GMV</span>
-              <strong className="text-sm font-bold text-[#1A1612]">
-                {podium?.rank2?.grossRevenue ? `${Number(podium.rank2.grossRevenue).toLocaleString('vi-VN')} ₫` : '0 ₫'}
-              </strong>
-            </div>
-          </div>
-
-          {/* Hạng 1 (Quán quân) */}
-          <div className="bg-[#FBF5EB] border-2 border-[#B88E4F] rounded-2xl p-6 flex flex-col items-center text-center gap-3 relative order-1 md:order-2 shadow-sm scale-105">
-            <div className="absolute -top-3.5 px-3 py-0.5 rounded-full bg-[#EBD08C] text-white text-xs font-black flex items-center gap-1 shadow-xs">
-              <Crown className="w-3.5 h-3.5" /> QUÁN QUÂN
-            </div>
-            <div className="w-20 h-20 rounded-full bg-[#EAE4D7] border-4 border-[#B88E4F] flex items-center justify-center text-2xl font-black text-[#B88E4F] mt-2">
-              {podium?.rank1?.fullName?.charAt(0) || '1'}
-            </div>
-            <div>
-              <strong className="text-base font-extrabold text-[#1A1612] block">
-                {podium?.rank1?.fullName || 'Đang cập nhật'}
-              </strong>
-              <span className="text-xs text-[#B88E4F] font-bold">
-                {podium?.rank1?.tierName || 'Top Creator'}
-              </span>
-            </div>
-            <div className="w-full bg-white rounded-xl p-3 border border-[#EAE4D7]">
-              <span className="text-[11px] text-[#7D715E] block">Doanh số GMV xuất sắc</span>
-              <strong className="text-base font-black text-[#B88E4F]">
-                {podium?.rank1?.grossRevenue ? `${Number(podium.rank1.grossRevenue).toLocaleString('vi-VN')} ₫` : '0 ₫'}
-              </strong>
-              {podium?.rank1?.totalOrders !== undefined && (
-                <span className="text-[11px] text-emerald-600 block mt-0.5 font-semibold">
-                  {podium.rank1.totalOrders} đơn hàng hoàn tất
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Hạng 3 */}
-          <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col items-center text-center gap-3 order-3">
-            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
-              🥉 HẠNG 3
-            </span>
-            <div className="w-16 h-16 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center text-xl font-black text-amber-800">
-              {podium?.rank3?.fullName?.charAt(0) || '3'}
-            </div>
-            <div>
-              <strong className="text-sm font-extrabold text-[#1A1612] block">
-                {podium?.rank3?.fullName || 'Đang cập nhật'}
-              </strong>
-              <span className="text-xs text-[#7D715E]">
-                {podium?.rank3?.tierName || 'KOL Tiếp thị'}
-              </span>
-            </div>
-            <div className="w-full bg-white rounded-xl p-2.5 border border-[#EAE4D7]">
-              <span className="text-[11px] text-[#7D715E] block">Doanh số GMV</span>
-              <strong className="text-sm font-bold text-[#1A1612]">
-                {podium?.rank3?.grossRevenue ? `${Number(podium.rank3.grossRevenue).toLocaleString('vi-VN')} ₫` : '0 ₫'}
-              </strong>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Cấp bậc & Tiến độ hiện tại của bạn */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] p-6 sm:p-7 shadow-2xs">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-          <div>
-            <span className="text-xs font-bold text-[#7D715E] uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-              Cấp bậc hiện tại của bạn
-            </span>
-            <div className="flex items-center gap-3.5 mt-2">
-              <div className="w-12 h-12 rounded-xl bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center">
-                <Crown className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#1A1612] m-0">
-                  KOL Hạng {currentTier.name}
-                </h2>
-                <span className="text-xs sm:text-sm text-[#B88E4F] font-bold">
-                  Thưởng thêm +{currentTier.extraBonusPercentage || 0}% hoa hồng trên mọi đơn hàng
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white px-4 py-3 rounded-xl border border-[#EAE4D7] shrink-0">
-            <span className="text-[11px] text-[#7D715E] block font-medium">Hạn mức quyền lợi</span>
-            <strong className="text-sm font-extrabold text-[#1A1612]">
-              {currentTier.extraBonusPercentage > 2 ? '5 mẫu/tháng + Hỗ trợ VIP' : '2 mẫu/tháng • Tiêu chuẩn'}
-            </strong>
-          </div>
-        </div>
-
-        {/* Tiến độ lên hạng tiếp theo */}
-        {nextTier ? (
-          <div className="mt-6 pt-5 border-t border-[#EAE4D7]/80">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs sm:text-sm font-bold text-[#1A1612]">
-                Tiến độ thăng hạng <strong>{nextTier.name} (+{nextTier.extraBonusPercentage || 0}% Thưởng)</strong>
-              </span>
-              <span className="text-xs font-extrabold text-[#B88E4F]">
-                {progressPct}% hoàn thành
-              </span>
-            </div>
-
-            <div className="h-2 w-full bg-[#FAF8F5] rounded-full overflow-hidden border border-[#EAE4D7]">
-              <div className="h-full bg-[#EBD08C] rounded-full transition-all" style={{ width: `${progressPct}%` }} />
-            </div>
-
-            <div className="flex justify-between text-xs text-[#7D715E] mt-2 font-medium">
-              <span>
-                Doanh số đạt: <strong className="text-[#1A1612]">{currentRevenue.toLocaleString('vi-VN')} ₫ / {targetSales.toLocaleString('vi-VN')} ₫</strong>
-              </span>
-              <span>
-                Đơn hàng: <strong className="text-[#1A1612]">{totalOrders} đơn hoàn tất</strong>
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-6 pt-5 border-t border-[#EAE4D7]/80 text-xs text-[#7D715E]">
-            🎉 Bạn đã đạt cấp bậc cao nhất trong hệ thống đối tác!
-          </div>
-        )}
-      </div>
-
-      {/* Bảng chính sách cấp bậc */}
-      <Card className="p-0 bg-white border border-[#EAE4D7] overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-[#EAE4D7]">
-          <h3 className="text-base font-extrabold text-[#1A1612] m-0">
-            Chính Sách Bậc Thang Hoa Hồng SCANMS
-          </h3>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#FAF8F5] border-b border-[#EAE4D7]">
-                <th className="py-3 px-4 text-xs font-bold text-[#7D715E]">Cấp bậc</th>
-                <th className="py-3 px-4 text-xs font-bold text-[#7D715E]">Hoa hồng thưởng</th>
-                <th className="py-3 px-4 text-xs font-bold text-[#7D715E]">Doanh số tháng tối thiểu</th>
-                <th className="py-3 px-4 text-xs font-bold text-[#7D715E]">Hạn mức mẫu thử</th>
-                <th className="py-3 px-4 text-xs font-bold text-[#7D715E]">Hỗ trợ ưu tiên</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EAE4D7]">
-              {[
-                { name: 'Đồng', bonus: '+0%', sales: '0 ₫', samples: '1 mẫu/tháng', support: 'Tiêu chuẩn' },
-                { name: 'Bạc', bonus: '+1.5%', sales: '20.000.000 ₫', samples: '3 mẫu/tháng', support: 'Tiêu chuẩn' },
-                { name: 'Vàng', bonus: '+3.0%', sales: '50.000.000 ₫', samples: '5 mẫu/tháng', support: 'Hỗ trợ riêng' },
-                { name: 'Bạch Kim', bonus: '+5.0%', sales: '100.000.000 ₫', samples: '8 mẫu/tháng', support: 'VIP 24/7' },
-                { name: 'Kim Cương', bonus: '+7.0%', sales: '250.000.000 ₫', samples: 'Không giới hạn', support: 'Quản lý riêng + Voucher' },
-              ].map((t) => {
-                const isCurrent = (currentTier?.name || 'Đồng').toLowerCase() === t.name.toLowerCase();
-                return (
-                  <tr
-                    key={t.name}
-                    className={isCurrent ? 'bg-[#FBF5EB]' : 'hover:bg-[#FAF8F5] transition'}
-                  >
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-xs sm:text-sm font-bold text-[#1A1612]">{t.name}</strong>
-                        {isCurrent && (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#EBD08C] text-white">
-                            Cấp hiện tại
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="text-xs sm:text-sm font-extrabold text-[#B88E4F]">{t.bonus}</span>
-                    </td>
-                    <td className="py-3.5 px-4 text-xs sm:text-sm font-semibold text-[#1A1612]">{t.sales}</td>
-                    <td className="py-3.5 px-4 text-xs sm:text-sm text-[#7D715E]">{t.samples}</td>
-                    <td className="py-3.5 px-4 text-xs sm:text-sm text-[#7D715E]">{t.support}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
     </div>
   );
 }

@@ -16,13 +16,10 @@ import {
   Sparkles,
   ArrowUp,
   ArrowLeft,
-  Gift,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Crown,
   ShoppingBag,
-  ExternalLink,
   FileText,
   Ticket,
   Copy,
@@ -33,6 +30,11 @@ import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '@/types/chat.types';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
+import './CustomerChat.css';
+import './NewConversationModal.css';
+import { CampaignCardBubble } from '../../components/chat/CampaignCardBubble';
+import { ExclusiveDealCardBubble } from '../../components/chat/ExclusiveDealCardBubble';
+import { ProductInquiryCardBubble, type ProductInquiryCardData } from '../../components/chat/ProductInquiryCardBubble';
 
 function removeAccents(str: string): string {
   return str
@@ -235,307 +237,6 @@ function tryParseExclusiveDealCard(text: string) {
   return null;
 }
 
-function ExclusiveDealCardBubble({ card, isMine, isShop }: { card: any; isMine: boolean; isShop: boolean }) {
-  const [loading, setLoading] = useState(false);
-  const [decision, setDecision] = useState<string | null>(null);
-  const [linkUrl, setLinkUrl] = useState<string | null>(card.shortUrl || null);
-  const [error, setError] = useState<string | null>(null);
-
-  const decide = async (approve: boolean) => {
-    if (!card.proposalId || loading) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const response: any = await api.patch(
-        `/affiliate-deals/${card.proposalId}/${approve ? 'approve' : 'reject'}`,
-        approve ? {} : { reason: '' },
-      );
-      const result = response?.data?.data || response?.data || response;
-      setDecision(approve ? 'APPROVED' : 'REJECTED');
-      if (result?.shortUrl) setLinkUrl(result.shortUrl);
-      toast.success(approve ? 'Đã duyệt deal và tạo link VIP.' : 'Đã từ chối đề xuất deal.');
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Không thể xử lý đề xuất lúc này.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const status = decision || card.status;
-  const isDecisionCard = card.type === 'EXCLUSIVE_DEAL_DECISION';
-  const isApproved = status === 'APPROVED';
-  const isRejected = status === 'REJECTED';
-
-  return (
-    <div className="max-w-sm space-y-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-[#1A1612] shadow-2xs">
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full border border-[#EEDFC6] bg-white px-2 py-0.5 text-[10px] font-extrabold text-[#B88E4F]">
-          <Sparkles className="h-3 w-3" /> EXCLUSIVE DEAL
-        </span>
-        <span className={`whitespace-nowrap shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${isApproved ? 'bg-white text-[#B88E4F]' : isRejected ? 'bg-rose-50 text-rose-700' : 'bg-[#F3EFE6] text-[#7D715E]'}`}>
-          {isApproved ? 'Đã duyệt' : isRejected ? 'Đã từ chối' : 'Chờ Shop duyệt'}
-        </span>
-      </div>
-      <div>
-        <div className="text-xs sm:text-sm font-bold truncate text-[#1A1612]">{card.productTitle || 'Sản phẩm'}</div>
-        {card.storeName && <div className="text-[10px] text-[#7D715E]">Shop: {card.storeName}</div>}
-      </div>
-      {card.publicCommissionRate !== undefined && (
-        <div className="flex items-center justify-between bg-white rounded-lg p-2 border border-[#EAE4D7] text-xs">
-          <div>
-            <span className="text-[10px] text-[#7D715E] block leading-tight">Hoa hồng sàn</span>
-            <strong className="text-xs font-bold text-[#1A1612]">{card.publicCommissionRate}%</strong>
-          </div>
-          <div className="text-right">
-            <span className="text-[10px] text-[#B88E4F] font-bold block leading-tight">Hoa hồng độc quyền</span>
-            <strong className="text-xs sm:text-sm font-black text-[#B88E4F]">{card.approvedCommissionRate ?? card.proposedCommissionRate}%</strong>
-          </div>
-        </div>
-      )}
-      {card.isRevision && card.currentCommissionRate != null && (
-        <div className="rounded-lg border border-[#EEDFC6] bg-white p-2.5 text-xs">Hoa hồng độc quyền đang áp dụng<strong className="mt-1 block text-sm text-[#B88E4F]">{card.currentCommissionRate}%</strong></div>
-      )}
-      {!isDecisionCard && isMine && status === 'PENDING' && card.isRevision && (
-        <div className="text-[11px] leading-relaxed text-[#7D715E]">Mức hoa hồng độc quyền hiện tại vẫn áp dụng trong lúc Shop xem xét đề xuất mới.</div>
-      )}
-      {!isDecisionCard && !isMine && status === 'PENDING' && card.isRevision && (
-        <div className="text-[11px] leading-relaxed text-[#7D715E]">Đề xuất điều chỉnh hoa hồng độc quyền. Nếu duyệt, mức mới áp dụng cho đơn hàng mới; đơn đã tạo giữ nguyên mức cũ.</div>
-      )}
-      {isDecisionCard && card.message && <div className="text-xs leading-relaxed text-[#7D715E]">{card.message}</div>}
-      {card.salesCommitment && (
-        <div className="rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-2 text-xs">
-          <div className="text-[9.5px] font-bold uppercase tracking-wide text-[#7D715E]">Cam kết doanh số</div>
-          <p className="mt-0.5 whitespace-pre-wrap text-xs text-[#1A1612] leading-relaxed line-clamp-2">{card.salesCommitment}</p>
-        </div>
-      )}
-      {card.shopResponse && <div className="text-xs text-[#7D715E]">Phản hồi Shop: {card.shopResponse}</div>}
-      {error && <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">{error}</div>}
-      {isApproved && linkUrl && (
-        <div className="flex items-center gap-2 mt-1">
-          <a href={linkUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 break-all text-xs font-bold text-[#B88E4F] underline">
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" /> Link tiếp thị độc quyền
-          </a>
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard.writeText(linkUrl);
-              toast.success('Đã sao chép link tiếp thị độc quyền!');
-            }}
-            className="p-1 rounded text-[#7D715E] hover:text-[#B88E4F] hover:bg-white border border-[#EAE4D7] cursor-pointer"
-            title="Sao chép link tiếp thị"
-          >
-            <Copy className="h-3 w-3" />
-          </button>
-        </div>
-      )}
-      {!isDecisionCard && status === 'PENDING' && isShop && !isMine && (
-        <div className="flex gap-2">
-          <button type="button" disabled={loading} onClick={() => void decide(false)} className="flex-1 rounded-lg border border-[#EAE4D7] bg-white px-2 py-1.5 text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer">Từ chối</button>
-          <button type="button" disabled={loading} onClick={() => void decide(true)} className="flex-1 rounded-lg bg-[#C59B58] px-2 py-1.5 text-xs font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50 cursor-pointer">{loading ? 'Đang xử lý...' : card.isRevision ? 'Duyệt đổi deal' : 'Duyệt & tạo link'}</button>
-        </div>
-      )}
-      {!isDecisionCard && status === 'PENDING' && isMine && <div className="text-center text-[11px] font-semibold text-[#7D715E]">Đã gửi Shop · Đang chờ phản hồi</div>}
-      {isDecisionCard && isApproved && <div className="text-[11px] text-[#7D715E]">Shop đã chốt mức hoa hồng độc quyền. Link riêng đã được cấp cho KOL.</div>}
-      {isDecisionCard && isRejected && <div className="text-[11px] text-[#7D715E]">Shop đã phản hồi đề xuất này.</div>}
-    </div>
-  );
-}
-
-
-function CampaignCardBubble({
-  card,
-  isMine,
-  participantId,
-  onRespond,
-}: {
-  card: any;
-  isMine: boolean;
-  participantId?: string;
-  onRespond?: () => void;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [statusOverride, setStatusOverride] = useState<'ACCEPTED' | 'REJECTED' | null>(null);
-  const [feedbackError, setFeedbackError] = useState<string | null>(null);
-
-  const effectiveParticipantId = participantId || card.participantId;
-
-  const handleAccept = async () => {
-    if (!effectiveParticipantId) {
-      setFeedbackError('Không tìm thấy mã định danh lời mời.');
-      return;
-    }
-    setLoading(true);
-    setFeedbackError(null);
-    try {
-      await api.patch(`/campaigns/invitations/${effectiveParticipantId}/accept`, {});
-      setStatusOverride('ACCEPTED');
-      onRespond?.();
-    } catch (e: any) {
-      console.error(e);
-      setFeedbackError(e?.response?.data?.message || 'Không thể chấp nhận lời mời lúc này.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!effectiveParticipantId) {
-      setFeedbackError('Không tìm thấy mã định danh lời mời.');
-      return;
-    }
-    setLoading(true);
-    setFeedbackError(null);
-    try {
-      await api.patch(`/campaigns/invitations/${effectiveParticipantId}/reject`, {});
-      setStatusOverride('REJECTED');
-      onRespond?.();
-    } catch (e: any) {
-      console.error(e);
-      setFeedbackError(e?.response?.data?.message || 'Không thể từ chối lời mời lúc này.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (card.type === 'CAMPAIGN_ACCEPTED' || statusOverride === 'ACCEPTED') {
-    return (
-      <div className="flex items-center gap-2.5 p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-semibold shadow-xs max-w-sm">
-        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-        <div className="min-w-0">
-          <div>
-            Đã chấp nhận tham gia chiến dịch <strong>{card.campaignName}</strong>
-          </div>
-          <div className="text-[10px] text-emerald-700 font-normal mt-0.5">
-            Quyền lợi hoa hồng thưởng thêm đã được kích hoạt thành công.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (card.type === 'CAMPAIGN_REJECTED' || statusOverride === 'REJECTED') {
-    return (
-      <div className="flex items-center gap-2.5 p-3.5 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 text-rose-900 rounded-2xl text-xs font-semibold shadow-xs max-w-sm">
-        <XCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-        <div className="min-w-0">
-          <div>
-            Đã từ chối tham gia chiến dịch <strong>{card.campaignName}</strong>
-          </div>
-          <div className="text-[10px] text-rose-600 font-normal mt-0.5">
-            Thông báo phản hồi đã được gửi lại cho đối tác.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const isExpired = card.endDate && new Date(card.endDate) < new Date();
-
-  return (
-    <div className="p-4 bg-gradient-to-br from-amber-50/90 via-orange-50/80 to-amber-100/60 border-2 border-amber-300 rounded-3xl shadow-sm text-stone-800 space-y-3 max-w-sm relative overflow-hidden backdrop-blur-xs">
-
-      <div className="absolute top-0 right-0 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
-
-
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs">
-          <Sparkles className="w-3 h-3 text-amber-100" /> THẺ MỜI VIP
-        </span>
-        <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full border border-amber-300/60">
-          <Gift className="w-3.5 h-3.5 text-amber-700" />
-          <span>FR-27</span>
-        </div>
-      </div>
-
-
-      <div className="space-y-1">
-        <div className="font-extrabold text-stone-900 text-sm leading-snug">
-          🎯 {card.campaignName}
-        </div>
-        {card.storeName && (
-          <div className="text-[11px] text-stone-600 font-medium">
-            Gian hàng: <strong className="text-stone-800">{card.storeName}</strong>
-          </div>
-        )}
-        <div className="inline-flex items-center gap-1.5 text-xs font-black text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-xl border border-amber-300/70 shadow-2xs mt-1">
-          <span>Thưởng Độc Quyền:</span>
-          <span className="text-amber-900 text-sm">+{card.bonusCommissionRate}% Hoa Hồng</span>
-        </div>
-      </div>
-
-
-      {card.personalMessage && (
-        <div className="p-2.5 bg-white/80 border border-amber-200/80 rounded-xl text-xs text-stone-700 italic">
-          "{card.personalMessage}"
-        </div>
-      )}
-
-
-      <div className="text-[11px] text-stone-600 bg-white/70 px-3 py-1.5 rounded-xl border border-amber-200/60 flex items-center justify-between">
-        <span>Thời hạn áp dụng:</span>
-        <span className="font-bold text-stone-800">
-          {card.startDate ? new Date(card.startDate).toLocaleDateString('vi-VN') : ''} →{' '}
-          {card.endDate ? new Date(card.endDate).toLocaleDateString('vi-VN') : ''}
-        </span>
-      </div>
-
-
-      {feedbackError && (
-        <div className="p-2 bg-rose-50 border border-rose-200 rounded-xl text-[11px] text-rose-700 font-medium">
-          {feedbackError}
-        </div>
-      )}
-
-
-      {!isMine && !statusOverride && (
-        <div className="pt-1 space-y-1.5">
-          {isExpired ? (
-            <div className="text-center text-xs font-bold text-stone-500 py-1 bg-stone-100 rounded-xl">
-              Chiến dịch này đã kết thúc
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                id={`btn-accept-campaign-${card.campaignId}`}
-                className="flex-1 py-2 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-                disabled={loading}
-                onClick={handleAccept}
-              >
-                {loading ? '⏳ Đang xử lý...' : '✅ Chấp nhận'}
-              </button>
-              <button
-                id={`btn-reject-campaign-${card.campaignId}`}
-                className="py-2 px-3 bg-[#F3EFE6] hover:bg-[#EAE4D7] text-[#1A1612] border border-[#EAE4D7] rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50 active:scale-95 cursor-pointer"
-                disabled={loading}
-                onClick={handleReject}
-              >
-                {loading ? '⏳' : '❌ Từ chối'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {isMine && !statusOverride && (
-        <div className="text-center text-[11px] font-semibold text-amber-800 bg-amber-100/50 py-1 rounded-xl border border-amber-200">
-          Đã gửi tới đối tác • Đang chờ phản hồi
-        </div>
-      )}
-    </div>
-  );
-}
-
-export interface ProductInquiryCardData {
-  type: 'PRODUCT_INQUIRY';
-  productId: string;
-  productTitle: string;
-  productImage?: string;
-  productPrice?: number;
-  productSku?: string;
-  commissionRate?: number;
-  message?: string;
-}
-
 function tryParseProductInquiryCard(text: string): ProductInquiryCardData | null {
   if (!text || !text.startsWith('{')) return null;
   try {
@@ -547,85 +248,6 @@ function tryParseProductInquiryCard(text: string): ProductInquiryCardData | null
     return null;
   }
   return null;
-}
-
-function ProductInquiryCardBubble({
-  card,
-  isMine,
-}: {
-  card: ProductInquiryCardData;
-  isMine: boolean;
-}) {
-  return (
-    <div
-      className={`max-w-sm rounded-2xl border p-3.5 space-y-3 shadow-xs ${
-        isMine
-          ? 'bg-[#FAF8F5] border-[#EAE4D7] text-[#1A1612]'
-          : 'bg-white border-[#EAE4D7] text-[#1A1612]'
-      }`}
-    >
-      <div className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-          <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
-          <span>Trao đổi về Sản Phẩm</span>
-        </span>
-        {card.commissionRate && (
-          <span className="text-[11px] font-extrabold text-[#B88E4F] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            Hoa hồng: {card.commissionRate}%
-          </span>
-        )}
-      </div>
-
-      <div className="flex gap-3">
-        {card.productImage ? (
-          <img
-            src={card.productImage}
-            alt={card.productTitle}
-            className="w-16 h-16 rounded-xl object-cover border border-[#EAE4D7] shrink-0 bg-[#F3EFE6]"
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] font-bold text-xs shrink-0">
-            SCANMS
-          </div>
-        )}
-        <div className="min-w-0 flex-1 flex flex-col justify-between">
-          <div>
-            <h4 className="font-bold text-xs text-[#1A1612] line-clamp-2 leading-tight">
-              {card.productTitle}
-            </h4>
-            {card.productSku && (
-              <span className="text-[10px] text-[#7D715E] font-mono block mt-0.5">
-                SKU: {card.productSku}
-              </span>
-            )}
-          </div>
-          {typeof card.productPrice === 'number' && (
-            <div className="text-xs font-black text-[#B88E4F]">
-              {card.productPrice.toLocaleString('vi-VN')} ₫
-            </div>
-          )}
-        </div>
-      </div>
-
-      {card.message && (
-        <div className="p-2.5 bg-white/90 rounded-xl border border-[#EAE4D7] text-xs text-[#1A1612] whitespace-pre-wrap leading-relaxed">
-          {card.message}
-        </div>
-      )}
-
-      <div className="pt-1 flex items-center justify-between gap-2 border-t border-[#EAE4D7]/70">
-        <a
-          href={`/products/${card.productSku || card.productId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:text-[#B88E4F] hover:underline"
-        >
-          <span>Xem chi tiết trên Sàn</span>
-          <ExternalLink className="w-3 h-3" />
-        </a>
-      </div>
-    </div>
-  );
 }
 
 interface CouponVoucherCardData {
@@ -759,25 +381,32 @@ function NewConversationModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+      className="new-chat-overlay"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150"
+        className="new-chat-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-chat-title"
+        onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
         onClick={e => e.stopPropagation()}
       >
 
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 bg-stone-50/50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+        <div className="new-chat-header">
+          <div className="new-chat-heading">
+            <div className="new-chat-heading-icon">
               <MessageSquare className="w-4 h-4" />
             </div>
-            <h3 className="font-bold text-stone-900 text-base">
-              {isShop ? 'Bắt đầu chat với KOL / CTV' : 'Bắt đầu chat với Shop / Cửa hàng'}
-            </h3>
+            <div>
+              <h3 id="new-chat-title" className="new-chat-title">Cuộc trò chuyện mới</h3>
+              <p className="new-chat-subtitle">
+                {isShop ? 'Chọn KOL / CTV để trao đổi hợp tác.' : 'Chọn gian hàng để bắt đầu trao đổi.'}
+              </p>
+            </div>
           </div>
           <button
-            className="w-8 h-8 rounded-full hover:bg-stone-200/80 text-stone-500 flex items-center justify-center transition-colors"
+            className="new-chat-close"
             onClick={onClose}
             title="Đóng"
           >
@@ -786,11 +415,12 @@ function NewConversationModal({
         </div>
 
 
-        <div className="p-4 border-b border-stone-100">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+        <div className="new-chat-search-area">
+          <div className="new-chat-search-field">
+            <Search className="new-chat-search-icon" />
             <input
               id="new-chat-search"
+              aria-label={isShop ? 'Tìm KOL / CTV' : 'Tìm gian hàng'}
               autoFocus
               placeholder={
                 isShop
@@ -799,11 +429,12 @@ function NewConversationModal({
               }
               value={query}
               onChange={e => setQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition-all"
+              className="new-chat-search-input"
             />
             {query && (
               <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5"
+                className="new-chat-clear"
+                aria-label="Xóa tìm kiếm"
                 onClick={() => setQuery('')}
               >
                 <X className="w-3.5 h-3.5" />
@@ -813,16 +444,16 @@ function NewConversationModal({
         </div>
 
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-1 divide-y divide-stone-50 min-h-[220px]">
+        <div className="new-chat-list">
           {loading && (
-            <div className="py-12 text-center text-xs font-semibold text-stone-400 flex flex-col items-center gap-2">
-              <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            <div className="new-chat-state">
+              <div className="new-chat-spinner" />
               <span>Đang tìm kiếm...</span>
             </div>
           )}
 
           {!loading && results.length === 0 && (
-            <div className="py-12 text-center text-stone-400 text-xs flex flex-col items-center gap-2">
+            <div className="new-chat-state">
               <Search className="w-8 h-8 text-stone-300 stroke-1" />
               <p>Không tìm thấy {isShop ? 'KOL / CTV nào' : 'Cửa hàng nào'}</p>
             </div>
@@ -833,19 +464,21 @@ function NewConversationModal({
               <div
                 key={item.id}
                 id={`new-chat-${item.id}`}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-amber-50/60 transition-colors group"
+                className="new-chat-contact"
               >
-                <div className="flex items-center gap-3 min-w-0 pr-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-sm flex items-center justify-center flex-shrink-0 shadow-xs">
-                    {isShop
-                      ? item.fullName?.[0]?.toUpperCase() || '?'
-                      : item.name?.[0]?.toUpperCase() || '?'}
-                  </div>
+                <div className="new-chat-contact-info">
+                  <ChatAvatar
+                    className="new-chat-avatar"
+                    src={isShop
+                      ? item.collaboratorProfile?.avatarUrl || item.avatarUrl
+                      : item.logoUrl || item.owner?.avatarUrl}
+                    name={(isShop ? item.fullName : item.name) || '?'}
+                  />
                   <div className="min-w-0">
-                    <div className="font-bold text-stone-900 text-sm truncate">
+                    <div className="new-chat-contact-name">
                       {isShop ? item.fullName : item.name}
                     </div>
-                    <div className="text-xs text-stone-500 truncate">
+                    <div className="new-chat-contact-detail">
                       {isShop
                         ? item.email
                         : item.owner?.fullName
@@ -856,14 +489,22 @@ function NewConversationModal({
                 </div>
 
                 <button
-                  className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all shadow-xs flex-shrink-0 disabled:opacity-50"
+                  className="new-chat-message-button"
                   disabled={creating === item.id}
                   onClick={() => startChat(item)}
                 >
+                  <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
                   {creating === item.id ? 'Đang mở...' : 'Nhắn tin'}
                 </button>
               </div>
             ))}
+        </div>
+        <div className="new-chat-footer">
+          <div className="new-chat-list-label">
+            <span>{isShop ? 'KOL / CTV' : 'Gian hàng'}</span>
+            <span aria-live="polite">{loading ? 'Đang tìm…' : `${results.length} kết quả`}</span>
+          </div>
+          <p>Chọn người nhận để mở cuộc trò chuyện.</p>
         </div>
       </div>
     </div>
@@ -1332,6 +973,16 @@ export default function ChatBoxPage({
   };
 
   const activeConv = conversations.find(c => c.id === activeConvId);
+
+  useEffect(() => {
+    if (!isShop || !activeConv?.collaboratorId || searchParams.get('inviteVip') !== '1') return;
+    setShowVipModal(true);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('inviteVip');
+    setSearchParams(nextParams, { replace: true });
+  }, [isShop, activeConv?.id, activeConv?.collaboratorId, searchParams, setSearchParams]);
+
+  const openVipInvite = () => setShowVipModal(true);
   const filteredConversations = conversations.filter(
     c =>
       (c.store?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1350,6 +1001,7 @@ export default function ChatBoxPage({
     if (currentUser?.role === 'COLLABORATOR') {
       return conv.store?.owner?.avatarUrl || conv.store?.logoUrl || undefined;
     }
+    if (conv.customerId) return conv.customer?.avatarUrl || undefined;
     return (
       conv.collaborator?.collaboratorProfile?.avatarUrl ||
       conv.collaborator?.avatarUrl ||
@@ -1382,8 +1034,21 @@ export default function ChatBoxPage({
     (currentUser?.role === 'COLLABORATOR' && Boolean(conv.store?.id)) ||
     (currentUser?.role === 'SHOP_MANAGER' && Boolean(conv.collaborator?.id));
 
+  const vipInviteAction = (
+    <button
+                  id="btn-open-vip-invite"
+                  type="button"
+                  className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                  onClick={openVipInvite}
+                  title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Mời Chiến Dịch VIP</span>
+                </button>
+  );
+
   return (
-    <div className={embedded ? 'h-full w-full' : 'mx-auto flex w-full max-w-[1520px] flex-col pt-3 pb-4 sm:pt-4'}>
+    <div className={`${onlyCustomerChats && !embedded ? 'merchant-customer-chat ' : ''}${embedded ? 'h-full w-full' : 'mx-auto flex w-full max-w-[1520px] flex-col pt-3 pb-4 sm:pt-4'}`}>
       <div
         className={`flex min-h-0 min-w-0 ${embedded ? 'h-full w-full' : 'h-[calc(100dvh-130px)] min-h-[460px] sm:min-h-[560px]'} overflow-hidden rounded-3xl border border-[#EAE4D7] bg-white shadow-[0_12px_36px_rgba(35,29,21,0.08)] ${className}`}
         id="chat-page"
@@ -1471,7 +1136,7 @@ export default function ChatBoxPage({
           /* EXPANDED VIEW: Clean, Compact, Warm Sand & Gold */
           <>
             {/* Header */}
-            <div className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] bg-white px-4 py-3">
+            <div className="chat-list-heading flex items-center justify-between gap-2 border-b border-[#EAE4D7] bg-white px-4 py-3">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-7 h-7 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shadow-2xs shrink-0">
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -1489,7 +1154,15 @@ export default function ChatBoxPage({
                 </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-1.5">
+              <details className="chat-list-tools" onKeyDown={event => {
+                if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
+              }}>
+                <summary aria-label="Thao tác danh sách hội thoại"><span aria-hidden="true">···</span></summary>
+                <div className="chat-list-tools-menu" onClick={event => {
+                  if ((event.target as HTMLElement).closest('button')) {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                  }
+                }}>
                 <button
                   type="button"
                   id="btn-new-conversation"
@@ -1498,6 +1171,7 @@ export default function ChatBoxPage({
                   onClick={() => setShowNewChat(true)}
                 >
                   <Plus className="w-3.5 h-3.5" />
+                  <span>Cuộc trò chuyện mới</span>
                 </button>
 
                 {/* Button to collapse sidebar */}
@@ -1509,12 +1183,14 @@ export default function ChatBoxPage({
                   aria-label="Thu gọn danh sách"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Thu gọn danh sách</span>
                 </button>
-              </div>
+                </div>
+              </details>
             </div>
 
             {/* Search Bar */}
-            <div className="border-b border-[#EAE4D7] bg-[#FAF8F5] p-3">
+            <div className="chat-list-search border-b border-[#EAE4D7] bg-[#FAF8F5] p-3">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
                 <input
@@ -1562,6 +1238,7 @@ export default function ChatBoxPage({
                   <div
                     key={conv.id}
                     id={`conv-item-${conv.id}`}
+                    data-active={isActive}
                     className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition-all duration-150 ${
                       isActive
                         ? 'border-[#EEDFC6] bg-[#FBF5EB] shadow-xs'
@@ -1685,8 +1362,8 @@ export default function ChatBoxPage({
                   />
                 </button>
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-bold text-[#1A1612] sm:text-base">{getOtherParty(activeConv)}</div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[#7D715E]">
+                  <div className="chat-person-name truncate text-sm font-bold text-[#1A1612] sm:text-base">{getOtherParty(activeConv)}</div>
+                  <div className="chat-person-status mt-0.5 flex items-center gap-1.5 text-xs text-[#7D715E]">
                     {typingUser ? (
                       <span className="flex items-center gap-1 font-medium text-[#B88E4F]">
                         <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-[#C59B58]" />
@@ -1707,23 +1384,23 @@ export default function ChatBoxPage({
 
 
               {isShop && (
-                <button
-                  id="btn-open-vip-invite"
-                  type="button"
-                  className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                  onClick={() => setShowVipModal(true)}
-                  title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Mời Chiến Dịch VIP</span>
-                </button>
+                onlyCustomerChats ? (
+                  <details className="customer-chat-tools" onKeyDown={event => {
+                    if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
+                  }}>
+                    <summary aria-label="Thao tác hội thoại"><span>Thêm</span><span aria-hidden="true">···</span></summary>
+                    <div className="customer-chat-tools-menu" onClick={event => event.currentTarget.closest('details')?.removeAttribute('open')}>
+                      {vipInviteAction}
+                    </div>
+                  </details>
+                ) : vipInviteAction
               )}
             </header>
             )}
 
 
             <div
-              className={`min-h-0 flex-1 overflow-y-auto ${embedded ? 'space-y-3 p-3 sm:p-4' : 'space-y-5 p-4 sm:p-7 lg:p-8'}`}
+              className={`chat-message-list min-h-0 flex-1 overflow-y-auto ${embedded ? 'space-y-3 p-3 sm:p-4' : 'space-y-5 p-4 sm:p-7 lg:p-8'}`}
               ref={messagesContainerRef}
               onScroll={e => {
                 if ((e.target as HTMLElement).scrollTop < 60 && hasMore) {
@@ -1751,6 +1428,9 @@ export default function ChatBoxPage({
 
               {visibleMessages.map((msg, idx) => {
                 const isMine = msg.senderId === currentUser?.id;
+                const exclusiveDealCard = tryParseExclusiveDealCard(msg.messageText);
+                const inquiryCard = tryParseProductInquiryCard(msg.messageText);
+                const hasSenderHeader = !!exclusiveDealCard || !!inquiryCard;
                 const showDate =
                   idx === 0 ||
                   new Date(visibleMessages[idx - 1].createdAt).toDateString() !==
@@ -1759,7 +1439,7 @@ export default function ChatBoxPage({
                 return (
                   <div key={msg.id} className="space-y-2">
                     {showDate && (
-                      <div className="my-4 flex items-center justify-center">
+                      <div className="chat-date-divider my-4 flex items-center justify-center">
                         <span className="rounded-full border border-[#EAE4D7] bg-white px-3 py-1 text-[11px] font-semibold text-[#7D715E] shadow-2xs">
                           {isToday(new Date(msg.createdAt))
                             ? 'Hôm nay'
@@ -1771,7 +1451,7 @@ export default function ChatBoxPage({
                     )}
 
                     <div className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      {!isMine && (
+                      {!isMine && !hasSenderHeader && (
                         <button
                           type="button"
                           onClick={() => openOtherProfile(activeConv)}
@@ -1792,21 +1472,25 @@ export default function ChatBoxPage({
                         </button>
                       )}
 
-                      <div className={`max-w-[78%] space-y-1 sm:max-w-[72%] lg:max-w-[68%] ${isMine ? 'items-end' : 'items-start'}`}>
-                        {!isMine && (
+                      <div className={`chat-message-content ${hasSenderHeader ? `chat-deal-message-content ${!isMine ? 'chat-card-received' : ''}` : ''} max-w-[78%] space-y-1 sm:max-w-[72%] lg:max-w-[68%] ${isMine ? 'items-end' : 'items-start'}`}>
+                        {!isMine && hasSenderHeader && <div className="chat-deal-sender">
+                          <button type="button" onClick={() => openOtherProfile(activeConv)} disabled={!canOpenOtherProfile(activeConv)} title={`Xem hồ sơ ${getOtherParty(activeConv)}`} aria-label={`Xem hồ sơ ${getOtherParty(activeConv)}`}>
+                            <ChatAvatar src={msg.sender.collaboratorProfile?.avatarUrl || msg.sender.avatarUrl || getOtherAvatarUrl(activeConv)} name={msg.sender.fullName || getOtherParty(activeConv)} className="w-6 h-6 rounded-full text-[9px]" />
+                          </button>
+                          <span>{msg.sender.fullName || getOtherParty(activeConv)}</span>
+                        </div>}
+                        {!isMine && !hasSenderHeader && (
                           <div className="pl-1 text-xs font-medium text-[#7D715E]">
                             {msg.sender.fullName}
                           </div>
                         )}
 
                         {(() => {
-                          const exclusiveDealCard = tryParseExclusiveDealCard(msg.messageText);
                           if (exclusiveDealCard) {
                             if (!canSeeAffiliateDeals) return null;
-                            return <ExclusiveDealCardBubble card={exclusiveDealCard} isMine={isMine} isShop={isShop} />;
+                            return <ExclusiveDealCardBubble card={exclusiveDealCard} isMine={isMine} isShop={isShop} compact={embedded && hideHeaderInChat} />;
                           }
 
-                          const inquiryCard = tryParseProductInquiryCard(msg.messageText);
                           if (inquiryCard) {
                             return <ProductInquiryCardBubble card={inquiryCard} isMine={isMine} />;
                           }
@@ -1823,8 +1507,8 @@ export default function ChatBoxPage({
 
                           return (
                             <div
-                              className={`rounded-2xl p-3.5 text-sm leading-relaxed shadow-xs ${isMine
-                                  ? 'rounded-tr-md border border-[#B88E4F] bg-[#C59B58] text-[#231D15]'
+                              className={`chat-message-bubble ${isMine ? 'chat-message-own' : ''} rounded-2xl p-3.5 text-sm leading-relaxed ${isMine
+                                  ? 'rounded-tr-md border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
                                   : 'rounded-tl-md border border-[#EAE4D7] bg-white text-[#1A1612]'
                                 }`}
                             >
@@ -1986,7 +1670,7 @@ export default function ChatBoxPage({
                 </div>
               )}
 
-              <div className={`${embedded ? 'p-2.5 sm:p-3' : 'px-4 py-3 sm:px-6 sm:py-4'}`}>
+              <div className={`chat-composer ${embedded ? 'p-2.5 sm:p-3' : 'px-4 py-3 sm:px-6 sm:py-4'}`}>
                 <div className="flex items-end gap-2 sm:gap-2.5">
                 <button
                   type="button"
@@ -2003,7 +1687,7 @@ export default function ChatBoxPage({
                     id="btn-composer-vip-invite"
                     className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
                     title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
-                    onClick={() => setShowVipModal(true)}
+                    onClick={openVipInvite}
                   >
                     <Crown className="w-5 h-5" />
                   </button>
@@ -2023,6 +1707,7 @@ export default function ChatBoxPage({
                   id="chat-message-input"
                   className="min-h-10 max-h-28 flex-1 resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2.5 text-sm text-[#1A1612] transition-all placeholder:text-[#7D715E]/70 focus:border-[#C59B58] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
                   placeholder="Nhập tin nhắn..."
+                  aria-label="Nhập tin nhắn"
                   value={inputText}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
@@ -2082,13 +1767,13 @@ export default function ChatBoxPage({
       )}
 
 
-      {showVipModal && activeConv?.collaboratorId && (
+      {showVipModal && isShop && (
         <SendVipCampaignModal
-          conversationId={activeConv.id}
-          collaboratorName={getOtherParty(activeConv)}
+          conversationId={activeConv?.collaboratorId && !activeConv.customerId ? activeConv.id : undefined}
+          collaboratorName={activeConv?.collaboratorId && !activeConv.customerId ? getOtherParty(activeConv) : undefined}
           onClose={() => setShowVipModal(false)}
           onSuccess={newMsg => {
-            if (newMsg) {
+            if (newMsg?.conversationId === activeConvId) {
               setMessages(prev => {
                 if (prev.some(m => m.id === newMsg.id)) return prev;
                 return [...prev, newMsg];

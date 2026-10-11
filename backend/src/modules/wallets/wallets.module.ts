@@ -6,6 +6,7 @@ import { WithdrawalPolicyService } from './withdrawal-policy.service';
 import { WalletSummaryService } from './wallet-summary.service';
 import { WalletsController } from './wallets.controller';
 import { FinancialLedgerService } from './financial-ledger.service';
+import { WalletPayosService } from './wallet-payos.service';
 
 @Module({
   imports: [PrismaModule, ConfigModule],
@@ -15,7 +16,8 @@ import { FinancialLedgerService } from './financial-ledger.service';
     WithdrawalPolicyService,
     WalletSummaryService,
     FinancialLedgerService,
+    WalletPayosService,
   ],
-  exports: [WalletsService, WithdrawalPolicyService],
+  exports: [WalletsService, WithdrawalPolicyService, WalletPayosService],
 })
 export class WalletsModule {}

@@ -451,15 +451,20 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
   if (loading) return <div className="p-8 text-center text-[#7D715E]">Đang tải quản lý livestream…</div>;
 
   return (
-    <div className="mx-auto w-full max-w-[1560px] space-y-6 pt-1 pb-6 text-[#1A1612]">
-      <form onSubmit={createSession} className="space-y-5 rounded-3xl border border-[#EAE4D7] bg-white p-4 shadow-sm sm:p-6 lg:p-7">
+    <div className="promotions-live mx-auto w-full max-w-[1560px] space-y-6 pt-1 pb-6 text-[#1A1612]">
+      <form onSubmit={createSession} onInvalidCapture={(event) => {
+        if (event.target instanceof HTMLElement) {
+          const group = event.target.closest('details');
+          if (group) group.open = true;
+        }
+      }} className="live-session-form space-y-5 rounded-3xl border border-[#EAE4D7] bg-white p-4 shadow-sm sm:p-6 lg:p-7">
         <div className="flex flex-col gap-4 border-b border-[#EAE4D7] pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3.5">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Radio className="h-5 w-5" /></span>
             <div>
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#B88E4F]">Voucher Livestream</p>
-              <h2 className="text-lg font-extrabold sm:text-xl">Tạo phiên & gửi lời mời KOL</h2>
-              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-[#7D715E] sm:text-sm">Voucher dành cho KOL đã được Shop duyệt hợp tác và chỉ áp dụng cho những sản phẩm được chọn.</p>
+              <p className="mb-1 text-xs font-medium text-[#B88E4F]">Voucher livestream</p>
+              <h2 className="text-lg font-extrabold sm:text-xl">Tạo phiên livestream</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-[#7D715E] sm:text-sm">Mời KOL đã duyệt hợp tác và chọn sản phẩm áp dụng voucher.</p>
             </div>
           </div>
           <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-xs font-semibold text-[#7D715E]">
@@ -467,7 +472,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
           </div>
         </div>
 
-        <section className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/70 p-4 sm:p-5">
+        <section className="live-form-info rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/70 p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-sm font-extrabold text-[#B88E4F] shadow-xs">1</span>
             <div><h3 className="text-sm font-extrabold">Thông tin phiên</h3><p className="text-xs text-[#7D715E]">Đặt tên, chọn KOL và kênh phát sóng.</p></div>
@@ -487,7 +492,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">
               Nền tảng phát sóng
               <Select value={form.platform} onChange={(e) => setField('platform', e.target.value)} className="h-11 w-full font-normal">
-                <option value="SCANMS">🔴 Sàn SCANMS Live</option><option value="TIKTOK">TikTok Live</option><option value="YOUTUBE">YouTube Live</option><option value="FACEBOOK">Facebook Live</option><option value="OTHER">Nền tảng khác</option>
+                <option value="SCANMS">Sàn SCANMS Live</option><option value="TIKTOK">TikTok Live</option><option value="YOUTUBE">YouTube Live</option><option value="FACEBOOK">Facebook Live</option><option value="OTHER">Nền tảng khác</option>
               </Select>
             </label>
             {form.platform === 'SCANMS' && (
@@ -497,7 +502,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
                   <input readOnly value={form.scanmsLiveUrl} placeholder={form.creatorId ? 'Đang tạo mã phiên...' : 'Chọn KOL hợp tác để tạo link'} aria-label="Link SCANMS Live tự sinh" className="min-w-0 flex-1 bg-transparent text-xs font-normal text-[#1A1612] outline-none sm:text-sm" />
                   <button type="button" disabled={!form.scanmsLiveUrl} onClick={() => void copyScanmsLiveUrl()} title="Sao chép link SCANMS Live" aria-label="Sao chép link SCANMS Live" className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#B88E4F] transition hover:bg-[#FBF5EB] disabled:opacity-40"><Copy className="h-4 w-4" /></button>
                 </div>
-                <span className="text-[11px] font-normal leading-relaxed text-[#7D715E]">Link dùng được sau khi tạo phiên; Shop và Admin có thể tra cứu KOL trong hồ sơ phiên.</span>
+                <span className="text-[11px] font-normal leading-relaxed text-[#7D715E]">Link được kích hoạt sau khi tạo phiên.</span>
               </div>
             )}
             {form.platform !== 'SCANMS' && (
@@ -516,18 +521,18 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
           </div>
         </section>
 
-        <section className="rounded-2xl border border-[#EAE4D7] p-4 sm:p-5">
+        <section className="live-form-schedule rounded-2xl border border-[#EAE4D7] p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FBF5EB] text-sm font-extrabold text-[#B88E4F]">2</span>
             <div><h3 className="text-sm font-extrabold">Lịch phát sóng</h3><p className="text-xs text-[#7D715E]">Chọn thời gian bắt đầu và kết thúc phiên.</p></div>
           </div>
           <div className="grid gap-x-5 gap-y-4 lg:grid-cols-2">
-            <div className="grid min-w-0 gap-1.5 text-sm font-bold"><span>Thời gian bắt đầu *</span><DateTimePicker required value={form.startsAt} onChange={(val) => setField('startsAt', val)} minDateTime={new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()} placeholder="Chọn ngày và giờ bắt đầu (24h)" /></div>
+            <div className="grid min-w-0 gap-1.5 text-sm font-bold"><span>Thời gian bắt đầu *</span><DateTimePicker compact required value={form.startsAt} onChange={(val) => setField('startsAt', val)} minDateTime={new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()} placeholder="Chọn ngày và giờ bắt đầu" /></div>
             <div className="grid min-w-0 gap-1.5 text-sm font-bold">
               <div className="flex min-h-5 flex-wrap items-center justify-between gap-2"><span>Thời gian kết thúc *</span>
                 {form.startsAt && <div className="flex flex-wrap items-center gap-1 font-normal"><span className="mr-1 text-[10px] text-[#7D715E]">Thời lượng:</span>{[{ label: '+1h', h: 1 }, { label: '+1.5h', h: 1.5 }, { label: '+2h', h: 2 }, { label: '+3h', h: 3 }, { label: '+4h', h: 4 }].map((item) => <button key={item.label} type="button" onClick={() => applyDuration(item.h)} className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-bold text-[#B88E4F] transition hover:bg-[#F3EFE6]" title={`Đặt thời lượng phiên ${item.h} giờ`}>{item.label}</button>)}</div>}
               </div>
-              <DateTimePicker required value={form.endsAt} onChange={(val) => setField('endsAt', val)} minDateTime={form.startsAt || new Date().toISOString()} placeholder="Chọn ngày và giờ kết thúc (24h)" popoverAlign="end" />
+              <DateTimePicker compact required value={form.endsAt} onChange={(val) => setField('endsAt', val)} minDateTime={form.startsAt || new Date().toISOString()} placeholder="Chọn ngày và giờ kết thúc" popoverAlign="end" />
             </div>
             {scheduleInfo && <div className={`rounded-xl border p-3.5 lg:col-span-2 ${scheduleInfo.isValid ? 'border-[#EEDFC6] bg-[#FBF5EB]/70' : 'border-[#DC2626]/30 bg-rose-50/50'}`}>
               {scheduleInfo.isValid ? <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><div className="flex flex-wrap items-center gap-2 font-semibold text-[#1A1612]"><Timer className="h-4 w-4 text-[#B88E4F]" /><span>Thời lượng phiên</span><span className="rounded-lg border border-[#EEDFC6] bg-white px-2.5 py-1 font-bold text-[#B88E4F]">{scheduleInfo.text}</span><span className="text-[11px] text-[#7D715E]">{formatTimelineDateTime(form.startsAt)} → {formatTimelineDateTime(form.endsAt)}</span></div>{scheduleInfo.countdownText && <span className="rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1 text-[11px] font-bold text-[#7D715E]">⏰ {scheduleInfo.countdownText}</span>}</div>
@@ -536,11 +541,12 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
           </div>
         </section>
 
-        <section className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/70 p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <details className="live-form-products live-form-disclosure">
+          <summary>
             <div className="flex items-center gap-2.5"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-sm font-extrabold text-[#B88E4F] shadow-xs">3</span><div><h3 className="text-sm font-extrabold">Sản phẩm áp dụng</h3><p className="text-xs text-[#7D715E]">Chọn sản phẩm và SKU được gắn với voucher.</p></div></div>
             <span className="rounded-full border border-[#EEDFC6] bg-white px-3 py-1 text-xs font-bold text-[#B88E4F]">Đã chọn {form.productIds.length} / {catalog.products.length}</span>
-          </div>
+            <ChevronDown className="live-disclosure-chevron" size={15} aria-hidden="true" />
+          </summary>
           {catalog.products.length ? <div className="grid max-h-80 gap-2.5 overflow-y-auto rounded-xl border border-[#EAE4D7] bg-white p-2.5 sm:grid-cols-2 sm:p-3">
             {catalog.products.map((product) => <div key={product.id} className={`min-w-0 rounded-xl border p-3 transition ${form.productIds.includes(product.id) ? 'border-[#C59B58] bg-[#FBF5EB]/70' : 'border-[#EAE4D7] bg-white hover:border-[#DEBE85]'}`}>
               <div className="flex min-w-0 items-center gap-3"><input type="checkbox" checked={form.productIds.includes(product.id)} onChange={() => toggleProduct(product.id)} aria-label={`Chọn ${product.title}`} className="h-4 w-4 shrink-0 cursor-pointer accent-[#C59B58]" />
@@ -550,10 +556,10 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
               {form.productIds.includes(product.id) && product.variants.length > 0 && <div className="ml-7 mt-3 border-l-2 border-[#EEDFC6] pl-3"><p className="mb-1.5 text-[11px] text-[#7D715E]">Chọn SKU cụ thể; để trống sẽ áp dụng mọi SKU.</p><div className="flex flex-wrap gap-1.5">{product.variants.map((variant) => <label key={variant.id} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1.5 text-[11px]"><input type="checkbox" checked={form.variantIds.includes(variant.id)} onChange={() => toggleVariant(variant.id)} className="accent-[#C59B58]" />{variant.name}</label>)}</div></div>}
             </div>)}
           </div> : <p className="rounded-xl border border-dashed border-[#EAE4D7] bg-white p-4 text-sm text-[#7D715E]">Shop chưa có sản phẩm đang bán.</p>}
-        </section>
+        </details>
 
-        <section className="rounded-2xl border border-[#EAE4D7] p-4 sm:p-5">
-          <div className="mb-4 flex items-center gap-2.5"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FBF5EB] text-sm font-extrabold text-[#B88E4F]">4</span><div><h3 className="text-sm font-extrabold">Ưu đãi & giới hạn sử dụng</h3><p className="text-xs text-[#7D715E]">Thiết lập mức giảm, lượt dùng và hoa hồng cho phiên live.</p></div></div>
+        <details className="live-form-voucher live-form-disclosure">
+          <summary><span className="live-disclosure-number">4</span><div><h3 className="text-sm font-extrabold">Ưu đãi & giới hạn sử dụng</h3><p className="text-xs text-[#7D715E]">Thiết lập mức giảm, lượt dùng và hoa hồng cho phiên live.</p></div><ChevronDown className="live-disclosure-chevron" size={15} aria-hidden="true" /></summary>
           <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">Loại voucher<Select value={form.discountType} onChange={(e) => setField('discountType', e.target.value)} className="h-11 w-full font-normal"><option value="PERCENTAGE">Giảm theo phần trăm</option><option value="FIXED_AMOUNT">Giảm số tiền</option></Select></label>
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">Mức giảm<input required type="number" min="0.01" max={form.discountType === 'PERCENTAGE' ? 100 : undefined} step="any" value={form.discountValue} onChange={(e) => setField('discountValue', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder={form.discountType === 'PERCENTAGE' ? 'Ví dụ: 15%' : 'Nhập số tiền giảm'} /></label>
@@ -564,7 +570,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">Hoa hồng phiên live (%)<input required type="number" min="0" max="100" step="0.01" value={form.commissionRate} onChange={(e) => setField('commissionRate', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder="Nhập hoa hồng phiên live" /></label>
             <label className="grid min-w-0 gap-1.5 text-sm font-bold sm:col-span-2 xl:col-span-3">Mô tả phiên<textarea maxLength={2000} value={form.description} onChange={(e) => setField('description', e.target.value)} rows={3} className="resize-y rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-3 font-normal outline-none focus:border-[#C59B58]" placeholder="Thông tin ưu đãi hoặc nội dung phiên" /></label>
           </div>
-        </section>
+        </details>
 
         <div className="flex flex-col-reverse gap-3 border-t border-[#EAE4D7] pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[#7D715E]">Kiểm tra lại thông tin trước khi gửi lời mời đến KOL.</p>
@@ -572,8 +578,8 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
         </div>
       </form>
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 sm:px-5">
+      <section className="live-created-sessions space-y-3" aria-label="Phiên livestream đã tạo">
+        <div className="live-list-heading flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 sm:px-5">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]"><CalendarClock className="h-5 w-5" /></span>
             <div><h2 className="text-base font-extrabold text-[#1A1612] sm:text-lg">Phiên đã tạo</h2><p className="text-xs text-[#7D715E]">{sessions.length} phiên livestream</p></div>
@@ -640,12 +646,12 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
           return (
             <article
               key={session.id}
-              className="w-full rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm transition-colors hover:border-[#C59B58]/50 sm:p-5 lg:p-6"
+              className="live-created-card w-full rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm transition-colors hover:border-[#C59B58]/50 sm:p-5 lg:p-6"
             >
               {/* Header: Title, Status Pills & Action Buttons */}
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
+              <div className="live-created-header flex flex-wrap items-start justify-between gap-3">
+                <div className="live-created-info min-w-0 flex-1">
+                  <div className="live-created-title flex flex-wrap items-center gap-2">
                     <h3 className="text-base font-extrabold text-[#1A1612]">{session.title}</h3>
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusConf.bg} ${statusConf.text} ${statusConf.border}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${statusConf.dot}`} />
@@ -657,7 +663,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
                   </div>
 
                   {/* Metadata: Platform, Creator, Time Range */}
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#7D715E]">
+                  <div className="live-created-meta mt-2 flex flex-wrap items-center gap-2 text-xs text-[#7D715E]">
                     {session.platform === 'SCANMS' ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F]">
                         <Radio className="w-3 h-3 text-[#B88E4F] animate-pulse" />
@@ -671,14 +677,12 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
                     {session.platform === 'SCANMS' && shortLiveCode(session.liveUrl) && (
                       <span className="font-mono font-semibold text-[#1A1612]">Mã phiên: {shortLiveCode(session.liveUrl)}</span>
                     )}
-                    <span>·</span>
                     <span className="inline-flex items-center gap-1 font-medium">
                       <Users className="w-3 h-3 text-[#B88E4F]" />
                       <span>KOL:</span>
                       <strong className="text-[#1A1612]">{session.creator.fullName}</strong>
                       <span>({session.creator.id.replace(/-/g, '').slice(0, 8).toUpperCase()})</span>
                     </span>
-                    <span>·</span>
                     <span className="inline-flex items-center gap-1">
                       <Clock className="w-3 h-3 text-[#B88E4F]" />
                       <span>{localDateTime(session.startsAt)} – {localDateTime(session.endsAt)}</span>
@@ -687,14 +691,14 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
 
                   {/* Voucher & Products Section */}
                   {!!session.externalChannels?.length && (
-                    <div className="mt-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs">
+                    <div className="live-created-channels mt-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs">
                       <p className="font-bold text-[#1A1612]">Kênh phát sóng · số người theo dõi do Shop nhập</p>
                       <div className="mt-2 grid gap-1.5">
                         {session.externalChannels.map((channel, index) => <a key={`${channel.channelUrl}-${index}`} href={channel.channelUrl} target="_blank" rel="noreferrer" className="flex flex-wrap items-center gap-2 break-all text-[#B88E4F] hover:underline"><ExternalLink className="h-3.5 w-3.5 shrink-0" />{channel.channelUrl}<span className="font-bold text-[#1A1612]">· {Number(channel.followerCount).toLocaleString('vi-VN')} người theo dõi</span></a>)}
                       </div>
                     </div>
                   )}
-                  <div className="mt-3 flex flex-wrap items-center gap-2.5 pt-2.5 border-t border-[#EAE4D7]/60">
+                  <div className="live-created-products mt-3 flex flex-wrap items-center gap-2.5 pt-2.5 border-t border-[#EAE4D7]/60">
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F]">
                       <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
                       <span>Mã {session.coupon.displayCode}</span>
@@ -714,7 +718,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
                 </div>
 
                 {/* Right action buttons: Link & Collapse */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="live-created-actions flex items-center gap-2 shrink-0">
                   {session.liveUrl && (
                     <a
                       href={session.liveUrl}
@@ -730,7 +734,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
               </div>
 
               {/* Live viewers and settled financial metrics */}
-              <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+              <div className="live-created-metrics mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">
                 {[
                   { label: 'Đang xem', value: session.platform === 'SCANMS' ? (session.report.currentViewers ?? 0) : '—', isMoney: false },
                   { label: 'Tổng lượt xem', value: session.platform === 'SCANMS' ? (session.report.totalViewers ?? 0) : '—', isMoney: false },
@@ -746,8 +750,8 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
                     key={sIdx}
                     className="min-w-0 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 transition-colors hover:bg-[#FBF5EB]/70"
                   >
-                    <p className="text-[11px] font-medium text-[#7D715E] truncate">{stat.label}</p>
-                    <p className={`mt-1 font-mono font-black text-sm truncate ${stat.isMoney ? 'text-[#B88E4F]' : 'text-[#1A1612]'}`}>
+                    <p className="text-[11px] font-medium text-[#7D715E]">{stat.label}</p>
+                    <p className={`mt-1 font-semibold text-sm ${stat.isMoney ? 'text-[#B88E4F]' : 'text-[#1A1612]'}`}>
                       {stat.value}
                     </p>
                   </div>
@@ -782,7 +786,7 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
                   )}
                 </div>
               )}
-              <LiveGovernancePanel session={session} audience="shop" onChanged={() => void loadSessions(storeId)} />
+              <div className="live-created-governance"><LiveGovernancePanel session={session} audience="shop" onChanged={() => void loadSessions(storeId)} /></div>
             </article>
           );
         })}

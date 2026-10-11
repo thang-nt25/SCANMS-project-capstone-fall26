@@ -54,6 +54,7 @@ import {
 } from './dto/order-webhook.dto';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
 import { NormalizedExternalOrder } from './normalizers/external-order-normalizer.interface';
+import { notifyCustomerOrderEvent } from './customer-order-notifications';
 
 import { ConfigService } from '@nestjs/config';
 import { WalletsService } from '../wallets/wallets.service';
@@ -896,6 +897,7 @@ export class OrdersService {
           publicOrderCode: order.externalOrderSn,
           finalAmount: Number(order.finalAmount),
           paymentMethod: raw.paymentMethod || 'COD',
+          paymentStatus: raw.paymentStatus,
           storeName: order.store.name,
         })
         .catch((error: unknown) => {
@@ -906,7 +908,7 @@ export class OrdersService {
     }
 
     const singleResult = {
-      message: 'Đặt hàng thành công!',
+      message: 'Đơn hàng đã được tạo.',
       publicOrderCode: order.externalOrderSn,
       status: order.status,
       subtotalAmount: Number(order.subtotalAmount),
@@ -1844,6 +1846,12 @@ export class OrdersService {
       },
     });
 
+    await notifyCustomerOrderEvent(tx, order, 'ORDER_CREATED', {
+      storeName: store.name,
+      paymentMethod,
+      paymentStatus: (order.rawPayload as Record<string, any>)?.paymentStatus,
+    });
+
     if (couponValidationResult) {
       await tx.couponRedemption.create({
         data: {
@@ -2288,6 +2296,7 @@ export class OrdersService {
             publicOrderCode: res.order.externalOrderSn,
             finalAmount: Number(res.order.finalAmount),
             paymentMethod: normalizedPaymentMethod,
+            paymentStatus: (res.order.rawPayload as Record<string, any>)?.paymentStatus,
             storeName: res.order.store.name,
           })
           .catch((error: unknown) => {
@@ -2299,7 +2308,7 @@ export class OrdersService {
     }
 
     const createdOrders = createdResults.map((res) => ({
-      message: 'Đặt hàng thành công!',
+      message: 'Đơn hàng đã được tạo.',
       publicOrderCode: res.order.externalOrderSn,
       status: res.order.status,
       subtotalAmount: Number(res.order.subtotalAmount),
@@ -3073,6 +3082,13 @@ export class OrdersService {
         },
       });
 
+      await notifyCustomerOrderEvent(
+        tx,
+        order,
+        'ORDER_CANCELLED',
+        { reason: reason?.trim() || 'Shop đã hủy đơn hàng' },
+      );
+
       this.checkoutMetrics.recordCancellation(order.externalOrderSn);
 
       return {
@@ -3473,7 +3489,7 @@ export class OrdersService {
     return await this.prisma.$transaction(async (tx) => {
       // Khóa trực tiếp dòng đơn hàng trong Postgres để các request webhook đồng thời phải tuần tự hóa
       const lockedOrders: any[] = await tx.$queryRaw`
-        SELECT id, external_order_sn, status, final_amount, raw_payload, store_id, attributed_collaborator_id
+        SELECT id, external_order_sn, status, final_amount, raw_payload, store_id, attributed_collaborator_id, customer_id
         FROM orders
         WHERE external_order_sn = ${dto.orderCode}
         FOR UPDATE
@@ -3573,6 +3589,12 @@ export class OrdersService {
           sourceUpdatedAt: new Date(),
         },
       });
+
+      await notifyCustomerOrderEvent(tx, {
+        id: lockedOrder.id,
+        externalOrderSn: lockedOrder.external_order_sn,
+        customerId: lockedOrder.customer_id || null,
+      }, 'ORDER_PAYMENT_CONFIRMED');
 
       await tx.auditLog.create({
         data: {
@@ -3973,9 +3995,25 @@ export class OrdersService {
       if (!order.completedAt) updateData.completedAt = new Date();
     }
 
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: updateData,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.order.updateMany({
+        where: { id: orderId, status: order.status },
+        data: updateData,
+      });
+      if (changed.count !== 1) {
+        throw new ConflictException('Đơn hàng đã thay đổi trạng thái. Vui lòng tải lại.');
+      }
+      const current = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+      await notifyCustomerOrderEvent(
+        tx,
+        current,
+        dto.status === OrderStatus.SHIPPING ? 'ORDER_SHIPPED' : 'ORDER_DELIVERED',
+        {
+          carrierName: updatedRaw.carrierName,
+          trackingNumber: updatedRaw.trackingNumber,
+        },
+      );
+      return current;
     });
 
     return {

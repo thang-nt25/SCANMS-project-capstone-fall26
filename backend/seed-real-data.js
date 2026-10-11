@@ -371,7 +371,7 @@ async function seed() {
           price: 195000,
           originalPrice: 260000,
           commissionRate: 20,
-          imageUrl: '/assets/products/real/chamomile-tea-50g.webp',
+          imageUrl: '/assets/products/illustrations/greenbio-herbal-tea.png',
           stockQuantity: 400,
           description: 'Hỗ trợ thư giãn tinh thần, dễ ngủ và tăng cường hệ miễn dịch tự nhiên.',
         },
