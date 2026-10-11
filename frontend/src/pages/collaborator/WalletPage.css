@@ -1,171 +1,114 @@
-.kol-wallet-page .kol-wallet-toolbar {
-  align-items: stretch;
-  padding: 16px 18px 12px;
-  background: var(--theme-surface, #fff);
-  box-shadow: none;
+/* Compact wallet workspace: white, cream and warm gold. */
+.kol-wallet-page { container: kol-wallet / inline-size; display: flex; flex-direction: column; gap: 12px; min-width: 0; max-width: none; color: #1A1612; text-align: left; }
+.kol-wallet-page > * { margin-block: 0; }
+.kol-wallet-page .kol-wallet-toolbar { padding: 6px; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; box-shadow: 0 2px 6px #231D1503; }
+.kol-wallet-page .kol-wallet-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; }
+.kol-wallet-page .kol-wallet-navigation:has(.kol-wallet-reload) { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+.kol-wallet-page .kol-wallet-navigation button { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 36px; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; font-size: 12px; font-weight: 500; color: #7D715E; }
+.kol-wallet-page .kol-wallet-navigation button svg { color: #B88E4F; }
+.kol-wallet-page .kol-wallet-navigation button[aria-pressed='true'] { background: #FBF5EB; border-color: #EEDFC6; color: #1A1612; font-weight: 600; }
+.kol-wallet-page .kol-wallet-navigation button:hover:not(:disabled) { background: #FAF8F5; }
+.kol-wallet-page .kol-wallet-balances { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; overflow: hidden; }
+.kol-wallet-page .kol-wallet-balances > .kol-wallet-balance { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; min-width: 0; padding: 14px 16px; border: 0; }
+.kol-wallet-balances > .kol-wallet-balance + .kol-wallet-balance { border-left: 1px solid #EAE4D7; }
+.kol-wallet-balance-label { display: flex; align-items: center; gap: 7px; color: #7D715E; font-size: 12px; font-weight: 500; }
+.kol-wallet-balance-label svg { color: #B88E4F; flex-shrink: 0; }
+.kol-wallet-page .kol-wallet-balance-value { grid-column: 1 / -1; grid-row: 2; font-size: clamp(23px, 2vw, 28px); line-height: 1.3; font-weight: 650; letter-spacing: -.7px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kol-wallet-balance-foot { display: contents; color: #7D715E; }
+.kol-wallet-balance-foot > span:first-child { grid-column: 1 / -1; grid-row: 3; font-size: 11px; line-height: 1.5; }
+.kol-wallet-balance-foot > .kol-wallet-state { grid-column: 2; grid-row: 1; }
+.kol-wallet-page .kol-wallet-state { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1px solid #EAE4D7; border-radius: 6px; background: #FAF8F5; color: #7D715E; font-size: 10px; font-weight: 500; line-height: 1.4; white-space: nowrap; }
+.kol-wallet-page .kol-wallet-transfer { display: grid; grid-template-columns: minmax(260px, .68fr) minmax(0, 1.32fr); align-items: stretch; gap: 16px; padding: 14px; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; }
+.kol-wallet-transfer > .kol-wallet-bank { min-width: 0; padding: 12px; border: 1px solid #EAE4D7; border-radius: 10px; background: #FAF8F5; box-shadow: none; justify-content: flex-start; }
+.kol-wallet-transfer > .kol-wallet-withdraw { min-width: 0; padding: 0; border: 0; border-radius: 0; background: #FFFFFF; box-shadow: none; justify-content: flex-start; }
+.kol-wallet-transfer h2 { font-size: 14px; font-weight: 600; }
+.kol-wallet-bank > div > div:first-child, .kol-wallet-withdraw > div:first-child > div:first-child { padding-bottom: 10px; flex-wrap: wrap; }
+.kol-wallet-bank > div > div:first-child > span, .kol-wallet-withdraw > div:first-child > div:first-child > span { font-size: 10px; font-weight: 500; background: #FFFFFF; }
+.kol-wallet-bank-summary { margin-top: 12px; }
+.kol-wallet-bank-identity { flex-wrap: wrap; gap: 8px; }
+.kol-wallet-bank-identity > div:first-child { gap: 10px; }
+.kol-wallet-bank-identity > div:last-child { margin-left: 50px; }
+.kol-wallet-bank-owner { flex-direction: column; align-items: flex-start; gap: 3px; }
+.kol-wallet-bank-owner > span:last-child { max-width: 100%; white-space: normal; overflow-wrap: anywhere; font-size: 11px; }
+.kol-wallet-bank-caption { margin: 12px 0; color: #7D715E; font-size: 11px; line-height: 1.6; }
+.kol-wallet-bank-management { padding-top: 10px; border-top: 1px solid #EAE4D7; color: #7D715E; font-size: 12px; }
+.kol-wallet-bank-management summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; list-style: none; color: #7D715E; font-weight: 500; cursor: pointer; }
+.kol-wallet-bank-management summary::-webkit-details-marker { display: none; }
+.kol-wallet-bank-management[open] summary svg { transform: rotate(180deg); }
+.kol-wallet-bank-management p { margin: 10px 0; font-size: 11px; overflow-wrap: anywhere; }
+.kol-wallet-bank-management button { font-size: 11px; font-weight: 500; }
+.kol-wallet-transfer .kol-wallet-bank-editor { margin-top: 12px; padding: 0; border: 0; background: transparent; }
+.kol-wallet-bank-editor > div:first-child { padding-bottom: 0; border-bottom: 0; gap: 8px; }
+.kol-wallet-bank-editor h3 { font-size: 12px; font-weight: 600; color: #7D715E; }
+.kol-wallet-bank-editor form > div:first-child > div { padding: 10px; border-radius: 8px; box-shadow: none; }
+.kol-wallet-bank-add { box-shadow: none; }
+.kol-wallet-bank-add > div:last-child { background: #FBF5EB; border: 1px solid #EEDFC6; color: #1A1612; box-shadow: none; }
+.kol-wallet-transfer .kol-wallet-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 12px; }
+.kol-wallet-fields > div { min-width: 0; }
+.kol-wallet-field-label { flex-wrap: wrap; gap: 4px 8px; align-content: flex-start; min-height: 40px; }
+.kol-wallet-field-label > span { width: 100%; font-size: 10px; font-weight: 500; }
+.kol-wallet-field-label > button { font-size: 10px; font-weight: 500; text-align: left; }
+.kol-wallet-transfer label { text-transform: none; letter-spacing: normal; font-size: 11px; font-weight: 500; color: #7D715E; }
+.kol-wallet-transfer input { height: 38px; border-radius: 8px; font-size: 13px; font-weight: 500; }
+.kol-wallet-transfer #withdrawal-store { height: 38px; background: #FFFFFF; border-radius: 8px; font-size: 12px; box-shadow: none; }
+.kol-wallet-transfer .kol-wallet-quick-amounts { gap: 5px; margin-top: 8px; }
+.kol-wallet-quick-amounts > span { width: 100%; font-size: 10px; }
+.kol-wallet-quick-amounts > button { min-height: 27px; padding: 4px 7px; border-radius: 6px; background: #FFFFFF; font-family: inherit; font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kol-wallet-quick-amounts > button[aria-pressed='true'] { background: #FBF5EB; border-color: #C59B58; }
+.kol-wallet-quick-amounts > button:hover:not(:disabled) { background: #FBF5EB; }
+.kol-wallet-transfer .kol-wallet-submit { height: 36px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #1A1612; font-size: 12px; font-weight: 600; box-shadow: none; }
+.kol-wallet-transfer .kol-wallet-submit:hover:not(:disabled) { background: #F3EFE6; border-color: #C59B58; }
+.kol-wallet-transfer .kol-wallet-submit:disabled { background: #FAF8F5; border-color: #EAE4D7; color: #7D715E; opacity: .7; }
+.kol-wallet-withdraw-actions { margin-top: auto; padding-top: 12px; }
+.kol-wallet-transfer .kol-wallet-notice { padding: 8px 10px; border-radius: 8px; background: #FAF8F5; border-color: #EAE4D7; font-size: 11px; line-height: 1.6; }
+.kol-wallet-notice p { overflow-wrap: anywhere; }
+.kol-wallet-preview { border-radius: 8px; background: #FAF8F5; box-shadow: none; }
+.kol-wallet-page .kol-wallet-history { border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; box-shadow: none; }
+.kol-wallet-history > div:first-child { padding: 10px 12px; background: #FFFFFF; }
+.kol-wallet-history h2 { font-size: 13px; font-weight: 600; }
+.kol-wallet-history > div:first-child > div:first-child > div:first-child { width: 30px; height: 30px; border-radius: 8px; box-shadow: none; }
+.kol-wallet-history > div:first-child button { min-height: 31px; font-size: 11px; font-weight: 500; box-shadow: none; }
+.kol-wallet-history:has(button[aria-expanded='false']) > div:first-child { border-bottom: 0; }
+.kol-wallet-history:has(button[aria-expanded='false']) > div:first-child p { display: none; }
+.kol-wallet-history table { min-width: 860px; }
+.kol-wallet-history table thead { background: #FAF8F5; text-transform: none; letter-spacing: normal; font-size: 11px; }
+.kol-wallet-page-button { display: inline-flex; align-items: center; gap: 4px; padding: 6px 9px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #1A1612; cursor: pointer; }
+.kol-wallet-page-button:disabled { opacity: .45; cursor: not-allowed; }
+.kol-wallet-page :is(button, input, select, summary):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
+@container kol-wallet (max-width: 999px) {
+  .kol-wallet-page .kol-wallet-transfer { grid-template-columns: minmax(230px, .7fr) minmax(0, 1.3fr); gap: 12px; }
+  .kol-wallet-transfer .kol-wallet-fields { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .kol-wallet-field-label { min-height: 0; }
+  .kol-wallet-field-label > span { width: auto; }
+  .kol-wallet-quick-amounts > span { width: auto; }
+  .kol-wallet-page .kol-wallet-balances > .kol-wallet-balance { grid-template-columns: minmax(0, 1fr); }
+  .kol-wallet-balance-foot > .kol-wallet-state { grid-column: 1; grid-row: 4; justify-self: start; }
 }
-
-.kol-wallet-toolbar > div:first-child {
-  padding-left: 0;
+@container kol-wallet (max-width: 699px) {
+  .kol-wallet-page .kol-wallet-transfer { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+  .kol-wallet-bank-identity > div:last-child { margin-left: 0; }
+  .kol-wallet-page .kol-wallet-balance-value { font-size: 23px; }
+  .kol-wallet-page .kol-wallet-balances > .kol-wallet-balance { padding: 12px; }
 }
-
-.kol-wallet-toolbar > div:first-child > div:first-child {
-  width: 40px;
-  height: 40px;
-  background: var(--theme-surface, #fff);
+@container kol-wallet (max-width: 439px) {
+  .kol-wallet-page .kol-wallet-navigation { gap: 3px; }
+  .kol-wallet-page .kol-wallet-navigation button { flex-direction: column; gap: 4px; padding: 6px 3px; min-height: 48px; font-size: 10px; }
+  .kol-wallet-navigation .kol-wallet-reload span { display: none; }
+  .kol-wallet-balance-label { font-size: 11px; gap: 5px; }
+  .kol-wallet-balance-label svg { width: 13px; }
+  .kol-wallet-page .kol-wallet-balance-value { font-size: 20px; }
+  .kol-wallet-balance-foot > span:first-child { font-size: 10px; }
+  .kol-wallet-page .kol-wallet-state { font-size: 9px; }
+  .kol-wallet-field-label { gap: 4px; }
+  .kol-wallet-history > div:first-child { gap: 8px; }
+  .kol-wallet-history > div:first-child > div:first-child { gap: 7px; }
+  .kol-wallet-history > div:first-child > div:first-child > div:last-child > div { flex-wrap: wrap; gap: 4px; }
+  .kol-wallet-history > div:first-child > div:last-child { margin-left: auto; }
 }
-
-.kol-wallet-toolbar h1 {
-  line-height: 1.4;
-  letter-spacing: -0.025em;
+@container kol-wallet (max-width: 339px) {
+  .kol-wallet-page .kol-wallet-balances { grid-template-columns: minmax(0, 1fr); }
+  .kol-wallet-balances > .kol-wallet-balance + .kol-wallet-balance { border-left: 0; border-top: 1px solid #EAE4D7; }
 }
-
-.kol-wallet-navigation {
-  padding-top: 10px;
-  border-top: 1px solid var(--theme-line, #eae4d7);
-}
-
-.kol-wallet-navigation > div {
-  gap: 5px;
-  min-width: 0;
-}
-
-.kol-wallet-navigation button {
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 600;
-  min-height: 34px;
-}
-
-.kol-wallet-navigation button[aria-pressed='true'],
-.kol-wallet-navigation > button {
-  background: var(--theme-surface, #fff);
-  border-color: var(--theme-line, #eedfc6);
-  color: var(--theme-ink, #1a1612);
-}
-
-.kol-wallet-page .kol-wallet-balances > div {
-  padding: 14px 16px;
-  border-color: var(--theme-line, #eae4d7);
-  box-shadow: none;
-}
-
-.kol-wallet-balances > div > div:first-child > div > div {
-  background: var(--theme-surface, #fff);
-}
-
-.kol-wallet-balances > div > div:first-child > span {
-  background: var(--theme-surface, #fff);
-  color: var(--theme-muted, #7d715e);
-  border-color: var(--theme-line, #eae4d7);
-  font-weight: 500;
-}
-
-.kol-wallet-balances > div > div:nth-child(2) > div {
-  font-family: inherit;
-  font-size: clamp(24px, 2.2vw, 30px);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-}
-
-.kol-wallet-balances p {
-  font-size: 12px;
-  display: block;
-  overflow: visible;
-}
-
-.kol-wallet-page .kol-wallet-transfer {
-  align-items: start;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-}
-
-.kol-wallet-transfer > div,
-.kol-wallet-transfer > form {
-  padding: 16px;
-  border-color: var(--theme-line, #eae4d7);
-  box-shadow: none;
-  min-width: 0;
-}
-
-.kol-wallet-transfer > div > div > div,
-.kol-wallet-transfer > form > div > div,
-.kol-wallet-transfer select,
-.kol-wallet-transfer button:not([type='submit']),
-.kol-wallet-page > section:not(.kol-wallet-transfer) > div:first-child,
-.kol-wallet-page > section thead,
-.kol-wallet-page > section > div:last-child {
-  background: var(--theme-surface, #fff);
-  box-shadow: none;
-}
-
-.kol-wallet-transfer label {
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 600;
-  font-size: 12px;
-}
-
-.kol-wallet-transfer button[type='submit'] {
-  background: #c59b58;
-  color: var(--theme-ink, #1a1612);
-  font-weight: 600;
-  box-shadow: none;
-}
-
-.kol-wallet-transfer button[type='submit']:hover:not(:disabled) {
-  background: #b88e4f;
-}
-
-.kol-wallet-transfer button[type='submit']:disabled {
-  background: var(--theme-surface-sand, #f3efe6);
-  border: 1px solid var(--theme-line, #eae4d7);
-  color: var(--theme-muted, #7d715e);
-  opacity: 1;
-}
-
-.kol-wallet-page > section {
-  border-color: var(--theme-line, #eae4d7);
-  box-shadow: none;
-}
-
-.kol-wallet-page > section table thead {
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: 12px;
-}
-
-.kol-wallet-page-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid var(--theme-line, #eae4d7);
-  background: var(--theme-surface, #fff);
-  color: var(--theme-ink, #1a1612);
-  padding: 6px 9px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.kol-wallet-page-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.kol-wallet-page button:focus-visible,
-.kol-wallet-page input:focus-visible,
-.kol-wallet-page select:focus-visible {
-  outline: 2px solid #b88e4f;
-  outline-offset: 2px;
-}
-
-@media (max-width: 1023px) {
-  .kol-wallet-page .kol-wallet-transfer {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 639px) {
   .h-screen:has(.kol-wallet-page) > aside {
     width: 56px;
@@ -232,21 +175,4 @@
     padding-inline: 10px;
   }
 
-  .kol-wallet-page .kol-wallet-toolbar,
-  .kol-wallet-transfer > div,
-  .kol-wallet-transfer > form {
-    padding: 12px;
-  }
-
-  .kol-wallet-navigation > button span {
-    display: none;
-  }
-
-  .kol-wallet-navigation button {
-    padding: 7px;
-  }
-
-  .kol-wallet-transfer > div > div > div > div:first-child {
-    flex-wrap: wrap;
-  }
 }

@@ -61,7 +61,6 @@ export default function ShopSettingsPage() {
   const [ownerDetailsDraft, setOwnerDetailsDraft] = useState(shopOwnerDetails);
   const [isEditingOwnerDetails, setIsEditingOwnerDetails] = useState(false);
   const [savingOwnerDetails, setSavingOwnerDetails] = useState(false);
-  const [shopVerificationStatus, setShopVerificationStatus] = useState('DRAFT');
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,7 +114,6 @@ export default function ShopSettingsPage() {
         taxCode: onboardingData.taxCode || '',
         warehouseAddress: onboardingData.warehouseAddress || '',
       });
-      setShopVerificationStatus(store.onboardingStatus || (store.isVerified ? 'VERIFIED' : 'DRAFT'));
     } catch (err) {
       console.error('Lỗi tải cấu hình shop:', err);
     }
@@ -250,21 +248,6 @@ export default function ShopSettingsPage() {
           <span>{toastMsg}</span>
         </div>
       )}
-
-      <div className="settings-heading flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.025)] sm:px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F"><Store className="h-5 w-5" /></div>
-          <div className="min-w-0">
-
-            <h1 className="m-0 mt-0.5 text-lg font-bold tracking-tight text-[#1A1612]">Cài đặt gian hàng</h1>
-            <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Thông tin, tiếp thị và chính sách của gian hàng.</p>
-          </div>
-        </div>
-        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${shopVerificationStatus === 'VERIFIED' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]' : shopVerificationStatus === 'REJECTED' ? 'border-red-200 bg-red-50 text-red-700' : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${shopVerificationStatus === 'VERIFIED' ? 'bg-[#B88E4F]' : shopVerificationStatus === 'REJECTED' ? 'bg-red-500' : 'bg-[#A99D8A]'}`} />
-          {shopVerificationStatus === 'VERIFIED' ? 'Đã xác minh' : shopVerificationStatus === 'PENDING_APPROVAL' ? 'Đang chờ duyệt' : shopVerificationStatus === 'NEEDS_INFO' ? 'Cần bổ sung hồ sơ' : shopVerificationStatus === 'REJECTED' ? 'Cần cập nhật hồ sơ' : 'Chưa xác minh'}
-        </span>
-      </div>
 
       <form onSubmit={handleSave} className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.04fr_0.96fr] xl:gap-5">
         <div className="space-y-4 xl:space-y-5">

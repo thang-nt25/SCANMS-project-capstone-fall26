@@ -65,7 +65,7 @@
 .merchant-payout-page .payout-toolbar { padding: 16px; gap: 12px; }
 .merchant-payout-page .payout-toolbar input { background: var(--theme-surface, #fff); width: 280px; height: 40px; }
 .merchant-payout-page .payout-toolbar button { box-shadow: none; min-height: 40px; }
-.merchant-payout-page .payout-toolbar [class*="bg-gradient"] { background-image: none; background-color: #C59B58; color: var(--theme-ink, #231D15); }
+.merchant-payout-page .payout-toolbar [class*="bg-gradient"] { background-image: none; background-color: var(--action-bg); color: var(--action-ink); }
 .merchant-payout-page .payout-approval-table { box-shadow: none; border-radius: 18px; }
 .merchant-payout-page .payout-approval-table thead { background: var(--theme-surface, #fff); text-transform: none; letter-spacing: 0; }
 .merchant-payout-page .payout-approval-table thead th:last-child { background: var(--theme-surface, #fff); }

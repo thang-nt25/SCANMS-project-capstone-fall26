@@ -897,6 +897,7 @@ export class OrdersService {
           publicOrderCode: order.externalOrderSn,
           finalAmount: Number(order.finalAmount),
           paymentMethod: raw.paymentMethod || 'COD',
+          paymentStatus: raw.paymentStatus,
           storeName: order.store.name,
         })
         .catch((error: unknown) => {
@@ -907,7 +908,7 @@ export class OrdersService {
     }
 
     const singleResult = {
-      message: 'Đặt hàng thành công!',
+      message: 'Đơn hàng đã được tạo.',
       publicOrderCode: order.externalOrderSn,
       status: order.status,
       subtotalAmount: Number(order.subtotalAmount),
@@ -1847,6 +1848,8 @@ export class OrdersService {
 
     await notifyCustomerOrderEvent(tx, order, 'ORDER_CREATED', {
       storeName: store.name,
+      paymentMethod,
+      paymentStatus: (order.rawPayload as Record<string, any>)?.paymentStatus,
     });
 
     if (couponValidationResult) {
@@ -2293,6 +2296,7 @@ export class OrdersService {
             publicOrderCode: res.order.externalOrderSn,
             finalAmount: Number(res.order.finalAmount),
             paymentMethod: normalizedPaymentMethod,
+            paymentStatus: (res.order.rawPayload as Record<string, any>)?.paymentStatus,
             storeName: res.order.store.name,
           })
           .catch((error: unknown) => {
@@ -2304,7 +2308,7 @@ export class OrdersService {
     }
 
     const createdOrders = createdResults.map((res) => ({
-      message: 'Đặt hàng thành công!',
+      message: 'Đơn hàng đã được tạo.',
       publicOrderCode: res.order.externalOrderSn,
       status: res.order.status,
       subtotalAmount: Number(res.order.subtotalAmount),

@@ -1,0 +1,30 @@
+.scanms-datetime--compact .scanms-datetime-trigger { height:42px; padding:8px 10px; gap:5px; border:1px solid #EAE4D7; border-radius:10px; background:#FFFFFF; box-shadow:none; }
+.scanms-datetime--compact .scanms-datetime-trigger[aria-expanded="true"] { border-color:#C59B58; background:#FBF5EB; box-shadow:0 0 0 2px #C59B5814; }
+.scanms-datetime--compact .scanms-datetime-trigger > div:first-child { gap:7px; }
+.scanms-datetime--compact .scanms-datetime-trigger-icon { width:16px; height:20px; border:0; background:transparent; border-radius:0; }
+.scanms-datetime--compact .scanms-datetime-trigger span { font-size:11px; font-weight:500; }
+.scanms-datetime--compact .scanms-datetime-trigger > div:last-child > span { display:none; }
+.scanms-datetime--compact .scanms-datetime-trigger:focus-visible { outline:2px solid #B88E4F; outline-offset:2px; }
+.scanms-datetime-popover--inline { position:relative; inset:auto; width:100%; max-width:100%; margin-top:10px; box-shadow:none; }
+.scanms-datetime-popover--compact { padding:14px; border-radius:14px; border:1px solid #EEDFC6; background:#FFFFFF; color:#1A1612; box-shadow:none; font-family:inherit; }
+.scanms-datetime-popover--compact .scanms-datetime-heading { margin-bottom:12px; padding-bottom:10px; border-color:#EAE4D7; }
+.scanms-datetime-popover--compact .scanms-datetime-heading > span { font-size:13px; font-weight:600; color:#1A1612; }
+.scanms-datetime-popover--compact .scanms-datetime-heading > span > span { display:none; }
+.scanms-datetime-close { display:grid; place-items:center; width:26px; height:26px; border:0; border-radius:8px; background:#FAF8F5; color:#7D715E; cursor:pointer; }
+.scanms-datetime-popover--compact .scanms-datetime-content { gap:14px; }
+.scanms-datetime-popover--compact .scanms-datetime-calendar { min-width:0; }
+.scanms-datetime-popover--compact .scanms-datetime-calendar > div:first-child > span { font-size:12px; font-weight:600; }
+.scanms-datetime-popover--compact .scanms-datetime-calendar > div:nth-child(2) > div { color:#7D715E; font-weight:500; font-size:10px; }
+.scanms-datetime-popover--compact .scanms-datetime-day { width:100%; height:29px; font-size:11px; font-weight:500; box-shadow:none; transform:none; border:1px solid transparent; }
+.scanms-datetime-popover--compact .scanms-datetime-day[aria-pressed="true"] { background:#FBF5EB; border-color:#C59B58; color:#1A1612; font-weight:650; }
+.scanms-datetime-popover--compact .scanms-datetime-day:not(:disabled):hover { background:#FBF5EB; color:#B88E4F; }
+.scanms-datetime-popover--compact .scanms-datetime-time { width:128px; padding-left:12px; border-color:#EAE4D7; }
+.scanms-datetime-popover--compact .scanms-datetime-time-list { height:188px; border-color:#EAE4D7; border-radius:10px; background:#FAF8F5; scrollbar-width:thin; scrollbar-color:#EEDFC6 transparent; }
+.scanms-datetime-popover--compact .scanms-datetime-time-list button { height:29px; font-size:11px; font-weight:500; transform:none; box-shadow:none; }
+.scanms-datetime-popover--compact .scanms-datetime-time-list button[aria-pressed="true"] { background:#FBF5EB; border:1px solid #C59B58; color:#1A1612; font-weight:650; }
+.scanms-datetime-popover--compact .scanms-datetime-footer { margin-top:12px; padding-top:10px; justify-content:flex-end; border-color:#EAE4D7; }
+.scanms-datetime-popover--compact .scanms-datetime-footer button { height:32px; padding:6px 12px; font-size:11px; font-weight:500; border-radius:8px; box-shadow:none; }
+.scanms-datetime-popover--compact .scanms-datetime-footer button:last-child { background:#FBF5EB; border:1px solid #EEDFC6; color:#1A1612; }
+.scanms-datetime-popover--compact .scanms-datetime-footer button svg { color:#B88E4F; }
+.scanms-datetime-popover--compact button:focus-visible { outline:2px solid #B88E4F; outline-offset:1px; }
+@media(max-width:639px) { .scanms-datetime-popover--compact .scanms-datetime-time { width:100%; padding-left:0; } .scanms-datetime-popover--compact .scanms-datetime-time-list { height:182px; } }

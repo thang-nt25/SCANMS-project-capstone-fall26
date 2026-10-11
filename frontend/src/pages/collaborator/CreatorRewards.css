@@ -1,0 +1,255 @@
+/* SCANMS creator rewards: one light surface system for all three views.
+   Design variance 3, motion intensity 2, visual density 6. */
+.creator-rewards {
+  --reward-ink: #1a1612;
+  --reward-muted: #7d715e;
+  --reward-line: #eae4d7;
+  --reward-soft: #fbf5eb;
+  --reward-gold: #c59b58;
+  --reward-radius: 12px;
+  color: var(--reward-ink);
+}
+.creator-rewards.tier-overview { gap: 12px; }
+#creator-profile-hub[data-profile-tab='tiers'] .kol-profile-tabs button { min-height: 36px; padding: 7px 10px; font-size: 12px; border-radius: 7px; }
+#creator-profile-hub[data-profile-tab='tiers'] .kol-profile-tabs > div { padding: 5px; border-radius: 12px; }
+.creator-rewards.tier-overview .tier-section-nav { gap: 4px; padding: 5px; border-radius: var(--reward-radius); }
+.creator-rewards .tier-section-nav a { min-height: 38px; padding: 8px 12px; font-size: 12px; font-weight: 550; border-radius: 7px; }
+.creator-rewards .tier-section-nav a[aria-current='page'] { background: var(--reward-soft); color: var(--reward-ink); border-color: #eedfc6; }
+.creator-rewards svg { stroke-width: 1.7; }
+.creator-rewards :is(button,a,select,summary,[role='region']):focus-visible { outline: 2px solid #b88e4f; outline-offset: 3px; }
+
+/* Tier: personal status and policies at the same level, monthly creators below. */
+.creator-rewards .tier-dashboard-layout { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, 1fr); gap: 12px; }
+.creator-rewards.tier-overview .tier-panel { padding: 16px; border-radius: var(--reward-radius); box-shadow: none; }
+.creator-rewards .tier-current { order: 1; display: flex; flex-direction: column; }
+.creator-rewards .tier-policy { order: 2; }
+.creator-rewards .tier-featured { order: 3; grid-column: 1 / -1; }
+.creator-rewards .tier-panel-heading { margin-bottom: 14px; gap: 10px; }
+.creator-rewards .tier-panel-heading h2 { font-size: 16px; line-height: 1.45; letter-spacing: -.02em; font-weight: 650; }
+.creator-rewards .tier-panel-heading p { margin-top: 3px; font-size: 12px; }
+.creator-rewards .tier-heading-icon { width: 32px; height: 32px; border-radius: 8px; }
+.creator-rewards .tier-heading-icon svg { width: 17px; height: 17px; }
+.creator-rewards .tier-current-heading { gap: 12px; }
+.creator-rewards .tier-current-icon { width: 48px; height: 48px; border: 1px solid #eedfc6; border-radius: 12px; background: var(--reward-soft); }
+.creator-rewards .tier-current-icon svg { width: 25px; height: 25px; }
+.creator-rewards .tier-current h2 { font-size: 24px; letter-spacing: -.03em; line-height: 1.35; }
+.creator-rewards .tier-current-bonus { margin-top: 4px; font-size: 12px; }
+.creator-rewards .tier-current-bonus strong { color: var(--reward-ink); }
+.creator-rewards .tier-current-stats { gap: 8px; padding: 0; margin: 16px 0 0; border: 0; }
+.creator-rewards .tier-current-stats > div { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 12px 10px; border: 1px solid var(--reward-line); border-radius: 8px; background: #fff; }
+.creator-rewards .tier-current-stats svg { display: none; }
+.creator-rewards .tier-current-stats span { font-size: 11px; }
+.creator-rewards .tier-current-stats strong { font-size: 18px; line-height: 1.35; }
+.creator-rewards .tier-progress { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--reward-line); }
+.creator-rewards .tier-progress-heading { align-items: center; }
+.creator-rewards .tier-progress h3 { font-size: 14px; }
+.creator-rewards .tier-progress h3 span { color: var(--reward-ink); border: 1px solid #eedfc6; background: var(--reward-soft); }
+.creator-rewards .tier-progress-percentage { display: grid; place-items: center; min-width: 40px; height: 30px; padding: 3px 7px; border: 1px solid var(--reward-line); border-radius: 7px; color: var(--reward-ink); font-size: 12px; }
+.creator-rewards .tier-progress-track { height: 8px; margin-top: 12px; background: #f3efe6; }
+.creator-rewards .tier-progress-caption { font-size: 11px; gap: 6px; margin-top: 9px; }
+.creator-rewards .tier-current-perks { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 12px 0 0; margin-top: auto; border: 0; border-radius: 0; background: #fff; font-size: 11px; }
+.creator-rewards .tier-current-perks svg { width: 14px; height: 14px; }
+.creator-rewards .tier-current-perks > span { font-size: 11px; color: var(--reward-muted); }
+.creator-rewards .tier-current-perks > strong { margin-left: auto; color: var(--reward-ink); font-size: 11px; font-weight: 550; }
+.creator-rewards.tier-overview .tier-policy { padding-bottom: 14px; }
+.creator-rewards .tier-policy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.creator-rewards .tier-policy-card { min-width: 0; padding: 12px; border: 1px solid var(--reward-line); border-radius: 8px; background: #fff; }
+.creator-rewards .tier-policy-card[data-current] { border-color: #eedfc6; background: var(--reward-soft); }
+.creator-rewards .tier-policy-card-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; min-height: 20px; }
+.creator-rewards .tier-policy-card h3 { margin: 0; font-size: 12px; line-height: 1.45; font-weight: 600; }
+.creator-rewards .tier-policy-current { padding: 1px 4px; font-size: 9px; color: var(--reward-ink); }
+.creator-rewards .tier-policy-current svg { color: #b88e4f; }
+.creator-rewards .tier-policy-card-bonus { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.creator-rewards .tier-policy-card-bonus strong { font-size: 22px; line-height: 1.25; font-weight: 650; letter-spacing: -.03em; }
+.creator-rewards .tier-policy-card-bonus span { color: var(--reward-muted); font-size: 10px; }
+.creator-rewards .tier-policy-card p { margin: 8px 0 0; color: var(--reward-muted); font-size: 11px; line-height: 1.5; }
+.creator-rewards .tier-policy-card p strong { color: var(--reward-ink); font-weight: 500; white-space: nowrap; }
+.creator-rewards .tier-policy-note { padding: 10px 0 0; margin-top: 12px; font-size: 11px; }
+.creator-rewards .tier-policy-empty { grid-column: 1 / -1; margin: 0; padding: 16px 0; font-size: 12px; color: var(--reward-muted); }
+.creator-rewards .tier-text-link { font-size: 12px; }
+.creator-rewards .tier-featured-grid { gap: 0; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.creator-rewards .tier-creator { border: 0; border-right: 1px solid var(--reward-line); border-radius: 0; padding: 4px 14px; gap: 8px; box-shadow: none; background: #fff; transform: none; }
+.creator-rewards .tier-creator:last-child { border-right: 0; }
+.creator-rewards .tier-creator-identity { grid-template-columns: 34px minmax(0, 1fr); gap: 4px 9px; }
+.creator-rewards .tier-creator-avatar { width: 34px; height: 34px; }
+.creator-rewards .tier-creator-name h3 { font-size: 12px; }
+.creator-rewards .tier-creator-name p { font-size: 11px; margin-top: 2px; }
+.creator-rewards .tier-creator-revenue { padding-top: 5px; border: 0; }
+.creator-rewards .tier-creator-revenue > div > span { font-size: 10px; }
+.creator-rewards .tier-creator-revenue strong { font-size: 17px; }
+.creator-rewards .tier-creator-orders { font-size: 10px; }
+.creator-rewards .tier-state { font-size: 12px; }
+
+/* Leaderboard: compact podium, quiet controls, useful empty state. */
+.creator-rewards .leaderboard-page.leaderboard-redesign { gap: 12px; }
+.creator-rewards .leaderboard-redesign .lb-panel { border-radius: var(--reward-radius); box-shadow: none; }
+.creator-rewards .lb-filters { padding: 14px 16px; }
+.creator-rewards .leaderboard-redesign .lb-heading :is(h1,h2) { font-size: 16px; font-weight: 650; line-height: 1.45; }
+.creator-rewards .lb-heading-icon { width: 32px; height: 32px; border-radius: 8px; }
+.creator-rewards .lb-heading-icon svg { width: 17px; height: 17px; }
+.creator-rewards .lb-filter-grid { margin-top: 12px; gap: 12px; }
+.creator-rewards .lb-segments { background: #faf8f5; border-radius: 8px; padding: 3px; gap: 3px; }
+.creator-rewards .lb-segments button { min-height: 30px; font-size: 12px; }
+.creator-rewards .lb-segments button[aria-pressed='true'] { border-color: var(--reward-line); box-shadow: 0 1px 3px #231d1508; }
+.creator-rewards .lb-metric-select select { min-height: 36px; font-size: 12px; padding-top: 7px; padding-bottom: 7px; width: 164px; border-radius: 7px; }
+.creator-rewards .lb-metric-select > svg { top: 11px; }
+.creator-rewards .lb-refresh { min-height: 34px; border-radius: 7px; font-size: 12px; }
+.creator-rewards .lb-method-note { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--reward-line); font-size: 11px; }
+.creator-rewards .lb-method-note summary { display: flex; align-items: center; gap: 5px; width: fit-content; cursor: pointer; list-style: none; }
+.creator-rewards .lb-method-note summary::-webkit-details-marker { display: none; }
+.creator-rewards .lb-method-note summary svg { width: 12px; height: 12px; }
+.creator-rewards .lb-method-note[open] summary svg { transform: rotate(180deg); }
+.creator-rewards .lb-method-note p { max-width: 900px; margin: 8px 0 0; line-height: 1.65; }
+.creator-rewards .leaderboard-redesign .leaderboard-podium { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.creator-rewards .lb-creator-card { min-height: 0; padding: 14px; border-radius: var(--reward-radius); background: #fff; }
+.creator-rewards .lb-creator-first { border-color: #eedfc6; background: #fff; box-shadow: inset 0 2px 0 var(--reward-gold); }
+.creator-rewards .lb-creator-identity { min-height: 60px; gap: 10px; }
+.creator-rewards .lb-creator-identity .lb-avatar { width: 40px; height: 40px; }
+.creator-rewards .leaderboard-redesign .lb-creator-name { font-size: 13px; line-height: 1.5; font-weight: 600; }
+.creator-rewards .lb-creator-tier { font-size: 11px; }
+.creator-rewards .lb-creator-badges { gap: 5px; margin-top: 0; }
+.creator-rewards .lb-rank { font-size: 10px; padding: 2px 5px; }
+.creator-rewards .lb-creator-metric { margin-top: 12px; padding-top: 10px; gap: 6px; }
+.creator-rewards .lb-creator-value > strong { font-size: 23px; }
+.creator-rewards .lb-creator-value > span { font-size: 10px; }
+.creator-rewards .lb-creator-details { margin-top: 10px; }
+.creator-rewards .lb-creator-details summary { font-size: 11px; }
+.creator-rewards .lb-creator-details-content { gap: 8px; padding-top: 9px; }
+.creator-rewards .lb-creator-stats { font-size: 11px; }
+.creator-rewards .leaderboard-redesign .lb-podium-state { padding: 28px 16px; gap: 9px; }
+.creator-rewards .lb-podium-state > svg { box-sizing: content-box; padding: 12px; width: 23px; height: 23px; border-radius: 12px; background: var(--reward-soft); }
+.creator-rewards .lb-podium-state h2 { font-size: 16px; }
+.creator-rewards .lb-podium-state p { font-size: 12px; }
+.creator-rewards .lb-empty-action { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin-top: 4px; padding: 7px 11px; border: 1px solid #eedfc6; border-radius: 7px; background: var(--reward-soft); color: var(--reward-ink); font-size: 12px; cursor: pointer; }
+.creator-rewards .lb-empty-action svg { width: 14px; height: 14px; }
+.creator-rewards .leaderboard-rankings-header { padding: 14px 16px; }
+.creator-rewards .leaderboard-redesign table { font-size: 12px; }
+.creator-rewards .leaderboard-redesign table :is(th,td) { padding: 10px 12px; }
+.creator-rewards .leaderboard-my-rank { padding: 12px 16px; }
+.creator-rewards .lb-my-rank-number { width: 36px; min-height: 36px; border-radius: 8px; font-size: 14px; }
+.creator-rewards .lb-my-rank-number svg { width: 18px; height: 18px; }
+.creator-rewards .lb-my-rank-title h2 { font-size: 13px; }
+.creator-rewards .lb-my-rank-identity p { font-size: 11px; }
+.creator-rewards .lb-race-button { min-height: 34px; text-decoration: none; font-size: 12px; border-radius: 7px; }
+
+/* Bonus: aligned metrics, then one progress card with its reward beside it. */
+.creator-rewards #kol-bonus-root .kol-bonus-content { gap: 12px; }
+.creator-rewards #kol-bonus-root .kol-bonus-toolbar { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 12px; padding: 14px 16px; border-radius: var(--reward-radius); box-shadow: none; }
+.creator-rewards .bonus-toolbar-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--reward-line); }
+.creator-rewards #kol-bonus-root .bonus-toolbar-heading h2 { font-size: 16px; }
+.creator-rewards #kol-bonus-root .kol-bonus-tabs { flex-wrap: nowrap; padding: 3px; gap: 3px; border: 1px solid var(--reward-line); border-radius: 8px; background: #faf8f5; }
+.creator-rewards #kol-bonus-root .kol-bonus-tabs button { min-height: 30px; border: 1px solid transparent; border-radius: 5px; padding: 6px 9px; font-size: 12px; font-weight: 500; white-space: nowrap; background: transparent; }
+.creator-rewards #kol-bonus-root .kol-bonus-tabs button[aria-pressed='true'] { background: #fff; border-color: var(--reward-line); color: var(--reward-ink); box-shadow: 0 1px 3px #231d1508; }
+.creator-rewards #kol-bonus-root .kol-bonus-filters { flex-wrap: nowrap; gap: 6px; }
+.creator-rewards #kol-bonus-root .kol-bonus-filters > div:first-child { width: clamp(160px,18vw,240px); }
+.creator-rewards #kol-bonus-root .kol-bonus-filters > div:not(:first-child) { width: 104px; }
+.creator-rewards #kol-bonus-root .kol-bonus-filters button[aria-haspopup='listbox'] { width: 100%; min-width: 0; min-height: 36px; height: 36px; padding: 7px 10px; border-radius: 7px; font-size: 12px; background: #fff; }
+.creator-rewards #kol-bonus-root .bonus-panel { border-radius: var(--reward-radius); box-shadow: none; }
+.creator-rewards #kol-bonus-root .bonus-overview { padding: 0; border: 0; background: transparent; }
+.creator-rewards #kol-bonus-root .kol-kpi-grid { gap: 10px; }
+.creator-rewards #kol-bonus-root .bonus-kpi { min-height: 116px; padding: 14px; margin: 0; gap: 9px; border: 1px solid var(--reward-line); border-radius: var(--reward-radius); background: #fff; }
+.creator-rewards #kol-bonus-root .bonus-kpi-total { border: 1px solid #eedfc6; background: #fff; box-shadow: inset 0 2px 0 var(--reward-gold); }
+.creator-rewards #kol-bonus-root .bonus-kpi-heading { justify-content: space-between; gap: 8px; }
+.creator-rewards #kol-bonus-root .bonus-kpi-heading h2 { font-size: 12px; line-height: 1.5; }
+.creator-rewards #kol-bonus-root .bonus-kpi-heading .bonus-icon { order: 0; width: 24px; height: 24px; border-radius: 6px; background: var(--reward-soft); }
+.creator-rewards #kol-bonus-root .bonus-kpi-heading .bonus-icon svg { width: 14px; height: 14px; }
+.creator-rewards #kol-bonus-root .bonus-amount { font-size: 24px; }
+.creator-rewards #kol-bonus-root .bonus-kpi-name { font-size: 16px; }
+.creator-rewards #kol-bonus-root .bonus-kpi-split { gap: 5px; }
+.creator-rewards #kol-bonus-root .bonus-kpi-split strong { font-size: 20px; }
+.creator-rewards #kol-bonus-root .bonus-kpi p { font-size: 11px; }
+.creator-rewards #kol-bonus-root .bonus-heading h2 { font-size: 16px; font-weight: 650; }
+.creator-rewards #kol-bonus-root .bonus-icon { width: 32px; height: 32px; border-radius: 8px; }
+.creator-rewards #kol-bonus-root .bonus-heading p { font-size: 12px; margin-top: 3px; }
+.creator-rewards #kol-bonus-root .bonus-progress { padding: 16px; }
+.creator-rewards #kol-bonus-root .bonus-progress-header { margin-bottom: 16px; align-items: center; gap: 12px; }
+.creator-rewards #kol-bonus-root .bonus-missing span { font-size: 11px; }
+.creator-rewards #kol-bonus-root .bonus-missing strong { font-size: 21px; }
+.creator-rewards .bonus-progress-body { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(240px,1fr); gap: 20px; align-items: center; }
+.creator-rewards .bonus-progress-meter { min-width: 0; }
+.creator-rewards .bonus-meter-label { display: flex; justify-content: space-between; gap: 8px; color: var(--reward-muted); font-size: 12px; }
+.creator-rewards .bonus-meter-label strong { color: var(--reward-ink); font-size: 15px; font-weight: 600; }
+.creator-rewards #kol-bonus-root .bonus-progress-track { height: 9px; margin-top: 11px; }
+.creator-rewards #kol-bonus-root .bonus-progress-footer { font-size: 11px; margin-top: 9px; gap: 5px; }
+.creator-rewards .bonus-next-reward { padding: 12px 14px; border: 1px solid #eedfc6; border-radius: 8px; background: var(--reward-soft); }
+.creator-rewards .bonus-next-reward > span { color: var(--reward-muted); font-size: 11px; }
+.creator-rewards .bonus-next-reward dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 9px 0 0; }
+.creator-rewards .bonus-next-reward dt { font-size: 11px; color: var(--reward-muted); }
+.creator-rewards .bonus-next-reward dd { margin: 4px 0 0; font-size: 18px; font-weight: 600; color: var(--reward-ink); }
+.creator-rewards .bonus-roadmap { display: flex; flex-wrap: wrap; gap: 14px 24px; margin: 16px 0 0; padding: 13px 0 0; border-top: 1px solid var(--reward-line); list-style: none; }
+.creator-rewards .bonus-roadmap li { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--reward-muted); }
+.creator-rewards .bonus-roadmap li > span { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid var(--reward-line); border-radius: 50%; font-size: 11px; }
+.creator-rewards .bonus-roadmap li[data-next] > span { background: var(--reward-soft); border-color: #eedfc6; color: var(--reward-ink); }
+.creator-rewards .bonus-roadmap li[data-reached] > span { color: #059669; }
+.creator-rewards .bonus-roadmap strong { display: block; color: var(--reward-ink); font-size: 12px; font-weight: 550; }
+.creator-rewards .bonus-roadmap small { display: block; margin-top: 2px; font-size: 10px; }
+.creator-rewards #kol-bonus-root .bonus-section-header { padding: 14px 16px; }
+.creator-rewards #kol-bonus-root .bonus-badge { background: #fff; color: var(--reward-muted); font-size: 10px; padding: 3px 6px; border-radius: 5px; }
+.creator-rewards #kol-bonus-root .bonus-badge svg { width: 13px; height: 13px; }
+.creator-rewards .bonus-policy-list { padding: 0 16px; border-top: 1px solid var(--reward-line); }
+.creator-rewards .bonus-policy-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr) auto; align-items: center; gap: 16px; padding: 14px 0; }
+.creator-rewards .bonus-policy-row + .bonus-policy-row { border-top: 1px solid var(--reward-line); }
+.creator-rewards #kol-bonus-root .bonus-milestone-name { align-items: flex-start; min-width: 0; }
+.creator-rewards .bonus-milestone-name h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.creator-rewards .bonus-milestone-name p { margin: 3px 0 0; color: var(--reward-muted); font-size: 11px; font-weight: 400; line-height: 1.55; }
+.creator-rewards .bonus-policy-row dl { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin: 0; }
+.creator-rewards .bonus-policy-row dt { color: var(--reward-muted); font-size: 11px; }
+.creator-rewards .bonus-policy-row dd { margin: 5px 0 0; color: var(--reward-ink); font-size: 13px; font-weight: 550; white-space: nowrap; }
+.creator-rewards #kol-bonus-root .bonus-calculation { background: #fff; padding: 10px 16px; font-size: 11px; }
+.creator-rewards #kol-bonus-root .bonus-loading-state { display: flex; align-items: center; gap: 9px; padding: 20px 16px; color: var(--reward-muted); font-size: 12px; }
+.creator-rewards #kol-bonus-root .bonus-loading-state svg { color: #b88e4f; }
+
+@container tier-overview (max-width: 899px) {
+  .creator-rewards .tier-dashboard-layout { grid-template-columns: minmax(0,1fr); }
+  .creator-rewards #kol-bonus-root .kol-bonus-toolbar { grid-template-columns: minmax(0,1fr); }
+  .creator-rewards #kol-bonus-root .kol-bonus-tabs { width: fit-content; }
+  .creator-rewards #kol-bonus-root .kol-bonus-filters { display: grid; grid-template-columns: minmax(0,1fr) 104px 104px; width: 100%; margin-left: 0; }
+  .creator-rewards #kol-bonus-root .kol-bonus-filters > div:first-child,
+  .creator-rewards #kol-bonus-root .kol-bonus-filters > div:not(:first-child) { width: 100%; }
+  .creator-rewards #kol-bonus-root .kol-kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@container tier-overview (max-width: 599px) {
+  .creator-rewards.tier-overview .tier-panel { padding: 14px; }
+  .creator-rewards .tier-section-nav a { flex-direction: column; min-height: 58px; gap: 5px; padding: 7px 4px; font-size: 10px; }
+  .creator-rewards .tier-current h2 { font-size: 22px; }
+  .creator-rewards .tier-current-stats { gap: 6px; }
+  .creator-rewards .tier-current-stats > div { padding: 10px 7px; }
+  .creator-rewards .tier-current-stats strong { font-size: 15px; }
+  .creator-rewards .tier-policy-card { padding: 10px; }
+  .creator-rewards .tier-policy-card-bonus strong { font-size: 20px; }
+  .creator-rewards .tier-featured-grid { grid-template-columns: minmax(0,1fr); }
+  .creator-rewards .tier-creator { padding: 12px 0; border-right: 0; border-bottom: 1px solid var(--reward-line); }
+  .creator-rewards .tier-creator:last-child { border-bottom: 0; }
+  .creator-rewards .tier-creator-identity { grid-template-columns: 34px minmax(0,1fr) auto; }
+  .creator-rewards .tier-creator-avatar { grid-row: auto; }
+  .creator-rewards .tier-rank-badge { grid-column: auto; }
+  .creator-rewards .tier-creator-revenue { margin-left: 43px; flex-wrap: nowrap; }
+  .creator-rewards .lb-filters { padding: 12px; }
+  .creator-rewards .lb-filter-grid { grid-template-columns: minmax(0,1fr); gap: 10px; }
+  .creator-rewards .leaderboard-redesign .leaderboard-podium { grid-template-columns: minmax(0,1fr); }
+  .creator-rewards .lb-creator-card { padding: 13px; }
+  .creator-rewards .lb-creator-identity { min-height: 56px; }
+  .creator-rewards .lb-podium-state h2 { font-size: 15px; }
+  .creator-rewards .bonus-toolbar-heading { align-items: flex-start; flex-direction: column; }
+  .creator-rewards #kol-bonus-root .kol-bonus-toolbar { padding: 12px; }
+  .creator-rewards #kol-bonus-root .kol-bonus-tabs { width: 100%; }
+  .creator-rewards #kol-bonus-root .kol-bonus-tabs button { flex: 1; padding: 6px; font-size: 11px; }
+  .creator-rewards #kol-bonus-root .kol-bonus-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .creator-rewards #kol-bonus-root .kol-bonus-filters > div:first-child { grid-column: 1 / -1; }
+  .creator-rewards #kol-bonus-root .bonus-kpi { padding: 11px; min-height: 113px; gap: 8px; }
+  .creator-rewards #kol-bonus-root .bonus-kpi-heading .bonus-icon { display: none; }
+  .creator-rewards #kol-bonus-root .bonus-amount { font-size: 21px; }
+  .creator-rewards #kol-bonus-root .bonus-kpi-split strong { font-size: 17px; }
+  .creator-rewards #kol-bonus-root .bonus-progress { padding: 14px; }
+  .creator-rewards .bonus-progress-body { grid-template-columns: minmax(0,1fr); gap: 14px; }
+  .creator-rewards #kol-bonus-root .bonus-missing { margin-left: 42px; text-align: left; }
+  .creator-rewards .bonus-next-reward { padding: 11px 12px; }
+  .creator-rewards .bonus-policy-row { grid-template-columns: minmax(0,1fr) auto; gap: 12px; }
+  .creator-rewards .bonus-policy-row dl { grid-column: 1 / -1; grid-row: 2; }
+  .creator-rewards .bonus-policy-row dt { font-size: 10px; }
+  .creator-rewards .bonus-policy-row dd { font-size: 11px; }
+  .creator-rewards #kol-bonus-root .bonus-policy-action { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .creator-rewards *, .creator-rewards *::before, .creator-rewards *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}

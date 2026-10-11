@@ -5,6 +5,7 @@ import {
   Bell,
   Check,
   CheckCheck,
+  Clock,
   Loader2,
   Package,
   Ticket,
@@ -107,56 +108,58 @@ export function CustomerNotificationsTab({
       className="customer-notifications"
       aria-labelledby="customer-notifications-heading"
     >
-      <header className="cn-header">
-        <div className="cn-heading-group">
-          <span className="cn-heading-icon" aria-hidden="true">
-            <Bell size={21} />
-          </span>
-          <div>
-            <div className="cn-heading-line">
-              <h1 id="customer-notifications-heading">{heading.title}</h1>
-              {currentUnread > 0 && (
-                <span className="cn-count">{currentUnread} chưa đọc</span>
-              )}
+      <div className="cn-controls">
+        <header className="cn-header">
+          <div className="cn-heading-group">
+            <span className="cn-heading-icon" aria-hidden="true">
+              <Bell size={18} />
+            </span>
+            <div>
+              <div className="cn-heading-line">
+                <h1 id="customer-notifications-heading">{heading.title}</h1>
+                {currentUnread > 0 && (
+                  <span className="cn-count">{currentUnread} chưa đọc</span>
+                )}
+              </div>
+              <p>{heading.description}</p>
             </div>
-            <p>{heading.description}</p>
           </div>
-        </div>
-        {unreadCount > 0 && (
-          <button
-            type="button"
-            className="cn-mark-all"
-            disabled={markingAll || loading}
-            onClick={() => void markAll()}
-          >
-            {markingAll ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <CheckCheck size={15} />
-            )}
-            Đọc tất cả
-          </button>
-        )}
-      </header>
-
-      <nav className="cn-filters" aria-label="Lọc thông báo">
-        {categories.map(({ key, label, icon: Icon }) => {
-          const unread = key === 'ALL' ? unreadCount : categoryUnread[key];
-          return (
+          {unreadCount > 0 && (
             <button
               type="button"
-              key={key}
-              aria-pressed={category === key}
-              className={`cn-filter${category === key ? ' is-active' : ''}`}
-              onClick={() => onSelectCategory(key)}
+              className="cn-mark-all"
+              disabled={markingAll || loading}
+              onClick={() => void markAll()}
             >
-              <Icon size={15} />
-              <span>{label}</span>
-              {unread > 0 && <span className="cn-filter-count">{unread}</span>}
+              {markingAll ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <CheckCheck size={15} />
+              )}
+              Đọc tất cả
             </button>
-          );
-        })}
-      </nav>
+          )}
+        </header>
+
+        <nav className="cn-filters" aria-label="Lọc thông báo">
+          {categories.map(({ key, label, icon: Icon }) => {
+            const unread = key === 'ALL' ? unreadCount : categoryUnread[key];
+            return (
+              <button
+                type="button"
+                key={key}
+                aria-pressed={category === key}
+                className={`cn-filter${category === key ? ' is-active' : ''}`}
+                onClick={() => onSelectCategory(key)}
+              >
+                <Icon size={15} />
+                <span>{label}</span>
+                {unread > 0 && <span className="cn-filter-count">{unread}</span>}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
       {loading ? (
         <div className="cn-state" role="status">
@@ -214,13 +217,14 @@ export function CustomerNotificationsTab({
                 key={item.id}
               >
                 <span className="cn-item-icon" aria-hidden="true">
-                  <Icon size={19} />
+                  <Icon size={16} />
                 </span>
                 <div className="cn-item-content">
                   <div className="cn-meta">
                     <span className="cn-category">{categoryLabel}</span>
                     {validDate && (
                       <time dateTime={item.createdAt}>
+                        <Clock size={11} aria-hidden="true" />
                         {date.toLocaleString('vi-VN', {
                           timeZone: 'Asia/Ho_Chi_Minh',
                           hour: '2-digit',

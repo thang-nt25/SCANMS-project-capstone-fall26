@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
+import './DateTimePicker.css';
 import {
   Calendar,
   Clock,
@@ -22,6 +24,9 @@ export interface DateTimePickerProps {
   id?: string;
   label?: string;
   popoverAlign?: 'start' | 'end';
+  compact?: boolean;
+  popoverTitle?: string;
+  inlinePopoverRef?: RefObject<HTMLDivElement | null>;
 }
 
 const DAYS_OF_WEEK = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -71,12 +76,19 @@ export function DateTimePicker({
   id,
   label,
   popoverAlign = 'start',
+  compact = false,
+  popoverTitle,
+  inlinePopoverRef,
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'calendar' | 'time'>('calendar');
   const containerRef = useRef<HTMLDivElement>(null);
   const hourScrollRef = useRef<HTMLDivElement>(null);
   const minuteScrollRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { if (disabled) setIsOpen(false); }, [disabled]);
 
   // Parse parsed dates
   const parsedValue = useMemo(() => parseSafeDate(value), [value]);
@@ -110,7 +122,7 @@ export function DateTimePicker({
   // Click outside listener
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node) && !popoverRef.current?.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -122,6 +134,12 @@ export function DateTimePicker({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen || !inlinePopoverRef) return;
+    const frame = requestAnimationFrame(() => popoverRef.current?.scrollIntoView({ block: 'nearest' }));
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen, inlinePopoverRef]);
+
   // Tự động cuộn đến giờ & phút đã chọn khi mở popup
   useEffect(() => {
     if (isOpen && mode === 'datetime') {
@@ -132,10 +150,11 @@ export function DateTimePicker({
           container.scrollTop = item.offsetTop - container.offsetTop - 55;
         }
       };
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         scrollItem(hourScrollRef.current, selectedHour);
         scrollItem(minuteScrollRef.current, selectedMinute);
       }, 50);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, selectedHour, selectedMinute, mode]);
 
@@ -292,11 +311,13 @@ export function DateTimePicker({
     }
     const h = padZero(selectedHour);
     const min = padZero(selectedMinute);
-    return `${dayOfWeekName}, ${d}/${m}/${y} • ${h}:${min}`;
-  }, [selectedDate, selectedHour, selectedMinute, mode]);
+    return `${compact ? '' : `${dayOfWeekName}, `}${d}/${m}/${y} • ${h}:${min}`;
+  }, [selectedDate, selectedHour, selectedMinute, mode, compact]);
+
+  const renderPopover = (node: React.ReactNode) => inlinePopoverRef?.current ? createPortal(node, inlinePopoverRef.current) : node;
 
   return (
-    <div ref={containerRef} className={`relative inline-block w-full ${className}`}>
+    <div ref={containerRef} className={`relative inline-block w-full ${compact ? 'scanms-datetime--compact' : ''} ${className}`}>
       {label && (
         <label className="block text-xs font-bold text-[#1A1612] mb-1.5">{label}</label>
       )}
@@ -304,10 +325,13 @@ export function DateTimePicker({
       {/* Trigger Button / Input Box */}
       <div
         id={id}
+        ref={triggerRef}
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
+        aria-label={label || popoverTitle || placeholder}
+        aria-disabled={disabled}
         onKeyDown={(e) => {
           if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
@@ -315,14 +339,14 @@ export function DateTimePicker({
           }
         }}
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
-        className={`group w-full rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2.5 text-left text-xs sm:text-sm font-normal text-[#1A1612] outline-none transition-all flex items-center justify-between gap-2.5 cursor-pointer shadow-xs select-none ${
+        className={`scanms-datetime-trigger group w-full rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2.5 text-left text-xs sm:text-sm font-normal text-[#1A1612] outline-none transition-all flex items-center justify-between gap-2.5 cursor-pointer shadow-xs select-none ${
           isOpen
             ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 shadow-md'
             : 'hover:border-[#C59B58] hover:shadow-xs'
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-[#FAF8F5]' : ''}`}
       >
         <div className="flex items-center gap-2.5 truncate pointer-events-none min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] group-hover:scale-105 transition">
+          <div className="scanms-datetime-trigger-icon w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] group-hover:scale-105 transition">
             {mode === 'datetime' ? <Clock className="w-4 h-4 text-[#B88E4F]" /> : <Calendar className="w-4 h-4 text-[#B88E4F]" />}
           </div>
           <div className="flex flex-col min-w-0 truncate">
@@ -339,7 +363,7 @@ export function DateTimePicker({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {displayLabel && !disabled && (
+          {displayLabel && !disabled && !(compact && required) && (
             <button
               type="button"
               onClick={(e) => {
@@ -371,26 +395,31 @@ export function DateTimePicker({
       )}
 
       {/* Dropdown Popover Modal (Tone sáng, ấm, viền vàng be cao cấp) */}
-      {isOpen && (
+      {isOpen && renderPopover(
         <div
-          className={`absolute top-[calc(100%+6px)] ${popoverAlign === 'end' ? 'right-0' : 'left-0'} z-50 rounded-2xl border border-[#EEDFC6] bg-white p-4 shadow-2xl shadow-[#C59B58]/10 ring-1 ring-[#C59B58]/15 transition-all animate-in fade-in zoom-in-95 duration-150 ${
+          ref={popoverRef}
+          role="group"
+          aria-label={popoverTitle || 'Chọn ngày giờ'}
+          onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setIsOpen(false); triggerRef.current?.focus(); } }}
+          className={`${compact ? 'scanms-datetime-popover--compact' : ''} ${inlinePopoverRef ? 'scanms-datetime-popover--inline' : ''} absolute top-[calc(100%+6px)] ${popoverAlign === 'end' ? 'right-0' : 'left-0'} z-50 rounded-2xl border border-[#EEDFC6] bg-white p-4 shadow-2xl shadow-[#C59B58]/10 ring-1 ring-[#C59B58]/15 transition-all animate-in fade-in zoom-in-95 duration-150 ${
             mode === 'datetime'
               ? 'w-[320px] sm:w-[480px] max-w-[calc(100vw-2rem)]'
               : 'w-[280px] sm:w-[310px]'
           }`}
         >
           {/* Header Preview */}
-          <div className="mb-3.5 pb-2.5 border-b border-[#F3EFE6] flex items-center justify-between gap-2">
+          <div className="scanms-datetime-heading mb-3.5 pb-2.5 border-b border-[#F3EFE6] flex items-center justify-between gap-2">
             <span className="text-xs font-bold text-[#7D715E] flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58]" />
-              {mode === 'datetime' ? 'Chọn ngày & giờ phát sóng' : 'Chọn ngày'}
+              {popoverTitle || (mode === 'datetime' ? 'Chọn ngày & giờ phát sóng' : 'Chọn ngày')}
             </span>
-            {displayLabel && (
+            {displayLabel && !compact && (
               <span className="text-[11px] font-extrabold text-[#B88E4F] bg-[#FAF8F5] px-2.5 py-0.5 rounded-lg border border-[#EEDFC6] flex items-center gap-1 shadow-2xs">
                 <Sparkles className="w-3 h-3 text-[#B88E4F]" />
                 {displayLabel}
               </span>
             )}
+            {compact && <button type="button" className="scanms-datetime-close" aria-label="Đóng lịch" onClick={() => { setIsOpen(false); triggerRef.current?.focus(); }}><X size={15} /></button>}
           </div>
 
           {/* Mobile Tab Switcher (if datetime mode on small screens) */}
@@ -405,7 +434,7 @@ export function DateTimePicker({
                     : 'text-[#7D715E] hover:text-[#1A1612]'
                 }`}
               >
-                📅 Ngày
+                <Calendar size={13} className="inline mr-1" /> Ngày
               </button>
               <button
                 type="button"
@@ -416,16 +445,16 @@ export function DateTimePicker({
                     : 'text-[#7D715E] hover:text-[#1A1612]'
                 }`}
               >
-                ⏰ Giờ ({padZero(selectedHour)}:{padZero(selectedMinute)})
+                <Clock size={13} className="inline mr-1" /> Giờ ({padZero(selectedHour)}:{padZero(selectedMinute)})
               </button>
             </div>
           )}
 
           {/* Main Content Area */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="scanms-datetime-content flex flex-col sm:flex-row gap-4">
             {/* Left: Calendar Panel (Giữ nguyên logic và cấu trúc ngày) */}
             <div
-              className={`flex-1 min-w-[210px] ${
+              className={`scanms-datetime-calendar flex-1 min-w-[210px] ${
                 mode === 'datetime' && activeTab === 'time' ? 'hidden sm:block' : 'block'
               }`}
             >
@@ -484,8 +513,10 @@ export function DateTimePicker({
                       key={day}
                       type="button"
                       disabled={isDisabled}
+                      aria-label={`${padZero(day)}/${padZero(currentMonth + 1)}/${currentYear}`}
+                      aria-pressed={Boolean(isSelected)}
                       onClick={() => handleSelectDay(day)}
-                      className={`relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition cursor-pointer ${
+                      className={`scanms-datetime-day relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition cursor-pointer ${
                         isSelected
                           ? 'bg-[#C59B58] text-white font-bold shadow-md shadow-[#C59B58]/30 scale-105'
                           : isDisabled
@@ -508,7 +539,7 @@ export function DateTimePicker({
             {/* Right: Time Chooser (ĐÃ ĐƯỢC THIẾT KẾ LẠI: TONE SÁNG, SANG TRỌNG, RỘNG RÃI & MƯỢT MÀ) */}
             {mode === 'datetime' && (
               <div
-                className={`sm:border-l sm:border-[#F3EFE6] sm:pl-4 shrink-0 sm:w-[205px] ${
+                className={`scanms-datetime-time sm:border-l sm:border-[#F3EFE6] sm:pl-4 shrink-0 sm:w-[205px] ${
                   activeTab === 'calendar' ? 'hidden sm:block' : 'block'
                 }`}
               >
@@ -519,7 +550,7 @@ export function DateTimePicker({
                     <span className="text-[11px] font-bold text-[#8C7D6B] mb-2 px-1">Giờ</span>
                     <div
                       ref={hourScrollRef}
-                      className="h-56 w-full overflow-y-auto rounded-xl border border-[#EEDFC6] bg-[#FAF8F5]/60 p-1 space-y-1 no-scrollbar"
+                      className="scanms-datetime-time-list h-56 w-full overflow-y-auto rounded-xl border border-[#EEDFC6] bg-[#FAF8F5]/60 p-1 space-y-1 no-scrollbar"
                     >
                       {Array.from({ length: 24 }).map((_, h) => {
                         const disabled = isTimeDisabled(h, selectedMinute);
@@ -529,6 +560,8 @@ export function DateTimePicker({
                             key={h}
                             type="button"
                             disabled={disabled}
+                            aria-label={`${padZero(h)} giờ`}
+                            aria-pressed={isSelected}
                             onClick={() => handleSelectHour(h)}
                             className={`w-full h-7 rounded-lg text-xs font-bold text-center transition-all cursor-pointer flex items-center justify-center ${
                               isSelected
@@ -550,7 +583,7 @@ export function DateTimePicker({
                     <span className="text-[11px] font-bold text-[#8C7D6B] mb-2 px-1">Phút</span>
                     <div
                       ref={minuteScrollRef}
-                      className="h-56 w-full overflow-y-auto rounded-xl border border-[#EEDFC6] bg-[#FAF8F5]/60 p-1 space-y-1 no-scrollbar"
+                      className="scanms-datetime-time-list h-56 w-full overflow-y-auto rounded-xl border border-[#EEDFC6] bg-[#FAF8F5]/60 p-1 space-y-1 no-scrollbar"
                     >
                       {Array.from({ length: 60 }).map((_, m) => {
                         const disabled = isTimeDisabled(selectedHour, m);
@@ -560,6 +593,8 @@ export function DateTimePicker({
                             key={m}
                             type="button"
                             disabled={disabled}
+                            aria-label={`${padZero(m)} phút`}
+                            aria-pressed={isSelected}
                             onClick={() => handleSelectMinute(m)}
                             className={`w-full h-7 rounded-lg text-xs font-bold text-center transition-all cursor-pointer flex items-center justify-center ${
                               isSelected
@@ -581,14 +616,14 @@ export function DateTimePicker({
           </div>
 
           {/* Footer Actions (Sáng sủa, sắc nét) */}
-          <div className="mt-3.5 pt-3 border-t border-[#F3EFE6] flex items-center justify-between text-xs">
-            <button
+          <div className="scanms-datetime-footer mt-3.5 pt-3 border-t border-[#F3EFE6] flex items-center justify-between text-xs">
+            {!(compact && required) && <button
               type="button"
               onClick={handleClear}
               className="text-[#8C7D6B] hover:text-[#DC2626] font-semibold transition cursor-pointer text-xs"
             >
               Xóa
-            </button>
+            </button>}
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -599,7 +634,7 @@ export function DateTimePicker({
               </button>
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
+                onClick={() => { setIsOpen(false); triggerRef.current?.focus(); }}
                 className="px-4 py-1.5 rounded-xl bg-[#C59B58] text-white font-extrabold hover:bg-[#B88E4F] shadow-sm shadow-[#C59B58]/20 transition cursor-pointer flex items-center gap-1.5 text-xs"
               >
                 <Check className="w-3.5 h-3.5" />

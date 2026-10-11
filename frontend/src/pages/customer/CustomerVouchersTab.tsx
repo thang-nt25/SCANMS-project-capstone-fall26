@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Check,
+  ChevronDown,
   Copy,
   Ticket,
   Truck,
@@ -73,28 +74,17 @@ export function CustomerVouchersTab() {
   };
 
   return (
-    <section className="customer-vouchers" aria-labelledby="vouchers-heading">
-      <header className="cv-header">
-        <div className="cv-heading-group">
-          <span className="cv-heading-icon" aria-hidden="true">
-            <Ticket size={22} />
-          </span>
-          <div>
-            <div className="cv-heading-line">
-              <h1 id="vouchers-heading">Kho voucher</h1>
-              <span className="cv-count">{vouchers.length} mã ưu đãi</span>
-            </div>
-            <p>Mã giảm giá từ SCANMS và các gian hàng đối tác.</p>
+    <section className="customer-vouchers" aria-labelledby="customer-vouchers-title">
+      <header className="cv-heading">
+        <span className="cv-heading-icon" aria-hidden="true"><Ticket size={21} /></span>
+        <div>
+          <div className="cv-title-row">
+            <h1 id="customer-vouchers-title">Kho voucher</h1>
+            <span className="cv-count">{vouchers.length} ưu đãi</span>
           </div>
+          <p>Ưu đãi từ SCANMS và các gian hàng đối tác.</p>
         </div>
-        <Link className="cv-shopping-link" to="/marketplace">
-          Mua sắm ngay <ArrowRight size={16} />
-        </Link>
       </header>
-      <div className="cv-section-heading">
-        <h2>Ưu đãi dành cho bạn</h2>
-        <span>Sao chép mã để dùng khi thanh toán</span>
-      </div>
       <div className="cv-grid">
         {vouchers.map((voucher) => {
           const Icon = voucher.icon;
@@ -102,37 +92,39 @@ export function CustomerVouchersTab() {
           return (
             <article className="cv-card" key={voucher.code}>
               <div className="cv-discount">
-                <Icon size={21} aria-hidden="true" />
                 <strong>{voucher.value}</strong>
                 <span>{voucher.label}</span>
               </div>
               <div className="cv-body">
-                <span className="cv-category">{voucher.category}</span>
-                <h3>{voucher.title}</h3>
+                <span className="cv-category"><Icon size={13} aria-hidden="true" />{voucher.category}</span>
+                <h2>{voucher.title}</h2>
                 <p className="cv-minimum">{voucher.minimum}</p>
-                <p className="cv-scope">{voucher.scope}</p>
-                <div className="cv-footer">
-                  <span className="cv-expiry">
-                    <Clock3 size={12} />
-                    HSD: {voucher.expiry}
-                  </span>
-                  <div className="cv-actions">
-                    <button
-                      type="button"
-                      className={`cv-code${copied ? ' is-copied' : ''}`}
-                      onClick={() => void copyCode(voucher.code)}
-                      aria-label={`Sao chép mã ${voucher.code}`}
-                      title={copied ? 'Đã sao chép' : 'Sao chép mã'}
-                    >
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
-                      <span>{voucher.code}</span>
-                    </button>
-                    <Link className="cv-use" to="/marketplace">
-                      Dùng ngay <ArrowRight size={13} />
-                    </Link>
-                  </div>
-                </div>
               </div>
+              <div className="cv-actions">
+                <button
+                  type="button"
+                  className={`cv-code${copied ? ' is-copied' : ''}`}
+                  onClick={() => void copyCode(voucher.code)}
+                  aria-label={`Sao chép mã ${voucher.code}`}
+                  title={copied ? 'Đã sao chép' : 'Sao chép mã'}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  <span>{voucher.code}</span>
+                </button>
+                <Link className="cv-use" to="/marketplace">
+                  Dùng ngay <ArrowRight size={13} />
+                </Link>
+              </div>
+              <details className="cv-details">
+                <summary aria-label={`Điều kiện mã ${voucher.code}, hạn dùng ${voucher.expiry}`}>
+                  <span className="cv-details-label">Điều kiện<ChevronDown size={13} aria-hidden="true" /></span>
+                  <span className="cv-expiry"><Clock3 size={12} aria-hidden="true" />HSD: {voucher.expiry}</span>
+                </summary>
+                <dl>
+                  <div><dt>Áp dụng</dt><dd>{voucher.scope}</dd></div>
+                  <div><dt>Giá trị đơn</dt><dd>{voucher.minimum}</dd></div>
+                </dl>
+              </details>
             </article>
           );
         })}

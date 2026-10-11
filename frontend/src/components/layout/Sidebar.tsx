@@ -74,6 +74,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         currentPath.startsWith('/collaborator/kyc') ||
         currentPath.startsWith('/collaborator/social-channels') ||
         currentPath.startsWith('/collaborator/tiers') ||
+        currentPath.startsWith('/collaborator/leaderboard') ||
         currentPath.startsWith('/collaborator/bonus-progress')
       );
     }
@@ -130,17 +131,17 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
   const editProfilePath = role === 'SHOP_MANAGER'
     ? '/merchant/settings'
     : role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER'
-    ? '/admin/users'
+    ? '/admin/profile'
     : '/collaborator/profile';
 
   const editProfileLabel = role === 'SHOP_MANAGER'
     ? 'Cài Đặt Gian Hàng'
     : role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER'
-    ? 'Quản Trị Hồ Sơ'
+    ? 'Hồ sơ cá nhân'
     : 'Sửa Hồ Sơ';
 
   return (
-    <aside className="w-full lg:w-[250px] shrink-0 bg-white border border-[#EAE4D7] rounded-2xl p-3.5 shadow-2xs sticky top-20 self-start text-left select-none flex flex-col gap-2.5 z-30">
+    <aside data-workspace-role={role} className="workspace-sidebar w-full lg:w-[250px] shrink-0 p-3.5 sticky top-[var(--workspace-header-height,69px)] self-start text-left select-none flex flex-col gap-2.5 z-30">
       {/* Hidden file input for avatar upload */}
       <input
         type="file"
@@ -221,28 +222,21 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         </div>
       </div>
 
-      <div className="border-t border-[#EAE4D7] my-1" />
-
       {/* SCANMS UI Reference Minimalist Navigation List */}
       <nav className="flex flex-col gap-0.5 text-xs sm:text-[13px]" aria-label="Menu chức năng">
-        {navConfig.items.map((item, index) => {
+        {navConfig.items.map((item) => {
           const active = isLinkActive(item.path);
           const Icon = item.icon;
-          const showSection = item.section && (index === 0 || navConfig.items[index - 1].section !== item.section);
 
           return (
             <div key={item.path} className="flex flex-col">
-              {showSection && (
-                <span className="text-[10px] font-bold text-[#A89D8E] uppercase tracking-wider px-3 pt-2 pb-1 select-none">
-                  {item.section}
-                </span>
-              )}
               <Link
                 to={item.path}
+                aria-current={active ? 'page' : undefined}
                 className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
                   active
-                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold border border-[#EEDFC6]/70 shadow-2xs'
-                    : 'text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F]'
+                    ? 'text-[#B88E4F] font-bold'
+                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
                 }`}
               >
                 <Icon
@@ -251,22 +245,6 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
                   }`}
                 />
                 <span className="flex-1 truncate">{item.label}</span>
-                {item.numBadge && (
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                      active
-                        ? 'bg-[#C59B58] text-white'
-                        : 'bg-[#FAF0DD] border border-[#E8D4B0] text-[#8C6226]'
-                    }`}
-                  >
-                    {item.numBadge}
-                  </span>
-                )}
-                {item.badge && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#F3EFE6] text-[#B88E4F] border border-[#EEDFC6] shrink-0 uppercase">
-                    {item.badge}
-                  </span>
-                )}
               </Link>
             </div>
           );
@@ -274,7 +252,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       </nav>
 
       {/* Bottom Actions (SCANMS UI Reference Style) */}
-      <div className="pt-2 border-t border-[#EAE4D7] flex flex-col gap-1 text-xs sm:text-[13px]">
+      <div className="pt-3 flex flex-col gap-1 text-xs sm:text-[13px]">
         {currentUser ? (
           <>
             {/* Sàn Mua Sắm Link */}

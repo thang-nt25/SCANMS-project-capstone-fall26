@@ -28,88 +28,34 @@ export class LeaderboardService {
     prevStartDate: Date;
     prevEndDate: Date;
     label: string;
+    hasPreviousPeriod: boolean;
   } {
     const now = new Date();
-    let startDate: Date;
-    let endDate: Date;
-    let label = '';
-
-    if (dto.month && dto.year) {
-      startDate = new Date(dto.year, dto.month - 1, 1, 0, 0, 0, 0);
-      endDate = new Date(dto.year, dto.month, 0, 23, 59, 59, 999);
-      label = `Tháng ${dto.month}/${dto.year}`;
-    } else {
-      switch (dto.timeRange) {
-        case LeaderboardTimeRange.LAST_MONTH: {
-          const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-          const prevYear =
-            now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-          startDate = new Date(prevYear, prevMonth, 1, 0, 0, 0, 0);
-          endDate = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59, 999);
-          label = `Tháng ${prevMonth + 1}/${prevYear}`;
-          break;
-        }
-        case LeaderboardTimeRange.THIS_QUARTER: {
-          const currentQuarter = Math.floor(now.getMonth() / 3);
-          startDate = new Date(
-            now.getFullYear(),
-            currentQuarter * 3,
-            1,
-            0,
-            0,
-            0,
-            0,
-          );
-          endDate = new Date(
-            now.getFullYear(),
-            (currentQuarter + 1) * 3,
-            0,
-            23,
-            59,
-            59,
-            999,
-          );
-          label = `Quý ${currentQuarter + 1}/${now.getFullYear()}`;
-          break;
-        }
-        case LeaderboardTimeRange.ALL_TIME: {
-          startDate = new Date(2020, 0, 1);
-          endDate = now;
-          label = 'Toàn Thời Gian (All-Time)';
-          break;
-        }
-        case LeaderboardTimeRange.THIS_MONTH:
-        default: {
-          startDate = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            1,
-            0,
-            0,
-            0,
-            0,
-          );
-          endDate = new Date(
-            now.getFullYear(),
-            now.getMonth() + 1,
-            0,
-            23,
-            59,
-            59,
-            999,
-          );
-          label = `Tháng ${now.getMonth() + 1}/${now.getFullYear()}`;
-          break;
-        }
+    const vietnamNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const monthStart = (year: number, month: number) =>
+      new Date(Date.UTC(year, month, 1) - 7 * 60 * 60 * 1000);
+    const allTime = dto.timeRange === LeaderboardTimeRange.ALL_TIME && !(dto.month && dto.year);
+    let year = dto.year && dto.month ? dto.year : vietnamNow.getUTCFullYear();
+    let month = dto.year && dto.month ? dto.month - 1 : vietnamNow.getUTCMonth();
+    let months = 1;
+    if (!(dto.month && dto.year)) {
+      if (dto.timeRange === LeaderboardTimeRange.LAST_MONTH) month -= 1;
+      if (dto.timeRange === LeaderboardTimeRange.THIS_QUARTER) {
+        month = Math.floor(month / 3) * 3;
+        months = 3;
       }
     }
-
-    // Khoảng thời gian kỳ trước để tính rankDelta
-    const durationMs = endDate.getTime() - startDate.getTime();
+    // Normalize January -> previous December independently of the server timezone.
+    const normalized = new Date(Date.UTC(year, month, 1));
+    year = normalized.getUTCFullYear();
+    month = normalized.getUTCMonth();
+    const startDate = allTime ? new Date(0) : monthStart(year, month);
+    const endDate = allTime ? now : new Date(monthStart(year, month + months).getTime() - 1);
+    const prevStartDate = allTime ? new Date(0) : monthStart(year, month - months);
     const prevEndDate = new Date(startDate.getTime() - 1);
-    const prevStartDate = new Date(prevEndDate.getTime() - durationMs);
-
-    return { startDate, endDate, prevStartDate, prevEndDate, label };
+    const label = allTime ? 'Toàn thời gian' : months === 3
+      ? `Quý ${Math.floor(month / 3) + 1}/${year}` : `Tháng ${month + 1}/${year}`;
+    return { startDate, endDate, prevStartDate, prevEndDate, label, hasPreviousPeriod: !allTime };
   }
 
   // ─── 2. TÍNH TOÁN BẢNG XẾP HẠNG LEADERBOARD TOÀN DIỆN ─────────────────
@@ -118,18 +64,24 @@ export class LeaderboardService {
     currentUserRole: string,
     dto: LeaderboardQueryDto,
   ): Promise<LeaderboardFullResponseDto> {
-    const { startDate, endDate, prevStartDate, prevEndDate, label } =
+    const { startDate, endDate, prevStartDate, prevEndDate, label, hasPreviousPeriod } =
       this.resolveLeaderboardPeriod(dto);
 
     // Điều kiện lọc phạm vi (Global vs Store)
+    // Count each successful order in the period it was delivered. Completion is
+    // the fallback only when delivery has no timestamp; never use its creation date.
+    const successDateWhere = (start: Date, end: Date) => ({ OR: [
+      { deliveredAt: { gte: start, lte: end } },
+      { deliveredAt: null, completedAt: { gte: start, lte: end } },
+    ] });
     const baseOrderWhere: any = {
-      createdAt: { gte: startDate, lte: endDate },
+      ...(hasPreviousPeriod ? successDateWhere(startDate, endDate) : {}),
       status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
       attributedCollaboratorId: { not: null },
     };
 
     const prevOrderWhere: any = {
-      createdAt: { gte: prevStartDate, lte: prevEndDate },
+      ...successDateWhere(prevStartDate, prevEndDate),
       status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
       attributedCollaboratorId: { not: null },
     };
@@ -197,11 +149,12 @@ export class LeaderboardService {
         _sum: { finalAmount: true },
         _count: { _all: true },
       }),
-      metric === LeaderboardMetricType.REVENUE
+      metric === LeaderboardMetricType.REVENUE && hasPreviousPeriod
         ? this.prisma.order.groupBy({
             by: ['attributedCollaboratorId'],
             where: prevOrderWhere,
             _sum: { finalAmount: true },
+            _count: { _all: true },
           })
         : Promise.resolve([]),
       this.prisma.clickTrafficLog.groupBy({
@@ -211,7 +164,7 @@ export class LeaderboardService {
       }),
       this.prisma.commission.groupBy({
         by: ['collaboratorId'],
-        where: { order: { is: baseOrderWhere } },
+        where: { order: { is: baseOrderWhere }, status: { in: ['APPROVED', 'PAID'] } },
         _sum: { commissionAmount: true },
       }),
       this.prisma.user.findMany({
@@ -266,7 +219,7 @@ export class LeaderboardService {
           ? `@${primarySocial.channelName}`
           : undefined,
         primaryPlatform: primarySocial?.platformName || undefined,
-        tierName: c.collaboratorProfile?.tier?.name || 'Cấp Bạc',
+        tierName: c.collaboratorProfile?.tier?.name || 'Chưa xếp cấp bậc',
         grossRevenue: 0,
         totalOrders: 0,
         totalClicks: 0,
@@ -300,36 +253,48 @@ export class LeaderboardService {
     }
 
     // Gom nhóm kỳ trước để tính thứ hạng quá khứ
-    const prevRevenueMap = new Map<string, number>();
+    const prevRevenueMap = new Map<string, { revenue: number; orders: number }>();
     for (const group of prevOrderGroups) {
-      if (group.attributedCollaboratorId) {
+      if (group.attributedCollaboratorId && statsMap.has(group.attributedCollaboratorId) && Number(group._sum.finalAmount || 0) > 0) {
         prevRevenueMap.set(
           group.attributedCollaboratorId,
-          Number(group._sum.finalAmount || 0),
+          { revenue: Number(group._sum.finalAmount || 0), orders: group._count._all },
         );
       }
     }
 
     const prevRankSorted = Array.from(prevRevenueMap.entries()).sort(
-      (a, b) => b[1] - a[1],
+      (a, b) => b[1].revenue - a[1].revenue || b[1].orders - a[1].orders || a[0].localeCompare(b[0]),
     );
     const prevRankMap = new Map<string, number>();
-    prevRankSorted.forEach(([collabId], index) => {
-      prevRankMap.set(collabId, index + 1);
+    let previousRank = 0;
+    prevRankSorted.forEach(([collabId, stats], index) => {
+      const prior = prevRankSorted[index - 1]?.[1];
+      if (!prior || stats.revenue !== prior.revenue || stats.orders !== prior.orders) previousRank = index + 1;
+      prevRankMap.set(collabId, previousRank);
     });
 
     // 3. Sắp xếp danh sách theo Metric được chọn
-    const sortedList = Array.from(statsMap.values()).sort((a, b) => {
+    type CreatorStats = (typeof statsMap extends Map<string, infer T> ? T : never);
+    const conversion = (item: CreatorStats) => item.totalClicks > 0
+      ? (item.totalOrders / item.totalClicks) * 100 : 0;
+    const eligible = (item: CreatorStats) => {
+      switch (metric) {
+        case LeaderboardMetricType.ORDERS: return item.totalOrders > 0;
+        case LeaderboardMetricType.CONVERSION_RATE: return conversion(item) > 0;
+        case LeaderboardMetricType.COMMISSION: return item.totalCommission > 0;
+        default: return item.grossRevenue > 0;
+      }
+    };
+    const compareStats = (a: CreatorStats, b: CreatorStats) => {
       switch (metric) {
         case LeaderboardMetricType.ORDERS:
           return (
             b.totalOrders - a.totalOrders || b.grossRevenue - a.grossRevenue
           );
         case LeaderboardMetricType.CONVERSION_RATE: {
-          const crA =
-            a.totalClicks > 0 ? (a.totalOrders / a.totalClicks) * 100 : 0;
-          const crB =
-            b.totalClicks > 0 ? (b.totalOrders / b.totalClicks) * 100 : 0;
+          const crA = conversion(a);
+          const crB = conversion(b);
           return crB - crA || b.grossRevenue - a.grossRevenue;
         }
         case LeaderboardMetricType.COMMISSION:
@@ -343,12 +308,19 @@ export class LeaderboardService {
             b.grossRevenue - a.grossRevenue || b.totalOrders - a.totalOrders
           );
       }
-    });
+    };
+    const sortedList = Array.from(statsMap.values()).filter(eligible).sort(
+      (a, b) => compareStats(a, b) || a.collaboratorId.localeCompare(b.collaboratorId),
+    );
 
     // 4. Định hình DTO và tính toán Rank Delta
+    let sharedRank = 0;
     const allRankedItems: LeaderboardItemDto[] = sortedList.map(
       (item, index) => {
-        const currentRank = index + 1;
+        // ID only stabilizes display order. Equal metric and secondary metric
+        // share a competition rank (1, 1, 3), including across podium/table.
+        if (index === 0 || compareStats(item, sortedList[index - 1]) !== 0) sharedRank = index + 1;
+        const currentRank = sharedRank;
         const prevRank = prevRankMap.get(item.collaboratorId);
         let rankDelta = 0;
         if (prevRank !== undefined) {
@@ -364,22 +336,6 @@ export class LeaderboardService {
               )
             : 0;
 
-        let bonusPrizeAmount: number | undefined;
-        let badgeTitle: string | undefined;
-
-        if (currentRank === 1) {
-          bonusPrizeAmount = 5000000;
-          badgeTitle = '🏆 Quán Quân Doanh Số';
-        } else if (currentRank === 2) {
-          bonusPrizeAmount = 2500000;
-          badgeTitle = '🥈 Á Quân Bán Hàng';
-        } else if (currentRank === 3) {
-          bonusPrizeAmount = 1000000;
-          badgeTitle = '🥉 Top 3 Bứt Phá';
-        } else if (currentRank <= 10) {
-          badgeTitle = '⭐ Top 10 Tinh Hoa';
-        }
-
         return {
           rank: currentRank,
           rankDelta,
@@ -394,8 +350,6 @@ export class LeaderboardService {
           totalClicks: item.totalClicks,
           conversionRate,
           totalCommission: item.totalCommission,
-          bonusPrizeAmount,
-          badgeTitle,
           isCurrentUser: item.collaboratorId === currentUserId,
         };
       },
@@ -403,9 +357,9 @@ export class LeaderboardService {
 
     // 5. Tách Podium (Top 1, 2, 3) và Bảng Top 4 - N
     const podium: LeaderboardPodiumDto = {
-      rank1: allRankedItems.find((i) => i.rank === 1) || null,
-      rank2: allRankedItems.find((i) => i.rank === 2) || null,
-      rank3: allRankedItems.find((i) => i.rank === 3) || null,
+      rank1: allRankedItems[0] || null,
+      rank2: allRankedItems[1] || null,
+      rank3: allRankedItems[2] || null,
     };
 
     const limit = dto.limit || 10;
@@ -416,28 +370,29 @@ export class LeaderboardService {
     const myItemIndex = allRankedItems.findIndex(
       (i) => i.collaboratorId === currentUserId,
     );
-    if (myItemIndex !== -1) {
+    const myStats = statsMap.get(currentUserId);
+    if (myStats) {
       const myItem = allRankedItems[myItemIndex];
       const rank10Item = allRankedItems[9];
       const nextRankItem =
-        myItemIndex > 0 ? allRankedItems[myItemIndex - 1] : null;
+        [...allRankedItems].reverse().find(item => myItem && item.rank < myItem.rank);
 
       const gapToTop10 =
-        rank10Item && myItem.rank > 10
-          ? Math.max(0, rank10Item.grossRevenue - myItem.grossRevenue + 100000)
+        rank10Item && (!myItem || myItem.rank > 10)
+          ? Math.max(0, rank10Item.grossRevenue - myStats.grossRevenue)
           : 0;
 
       const gapToNextRank = nextRankItem
-        ? Math.max(0, nextRankItem.grossRevenue - myItem.grossRevenue + 50000)
+        ? Math.max(0, nextRankItem.grossRevenue - myStats.grossRevenue)
         : 0;
 
       myRankStatus = {
-        myRank: myItem.rank,
-        rankDelta: myItem.rankDelta,
-        myRevenue: myItem.grossRevenue,
-        myOrders: myItem.totalOrders,
-        myConversionRate: myItem.conversionRate,
-        myCommission: myItem.totalCommission,
+        myRank: myItem?.rank ?? null,
+        rankDelta: myItem?.rankDelta ?? 0,
+        myRevenue: myStats.grossRevenue,
+        myOrders: myStats.totalOrders,
+        myConversionRate: parseFloat(conversion(myStats).toFixed(2)),
+        myCommission: myStats.totalCommission,
         gapToTop10Revenue: gapToTop10,
         gapToNextRankRevenue: gapToNextRank,
         currentPeriodLabel: label,
@@ -470,14 +425,14 @@ export class LeaderboardService {
     const full = await this.getLeaderboard(userId, userRole, dto);
     if (!full.myRankStatus) {
       return {
-        myRank: full.totalParticipants + 1,
+        myRank: null,
         rankDelta: 0,
         myRevenue: 0,
         myOrders: 0,
         myConversionRate: 0,
         myCommission: 0,
-        gapToTop10Revenue: 5000000,
-        gapToNextRankRevenue: 1000000,
+        gapToTop10Revenue: 0,
+        gapToNextRankRevenue: 0,
         currentPeriodLabel: full.periodLabel,
       };
     }
@@ -526,7 +481,7 @@ export class LeaderboardService {
         _sum: { commissionAmount: true },
         where: {
           collaboratorId: creatorId,
-          status: 'APPROVED',
+          status: { in: ['APPROVED', 'PAID'] },
         },
       }),
       this.prisma.sampleProductRequest.count({
@@ -560,8 +515,8 @@ export class LeaderboardService {
         undefined,
       bio:
         creator.collaboratorProfile?.bio ||
-        'Top Creator chuyên nghiệp hệ sinh thái SCANMS',
-      tierName: creator.collaboratorProfile?.tier?.name || 'Cấp Bạc',
+        'Nhà sáng tạo trên SCANMS',
+      tierName: creator.collaboratorProfile?.tier?.name || 'Chưa xếp cấp bậc',
       socialChannels: creator.socialChannels.map((s) => ({
         platform: s.platformName,
         channelName: s.channelName,
@@ -584,26 +539,7 @@ export class LeaderboardService {
         price: Number(ti.product.price),
         quantitySold: ti.quantity,
       })),
-      badges: [
-        {
-          id: 'b1',
-          name: '🏆 Top 10 Seller of the Year',
-          icon: 'trophy',
-          color: 'amber',
-        },
-        {
-          id: 'b2',
-          name: '⚡ High Conversion Creator (CR > 5%)',
-          icon: 'zap',
-          color: 'emerald',
-        },
-        {
-          id: 'b3',
-          name: '💎 Diamond Ambassador',
-          icon: 'diamond',
-          color: 'blue',
-        },
-      ],
+      badges: [],
     };
   }
 }

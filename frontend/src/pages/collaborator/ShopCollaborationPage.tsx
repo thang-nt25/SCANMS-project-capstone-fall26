@@ -23,6 +23,10 @@ import {
   Handshake,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  X,
+  Image,
+  Lightbulb,
 } from 'lucide-react';
 import api from '../../services/api';
 import { kycService, type KycProfile } from '../../services/kyc.service';
@@ -224,7 +228,29 @@ export default function ShopCollaborationPage() {
   const [marketplaceStores, setMarketplaceStores] = useState<any[]>([]);
   const [loadingMarketplace, setLoadingMarketplace] = useState(false);
   const [discoverSearch, setDiscoverSearch] = useState('');
+  const discoveredStores = useMemo(() => {
+    const query = discoverSearch.trim().toLocaleLowerCase('vi');
+    return marketplaceStores.filter((shop) =>
+      `${shop.name || ''} ${shop.description || ''} ${shop.category || ''}`.toLocaleLowerCase('vi').includes(query),
+    );
+  }, [marketplaceStores, discoverSearch]);
   const [connectingStoreId, setConnectingStoreId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showDiscoverModal) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowDiscoverModal(false);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEscape);
+      previousFocus?.focus();
+    };
+  }, [showDiscoverModal]);
 
   // Sidebar Collapse state (Thu gọn / Mở rộng thanh bên gian hàng)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -607,6 +633,15 @@ export default function ShopCollaborationPage() {
     });
   }, [stores, searchShopQuery, shopFilter]);
 
+  const filteredProducts = useMemo(() => {
+    const query = productSearch.trim().toLocaleLowerCase('vi');
+    if (!query) return products;
+    return products.filter((product) =>
+      (product.title || '').toLocaleLowerCase('vi').includes(query) ||
+      (product.sku || '').toLocaleLowerCase('vi').includes(query),
+    );
+  }, [products, productSearch]);
+
   return (
     <div
       className="w-full flex flex-col gap-3 max-w-[1600px] mx-auto h-[calc(100dvh-110px)] min-h-[480px] max-h-[900px]"
@@ -636,6 +671,7 @@ export default function ShopCollaborationPage() {
       <div className="collaboration-shell flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-row">
         {/* LEFT COLUMN: Danh Sách Gian Hàng Tinh Gọn (Có thể thu nhỏ chỉ hiện icon) */}
         <div
+          data-collapsed={isSidebarCollapsed}
           className={`collaboration-store-list ${
             isSidebarCollapsed ? 'w-[64px]' : 'w-[260px] xl:w-[275px]'
           } shrink-0 border-r border-[#EAE4D7] bg-[#FAF8F5]/60 flex flex-col h-full transition-all duration-300 select-none`}
@@ -668,13 +704,14 @@ export default function ShopCollaborationPage() {
               </div>
 
               {/* Stores List: Chỉ hiển thị icon avatar gian hàng */}
-              <div className="flex-1 overflow-y-auto py-2 flex flex-col items-center gap-2 no-scrollbar" role="list">
+              <div className="collaboration-store-icons flex-1 overflow-y-auto py-2 flex flex-col items-center gap-2 no-scrollbar" role="list">
                 {filteredStores.map((st) => {
                   const isSelected = st.id === selectedStore.id;
                   return (
                     <div key={st.id} className="relative group">
                       <button
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => {
                           setSelectedStoreId(st.id);
                           updateUrl(st.id, activeTab);
@@ -704,13 +741,14 @@ export default function ShopCollaborationPage() {
             /* EXPANDED VIEW: Tinh gọn, thanh mảnh, có nút thu nhỏ */
             <>
               {/* Top Search & Filter Bar */}
-              <div className="shrink-0 p-2.5 border-b border-[#EAE4D7] bg-white/95 backdrop-blur-xs flex flex-col gap-2">
+              <div className="collaboration-store-tools shrink-0 p-2.5 border-b border-[#EAE4D7] bg-white/95 backdrop-blur-xs flex flex-col gap-2">
                 <div className="flex items-center gap-1.5">
                   <div className="relative flex-1">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
                     <input
                       id="search-partner-store"
                       type="text"
+                      aria-label="Tìm gian hàng đối tác"
                       placeholder="Tìm gian hàng..."
                       value={searchShopQuery}
                       onChange={(e) => setSearchShopQuery(e.target.value)}
@@ -729,7 +767,7 @@ export default function ShopCollaborationPage() {
                 </div>
 
                 {/* Filter chips */}
-                <div className="flex items-center justify-between px-1 py-0.5 border-b border-[#EAE4D7]/50">
+                <div className="collaboration-store-filters flex items-center justify-between px-1 py-0.5 border-b border-[#EAE4D7]/50" aria-label="Lọc danh sách gian hàng">
                   {[
                     { id: 'ALL', label: 'Tất cả' },
                     { id: 'CHAT', label: 'Tin mới' },
@@ -739,6 +777,7 @@ export default function ShopCollaborationPage() {
                     <button
                       key={f.id}
                       type="button"
+                      aria-pressed={shopFilter === f.id}
                       onClick={() => setShopFilter(f.id as any)}
                       className={`pb-1 text-[11px] font-bold transition cursor-pointer ${
                         shopFilter === f.id
@@ -751,7 +790,7 @@ export default function ShopCollaborationPage() {
                   ))}
                 </div>
 
-                {/* Nút Khám phá Gian hàng Mới */}
+                {/* Nút khám phá gian hàng như bố cục cũ */}
                 <button
                   id="btn-discover-stores"
                   type="button"
@@ -764,10 +803,11 @@ export default function ShopCollaborationPage() {
                   <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
                   <span className="truncate">Khám phá gian hàng trên Sàn</span>
                 </button>
+
               </div>
 
               {/* Stores List: Gọn gàng */}
-              <div className="flex-1 overflow-y-auto divide-y divide-[#EAE4D7]/50" role="list">
+              <div className="collaboration-store-rows flex-1 overflow-y-auto divide-y divide-[#EAE4D7]/50" role="list">
                 {filteredStores.length === 0 ? (
                   <div className="p-8 text-center text-xs text-[#7D715E]">
                     Không có gian hàng nào phù hợp
@@ -779,6 +819,7 @@ export default function ShopCollaborationPage() {
                       <div
                         key={st.id}
                         id={`shop-item-${st.id}`}
+                        data-selected={isSelected}
                         className={`px-3 py-2.5 flex items-center gap-2.5 transition-all ${
                           isSelected
                             ? 'bg-[#FBF5EB] border-l-4 border-l-[#C59B58] text-[#1A1612]'
@@ -806,6 +847,7 @@ export default function ShopCollaborationPage() {
 
                         <button
                           type="button"
+                          aria-pressed={isSelected}
                           onClick={() => {
                             setSelectedStoreId(st.id);
                             updateUrl(st.id, activeTab);
@@ -814,13 +856,13 @@ export default function ShopCollaborationPage() {
                           aria-label={`Mở cuộc trò chuyện với ${st.name}`}
                         >
                           <div className="flex items-center justify-between gap-1">
-                            <strong className="text-xs font-bold truncate text-[#1A1612] leading-snug">
+                            <strong className="text-xs font-bold truncate text-[#1A1612] leading-snug" title={st.name}>
                               {st.name}
                             </strong>
                           </div>
 
                           <div className="flex items-center justify-between gap-1 mt-0.5">
-                            <span className="text-[10px] text-[#7D715E] truncate">
+                            <span className="text-[10px] text-[#7D715E] truncate" title={st.category}>
                               {st.category}
                             </span>
                             <span className="text-[9.5px] font-extrabold text-[#B88E4F] bg-white px-1.5 py-0.2 rounded border border-[#EAE4D7] shrink-0">
@@ -855,7 +897,7 @@ export default function ShopCollaborationPage() {
         </div>
 
         {/* RIGHT COLUMN: Không Gian Làm Việc 1-1 Với Shop */}
-        <div className="flex-1 h-full flex flex-col min-w-0 bg-white overflow-hidden">
+        <div className="collaboration-chat-pane flex-1 h-full flex flex-col min-w-0 bg-white overflow-hidden">
           {/* Shop Context Header Bar */}
           <div className="collaboration-shop-heading shrink-0 px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -927,6 +969,7 @@ export default function ShopCollaborationPage() {
           <div
             className="collaboration-tabs shrink-0 px-4 py-2 border-b border-[#EAE4D7] bg-white flex items-center gap-2 overflow-x-auto"
             role="tablist"
+            aria-label="Nội dung hợp tác với gian hàng"
           >
             {[
               { id: 'messages', label: 'Tin nhắn & Deal', icon: MessageSquare },
@@ -969,8 +1012,9 @@ export default function ShopCollaborationPage() {
                 <div className="collaboration-deal-bar bg-white border-b border-[#EAE4D7] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
                   <div className="flex items-center gap-2 text-[#B88E4F]">
                     <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0" />
-                    <span>
-                      <strong>Thỏa thuận hoa hồng</strong> · Trao đổi mức hoa hồng riêng với Shop.
+                    <span className="collaboration-deal-copy">
+                      <strong>Thỏa thuận hoa hồng</strong>
+                      <span>Trao đổi mức hoa hồng riêng với Shop.</span>
                     </span>
                   </div>
                   <button
@@ -980,7 +1024,7 @@ export default function ShopCollaborationPage() {
                     }}
                     className="collaboration-action px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
                   >
-                    + Đề xuất deal 30%
+                    <Plus size={13} aria-hidden="true" /> Đề xuất deal 30%
                   </button>
                 </div>
 
@@ -1001,46 +1045,45 @@ export default function ShopCollaborationPage() {
 
             {/* Các Tab còn lại */}
             {activeTab !== 'messages' && (
-              <div className="h-full w-full overflow-y-auto p-5 space-y-4">
+              <div className={`h-full w-full overflow-y-auto ${activeTab === 'products' ? 'collaboration-products-scroll p-4' : 'p-5 space-y-4'}`}>
                 {/* 2. PRODUCTS & SMART REFERRAL LINKS */}
                 {activeTab === 'products' && (
-                  <div className="w-full flex flex-col gap-4 animate-in fade-in-50 duration-200">
-                    <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#EAE4D7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-extrabold text-[#1A1612] m-0">
-                          Kho Sản Phẩm Của {selectedStore.name} ({products.length})
+                  <div className="collaboration-products animate-in fade-in-50 duration-200">
+                    <div className="collaboration-products-header">
+                      <div className="collaboration-products-heading">
+                        <h3 className="collaboration-products-title">
+                          Kho sản phẩm <span>{selectedStore.name}</span>
                         </h3>
-                        <p className="text-xs text-[#7D715E] mt-0.5 m-0">
+                        <span className="collaboration-products-count">{products.length} sản phẩm</span>
+                        <p>
                           Chính sách hoa hồng mở tự do &amp; độc quyền đối tác VIP
                         </p>
                       </div>
 
-                      <div className="relative w-full sm:w-64">
-                        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
+                      <label className="collaboration-products-search">
+                        <Search aria-hidden="true" />
                         <input
                           type="text"
                           placeholder="Lọc theo tên, SKU..."
+                          aria-label="Lọc sản phẩm theo tên hoặc SKU"
                           value={productSearch}
                           onChange={(e) => setProductSearch(e.target.value)}
-                          className="w-full pl-8 pr-3 py-1.5 bg-white border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] focus:border-[#C59B58] outline-none"
                         />
-                      </div>
+                      </label>
                     </div>
 
                     {loadingProducts ? (
-                      <div className="p-16 text-center text-[#7D715E] flex flex-col items-center gap-2">
-                        <Loader2 className="w-6 h-6 text-[#B88E4F] animate-spin" />
-                        <span className="text-xs font-semibold">Đang tải danh sách sản phẩm...</span>
+                      <div className="collaboration-products-state" role="status">
+                        <Loader2 className="animate-spin" aria-hidden="true" />
+                        <span>Đang tải danh sách sản phẩm...</span>
                       </div>
-                    ) : products.length === 0 ? (
-                      <div className="p-12 text-center bg-white rounded-2xl border border-[#EAE4D7] text-xs text-[#7D715E]">
-                        Chưa có sản phẩm nào thuộc gian hàng này.
+                    ) : filteredProducts.length === 0 ? (
+                      <div className="collaboration-products-state">
+                        {products.length === 0 ? 'Chưa có sản phẩm nào thuộc gian hàng này.' : 'Không tìm thấy sản phẩm phù hợp.'}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {products
-                          .filter((p) => (p.title || '').toLowerCase().includes(productSearch.toLowerCase()))
-                          .map((prod) => {
+                      <div className="collaboration-products-grid">
+                        {filteredProducts.map((prod) => {
                             const isExclusive = prod.policyType === 'EXCLUSIVE' || (prod.commissionRate || 22) >= 30;
                             const commRate = prod.commissionRate || (isExclusive ? 32 : 22);
                             const commAmount = Math.round((Number(prod.price) * commRate) / 100);
@@ -1051,38 +1094,38 @@ export default function ShopCollaborationPage() {
                             return (
                               <div
                                 key={prod.id}
-                                className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-2xs hover:shadow-xs transition hover:border-[#C59B58]"
+                                className="collaboration-product-card"
                               >
-                                <div className="flex items-start gap-3">
+                                <div className="collaboration-product-main">
                                   <img
                                     src={prod.imageUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150'}
                                     alt={prod.title}
-                                    className="w-16 h-16 rounded-xl object-cover border border-[#EAE4D7] bg-[#FAF8F5] shrink-0"
+                                    className="collaboration-product-image"
                                   />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-1">
-                                      <span className="text-[10px] font-mono font-bold text-[#7D715E]">
+                                  <div className="collaboration-product-info">
+                                    <div className="collaboration-product-meta">
+                                      <span className="collaboration-product-sku">
                                         {prod.sku || 'SKU'}
                                       </span>
                                       {isExclusive ? (
-                                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                                          👑 DEAL VIP
+                                        <span className="collaboration-product-policy is-exclusive">
+                                          Deal VIP
                                         </span>
                                       ) : (
-                                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#F3EFE6] text-[#7D715E]">
-                                          🔓 MỞ TỰ DO
+                                        <span className="collaboration-product-policy">
+                                          Mở tự do
                                         </span>
                                       )}
                                     </div>
-                                    <strong className="text-xs font-bold text-[#1A1612] line-clamp-2 leading-tight mt-0.5 block">
+                                    <strong className="collaboration-product-title">
                                       {prod.title}
                                     </strong>
-                                    <div className="flex items-baseline gap-2 mt-1">
-                                      <span className="text-sm font-extrabold text-[#1A1612]">
+                                    <div className="collaboration-product-price">
+                                      <span>
                                         {Number(prod.price).toLocaleString('vi-VN')} ₫
                                       </span>
                                       {prod.originalPrice && (
-                                        <span className="text-[11px] text-[#7D715E] line-through">
+                                        <span className="collaboration-product-original-price">
                                           {Number(prod.originalPrice).toLocaleString('vi-VN')} ₫
                                         </span>
                                       )}
@@ -1091,19 +1134,19 @@ export default function ShopCollaborationPage() {
                                 </div>
 
                                 {/* Commission box */}
-                                <div className="p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-center justify-between text-xs">
-                                  <span className="text-[#B88E4F] font-semibold text-[11px]">Hoa hồng:</span>
-                                  <span className="font-extrabold text-[#B88E4F]">
+                                <div className="collaboration-product-commission">
+                                  <span>Hoa hồng tiếp thị</span>
+                                  <strong>
                                     {commRate}% (~{commAmount.toLocaleString('vi-VN')} ₫/đơn)
-                                  </span>
+                                  </strong>
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-[#EAE4D7]">
+                                <div className="collaboration-product-actions">
                                   <button
                                     type="button"
                                     onClick={() => handleOpenLinkModal(prod)}
-                                    className="py-2 px-2.5 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
+                                    className="collaboration-product-link"
                                   >
                                     <Link2 className="w-3.5 h-3.5" />
                                     <span>Lấy Link Tiếp Thị</span>
@@ -1127,11 +1170,7 @@ export default function ShopCollaborationPage() {
                                       setRequestSampleModalProduct(prod);
                                     }}
                                     disabled={!canRequestThisProduct}
-                                    className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer ${
-                                      canRequestThisProduct
-                                        ? 'bg-[#F3EFE6] hover:bg-[#EAE4D7] text-[#1A1612]'
-                                        : 'bg-stone-100 text-stone-400 cursor-not-allowed'
-                                    }`}
+                                    className="collaboration-product-sample"
                   title={!canRequestSample ? (sampleEligibility?.blockReason || 'Hoàn tất KYC và liên kết kênh mạng xã hội để mở khóa') : !canRequestThisProduct ? 'Shop chưa bật cấp mẫu hoặc đã hết hạn mức' : 'Xin mẫu dùng thử'}
                                   >
                                     <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -1148,16 +1187,15 @@ export default function ShopCollaborationPage() {
 
                 {/* 3. SAMPLES TAB - 4 BƯỚC */}
                 {activeTab === 'samples' && (
-                  <div className="w-full flex flex-col gap-4 animate-in fade-in-50 duration-200">
-                    <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#EAE4D7] flex flex-col gap-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div>
-                          <h3 className="text-sm font-extrabold text-[#1A1612] m-0">
-                            Quy Trình Hợp Tác Hàng Mẫu 4 Bước Chuẩn Sàn
-                          </h3>
-                          <p className="text-xs text-[#7D715E] mt-0.5 m-0">
-                            Minh bạch từ cam kết đăng bài, theo dõi bưu tá, đến nghiệm thu video trả quyền lợi
-                          </p>
+                  <div className="collaboration-samples animate-in fade-in-50 duration-200">
+                    <section className="collaboration-sample-guide" aria-labelledby="sample-guide-title">
+                      <div className="collaboration-sample-guide-heading">
+                        <div className="collaboration-sample-guide-copy">
+                          <span className="collaboration-sample-guide-icon"><Package aria-hidden="true" /></span>
+                          <div>
+                            <h3 id="sample-guide-title">Quy trình nhận hàng mẫu</h3>
+                            <p>Theo dõi từ lúc đăng ký đến khi video được nghiệm thu.</p>
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -1165,74 +1203,80 @@ export default function ShopCollaborationPage() {
                             setActiveTab('products');
                             updateUrl(selectedStore.id, 'products');
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-[#EBD08C] text-white text-xs font-bold hover:bg-[#DEC07A] transition self-start sm:self-auto"
+                          className="collaboration-sample-find-products"
                         >
-                          + Xin Thêm Mẫu Mới
+                          <Plus aria-hidden="true" />Tìm sản phẩm
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-2 border-t border-[#EAE4D7] text-center">
-                        <div className="p-2.5 rounded-xl bg-white border border-[#EAE4D7]">
-                          <strong className="text-xs text-[#B88E4F] block">1. Đăng ký &amp; Cam kết</strong>
-                          <span className="text-[10.5px] text-[#7D715E]">Kênh đăng &amp; hạn tối đa 14 ngày sau khi nhận mẫu</span>
+                      <div className="collaboration-sample-steps">
+                        <div className="collaboration-sample-step">
+                          <span className="collaboration-sample-step-number">01</span>
+                          <div><strong>Đăng ký &amp; cam kết</strong><span>Kênh đăng và thời hạn nội dung</span></div>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-[#EAE4D7]">
-                          <strong className="text-xs text-[#B88E4F] block">2. Shop duyệt &amp; Giao hàng</strong>
-                          <span className="text-[10.5px] text-[#7D715E]">Mã vận đơn bưu cục theo dõi</span>
+                        <div className="collaboration-sample-step">
+                          <span className="collaboration-sample-step-number">02</span>
+                          <div><strong>Shop duyệt &amp; giao hàng</strong><span>Theo dõi trạng thái và vận đơn</span></div>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-[#EAE4D7]">
-                          <strong className="text-xs text-[#B88E4F] block">3. Xác nhận đã nhận</strong>
-                          <span className="text-[10.5px] text-[#7D715E]">Đếm ngược thời hạn nộp bài</span>
+                        <div className="collaboration-sample-step">
+                          <span className="collaboration-sample-step-number">03</span>
+                          <div><strong>Xác nhận đã nhận</strong><span>Bắt đầu thời hạn nộp nội dung</span></div>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-[#EAE4D7]">
-                          <strong className="text-xs text-[#B88E4F] block">4. Nộp bài &amp; Nghiệm thu</strong>
-                          <span className="text-[10.5px] text-[#7D715E]">Dán link video hoàn tất</span>
+                        <div className="collaboration-sample-step">
+                          <span className="collaboration-sample-step-number">04</span>
+                          <div><strong>Nộp bài &amp; nghiệm thu</strong><span>Gửi video để Shop xác nhận</span></div>
                         </div>
                       </div>
-                    </div>
+                    </section>
 
                     {/* Danh sách mẫu */}
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold text-[#7D715E]">Lịch sử yêu cầu: {samples.length}</span>
-                      <Select
-                        value={sampleStatusFilter}
-                        onChange={(event) => setSampleStatusFilter(event.target.value)}
-                        aria-label="Lọc trạng thái yêu cầu mẫu"
-                        className="w-48 text-xs font-medium"
-                      >
-                        <option value="ALL">Tất cả trạng thái</option>
-                        <option value="PENDING">Chờ Shop duyệt</option>
-                        <option value="APPROVED">Đã duyệt</option>
-                        <option value="SHIPPED">Đang giao</option>
-                        <option value="RECEIVED">Đã nhận mẫu</option>
-                        <option value="VIDEO_SUBMITTED">Chờ nghiệm thu video</option>
-                        <option value="REVISION_REQUIRED">Cần sửa video</option>
-                        <option value="OVERDUE">Quá hạn</option>
-                        <option value="DELIVERY_ISSUE">Sự cố giao hàng</option>
-                        <option value="COMPLETED">Hoàn tất</option>
-                        <option value="REJECTED">Bị từ chối</option>
-                        <option value="CANCELLED">Đã hủy</option>
-                      </Select>
+                    <div className="collaboration-sample-history-toolbar">
+                      <div className="collaboration-sample-history-count">
+                        <Package aria-hidden="true" />
+                        <span>Lịch sử yêu cầu</span>
+                        <strong>{samples.length}</strong>
+                      </div>
+                      <div className="collaboration-sample-filter-wrap">
+                        <Select
+                          value={sampleStatusFilter}
+                          onChange={(event) => setSampleStatusFilter(event.target.value)}
+                          aria-label="Lọc trạng thái yêu cầu mẫu"
+                          className="w-full collaboration-sample-filter"
+                        >
+                          <option value="ALL">Tất cả trạng thái</option>
+                          <option value="PENDING">Chờ Shop duyệt</option>
+                          <option value="APPROVED">Đã duyệt</option>
+                          <option value="SHIPPED">Đang giao</option>
+                          <option value="RECEIVED">Đã nhận mẫu</option>
+                          <option value="VIDEO_SUBMITTED">Chờ nghiệm thu video</option>
+                          <option value="REVISION_REQUIRED">Cần sửa video</option>
+                          <option value="OVERDUE">Quá hạn</option>
+                          <option value="DELIVERY_ISSUE">Sự cố giao hàng</option>
+                          <option value="COMPLETED">Hoàn tất</option>
+                          <option value="REJECTED">Bị từ chối</option>
+                          <option value="CANCELLED">Đã hủy</option>
+                        </Select>
+                      </div>
                     </div>
                     {loadingSamples ? (
-                      <div className="p-16 text-center text-[#7D715E] flex flex-col items-center gap-2">
-                        <Loader2 className="w-6 h-6 text-[#B88E4F] animate-spin" />
-                        <span className="text-xs font-semibold">Đang tải dữ liệu hàng mẫu...</span>
+                      <div className="collaboration-sample-state" role="status">
+                        <Loader2 className="animate-spin" aria-hidden="true" />
+                        <span>Đang tải dữ liệu hàng mẫu...</span>
                       </div>
                     ) : samples.length === 0 ? (
-                      <div className="p-12 text-center bg-white rounded-2xl border border-[#EAE4D7] text-[#7D715E]">
-                        <div className="text-3xl mb-2">📦</div>
-                        <h4 className="text-sm font-bold text-[#1A1612] m-0">Chưa có đơn xin mẫu nào từ {selectedStore.name}</h4>
-                        <p className="text-xs mt-1 max-w-sm mx-auto mb-3">
+                      <div className="collaboration-sample-empty">
+                        <span className="collaboration-sample-empty-icon"><Package aria-hidden="true" /></span>
+                        <h4 className="collaboration-sample-empty-title">Chưa có đơn xin mẫu nào từ {selectedStore.name}</h4>
+                        <p className="collaboration-sample-empty-copy">
                           Chọn sản phẩm ở tab "Kho Sản Phẩm" để đăng ký nhận mẫu trải nghiệm miễn phí.
                         </p>
                       </div>
                     ) : visibleSamples.length === 0 ? (
-                      <div className="p-8 text-center bg-white rounded-2xl border border-[#EAE4D7] text-xs text-[#7D715E]">
+                      <div className="collaboration-sample-state">
                         Không có yêu cầu nào ở trạng thái đã chọn.
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-3">
+                      <div className="collaboration-sample-list">
                         {visibleSamples.map((samp: any) => {
                           const status = samp.status || 'PENDING';
                           const isShipped = status === 'SHIPPED';
@@ -1254,58 +1298,59 @@ export default function ShopCollaborationPage() {
                           return (
                             <div
                               key={samp.id}
-                              className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-2xs hover:border-[#C59B58] transition"
+                              className="collaboration-sample-request"
+                              data-status={status.toLowerCase()}
                             >
-                              <div className="flex items-center gap-3.5">
+                              <div className="collaboration-sample-request-main">
                                 <img
                                   src={samp.product?.imageUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150'}
                                   alt={samp.product?.title || 'Sản phẩm'}
-                                  className="w-14 h-14 rounded-xl object-cover border border-[#EAE4D7] shrink-0 bg-[#FAF8F5]"
+                                  className="collaboration-sample-product-image"
                                 />
-                                <div>
-                                  <strong className="text-xs sm:text-sm font-bold text-[#1A1612] line-clamp-1 block">
+                                <div className="collaboration-sample-request-info">
+                                  <strong className="collaboration-sample-request-title">
                                     {samp.product?.title || 'Sản phẩm mẫu'}
                                   </strong>
-                                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
-                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F]">
+                                  <div className="collaboration-sample-request-badges">
+                                    <span className="collaboration-sample-status" data-status={status.toLowerCase()}>
                                       {statusLabel[status] || status}
                                     </span>
                                     {samp.trackingNumber && (
-                                      <span className="text-[11px] font-mono text-[#7D715E] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#EAE4D7]">
+                                      <span className="collaboration-sample-tracking">
                                         Mã vận đơn: <strong>{samp.trackingNumber}</strong> ({samp.carrier || 'Đơn vị vận chuyển'})
                                       </span>
                                     )}
                                     {activeDeadline && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(status) && (
-                                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${daysLeft !== null && daysLeft <= 0 ? 'text-rose-700 bg-rose-50 border-rose-200' : 'text-[#8C6226] bg-[#FBF5EB] border-[#EEDFC6]'}`}>
-                                        ⏰ {daysLeft !== null && daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Đã quá hạn'} · hạn {new Date(activeDeadline).toLocaleDateString('vi-VN')}
+                                      <span className="collaboration-sample-deadline" data-expired={daysLeft !== null && daysLeft <= 0}>
+                                        {daysLeft !== null && daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Đã quá hạn'} · hạn {new Date(activeDeadline).toLocaleDateString('vi-VN')}
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-[10.5px] text-[#7D715E] mt-1 mb-0">
+                                  <p className="collaboration-sample-meta">
                                     Kênh cam kết: {samp.socialPlatformSnapshot || samp.socialChannel?.platformName || '—'} · {samp.socialChannelNameSnapshot || samp.socialChannel?.channelName || '—'}
                                     {samp.expectedVideoAt ? ` · Dự kiến đăng ${new Date(samp.expectedVideoAt).toLocaleDateString('vi-VN')}` : ''}
                                   </p>
                                   {samp.recipientName && (
-                                    <p className="text-[10.5px] text-[#7D715E] mt-1 mb-0">
+                                    <p className="collaboration-sample-meta">
                                       Người nhận: {samp.recipientName} · {samp.recipientPhone} · {samp.shippingAddress}
                                     </p>
                                   )}
                                   {samp.videoRejectionReason && (
-                                    <p className="text-[11px] text-rose-700 mt-1 mb-0">Lý do cần sửa: {samp.videoRejectionReason}</p>
+                                    <p className="collaboration-sample-problem">Lý do cần sửa: {samp.videoRejectionReason}</p>
                                   )}
                                   {samp.rejectedReason && status === 'REJECTED' && (
-                                    <p className="text-[11px] text-rose-700 mt-1 mb-0">Lý do: {samp.rejectedReason}</p>
+                                    <p className="collaboration-sample-problem">Lý do: {samp.rejectedReason}</p>
                                   )}
                                   {(samp.events?.length > 0 || samp.videoAssets?.length > 0) && (
-                                    <details className="mt-1.5 text-[10.5px] text-[#7D715E]">
-                                      <summary className="cursor-pointer font-semibold text-[#8C6226]">Xem lịch sử xử lý và video</summary>
-                                      <ul className="pl-4 mt-1 space-y-1">
+                                    <details className="collaboration-sample-events">
+                                      <summary>Xem lịch sử xử lý và video</summary>
+                                      <ul>
                                         {(samp.events || []).map((event: any) => (
                                           <li key={event.id}>{new Date(event.createdAt).toLocaleString('vi-VN')} · {event.action}</li>
                                         ))}
                                         {(samp.videoAssets || []).map((asset: any) => (
                                           <li key={asset.id}>
-                                            <a href={asset.urlOrContent} target="_blank" rel="noreferrer" className="underline text-[#8C6226]">{asset.title || 'Video đã gửi'}</a>
+                                            <a href={asset.urlOrContent} target="_blank" rel="noreferrer">{asset.title || 'Video đã gửi'}</a>
                                             {' · '}{asset.status}{asset.rejectionReason ? ` · ${asset.rejectionReason}` : ''}
                                           </li>
                                         ))}
@@ -1315,12 +1360,12 @@ export default function ShopCollaborationPage() {
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 shrink-0">
+                              <div className="collaboration-sample-actions">
                                 {status === 'PENDING' && (
                                   <button
                                     type="button"
                                     onClick={() => handleCancelSampleRequest(samp.id)}
-                                    className="px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] text-xs font-semibold hover:text-[#DC2626] cursor-pointer"
+                                    className="collaboration-sample-action is-danger-quiet"
                                   >
                                     Hủy yêu cầu
                                   </button>
@@ -1329,7 +1374,7 @@ export default function ShopCollaborationPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleConfirmReceivedSample(samp.id)}
-                                    className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer"
+                                    className="collaboration-sample-action is-primary"
                                   >
                                     Đã nhận được hàng
                                   </button>
@@ -1345,16 +1390,16 @@ export default function ShopCollaborationPage() {
                                           .catch((err: any) => toast.error(err?.response?.data?.message || 'Không gửi được báo cáo sự cố.'));
                                       }
                                     }}
-                                    className="px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] text-xs font-semibold cursor-pointer"
+                                    className="collaboration-sample-action is-quiet"
                                   >Báo sự cố</button>
                                 )}
                                 {canSubmitVideo && (
                                   <button
                                     type="button"
                                     onClick={() => setSubmitVideoSample(samp)}
-                                    className="px-3.5 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition"
+                                    className="collaboration-sample-action is-primary"
                                   >
-                                    <Video className="w-3.5 h-3.5" />
+                                    <Video aria-hidden="true" />
                                     <span>Nộp Link Video Review</span>
                                   </button>
                                 )}
@@ -1369,49 +1414,47 @@ export default function ShopCollaborationPage() {
 
                 {/* 4. CREATOR TOOLKIT */}
                 {activeTab === 'media' && (
-                  <div className="w-full flex flex-col gap-4 animate-in fade-in-50 duration-200">
-                    <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#EAE4D7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-extrabold text-[#1A1612] m-0">
-                          Túi Đồ Nghề Sáng Tạo (Creator Toolkit) Của {selectedStore.name}
-                        </h3>
-                        <p className="text-xs text-[#7D715E] mt-0.5 m-0">
-                          Footage gốc 9:16 không chữ, ảnh studio, điểm mạnh cốt lõi và kịch bản triệu view
-                        </p>
+                  <div className="collaboration-media animate-in fade-in-50 duration-200">
+                    <section className="collaboration-media-header" aria-labelledby="collaboration-media-title">
+                      <div className="collaboration-media-heading">
+                        <span className="collaboration-media-heading-icon"><Sparkles aria-hidden="true" /></span>
+                        <div>
+                          <h3 id="collaboration-media-title">Kho nội dung sáng tạo</h3>
+                          <p>Tài nguyên quay dựng và thông tin sản phẩm từ {selectedStore.name}.</p>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#EAE4D7]">
+                      <div className="collaboration-media-tabs" role="tablist" aria-label="Danh mục nội dung sáng tạo">
                         {[
-                          { id: 'BROLL', label: '🎬 B-Roll 9:16' },
-                          { id: 'PHOTOS', label: '📸 Studio & Scan' },
-                          { id: 'USP', label: '📝 USP Bán Hàng' },
-                          { id: 'HOOKS', label: '💡 Kịch Bản Mẫu' },
+                          { id: 'BROLL', label: 'Video mẫu', icon: Video },
+                          { id: 'PHOTOS', label: 'Ảnh & tài liệu', icon: Image },
+                          { id: 'USP', label: 'Điểm nổi bật', icon: ShieldAlert },
+                          { id: 'HOOKS', label: 'Gợi ý kịch bản', icon: Lightbulb },
                         ].map((sub) => (
                           <button
                             key={sub.id}
                             type="button"
                             onClick={() => setMediaTab(sub.id as any)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                              mediaTab === sub.id
-                                ? 'bg-[#EBD08C] text-white shadow-2xs'
-                                : 'text-[#7D715E] hover:text-[#1A1612]'
-                            }`}
+                            className="collaboration-media-tab"
+                            role="tab"
+                            aria-selected={mediaTab === sub.id}
                           >
+                            <sub.icon aria-hidden="true" />
                             <span>{sub.label}</span>
                           </button>
                         ))}
                       </div>
-                    </div>
+                    </section>
 
                     {loadingMedia ? (
-                      <div className="flex flex-col items-center justify-center p-12 text-[#7D715E] gap-2">
-                        <Loader2 className="w-6 h-6 animate-spin text-[#B88E4F]" />
-                        <span className="text-xs font-medium">Đang tải kho tài nguyên sáng tạo...</span>
+                      <div className="collaboration-media-state" role="status">
+                        <Loader2 className="animate-spin" aria-hidden="true" />
+                        <span>Đang tải kho tài nguyên sáng tạo...</span>
                       </div>
                     ) : (
                       <>
                         {mediaTab === 'BROLL' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                      <div className="collaboration-media-grid">
                         {[
                           {
                             id: 'br-1',
@@ -1435,47 +1478,48 @@ export default function ShopCollaborationPage() {
                             note: 'Hiệu ứng nâng tone nhẹ tự nhiên không vón cục',
                           },
                         ].map((item) => (
-                          <div
+                          <article
                             key={item.id}
-                            className="bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-2xs flex flex-col justify-between"
+                            className="collaboration-media-card collaboration-media-video-card"
                           >
-                            <div className="relative aspect-[9/10] bg-stone-900 flex items-center justify-center overflow-hidden">
-                              <img src={item.url} alt={item.title} className="w-full h-full object-cover opacity-80" />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3 text-white">
-                                <span className="text-[10px] font-bold bg-[#EBD08C] px-2 py-0.5 rounded w-fit mb-1">
+                            <div className="collaboration-media-preview">
+                              <span className="collaboration-media-preview-fallback"><Video aria-hidden="true" /></span>
+                              <img src={item.url} alt={item.title} onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+                              <div className="collaboration-media-preview-meta">
+                                <span className="collaboration-media-kind">
                                   VIDEO DỌC 9:16
                                 </span>
-                                <span className="text-xs font-bold">{item.duration}</span>
+                                <span>{item.duration}</span>
                               </div>
                             </div>
-                            <div className="p-3.5 flex flex-col gap-2">
-                              <strong className="text-xs font-bold text-[#1A1612] line-clamp-1 block">
+                            <div className="collaboration-media-card-body">
+                              <strong className="collaboration-media-card-title">
                                 {item.title}
                               </strong>
-                              <p className="text-[11px] text-[#7D715E] line-clamp-2 m-0">
+                              <p className="collaboration-media-card-copy">
                                 {item.note}
                               </p>
-                              <div className="pt-2 border-t border-[#EAE4D7] flex items-center justify-between">
-                                <span className="text-[10px] text-[#7D715E]">MP4 • 24MB</span>
+                              <div className="collaboration-media-card-footer">
+                                <span>MP4 · 24 MB</span>
                                 <a
                                   href={item.url}
                                   target="_blank"
                                   rel="noreferrer"
                                   download
-                                  className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:underline"
+                                  className="collaboration-media-download"
                                 >
-                                  <Download className="w-3.5 h-3.5" />
-                                  <span>Tải Footage Gốc</span>
+                                  <Download aria-hidden="true" />
+                                  <span>Tải video</span>
                                 </a>
                               </div>
                             </div>
-                          </div>
+                          </article>
                         ))}
                       </div>
                     )}
 
                     {mediaTab === 'PHOTOS' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="collaboration-media-grid is-photo-grid">
                         {[
                           {
                             title: 'Bộ Ảnh Studio Concept Tối Giản Da Khỏe',
@@ -1493,85 +1537,91 @@ export default function ShopCollaborationPage() {
                             img: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300',
                           },
                         ].map((p, idx) => (
-                          <div key={idx} className="bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-2xs p-3">
-                            <img src={p.img} alt={p.title} className="w-full h-36 object-cover rounded-xl mb-2" />
-                            <strong className="text-xs font-bold text-[#1A1612] block line-clamp-1">{p.title}</strong>
-                            <span className="text-[11px] text-[#7D715E] block mt-0.5">{p.count}</span>
-                            <button
-                              type="button"
-                              onClick={() => toast.success('Đang tải trọn bộ ảnh độ nét cao...')}
-                              className="mt-2.5 w-full py-1.5 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] text-[#B88E4F] text-xs font-bold flex items-center justify-center gap-1"
-                            >
-                              <Download className="w-3 h-3" /> Tải Trọn Bộ
-                            </button>
-                          </div>
+                          <article key={idx} className="collaboration-media-card collaboration-media-photo-card">
+                            <div className="collaboration-media-photo-preview">
+                              <span className="collaboration-media-preview-fallback"><Image aria-hidden="true" /></span>
+                              <img src={p.img} alt={p.title} onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+                            </div>
+                            <div className="collaboration-media-card-body">
+                              <strong className="collaboration-media-card-title">{p.title}</strong>
+                              <span className="collaboration-media-card-copy">{p.count}</span>
+                              <button
+                                type="button"
+                                onClick={() => toast.success('Đang tải trọn bộ ảnh độ nét cao...')}
+                                className="collaboration-media-download is-full"
+                              >
+                                <Download aria-hidden="true" /> Tải trọn bộ
+                              </button>
+                            </div>
+                          </article>
                         ))}
                       </div>
                     )}
 
                     {mediaTab === 'USP' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl p-5 flex flex-col gap-3">
-                          <h4 className="text-xs font-extrabold text-[#1A1612] uppercase tracking-wider flex items-center gap-1.5 m-0">
-                            <Sparkles className="w-4 h-4 text-[#B88E4F]" />
+                      <div className="collaboration-media-grid is-info-grid">
+                        <section className="collaboration-usp-card">
+                          <h4>
+                            <Sparkles aria-hidden="true" />
                             <span>Top 3 Điểm Mạnh Cốt Lõi (USPs)</span>
                           </h4>
-                          <ul className="text-xs text-[#1A1612] space-y-2 pl-4 list-disc m-0">
+                          <ul>
                             <li><strong>Phức hợp B5 5% tinh khiết:</strong> Phục hồi hàng rào ẩm cho da đang treatment cấp tốc chỉ sau 48 giờ.</li>
                             <li><strong>Chất kem mỏng nhẹ tan trên da:</strong> Không gây bít tắc lỗ chân lông, không gây mụn ẩn cho da dầu Việt Nam.</li>
                             <li><strong>Thành phần thuần chay 100%:</strong> Không cồn khô, không hương liệu nhân tạo, an toàn cho mẹ bầu.</li>
                           </ul>
-                        </div>
+                        </section>
 
-                        <div className="bg-rose-50/60 border border-rose-200 rounded-2xl p-5 flex flex-col gap-3">
-                          <h4 className="text-xs font-extrabold text-rose-800 uppercase tracking-wider flex items-center gap-1.5 m-0">
-                            <AlertTriangle className="w-4 h-4 text-rose-600" />
+                        <section className="collaboration-usp-card is-caution">
+                          <h4>
+                            <AlertTriangle aria-hidden="true" />
                             <span>Từ Khóa Cấm Kỵ (Chống Bóp Tương Tác / Vi Phạm)</span>
                           </h4>
-                          <p className="text-xs text-rose-900 m-0">
+                          <p>
                             Khi quay video hoặc viết caption, KOL <strong>tuyệt đối không dùng</strong> các từ sau:
                           </p>
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="collaboration-usp-terms">
                             {['Trị dứt điểm 100%', 'Thuốc thần kỳ', 'Trắng bật tone sau 1 đêm', 'Cam kết chữa khỏi', 'Chữa lành vĩnh viễn'].map((t, idx) => (
-                              <span key={idx} className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white border border-rose-300 text-rose-700">
-                                ❌ {t}
+                              <span key={idx}>
+                                {t}
                               </span>
                             ))}
                           </div>
-                        </div>
+                        </section>
                       </div>
                     )}
 
                     {mediaTab === 'HOOKS' && (
-                      <div className="space-y-3">
+                      <div className="collaboration-media-hook-list">
                         {[
                           {
-                            hook: '🚨 "Nếu bạn đang dùng kem B5 sai cách suốt 2 năm qua thì dừng ngay lại..."',
+                            hook: '"Nếu bạn đang dùng kem B5 sai cách suốt 2 năm qua thì dừng ngay lại..."',
                             angle: 'Đánh vào nỗi sợ dùng sai cách gây mụn ẩn -> Hướng dẫn cách bôi chuẩn chuyên gia.',
                             views: 'Ý tưởng video 1.2M View',
                           },
                           {
-                            hook: '✨ "Bác sĩ da liễu sẽ không muốn bạn biết hũ kem phục hồi chỉ hơn 300k này..."',
+                            hook: '"Bác sĩ da liễu sẽ không muốn bạn biết hũ kem phục hồi chỉ hơn 300k này..."',
                             angle: 'Tạo cảm giác phát hiện bí mật, so sánh hiệu quả với các dòng đắt đỏ tiền triệu.',
                             views: 'Ý tưởng video 850K View',
                           },
                           {
-                            hook: '🌿 "Thử thách 7 ngày đổi kem dưỡng và cái kết cho làn da dầu mụn mùa hè..."',
+                            hook: '"Thử thách 7 ngày đổi kem dưỡng và cái kết cho làn da dầu mụn mùa hè..."',
                             angle: 'Format kiểm chứng thực tế (Before / After) cực kỳ uy tín và dễ chốt đơn.',
                             views: 'Ý tưởng video 2.4M View',
                           },
                         ].map((hk, idx) => (
-                          <div key={idx} className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-[10px] font-extrabold bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] px-2 py-0.5 rounded-full">
+                          <article key={idx} className="collaboration-media-hook-card">
+                            <div className="collaboration-media-hook-copy">
+                              <div className="collaboration-media-hook-tag">
+                                <Lightbulb aria-hidden="true" />
+                                <span>
                                   {hk.views}
                                 </span>
                               </div>
-                              <strong className="text-xs sm:text-sm font-extrabold text-[#1A1612] block">
+                              <strong>
                                 {hk.hook}
                               </strong>
-                              <p className="text-xs text-[#7D715E] mt-0.5 m-0">{hk.angle}</p>
+                              <p>{hk.angle}</p>
                             </div>
                             <button
                               type="button"
@@ -1579,12 +1629,12 @@ export default function ShopCollaborationPage() {
                                 navigator.clipboard.writeText(hk.hook);
                                 toast.success('Đã sao chép ý tưởng Hook vào bộ nhớ tạm!');
                               }}
-                              className="px-3 py-1.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] hover:bg-[#F3EFE6] text-xs font-bold text-[#1A1612] flex items-center gap-1 shrink-0"
+                              className="collaboration-media-copy-button"
                             >
-                              <Copy className="w-3 h-3 text-[#B88E4F]" />
+                              <Copy aria-hidden="true" />
                               <span>Sao chép kịch bản</span>
                             </button>
-                          </div>
+                          </article>
                         ))}
                       </div>
                     )}
@@ -1900,42 +1950,49 @@ export default function ShopCollaborationPage() {
       {/* MODAL 4: KHÁM PHÁ GIAN HÀNG */}
       {showDiscoverModal && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in-50 duration-200"
+          className="kol-shop-directory-overlay fixed inset-0 flex items-center justify-center p-4 z-50"
           onClick={() => setShowDiscoverModal(false)}
         >
           <div
-            className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-3xl max-h-[85vh] shadow-2xl flex flex-col overflow-hidden text-left"
+            className="kol-shop-directory bg-white w-full flex flex-col overflow-hidden text-left"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shop-directory-title"
+            aria-describedby="shop-directory-description"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-[#EAE4D7] flex items-center justify-between bg-[#FAF8F5]">
+            <div className="kol-shop-directory-heading">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center">
+                <div className="kol-shop-directory-icon">
                   <Store className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[#1A1612] m-0">
-                    Danh Bạ Gian Hàng Đối Tác Sàn SCANMS
+                  <h3 id="shop-directory-title">
+                    Shop đối tác SCANMS
                   </h3>
-                  <p className="text-xs text-[#7D715E] m-0">
-                    Kết nối trực tiếp để đàm phán hoa hồng riêng và xin mẫu thử
+                  <p id="shop-directory-description">
+                    Trao đổi hoa hồng riêng và xin mẫu thử từ Shop.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
+                aria-label="Đóng danh bạ Shop"
                 onClick={() => setShowDiscoverModal(false)}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-4 border-b border-[#EAE4D7] bg-white">
+            <div className="kol-shop-directory-search">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
                 <input
                   type="text"
-                  placeholder="Tìm kiếm theo tên gian hàng, ngành hàng..."
+                  aria-label="Tìm Shop theo tên hoặc ngành hàng"
+                  autoFocus
+                  placeholder="Tìm tên Shop, ngành hàng..."
                   value={discoverSearch}
                   onChange={(e) => setDiscoverSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs font-medium text-[#1A1612] outline-none focus:bg-white focus:border-[#C59B58] transition"
@@ -1943,52 +2000,47 @@ export default function ShopCollaborationPage() {
               </div>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 divide-y divide-[#EAE4D7]/50 space-y-3">
+            <div className="kol-shop-directory-list">
               {loadingMarketplace ? (
                 <div className="py-16 text-center text-xs font-bold text-[#7D715E] flex flex-col items-center gap-2">
                   <div className="w-6 h-6 border-2 border-[#C59B58] border-t-transparent rounded-full animate-spin" />
                   <span>Đang tải danh bạ gian hàng chính hãng...</span>
                 </div>
-              ) : marketplaceStores.length === 0 ? (
+              ) : discoveredStores.length === 0 ? (
                 <div className="py-16 text-center text-xs text-[#7D715E]">
                   Không tìm thấy gian hàng nào.
                 </div>
               ) : (
-                marketplaceStores
-                  .filter((ms) => {
-                    const q = discoverSearch.toLowerCase();
-                    return (
-                      ms.name.toLowerCase().includes(q) ||
-                      (ms.description || '').toLowerCase().includes(q)
-                    );
-                  })
-                  .map((ms) => {
+                discoveredStores.map((ms) => {
                     const isAlreadyConnected = stores.some((st) => st.id === ms.id);
                     return (
                       <div
                         key={ms.id}
-                        className="pt-3 first:pt-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/50 hover:bg-white transition"
+                        className="kol-shop-directory-row"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="kol-shop-directory-identity">
                           <StoreAvatar
                             name={ms.name}
                             logoUrl={getShopLogoUrl(ms.logoUrl)}
-                            className="w-12 h-12 rounded-xl border border-[#EAE4D7] shrink-0 text-sm"
+                            className="kol-shop-directory-avatar"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-extrabold text-[#1A1612] truncate m-0">{ms.name}</h4>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F]">
-                                Chính Hãng
+                              <h4 title={ms.name}>{ms.name}</h4>
+                              <span className="kol-shop-directory-verified" title="Gian hàng chính hãng">
+                                <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                                Chính hãng
                               </span>
                             </div>
-                            <p className="text-xs text-[#7D715E] line-clamp-1 mt-0.5 m-0">
-                              {ms.description || 'Gian hàng phân phối độc quyền uy tín trên sàn SCANMS.'}
-                            </p>
+                            <details className="kol-shop-directory-about">
+                              <summary>Giới thiệu Shop <ChevronDown size={12} aria-hidden="true" /></summary>
+                              <p>{ms.description || 'Gian hàng đối tác trên sàn SCANMS.'}</p>
+                            </details>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+                        <div className="kol-shop-directory-actions">
+                          {isAlreadyConnected && <span className="kol-shop-directory-connected">Đã kết nối</span>}
                           {isAlreadyConnected ? (
                             <button
                               type="button"
@@ -1998,19 +2050,19 @@ export default function ShopCollaborationPage() {
                                 setActiveTab('messages');
                                 updateUrl(ms.id, 'messages');
                               }}
-                              className="px-4 py-2 rounded-xl text-xs font-bold bg-[#F3EFE6] text-[#7D715E] hover:bg-[#EAE4D7] transition cursor-pointer"
+                              className="kol-shop-directory-chat"
                             >
-                              Đã kết nối • Mở chat
+                              <MessageSquare size={13} aria-hidden="true" /> Mở chat
                             </button>
                           ) : (
                             <button
                               type="button"
                               disabled={connectingStoreId === ms.id}
                               onClick={() => handleConnectStore(ms)}
-                              className="px-4 py-2 rounded-xl text-xs font-bold bg-[#EBD08C] hover:bg-[#DEC07A] text-white transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                              className="kol-shop-directory-connect"
                             >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>{connectingStoreId === ms.id ? 'Đang kết nối...' : 'Bắt đầu hợp tác'}</span>
+                              {connectingStoreId === ms.id ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                              <span>{connectingStoreId === ms.id ? 'Đang kết nối' : 'Kết nối'}</span>
                             </button>
                           )}
                         </div>
@@ -2018,6 +2070,10 @@ export default function ShopCollaborationPage() {
                     );
                   })
               )}
+            </div>
+            <div className="kol-shop-directory-footer" aria-live="polite">
+              {loadingMarketplace ? 'Đang tải danh bạ…' : `${discoveredStores.length} gian hàng`}
+              <span>Mở giới thiệu để xem chi tiết.</span>
             </div>
           </div>
         </div>

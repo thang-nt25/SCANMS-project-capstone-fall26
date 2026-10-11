@@ -10,6 +10,8 @@ export type CustomerOrderNotificationType =
 
 type CustomerOrderNotificationDetails = {
   storeName?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
   carrierName?: string;
   trackingNumber?: string;
   reason?: string;
@@ -23,8 +25,12 @@ const notificationContent: Record<
   }
 > = {
   ORDER_CREATED: (orderCode, details) => ({
-    title: 'Đặt hàng thành công',
-    message: `Đơn ${orderCode} đã được gửi đến ${details.storeName || 'gian hàng'} và đang chờ xác nhận.`,
+    title: details.paymentMethod === 'PAYOS' && details.paymentStatus !== 'PAID'
+      ? 'Đơn hàng chờ thanh toán'
+      : 'Đơn hàng đã được tạo',
+    message: details.paymentMethod === 'PAYOS' && details.paymentStatus !== 'PAID'
+      ? `Đơn ${orderCode} tại ${details.storeName || 'gian hàng'} đã được tạo và chưa thanh toán. Vui lòng quét mã QR PayOS để hoàn tất.`
+      : `Đơn ${orderCode} đã được gửi đến ${details.storeName || 'gian hàng'} và đang chờ xác nhận.`,
   }),
   ORDER_PAYMENT_CONFIRMED: (orderCode) => ({
     title: 'Thanh toán đơn hàng thành công',

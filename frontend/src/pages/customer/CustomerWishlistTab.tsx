@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
+  Bookmark,
   ExternalLink,
   Heart,
   Loader2,
@@ -50,26 +51,49 @@ export function CustomerWishlistTab({
   };
 
   return (
-    <section className="customer-wishlist" aria-labelledby="wishlist-heading">
-      <header className="wishlist-header">
-        <div className="wishlist-heading-group">
-          <span className="wishlist-heading-icon" aria-hidden="true">
-            <Heart size={21} />
-          </span>
-          <div>
-            <div className="wishlist-heading-line">
-              <h1 id="wishlist-heading">Sản phẩm yêu thích</h1>
-              {!loading && (
-                <span className="wishlist-count">{items.length} sản phẩm</span>
-              )}
-            </div>
-            <p>Sản phẩm đã lưu, dễ tìm lại và mua khi bạn cần.</p>
-          </div>
+    <section className="customer-wishlist" aria-labelledby="customer-wishlist-title">
+      <header className="wishlist-heading">
+        <span className="wishlist-heading-icon" aria-hidden="true"><Heart size={18} /></span>
+        <div>
+          <h1 id="customer-wishlist-title">Sản phẩm yêu thích</h1>
+          <p>Những sản phẩm bạn đã lưu để mua khi cần.</p>
         </div>
-        <Link to="/marketplace" className="wishlist-browse">
-          Tiếp tục mua sắm <ArrowRight size={16} />
-        </Link>
       </header>
+      <div className="wishlist-toolbar">
+        <div className="wishlist-list-summary" aria-live="polite" aria-atomic="true">
+          <span className="wishlist-list-icon" aria-hidden="true"><Bookmark size={16} /></span>
+          <h2 className="wishlist-result-count" id="wishlist-list-heading">Danh sách đã lưu</h2>
+          <span className="wishlist-count">
+            {loading ? 'Đang tải…' : `${items.length} sản phẩm`}
+          </span>
+          {!loading && search && (
+            <span className="wishlist-filter-count">{filteredItems.length} kết quả</span>
+          )}
+        </div>
+        <div className="wishlist-toolbar-actions">
+          <div className="wishlist-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              aria-label="Tìm trong sản phẩm yêu thích"
+              placeholder="Tìm sản phẩm, gian hàng…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Xóa từ khóa"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+          <Link to="/marketplace" className="wishlist-browse wishlist-toolbar-browse">
+            Tiếp tục mua sắm <ArrowRight size={15} />
+          </Link>
+        </div>
+      </div>
 
       {loading ? (
         <div className="wishlist-state" role="status">
@@ -89,29 +113,6 @@ export function CustomerWishlistTab({
         </div>
       ) : (
         <>
-          <div className="wishlist-toolbar">
-            <span className="wishlist-result-count" aria-live="polite">
-              {search ? `${filteredItems.length} kết quả` : 'Danh sách đã lưu'}
-            </span>
-            <div className="wishlist-search">
-              <Search size={16} aria-hidden="true" />
-              <input
-                aria-label="Tìm trong sản phẩm yêu thích"
-                placeholder="Tìm sản phẩm, gian hàng…"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  aria-label="Xóa từ khóa"
-                >
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-          </div>
           {filteredItems.length === 0 ? (
             <div className="wishlist-state">
               <Search size={26} />
@@ -200,6 +201,7 @@ export function CustomerWishlistTab({
                       >
                         {p.title}
                       </Link>
+                      <div className="wishlist-card-bottom">
                       <div className="wishlist-prices">
                         <strong>{formatMoney(p.price)}</strong>
                         {discount > 0 && (
@@ -224,6 +226,7 @@ export function CustomerWishlistTab({
                         >
                           <ExternalLink size={16} />
                         </Link>
+                      </div>
                       </div>
                     </div>
                   </article>

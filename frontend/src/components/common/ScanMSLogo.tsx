@@ -213,7 +213,7 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
 
           {showSubtitle && (
             <span
-              className={`text-[#7D715E] font-bold uppercase tracking-widest mt-1 ${iconDimensions.textSub}`}
+              className={`scanms-logo-subtitle text-[#7D715E] font-bold uppercase tracking-widest mt-1 ${iconDimensions.textSub}`}
             >
               Affiliate Commerce Network
             </span>

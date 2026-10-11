@@ -1,0 +1,143 @@
+#kol-bonus-root { container: bonus / inline-size; color: #1A1612; }
+#kol-bonus-root .kol-bonus-content { display: flex; flex-direction: column; gap: 14px; width: 100%; min-width: 0; margin: 0 auto; }
+#kol-bonus-root .kol-bonus-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 14px 16px; border: 1px solid #EAE4D7; border-radius: 14px; background: #FFFFFF; }
+#kol-bonus-root .kol-bonus-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+#kol-bonus-root .kol-bonus-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 9px 12px; border: 1px solid #EAE4D7; border-radius: 9px; background: #FFFFFF; color: #7D715E; font-size: 13px; font-weight: 600; line-height: 1.5; cursor: pointer; }
+#kol-bonus-root .kol-bonus-tabs button[aria-pressed='true'] { border-color: #EEDFC6; background: #FBF5EB; color: #1A1612; }
+#kol-bonus-root .kol-bonus-tabs button:hover { border-color: #C59B58; }
+#kol-bonus-root .kol-bonus-tabs svg { flex-shrink: 0; color: #B88E4F; }
+#kol-bonus-root .kol-bonus-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; min-width: 0; }
+#kol-bonus-root .kol-bonus-filters button[aria-haspopup='listbox'] { min-height: 42px; font-size: 13px; font-weight: 500; border-radius: 9px; box-shadow: none; }
+#kol-bonus-root :is(button, summary, [role='region']):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
+#kol-bonus-root .bonus-overview { padding: 6px; }
+#kol-bonus-root .kol-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#kol-bonus-root .bonus-kpi { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 108px; margin: 8px 0; padding: 4px 18px; background: #FFFFFF; }
+#kol-bonus-root .bonus-kpi + .bonus-kpi { border-left: 1px solid #EAE4D7; }
+#kol-bonus-root .bonus-kpi-total { margin: 0; padding: 12px 18px; border-radius: 9px; background: #FBF5EB; }
+#kol-bonus-root .bonus-kpi.bonus-kpi-total { border-left: 0; }
+#kol-bonus-root .bonus-kpi-heading { display: flex; align-items: center; gap: 7px; }
+#kol-bonus-root .bonus-kpi-heading .bonus-icon { order: -1; width: 20px; height: 20px; border-radius: 0; background: transparent; }
+#kol-bonus-root .bonus-kpi-heading .bonus-icon svg { width: 16px; height: 16px; }
+#kol-bonus-root .bonus-kpi-heading h2 { margin: 0; font-size: 13px; font-weight: 550; line-height: 1.45; color: #7D715E; }
+#kol-bonus-root .bonus-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 9px; background: #FBF5EB; color: #B88E4F; }
+#kol-bonus-root .bonus-icon svg { width: 17px; height: 17px; }
+#kol-bonus-root .bonus-amount { display: block; color: #1A1612; font-size: 25px; line-height: 1.2; font-weight: 650; letter-spacing: -.025em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#kol-bonus-root .bonus-kpi-name { display: block; color: #1A1612; font-size: 17px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+#kol-bonus-root .bonus-kpi p { display: flex; align-items: flex-start; gap: 5px; margin: auto 0 0; color: #7D715E; font-size: 12px; line-height: 1.55; }
+#kol-bonus-root .bonus-kpi p strong { color: #1A1612; font-weight: 550; }
+#kol-bonus-root .bonus-kpi p svg { flex-shrink: 0; margin-top: 2px; }
+#kol-bonus-root .bonus-kpi-split { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 8px; color: #7D715E; }
+#kol-bonus-root .bonus-kpi-split strong { font-size: 20px; font-weight: 600; color: #1A1612; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#kol-bonus-root .bonus-panel { min-width: 0; border: 1px solid #EAE4D7; border-radius: 14px; background: #FFFFFF; }
+#kol-bonus-root .bonus-progress { padding: 16px 18px 12px; }
+#kol-bonus-root .bonus-progress-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px 24px; margin-bottom: 14px; }
+#kol-bonus-root .bonus-heading { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+#kol-bonus-root .bonus-heading h2 { margin: 0; color: #1A1612; font-size: 15px; font-weight: 600; line-height: 1.45; letter-spacing: -.015em; overflow-wrap: anywhere; }
+#kol-bonus-root .bonus-heading p { margin: 4px 0 0; color: #7D715E; font-size: 12px; line-height: 1.55; }
+#kol-bonus-root .bonus-heading p strong { color: #1A1612; font-weight: 550; }
+#kol-bonus-root .bonus-missing { display: flex; flex-direction: column; gap: 4px; text-align: right; margin-left: auto; }
+#kol-bonus-root .bonus-missing span { color: #7D715E; font-size: 12px; }
+#kol-bonus-root .bonus-missing strong { color: #1A1612; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+#kol-bonus-root .bonus-progress-track { height: 8px; overflow: hidden; border-radius: 99px; background: #F3EFE6; }
+#kol-bonus-root .bonus-progress-fill { height: 100%; background: #C59B58; border-radius: inherit; transition: width .3s ease; }
+#kol-bonus-root .bonus-progress-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px; margin-top: 10px; font-size: 12px; line-height: 1.5; color: #7D715E; }
+#kol-bonus-root .bonus-progress-footer strong { color: #1A1612; font-weight: 550; }
+#kol-bonus-root .bonus-progress-percent { color: #B88E4F; font-weight: 600; }
+#kol-bonus-root .bonus-next-details { margin-top: 10px; color: #7D715E; font-size: 12px; line-height: 1.6; }
+#kol-bonus-root .bonus-next-details summary { display: flex; align-items: center; gap: 5px; width: fit-content; list-style: none; cursor: pointer; }
+#kol-bonus-root .bonus-next-details summary::-webkit-details-marker { display: none; }
+#kol-bonus-root .bonus-next-details summary:hover { color: #B88E4F; }
+#kol-bonus-root .bonus-next-details[open] summary svg { transform: rotate(180deg); }
+#kol-bonus-root .bonus-next-details p { margin: 8px 0 0; padding: 10px 12px; border: 1px solid #EEDFC6; border-radius: 7px; background: #FBF5EB; }
+#kol-bonus-root .bonus-next-details strong { color: #1A1612; font-weight: 550; }
+#kol-bonus-root .bonus-complete { padding: 18px; }
+#kol-bonus-root .bonus-complete .bonus-icon svg { color: #059669; }
+#kol-bonus-root .bonus-policy, #kol-bonus-root .bonus-history { overflow: hidden; }
+#kol-bonus-root .bonus-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 18px; }
+#kol-bonus-root .bonus-policy > summary { list-style: none; cursor: pointer; }
+#kol-bonus-root .bonus-policy > summary::-webkit-details-marker { display: none; }
+#kol-bonus-root .bonus-policy > summary:hover { background: #FDFBF7; }
+#kol-bonus-root .bonus-policy-action { display: inline-flex; align-items: center; gap: 7px; color: #7D715E; font-size: 12px; }
+#kol-bonus-root .bonus-policy-action svg { color: #B88E4F; }
+#kol-bonus-root .bonus-policy-close-label { display: none; }
+#kol-bonus-root .bonus-policy[open] .bonus-policy-open-label { display: none; }
+#kol-bonus-root .bonus-policy[open] .bonus-policy-close-label { display: inline; }
+#kol-bonus-root .bonus-policy[open] .bonus-policy-action svg { transform: rotate(180deg); }
+#kol-bonus-root .bonus-badge { display: inline-flex; align-items: center; gap: 4px; width: fit-content; padding: 4px 8px; border: 1px solid #EAE4D7; border-radius: 6px; background: #FAF8F5; color: #7D715E; font-size: 11px; font-weight: 500; line-height: 1.45; white-space: nowrap; }
+#kol-bonus-root .bonus-badge-reached { background: #FBF5EB; border-color: #EEDFC6; color: #1A1612; }
+#kol-bonus-root .bonus-badge-reached svg { color: #059669; }
+#kol-bonus-root .bonus-table-scroll { overflow-x: auto; }
+#kol-bonus-root .bonus-table { width: 100%; min-width: 840px; border-collapse: collapse; font-size: 13px; line-height: 1.5; text-align: left; }
+#kol-bonus-root .bonus-table th { padding: 10px 14px; background: #FAF8F5; color: #7D715E; font-size: 12px; font-weight: 550; white-space: nowrap; }
+#kol-bonus-root .bonus-table td { padding: 14px; color: #1A1612; font-weight: 500; vertical-align: middle; }
+#kol-bonus-root .bonus-table th, #kol-bonus-root .bonus-table td { border-top: 1px solid #EAE4D7; }
+#kol-bonus-root .bonus-table tr[data-reached] { background: #FDFBF7; }
+#kol-bonus-root .bonus-table tbody tr:hover { background: #FAF8F5; }
+#kol-bonus-root .bonus-table .bonus-number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#kol-bonus-root .bonus-milestone-name { display: flex; align-items: center; gap: 8px; font-weight: 550; min-width: 130px; }
+#kol-bonus-root .bonus-milestone-index { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border: 1px solid #EAE4D7; border-radius: 7px; background: #FAF8F5; color: #7D715E; font-size: 11px; }
+#kol-bonus-root [data-reached] .bonus-milestone-index { background: #FBF5EB; color: #B88E4F; border-color: #EEDFC6; }
+#kol-bonus-root .bonus-table .bonus-description { min-width: 180px; max-width: 280px; font-size: 12px; font-weight: 400; color: #7D715E; }
+#kol-bonus-root .bonus-table .bonus-empty { padding: 28px 18px; text-align: center; color: #7D715E; font-weight: 400; }
+#kol-bonus-root .bonus-calculation { padding: 12px 18px; border-top: 1px solid #EAE4D7; background: #FAF8F5; color: #7D715E; font-size: 12px; line-height: 1.6; }
+#kol-bonus-root .bonus-calculation summary { width: fit-content; cursor: pointer; color: #1A1612; font-weight: 500; }
+#kol-bonus-root .bonus-calculation p { margin: 8px 0 0; max-width: 950px; }
+#kol-bonus-root .bonus-history .bonus-table { min-width: 1000px; }
+@container bonus (max-width: 949px) {
+  #kol-bonus-root .kol-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #kol-bonus-root .bonus-kpi { margin: 0; padding: 14px; }
+  #kol-bonus-root .bonus-kpi:nth-child(3) { border-left: 0; }
+  #kol-bonus-root .bonus-kpi:nth-child(-n+2) { border-bottom: 1px solid #EAE4D7; padding-bottom: 14px; }
+}
+@container bonus (max-width: 599px) {
+  #kol-bonus-root .kol-bonus-toolbar { padding: 12px; }
+  #kol-bonus-root .kol-bonus-tabs { width: 100%; }
+  #kol-bonus-root .kol-bonus-tabs button { flex: 1 1 100%; }
+  #kol-bonus-root .kol-bonus-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  #kol-bonus-root .kol-bonus-filters > div:first-child { grid-column: 1 / -1; }
+  #kol-bonus-root .kol-bonus-filters > div, #kol-bonus-root .kol-bonus-filters button[aria-haspopup='listbox'] { width: 100%; min-width: 0; }
+  #kol-bonus-root .bonus-kpi { min-height: 120px; padding: 10px; }
+  #kol-bonus-root .bonus-kpi-total { padding: 10px; }
+  #kol-bonus-root .bonus-kpi-heading { align-items: flex-start; }
+  #kol-bonus-root .bonus-kpi-heading h2 { font-size: 12px; }
+  #kol-bonus-root .bonus-kpi-heading .bonus-icon { display: none; }
+  #kol-bonus-root .bonus-kpi-name { font-size: 15px; }
+  #kol-bonus-root .bonus-kpi-split strong { font-size: 17px; }
+  #kol-bonus-root .bonus-kpi p { font-size: 11px; }
+  #kol-bonus-root .bonus-kpi-total p svg { display: none; }
+  #kol-bonus-root .bonus-progress, #kol-bonus-root .bonus-complete { padding: 16px; }
+  #kol-bonus-root .bonus-missing { text-align: left; margin-left: 42px; }
+  #kol-bonus-root .bonus-section-header { padding: 16px; }
+  #kol-bonus-root .bonus-progress-footer { gap: 5px 14px; }
+  #kol-bonus-root .bonus-policy-action { margin-left: 42px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #kol-bonus-root .bonus-progress-fill { transition: none; }
+}
+
+/* Compact, consistent rhythm for the creator bonus dashboard. */
+#kol-bonus-root .kol-bonus-content { gap: 12px; }
+#kol-bonus-root .kol-bonus-toolbar { gap: 10px 16px; padding: 12px 14px; border-radius: 13px; box-shadow: 0 3px 14px rgba(66, 48, 22, .035); }
+#kol-bonus-root .kol-bonus-tabs { gap: 6px; }
+#kol-bonus-root .kol-bonus-tabs button { min-height: 38px; padding: 8px 11px; border-radius: 8px; font-size: 12px; }
+#kol-bonus-root .kol-bonus-filters { gap: 6px; }
+#kol-bonus-root .kol-bonus-filters button[aria-haspopup='listbox'] { min-height: 38px; border-radius: 8px; }
+#kol-bonus-root .bonus-panel { border-radius: 13px; box-shadow: 0 3px 14px rgba(66, 48, 22, .03); }
+#kol-bonus-root .bonus-kpi { min-height: 96px; gap: 8px; margin: 6px 0; padding: 3px 16px; }
+#kol-bonus-root .bonus-kpi-total { padding: 10px 15px; }
+#kol-bonus-root .bonus-amount { font-size: 23px; }
+#kol-bonus-root .bonus-kpi-name { font-size: 16px; }
+#kol-bonus-root .bonus-progress { padding: 14px 16px 11px; }
+#kol-bonus-root .bonus-progress-header { gap: 12px 20px; margin-bottom: 12px; }
+#kol-bonus-root .bonus-progress-track { height: 7px; }
+#kol-bonus-root .bonus-section-header { padding: 14px 16px; }
+#kol-bonus-root .bonus-table th { padding: 9px 12px; }
+#kol-bonus-root .bonus-table td { padding: 11px 12px; }
+#kol-bonus-root .bonus-calculation { padding: 10px 16px; }
+
+@container bonus (max-width: 599px) {
+  #kol-bonus-root .kol-bonus-toolbar { padding: 10px; }
+  #kol-bonus-root .bonus-kpi { min-height: 108px; }
+  #kol-bonus-root .bonus-progress, #kol-bonus-root .bonus-complete { padding: 14px; }
+  #kol-bonus-root .bonus-section-header { padding: 13px 14px; }
+}

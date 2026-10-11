@@ -63,16 +63,6 @@ export default function ShopDashboardPage() {
 
   return (
     <div className="shop-overview flex flex-col gap-4 text-left pb-6">
-      <header className="shop-overview-heading">
-        <div className="shop-overview-icon"><TrendingUp size={20} /></div>
-        <div>
-          <h1>Tổng quan gian hàng</h1>
-          <p>Theo dõi doanh thu, hiệu quả tiếp thị và hoạt động bán hàng.</p>
-        </div>
-        <button type="button" onClick={loadData} disabled={loading} className="shop-overview-refresh">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Làm mới
-        </button>
-      </header>
       {/* Metric Cards */}
       <div className="shop-overview-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Doanh thu liên kết */}
@@ -159,10 +149,10 @@ export default function ShopDashboardPage() {
             </div>
             <div className="flex items-center gap-3 text-xs text-[#7D715E] font-bold">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#C59B58]" /> Doanh thu (GMV)
+                <span className="shop-overview-swatch shop-overview-revenue" /> Doanh thu (GMV)
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#EAE4D7]" /> Hoa hồng KOL
+                <span className="shop-overview-swatch shop-overview-commission" /> Hoa hồng KOL
               </span>
             </div>
           </div>
@@ -183,12 +173,12 @@ export default function ShopDashboardPage() {
                       <div
                         style={{ height: `${revHeight}px` }}
                         title={`Doanh thu: ${col.revenue.toLocaleString('vi-VN')} ₫`}
-                        className="w-3.5 sm:w-5 bg-[#C59B58] rounded-t-sm transition-all hover:bg-[#B88E4F]"
+                        className="shop-overview-bar shop-overview-revenue"
                       />
                       <div
                         style={{ height: `${commHeight}px` }}
                         title={`Hoa hồng: ${col.commission.toLocaleString('vi-VN')} ₫`}
-                        className="w-3.5 sm:w-5 bg-[#EAE4D7] rounded-t-sm transition-all hover:bg-[#D8C7B0]"
+                        className="shop-overview-bar shop-overview-commission"
                       />
                     </div>
                     <span className="shop-overview-date" title={col.label}>{col.label}</span>
@@ -275,25 +265,25 @@ export default function ShopDashboardPage() {
               type="button"
               onClick={loadData}
               title="Tải lại dữ liệu gian hàng"
-              className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+              className="shop-overview-action"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>Làm mới</span>
             </button>
             <Link
               to="/merchant/promotions?tab=coupons"
               title="Tạo chiến dịch khuyến mãi mới"
-              className="h-8 px-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#C59B58] text-[#B88E4F] hover:text-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+              className="shop-overview-action"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tạo chiến dịch</span>
             </Link>
             <Link
               to="/merchant/products"
-              className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              className="shop-overview-action shop-overview-action-primary"
             >
               <span>Quản lý danh mục</span>
-              <ArrowRight className="w-3.5 h-3.5 text-white" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>

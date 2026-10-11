@@ -1,14 +1,16 @@
-# PayOS checkout for SCANMS
+# Thanh toán PayOS cho đơn ngoài sàn
 
-The buyer signs in, enters delivery details and confirms the order. SCANMS creates the order at the database price, then creates a PayOS payment link for that order. The buyer can scan the PayOS QR or open the hosted PayOS page. The order is marked `PAID` only after a signed PayOS webhook is verified, including the order code, amount, currency and payment link ID. A browser return URL never marks an order paid.
+- Cần `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` từ cùng kênh PayOS trong backend. Không đưa các khóa này lên frontend.
+- `PAYOS_STOREFRONT_URL` là origin frontend: `http://localhost:5173` khi phát triển, HTTPS khi production.
+- Webhook HTTPS `/api/orders/payos/webhook` đã đăng ký trong PayOS giúp cập nhật nhanh hơn. Không bắt buộc webhook để tạo QR: máy chủ còn kiểm tra trực tiếp qua API PayOS và đối soát các đơn chưa thanh toán mỗi phút.
+- POST `/api/orders/payos/:publicCode/link` chỉ cho chủ đơn. Số tiền lấy từ đơn đã lưu trên máy chủ. Giỏ nhiều gian hàng tạo mã riêng cho từng đơn con.
+- GET `/api/orders/payos/:publicCode/status` kiểm tra chủ đơn, mã giao dịch, số tiền và mã liên kết PayOS. Chỉ ghi `PAID` khi PayOS báo đã nhận đủ đúng số tiền. Chuyển hướng trình duyệt không xác nhận thanh toán.
+- Ghi giao dịch, thông báo và audit trong cùng transaction có khóa hàng. Webhook trùng và đối soát đồng thời không ghi nhận tiền hai lần.
+- QR hết hạn/hủy được tạo lại chỉ khi chưa nhận tiền. QR đã nhận một phần không bị hủy để đổi giá. Nếu mất phản hồi sau khi tạo mã, kiểm tra mã cũ trước khi khôi phục.
+- Khách có thể mở lại QR trong **Đơn mua → Thanh toán bằng QR**. Lỗi tạo QR được hiển thị kèm nút thử lại, không tạo lại đơn hàng.
 
-## Configuration
+Kiểm thử:
 
-1. Create a payment channel in [my.payos.vn](https://my.payos.vn/) and copy its **Client ID**, **API Key** and **Checksum Key** into `backend/.env` as `PAYOS_CLIENT_ID`, `PAYOS_API_KEY` and `PAYOS_CHECKSUM_KEY`. Do not put them in frontend environment files.
-2. Set `PAYOS_STOREFRONT_URL` to the public HTTPS origin of the SCANMS frontend, such as `https://scanms.example` (without a path). Local development defaults to `http://localhost:5173`.
-3. Register the public HTTPS webhook URL `https://YOUR_API_DOMAIN/api/orders/payos/webhook` in the PayOS channel. PayOS sends a signed sample webhook when registering; the endpoint acknowledges a valid sample without changing an order. Once PayOS confirms registration, set `PAYOS_WEBHOOK_URL` to that exact URL in `backend/.env` and restart the backend. Checkout stays disabled until this value exists.
-4. Ensure the production frontend and backend URLs are reachable and use a PayOS test transaction to verify that the order changes from `WAITING_PAYMENT` to `PAID` and gets one `PAYOS` payment transaction.
+`npm test -- --runTestsByPath src/modules/orders/payos-payment.service.spec.ts src/modules/wallets/wallet-payos.service.spec.ts`
 
-Until the keys and return URL are configured, checkout disables the PayOS confirmation button and the backend refuses to create a `PAYOS` order. Existing VietQR reconciliation and manual order routes remain separate.
-
-PayOS API and webhook behavior: [official PayOS API](https://payos.vn/docs/api/), [Node SDK](https://payos.vn/docs/sdks/back-end/node/).
+API chính thức: https://payos.vn/docs/api/

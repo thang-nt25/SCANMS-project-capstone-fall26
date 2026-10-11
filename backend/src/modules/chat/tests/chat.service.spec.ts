@@ -529,6 +529,21 @@ describe('ChatService (FR-25)', () => {
   });
 
   describe('searchCollaborators & searchStores', () => {
+    it('returns profile avatars with account avatar fallback for chat contacts', async () => {
+      prisma.user.findMany.mockResolvedValue([
+        { id: 'profile', avatarUrl: '/account.png', collaboratorProfile: { avatarUrl: '/profile.png' } },
+        { id: 'account', avatarUrl: '/account.png', collaboratorProfile: { avatarUrl: null } },
+        { id: 'empty', avatarUrl: null, collaboratorProfile: null },
+      ]);
+
+      const res = await service.searchCollaborators();
+
+      expect(res.map((user) => user.avatarUrl)).toEqual(['/profile.png', '/account.png', null]);
+      expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        select: expect.objectContaining({ avatarUrl: true }),
+      }));
+    });
+
     it('should search collaborators with case-insensitive query', async () => {
       prisma.user.findMany.mockResolvedValue([
         { id: 'kol-1', fullName: 'KOL Linh', email: 'linh@scanms.vn' },

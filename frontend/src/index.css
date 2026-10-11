@@ -240,9 +240,9 @@ img {
   justify-content: center;
   gap: 8px;
   padding: 8px 16px;
-  border: 1px solid transparent;
+  border: 1px solid var(--action-border, #EEDFC6);
   border-radius: var(--radius-sm);
-  background: var(--brand);
+  background: var(--action-bg, #FBF5EB);
   color: #231D15;
   font-weight: 600;
   cursor: pointer;
@@ -250,7 +250,7 @@ img {
 }
 
 .btn:hover {
-  background: var(--brand-hover);
+  background: var(--action-hover, #F3EFE6);
 }
 
 .btn.secondary {
@@ -274,23 +274,17 @@ img {
   font-size: 12px;
 }
 
-/* Nút bấm Vàng Kim Hoàng Gia Luxury (Chính xác theo mẫu mockup) */
+/* Shared bright warm-sand action, including the authentication screens. */
 .btn-gold-glossy {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: 
-    radial-gradient(ellipse 90% 70% at 50% 15%, rgba(255, 246, 215, 0.45) 0%, rgba(255, 246, 215, 0) 75%),
-    linear-gradient(180deg, #F3CE78 0%, #E2B050 30%, #D49D3A 70%, #BC8324 100%);
-  border: 1px solid rgba(255, 240, 195, 0.75);
-  box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -1.5px 2px 0 rgba(140, 85, 15, 0.3),
-    0 10px 24px -3px rgba(195, 140, 40, 0.42),
-    0 3px 8px rgba(184, 125, 35, 0.2);
-  color: var(--theme-ink, #1A1612);
+  background: var(--action-bg, #FBF5EB);
+  border: 1px solid var(--action-border, #EEDFC6);
+  box-shadow: none;
+  color: var(--action-ink, #1A1612);
   font-weight: 600;
   font-size: 14.5px;
   letter-spacing: 0.01em;
@@ -299,20 +293,13 @@ img {
 }
 
 .btn-gold-glossy:hover {
-  filter: brightness(1.05);
-  box-shadow: 
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -1.5px 2px 0 rgba(140, 85, 15, 0.35),
-    0 14px 30px -3px rgba(195, 140, 40, 0.55),
-    0 5px 12px rgba(184, 125, 35, 0.28);
+  background: var(--action-hover, #F3EFE6);
+  border-color: var(--action-border-hover, #C59B58);
 }
 
 .btn-gold-glossy:active {
   transform: scale(0.988);
-  box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.6),
-    inset 0 2px 3px 0 rgba(140, 85, 15, 0.3),
-    0 4px 10px rgba(195, 140, 40, 0.3);
+  box-shadow: none;
 }
 
 .btn-gold-glossy:disabled {
@@ -434,42 +421,6 @@ input[type="range"] {
 /* Match branded gradients and token buttons to the light warm-gold palette. */
 [class*="from-[#EBD08C]"][class~="text-white"],
 [class*="bg-brand"][class~="text-white"] {
-  color: #231D15 !important;
-}
-
-button[class~="bg-amber-600"] {
-  background-color: #EBD08C !important;
-  border-color: #DEC07A !important;
-  color: var(--theme-ink, #231D15) !important;
-}
-
-button[class~="hover:bg-amber-700"]:hover {
-  background-color: #DEC07A !important;
-  color: var(--theme-ink, #231D15) !important;
-}
-
-button[class~="hover:bg-brand-strong"]:hover,
-button[class~="hover:!bg-brand-strong"]:hover {
-  background-color: var(--brand-hover) !important;
-  color: var(--theme-ink, #231D15) !important;
-}
-
-/* Keep primary actions a deeper SCANMS gold across legacy utility classes. */
-:is(button, a, input[type="submit"])[class~="bg-[#EBD08C]"]:not(:disabled),
-:is(button, a, input[type="submit"])[class~="bg-[#E5C783]"]:not(:disabled),
-:is(button, a, input[type="submit"])[class~="bg-[#DEC07A]"]:not(:disabled) {
-  background-color: #C59B58 !important;
-  color: #231D15 !important;
-}
-
-:is(button, a, input[type="submit"])[class*="from-[#EBD08C]"]:not(:disabled) {
-  background-image: linear-gradient(90deg, #C59B58, #B88E4F) !important;
-  color: #231D15 !important;
-}
-
-:is(button, a, input[type="submit"])[class~="hover:bg-[#DEC07A]"]:not(:disabled):hover,
-:is(button, a, input[type="submit"])[class~="hover:bg-[#EBD08C]"]:not(:disabled):hover {
-  background-color: #B88E4F !important;
   color: #231D15 !important;
 }
 

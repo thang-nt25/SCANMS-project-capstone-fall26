@@ -1621,9 +1621,9 @@ export default function ProductManagementPage() {
 
       {/* Unified Toolbar: Compact Search, Filters & Action Buttons in One Row */}
       <Card className="product-toolbar p-3 bg-white border border-[#EAE4D7] rounded-xl shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="product-toolbar-layout">
           {/* Left: Compact search input & filter controls */}
-          <div className="product-filter-controls flex min-w-0 flex-wrap items-center gap-2.5">
+          <div className="product-filter-controls">
             <div className="product-search flex items-center gap-2 bg-white border border-[#EAE4D7] rounded-lg px-3 h-9 text-xs text-[#1A1612] w-full sm:w-64 focus-within:border-[#C59B58] transition">
               <Search className="w-3.5 h-3.5 text-[#7D715E] shrink-0" />
               <input
@@ -1648,7 +1648,7 @@ export default function ProductManagementPage() {
             <Select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              aria-label="Lọc trạng thái sản phẩm" className="h-9 min-w-[160px] rounded-lg text-xs"
+              aria-label="Lọc trạng thái sản phẩm" className="product-status-filter"
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="DRAFT">Chờ kiểm duyệt</option>
@@ -1662,8 +1662,8 @@ export default function ProductManagementPage() {
 
           </div>
 
-          {/* Right: Action Buttons (Duyệt video KOL, Duyệt đánh giá, Thêm sản phẩm) - Borderless Icon & Text */}
-          <div className="product-toolbar-actions flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
+          {/* Actions share the search/filter toolbar and equal-sized columns. */}
+          <div className="product-toolbar-actions" role="group" aria-label="Thao tác quản lý sản phẩm">
             {!isKol ? (
               <>
                 {isAdminOrManager && (
@@ -2055,8 +2055,8 @@ export default function ProductManagementPage() {
               <span className="mt-1 block font-semibold">Lưu thay đổi sẽ gửi lại sản phẩm vào hàng đợi kiểm duyệt.</span>
             </div>
           )}
-          {/* STICKY QUICK NAVIGATION BAR (6 KHỐI CHUẨN SÀN TMĐT) */}
-          <div className="sticky top-0 z-20 -mx-4 -mt-2 mb-1 bg-[#FAF8F5]/95 backdrop-blur-xs px-4 py-2 border-y border-[#EAE4D7] flex items-center gap-1.5 overflow-x-auto no-scrollbar shadow-xs">
+          {/* Section links scroll with the form rather than covering its fields. */}
+          <div className="product-editor-navigation mb-1 bg-white px-2 py-2 rounded-xl border border-[#EAE4D7] flex items-center gap-1.5 overflow-x-auto no-scrollbar" aria-label="Các phần thông tin sản phẩm">
             {[
               { id: 'product-section-basic', label: '1. Cơ bản' },
               { id: 'product-section-media', label: '2. Hình ảnh' },
@@ -2070,7 +2070,13 @@ export default function ProductManagementPage() {
                 type="button"
                 onClick={() => {
                   const el = document.getElementById(sec.id);
-                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  const scrollBody = document.getElementById('product-editor-form')?.parentElement;
+                  if (el && scrollBody) {
+                    scrollBody.scrollTo({
+                      top: scrollBody.scrollTop + el.getBoundingClientRect().top - scrollBody.getBoundingClientRect().top - 14,
+                      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+                    });
+                  }
                 }}
                 className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#B88E4F] whitespace-nowrap transition cursor-pointer shrink-0"
               >
@@ -3038,35 +3044,6 @@ export default function ProductManagementPage() {
             />
           </div>
 
-          {/* FOOTER ACTIONS */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#EAE4D7]/60">
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-[#7D715E] bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              disabled={uploadingImage || savingProduct}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#231D15] bg-gradient-to-r from-[#EBD08C] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#D4B26F] shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {savingProduct ? (
-                <span>Đang lưu sản phẩm...</span>
-              ) : uploadingImage ? (
-                <>
-                  <UploadCloud size={14} className="animate-spin" />
-                  <span>Đang xử lý ảnh...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} />
-                  <span>{editingProduct ? 'Lưu thay đổi sản phẩm' : 'Đăng bán sản phẩm mới'}</span>
-                </>
-              )}
-            </button>
-          </div>
         </form>
       </Modal>
 

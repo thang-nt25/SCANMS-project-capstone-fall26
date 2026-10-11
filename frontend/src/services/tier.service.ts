@@ -1,26 +1,25 @@
 import api from './api';
 
+export interface TierPolicy {
+  id: string;
+  name: string;
+  extraBonusPercentage: number;
+  minRevenueThreshold: number;
+}
+
 export interface TierStatus {
-  currentTier: {
-    id: string;
-    name: string;
-    extraBonusPercentage: number;
-    minRevenueThreshold: number;
-  };
+  currentTier: TierPolicy;
   currentRevenue: number;
   totalOrders: number;
-  nextTier: {
-    id: string;
-    name: string;
-    extraBonusPercentage: number;
-    minRevenueThreshold: number;
-  } | null;
+  revenueBasis: 'LIFETIME';
+  qualifiedTier: TierPolicy;
+  nextTier: TierPolicy | null;
   progressPercentage: number;
   revenueNeeded: number;
 }
 
 export const tierService = {
-  async getAllTiers() {
+  async getAllTiers(): Promise<TierPolicy[]> {
     const res: any = await api.get('/tiers');
     return res.data;
   },

@@ -33,7 +33,7 @@ export default function AdminAnalyticsHubPage() {
   ];
 
   return (
-    <div className="w-full min-w-0 flex flex-col pt-4 text-[#1A1612] sm:pt-5" id="admin-analytics-hub">
+    <div className="w-full min-w-0 flex flex-col text-[#1A1612]" id="admin-analytics-hub">
       <HubTabs
         tabs={tabs}
         activeTab={activeTab}

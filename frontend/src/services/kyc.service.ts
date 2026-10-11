@@ -146,8 +146,10 @@ export interface UpgradeStatusResponse {
 }
 
 export const kycService = {
-  async getMyKyc(): Promise<KycProfile> {
-    const res: any = await api.get('/kyc/profile');
+  async getMyKyc(options: { forceRefresh?: boolean } = {}): Promise<KycProfile> {
+    const res: any = await api.get('/kyc/profile', options.forceRefresh
+      ? { headers: { 'x-skip-cache': 'true' } }
+      : undefined);
     return res.data;
   },
 

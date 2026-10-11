@@ -1,0 +1,101 @@
+/* Shared bright SCANMS actions, including legacy utilities and modal actions. */
+:root {
+  --action-bg: #FBF5EB;
+  --action-hover: #F3EFE6;
+  --action-border: #EEDFC6;
+  --action-border-hover: #C59B58;
+  --action-ink: #1A1612;
+}
+
+/* Important base rules also override legacy Tailwind !bg / !text utilities. */
+@layer base {
+/* Match base classes only: inactive tabs keep their existing white surface. */
+:root :is(button, a, input[type='submit'], input[type='button'], [role='button'], [role='tab'], label):is(
+  .scanms-brand-action,
+  .btn-gold-glossy,
+  .btn:not(.secondary):not(.danger),
+  [class~='bg-brand'], [class~='!bg-brand'],
+  [class~='bg-brand-strong'], [class~='!bg-brand-strong'],
+  [class~='bg-amber-600'],
+  [class~='bg-[#C59B58]' i], [class~='bg-[#B88E4F]' i],
+  [class~='bg-[#EBD08C]' i], [class~='bg-[#E5C783]' i],
+  [class~='bg-[#DEC07A]' i], [class~='bg-[#DEBE85]' i],
+  [class~='bg-[#CFA75D]' i], [class~='bg-[#D8AC55]' i],
+  [class~='bg-[#CB9B40]' i],
+  [class~='!bg-[#C59B58]' i], [class~='!bg-[#B88E4F]' i],
+  [class~='from-[#C59B58]' i], [class~='from-[#B88E4F]' i],
+  [class~='from-[#EBD08C]' i], [class~='from-[#DEBE85]' i],
+  [class~='from-brand'], [class~='from-brand-strong']
+) {
+  background-color: var(--action-bg) !important;
+  background-image: none !important;
+  border: 1px solid var(--action-border) !important;
+  color: var(--action-ink) !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+:root :is(button, a, input[type='submit'], input[type='button'], [role='button'], [role='tab'], label):is(
+  .scanms-brand-action,
+  .btn-gold-glossy,
+  .btn:not(.secondary):not(.danger),
+  [class~='bg-brand'], [class~='!bg-brand'],
+  [class~='bg-brand-strong'], [class~='!bg-brand-strong'],
+  [class~='bg-amber-600'],
+  [class~='bg-[#C59B58]' i], [class~='bg-[#B88E4F]' i],
+  [class~='bg-[#EBD08C]' i], [class~='bg-[#E5C783]' i],
+  [class~='bg-[#DEC07A]' i], [class~='bg-[#DEBE85]' i],
+  [class~='bg-[#CFA75D]' i], [class~='bg-[#D8AC55]' i],
+  [class~='bg-[#CB9B40]' i],
+  [class~='!bg-[#C59B58]' i], [class~='!bg-[#B88E4F]' i],
+  [class~='from-[#C59B58]' i], [class~='from-[#B88E4F]' i],
+  [class~='from-[#EBD08C]' i], [class~='from-[#DEBE85]' i],
+  [class~='from-brand'], [class~='from-brand-strong'],
+  [class~='hover:bg-brand-strong'], [class~='hover:!bg-brand-strong'],
+  [class~='hover:bg-amber-700'],
+  [class~='hover:bg-[#C59B58]' i], [class~='hover:bg-[#B88E4F]' i],
+  [class~='hover:bg-[#DEC07A]' i], [class~='hover:bg-[#EBD08C]' i],
+  [class~='hover:bg-[#CB9B40]' i],
+  [class~='hover:from-[#B88E4F]' i], [class~='hover:from-[#DEC07A]' i]
+):hover:not(:disabled):not([aria-disabled='true']) {
+  background-color: var(--action-hover) !important;
+  background-image: none !important;
+  border-color: var(--action-border-hover) !important;
+  color: var(--action-ink) !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* Legacy white icons/text must stay legible on the new bright action surface. */
+:root :is(button, a, [role='button'], [role='tab'], label):is(
+  .scanms-brand-action, .btn-gold-glossy,
+  .btn:not(.secondary):not(.danger),
+  [class~='bg-brand'], [class~='!bg-brand'],
+  [class~='bg-brand-strong'], [class~='!bg-brand-strong'],
+  [class~='bg-amber-600'],
+  [class~='bg-[#C59B58]' i], [class~='bg-[#B88E4F]' i],
+  [class~='bg-[#EBD08C]' i], [class~='bg-[#E5C783]' i],
+  [class~='bg-[#DEC07A]' i], [class~='bg-[#DEBE85]' i],
+  [class~='bg-[#CFA75D]' i], [class~='bg-[#D8AC55]' i],
+  [class~='bg-[#CB9B40]' i],
+  [class~='!bg-[#C59B58]' i], [class~='!bg-[#B88E4F]' i],
+  [class~='from-[#C59B58]' i], [class~='from-[#B88E4F]' i],
+  [class~='from-[#EBD08C]' i], [class~='from-[#DEBE85]' i],
+  [class~='from-brand'], [class~='from-brand-strong']
+) :is([class~='text-white'], [class~='!text-white'], [class~='text-white/90']) {
+  color: var(--action-ink) !important;
+}
+
+:root :is(button, a, [role='button'], [role='tab']):is(
+  [class~='hover:bg-[#C59B58]' i], [class~='hover:bg-[#B88E4F]' i],
+  [class~='hover:bg-[#DEC07A]' i], [class~='hover:bg-[#EBD08C]' i],
+  [class~='hover:bg-brand-strong'], [class~='hover:!bg-brand-strong']
+):hover :is([class~='hover:text-white'], [class~='group-hover:text-white']) {
+  color: var(--action-ink) !important;
+}
+
+.scanms-brand-action:focus-visible {
+  outline: 2px solid #B88E4F !important;
+  outline-offset: 3px !important;
+}
+}

@@ -630,9 +630,9 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  background: #c59b58;
-  border: 1px solid #c59b58;
-  color: var(--theme-ink, #1a1612);
+  background: var(--action-bg);
+  border: 1px solid var(--action-border);
+  color: var(--action-ink);
   border-radius: 11px;
   padding: 11px 18px;
   font-size: 12px;
@@ -642,7 +642,7 @@
   transition: background 0.18s;
 }
 .partner-primary:hover {
-  background: #b88e4f;
+  background: var(--action-hover);
 }
 .partner-primary:disabled {
   opacity: 0.55;
