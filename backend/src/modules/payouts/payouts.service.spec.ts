@@ -20,7 +20,7 @@ describe('PayoutsService FR-22', () => {
     let availableBalance = new Prisma.Decimal(balance);
     let persistedRequests = 0;
     const profile = {
-      kycStatus: KycStatus.VERIFIED,
+      kycStatus: KycStatus.VERIFIED as KycStatus,
       bankName: 'Test Bank',
       bankAccountNumber: '123456789',
       bankAccountName: 'TEST KOL',

@@ -164,9 +164,7 @@ async function main() {
   await prisma.collaboratorProfile.upsert({
     where: { userId: kol1.id },
     update: {
-      isActive: true,
-      isVerified: true,
-      onboardingStatus: 'VERIFIED',
+      kycStatus: KycStatus.VERIFIED,
     },
     create: {
       userId: kol1.id,

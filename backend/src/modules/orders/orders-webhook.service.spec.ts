@@ -11,6 +11,7 @@ import { CouponsService } from '../coupons/coupons.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { FinancialLedgerService } from '../wallets/financial-ledger.service';
+import { CheckoutMetricsService } from './checkout-metrics.service';
 
 describe('OrdersService FR-19 webhook', () => {
   const store = {
@@ -48,6 +49,12 @@ describe('OrdersService FR-19 webhook', () => {
       product: { findMany: jest.fn() },
       $transaction: jest.fn(),
     };
+    const checkoutMetrics = {
+      recordIdempotencyConflict: jest.fn(),
+      recordIdempotentReplay: jest.fn(),
+      recordStockAnomaly: jest.fn(),
+    } as unknown as CheckoutMetricsService;
+
     const service = new OrdersService(
       prisma as unknown as PrismaService,
       new OrderWebhookNormalizerService(),
@@ -59,6 +66,7 @@ describe('OrdersService FR-19 webhook', () => {
         }),
       }),
       new WalletsService(new FinancialLedgerService()),
+      checkoutMetrics,
     );
     return { prisma, service };
   }
