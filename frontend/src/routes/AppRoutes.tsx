@@ -197,9 +197,9 @@ function AppRoutes() {
               <Route path="merchant/kol-hub" element={<ShopKolHubPage />} />
               <Route path="merchant/customer-messages" element={<ChatBoxPage />} />
               <Route path="merchant/promotions" element={<ShopPromotionsHubPage />} />
-              <Route path="merchant/fraud-sentinel" element={<AiFraudSentinelPage />} />
-              <Route path="merchant/ai-fraud" element={<AiFraudSentinelPage />} />
-              <Route path="merchant/audit-logs" element={<AuditLogsPage />} />
+              <Route path="merchant/fraud-sentinel" element={<Navigate to="/admin/fraud-sentinel" replace />} />
+              <Route path="merchant/ai-fraud" element={<Navigate to="/admin/fraud-sentinel" replace />} />
+              <Route path="merchant/audit-logs" element={<Navigate to="/admin/audit-logs" replace />} />
               <Route path="merchant/returns" element={<ShopReturnRequestsPage />} />
               <Route path="merchant/return-requests" element={<ShopReturnRequestsPage />} />
 

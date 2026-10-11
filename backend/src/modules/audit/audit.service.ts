@@ -223,6 +223,20 @@ export const AUDIT_ACTIONS: AuditActionDefinition[] = [
     severity: 'WARN',
     description: 'Quản trị viên truy cập dữ liệu kỹ thuật chi tiết',
   },
+  {
+    code: 'ANALYTICS_PAGE_VIEW',
+    nameVi: 'Xem trang phân tích & báo cáo',
+    category: 'SYSTEM',
+    severity: 'INFO',
+    description: 'Người dùng truy cập vào trang thống kê phân tích số liệu',
+  },
+  {
+    code: 'ANALYTICS_CTA_CLICK',
+    nameVi: 'Tương tác nút thao tác trên sàn',
+    category: 'SYSTEM',
+    severity: 'INFO',
+    description: 'Người dùng nhấn nút thao tác trên giao diện sàn',
+  },
 ];
 
 @Injectable()

@@ -102,7 +102,9 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
       mockPrisma.coupon.findMany.mockResolvedValue([
         {
           id: 'coupon-uuid-1',
+          code: 'SORA15',
           displayCode: 'SORA15',
+          codeNormalized: 'SORA15',
           discountType: DiscountType.PERCENTAGE,
           discountValue: new Prisma.Decimal(15),
           minimumOrderAmount: new Prisma.Decimal(200000),
@@ -111,6 +113,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
           usageCount: 3,
           expiresAt: new Date('2026-12-31T00:00:00.000Z'),
           scopeType: CouponScope.STORE_WIDE,
+          fundingSource: CouponFundingSource.SHOP_FUNDED,
           couponProducts: [],
           couponCategories: [],
           store: { name: 'Sora Skin' },
@@ -128,6 +131,8 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         {
           id: 'coupon-uuid-1',
           code: 'SORA15',
+          displayCode: 'SORA15',
+          codeNormalized: 'SORA15',
           discountType: DiscountType.PERCENTAGE,
           discountValue: 15,
           minimumOrderAmount: 200000,
@@ -135,6 +140,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
           remainingUses: 17,
           expiresAt: new Date('2026-12-31T00:00:00.000Z'),
           scopeType: CouponScope.STORE_WIDE,
+          fundingSource: CouponFundingSource.SHOP_FUNDED,
           products: [],
           categories: [],
           storeName: 'Sora Skin',

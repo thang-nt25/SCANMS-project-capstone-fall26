@@ -4,6 +4,8 @@ import { ArrowLeft, LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
+import { orderService } from '../../services/order.service';
+import { notificationsService } from '../../services/notifications.service';
 import { toast } from '../../utils/toast';
 
 export interface SidebarProps {
@@ -40,6 +42,83 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
     }
     return currentUser?.role || 'COLLABORATOR';
   })();
+
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number | null>(null);
+  const [unreadNotifs, setUnreadNotifs] = useState<{ ORDER?: number; PROMOTION?: number; SYSTEM?: number }>({});
+
+  useEffect(() => {
+    let mounted = true;
+    if (role === 'SHOP_MANAGER') {
+      orderService
+        .getMyStoreOrders({ status: 'PENDING', limit: 1 })
+        .then((res) => {
+          if (mounted && res?.pagination?.total !== undefined) {
+            setPendingOrdersCount(res.pagination.total);
+          }
+        })
+        .catch(() => {});
+    }
+
+    notificationsService
+      .getUnreadDetails()
+      .then((res) => {
+        if (mounted && res?.categoryUnreadCounts) {
+          setUnreadNotifs(res.categoryUnreadCounts);
+        }
+      })
+      .catch(() => {});
+
+    const handleOrderUpdate = () => {
+      if (role === 'SHOP_MANAGER') {
+        orderService
+          .getMyStoreOrders({ status: 'PENDING', limit: 1 })
+          .then((res) => {
+            if (mounted && res?.pagination?.total !== undefined) {
+              setPendingOrdersCount(res.pagination.total);
+            }
+          })
+          .catch(() => {});
+      }
+    };
+    window.addEventListener('scanms_order_updated', handleOrderUpdate);
+    window.addEventListener('scanms_notification_received', handleOrderUpdate);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('scanms_order_updated', handleOrderUpdate);
+      window.removeEventListener('scanms_notification_received', handleOrderUpdate);
+    };
+  }, [role]);
+
+  const getItemBadge = (path: string, staticBadge?: string) => {
+    if (staticBadge) {
+      return { text: staticBadge, isHighlight: false };
+    }
+    if (path === '/merchant/orders') {
+      if (pendingOrdersCount !== null && pendingOrdersCount > 0) {
+        return { text: String(pendingOrdersCount), isHighlight: true };
+      }
+      if (unreadNotifs.ORDER && unreadNotifs.ORDER > 0) {
+        return { text: String(unreadNotifs.ORDER), isHighlight: true };
+      }
+    }
+    if (path === '/merchant/products') {
+      if (unreadNotifs.SYSTEM && unreadNotifs.SYSTEM > 0) {
+        return { text: 'Mới', isHighlight: true };
+      }
+    }
+    if (path === '/merchant/customer-messages') {
+      if (unreadNotifs.PROMOTION && unreadNotifs.PROMOTION > 0) {
+        return { text: String(unreadNotifs.PROMOTION), isHighlight: false };
+      }
+    }
+    if (path === '/customer/orders') {
+      if (unreadNotifs.ORDER && unreadNotifs.ORDER > 0) {
+        return { text: String(unreadNotifs.ORDER), isHighlight: true };
+      }
+    }
+    return null;
+  };
 
   const navConfig = NAVIGATION_BY_ROLE[role] || NAVIGATION_BY_ROLE.COLLABORATOR;
   const isLinkActive = (path: string) => {
@@ -118,6 +197,22 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       return (
         currentPath.startsWith('/admin/users') ||
         currentPath.startsWith('/merchant/kyc-approval')
+      );
+    }
+
+    if (path === '/admin/fraud-sentinel') {
+      return (
+        currentPath.startsWith('/admin/fraud-sentinel') ||
+        currentPath.startsWith('/merchant/fraud-sentinel') ||
+        currentPath.startsWith('/merchant/ai-fraud')
+      );
+    }
+
+    if (path === '/admin/audit-logs') {
+      return (
+        currentPath.startsWith('/admin/audit-logs') ||
+        currentPath.startsWith('/admin/audit') ||
+        currentPath.startsWith('/merchant/audit-logs')
       );
     }
 
@@ -227,6 +322,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         {navConfig.items.map((item) => {
           const active = isLinkActive(item.path);
           const Icon = item.icon;
+          const badge = getItemBadge(item.path, item.badge);
 
           return (
             <div key={item.path} className="flex flex-col">
@@ -235,8 +331,8 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
                 aria-current={active ? 'page' : undefined}
                 className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
                   active
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold border border-[#EEDFC6]/70 shadow-2xs'
+                    : 'text-[#574C3D] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
                 }`}
               >
                 <Icon
@@ -245,6 +341,17 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
                   }`}
                 />
                 <span className="flex-1 truncate">{item.label}</span>
+                {badge && (
+                  <span
+                    className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 transition-transform ${
+                      badge.isHighlight
+                        ? 'bg-[#C59B58] text-white shadow-2xs animate-pulse'
+                        : 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]'
+                    }`}
+                  >
+                    {badge.text}
+                  </span>
+                )}
               </Link>
             </div>
           );

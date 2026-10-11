@@ -241,7 +241,7 @@ describeLocal(
           .availableBalance.toFixed(2),
       };
     }
-    function approve(id: string, reference = randomUUID(), file = bill()) {
+    function approve(id: string, reference: string = randomUUID(), file = bill()) {
       return merchant.approvePayout(
         storeId,
         ownerId,
@@ -754,7 +754,7 @@ describeLocal(
         ).buffer.equals(file.buffer),
       ).toBe(true);
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(file.buffer);
+      await workbook.xlsx.load(file.buffer as any);
       expect(workbook.getWorksheet('VietQR')!.getCell('H2').value).toBe(
         '00123456789',
       );
@@ -779,7 +779,7 @@ describeLocal(
       const buffer = Buffer.from(await response.arrayBuffer());
       expect(buffer.subarray(0, 2).toString()).toBe('PK');
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
+      await workbook.xlsx.load(buffer as any);
       expect(workbook.getWorksheet('VietQR')!.getCell('L2').value).toBe(
         '1800000.00',
       );

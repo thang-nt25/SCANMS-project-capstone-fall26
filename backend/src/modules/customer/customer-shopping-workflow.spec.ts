@@ -62,18 +62,17 @@ describe('Customer shopping rules', () => {
       data: expect.objectContaining({
         customerId: 'customer-1',
         originalOrderStatus: OrderStatus.COMPLETED,
-        items: {
-          create: [
-            { orderItemId: 'line-1', quantity: 2, unitPrice: '100000.00' },
-          ],
-        },
+        reason: 'DAMAGED',
+        unboxingVideoUrl: 'https://example.com/video.mp4',
       }),
     });
-    expect(tx.returnEvent.create).toHaveBeenCalledWith({
+    expect(tx.notification.create).toHaveBeenCalledWith({
       data: {
-        returnRequestId: 'request-1',
-        actorId: 'customer-1',
-        type: 'REQUEST_CREATED',
+        userId: 'owner-1',
+        title: 'Yêu cầu đổi trả mới',
+        message: expect.stringContaining('S-001'),
+        type: 'RETURN_REQUESTED',
+        data: { orderId: 'order-1', returnRequestId: 'request-1' },
       },
     });
   });
@@ -144,6 +143,7 @@ describe('Customer shopping rules', () => {
           {
             id: 'product-1',
             isActive: true,
+            moderationStatus: 'APPROVED',
             stockQuantity: 8,
             variants: [],
           },

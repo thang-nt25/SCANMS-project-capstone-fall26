@@ -1,8 +1,9 @@
 .product-management { container-type: inline-size; container-name:product-management; color: var(--theme-ink, #1A1612); }
 .product-editor-modal {
-  max-width: 760px;
-  max-height: min(88dvh, 760px);
-  border-radius: 20px;
+  width: min(96vw, 1440px) !important;
+  max-width: min(96vw, 1440px) !important;
+  max-height: min(92dvh, 920px);
+  border-radius: 24px;
   color: var(--theme-ink, #1A1612);
   background: var(--theme-surface, #FFFFFF);
 }
@@ -40,6 +41,26 @@
   font-size: 11px;
   line-height: 1.6;
   color: var(--theme-muted, #7D715E);
+}
+.product-editor-navigation {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--theme-canvas, #FAF8F5);
+  border: 1px solid var(--theme-line, #EAE4D7);
+  border-radius: 12px;
+  overflow-x: auto !important;
+  scrollbar-width: none;
+}
+.product-editor-navigation::-webkit-scrollbar {
+  display: none;
+}
+.product-editor-navigation button {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
 }
 .product-editor-form .product-editor-section {
   min-width: 0;
@@ -673,46 +694,3 @@
   }
 }
 
-/* Compact product editor, with white surfaces and quiet sand accents. */
-.product-editor-modal {
-  max-width:640px;
-  max-height:min(86dvh,700px);
-  border-radius:16px;
-  box-shadow:0 18px 60px rgb(35 29 21 / 14%);
-}
-.product-editor-modal > div:first-child { padding:12px 16px; background:var(--theme-surface,#fff); }
-.product-editor-modal > div:first-child h3 { font-size:15px; font-weight:650; }
-.product-editor-modal > div:first-child p { font-size:11px; margin-top:3px; }
-.product-editor-modal > div:first-child > button { display:grid; place-items:center; width:30px; height:30px; border:1px solid var(--theme-line,#eae4d7); background:var(--theme-surface,#fff); }
-.product-editor-modal > div:nth-child(2) { padding:12px 14px; background:var(--theme-surface,#fff); scrollbar-width:thin; }
-.product-editor-form { gap:10px; }
-.product-editor-navigation {
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:5px;
-  padding:6px;
-  margin-bottom:0;
-  background:var(--theme-canvas,#faf8f5);
-  border-color:var(--theme-line,#eae4d7);
-  border-radius:10px;
-  overflow:visible;
-}
-.product-editor-navigation button { min-width:0; padding:6px 5px; font-size:10px; line-height:1.4; white-space:normal; border-color:transparent; background:var(--theme-surface,#fff); color:var(--theme-muted,#7d715e); border-radius:6px; }
-.product-editor-navigation button:hover { border-color:#eedfc6; background:var(--theme-brand-soft,#fbf5eb); color:var(--theme-ink,#1a1612); }
-.product-editor-form .product-editor-section { padding:12px; gap:10px; border-radius:10px; background:var(--theme-surface,#fff); }
-.product-editor-section-title { font-size:11px; font-weight:650; }
-.product-editor-section > div:first-child[class*="border-b"], .product-editor-section > span[class*="border-b"] { padding-bottom:8px; }
-.product-editor-section-title > span { width:24px; height:24px; background:var(--theme-brand-soft,#fbf5eb); }
-.product-editor-form input:not([type="checkbox"]):not([type="file"]):not([type="hidden"]), .product-editor-form button[aria-haspopup="listbox"] { height:34px; font-size:11px; border-color:var(--theme-line,#eae4d7); }
-.product-editor-form textarea { padding:8px 10px; font-size:11px; line-height:1.5; }
-#product-section-basic textarea { min-height:72px; height:72px; resize:vertical; }
-.product-editor-form label { font-size:11px; }
-.product-editor-modal > div:last-child { padding:9px 14px; background:var(--theme-surface,#fff); }
-.product-editor-actions button { min-height:32px; padding:6px 12px; font-size:11px; }
-@media(max-width:639px) {
-  .product-editor-modal { max-height:calc(100dvh - 24px); }
-  .product-editor-modal > div:first-child { padding:12px; }
-  .product-editor-modal > div:nth-child(2) { padding:10px; }
-  .product-editor-navigation { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .product-editor-actions { flex-wrap:wrap; }
-}
