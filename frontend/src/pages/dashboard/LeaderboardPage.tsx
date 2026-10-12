@@ -29,7 +29,6 @@ import type {
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
-import './LeaderboardPage.css';
 
 export default function LeaderboardPage({ alignToContainer = false }: { alignToContainer?: boolean } = {}) {
   const [data, setData] = useState<LeaderboardFullResponse | null>(null);
@@ -167,95 +166,109 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
     : 'Gian hàng của bạn';
 
   return (
-    <div className={`leaderboard-page leaderboard-redesign ${alignToContainer ? 'leaderboard-flush' : ''}`}>
-      <section className="lb-panel lb-filters" aria-labelledby="lb-title">
-        <header className="lb-filter-heading">
-          <div className="lb-heading">
-            <span className="lb-heading-icon"><Trophy aria-hidden="true" /></span>
-            <div><h1 id="lb-title">Bảng vinh danh Top Creator</h1><p>{data?.periodLabel || timeOptions.find(option => option.value === timeRange)?.label} · {scopeLabel}</p></div>
+    <div className={`flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] ${alignToContainer ? 'p-0 pb-1 gap-3' : 'p-4 sm:p-5'}`}>
+      <section className="p-3.5 sm:p-4 min-w-0 border border-[#EAE4D7] rounded-[15px] bg-white" aria-labelledby="lb-title">
+        <header className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-8 sm:w-9 h-8 sm:h-9 grid place-items-center shrink-0 rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]"><Trophy aria-hidden="true" className="w-[18px] h-[18px]" /></span>
+            <div><h1 id="lb-title" className="m-0 text-base sm:text-lg font-semibold tracking-tight text-[#1A1612]">Bảng vinh danh Top Creator</h1><p className="m-0 mt-0.5 text-xs text-[#7D715E]">{data?.periodLabel || timeOptions.find(option => option.value === timeRange)?.label} · {scopeLabel}</p></div>
           </div>
-          <button type="button" onClick={fetchLeaderboard} disabled={loading} className="lb-refresh" title="Làm mới bảng xếp hạng">
-            <RefreshCw aria-hidden="true" className={loading ? 'animate-spin' : ''} />
+          <button type="button" onClick={fetchLeaderboard} disabled={loading} className="inline-flex items-center justify-center gap-1.5 min-h-[34px] sm:min-h-[36px] px-2.5 sm:px-3 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs font-medium hover:bg-[#FBF5EB] disabled:opacity-60 disabled:cursor-wait transition-colors cursor-pointer" title="Làm mới bảng xếp hạng">
+            <RefreshCw aria-hidden="true" className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
             <span>{loading ? 'Đang cập nhật' : 'Làm mới'}</span>
           </button>
         </header>
-        <div className="lb-filter-grid">
-          <div className="lb-filter-field">
-            <div className="lb-segments lb-periods" role="group" aria-label="Khoảng thời gian xếp hạng">
-              {timeOptions.map(option => <button key={option.value} type="button" aria-pressed={timeRange === option.value} onClick={() => setTimeRange(option.value)}>{option.label}</button>)}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] items-center gap-3 sm:gap-4 mt-3">
+          <div className="min-w-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Khoảng thời gian xếp hạng">
+              {timeOptions.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={timeRange === option.value}
+                  onClick={() => setTimeRange(option.value)}
+                  className={`flex items-center justify-center gap-1.5 min-h-[32px] sm:min-h-[34px] px-2 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
+                    timeRange === option.value
+                      ? 'bg-white border border-[#EEDFC6] text-[#1A1612] font-semibold shadow-xs'
+                      : 'border border-transparent text-[#7D715E] hover:bg-white hover:text-[#1A1612]'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
-          <div className="lb-filter-field lb-metric-field">
-            <label className="lb-label" htmlFor="lb-metric-select"><Filter aria-hidden="true" /> Xếp hạng theo</label>
-            <div className="lb-metric-select">
-              <select id="lb-metric-select" value={metric} onChange={event => setMetric(event.target.value as LeaderboardMetric)}>
+          <div className="flex items-center gap-2.5">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E] whitespace-nowrap" htmlFor="lb-metric-select"><Filter aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /> Xếp hạng theo</label>
+            <div className="relative shrink-0">
+              <select id="lb-metric-select" value={metric} onChange={event => setMetric(event.target.value as LeaderboardMetric)} className="w-full sm:w-[150px] min-h-[38px] appearance-none pl-3 pr-8 py-2 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs sm:text-[13px] font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#B88E4F]">
                 {Object.entries(metricLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
-              <ChevronDown aria-hidden="true" />
+              <ChevronDown aria-hidden="true" className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B88E4F] pointer-events-none" />
             </div>
           </div>
         </div>
         {canChangeScope && (
-          <div className="lb-scope">
-            <button type="button" aria-pressed={scope === 'STORE'} onClick={() => setScope(scope === 'GLOBAL' ? 'STORE' : 'GLOBAL')}>
-              <Shield aria-hidden="true" /><span>{scope === 'GLOBAL' ? 'Toàn sàn SCANMS' : isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</span>
+          <div className="flex items-center flex-wrap gap-2 mt-3 pt-3 border-t border-[#EAE4D7]">
+            <button type="button" aria-pressed={scope === 'STORE'} onClick={() => setScope(scope === 'GLOBAL' ? 'STORE' : 'GLOBAL')} className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs font-medium hover:bg-[#FBF5EB] cursor-pointer">
+              <Shield aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /><span>{scope === 'GLOBAL' ? 'Toàn sàn SCANMS' : isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</span>
             </button>
             {scope === 'STORE' && isAdmin && (
-              <select aria-label="Chọn gian hàng để xếp hạng" value={selectedStoreId} onChange={event => setSelectedStoreId(event.target.value)} disabled={!stores.length}>
+              <select aria-label="Chọn gian hàng để xếp hạng" value={selectedStoreId} onChange={event => setSelectedStoreId(event.target.value)} disabled={!stores.length} className="min-h-[34px] max-w-[240px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs">
                 {stores.length ? stores.map(store => <option key={store.id} value={store.id}>{store.name}</option>) : <option value="">{storesLoading ? 'Đang tải gian hàng…' : 'Không có gian hàng'}</option>}
               </select>
             )}
           </div>
         )}
-        {loading && <span className="lb-sr-only" role="status" aria-live="polite">Đang cập nhật bảng xếp hạng…</span>}
-        <details className="lb-method-note">
-          <summary>Cách xếp hạng<ChevronDown aria-hidden="true" /></summary>
-          <p>Chỉ xếp hạng khi tiêu chí đã chọn lớn hơn 0. Doanh số và đơn hàng ghi nhận theo ngày giao thành công, hoặc ngày hoàn tất nếu thiếu ngày giao (giờ Việt Nam). Cùng doanh số thì xét số đơn; các tiêu chí khác dùng doanh số làm tiêu chí phụ. Cùng cả hai tiêu chí sẽ đồng hạng.</p>
+        {loading && <span className="sr-only" role="status" aria-live="polite">Đang cập nhật bảng xếp hạng…</span>}
+        <details className="mt-3 text-xs text-[#7D715E] leading-relaxed group">
+          <summary className="flex items-center gap-1 cursor-pointer font-medium hover:text-[#B88E4F] list-none select-none text-xs">Cách xếp hạng<ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F] group-open:rotate-180 transition-transform" /></summary>
+          <p className="mt-1">Chỉ xếp hạng khi tiêu chí đã chọn lớn hơn 0. Doanh số và đơn hàng ghi nhận theo ngày giao thành công, hoặc ngày hoàn tất nếu thiếu ngày giao (giờ Việt Nam). Cùng doanh số thì xét số đơn; các tiêu chí khác dùng doanh số làm tiêu chí phụ. Cùng cả hai tiêu chí sẽ đồng hạng.</p>
         </details>
       </section>
 
-      {loadError && <div role="alert" className="lb-error">{loadError}</div>}
+      {loadError && <div role="alert" className="p-3 sm:px-4 border border-[#EEDFC6] rounded-xl bg-white text-xs sm:text-sm text-[#DC2626]">{loadError}</div>}
 
-      {loading ? <div className="lb-panel lb-podium-state" role="status">Đang tải bảng vinh danh…</div>
-        : loadError ? null : !podiumEntries.length ? <div className="lb-panel lb-podium-state"><Trophy aria-hidden="true" /><h2>Chưa có Creator đủ điều kiện vinh danh</h2><p>Kỳ này chưa có kết quả theo tiêu chí {metricLabels[metric].toLowerCase()}. Chọn khoảng thời gian khác để xem thành tích.</p>{timeRange === 'this_month' && <button type="button" className="lb-empty-action" onClick={() => setTimeRange('last_month')}>Xem tháng trước<ArrowUpRight aria-hidden="true" /></button>}</div>
-        : <div className="leaderboard-podium" aria-label="Các nhà sáng tạo dẫn đầu">
+      {loading ? <div className="p-8 text-center text-xs sm:text-sm text-[#7D715E] border border-[#EAE4D7] rounded-[15px] bg-white" role="status">Đang tải bảng vinh danh…</div>
+        : loadError ? null : !podiumEntries.length ? <div className="p-8 text-center text-xs sm:text-sm text-[#7D715E] border border-[#EAE4D7] rounded-[15px] bg-white space-y-2"><Trophy aria-hidden="true" className="w-7 h-7 mx-auto text-[#B88E4F]" /><h2 className="text-base font-semibold text-[#1A1612]">Chưa có Creator đủ điều kiện vinh danh</h2><p className="max-w-md mx-auto">Kỳ này chưa có kết quả theo tiêu chí {metricLabels[metric].toLowerCase()}. Chọn khoảng thời gian khác để xem thành tích.</p>{timeRange === 'this_month' && <button type="button" className="inline-flex items-center gap-1 px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6]" onClick={() => setTimeRange('last_month')}>Xem tháng trước<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></button>}</div>
+        : <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch" aria-label="Các nhà sáng tạo dẫn đầu">
         {podiumEntries.map(({ slot, creator }) => {
           const rank = creator.rank;
           return <article key={creator.collaboratorId} data-podium-rank={slot} data-current={creator?.isCurrentUser || undefined}
-            className={`lb-creator-card ${rank === 1 ? 'lb-creator-first' : ''}`}
+            className={`flex flex-col min-h-[220px] p-4 sm:p-4.5 border rounded-xl bg-white shadow-2xs ${rank === 1 ? 'border-[#EEDFC6] bg-[#FDFBF7] md:order-2' : slot === 2 ? 'border-[#EAE4D7] md:order-1' : 'border-[#EAE4D7] md:order-3'}`}
           >
-            <button className="lb-creator-identity" type="button" disabled={!creator}
+            <button className="flex items-center gap-3 w-full text-left bg-transparent border-0 p-0 cursor-pointer min-h-[64px] disabled:cursor-default" type="button" disabled={!creator}
               aria-label={creator ? `Xem hồ sơ ${creator.fullName}` : 'Hồ sơ chưa có dữ liệu'}
               onClick={() => creator && handleOpenCreatorModal(creator.collaboratorId)}
             >
-              <span className="lb-avatar" aria-hidden="true">
+              <span className={`relative grid place-items-center w-11 sm:w-12 h-11 sm:h-12 overflow-hidden shrink-0 border rounded-full bg-[#FAF8F5] text-[#B88E4F] text-lg font-semibold ${rank === 1 ? 'border-[#EEDFC6]' : 'border-[#EAE4D7]'}`} aria-hidden="true">
                 {creator?.fullName?.charAt(0) || rank}
-                {creator?.avatarUrl && <img src={creator.avatarUrl} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}
+                {creator?.avatarUrl && <img src={creator.avatarUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={event => { event.currentTarget.style.display = 'none'; }} />}
               </span>
-              <span className="lb-identity-copy">
-                <span className="lb-creator-name">{creator?.fullName || (loading && !data ? 'Đang tải KOL…' : rank === 1 ? 'Chưa có Quán Quân' : 'Chưa có đối tác')}</span>
-                <span className="lb-creator-tier">{creator.tierName}</span>
-                <span className="lb-creator-badges">
-                  <span className="lb-rank"><Crown aria-hidden="true" className={rank === 1 ? '' : 'lb-hidden-crown'} /> Hạng {rank}</span>
-                  {creator?.isCurrentUser && <span className="lb-you">Bạn</span>}
+              <span className="flex flex-1 flex-col gap-1 min-w-0">
+                <span className="text-sm sm:text-[15px] font-semibold text-[#1A1612] hover:text-[#B88E4F] transition-colors truncate">{creator?.fullName || (loading && !data ? 'Đang tải KOL…' : rank === 1 ? 'Chưa có Quán Quân' : 'Chưa có đối tác')}</span>
+                <span className="text-xs text-[#7D715E] leading-tight">{creator.tierName}</span>
+                <span className="flex items-center flex-wrap gap-1.5 mt-0.5">
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 border rounded text-[11px] font-medium leading-none ${rank === 1 ? 'border-[#EEDFC6] text-[#B88E4F] bg-white' : 'border-[#EAE4D7] text-[#7D715E] bg-white'}`}><Crown aria-hidden="true" className={`w-3.5 h-3.5 text-[#B88E4F] ${rank === 1 ? '' : 'hidden'}`} /> Hạng {rank}</span>
+                  {creator?.isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-semibold">Bạn</span>}
                 </span>
               </span>
             </button>
-            <div className="lb-creator-metric">
-              <span>{metric === 'REVENUE' ? 'Doanh số GMV' : metricLabels[metric]}</span>
-              <div className="lb-creator-value">
-                <strong>{formatMetricValue(creator)}</strong>
-                {rank === 1 && <span>{formatNumber(creator?.totalOrders)} đơn đã giao / hoàn tất</span>}
+            <div className="flex flex-col gap-1.5 mt-auto pt-3.5 border-t border-[#EAE4D7]">
+              <span className="text-xs text-[#7D715E]">{metric === 'REVENUE' ? 'Doanh số GMV' : metricLabels[metric]}</span>
+              <div className="flex items-baseline justify-between flex-wrap gap-1.5">
+                <strong className="text-xl sm:text-2xl font-bold tabular-nums text-[#1A1612]">{formatMetricValue(creator)}</strong>
+                {rank === 1 && <span className="text-[11px] text-[#7D715E]">{formatNumber(creator?.totalOrders)} đơn đã giao</span>}
               </div>
             </div>
-            <details className="lb-creator-details">
-              <summary><span>Chi tiết thành tích</span><ChevronDown aria-hidden="true" /></summary>
-              <div className="lb-creator-details-content">
-                {creator.primaryChannelHandle && <span className="lb-creator-handle" title={creator.primaryChannelHandle}>{creator.primaryChannelHandle}</span>}
-                <div className="lb-creator-stats">
-                  <span><strong>{formatNumber(creator?.totalOrders)}</strong> đơn</span>
-                  {rank === 1 && <span><strong>{formatNumber(creator?.totalClicks)}</strong> clicks</span>}
-                  <span><strong>{formatNumber(creator?.conversionRate)}%</strong> CR</span>
+            <details className="mt-2.5 pt-2 border-t border-[#EAE4D7] text-xs text-[#7D715E] group">
+              <summary className="flex items-center justify-between gap-2 cursor-pointer list-none select-none hover:text-[#B88E4F]"><span>Chi tiết thành tích</span><ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F] group-open:rotate-180 transition-transform" /></summary>
+              <div className="flex flex-col gap-2 pt-2">
+                {creator.primaryChannelHandle && <span className="text-xs text-[#7D715E] truncate" title={creator.primaryChannelHandle}>{creator.primaryChannelHandle}</span>}
+                <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-xs text-[#7D715E]">
+                  <span><strong className="text-[#1A1612] font-semibold">{formatNumber(creator?.totalOrders)}</strong> đơn</span>
+                  {rank === 1 && <span><strong className="text-[#1A1612] font-semibold">{formatNumber(creator?.totalClicks)}</strong> clicks</span>}
+                  <span><strong className="text-[#1A1612] font-semibold">{formatNumber(creator?.conversionRate)}%</strong> CR</span>
                 </div>
               </div>
             </details>
@@ -263,45 +276,45 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
         })}
       </div>}
 
-      {(loading || loadError || rankings.length > 0) && <section className="leaderboard-rankings lb-panel" aria-labelledby="lb-ranking-title">
-        <header className="leaderboard-rankings-header">
-          <div className="lb-heading">
-            <span className="lb-heading-icon"><Award aria-hidden="true" /></span>
-            <div><h2 id="lb-ranking-title">Bảng xếp hạng Creator</h2><p>Các Creator tiếp theo trong tối đa 20 kết quả dẫn đầu.</p></div>
+      {(loading || loadError || rankings.length > 0) && <section className="border border-[#EAE4D7] rounded-[15px] bg-white overflow-hidden" aria-labelledby="lb-ranking-title">
+        <header className="flex items-center justify-between flex-wrap gap-3 p-4 sm:p-4.5 border-b border-[#EAE4D7]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-8 sm:w-9 h-8 sm:h-9 grid place-items-center shrink-0 rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]"><Award aria-hidden="true" className="w-[18px] h-[18px]" /></span>
+            <div><h2 id="lb-ranking-title" className="m-0 text-sm sm:text-base font-semibold tracking-tight text-[#1A1612]">Bảng xếp hạng Creator</h2><p className="m-0 mt-0.5 text-xs text-[#7D715E]">Các Creator tiếp theo trong tối đa 20 kết quả dẫn đầu.</p></div>
           </div>
-          <span className="lb-table-context">{metricLabels[metric]} · {scopeLabel}</span>
+          <span className="text-xs text-[#7D715E]">{metricLabels[metric]} · {scopeLabel}</span>
         </header>
-        <div className="lb-table-scroll" role="region" aria-label="Danh sách Creator tiếp theo" tabIndex={0}>
-          <table>
-            <thead><tr>
-              <th scope="col" className="lb-center">Hạng</th><th scope="col">Creator / Đối tác</th><th scope="col">Cấp bậc</th>
-              <th scope="col" className="lb-number">Lượt click</th><th scope="col" className="lb-number" data-active={metric === 'ORDERS' || undefined}>Đơn hàng</th>
-              <th scope="col" className="lb-number" data-active={metric === 'CONVERSION_RATE' || undefined}>Tỷ lệ chốt</th>
-              <th scope="col" className="lb-number" data-active={metric === 'REVENUE' || undefined}>Doanh số GMV</th>
-              <th scope="col" className="lb-number" data-active={metric === 'COMMISSION' || undefined}>Hoa hồng đã duyệt</th><th scope="col" className="lb-center">Hồ sơ</th>
+        <div className="overflow-x-auto" role="region" aria-label="Danh sách Creator tiếp theo" tabIndex={0}>
+          <table className="w-full min-w-[900px] border-collapse text-xs text-[#7D715E] text-left">
+            <thead className="bg-[#FAF8F5]"><tr>
+              <th scope="col" className="text-center px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Hạng</th><th scope="col" className="px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Creator / Đối tác</th><th scope="col" className="px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Cấp bậc</th>
+              <th scope="col" className="text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Lượt click</th><th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'ORDERS' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Đơn hàng</th>
+              <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'CONVERSION_RATE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Tỷ lệ chốt</th>
+              <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'REVENUE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Doanh số GMV</th>
+              <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'COMMISSION' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Hoa hồng đã duyệt</th><th scope="col" className="text-center px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Hồ sơ</th>
             </tr></thead>
             <tbody>
-              {loading || loadError || !rankings.length ? <tr><td colSpan={9} className="lb-empty">{loading ? 'Đang tải danh sách KOL…' : loadError ? 'Chưa tải được danh sách. Vui lòng làm mới.' : 'Chưa có thêm Creator đủ điều kiện trong kỳ này.'}</td></tr> : rankings.map(item => (
-                <tr key={item.collaboratorId} data-current={item.isCurrentUser || undefined}>
-                  <td className="lb-center">
-                    <div className="lb-rank-cell"><strong>#{item.rank < 10 ? `0${item.rank}` : item.rank}</strong>
+              {loading || loadError || !rankings.length ? <tr><td colSpan={9} className="py-8 px-4 text-center text-xs sm:text-sm text-[#7D715E]">{loading ? 'Đang tải danh sách KOL…' : loadError ? 'Chưa tải được danh sách. Vui lòng làm mới.' : 'Chưa có thêm Creator đủ điều kiện trong kỳ này.'}</td></tr> : rankings.map(item => (
+                <tr key={item.collaboratorId} className={`hover:bg-[#FDFBF7] transition-colors ${item.isCurrentUser ? 'bg-[#FDFAF4]' : ''}`}>
+                  <td className="text-center px-3.5 py-3 border-t border-[#EAE4D7]">
+                    <div className="inline-flex items-center justify-center gap-1.5"><strong className="text-xs sm:text-[13px] font-semibold text-[#1A1612]">#{item.rank < 10 ? `0${item.rank}` : item.rank}</strong>
                       {metric === 'REVENUE' && (item.rankDelta > 0
-                        ? <span className="lb-rank-up" title={`Tăng ${item.rankDelta} bậc`}><TrendingUp aria-hidden="true" />{item.rankDelta}</span>
-                        : item.rankDelta < 0 ? <span className="lb-rank-down" title={`Giảm ${Math.abs(item.rankDelta)} bậc`}><TrendingDown aria-hidden="true" />{Math.abs(item.rankDelta)}</span>
-                        : <Minus className="lb-rank-unchanged" aria-label="Không đổi hạng" />)}
+                        ? <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#B88E4F]" title={`Tăng ${item.rankDelta} bậc`}><TrendingUp aria-hidden="true" className="w-3 h-3" />{item.rankDelta}</span>
+                        : item.rankDelta < 0 ? <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#DC2626]" title={`Giảm ${Math.abs(item.rankDelta)} bậc`}><TrendingDown aria-hidden="true" className="w-3 h-3" />{Math.abs(item.rankDelta)}</span>
+                        : <Minus className="w-3 h-3 text-[#7D715E]" aria-label="Không đổi hạng" />)}
                     </div>
                   </td>
-                  <td><div className="lb-table-creator">
-                    <span className="lb-avatar" aria-hidden="true">{item.fullName?.charAt(0) || 'K'}{item.avatarUrl && <img src={item.avatarUrl} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}</span>
-                    <div><div className="lb-table-name"><strong>{item.fullName}</strong>{item.isCurrentUser && <span className="lb-you">Bạn</span>}</div><p title={item.primaryChannelHandle || undefined}>{item.primaryChannelHandle || 'Chưa cập nhật kênh'}</p></div>
+                  <td className="px-3.5 py-3 border-t border-[#EAE4D7]"><div className="flex items-center gap-2.5 max-w-[245px]">
+                    <span className="relative grid place-items-center w-8 h-8 rounded-full overflow-hidden shrink-0 bg-[#FAF8F5] border border-[#EAE4D7] text-[#B88E4F] text-xs font-semibold" aria-hidden="true">{item.fullName?.charAt(0) || 'K'}{item.avatarUrl && <img src={item.avatarUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={event => { event.currentTarget.style.display = 'none'; }} />}</span>
+                    <div className="min-w-0"><div className="flex items-center flex-wrap gap-1"><strong className="text-xs font-semibold text-[#1A1612] truncate">{item.fullName}</strong>{item.isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-semibold">Bạn</span>}</div><p className="m-0 mt-0.5 text-[11px] text-[#7D715E] truncate" title={item.primaryChannelHandle || undefined}>{item.primaryChannelHandle || 'Chưa cập nhật kênh'}</p></div>
                   </div></td>
-                  <td><span className="lb-tier">{item.tierName}</span></td>
-                  <td className="lb-number">{formatNumber(item.totalClicks)}</td>
-                  <td className="lb-number" data-active={metric === 'ORDERS' || undefined}>{formatNumber(item.totalOrders)} đơn</td>
-                  <td className="lb-number" data-active={metric === 'CONVERSION_RATE' || undefined}>{formatNumber(item.conversionRate)}%</td>
-                  <td className="lb-number" data-active={metric === 'REVENUE' || undefined}>{formatVND(item.grossRevenue)}</td>
-                  <td className="lb-number" data-active={metric === 'COMMISSION' || undefined}>{formatVND(item.totalCommission)}</td>
-                  <td className="lb-center"><button className="lb-profile-button" onClick={() => handleOpenCreatorModal(item.collaboratorId)}>Xem <ChevronRight aria-hidden="true" /></button></td>
+                  <td className="px-3.5 py-3 border-t border-[#EAE4D7]"><span className="inline-flex items-center px-2 py-0.5 border border-[#EAE4D7] rounded-md bg-white text-[11px] font-medium text-[#7D715E]">{item.tierName}</span></td>
+                  <td className="text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap">{formatNumber(item.totalClicks)}</td>
+                  <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'ORDERS' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{formatNumber(item.totalOrders)} đơn</td>
+                  <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'CONVERSION_RATE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{formatNumber(item.conversionRate)}%</td>
+                  <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'REVENUE' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{formatVND(item.grossRevenue)}</td>
+                  <td className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap ${metric === 'COMMISSION' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>{formatVND(item.totalCommission)}</td>
+                  <td className="text-center px-3.5 py-3 border-t border-[#EAE4D7]"><button className="inline-flex items-center justify-center gap-1 px-2.5 py-1 border border-[#EAE4D7] rounded-md bg-white text-[#7D715E] text-xs hover:bg-[#FBF5EB] hover:text-[#1A1612] transition-colors cursor-pointer" onClick={() => handleOpenCreatorModal(item.collaboratorId)}>Xem <ChevronRight aria-hidden="true" className="w-3.5 h-3.5" /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -310,22 +323,22 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
       </section>}
 
       {!loading && !loadError && myRank && (
-        <section className="leaderboard-my-rank lb-panel" aria-label="Vị trí của bạn trên bảng xếp hạng">
-          <div className="lb-my-rank-identity">
-            <span className="lb-my-rank-number">{myRank.myRank === null ? <Award aria-hidden="true" /> : `#${myRank.myRank}`}</span>
+        <section className="flex items-center justify-between flex-wrap gap-4 p-4 border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Vị trí của bạn trên bảng xếp hạng">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="grid place-items-center w-10 h-10 shrink-0 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F] text-base font-bold">{myRank.myRank === null ? <Award aria-hidden="true" className="w-5 h-5" /> : `#${myRank.myRank}`}</span>
             <div>
-              <div className="lb-my-rank-title"><h2>{myRank.myRank === null ? 'Bạn chưa được xếp hạng trong kỳ' : `Hạng của bạn theo ${metricLabels[metric]}`}</h2>
-                {metric === 'REVENUE' && myRank.rankDelta > 0 && <span className="lb-rank-up"><TrendingUp aria-hidden="true" /> Tăng {myRank.rankDelta} bậc</span>}
+              <div className="flex items-center flex-wrap gap-2"><h2 className="m-0 text-sm font-semibold text-[#1A1612]">{myRank.myRank === null ? 'Bạn chưa được xếp hạng trong kỳ' : `Hạng của bạn theo ${metricLabels[metric]}`}</h2>
+                {metric === 'REVENUE' && myRank.rankDelta > 0 && <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-[#B88E4F]"><TrendingUp aria-hidden="true" className="w-3.5 h-3.5" /> Tăng {myRank.rankDelta} bậc</span>}
               </div>
-              <p>{myRank.currentPeriodLabel} · {metricLabels[metric]} hiện tại: <strong>{metric === 'REVENUE' ? formatVND(myRank.myRevenue) : metric === 'ORDERS' ? `${formatNumber(myRank.myOrders)} đơn` : metric === 'CONVERSION_RATE' ? `${formatNumber(myRank.myConversionRate)}%` : formatVND(myRank.myCommission)}</strong></p>
+              <p className="m-0 mt-0.5 text-xs text-[#7D715E]">{myRank.currentPeriodLabel} · {metricLabels[metric]} hiện tại: <strong className="text-[#1A1612] font-semibold">{metric === 'REVENUE' ? formatVND(myRank.myRevenue) : metric === 'ORDERS' ? `${formatNumber(myRank.myOrders)} đơn` : metric === 'CONVERSION_RATE' ? `${formatNumber(myRank.myConversionRate)}%` : formatVND(myRank.myCommission)}</strong></p>
             </div>
           </div>
-          <div className="leaderboard-my-rank-actions">
+          <div className="flex items-center justify-end flex-wrap gap-2.5">
             {metric === 'REVENUE' && myRank.myRank !== null && (myRank.myRank > 10
-              ? <div className="lb-top-gap"><span>Chênh lệch doanh số với Top 10</span><strong>{formatVND(myRank.gapToTop10Revenue)}</strong></div>
-              : <span className="lb-top-ten"><Check aria-hidden="true" /> Đang trong Top 10</span>)}
-            {currentUser?.role === 'COLLABORATOR' ? <Link className="lb-race-button" to="/collaborator/marketing">Tạo link tiếp thị<ArrowUpRight aria-hidden="true" /></Link>
-              : <button className="lb-race-button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Xem bộ lọc<ArrowUpRight aria-hidden="true" /></button>}
+              ? <div className="flex flex-col gap-0.5 text-right"><span className="text-[11px] text-[#7D715E]">Chênh lệch doanh số với Top 10</span><strong className="text-xs font-semibold text-[#1A1612]">{formatVND(myRank.gapToTop10Revenue)}</strong></div>
+              : <span className="inline-flex items-center gap-1 text-xs text-[#7D715E]"><Check aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /> Đang trong Top 10</span>)}
+            {currentUser?.role === 'COLLABORATOR' ? <Link className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors" to="/collaborator/marketing">Tạo link tiếp thị<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></Link>
+              : <button className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Xem bộ lọc<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></button>}
           </div>
         </section>
       )}

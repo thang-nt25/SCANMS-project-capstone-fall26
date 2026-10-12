@@ -12,7 +12,6 @@ import {
   Clock3,
 } from 'lucide-react';
 import { toast } from '../../utils/toast';
-import './CustomerVouchersTab.css';
 
 const vouchers = [
   {
@@ -74,55 +73,85 @@ export function CustomerVouchersTab() {
   };
 
   return (
-    <section className="customer-vouchers" aria-labelledby="customer-vouchers-title">
-      <header className="cv-heading">
-        <span className="cv-heading-icon" aria-hidden="true"><Ticket size={21} /></span>
-        <div>
-          <div className="cv-title-row">
-            <h1 id="customer-vouchers-title">Kho voucher</h1>
-            <span className="cv-count">{vouchers.length} ưu đãi</span>
+    <section className="@container/vouchers grid gap-[14px] w-full max-w-[1120px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-labelledby="customer-vouchers-title">
+      <header className="flex items-center gap-[11px] p-[4px_0_14px] border-b border-[#EAE4D7]">
+        <span className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true">
+          <Ticket size={21} />
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-center flex-wrap gap-[9px]">
+            <h1 id="customer-vouchers-title" className="m-0 font-inherit text-[20px] @max-[499px]:text-[19px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Kho voucher</h1>
+            <span className="p-[3px_7px] rounded-[6px] bg-[#F3EFE6] text-[#7D715E] text-[11px] leading-[1.5] whitespace-nowrap">
+              {vouchers.length} ưu đãi
+            </span>
           </div>
-          <p>Ưu đãi từ SCANMS và các gian hàng đối tác.</p>
+          <p className="m-0 mt-[3px] text-[#7D715E] text-[12px] leading-[1.5]">Ưu đãi từ SCANMS và các gian hàng đối tác.</p>
         </div>
       </header>
-      <div className="cv-grid">
+      <div className="grid grid-cols-2 @max-[899px]:grid-cols-1 items-start gap-[14px] min-w-0">
         {vouchers.map((voucher) => {
           const Icon = voucher.icon;
           const copied = copiedCode === voucher.code;
           return (
-            <article className="cv-card" key={voucher.code}>
-              <div className="cv-discount">
-                <strong>{voucher.value}</strong>
-                <span>{voucher.label}</span>
+            <article className="grid grid-cols-[68px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[66px_minmax(0,1fr)] items-center gap-[10px_14px] @max-[499px]:gap-[10px_12px] min-w-0 p-[14px_16px_0] @max-[499px]:p-[14px_14px_0] border border-[#EAE4D7] hover:border-[#EEDFC6] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] transition-colors" key={voucher.code}>
+              <div className="flex flex-col items-center justify-center gap-[4px] min-h-[68px] p-[8px_4px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]">
+                <strong className="text-[27px] @max-[499px]:text-[26px] leading-[1.15] tracking-[-0.8px] font-[650]">{voucher.value}</strong>
+                <span className="text-[10px] leading-[1.5] text-[#7D715E]">{voucher.label}</span>
               </div>
-              <div className="cv-body">
-                <span className="cv-category"><Icon size={13} aria-hidden="true" />{voucher.category}</span>
-                <h2>{voucher.title}</h2>
-                <p className="cv-minimum">{voucher.minimum}</p>
+              <div className="grid gap-[3px] min-w-0">
+                <span className="inline-flex items-center gap-[5px] text-[11px] leading-[1.5] text-[#B88E4F]">
+                  <Icon size={13} className="shrink-0" aria-hidden="true" />
+                  {voucher.category}
+                </span>
+                <h2 className="m-0 font-inherit text-[15px] font-[600] leading-[1.45] break-words text-[#1A1612]">{voucher.title}</h2>
+                <p className="m-0 text-[#7D715E] text-[11px] leading-[1.5]">{voucher.minimum}</p>
               </div>
-              <div className="cv-actions">
+              <div className="flex flex-col @max-[499px]:col-span-full @max-[499px]:flex-row @max-[499px]:items-center @max-[499px]:justify-between @max-[499px]:flex-wrap items-stretch gap-[5px] @max-[499px]:gap-[8px] min-w-0">
                 <button
                   type="button"
-                  className={`cv-code${copied ? ' is-copied' : ''}`}
+                  className={`inline-flex items-center justify-center gap-[6px] min-h-[32px] p-[6px_9px] @max-[499px]:px-0 border rounded-[8px] font-inherit text-[11px] font-[550] leading-[1.4] whitespace-nowrap cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px] ${
+                    copied
+                      ? 'border-[#C59B58] bg-[#FBF5EB] text-[#B88E4F]'
+                      : 'border-transparent bg-white text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58]'
+                  }`}
                   onClick={() => void copyCode(voucher.code)}
                   aria-label={`Sao chép mã ${voucher.code}`}
                   title={copied ? 'Đã sao chép' : 'Sao chép mã'}
                 >
-                  {copied ? <Check size={14} /> : <Copy size={14} />}
-                  <span>{voucher.code}</span>
+                  {copied ? <Check size={14} className="shrink-0 text-[#059669]" /> : <Copy size={14} className="shrink-0 text-[#B88E4F]" />}
+                  <span className="tracking-[0.3px]">{voucher.code}</span>
                 </button>
-                <Link className="cv-use" to="/marketplace">
-                  Dùng ngay <ArrowRight size={13} />
+                <Link
+                  className="inline-flex items-center justify-center gap-[6px] min-h-[32px] p-[6px_9px] border border-[#EEDFC6] rounded-[8px] font-inherit text-[11px] font-[550] leading-[1.4] bg-[#FBF5EB] text-[#1A1612] hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors whitespace-nowrap no-underline focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px]"
+                  to="/marketplace"
+                >
+                  <span>Dùng ngay</span>
+                  <ArrowRight size={13} className="shrink-0 text-[#B88E4F]" />
                 </Link>
               </div>
-              <details className="cv-details">
-                <summary aria-label={`Điều kiện mã ${voucher.code}, hạn dùng ${voucher.expiry}`}>
-                  <span className="cv-details-label">Điều kiện<ChevronDown size={13} aria-hidden="true" /></span>
-                  <span className="cv-expiry"><Clock3 size={12} aria-hidden="true" />HSD: {voucher.expiry}</span>
+              <details className="col-span-full min-w-0 border-t border-[#EAE4D7] mt-0 group">
+                <summary
+                  className="flex items-center justify-between flex-wrap gap-[5px_10px] min-h-[34px] p-[8px_0] list-none text-[10px] leading-[1.5] text-[#7D715E] hover:text-[#B88E4F] cursor-pointer select-none [&::-webkit-details-marker]:hidden focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px]"
+                  aria-label={`Điều kiện mã ${voucher.code}, hạn dùng ${voucher.expiry}`}
+                >
+                  <span className="inline-flex items-center gap-[5px]">
+                    Điều kiện
+                    <ChevronDown size={13} className="group-open:rotate-180 transition-transform duration-200" aria-hidden="true" />
+                  </span>
+                  <span className="inline-flex items-center gap-[5px] whitespace-nowrap">
+                    <Clock3 size={12} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
+                    HSD: {voucher.expiry}
+                  </span>
                 </summary>
-                <dl>
-                  <div><dt>Áp dụng</dt><dd>{voucher.scope}</dd></div>
-                  <div><dt>Giá trị đơn</dt><dd>{voucher.minimum}</dd></div>
+                <dl className="grid gap-[7px] m-[0_0_12px] p-[10px_12px] rounded-[8px] bg-[#FAF8F5] text-[11px] leading-[1.6]">
+                  <div className="grid grid-cols-[68px_minmax(0,1fr)] gap-[8px]">
+                    <dt className="text-[#7D715E]">Áp dụng</dt>
+                    <dd className="m-0 text-[#1A1612] break-words">{voucher.scope}</dd>
+                  </div>
+                  <div className="grid grid-cols-[68px_minmax(0,1fr)] gap-[8px]">
+                    <dt className="text-[#7D715E]">Giá trị đơn</dt>
+                    <dd className="m-0 text-[#1A1612] break-words">{voucher.minimum}</dd>
+                  </div>
                 </dl>
               </details>
             </article>

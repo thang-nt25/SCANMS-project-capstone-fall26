@@ -37,7 +37,7 @@ const LiveStreamRoomPage = lazyRetry(() => import('../pages/public/LiveStreamRoo
 const ProductManagementPage = lazyRetry(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazyRetry(() => import('../pages/merchant/ShopDashboardPage'));
 const ShopSettingsPage = lazyRetry(() => import('../pages/merchant/ShopSettingsPage'));
-const KycApprovalPage = lazyRetry(() => import('../pages/merchant/KycApprovalPage'));
+const KycApprovalPage = lazyRetry(() => import('../pages/admin/KycApprovalPage'));
 const OrdersManagementPage = lazyRetry(() => import('../pages/merchant/OrdersManagementPage'));
 const PayoutApprovalPage = lazyRetry(() => import('../pages/merchant/PayoutApprovalPage'));
 
@@ -64,7 +64,7 @@ const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage
 const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
 
 // AI Anti-Fraud Sentinel & Traffic Defense
-const AiFraudSentinelPage = lazy(() => import('../pages/merchant/AiFraudSentinelPage'));
+const AiFraudSentinelPage = lazy(() => import('../pages/admin/AiFraudSentinelPage'));
 
 // Audit Logs & Security Trail
 const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));

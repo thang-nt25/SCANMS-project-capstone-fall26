@@ -5,7 +5,6 @@ import CreatorAccountDetails from './CreatorAccountDetails';
 import KycSubmissionPage from './KycSubmissionPage';
 import SocialChannelsPage from './SocialChannelsPage';
 import KolTierStatusPage from './KolTierStatusPage';
-import './KolProfile.css';
 
 export default function CreatorProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();

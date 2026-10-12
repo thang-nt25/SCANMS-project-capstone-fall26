@@ -41,7 +41,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
-import './ProductManagementPage.css';
+import { PageHeader } from '../../components/ui/PageHeader';
 import {
   Table,
   TableHeader,
@@ -1571,13 +1571,42 @@ export default function ProductManagementPage() {
   });
 
   return (
-    <div className="product-management space-y-4 text-left w-full min-w-0 pt-4">
-            {toastMsg && (
+    <div className="product-management @container/product-management space-y-4 text-left w-full min-w-0 text-[#1A1612]">
+      {toastMsg && (
         <div className="fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border border-[#EEDFC6] rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
           <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
           <span>{toastMsg}</span>
         </div>
       )}
+
+      {/* 1. Page Header Chuẩn Hóa */}
+      <PageHeader
+        title={isKol ? "Sản phẩm Tiếp thị Liên kết" : "Danh mục Sản phẩm"}
+        description={isKol ? "Khám phá danh sách sản phẩm hợp tác và hoa hồng trên sàn" : "Quản lý kho SKU, biến thể đa tầng và chính sách hoa hồng tiếp thị liên kết"}
+        icon={<Boxes className="w-5 h-5" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void loadProducts()}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-[#B88E4F]" />
+              <span>Làm mới</span>
+            </button>
+            {!isKol && (
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm sản phẩm</span>
+              </button>
+            )}
+          </div>
+        }
+      />
 
       {/* ────── BANNER CẢNH BÁO TỒN KHO THẤP ────── */}
       {(() => {
@@ -1623,9 +1652,9 @@ export default function ProductManagementPage() {
 
       {/* Unified Toolbar: Compact Search, Filters & Action Buttons in One Row */}
       <Card className="product-toolbar p-3 bg-white border border-[#EAE4D7] rounded-xl shadow-none">
-        <div className="product-toolbar-layout">
+        <div className="product-toolbar-layout grid grid-cols-[minmax(280px,1fr)_minmax(0,1.3fr)] @max-[900px]/product-management:grid-cols-1 items-stretch gap-3 @max-[900px]/product-management:gap-2.5">
           {/* Left: Compact search input & filter controls */}
-          <div className="product-filter-controls">
+          <div className="product-filter-controls grid grid-cols-[minmax(0,1fr)_160px] items-stretch min-w-0 gap-2">
             <div className="product-search flex items-center gap-2 bg-white border border-[#EAE4D7] rounded-lg px-3 h-9 text-xs text-[#1A1612] w-full sm:w-64 focus-within:border-[#C59B58] transition">
               <Search className="w-3.5 h-3.5 text-[#7D715E] shrink-0" />
               <input
@@ -1665,20 +1694,20 @@ export default function ProductManagementPage() {
           </div>
 
           {/* Actions share the search/filter toolbar and equal-sized columns. */}
-          <div className="product-toolbar-actions" role="group" aria-label="Thao tác quản lý sản phẩm">
+          <div className="product-toolbar-actions grid grid-flow-col auto-cols-[minmax(0,1fr)] @max-[900px]/product-management:w-full items-stretch min-w-0 gap-2" role="group" aria-label="Thao tác quản lý sản phẩm">
             {!isKol ? (
               <>
                 {isAdminOrManager && (
                   <button
                     type="button"
                     onClick={() => navigate('/admin/product-moderation')}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C59B58] hover:text-[#B88E4F] transition cursor-pointer bg-transparent border-0 p-0"
+                    className="flex items-center justify-center w-full min-w-0 min-h-10 p-2 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold leading-[1.4] transition cursor-pointer gap-1.5"
                     title="Mở cổng kiểm duyệt sản phẩm chuyên sâu"
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#C59B58]" />
-                    <span>Cổng duyệt sản phẩm</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                    <span>Cổng duyệt</span>
                     {pendingApprovalCount > 0 && (
-                      <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#B88E4F] text-[10px] font-extrabold inline-flex items-center justify-center">
+                      <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#B88E4F] text-[10px] font-extrabold inline-flex items-center justify-center shrink-0">
                         {pendingApprovalCount}
                       </span>
                     )}
@@ -1688,13 +1717,13 @@ export default function ProductManagementPage() {
                 <button
                   type="button"
                   onClick={openAllVideoModeration}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#B88E4F] hover:text-[#1A1612] transition cursor-pointer bg-transparent border-0 p-0"
+                  className="flex items-center justify-center w-full min-w-0 min-h-10 p-2 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold leading-[1.4] transition cursor-pointer gap-1.5"
                   title="Duyệt video nghiệm thu từ KOL"
                 >
-                  <Video className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Duyệt video KOL</span>
+                  <Video className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                  <span>Duyệt video</span>
                   {pendingKolVideoCount > 0 && (
-                    <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#B88E4F] text-[10px] font-extrabold inline-flex items-center justify-center">
+                    <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-[#FAF0DD] border border-[#E8D4B0] text-[#B88E4F] text-[10px] font-extrabold inline-flex items-center justify-center shrink-0">
                       {pendingKolVideoCount}
                     </span>
                   )}
@@ -1703,21 +1732,21 @@ export default function ProductManagementPage() {
                 <button
                   type="button"
                   onClick={openReviewModeration}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer bg-transparent border-0 p-0"
+                  className="flex items-center justify-center w-full min-w-0 min-h-10 p-2 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold leading-[1.4] transition cursor-pointer gap-1.5"
                   title="Duyệt đánh giá từ khách hàng"
                 >
-                  <MessageSquareText className="w-3.5 h-3.5 text-[#7D715E]" />
-                  <span>Duyệt đánh giá</span>
+                  <MessageSquareText className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                  <span>Duyệt review</span>
                 </button>
 
                 <button
                   type="button"
                   id="btn-open-create-product"
                   onClick={openCreateModal}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:text-[#1A1612] transition cursor-pointer bg-transparent border-0 p-0"
+                  className="flex items-center justify-center w-full min-w-0 min-h-10 p-2 border border-[#C59B58] rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-semibold leading-[1.4] transition cursor-pointer gap-1.5 shadow-2xs"
                   title="Thêm sản phẩm mới vào kho"
                 >
-                  <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <Plus className="w-3.5 h-3.5 text-white shrink-0" />
                   <span>Thêm sản phẩm</span>
                 </button>
               </>
@@ -1725,9 +1754,9 @@ export default function ProductManagementPage() {
               <button
                 type="button"
                 onClick={() => navigate('/collaborator/links')}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#B88E4F] hover:text-[#1A1612] transition cursor-pointer bg-transparent border-0 p-0"
+                className="flex items-center justify-center w-full min-w-0 min-h-10 p-2 border border-[#C59B58] rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-semibold leading-[1.4] transition cursor-pointer gap-1.5 shadow-2xs"
               >
-                <PlusCircle className="w-3.5 h-3.5 text-[#B88E4F]" />
+                <PlusCircle className="w-3.5 h-3.5 text-white shrink-0" />
                 <span>Tạo link tiếp thị</span>
               </button>
             )}
@@ -1981,7 +2010,7 @@ export default function ProductManagementPage() {
         subtitle="Hoàn thiện thông tin và gửi kiểm duyệt."
         maxWidth="full"
         stickyHeader
-        className="product-editor-modal rounded-3xl border-[#EAE4D7] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+        className="!max-w-[min(96vw,1440px)] !w-[min(96vw,1440px)] max-h-[min(92dvh,920px)] rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
         footer={(<div className="product-editor-actions flex items-center justify-end gap-2">
             <button
               type="button"
@@ -2047,7 +2076,7 @@ export default function ProductManagementPage() {
             })()
           )}
           {!editingProduct && (
-            <div className="product-editor-note">
+            <div className="border-l-2 border-[#EEDFC6] px-2.5 py-1 text-[11px] leading-relaxed text-[#7D715E]">
               Điền các mục có dấu <span className="text-[#DC2626]">*</span> để gửi duyệt. Cấp mẫu và hoa hồng có thể thiết lập sau.
             </div>
           )}
@@ -3195,13 +3224,13 @@ export default function ProductManagementPage() {
           onClick={() => setSelectedVideoProduct(null)}
         >
           <div
-            className="kol-video-review-modal bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full text-left animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col"
+            className="kol-video-review-modal bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-[900px] max-h-[calc(100dvh-32px)] text-left animate-in zoom-in-95 duration-150 overflow-hidden flex flex-col"
             role="dialog"
             aria-modal="true"
             aria-labelledby="kol-video-review-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="kol-video-review-header flex items-center justify-between bg-white border-b border-[#EAE4D7]">
+            <div className="kol-video-review-header flex items-center justify-between bg-white border-b border-[#EAE4D7] p-3 sm:p-[14px_18px] shrink-0">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="w-10 h-10 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl flex items-center justify-center text-[#B88E4F] shrink-0">
                   <Video className="w-5 h-5" />
@@ -3209,7 +3238,7 @@ export default function ProductManagementPage() {
                 <div className="min-w-0">
                   <h3 id="kol-video-review-title" className="text-base font-semibold text-[#1A1612] m-0 flex flex-wrap items-center gap-2">
                     Duyệt video KOL
-                    <span className="kol-video-scope">{selectedVideoProduct.id === '__ALL__' ? 'Tất cả sản phẩm' : selectedVideoProduct.sku}</span>
+                    <span className="kol-video-scope border border-[#EAE4D7] rounded-md px-1.5 py-0.5 text-[#7D715E] bg-white text-[10px] font-medium tracking-normal">{selectedVideoProduct.id === '__ALL__' ? 'Tất cả sản phẩm' : selectedVideoProduct.sku}</span>
                   </h3>
                   <p className="text-xs text-[#7D715E] m-0 mt-0.5">
                     {selectedVideoProduct.id === '__ALL__'
@@ -3228,7 +3257,7 @@ export default function ProductManagementPage() {
               </button>
             </div>
 
-            <div className="kol-video-review-list flex-1 overflow-y-auto">
+            <div className="kol-video-review-list flex-1 overflow-y-auto p-3 sm:p-[14px_16px] space-y-3 overscroll-contain [scrollbar-color:#EEDFC6_#FFFFFF]">
               {loadingVideos ? (
                 <div className="text-center py-10 text-xs text-[#7D715E]">
                   Đang tải danh sách video review từ máy chủ...
@@ -3253,10 +3282,10 @@ export default function ProductManagementPage() {
                   return (
                     <article
                       key={v.id}
-                      className="kol-video-review-card bg-white rounded-xl border border-[#EAE4D7] text-xs"
+                      className="kol-video-review-card bg-white rounded-xl border border-[#EAE4D7] p-3 text-xs shadow-none"
                     >
-                      <div className="kol-video-review-layout">
-                        <div className="kol-video-player">
+                      <div className="kol-video-review-layout grid grid-cols-1 sm:grid-cols-[224px_minmax(0,1fr)] gap-3 sm:gap-4 items-start">
+                        <div className="kol-video-player overflow-hidden border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] max-sm:w-full max-sm:max-w-[280px] max-sm:justify-self-center">
                           <video
                             src={v.urlOrContent}
                             poster={v.posterUrl || undefined}
@@ -3462,8 +3491,8 @@ export default function ProductManagementPage() {
 
       {showReviewModeration && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1612]/45 p-2 backdrop-blur-[3px] animate-fadeIn sm:p-5">
-          <section className="customer-review-modal flex w-full flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_24px_80px_rgba(77,57,31,0.18)]" role="dialog" aria-modal="true" aria-labelledby="customer-review-title">
-            <header className="customer-review-header flex items-center justify-between gap-4 border-b border-[#EAE4D7] bg-white">
+          <section className="customer-review-modal flex w-full max-w-[900px] max-h-[min(84dvh,720px)] flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-left text-[#1A1612] shadow-[0_24px_80px_rgba(77,57,31,0.18)]" role="dialog" aria-modal="true" aria-labelledby="customer-review-title">
+            <header className="customer-review-header flex items-center justify-between gap-4 border-b border-[#EAE4D7] bg-white p-[14px_18px] shrink-0">
               <div className="flex min-w-0 items-start gap-3.5">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] sm:h-12 sm:w-12">
                   <MessageSquareText className="h-5 w-5" />
@@ -3478,15 +3507,15 @@ export default function ProductManagementPage() {
               <button
                 type="button"
                 onClick={() => setShowReviewModeration(false)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer"
                 aria-label="Đóng"
               >
                 <X className="w-5 h-5" />
               </button>
             </header>
 
-            <div className="customer-review-tabs border-b border-[#EAE4D7] bg-white">
-              <div>
+            <div className="customer-review-tabs border-b border-[#EAE4D7] bg-white p-[10px_16px] shrink-0">
+              <div className="grid grid-cols-5 gap-1.5 max-sm:flex max-sm:overflow-x-auto">
                 {[
                 { key: 'ALL', label: 'Tất cả', count: customerReviews.length, icon: MessageSquareText },
                 {
@@ -3519,20 +3548,20 @@ export default function ProductManagementPage() {
                     type="button"
                     aria-pressed={reviewFilterStatus === tab.key}
                     onClick={() => setReviewFilterStatus(tab.key as any)}
-                    className={`flex min-w-0 min-h-10 items-center justify-between gap-2 rounded-xl border px-2.5 py-2 text-xs font-bold transition sm:px-3 ${
+                    className={`flex min-w-0 min-h-10 items-center justify-between gap-2 rounded-xl border px-2.5 py-2 text-xs font-bold transition sm:px-3 cursor-pointer ${
                       reviewFilterStatus === tab.key
                         ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#231D15]'
                         : 'border-transparent bg-white text-[#7D715E] hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#1A1612]'
                     }`}
                   >
-                    <span className="flex min-w-0 items-center gap-2"><tab.icon className="h-4 w-4 shrink-0" /><span className="truncate">{tab.label}</span></span>
-                    <span className={`flex h-6 min-w-6 shrink-0 items-center justify-center rounded-lg border px-1.5 text-[10px] ${reviewFilterStatus === tab.key ? 'border-[#231D15]/10 bg-white/50 text-[#231D15]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>{tab.count}</span>
+                    <span className="flex min-w-0 items-center gap-2"><tab.icon className="h-4 w-4 shrink-0 text-[#B88E4F]" /><span className="truncate">{tab.label}</span></span>
+                    <span className={`flex h-6 min-w-6 shrink-0 items-center justify-center rounded-lg border px-1.5 text-[10px] tabular-nums ${reviewFilterStatus === tab.key ? 'border-[#231D15]/10 bg-white/50 text-[#231D15]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>{tab.count}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="customer-review-list min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="customer-review-list min-h-0 flex-1 overflow-y-auto overscroll-contain p-[14px_16px] space-y-2.5 [scrollbar-color:#EEDFC6_#FFFFFF]">
               {loadingReviews ? (
                 <p className="rounded-2xl border border-[#EAE4D7] bg-white py-12 text-center text-sm text-[#7D715E]">Đang tải danh sách đánh giá...</p>
               ) : customerReviews.length === 0 ? (
@@ -3563,7 +3592,7 @@ export default function ProductManagementPage() {
                     return (
                       <article
                         key={review.id}
-                        className="customer-review-card min-w-0 rounded-xl border border-[#EAE4D7] bg-white"
+                        className="customer-review-card grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_112px] gap-5 p-3.5 min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-none"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="customer-review-card-heading flex flex-wrap items-center gap-x-2.5 gap-y-2">
