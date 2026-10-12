@@ -1,9 +1,0 @@
-.admin-oversight-tabs { margin-bottom: 16px; }
-.admin-oversight-tabs > div { box-shadow: none; }
-.admin-oversight-tabs [role="tablist"] { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.admin-oversight-tabs [role="tab"] { min-height: 40px; padding: 8px 10px; font-size: 12px; font-weight: 500; box-shadow: none; }
-@media (max-width: 639px) {
-  .admin-oversight-tabs > div { overflow: hidden; }
-  .admin-oversight-tabs [role="tablist"] { display: flex; overflow-x: auto; }
-  .admin-oversight-tabs [role="tab"] { flex: 0 0 auto; width: auto; white-space: nowrap; }
-}

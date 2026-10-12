@@ -1,4 +1,4 @@
-import type { Product } from "../../services/product.service";
+import type { Product } from "@/services/product.service";
 
 export interface ManualItemForm {
   id: string;
