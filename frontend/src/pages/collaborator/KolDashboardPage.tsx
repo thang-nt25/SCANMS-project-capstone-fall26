@@ -24,6 +24,8 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
+import { SkeletonStatCard } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/common/PageHeader';
 
 export default function KolDashboardPage() {
   const navigate = useNavigate();
@@ -80,8 +82,38 @@ export default function KolDashboardPage() {
   const maxValue = Math.max(...timeSeries.map(getMetricValue), 1);
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {/* Filter & Action Bar - Không khung bọc ngoài, chừa icon và tên sạch đẹp */}
+    <div className="flex flex-col gap-6 text-left page-fade-in">
+      {/* Page Header */}
+      <PageHeader
+        title="Tổng quan & Doanh số"
+        description="Theo dõi hiệu suất tiếp thị, hoa hồng và vận động trong tài khoản KOL"
+        badge="Dữ liệu tự động"
+        badgeVariant="brand"
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={loadData}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer select-none h-8 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB]"
+              title="Làm mới dữ liệu"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/collaborator/referral-links')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] transition cursor-pointer select-none h-8 px-3 rounded-xl shadow-xs active:scale-95"
+              title="Tạo link tiếp thị"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Tạo link tiếp thị</span>
+            </button>
+          </>
+        }
+      />
+
+      {/* Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 py-1 px-0.5">
         <div className="flex items-center gap-2.5">
           <label className="text-xs font-bold text-[#7D715E] flex items-center gap-1.5 shrink-0 select-none">
@@ -176,8 +208,17 @@ export default function KolDashboardPage() {
 
       {/* 4 Real Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {loading ? (
+          <>
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+          </>
+        ) : (
+          <>
         {/* Lượt click tiếp thị */}
-        <Card className="p-4 flex flex-col justify-between gap-3 bg-white">
+        <Card className="p-4 flex flex-col justify-between gap-3 bg-white stat-card-hover cursor-default">
           <div className="flex justify-between items-center">
             <div className="w-8 h-8 rounded-xl bg-[#EBF3FE] text-[#2563EB] flex items-center justify-center">
               <MousePointerClick className="w-4 h-4" />
@@ -277,6 +318,8 @@ export default function KolDashboardPage() {
             Hoa hồng: <strong className="text-[#B88E4F]">{(metrics?.totalCommission || 0).toLocaleString('vi-VN')} ₫</strong>
           </span>
         </Card>
+          </>
+        )}
       </div>
 
       {/* Real Chart and Commission Activity */}

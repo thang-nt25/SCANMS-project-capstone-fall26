@@ -20,6 +20,8 @@ import {
 } from '../../services/analytics.service';
 import { productService, type Product } from '../../services/product.service';
 import { orderService, type StoreOrderRecord } from '../../services/order.service';
+import { SkeletonStatCard } from '../../components/ui/Skeleton';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export default function ShopDashboardPage() {
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
@@ -60,11 +62,39 @@ export default function ShopDashboardPage() {
   const maxRevenue = Math.max(...(timeSeries.map((t) => t.revenue) || [1]), 1);
 
   return (
-    <div className="flex flex-col gap-5 text-left pt-3 sm:pt-4 pb-6">
+    <div className="flex flex-col gap-5 text-left pt-3 sm:pt-4 pb-6 page-fade-in">
+      {/* Page Header */}
+      <PageHeader
+        title="Tổng quan Gian hàng"
+        description="Tổng hợp doanh thu, hoa hồng và đơn hàng từ sàn SCANMS"
+        badge="Thời gian thực"
+        badgeVariant="success"
+        actions={
+          <button
+            type="button"
+            onClick={loadData}
+            title="Tải lại dữ liệu gian hàng"
+            className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+            <span>Làm mới</span>
+          </button>
+        }
+      />
+
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {loading ? (
+          <>
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+          </>
+        ) : (
+          <>
         {/* Doanh thu liên kết */}
-        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
+        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3 stat-card-hover cursor-default">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-[#7D715E]">Doanh thu liên kết (30 ngày)</span>
             <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
@@ -82,7 +112,7 @@ export default function ShopDashboardPage() {
         </div>
 
         {/* Hoa hồng KOL */}
-        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
+        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3 stat-card-hover cursor-default">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-[#7D715E]">Hoa hồng KOL ghi nhận</span>
             <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
@@ -100,7 +130,7 @@ export default function ShopDashboardPage() {
         </div>
 
         {/* Đơn hàng thành công */}
-        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
+        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3 stat-card-hover cursor-default">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-[#7D715E]">Đơn chốt thành công</span>
             <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
@@ -118,7 +148,7 @@ export default function ShopDashboardPage() {
         </div>
 
         {/* Lượt click tiếp thị */}
-        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
+        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3 stat-card-hover cursor-default">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-[#7D715E]">Lượt click tiếp thị</span>
             <div className="w-8 h-8 rounded-xl bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] flex items-center justify-center">
@@ -134,6 +164,8 @@ export default function ShopDashboardPage() {
             </span>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Main Content Grid: Chart & Real Activities */}
