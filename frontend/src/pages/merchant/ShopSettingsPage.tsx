@@ -28,7 +28,6 @@ import { uploadService } from '../../services/upload.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
-import './ShopSettingsPage.css';
 
 export default function ShopSettingsPage() {
   const navigate = useNavigate();
@@ -365,8 +364,8 @@ export default function ShopSettingsPage() {
             </div>
           </section>
 
-          <details className="settings-policies space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
-            <summary className="flex cursor-pointer items-center gap-3">
+          <details className="group space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+            <summary className="flex cursor-pointer items-center gap-3 list-none [&::-webkit-details-marker]:hidden">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <FileText className="h-4 w-4" />
               </div>
@@ -374,6 +373,7 @@ export default function ShopSettingsPage() {
                 <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Chính sách công khai</h2>
                 <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Đổi trả, bảo hành và giao nhận. Bấm để chỉnh sửa.</p>
               </div>
+              <span className="ml-auto text-xl font-normal text-[#B88E4F] group-open:rotate-45 transition-transform" aria-hidden="true">+</span>
             </summary>
 
 <div className="space-y-3 border-t border-[#EAE4D7] pt-3">

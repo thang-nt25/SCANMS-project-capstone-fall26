@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { authService } from '../services/auth.service';
 import KolDashboardPage from './collaborator/KolDashboardPage';
 import ShopDashboardPage from './merchant/ShopDashboardPage';
-import KycApprovalPage from './merchant/KycApprovalPage';
+import KycApprovalPage from './admin/KycApprovalPage';
 
 export default function DashboardDispatcher() {
   const user = authService.getCurrentUser();

@@ -25,7 +25,6 @@ import {
   type FraudMitigationAction,
 } from '../../services/ai-fraud.service';
 import { Select } from '../../components/ui/Select';
-import './AiFraudSentinelPage.css';
 
 export default function AiFraudSentinelPage() {
   const [summary, setSummary] = useState<FraudScanSummary | null>(null);
@@ -151,7 +150,7 @@ export default function AiFraudSentinelPage() {
   };
 
   return (
-    <div className="sentinel-page w-full min-w-0 space-y-4 pb-8 pt-4 sm:pt-5">
+    <div className="w-full min-w-0 space-y-4 pb-8">
       {/* KPI Metric Cards - Nhỏ gọn, cân xứng, chuẩn 4 cột trên desktop */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {/* Total Clicks Scanned */}
@@ -236,11 +235,11 @@ export default function AiFraudSentinelPage() {
       </div>
 
       {/* Main Table & Filter Container */}
-      <div className="sentinel-panel min-w-0 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
         {/* Filter Navigation Bar */}
-        <div className="sentinel-toolbar flex min-w-0 flex-col gap-2 border-b border-[#EAE4D7] bg-white p-3">
-          <div className="sentinel-toolbar-main flex min-w-0 flex-wrap items-center justify-between gap-2">
-            <div className="sentinel-tabs flex min-w-0 max-w-full flex-1 items-center gap-1.5 overflow-x-auto pb-0.5">
+        <div className="flex min-w-0 flex-col gap-2 border-b border-[#EAE4D7] bg-white p-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 w-full">
+            <div className="flex min-w-0 max-w-full flex-1 items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
             <button
               type="button"
               onClick={() => setSelectedTab('ALL')}
@@ -303,8 +302,8 @@ export default function AiFraudSentinelPage() {
             </button>
             </div>
 
-            <div className="sentinel-toolbar-actions flex shrink-0 items-center justify-end gap-1">
-              <div className="sentinel-timeframe relative w-[156px] shrink-0">
+            <div className="flex shrink-0 items-center justify-end gap-1">
+              <div className="relative w-[156px] shrink-0">
                 <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-[#8A642C]" />
                 <Select
                   id="timeframe-select"
@@ -333,7 +332,7 @@ export default function AiFraudSentinelPage() {
             </div>
           </div>
 
-          <div className="sentinel-controls flex min-w-0 items-center justify-end gap-2">
+          <div className="flex min-w-0 items-center justify-end gap-2">
             <div className="relative min-w-0">
               <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
               <input
@@ -351,8 +350,8 @@ export default function AiFraudSentinelPage() {
         </div>
 
         {/* Table Content */}
-        <div className="sentinel-table-scroll overflow-x-auto">
-          <table className="sentinel-table w-full min-w-[1120px] table-fixed border-collapse text-left">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1120px] table-fixed border-collapse text-left">
             <colgroup>
               <col style={{width:'12%'}} /><col style={{width:'16%'}} /><col style={{width:'16%'}} /><col style={{width:'10%'}} /><col style={{width:'16%'}} /><col style={{width:'10%'}} /><col style={{width:'10%'}} /><col style={{width:'10%'}} />
             </colgroup>
@@ -370,7 +369,7 @@ export default function AiFraudSentinelPage() {
             </thead>
             <tbody className="divide-y divide-[#EAE4D7]/70 text-xs font-medium text-[#1A1612]">
               {loading && (
-                <tr className="sentinel-state-row">
+                <tr>
                   <td colSpan={8} className="py-14 text-center font-semibold text-[#7D715E]">
                     <div className="flex flex-col items-center gap-2">
                       <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#C59B58] border-t-transparent" />
@@ -381,7 +380,7 @@ export default function AiFraudSentinelPage() {
               )}
 
               {!loading && !summary && loadError && (
-                <tr className="sentinel-state-row">
+                <tr>
                   <td colSpan={8} className="py-14 text-center">
                     <div role="alert" className="flex flex-col items-center gap-2 text-[#7D715E]">
                       <AlertTriangle className="h-8 w-8 text-[#B88E4F]" />
@@ -401,7 +400,7 @@ export default function AiFraudSentinelPage() {
               )}
 
               {!loading && summary && filteredIncidents.length === 0 && (
-                <tr className="sentinel-state-row">
+                <tr>
                   <td colSpan={8} className="py-14 text-center font-semibold text-[#7D715E]">
                     <div className="flex flex-col items-center gap-2">
                       <ShieldCheck className="h-10 w-10 stroke-1 text-[#059669]" />
@@ -417,7 +416,7 @@ export default function AiFraudSentinelPage() {
                   <tr
                     key={inc.id}
                     id={`incident-row-${inc.id}`}
-                    className="sentinel-row group cursor-pointer transition-colors hover:bg-[#FBF5EB]/55"
+                    className="group cursor-pointer transition-colors hover:bg-[#FBF5EB]/55"
                     onClick={() => setActiveIncident(inc)}
                   >
                     <td data-label="Mã sự vụ" className="px-3 py-3">
@@ -513,7 +512,7 @@ export default function AiFraudSentinelPage() {
                       )}
                     </td>
 
-                    <td data-label="Thao tác" className="sentinel-action-cell px-2 py-3 text-right">
+                    <td data-label="Thao tác" className="px-2 py-3 text-right whitespace-nowrap">
                       <button
                         type="button"
                         onClick={(e) => {

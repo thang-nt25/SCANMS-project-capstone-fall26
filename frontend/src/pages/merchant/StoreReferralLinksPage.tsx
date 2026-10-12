@@ -1,4 +1,3 @@
-import './StoreReferralLinksPage.css';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Link2,
@@ -236,7 +235,7 @@ export default function StoreReferralLinksPage() {
       </div>
 
       {/* Main Table Card */}
-      <div className="store-referral-panel min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_4px_18px_rgba(35,29,21,0.04)]">
+      <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-sm">
         {loading ? (
           <div className="p-16 text-center text-[#7D715E] flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F]" />

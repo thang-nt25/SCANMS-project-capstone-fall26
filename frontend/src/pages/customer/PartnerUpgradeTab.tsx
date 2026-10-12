@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Sparkles,
@@ -20,7 +20,6 @@ import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
 
 import { KolUpgradeForm, ShopUpgradeForm } from './PartnerUpgradeForms';
-import './PartnerUpgradeTab.css';
 
 const createEmptyKolForm = (): ApplyKolData => ({
   platform: '' as ApplyKolData['platform'],
@@ -74,9 +73,17 @@ function ApplicationBadge({ status }: { status?: string | null }) {
             : 'Chưa đăng ký';
   return (
     <span
-      className={`partner-status ${empty ? 'is-empty' : ''} ${rejected ? 'is-error' : ''}`}
+      className={`inline-flex items-center gap-1.5 border rounded-full px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${
+        empty
+          ? 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E]'
+          : rejected
+            ? 'bg-white border-[#F5D8D4] text-[#DC2626]'
+            : verified
+              ? 'bg-[#FBF5EB] border-[#EEDFC6] text-[#059669]'
+              : 'bg-[#FBF5EB] border-[#EEDFC6] text-[#8F682E]'
+      }`}
     >
-      {!empty && <Icon />}
+      {!empty && <Icon size={12} />}
       {label}
     </span>
   );
@@ -93,17 +100,6 @@ export const PartnerUpgradeTab: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [contentWidth, setContentWidth] = useState(0);
-
-  useEffect(() => {
-    if (!contentRef.current) return;
-    const observer = new ResizeObserver(([entry]) =>
-      setContentWidth(entry.contentRect.width),
-    );
-    observer.observe(contentRef.current);
-    return () => observer.disconnect();
-  }, [loading]);
 
   const [kolForm, setKolForm] = useState(createEmptyKolForm);
   const [shopForm, setShopForm] = useState(createEmptyShopForm);
@@ -276,10 +272,10 @@ export const PartnerUpgradeTab: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="partner-upgrade">
-        <div className="partner-form partner-waiting">
+      <div className="grid gap-[16px] text-left min-w-0 text-[#1A1612] max-[640px]:gap-[12px]">
+        <div className="border border-[#EAE4D7] rounded-[18px] bg-white p-[30px_22px] grid gap-[14px] justify-items-start">
           <RefreshCw className="h-5 w-5 animate-spin text-[#B88E4F]" />
-          <p>Đang tải hồ sơ đối tác…</p>
+          <p className="m-0 text-[13px] text-[#7D715E] leading-[1.7]">Đang tải hồ sơ đối tác…</p>
         </div>
       </div>
     );
@@ -326,55 +322,53 @@ export const PartnerUpgradeTab: React.FC = () => {
   ];
 
   return (
-    <div
-      ref={contentRef}
-      className={`partner-upgrade ${contentWidth > 0 && contentWidth < 1100 ? 'is-narrow' : ''} ${contentWidth > 0 && contentWidth < 640 ? 'is-mobile' : ''}`}
-    >
-      <header className="partner-upgrade-header">
+    <div className="grid gap-[16px] text-left min-w-0 text-[#1A1612] max-[640px]:gap-[12px] max-[767px]:pb-[64px]">
+      <header className="flex items-center justify-between gap-[20px] p-[22px_24px] border border-[#EAE4D7] rounded-[18px] bg-white max-[640px]:p-[18px]">
         <div>
-          <span className="partner-upgrade-eyebrow">Đồng hành cùng SCANMS</span>
-          <h2>Nâng cấp đối tác</h2>
-          <p>
+          <span className="block text-[#B88E4F] text-[11px] font-[600] mb-[6px]">Đồng hành cùng SCANMS</span>
+          <h2 className="m-0 text-[24px] leading-[1.3] font-[700] tracking-[-0.7px] text-[#1A1612] max-[640px]:text-[21px]">Nâng cấp đối tác</h2>
+          <p className="m-[7px_0_0] text-[13px] text-[#7D715E] leading-[1.7] max-w-[760px] max-[640px]:text-[12px]">
             Trở thành KOL tiếp thị liên kết hoặc mở gian hàng. Chọn vai trò phù
             hợp và hoàn thiện hồ sơ đăng ký.
           </p>
         </div>
-        <div className="partner-account-note">
-          <ShieldCheck />
+        <div className="hidden min-[1101px]:flex items-center gap-[9px] shrink-0 border-l border-[#EAE4D7] pl-[22px] text-[#7D715E] text-[12px] leading-[1.6]">
+          <ShieldCheck size={22} className="text-[#B88E4F] shrink-0" />
           <span>
-            <strong>Một tài khoản, nhiều vai trò</strong>Tiếp tục mua sắm và
+            <strong className="block text-[#1A1612] text-[13px] font-[600]">Một tài khoản, nhiều vai trò</strong>Tiếp tục mua sắm và
             chuyển đổi linh hoạt.
           </span>
         </div>
       </header>
-      <div className="partner-choices" aria-label="Chọn loại đối tác">
+
+      <div className="grid grid-cols-2 gap-[14px] max-[640px]:grid-cols-1 max-[640px]:gap-[10px]" aria-label="Chọn loại đối tác">
         {choices.map((choice) => (
           <article
             key={choice.type}
-            className={`partner-choice ${activePartnerType === choice.type ? 'is-selected' : ''}`}
+            className={`flex flex-col p-[18px] border rounded-[16px] bg-white transition-[border-color] duration-150 min-w-0 max-[640px]:p-[15px] ${activePartnerType === choice.type ? 'border-[#C59B58] shadow-[0_0_0_1px_#EEDFC6]' : 'border-[#EAE4D7] hover:border-[#EEDFC6]'}`}
           >
             <button
               type="button"
-              className="partner-choice-select"
+              className="flex w-full items-start gap-[12px] text-left cursor-pointer bg-transparent border-0 p-0"
               aria-pressed={activePartnerType === choice.type}
               onClick={() => selectPartnerType(choice.type)}
             >
-              <span className="partner-choice-icon">
-                <choice.icon />
+              <span className="w-[40px] h-[40px] border border-[#EEDFC6] rounded-[12px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
+                <choice.icon size={19} />
               </span>
-              <span className="partner-choice-copy">
-                <span className="partner-choice-title">
-                  <strong>{choice.title}</strong>
+              <span className="flex-1 min-w-0">
+                <span className="flex items-center justify-between gap-[10px] flex-wrap">
+                  <strong className="text-[15px] font-[650] leading-[1.5] text-[#1A1612]">{choice.title}</strong>
                   <ApplicationBadge status={choice.status} />
                 </span>
-                <span className="partner-choice-description">
+                <span className="block mt-[6px] text-[12px] text-[#7D715E] leading-[1.65] min-h-[40px] max-[640px]:min-h-0">
                   {choice.description}
                 </span>
               </span>
             </button>
             <button
               type="button"
-              className="partner-choice-action"
+              className={`flex items-center justify-between w-full mt-[14px] rounded-[10px] border p-[9px_12px] text-[12px] font-[600] cursor-pointer transition ${activePartnerType === choice.type ? 'text-[#8F682E] bg-[#FBF5EB] border-[#EEDFC6]' : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]'}`}
               onClick={() =>
                 choice.status === 'VERIFIED'
                   ? authService.switchWorkspace(choice.type, navigate)
@@ -390,21 +384,21 @@ export const PartnerUpgradeTab: React.FC = () => {
                   : choice.action}
               {activePartnerType === choice.type &&
               choice.status !== 'VERIFIED' ? (
-                <CheckCircle2 />
+                <CheckCircle2 size={15} />
               ) : (
-                <ArrowRight />
+                <ArrowRight size={15} />
               )}
             </button>
           </article>
         ))}
       </div>
+
       {activePartnerType === 'kol' && (
         <KolUpgradeForm
           form={kolForm}
           setForm={setKolForm}
           onSubmit={handleKolSubmit}
           submitting={submitting}
-
           rejectionReason={
             kolApp?.status === 'REJECTED'
               ? kolApp.socialLinksJson?.rejectionReason
@@ -419,7 +413,6 @@ export const PartnerUpgradeTab: React.FC = () => {
             setForm={setShopForm}
             onSubmit={handleShopSubmit}
             submitting={submitting}
-
             reviewNote={
               shopStatus === 'NEEDS_INFO' || shopStatus === 'REJECTED'
                 ? shopApp?.onboardingReviewNote
@@ -427,39 +420,39 @@ export const PartnerUpgradeTab: React.FC = () => {
             }
           />
         ) : (
-          <section className="partner-form partner-waiting">
-            <span className="partner-form-icon">
-              {shopStatus === 'VERIFIED' ? <CheckCircle2 /> : <Clock3 />}
+          <section className="p-[30px_22px] grid gap-[14px] justify-items-start border border-[#EAE4D7] rounded-[18px] bg-white shadow-xs">
+            <span className="w-[40px] h-[40px] border border-[#EEDFC6] rounded-[12px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
+              {shopStatus === 'VERIFIED' ? <CheckCircle2 size={20} /> : <Clock3 size={20} />}
             </span>
-            <h3>
+            <h3 className="m-0 text-[18px] font-[650] text-[#1A1612]">
               {shopStatus === 'VERIFIED'
                 ? 'Gian hàng đã được xác minh'
                 : 'Hồ sơ đang chờ xét duyệt'}
             </h3>
-            <p>
+            <p className="m-0 text-[13px] text-[#7D715E] leading-[1.7] max-w-[680px]">
               {shopStatus === 'VERIFIED'
                 ? 'Gian hàng đã được kích hoạt. Bạn có thể vào không gian quản lý để đăng sản phẩm và hợp tác cùng KOL.'
                 : 'SCANMS đang kiểm tra hồ sơ của bạn. Kết quả hoặc yêu cầu bổ sung sẽ được gửi qua thông báo.'}
             </p>
             {shopApp?.onboardingReviewNote && shopStatus !== 'VERIFIED' && (
-              <div className="partner-review-note">
-                <CircleAlert />
+              <div className="flex items-start gap-[10px] border border-[#EEDFC6] rounded-[12px] p-[12px_14px] bg-[#FBF5EB] text-[12px] text-[#7D715E] leading-[1.7] w-full">
+                <CircleAlert size={17} className="text-[#B88E4F] shrink-0 mt-[2px]" />
                 <div>
-                  <strong>Ghi chú xét duyệt</strong>
+                  <strong className="block text-[#8F682E] font-[600]">Ghi chú xét duyệt</strong>
                   {shopApp.onboardingReviewNote}
                 </div>
               </div>
             )}
             <button
               type="button"
-              className="partner-primary"
+              className="inline-flex items-center justify-center gap-[9px] bg-[#C59B58] hover:bg-[#B88E4F] text-white border border-[#C59B58] rounded-[11px] p-[11px_18px] text-[12px] font-[650] whitespace-nowrap cursor-pointer transition-[background] duration-150 shadow-xs max-[640px]:w-full"
               onClick={() =>
                 shopStatus === 'VERIFIED'
                   ? authService.switchWorkspace('shop', navigate)
                   : void loadStatus()
               }
             >
-              {shopStatus === 'VERIFIED' ? <ArrowRight /> : <RefreshCw />}
+              {shopStatus === 'VERIFIED' ? <ArrowRight size={15} /> : <RefreshCw size={15} />}
               {shopStatus === 'VERIFIED'
                 ? 'Vào quản lý gian hàng'
                 : 'Kiểm tra trạng thái'}

@@ -1,7 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import './ShopKolHubPage.css';
-import './ShopKolWorkspace.css';
-import './CreatorDirectory.css';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -847,9 +844,9 @@ return true;
           {inviteError && <p role="alert" className="mt-3 text-sm text-[#DC2626]">{inviteError}</p>}
           {inviteSuccess && <div role="status" className="mt-3 flex items-start gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#1A1612]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" /><p>{inviteSuccess}</p></div>}
           <button type="submit" disabled={inviting || !inviteEmail.trim()} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#C59B58] text-sm font-semibold text-[#231D15] transition hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-50"><UserPlus className="h-4 w-4" />{inviting ? 'Đang gửi…' : 'Gửi lời mời hợp tác'}</button>
-          <details className="kol-invite-share mt-5 border-t border-[#EAE4D7] pt-4">
-            <summary><Share2 className="h-3.5 w-3.5" /><span>Chia sẻ gian hàng</span><span className="kol-invite-share-toggle" aria-hidden="true">+</span></summary>
-            <p className="text-xs leading-relaxed text-[#7D715E]">Gửi trang shop để KOL tìm hiểu. Liên kết này không tạo lời mời hợp tác.</p>
+          <details className="group mt-5 border-t border-[#EAE4D7] pt-4">
+            <summary className="flex items-center gap-2 list-none cursor-pointer py-1 text-xs text-[#7D715E] [&::-webkit-details-marker]:hidden hover:text-[#1A1612]"><Share2 className="h-3.5 w-3.5 text-[#B88E4F]" /><span>Chia sẻ gian hàng</span><span className="ml-auto text-sm text-[#B88E4F] group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
+            <p className="mt-2 text-xs leading-relaxed text-[#7D715E]">Gửi trang shop để KOL tìm hiểu. Liên kết này không tạo lời mời hợp tác.</p>
             <button type="button" disabled={copyingLink} onClick={handleCopyInviteLink} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-medium text-[#1A1612] transition hover:bg-[#FBF5EB] disabled:opacity-50">{copiedLink ? <Check className="h-4 w-4 text-[#059669]" /> : <Copy className="h-4 w-4 text-[#B88E4F]" />}{copyingLink ? 'Đang lấy liên kết…' : copiedLink ? 'Đã sao chép' : 'Sao chép trang gian hàng'}</button>
             {sharedShopLink && <input readOnly aria-label="Liên kết trang gian hàng" value={sharedShopLink} onFocus={(event) => event.target.select()} className="mt-2 h-9 w-full rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs text-[#7D715E] outline-none" />}
           </details>
@@ -996,9 +993,9 @@ return true;
                             </div>
                           </div>
 
-                                                    <details className="creator-directory-profile-details">
-                            <summary>Chi tiết <span aria-hidden="true">+</span></summary>
-                            <div className="creator-directory-detail-content">
+                          <details className="group mt-2">
+                            <summary className="inline-flex items-center gap-1.5 list-none text-xs text-[#7D715E] cursor-pointer py-0.5 [&::-webkit-details-marker]:hidden hover:text-[#1A1612]">Chi tiết <span className="text-[#B88E4F] text-xs group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
+                            <div className="mt-1.5 p-3 rounded-xl border border-[#EAE4D7] bg-white space-y-2">
 <p className="text-[11px] text-[#7D715E] truncate mt-0.5">
                                 {creator.email} {creator.phoneNumber ? `· ${creator.phoneNumber}` : ''}
                               </p>
@@ -1603,11 +1600,11 @@ return true;
               </div>
 
               {/* Right: Quick Action Buttons & Discovery CTAs (Borderless) */}
-              <details className="kol-more-actions" onKeyDown={event => {
+              <details className="group relative shrink-0" onKeyDown={event => {
                 if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
               }}>
-                <summary aria-label="Thao tác với nhà sáng tạo"><span>Thêm</span><span aria-hidden="true">···</span></summary>
-                <div className="kol-more-menu" onClick={event => {
+                <summary aria-label="Thao tác với nhà sáng tạo" className="flex items-center gap-2.5 min-h-[32px] px-3 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs list-none cursor-pointer [&::-webkit-details-marker]:hidden hover:bg-[#FBF5EB] hover:border-[#EEDFC6] hover:text-[#1A1612] group-open:bg-[#FBF5EB] group-open:border-[#EEDFC6] group-open:text-[#1A1612] transition"><span>Thao tác</span><span aria-hidden="true" className="font-mono text-sm leading-none">···</span></summary>
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid gap-1 w-52 p-2 border border-[#EAE4D7] rounded-xl bg-white shadow-[0_12px_32px_rgba(35,29,21,0.12)]" onClick={event => {
                   if ((event.target as HTMLElement).closest('button, a')) {
                     event.currentTarget.closest('details')?.removeAttribute('open');
                   }
@@ -1616,7 +1613,7 @@ return true;
                   type="button"
                   id="btn-toggle-ai-mode"
                   onClick={() => setAiMatchingMode(true)}
-                  className="text-xs font-bold transition flex items-center gap-1.5 cursor-pointer text-[#B88E4F] hover:text-[#1A1612] shrink-0 whitespace-nowrap bg-transparent border-0 p-0"
+                  className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg bg-white hover:bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] transition text-left cursor-pointer border-0"
                   title="Sử dụng AI phân tích sản phẩm và tìm kiếm KOL phù hợp"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -1628,7 +1625,7 @@ return true;
                   type="button"
                   id="btn-open-creator-directory"
                   onClick={() => setShowDiscoveryModal(true)}
-                  className="text-xs font-bold transition flex items-center gap-1.5 cursor-pointer text-[#B88E4F] hover:text-[#1A1612] shrink-0 whitespace-nowrap bg-transparent border-0 p-0 ml-1"
+                  className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg bg-white hover:bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] transition text-left cursor-pointer border-0"
                   title="Khám phá danh bạ và gửi lời mời đến KOL trên sàn"
                 >
                   <Users className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -1641,7 +1638,7 @@ return true;
                     setNewCommissionRate(selectedKol.commissionRate || 22);
                     setShowCommissionModal(true);
                   }}
-                  className="text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap bg-transparent border-0 p-0"
+                  className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg bg-white hover:bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] transition text-left cursor-pointer border-0"
                   title="Cấp mức hoa hồng độc quyền VIP cho KOL này"
                 >
                   <DollarSign className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -1653,7 +1650,7 @@ return true;
                     href={selectedKol.primaryChannel.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap bg-transparent border-0 p-0"
+                    className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg bg-white hover:bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] transition text-left cursor-pointer border-0"
                     title="Mở kênh TikTok / YouTube của KOL"
                   >
                     <ExternalLink className="w-3.5 h-3.5 text-[#7D715E]" />
