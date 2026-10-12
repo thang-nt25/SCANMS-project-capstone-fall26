@@ -7,6 +7,7 @@ import { uploadService } from '../../services/upload.service';
 import { orderService } from '../../services/order.service';
 import { notificationsService } from '../../services/notifications.service';
 import { toast } from '../../utils/toast';
+import { handleRouteHover, cancelRouteHover, prewarmCoreRoutes } from '../../utils/route-preloader.utils';
 
 export interface SidebarProps {
   currentUser: UserProfile | null;
@@ -42,6 +43,10 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
     }
     return currentUser?.role || 'COLLABORATOR';
   })();
+
+  useEffect(() => {
+    return prewarmCoreRoutes(role);
+  }, [role]);
 
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number | null>(null);
   const [unreadNotifs, setUnreadNotifs] = useState<{ ORDER?: number; PROMOTION?: number; SYSTEM?: number }>({});
@@ -328,6 +333,10 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
             <div key={item.path} className="flex flex-col">
               <Link
                 to={item.path}
+                onMouseEnter={() => handleRouteHover(item.path)}
+                onMouseLeave={cancelRouteHover}
+                onFocus={() => handleRouteHover(item.path)}
+                onBlur={cancelRouteHover}
                 aria-current={active ? 'page' : undefined}
                 className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
                   active
