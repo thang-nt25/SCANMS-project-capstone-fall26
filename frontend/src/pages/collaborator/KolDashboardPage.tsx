@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Calendar,
   MousePointerClick,
   ShoppingBag,
   Target,
@@ -23,9 +22,8 @@ import {
   type DashboardOverviewResponse,
   type TimeSeriesPoint,
 } from '@/services/analytics.service';
-import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
-import './KolDashboardPage.css';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 function DashboardMetric({ label, value, note, growth, icon: Icon }: {
   label: string;
@@ -35,22 +33,31 @@ function DashboardMetric({ label, value, note, growth, icon: Icon }: {
   icon: LucideIcon;
 }) {
   return (
-    <Card className="kd-metric-card">
-      <div className="kd-metric-top">
-        <span className="kd-metric-label">{label}</span>
+    <div className="flex flex-col gap-1.5 min-w-0 p-3 sm:p-4 border-b sm:border-b-0 sm:border-r border-[#EAE4D7] last:border-r-0 last:border-b-0">
+      <div className="flex flex-wrap items-center justify-between gap-1">
+        <span className="text-[11px] text-[#7D715E] leading-tight">{label}</span>
         {growth !== undefined && (
-          <span title="So với kỳ trước" className={`kd-growth ${growth > 0 ? 'is-positive' : growth < 0 ? 'is-negative' : 'is-neutral'}`}>
-            {growth !== 0 && <TrendingUp size={12} aria-hidden="true" />}
+          <span
+            title="So với kỳ trước"
+            className={`inline-flex items-center gap-0.5 text-[10px] font-semibold leading-tight whitespace-nowrap ${
+              growth > 0 ? 'text-[#059669]' : growth < 0 ? 'text-[#DC2626]' : 'text-[#7D715E]'
+            }`}
+          >
+            {growth !== 0 && <TrendingUp size={11} className={growth < 0 ? 'rotate-180' : ''} aria-hidden="true" />}
             {growth > 0 ? '+' : ''}{growth.toFixed(1)}%
           </span>
         )}
       </div>
-      <div className="kd-metric-main">
-        <span className="kd-icon"><Icon aria-hidden="true" /></span>
-        <strong className="kd-metric-value">{value}</strong>
+      <div className="flex items-center gap-2 mt-1">
+        <span className="grid place-items-center shrink-0 w-7 h-7 rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        </span>
+        <strong className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] tabular-nums truncate">
+          {value}
+        </strong>
       </div>
-      <span className="kd-metric-note">{note}</span>
-    </Card>
+      <span className="text-[10px] text-[#7D715E] mt-auto leading-relaxed">{note}</span>
+    </div>
   );
 }
 
@@ -74,7 +81,6 @@ export default function KolDashboardPage() {
       const days = Number(period) || 7;
       const endDate = new Date();
       const startDate = new Date(endDate);
-      // The analytics API groups daily points by UTC date. Request exactly N buckets.
       startDate.setUTCHours(0, 0, 0, 0);
       startDate.setUTCDate(startDate.getUTCDate() - days + 1);
       const query = { range: 'custom', days, startDate: startDate.toISOString(), endDate: endDate.toISOString() };
@@ -108,7 +114,6 @@ export default function KolDashboardPage() {
   const availBal = Number(wallet?.availableBalance || 0);
   const pendingBal = Number(wallet?.pendingBalance || 0);
 
-  // Compute max value for chart scaling based on selected metric
   const getMetricValue = (point: TimeSeriesPoint) => {
     const value = Number(point[metric]);
     return Number.isFinite(value) ? Math.max(0, value) : 0;
@@ -123,84 +128,130 @@ export default function KolDashboardPage() {
   const formatChartValue = (value: number) => new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 
   return (
-    <section className="kol-dashboard" aria-label="Tổng quan hiệu quả KOL">
-      <div className="kd-filter-bar">
-        <div className="kd-period-control">
-          <label htmlFor="kol-dashboard-period"><Calendar size={14} aria-hidden="true" />Thời gian phân tích</label>
-          <div className="kd-period-select">
-            <Select id="kol-dashboard-period" value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Khoảng thời gian phân tích">
-              <option value="7">7 ngày gần nhất</option>
-              <option value="30">30 ngày gần nhất</option>
-              <option value="90">90 ngày gần nhất</option>
-            </Select>
-          </div>
-        </div>
-        <div className="kd-filter-actions">
-          <span className="kd-date-range">
-            {overview?.period
-              ? `Dữ liệu: ${new Date(overview.period.startDate).toLocaleDateString('vi-VN')} – ${new Date(overview.period.endDate).toLocaleDateString('vi-VN')}`
-              : 'Dữ liệu thực tế từ ví & giao dịch sàn'}
-          </span>
-          <button type="button" className="kd-button" onClick={() => void loadData()} disabled={loading}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />Làm mới
-          </button>
-          <button type="button" className="kd-button kd-create-link" onClick={() => navigate('/collaborator/referral-links')}>
-            <PlusCircle size={14} aria-hidden="true" />Tạo link tiếp thị
-          </button>
-        </div>
-      </div>
-      <div className="kd-summary-panel">
-        <section className="kd-balance" aria-label="Số dư ví KOL" aria-busy={loading}>
-          <div className="kd-available">
-            <span className="kd-label"><Wallet size={15} aria-hidden="true" />Số dư khả dụng</span>
-            <strong>{availBal.toLocaleString('vi-VN')} ₫</strong>
-          </div>
-          <div className="kd-pending">
-            <span className="kd-label"><Clock size={14} aria-hidden="true" />Chờ đối soát Escrow</span>
-            <strong>{pendingBal.toLocaleString('vi-VN')} ₫</strong>
-          </div>
-          <div className="kd-wallet-actions">
-            <button type="button" className="kd-button kd-wallet-link" onClick={() => navigate('/collaborator/wallet')}>
-              Quản lý ví <ArrowUpRight size={14} aria-hidden="true" />
+    <section className="flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] text-left pb-12" aria-label="Tổng quan hiệu quả KOL">
+      {/* 1. Page Header Chuẩn Hóa */}
+      <PageHeader
+        title="Tổng quan Hiệu quả KOL"
+        description="Theo dõi doanh số tiếp thị, hoa hồng thực nhận và tiến trình thăng hạng đối tác"
+        icon={<TrendingUp className="w-5 h-5" />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-[160px]">
+              <Select
+                id="kol-dashboard-period"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+                aria-label="Khoảng thời gian phân tích"
+              >
+                <option value="7">7 ngày gần nhất</option>
+                <option value="30">30 ngày gần nhất</option>
+                <option value="90">90 ngày gần nhất</option>
+              </Select>
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#FBF5EB] transition-colors disabled:opacity-60 cursor-pointer"
+              onClick={() => void loadData()}
+              disabled={loading}
+            >
+              <RefreshCw size={14} className={`text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+              <span>Làm mới</span>
             </button>
-            <span className="kd-kyc" data-verified={wallet?.kycStatus === 'VERIFIED'}>
-              <ShieldCheck size={13} aria-hidden="true" />{wallet?.kycStatus === 'VERIFIED' ? 'KYC đã xác thực' : 'Chưa xác thực KYC'}
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              onClick={() => navigate('/collaborator/marketing?tab=links')}
+            >
+              <PlusCircle size={14} />
+              <span>Tạo link tiếp thị</span>
+            </button>
+          </div>
+        }
+      />
+
+      <div className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
+        <section className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2.5 p-3.5" aria-label="Số dư ví KOL" aria-busy={loading}>
+          <div className="grid gap-1.5 min-w-0 p-3 sm:p-4 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]">
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#7D715E] leading-relaxed">
+              <Wallet size={15} className="text-[#B88E4F]" aria-hidden="true" />
+              Số dư khả dụng
+            </span>
+            <strong className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight tabular-nums text-[#1A1612]">
+              {availBal.toLocaleString('vi-VN')} ₫
+            </strong>
+          </div>
+          <div className="grid gap-1.5 min-w-0 p-3 sm:p-4 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5]">
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#7D715E] leading-relaxed">
+              <Clock size={14} className="text-[#B88E4F]" aria-hidden="true" />
+              Chờ đối soát Escrow
+            </span>
+            <strong className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight tabular-nums text-[#1A1612]">
+              {pendingBal.toLocaleString('vi-VN')} ₫
+            </strong>
+          </div>
+          <div className="grid justify-items-center gap-2 px-2">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors cursor-pointer"
+              onClick={() => navigate('/collaborator/wallet')}
+            >
+              <span>Quản lý ví</span>
+              <ArrowUpRight size={14} className="text-[#B88E4F]" aria-hidden="true" />
+            </button>
+            <span className="inline-flex items-center gap-1 text-[10px] text-[#7D715E]">
+              <ShieldCheck size={13} className={wallet?.kycStatus === 'VERIFIED' ? 'text-[#059669]' : 'text-[#B88E4F]'} aria-hidden="true" />
+              <span>{wallet?.kycStatus === 'VERIFIED' ? 'KYC đã xác thực' : 'Chưa xác thực KYC'}</span>
             </span>
           </div>
         </section>
 
-        <div className="kd-metrics" role="group" aria-label="Hiệu quả tiếp thị trong khoảng thời gian đã chọn">
-          <DashboardMetric label="Lượt nhấp tiếp thị" icon={MousePointerClick}
-            value={(metrics?.totalClicks || 0).toLocaleString('vi-VN')} growth={metrics?.growthClicks}
-            note={`${metrics?.activeReferralLinks || 0} liên kết đang có lượt xem`} />
-          <DashboardMetric label="Đơn hàng thành công" icon={ShoppingBag} growth={metrics?.growthOrders}
-            value={<>{metrics?.completedOrders || 0}<span> / {metrics?.totalOrders || 0} đơn</span></>}
-            note={`Chu kỳ ${period} ngày gần nhất`} />
-          <DashboardMetric label="Tỷ lệ chuyển đổi" icon={Target}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-t border-[#EAE4D7]" role="group" aria-label="Hiệu quả tiếp thị trong khoảng thời gian đã chọn">
+          <DashboardMetric
+            label="Lượt nhấp tiếp thị"
+            icon={MousePointerClick}
+            value={(metrics?.totalClicks || 0).toLocaleString('vi-VN')}
+            growth={metrics?.growthClicks}
+            note={`${metrics?.activeReferralLinks || 0} liên kết đang có lượt xem`}
+          />
+          <DashboardMetric
+            label="Đơn hàng thành công"
+            icon={ShoppingBag}
+            growth={metrics?.growthOrders}
+            value={<>{metrics?.completedOrders || 0}<span className="text-xs font-normal text-[#7D715E]"> / {metrics?.totalOrders || 0} đơn</span></>}
+            note={`Chu kỳ ${period} ngày gần nhất`}
+          />
+          <DashboardMetric
+            label="Tỷ lệ chuyển đổi"
+            icon={Target}
             value={`${(metrics?.conversionRate || 0).toFixed(2)}%`}
-            note={`Trung bình đơn: ${(metrics?.averageOrderValue || 0).toLocaleString('vi-VN')} ₫`} />
-          <DashboardMetric label="Doanh số tiếp thị (GMV)" icon={Wallet} growth={metrics?.growthRevenue}
+            note={`Trung bình đơn: ${(metrics?.averageOrderValue || 0).toLocaleString('vi-VN')} ₫`}
+          />
+          <DashboardMetric
+            label="Doanh số tiếp thị (GMV)"
+            icon={Wallet}
+            growth={metrics?.growthRevenue}
             value={`${(metrics?.grossRevenue || 0).toLocaleString('vi-VN')} ₫`}
-            note={<>Hoa hồng: <strong className="text-[#B88E4F]">{(metrics?.totalCommission || 0).toLocaleString('vi-VN')} ₫</strong></>} />
+            note={<>Hoa hồng: <strong className="text-[#B88E4F]">{(metrics?.totalCommission || 0).toLocaleString('vi-VN')} ₫</strong></>}
+          />
         </div>
       </div>
 
       {/* Real Chart and Commission Activity */}
-      <div className="kd-details-grid">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.4fr)] items-stretch gap-3.5">
         {/* Biểu đồ diễn biến */}
-        <Card className="kol-daily-card kd-chart-card">
-          <div className="kd-card-heading">
-            <div className="kd-card-title">
-              <div className="kd-icon">
-                <BarChart3 className="w-5 h-5" />
+        <div className="flex flex-col gap-3.5 min-w-0 p-4 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
+          <div className="flex items-center justify-between flex-wrap gap-2.5 pb-3 border-b border-[#EAE4D7]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="grid place-items-center shrink-0 w-8 h-8 rounded-lg border border-[#EEDFC6] bg-white text-[#B88E4F]">
+                <BarChart3 className="w-4 h-4" />
               </div>
               <div>
-                <h2>Hiệu quả theo ngày</h2>
-                <p>Theo dõi biến động trong {period} ngày gần nhất</p>
+                <h2 className="text-sm font-semibold text-[#1A1612] m-0">Hiệu quả theo ngày</h2>
+                <p className="text-[11px] text-[#7D715E] mt-0.5 m-0">Theo dõi biến động trong {period} ngày gần nhất</p>
               </div>
             </div>
 
-            <div className="kd-chart-select">
+            <div className="w-[160px] max-w-full">
               <Select
                 value={metric}
                 onChange={(e) => setMetric(e.target.value as any)}
@@ -215,61 +266,103 @@ export default function KolDashboardPage() {
           </div>
 
           {loading ? (
-            <div className="kd-chart-state" role="status"><RefreshCw size={20} className="animate-spin" aria-hidden="true" /><span>Đang tải dữ liệu biểu đồ…</span></div>
+            <div className="flex flex-col items-center justify-center gap-2 min-h-[220px] p-5 text-xs text-[#7D715E]" role="status">
+              <RefreshCw size={20} className="animate-spin text-[#B88E4F]" aria-hidden="true" />
+              <span>Đang tải dữ liệu biểu đồ…</span>
+            </div>
           ) : timeSeries.length === 0 ? (
-            <div className="kd-chart-state">
-              <BarChart3 className="w-8 h-8 text-[#EAE4D7] mb-2" />
-              Chưa có dữ liệu giao dịch trong chu kỳ được chọn.
+            <div className="flex flex-col items-center justify-center gap-2 min-h-[220px] p-5 text-xs text-[#7D715E]">
+              <BarChart3 className="w-8 h-8 text-[#EAE4D7] mb-1" />
+              <span>Chưa có dữ liệu giao dịch trong chu kỳ được chọn.</span>
             </div>
           ) : (
-            <div className="kol-daily-chart" data-empty={!hasChartActivity || undefined} role="group" aria-label={`Biểu đồ ${metric === 'clicks' ? 'lượt nhấp' : metric === 'orders' ? 'đơn hàng' : metric === 'revenue' ? 'doanh số' : 'hoa hồng'} theo ngày`}>
-              <div className="kol-chart-y-axis" aria-hidden="true"><span>{formatChartValue(maxValue)}</span><span>{formatChartValue(maxValue / 2)}</span><span>0</span></div>
-              <div className="kol-chart-plot">
-                <div className="kol-chart-grid" aria-hidden="true"><i /><i /><i /></div>
+            <div className="grid grid-cols-[36px_minmax(0,1fr)] gap-x-2 pt-2" role="group" aria-label={`Biểu đồ ${chartMetricLabel} theo ngày`}>
+              <div className="flex flex-col justify-between h-[168px] mt-6 text-[10px] text-[#7D715E] text-right tabular-nums" aria-hidden="true">
+                <span>{formatChartValue(maxValue)}</span>
+                <span>{formatChartValue(maxValue / 2)}</span>
+                <span>0</span>
+              </div>
+              <div className="relative h-[192px] min-w-0">
+                <div className="absolute inset-0 top-6 flex flex-col justify-between pointer-events-none" aria-hidden="true">
+                  <div className="w-full border-t border-dashed border-[#EAE4D7]" />
+                  <div className="w-full border-t border-dashed border-[#EAE4D7]" />
+                  <div className="w-full border-t border-[#EAE4D7]" />
+                </div>
                 {!hasChartActivity && (
-                  <div className="kd-chart-zero-state">
-                    <span className="kd-chart-empty-icon"><BarChart3 size={20} aria-hidden="true" /></span>
-                    <strong>Chưa phát sinh {chartMetricLabel} trong kỳ này</strong>
-                    <span>Dữ liệu sẽ hiển thị khi có hoạt động tiếp thị.</span>
+                  <div className="absolute inset-0 top-6 flex flex-col items-center justify-center gap-1.5 p-2 text-center text-xs text-[#7D715E] pointer-events-none">
+                    <span className="grid place-items-center w-9 h-9 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                      <BarChart3 size={18} aria-hidden="true" />
+                    </span>
+                    <strong className="text-xs font-semibold text-[#1A1612]">Chưa phát sinh {chartMetricLabel} trong kỳ này</strong>
+                    <span className="text-[10px]">Dữ liệu sẽ hiển thị khi có hoạt động tiếp thị.</span>
                   </div>
                 )}
-                <div className="kol-chart-bars" style={{ gridTemplateColumns: `repeat(${timeSeries.length}, minmax(0, 1fr))` }}>
+                <div className="relative grid items-end h-[192px] gap-1" style={{ gridTemplateColumns: `repeat(${timeSeries.length}, minmax(0, 1fr))` }}>
                   {timeSeries.map((d, idx) => {
                     const val = getMetricValue(d);
                     const formattedVal = `${val.toLocaleString('vi-VN')}${metric === 'revenue' || metric === 'commission' ? ' ₫' : ''}`;
-                    return <div className="kol-chart-column" key={d.date || idx} tabIndex={0} aria-label={`${d.label}: ${formattedVal}`}>
-                      <div className="kol-chart-bar" data-zero={val === 0 || undefined} style={{ height: val ? `max(2px, calc(var(--kd-chart-height, 168px) * ${val / maxValue}))` : 0 }}>
-                        {val > 0 && timeSeries.length <= 14 && <span className="kol-chart-value" aria-hidden="true">{formatChartValue(val)}</span>}
+                    return (
+                      <div className="relative flex items-end justify-center h-[192px] min-w-0 group cursor-default focus:outline-none" key={d.date || idx} tabIndex={0} aria-label={`${d.label}: ${formattedVal}`}>
+                        <div
+                          className={`relative w-3/4 max-w-[36px] min-w-[2px] rounded-t transition-colors ${
+                            val === 0 ? 'w-1.5 min-w-0 border-b-2 border-[#EAE4D7] bg-transparent' : 'bg-[#C59B58] group-hover:bg-[#B88E4F]'
+                          }`}
+                          style={{ height: val ? `max(2px, calc(168px * ${val / maxValue}))` : 0 }}
+                        >
+                          {val > 0 && timeSeries.length <= 14 && (
+                            <span className="absolute bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 text-[10px] text-[#7D715E] font-medium whitespace-nowrap" aria-hidden="true">
+                              {formatChartValue(val)}
+                            </span>
+                          )}
+                        </div>
+                        <span className="absolute z-10 bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 px-2 py-1 rounded-md border border-[#EEDFC6] bg-white text-[#1A1612] shadow-md text-xs whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-focus:opacity-100 transition-opacity" role="tooltip">
+                          {d.label}: {formattedVal}
+                        </span>
                       </div>
-                      <span className="kol-chart-tooltip" role="tooltip">{d.label}: {formattedVal}</span>
-                    </div>;
+                    );
                   })}
                 </div>
               </div>
-              <div className="kol-chart-dates" aria-hidden="true">
-                {chartTicks.map((index, i) => <span key={index} data-tick={i} style={{ left: `${(index + .5) / timeSeries.length * 100}%` }}>{timeSeries[index].label}</span>)}
+              <div className="relative col-start-2 h-7 mt-2.5 text-[11px] text-[#7D715E]" aria-hidden="true">
+                {chartTicks.map((index) => (
+                  <span
+                    key={index}
+                    className="absolute -translate-x-1/2 whitespace-nowrap"
+                    style={{ left: `${(index + 0.5) / timeSeries.length * 100}%` }}
+                  >
+                    {timeSeries[index].label}
+                  </span>
+                ))}
               </div>
-              {(metric === 'revenue' || metric === 'commission') && <span className="kol-chart-unit">Đơn vị: VND</span>}
+              {(metric === 'revenue' || metric === 'commission') && (
+                <span className="col-start-2 text-right text-[10px] text-[#7D715E]">Đơn vị: VND</span>
+              )}
             </div>
           )}
-        </Card>
+        </div>
 
         {/* Lịch sử hoa hồng từ Ledger */}
-        <Card className="kd-activity-card">
-          <div className="kd-card-heading">
-            <div className="kd-card-title"><span className="kd-icon"><Wallet size={16} aria-hidden="true" /></span><h2>Hoa hồng gần đây</h2></div>
+        <div className="flex flex-col gap-3.5 min-w-0 p-4 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
+          <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#EAE4D7]">
+            <div className="flex items-center gap-2">
+              <span className="grid place-items-center w-7 h-7 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                <Wallet size={15} aria-hidden="true" />
+              </span>
+              <h2 className="text-sm font-semibold text-[#1A1612] m-0">Hoa hồng gần đây</h2>
+            </div>
             <button
               type="button"
-              className="kd-text-link"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#B88E4F] hover:text-[#1A1612] transition-colors cursor-pointer"
               onClick={() => navigate('/collaborator/wallet')}
             >
-              Xem tất cả <ArrowUpRight size={13} aria-hidden="true" />
+              <span>Xem tất cả</span>
+              <ArrowUpRight size={13} aria-hidden="true" />
             </button>
           </div>
 
-          <div className="kd-activity-list">
+          <div className="grid divide-y divide-[#EAE4D7]">
             {!ledger?.entries || ledger.entries.length === 0 ? (
-              <div className="kd-activity-empty">
+              <div className="py-6 text-center text-xs text-[#7D715E] leading-relaxed">
                 Chưa có phát sinh hoa hồng nào. Khi khách mua qua link tiếp thị của bạn, tiền hoa hồng sẽ hiển thị tại đây!
               </div>
             ) : (
@@ -278,13 +371,13 @@ export default function KolDashboardPage() {
                 return (
                   <div
                     key={entry.id}
-                    className="kd-activity-row"
+                    className="flex items-center justify-between gap-2.5 py-3 first:pt-0 last:pb-0"
                   >
-                    <span className="kd-activity-icon" aria-hidden="true">
+                    <span className="grid place-items-center w-7 h-7 shrink-0 text-[#B88E4F] bg-[#FAF8F5] rounded-lg" aria-hidden="true">
                       {isPositive ? <PlusCircle size={15} /> : <ArrowUpRight size={15} />}
                     </span>
-                    <div>
-                      <strong className="text-xs font-bold text-[#1A1612] block">
+                    <div className="flex-1 min-w-0">
+                      <strong className="text-xs font-semibold text-[#1A1612] block truncate">
                         {entry.transactionType === 'COMMISSION_PENDING'
                           ? 'Hoa hồng chờ duyệt'
                           : entry.transactionType === 'COMMISSION_APPROVED'
@@ -293,7 +386,7 @@ export default function KolDashboardPage() {
                           ? 'Rút tiền về ngân hàng'
                           : entry.transactionType}
                       </strong>
-                      <span className="kd-metric-note">
+                      <span className="text-[10px] text-[#7D715E] leading-tight block">
                         {new Date(entry.createdAt).toLocaleDateString('vi-VN', {
                           day: '2-digit',
                           month: '2-digit',
@@ -303,7 +396,7 @@ export default function KolDashboardPage() {
                       </span>
                     </div>
                     <strong
-                      className={`text-sm font-extrabold ${
+                      className={`text-xs sm:text-sm font-bold tabular-nums shrink-0 ${
                         isPositive ? 'text-[#B88E4F]' : 'text-[#7D715E]'
                       }`}
                     >
@@ -317,10 +410,10 @@ export default function KolDashboardPage() {
           </div>
 
           {/* Cấp bậc thực tế */}
-          <div className="kd-tier">
-            <div className="flex items-center gap-2">
+          <div className="grid gap-1 mt-auto p-3 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]">
+            <div className="flex items-center gap-1.5">
               <Crown className="w-4 h-4 text-[#B88E4F] shrink-0" />
-              <strong className="text-xs font-bold text-[#1A1612]">
+              <strong className="text-xs font-semibold text-[#1A1612]">
                 {tierStatus?.currentTier
                   ? `Hạng ${tierStatus.currentTier.name} (+${tierStatus.currentTier.extraBonusPercentage || 0}% Thưởng)`
                   : 'Cấp bậc khởi đầu (Hạng Đồng)'}
@@ -340,7 +433,7 @@ export default function KolDashboardPage() {
               )}
             </p>
           </div>
-        </Card>
+        </div>
       </div>
     </section>
   );
