@@ -11,6 +11,7 @@ import {
   Box,
   ChevronDown,
   ChevronUp,
+  Store,
 } from 'lucide-react';
 import { storeService } from '../../services/store.service';
 import {
@@ -20,7 +21,8 @@ import {
 } from '../../services/analytics.service';
 import { productService, type Product } from '../../services/product.service';
 import { orderService, type StoreOrderRecord } from '../../services/order.service';
-import './ShopDashboardPage.css';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatCard } from '../../components/ui/StatCard';
 
 export default function ShopDashboardPage() {
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
@@ -63,79 +65,63 @@ export default function ShopDashboardPage() {
 
   return (
     <div className="shop-overview flex flex-col gap-4 text-left pb-6">
-      {/* Metric Cards */}
+      {/* 1. Page Header Chuẩn Hóa */}
+      <PageHeader
+        title="Tổng quan Gian hàng"
+        description="Theo dõi doanh số tiếp thị, hoa hồng KOL và tiến độ vận hành đơn hàng thời gian thực"
+        icon={<Store className="w-5 h-5" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void loadData()}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
+            <Link
+              to="/merchant/products"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm sản phẩm</span>
+            </Link>
+          </div>
+        }
+      />
+
+      {/* 2. Metric Cards Chuẩn Hóa */}
       <div className="shop-overview-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Doanh thu liên kết */}
-        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-[#7D715E]">Doanh thu liên kết (30 ngày)</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <strong className="text-2xl font-black text-[#1A1612] tracking-tight block">
-              {(metrics?.grossRevenue || 0).toLocaleString('vi-VN')} ₫
-            </strong>
-            <span className="text-xs font-bold text-emerald-600 mt-0.5 block">
-              {metrics?.growthRevenue ? `${metrics.growthRevenue >= 0 ? '+' : ''}${metrics.growthRevenue.toFixed(1)}% so với kỳ trước` : 'Dữ liệu thời gian thực'}
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Doanh thu liên kết (30 ngày)"
+          value={`${(metrics?.grossRevenue || 0).toLocaleString('vi-VN')} ₫`}
+          growth={metrics?.growthRevenue}
+          note={metrics?.growthRevenue ? 'so với kỳ trước' : 'Dữ liệu thời gian thực'}
+          icon={<TrendingUp className="w-4 h-4" />}
+        />
 
-        {/* Hoa hồng KOL */}
-        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-[#7D715E]">Hoa hồng KOL ghi nhận</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
-              <Coins className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <strong className="text-2xl font-black text-[#B88E4F] tracking-tight block">
-              {(metrics?.totalCommission || 0).toLocaleString('vi-VN')} ₫
-            </strong>
-            <span className="text-xs text-[#7D715E] mt-0.5 block font-medium">
-              {metrics?.grossRevenue ? `${((metrics.totalCommission / metrics.grossRevenue) * 100).toFixed(1)}% doanh thu` : '0% doanh thu'}
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Hoa hồng KOL ghi nhận"
+          value={`${(metrics?.totalCommission || 0).toLocaleString('vi-VN')} ₫`}
+          note={metrics?.grossRevenue ? `${((metrics.totalCommission / metrics.grossRevenue) * 100).toFixed(1)}% doanh thu` : '0% doanh thu'}
+          icon={<Coins className="w-4 h-4" />}
+        />
 
-        {/* Đơn hàng thành công */}
-        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-[#7D715E]">Đơn chốt thành công</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center">
-              <ShoppingBag className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <strong className="text-2xl font-black text-[#1A1612] tracking-tight block">
-              {metrics?.completedOrders || 0} <span className="text-sm font-semibold text-[#7D715E]">/ {metrics?.totalOrders || 0} đơn</span>
-            </strong>
-            <span className="text-xs font-bold text-emerald-600 mt-0.5 block">
-              {(metrics?.conversionRate || 0).toFixed(2)}% tỷ lệ chuyển đổi
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Đơn chốt thành công"
+          value={`${metrics?.completedOrders || 0} / ${metrics?.totalOrders || 0}`}
+          trendText={`${(metrics?.conversionRate || 0).toFixed(1)}% chuyển đổi`}
+          icon={<ShoppingBag className="w-4 h-4" />}
+        />
 
-        {/* Lượt click tiếp thị */}
-        <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-[#7D715E]">Lượt click tiếp thị</span>
-            <div className="w-8 h-8 rounded-xl bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] flex items-center justify-center">
-              <MousePointerClick className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <strong className="text-2xl font-black text-[#1A1612] tracking-tight block">
-              {metrics?.totalClicks || 0}
-            </strong>
-            <span className="text-xs font-bold text-[#7D715E] mt-0.5 block">
-              {metrics?.activeReferralLinks || 0} link tiếp thị đang hoạt động
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Lượt click tiếp thị"
+          value={(metrics?.totalClicks || 0).toLocaleString('vi-VN')}
+          note={`${metrics?.activeReferralLinks || 0} link đang hoạt động`}
+          icon={<MousePointerClick className="w-4 h-4" />}
+        />
       </div>
 
       {/* Main Content Grid: Chart & Real Activities */}
@@ -149,10 +135,10 @@ export default function ShopDashboardPage() {
             </div>
             <div className="flex items-center gap-3 text-xs text-[#7D715E] font-bold">
               <span className="flex items-center gap-1.5">
-                <span className="shop-overview-swatch shop-overview-revenue" /> Doanh thu (GMV)
+                <span className="h-3 w-3 rounded-xs shrink-0 bg-[#EEDFC6] border border-[#C59B58]" /> Doanh thu (GMV)
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="shop-overview-swatch shop-overview-commission" /> Hoa hồng KOL
+                <span className="h-3 w-3 rounded-xs shrink-0 bg-[#F3EFE6] border border-[#EAE4D7]" /> Hoa hồng KOL
               </span>
             </div>
           </div>
@@ -163,25 +149,25 @@ export default function ShopDashboardPage() {
               Chưa có dữ liệu giao dịch trong 7 ngày gần nhất.
             </div>
           ) : (
-            <div className="shop-overview-plot" style={{ gridTemplateColumns: `repeat(${chartSeries.length}, minmax(0, 1fr))` }}>
+            <div className="grid gap-2 min-w-0 pt-2.5" style={{ gridTemplateColumns: `repeat(${chartSeries.length}, minmax(0, 1fr))` }}>
               {chartSeries.map((col, idx) => {
                 const revHeight = Math.max(0, (col.revenue / maxRevenue) * 140);
                 const commHeight = Math.max(0, (col.commission / maxRevenue) * 140);
                 return (
-                  <div key={idx} className="shop-overview-plot-column">
-                    <div className="shop-overview-bars">
+                  <div key={idx} className="min-w-0 text-center">
+                    <div className="flex h-[150px] items-end justify-center gap-1 border-b border-[#EAE4D7] bg-[#FAF8F5]/30">
                       <div
                         style={{ height: `${revHeight}px` }}
                         title={`Doanh thu: ${col.revenue.toLocaleString('vi-VN')} ₫`}
-                        className="shop-overview-bar shop-overview-revenue"
+                        className="w-full max-w-[20px] shrink-0 rounded-t-md bg-[#EEDFC6] border border-[#C59B58] border-b-0 transition-colors hover:border-[#B88E4F]"
                       />
                       <div
                         style={{ height: `${commHeight}px` }}
                         title={`Hoa hồng: ${col.commission.toLocaleString('vi-VN')} ₫`}
-                        className="shop-overview-bar shop-overview-commission"
+                        className="w-full max-w-[20px] shrink-0 rounded-t-md bg-[#F3EFE6] border border-[#EAE4D7] border-b-0 transition-colors hover:border-[#B88E4F]"
                       />
                     </div>
-                    <span className="shop-overview-date" title={col.label}>{col.label}</span>
+                    <span className="block mt-2 text-[#7D715E] text-[11px] truncate" title={col.label}>{col.label}</span>
                   </div>
                 );
               })}
@@ -265,25 +251,25 @@ export default function ShopDashboardPage() {
               type="button"
               onClick={loadData}
               title="Tải lại dữ liệu gian hàng"
-              className="shop-overview-action"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
               <span>Làm mới</span>
             </button>
             <Link
               to="/merchant/promotions?tab=coupons"
               title="Tạo chiến dịch khuyến mãi mới"
-              className="shop-overview-action"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
               <span>Tạo chiến dịch</span>
             </Link>
             <Link
               to="/merchant/products"
-              className="shop-overview-action shop-overview-action-primary"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#F3EFE6] text-[#1A1612] text-xs font-semibold hover:bg-[#FAF8F5] hover:border-[#C59B58] transition cursor-pointer"
             >
               <span>Quản lý danh mục</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#B88E4F]" />
             </Link>
           </div>
         </div>
@@ -350,7 +336,7 @@ export default function ShopDashboardPage() {
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border shadow-2xs whitespace-nowrap ${
                           p.isActive
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            ? 'bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]'
                             : 'bg-[#FAF8F5] text-[#7D715E] border-[#EAE4D7]'
                         }`}
                       >

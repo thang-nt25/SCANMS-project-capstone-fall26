@@ -43,7 +43,7 @@ import {
   validateExcelFile,
   validateManualItems,
   type ManualItemForm,
-} from "@/utils/validations/manual-order.validation";
+} from "@/validations/manual-order.validation";
 import {
   ShippingLabel,
   generateTrackingCode,
@@ -51,8 +51,9 @@ import {
 } from "../../components/orders/ShippingLabel";
 import { shippingService, type GhnTrackingDetail } from "../../services/shipping.service";
 import { CustomSelect } from "../../components/ui/CustomSelect";
-import './OrdersManagementPage.css';
 import { returnStatusLabel } from '../../utils/return-status.utils';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatCard } from '../../components/ui/StatCard';
 
 type OrderAction = "manual" | "excel";
 interface Props {
@@ -801,51 +802,80 @@ export default function OrdersManagementPage({
     <div className="merchant-orders-page space-y-4 text-ink text-left pb-6">
       {!initialAction && (
         <>
-          {/* Success Alert Banner */}
+          {/* 1. Page Header Chuẩn Hóa */}
+          <PageHeader
+            title="Quản lý Đơn hàng"
+            description="Theo dõi tiến độ vận hành, xuất nhập Excel và kiểm soát đơn hàng từ các kênh tiếp thị"
+            icon={<ShoppingBag className="w-5 h-5" />}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOrdersRefreshCount((c) => c + 1)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Làm mới</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => open("excel")}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Nhập Excel</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => open("manual")}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tạo đơn thủ công</span>
+                </button>
+              </div>
+            }
+          />
+
+          {/* Success Alert Banner (Chuẩn màu Vàng Be) */}
           {actionSuccessMsg && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612] text-xs font-semibold animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
               <span>{actionSuccessMsg}</span>
             </div>
           )}
 
-          {/* Quick Metrics Bar */}
+          {/* 2. Quick Metrics Bar Chuẩn Hóa */}
           <div className="merchant-orders-metrics grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <ShoppingBag className="merchant-orders-metric-icon" size={18} aria-hidden="true" />
-              <span className="text-xs font-bold text-[#7D715E] block">Tổng đơn hàng</span>
-              <strong className="text-xl sm:text-2xl font-black text-[#1A1612] mt-1 block">
-                {ordersTotal}
-              </strong>
-            </div>
-            <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <PackagePlus className="merchant-orders-metric-icon" size={18} aria-hidden="true" />
-              <span className="text-xs font-bold text-[#B88E4F] block">Chờ xử lý / Đóng gói</span>
-              <strong className="text-xl sm:text-2xl font-black text-[#B88E4F] mt-1 block">
-                {orders.filter((o) => o.status === "PENDING").length}
-              </strong>
-            </div>
-            <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <Truck className="merchant-orders-metric-icon" size={18} aria-hidden="true" />
-              <span className="text-xs font-bold text-[#2563EB] block">Đang giao bưu cục</span>
-              <strong className="text-xl sm:text-2xl font-black text-[#2563EB] mt-1 block">
-                {orders.filter((o) => o.status === "SHIPPING").length}
-              </strong>
-            </div>
-            <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <CheckCircle2 className="merchant-orders-metric-icon" size={18} aria-hidden="true" />
-              <span className="text-xs font-bold text-emerald-600 block">Đã giao thành công</span>
-              <strong className="text-xl sm:text-2xl font-black text-emerald-700 mt-1 block">
-                {orders.filter((o) => o.status === "DELIVERED" || o.status === "COMPLETED").length}
-              </strong>
-            </div>
+            <StatCard
+              title="Tổng đơn hàng"
+              value={ordersTotal}
+              icon={<ShoppingBag className="w-4 h-4" />}
+            />
+            <StatCard
+              title="Chờ xử lý / Đóng gói"
+              value={orders.filter((o) => o.status === "PENDING").length}
+              note="Cần chuẩn bị giao bưu cục"
+              icon={<PackagePlus className="w-4 h-4" />}
+            />
+            <StatCard
+              title="Đang giao bưu cục"
+              value={orders.filter((o) => o.status === "SHIPPING").length}
+              note="Đơn vị vận chuyển đang xử lý"
+              icon={<Truck className="w-4 h-4" />}
+            />
+            <StatCard
+              title="Đã giao thành công"
+              value={orders.filter((o) => o.status === "DELIVERED" || o.status === "COMPLETED").length}
+              trendText="Hoàn tất đơn"
+              icon={<CheckCircle2 className="w-4 h-4" />}
+            />
           </div>
 
           {/* Filter & Search Bar */}
-          <div className="merchant-orders-workbench">
-          <div className="merchant-orders-filters p-3 bg-white border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
+          <div className="p-3 bg-white border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
             {/* Status Tabs - Modern Segmented Control */}
-            <div className="merchant-orders-tabs" role="group" aria-label="Lọc đơn hàng theo trạng thái">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Lọc đơn hàng theo trạng thái">
               {[
                 { id: "ALL", label: "Tất cả" },
                 { id: "UNPAID", label: "Chờ thanh toán" },
@@ -945,10 +975,14 @@ export default function OrdersManagementPage({
           </div>
 
           {/* Orders Table */}
-          <div className="merchant-orders-table bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
-            <div className="merchant-orders-table-heading">
-              <h2>Danh sách đơn hàng <span>{ordersTotal} đơn</span></h2>
-              <p>Theo dõi trạng thái và xử lý từng đơn hàng</p>
+          <div className="merchant-orders-table @container/order-list bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
+            <div className="merchant-orders-table-heading flex items-center justify-between flex-wrap gap-2 p-3.5 sm:p-[14px_18px] border-b border-[#EAE4D7]">
+              <div>
+                <h2 className="text-[15px] font-[650] text-[#1A1612]">
+                  Danh sách đơn hàng <span className="inline-block ml-1.5 px-2 py-0.5 rounded-[20px] bg-[#FBF5EB] text-[11px] font-medium text-[#7D715E]">{ordersTotal} đơn</span>
+                </h2>
+                <p className="text-[11px] text-[#7D715E] mt-0.5">Theo dõi trạng thái và xử lý từng đơn hàng</p>
+              </div>
             </div>
             {ordersLoading ? (
               <div className="p-12 text-center text-xs font-semibold text-[#7D715E] flex items-center justify-center gap-2">
@@ -1358,8 +1392,6 @@ export default function OrdersManagementPage({
                 </div>
               </div>
             )}
-          </div>
-
           </div>
           {!action && noticeView}
         </>
@@ -1795,15 +1827,15 @@ export default function OrdersManagementPage({
 
       {/* Modal Chi tiết Đơn hàng */}
       {selectedOrderDetails && (
-        <div className="order-detail-overlay fixed inset-0 z-50 grid place-items-center p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="order-detail-title" className="order-detail-dialog text-left">
-            <div className="order-detail-header">
-              <div className="order-detail-symbol"><ShoppingBag size={22} /></div>
+        <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-[#231D15]/35 backdrop-blur-xs">
+          <div role="dialog" aria-modal="true" aria-labelledby="order-detail-title" className="w-full max-w-[580px] max-h-[86dvh] flex flex-col overflow-hidden border border-[#EAE4D7] rounded-2xl bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)] text-left">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#EAE4D7] shrink-0">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><ShoppingBag size={20} /></div>
               <div>
-                <h3 id="order-detail-title">
+                <h3 id="order-detail-title" className="text-base font-bold text-[#1A1612] m-0">
                   Chi tiết đơn hàng
                 </h3>
-                <span className="order-detail-code">#{selectedOrderDetails.externalOrderSn}</span>
+                <span className="font-mono text-xs font-bold text-[#B88E4F]">#{selectedOrderDetails.externalOrderSn}</span>
                 <p className="text-xs text-[#7D715E] mt-0.5 m-0">
                   Ngày đặt: {new Date(selectedOrderDetails.createdAt).toLocaleString("vi-VN")}
                 </p>
@@ -1812,27 +1844,27 @@ export default function OrdersManagementPage({
                 type="button"
                 aria-label="Đóng chi tiết đơn hàng"
                 onClick={() => setSelectedOrderDetails(null)}
-                className="p-1 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6]"
+                className="ml-auto p-1 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6] transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="order-detail-body">
+            <div className="flex flex-col gap-4 p-5 overflow-y-auto">
             {/* Khách hàng & Địa chỉ */}
-            <section className="order-detail-recipient order-detail-section">
-              <h4><Users size={16} /> Thông tin người nhận</h4>
-              <dl className="order-detail-contact-grid">
-              <div><dt>Họ tên</dt><dd>{selectedOrderDetails.customerName}</dd></div>
-              <div><dt>Số điện thoại</dt><dd>{selectedOrderDetails.customerPhone}</dd></div>
+            <section className="p-3.5 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] space-y-2">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612] m-0"><Users size={16} /> Thông tin người nhận</h4>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div><dt className="text-[11px] text-[#7D715E]">Họ tên</dt><dd className="font-semibold text-[#1A1612] mt-0.5">{selectedOrderDetails.customerName}</dd></div>
+              <div><dt className="text-[11px] text-[#7D715E]">Số điện thoại</dt><dd className="font-semibold text-[#1A1612] mt-0.5">{selectedOrderDetails.customerPhone}</dd></div>
               {selectedOrderDetails.customerEmail && (
-                <div className="order-detail-wide"><dt>Email</dt><dd>{selectedOrderDetails.customerEmail}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-[11px] text-[#7D715E]">Email</dt><dd className="font-semibold text-[#1A1612] mt-0.5">{selectedOrderDetails.customerEmail}</dd></div>
               )}
-              <div className="order-detail-wide"><dt>Địa chỉ giao hàng</dt><dd>{selectedOrderDetails.shippingAddress}</dd></div>
+              <div className="sm:col-span-2"><dt className="text-[11px] text-[#7D715E]">Địa chỉ giao hàng</dt><dd className="font-semibold text-[#1A1612] mt-0.5">{selectedOrderDetails.shippingAddress}</dd></div>
               </dl>
             </section>
 
             {/* Sản phẩm trong đơn */}
-            <section className="order-detail-products order-detail-section flex flex-col gap-2">
+            <section className="p-3.5 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[#1A1612]">Sản phẩm ({selectedOrderDetails.items.length}):</span>
                 <span className="text-[11px] text-[#7D715E]">
@@ -1927,11 +1959,11 @@ export default function OrdersManagementPage({
               </div>
             </section>
             </div>
-            <div className="order-detail-footer">
+            <div className="px-5 py-3 border-t border-[#EAE4D7] flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedOrderDetails(null)}
-                className="px-4 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition shadow-xs"
+                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-xs cursor-pointer"
               >
                 Đóng
               </button>

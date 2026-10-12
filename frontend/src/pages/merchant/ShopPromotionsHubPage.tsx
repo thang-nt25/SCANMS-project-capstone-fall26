@@ -6,7 +6,6 @@ import ShopCouponsPage from './ShopCouponsPage';
 import { CommissionRulesPage } from './CommissionRulesPage';
 import StoreReferralLinksPage from './StoreReferralLinksPage';
 import LiveSessionsPage from './LiveSessionsPage';
-import './ShopPromotionsHubPage.css';
 
 export default function ShopPromotionsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,7 +51,7 @@ export default function ShopPromotionsHubPage() {
   ];
 
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-[1520px] flex-col gap-4 pt-3 pb-6 sm:pt-4" id="shop-promotions-hub">
+    <div className="flex w-full min-w-0 flex-col gap-4 pb-6 text-[#1A1612]" id="shop-promotions-hub">
       <HubTabs
         tabs={tabs}
         activeTab={activeTab}

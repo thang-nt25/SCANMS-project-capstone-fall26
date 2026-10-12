@@ -28,7 +28,6 @@ import type {
 } from '../../services/commission-rules.service';
 import { getVietnamCurrentMonthYear } from '@/utils/date-time.utils';
 import { Select } from '../../components/ui/Select';
-import './CommissionRuleModal.css';
 
 export const CommissionRulesPage: React.FC = () => {
   const { year: currentVnYear, month: currentVnMonth } = getVietnamCurrentMonthYear();

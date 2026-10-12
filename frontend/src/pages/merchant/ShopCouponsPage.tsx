@@ -30,7 +30,6 @@ import {
 } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
-import './StoreVoucherModal.css';
 
 export interface CustomSandSelectOption<T extends string> {
   value: T;
@@ -1083,10 +1082,10 @@ export const ShopCouponsPage: React.FC = () => {
       {/* MODAL 1: PHÁT HÀNH VOUCHER GIAN HÀNG (STORE-ISSUED VOUCHER) */}
       {/* ========================================================= */}
       {isCreateModalOpen && (
-        <div className="store-voucher-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="store-voucher-title" className="store-voucher-dialog">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#231D15]/50 backdrop-blur-[3px]">
+          <div role="dialog" aria-modal="true" aria-labelledby="store-voucher-title" className="flex flex-col w-full max-w-[480px] max-h-[calc(100dvh-32px)] overflow-hidden border border-[#EAE4D7] rounded-2xl bg-white text-[#1A1612] shadow-2xl">
             {/* Modal Header */}
-            <div className="store-voucher-header">
+            <div className="flex items-center justify-between gap-3 p-4 border-b border-[#EAE4D7] shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#FAF0DC] border border-[#DEBE85] flex items-center justify-center text-[#8C6B32] shadow-xs">
                   <Sparkles className="w-5 h-5 text-amber-600" />
@@ -1112,10 +1111,10 @@ export const ShopCouponsPage: React.FC = () => {
             </div>
 
             {/* Modal Body (2 Columns on Desktop) */}
-            <div className="store-voucher-body">
+            <div className="flex flex-col gap-3 p-4 flex-1 min-h-0 overflow-y-auto scrollbar-thin">
             {/* Presets Quick-Select */}
-            <details className="store-voucher-presets">
-              <summary>
+            <details className="p-0 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] shrink-0">
+              <summary className="flex items-center justify-between gap-2 p-2.5 list-none cursor-pointer">
                 <span className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5 text-amber-500" />
                   Chọn nhanh ưu đãi
@@ -1156,7 +1155,7 @@ export const ShopCouponsPage: React.FC = () => {
 
 
               {/* Left Form: 7 cols */}
-              <form id="store-voucher-form" onSubmit={handleCreateSubmit} className="store-voucher-form space-y-4">
+              <form id="store-voucher-form" onSubmit={handleCreateSubmit} className="space-y-4">
                 {createError && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1165,13 +1164,13 @@ export const ShopCouponsPage: React.FC = () => {
                 )}
 
                 {/* Discount Type & Value */}
-                <div className="store-voucher-benefit">
-                  <div className="store-voucher-type" role="group" aria-label="Hình thức giảm giá">
-                    <button type="button" aria-pressed={createForm.discountType === 'PERCENTAGE'} onClick={() => changeVoucherDiscountType('PERCENTAGE')}>Theo phần trăm</button>
-                    <button type="button" aria-pressed={createForm.discountType === 'FIXED_AMOUNT'} onClick={() => changeVoucherDiscountType('FIXED_AMOUNT')}>Số tiền cố định</button>
+                <div className="p-3 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-center">
+                  <div className="flex gap-1 p-1 mb-2.5 rounded-lg bg-[#F3EFE6]" role="group" aria-label="Hình thức giảm giá">
+                    <button type="button" aria-pressed={createForm.discountType === 'PERCENTAGE'} onClick={() => changeVoucherDiscountType('PERCENTAGE')} className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition cursor-pointer ${createForm.discountType === 'PERCENTAGE' ? 'bg-white text-[#1A1612] shadow-xs' : 'text-[#7D715E]'}`}>Theo phần trăm</button>
+                    <button type="button" aria-pressed={createForm.discountType === 'FIXED_AMOUNT'} onClick={() => changeVoucherDiscountType('FIXED_AMOUNT')} className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition cursor-pointer ${createForm.discountType === 'FIXED_AMOUNT' ? 'bg-white text-[#1A1612] shadow-xs' : 'text-[#7D715E]'}`}>Số tiền cố định</button>
                   </div>
-                  <label htmlFor="voucher-discount-value">Mức giảm của voucher <span className="text-red-500">*</span></label>
-                  <div className={`store-voucher-amount ${createForm.discountType === 'FIXED_AMOUNT' ? 'is-money' : ''}`}>
+                  <label htmlFor="voucher-discount-value" className="block text-xs font-semibold text-[#7D715E] mb-1">Mức giảm của voucher <span className="text-red-500">*</span></label>
+                  <div className="inline-flex items-center justify-center gap-2 max-w-full min-w-[124px] p-2 border border-[#EEDFC6] rounded-xl bg-white mt-1 shadow-xs focus-within:border-[#C59B58]">
                     <input
                       id="voucher-discount-value"
                       style={{ width: `${Math.max(2, (createForm.discountType === 'FIXED_AMOUNT' && !discountAmountFocused ? Number(createForm.discountValue || 0).toLocaleString('vi-VN') : String(createForm.discountValue || '')).length) + 0.25}ch` }}
@@ -1268,9 +1267,9 @@ export const ShopCouponsPage: React.FC = () => {
                 </div>
 
                 {/* Date range */}
-                <details className="store-voucher-conditions">
-                  <summary><span>Thời gian & phạm vi<small>{createForm.scopeType === 'STORE_WIDE' ? 'Toàn gian hàng' : `${createForm.productIds?.length || 0} sản phẩm`} · {createForm.expiresAt ? `Đến ${new Date(createForm.expiresAt).toLocaleDateString('vi-VN')}` : 'Không thời hạn'}</small></span><ChevronDown size={14} /></summary>
-                  <div className="store-voucher-condition-fields">
+                <details className="border-t border-[#EAE4D7] pt-2">
+                  <summary className="flex items-center justify-between gap-2 py-2 text-xs font-medium text-[#7D715E] cursor-pointer list-none"><span>Thời gian & phạm vi<small className="block mt-0.5 text-[10px] text-[#7D715E] font-normal">{createForm.scopeType === 'STORE_WIDE' ? 'Toàn gian hàng' : `${createForm.productIds?.length || 0} sản phẩm`} · {createForm.expiresAt ? `Đến ${new Date(createForm.expiresAt).toLocaleDateString('vi-VN')}` : 'Không thời hạn'}</small></span><ChevronDown size={14} /></summary>
+                  <div className="space-y-3 pt-1">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
@@ -1311,11 +1310,12 @@ export const ShopCouponsPage: React.FC = () => {
                   <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
                     Phạm vi áp dụng
                   </label>
-                  <div className="voucher-scope-switch" role="group" aria-label="Phạm vi áp dụng voucher">
+                  <div className="flex gap-1 p-1 rounded-lg bg-[#F3EFE6]" role="group" aria-label="Phạm vi áp dụng voucher">
                     <button
                       type="button"
                       aria-pressed={createForm.scopeType === 'STORE_WIDE'}
                       onClick={() => { setCreateForm({ ...createForm, scopeType: 'STORE_WIDE', productIds: [] }); setVoucherProductSearch(''); }}
+                      className={`flex items-center justify-center flex-1 gap-1.5 py-1.5 px-2 text-xs font-medium rounded-md transition cursor-pointer ${createForm.scopeType === 'STORE_WIDE' ? 'bg-white text-[#8C6226] border border-[#EEDFC6]' : 'text-[#7D715E]'}`}
                     >
                       <Store className="w-4 h-4" />
                       <span>Toàn gian hàng</span>
@@ -1324,6 +1324,7 @@ export const ShopCouponsPage: React.FC = () => {
                       type="button"
                       aria-pressed={createForm.scopeType === 'PRODUCTS'}
                       onClick={() => setCreateForm({ ...createForm, scopeType: 'PRODUCTS' })}
+                      className={`flex items-center justify-center flex-1 gap-1.5 py-1.5 px-2 text-xs font-medium rounded-md transition cursor-pointer ${createForm.scopeType === 'PRODUCTS' ? 'bg-white text-[#8C6226] border border-[#EEDFC6]' : 'text-[#7D715E]'}`}
                     >
                       <ShoppingBag className="w-4 h-4" />
                       <span>Chọn sản phẩm</span>
@@ -1332,9 +1333,9 @@ export const ShopCouponsPage: React.FC = () => {
 
                   {/* Product picker if scope === PRODUCTS */}
                   {createForm.scopeType === 'PRODUCTS' && (
-                    <div className="voucher-product-picker">
-                      <div className="voucher-product-search"><Search size={13} /><input type="search" value={voucherProductSearch} onChange={event => setVoucherProductSearch(event.target.value)} placeholder="Tìm sản phẩm…" aria-label="Tìm sản phẩm áp dụng voucher" /><span>{createForm.productIds?.length || 0} đã chọn</span></div>
-                      <div className="voucher-product-list">
+                    <div className="mt-2 border border-[#EAE4D7] rounded-xl overflow-hidden bg-white">
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]"><Search size={13} /><input type="search" value={voucherProductSearch} onChange={event => setVoucherProductSearch(event.target.value)} placeholder="Tìm sản phẩm…" aria-label="Tìm sản phẩm áp dụng voucher" className="flex-1 min-w-0 h-7 border-0 bg-transparent text-xs outline-none" /><span className="px-1.5 py-0.5 rounded bg-[#FBF5EB] text-[10px] text-[#8C6226] tabular-nums">{createForm.productIds?.length || 0} đã chọn</span></div>
+                      <div className="max-h-44 overflow-y-auto scrollbar-thin divide-y divide-[#F3EFE6]">
                       {loadingProducts ? (
                         <div className="py-4 text-center text-xs text-[#7D715E]">
                           Đang tải sản phẩm...
@@ -1343,13 +1344,13 @@ export const ShopCouponsPage: React.FC = () => {
                         <div className="py-4 text-center text-xs text-[#7D715E]">
                           Không có sản phẩm nào trong gian hàng.
                         </div>
-                      ) : filteredVoucherProducts.length === 0 ? <p className="voucher-product-empty">Không tìm thấy sản phẩm phù hợp.</p> : (
+                      ) : filteredVoucherProducts.length === 0 ? <p className="p-3 text-center text-xs text-[#7D715E]">Không tìm thấy sản phẩm phù hợp.</p> : (
                         filteredVoucherProducts.map((p) => {
                           const isSelected = createForm.productIds?.includes(p.id);
                           return (
                             <label
                               key={p.id}
-                              className={`voucher-product-row${isSelected ? ' is-selected' : ''}`}
+                              className={`grid grid-cols-[14px_minmax(0,1fr)_auto] gap-2 items-center p-2.5 bg-white hover:bg-[#FAF8F5] cursor-pointer ${isSelected ? 'bg-[#FBF5EB]' : ''}`}
                             >
                               <input
                                 type="checkbox"
@@ -1370,10 +1371,10 @@ export const ShopCouponsPage: React.FC = () => {
                                 }}
                                 className="accent-[#C59B58]"
                               />
-                              <span className="voucher-product-name">
+                              <span className="text-xs font-normal text-[#1A1612] truncate">
                                 {p.title}
                               </span>
-                              <span className="voucher-product-price">
+                              <span className="text-[11px] font-semibold text-[#8C6226] tabular-nums whitespace-nowrap">
                                 {Number(p.price || 0).toLocaleString('vi-VN')}₫
                               </span>
                             </label>
@@ -1387,10 +1388,10 @@ export const ShopCouponsPage: React.FC = () => {
 
                   </div>
                 </details>
-                <details className="store-voucher-advanced">
-                  <summary><span>Giới hạn & cộng dồn</span><ChevronDown size={14} /></summary>
-                  <p className="store-voucher-defaults">{createForm.usageLimitTotal ? `${createForm.usageLimitTotal} lượt dùng` : 'Không giới hạn lượt dùng'} · {createForm.usageLimitPerCustomer || 1} lượt/khách{createForm.budgetTotal ? ` · Ngân sách ${Number(createForm.budgetTotal).toLocaleString('vi-VN')}₫` : ''}</p>
-                  <div className="store-voucher-advanced-fields">
+                <details className="border-t border-[#EAE4D7] pt-2">
+                  <summary className="flex items-center justify-between gap-2 py-2 text-xs font-medium text-[#7D715E] cursor-pointer list-none"><span>Giới hạn & cộng dồn</span><ChevronDown size={14} /></summary>
+                  <p className="mb-2 text-[10px] text-[#7D715E]">{createForm.usageLimitTotal ? `${createForm.usageLimitTotal} lượt dùng` : 'Không giới hạn lượt dùng'} · {createForm.usageLimitPerCustomer || 1} lượt/khách{createForm.budgetTotal ? ` · Ngân sách ${Number(createForm.budgetTotal).toLocaleString('vi-VN')}₫` : ''}</p>
+                  <div className="space-y-3 pt-1">
                 {/* Usage Limits & Budget */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -1485,16 +1486,11 @@ export const ShopCouponsPage: React.FC = () => {
               </form>
 
               {/* Right Column: 5 cols -> Live Ticket Preview */}
-              <details className="store-voucher-preview">
-                <summary><span>Xem trước voucher</span><strong>{createForm.discountType === 'PERCENTAGE' ? `Giảm ${createForm.discountValue || 0}%` : `Giảm ${Number(createForm.discountValue || 0).toLocaleString('vi-VN')}₫`}</strong><ChevronDown size={14} /></summary>
+              <details className="border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] p-3">
+                <summary className="flex items-center justify-between gap-2 list-none cursor-pointer text-xs font-semibold text-[#7D715E]"><span>Xem trước voucher</span><strong className="ml-auto mr-1 text-[#B88E4F] font-bold">{createForm.discountType === 'PERCENTAGE' ? `Giảm ${createForm.discountValue || 0}%` : `Giảm ${Number(createForm.discountValue || 0).toLocaleString('vi-VN')}₫`}</strong><ChevronDown size={14} /></summary>
                 <div>
-                  <h3 className="text-xs font-bold text-[#1A1612] mb-3 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    Xem trước voucher
-                  </h3>
-
                   {/* Sand Luxury Ticket Preview */}
-                  <div className="store-voucher-ticket">
+                  <div className="mt-2.5 p-3 border border-[#EEDFC6] rounded-xl bg-white shadow-xs">
 
                     <div className="flex items-center gap-2 text-xs text-[#8C6B32] font-bold mb-3">
                       <Store className="w-4 h-4" />
@@ -1557,7 +1553,7 @@ export const ShopCouponsPage: React.FC = () => {
               </details>
             </div>
                 {/* Bottom Actions */}
-                <div className="store-voucher-actions">
+                <div className="flex justify-end items-center gap-2 p-3.5 border-t border-[#EAE4D7] bg-white shrink-0">
                   <button
                     type="button"
                     disabled={isSubmittingCreate}
