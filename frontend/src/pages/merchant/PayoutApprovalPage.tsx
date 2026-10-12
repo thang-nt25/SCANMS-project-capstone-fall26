@@ -1,4 +1,3 @@
-import './PayoutApprovalPage.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useParams } from "react-router-dom";
@@ -25,7 +24,7 @@ import {
   maskBankAccount,
   MAX_PAYOUT_BILL_BYTES,
   validatePayoutBill,
-} from "@/utils/validations/payout-bill.validation";
+} from "@/validations/payout-bill.validation";
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",
@@ -742,7 +741,7 @@ export default function PayoutApprovalPage() {
   };
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[1480px] space-y-5 pb-10 pt-4 text-ink sm:pt-5">
+    <div className="merchant-payout-page mx-auto w-full min-w-0 max-w-[1480px] space-y-4 pb-8 pt-4 text-ink sm:pt-6">
 
       {error && (
         <p
@@ -773,10 +772,10 @@ export default function PayoutApprovalPage() {
         </p>
       )}
       {/* SECTION TÀI KHOẢN CHI TRẢ & ĐỐI SOÁT CỦA GIAN HÀNG & QUY TRÌNH (CHUẨN ẢNH 1 & ẢNH 2) */}
-      <section className={`grid items-stretch gap-5 xl:gap-6 ${canManagePayoutBank ? 'lg:grid-cols-2' : ''}`}>
+      <section className={`payout-overview grid items-stretch gap-4 ${canManagePayoutBank ? 'lg:grid-cols-2' : ''}`}>
         {/* Cột 1: Quản lý tài khoản chi trả & đối soát gian hàng */}
         {canManagePayoutBank && (
-        <div className="flex flex-col justify-between rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
+        <div className="payout-bank-panel flex flex-col justify-between rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
           <div>
             {/* Header: Tiêu đề + Badge bảo mật */}
             <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
@@ -785,7 +784,7 @@ export default function PayoutApprovalPage() {
                   <Landmark className="h-4 w-4" />
                 </div>
                 <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">
-                  Tài khoản chi trả hoa hồng KOL
+                  Tài khoản chi trả
                 </h2>
               </div>
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-semibold text-[#8A642C]">
@@ -892,7 +891,7 @@ export default function PayoutApprovalPage() {
                   setAccountNameInput(shopBankAccountName);
                   setShowAddBankForm(true);
                 }}
-                className="group mt-3.5 flex w-full flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-[#EEDFC6] bg-gradient-to-b from-[#FAF8F5]/80 to-white p-5 text-center transition hover:border-[#C59B58] hover:bg-[#FBF5EB]/50 cursor-pointer"
+                className="payout-bank-empty group mt-3.5 flex w-full flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-[#EEDFC6] bg-gradient-to-b from-[#FAF8F5]/80 to-white p-5 text-center transition hover:border-[#C59B58] hover:bg-[#FBF5EB]/50 cursor-pointer"
               >
                 <div className="flex max-w-sm flex-col items-center gap-2">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-white text-[#B88E4F] shadow-2xs transition-transform group-hover:scale-105">
@@ -900,10 +899,10 @@ export default function PayoutApprovalPage() {
                   </div>
                   <div>
                     <div className="text-xs sm:text-sm font-bold text-[#1A1612] transition-colors group-hover:text-[#8A642C]">
-                      Liên kết tài khoản ngân hàng chi trả &amp; đối soát
+                      Liên kết ngân hàng chi trả
                     </div>
                     <p className="m-0 mt-1 text-[11px] sm:text-xs leading-relaxed text-[#7D715E]">
-                      Dùng tài khoản này để đối soát và chuyển hoa hồng qua VietQR / Napas247.
+                      Thêm ngân hàng để đối soát và chi trả hoa hồng.
                     </p>
                   </div>
                 </div>
@@ -1024,7 +1023,7 @@ export default function PayoutApprovalPage() {
         )}
 
         {/* Cột 2: Thống kê & Tổng quan chi trả (KPIs Chuẩn Figma 13) */}
-        <div className="flex flex-col justify-between rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
+        <div className="payout-summary-panel payout-bank-panel flex flex-col justify-between rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
           <div>
             {/* Header: Tiêu đề + Badge thời gian thực */}
             <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
@@ -1033,7 +1032,7 @@ export default function PayoutApprovalPage() {
                   <BarChart3 className="h-4 w-4" />
                 </div>
                 <h3 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">
-                  Tổng quan chi trả hoa hồng
+                  Tổng quan chi trả
                 </h3>
               </div>
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[11px] font-semibold text-[#7D715E]">
@@ -1043,13 +1042,22 @@ export default function PayoutApprovalPage() {
             </div>
 
             {/* Grid 4 thẻ KPI */}
-            <div className="mt-3.5 grid grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="payout-metric-grid mt-3.5 grid grid-cols-2 gap-2.5 sm:gap-3">
               {/* KPI 1: Chờ phê duyệt */}
               <div
+                role="button"
+                tabIndex={0}
+                aria-pressed={activeKpiFilter === "PENDING"}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
                 onClick={() =>
                   setActiveKpiFilter((prev) => (prev === "PENDING" ? "ALL" : "PENDING"))
                 }
-                className={`flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
+                className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "PENDING"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
                     : "border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/50 to-white hover:border-[#C59B58]/60 hover:bg-[#FBF5EB]/30 shadow-2xs"
@@ -1083,10 +1091,19 @@ export default function PayoutApprovalPage() {
 
               {/* KPI 2: Đã duyệt hôm nay */}
               <div
+                role="button"
+                tabIndex={0}
+                aria-pressed={activeKpiFilter === "APPROVED"}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
                 onClick={() =>
                   setActiveKpiFilter((prev) => (prev === "APPROVED" ? "ALL" : "APPROVED"))
                 }
-                className={`flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
+                className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "APPROVED"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
                     : "border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/50 to-white hover:border-[#C59B58]/60 hover:bg-[#FBF5EB]/30 shadow-2xs"
@@ -1120,10 +1137,19 @@ export default function PayoutApprovalPage() {
 
               {/* KPI 3: Thuế đã giữ */}
               <div
+                role="button"
+                tabIndex={0}
+                aria-pressed={activeKpiFilter === "TAX"}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
                 onClick={() =>
                   setActiveKpiFilter((prev) => (prev === "TAX" ? "ALL" : "TAX"))
                 }
-                className={`flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
+                className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "TAX"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
                     : "border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/50 to-white hover:border-[#C59B58]/60 hover:bg-[#FBF5EB]/30 shadow-2xs"
@@ -1161,10 +1187,19 @@ export default function PayoutApprovalPage() {
 
               {/* KPI 4: Cần bổ sung KYC */}
               <div
+                role="button"
+                tabIndex={0}
+                aria-pressed={activeKpiFilter === "KYC"}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
                 onClick={() =>
                   setActiveKpiFilter((prev) => (prev === "KYC" ? "ALL" : "KYC"))
                 }
-                className={`flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
+                className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "KYC"
                     ? "border-[#DC2626] bg-[#FEF2F2] shadow-xs ring-1 ring-[#DC2626]/20"
                     : "border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/50 to-white hover:border-[#FECACA] hover:bg-white shadow-2xs"
@@ -1206,9 +1241,9 @@ export default function PayoutApprovalPage() {
         </div>
       </section>
 
-      <section className="payout-approval-table min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
+      <section className="payout-approval-table @container/payout-approval-table min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
         {/* Toolbar điều hướng & tìm kiếm */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3.5 sm:p-4">
+        <div className="payout-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3.5 sm:p-4">
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Thanh tìm kiếm nhanh */}
             <div className="relative">
@@ -1217,7 +1252,7 @@ export default function PayoutApprovalPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm KOL, mã payout, STK..."
+                placeholder="Tìm KOL, mã yêu cầu, số tài khoản..."
                 className="h-9 w-48 sm:w-60 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 pl-8.5 pr-7 text-xs text-[#1A1612] placeholder:text-[#A89E90] outline-none transition focus:border-[#C59B58] focus:bg-white focus:ring-1 focus:ring-[#C59B58]/20"
               />
               {searchQuery && (
@@ -1337,7 +1372,7 @@ export default function PayoutApprovalPage() {
                     className="accent-[#C59B58] rounded cursor-pointer"
                   />
                 </th>
-                <th scope="col" className="px-3 py-3">KOL / Mã payout</th>
+                <th scope="col" className="px-3 py-3">KOL / Mã yêu cầu</th>
                 <th scope="col" className="px-3 py-3">Người thụ hưởng</th>
                 <th scope="col" className="px-2.5 py-3 text-right">Yêu cầu</th>
                 <th scope="col" className="px-2.5 py-3 text-right">Thuế</th>
@@ -1465,7 +1500,7 @@ export default function PayoutApprovalPage() {
                           type="button"
                           disabled={busy || loading}
                           onClick={() => openDialog(request, "approve")}
-                          className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-[#C59B58] px-2.5 text-xs font-semibold text-[#231D15] shadow-2xs transition hover:brightness-105 cursor-pointer whitespace-nowrap"
+                          className="inline-flex h-8 w-full items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] cursor-pointer whitespace-nowrap"
                         >
                           Duyệt &amp; tải bill
                         </button>

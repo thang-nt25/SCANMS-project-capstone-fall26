@@ -1,14 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { applyTheme, getSavedTheme, saveTheme, THEME_STORAGE_KEY, type Theme } from '../../utils/theme.utils';
 
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<Theme>(getSavedTheme);
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const syncTheme = (event: StorageEvent) => {
+      if (event.key === THEME_STORAGE_KEY || event.key === null) {
+        setTheme(getSavedTheme());
+      }
+    };
+    window.addEventListener('storage', syncTheme);
+    return () => window.removeEventListener('storage', syncTheme);
+  }, []);
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -42,12 +57,8 @@ export default function MainLayout() {
 
   const toggleTheme = () => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
+    saveTheme(nextTheme);
     setTheme(nextTheme);
-    if (nextTheme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
   };
 
   const handleLogout = () => {
@@ -78,17 +89,25 @@ export default function MainLayout() {
       />
 
       {/* 2. Container nội dung căn giữa đồng bộ 100% với Customer (max-w-[1520px]) */}
-      <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex-1">
+      <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-4 sm:pb-5 flex-1">
         <div className="flex flex-col lg:flex-row gap-5 items-start">
           {/* Cột trái: Sidebar điều hướng các chức năng của từng vai trò */}
-          <Sidebar
-            currentUser={currentUser}
-            onLogout={handleLogout}
-          />
+          <div className="relative w-full pt-4 sm:pt-5 lg:w-[250px] lg:shrink-0 lg:self-stretch lg:min-h-[calc(100dvh-var(--workspace-header-height,69px))] after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]">
+            <Sidebar currentUser={currentUser} onLogout={handleLogout} />
+          </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
-          <div className="flex-1 min-w-0 flex flex-col gap-4 text-left">
-            <Outlet />
+          <div className="w-full flex-1 min-w-0 pt-4 sm:pt-5 flex flex-col gap-4 text-left">
+            <Suspense
+              fallback={
+                <div className="w-full py-20 flex flex-col items-center justify-center text-[#7D715E] gap-3 animate-in fade-in duration-200">
+                  <div className="w-7 h-7 border-2 border-[#C59B58] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-semibold text-[#7D715E]">Đang tải dữ liệu chức năng...</span>
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
           </div>
         </div>
       </main>

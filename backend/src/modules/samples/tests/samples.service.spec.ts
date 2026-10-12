@@ -18,6 +18,9 @@ describe('SamplesService', () => {
     id: 'product-1',
     title: 'Sản phẩm mẫu',
     storeId: 'store-1',
+    sampleEnabled: true,
+    sampleQuota: 10,
+    sampleGrantedCount: 0,
     store: { id: 'store-1', name: 'Shop đối tác', ownerId: 'shop-1' },
   };
   const request = {
@@ -76,6 +79,8 @@ describe('SamplesService', () => {
     await service.createRequest('kol-1', {
       productId: product.id,
       socialChannelId: channel.id,
+      recipientName: 'Nguyễn Văn A',
+      recipientPhone: '0987654321',
       shippingAddress: '123 Nguyễn Văn A, Quận 1, TP.HCM',
       contentType: 'Video review 60 giây',
       expectedVideoAt,
@@ -115,6 +120,8 @@ describe('SamplesService', () => {
       service.createRequest('kol-1', {
         productId: product.id,
         socialChannelId: channel.id,
+        recipientName: 'Nguyễn Văn A',
+        recipientPhone: '0987654321',
         shippingAddress: '123 Nguyễn Văn A, Quận 1, TP.HCM',
         contentType: 'Video review 60 giây',
         expectedVideoAt: new Date(Date.now() + 7 * 86400000).toISOString(),
@@ -136,15 +143,25 @@ describe('SamplesService', () => {
   });
 
   it('đánh dấu quá hạn và khóa quyền xin mẫu khi chưa nộp video', async () => {
-    prisma.sampleProductRequest.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: request.id,
-          collaboratorId: 'kol-1',
-          product: { title: product.title },
-        },
-      ]);
+    prisma.sampleProductRequest.findMany.mockImplementation(
+      async ({ where }: any) => {
+        if (where?.OR) {
+          return [
+            {
+              id: request.id,
+              status: SampleRequestStatus.RECEIVED,
+              deadlineAt: new Date(Date.now() - 1000),
+              collaboratorId: 'kol-1',
+              product: {
+                title: product.title,
+                store: { ownerId: 'shop-1' },
+              },
+            },
+          ];
+        }
+        return [];
+      },
+    );
     prisma.sampleProductRequest.findUnique.mockResolvedValue(request);
 
     await service.processDeadlines();

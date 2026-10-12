@@ -30,7 +30,7 @@ export interface LeaderboardPodium {
 }
 
 export interface MyRankStatus {
-  myRank: number;
+  myRank: number | null;
   rankDelta: number;
   myRevenue: number;
   myOrders: number;

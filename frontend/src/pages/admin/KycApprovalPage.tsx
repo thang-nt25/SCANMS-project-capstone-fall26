@@ -48,7 +48,7 @@ export default function KycApprovalPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'kol' | 'shop'>('kol');
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('UNVERIFIED');
 
   // Inspect modals
   const [inspectProfile, setInspectProfile] = useState<any | null>(null);
@@ -309,6 +309,7 @@ export default function KycApprovalPage() {
       s.taxCode.includes(search);
     const matchStatus =
       filterStatus === 'ALL' ||
+      (filterStatus === 'REVIEW_PENDING' && ['PENDING_APPROVAL', 'NEEDS_INFO'].includes(s.onboardingStatus)) ||
       filterStatus === s.onboardingStatus;
     return matchSearch && matchStatus;
   });
@@ -319,7 +320,7 @@ export default function KycApprovalPage() {
   const verifiedShopCount = displayShops.filter((s: any) => s.isVerified).length;
 
   return (
-    <div className="flex flex-col gap-4 pt-3 text-left sm:pt-4">
+    <div className="w-full min-w-0 pb-6 flex flex-col gap-4 text-left">
       {toastMsg && (
         <div
           className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center gap-2 border ${
@@ -359,11 +360,13 @@ export default function KycApprovalPage() {
         </div>
       )}
 
-      <header className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3.5 sm:px-5">
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B88E4F]">SCANMS · Quản trị đối tác</span>
-          <h1 className="mb-0 mt-1 text-xl font-bold tracking-tight text-[#1A1612]">Thẩm định hồ sơ</h1>
-          <p className="mb-0 mt-1 text-xs text-[#7D715E]">Rà soát thông tin KOL và gian hàng trước khi xác minh.</p>
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3.5 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid place-items-center shrink-0 w-10.5 h-10.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F]"><ShieldCheck className="h-5 w-5" /></span>
+          <div>
+            <h1 className="m-0 text-xl font-bold tracking-tight text-[#1A1612]">Thẩm định hồ sơ</h1>
+            <p className="mb-0 mt-1 text-xs text-[#7D715E]">Xác minh đối tác KOL và gian hàng trên SCANMS.</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => showToast('Đang xuất báo cáo thẩm định...')} className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#7D715E] transition hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#8F682E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58]">
@@ -376,12 +379,12 @@ export default function KycApprovalPage() {
       </header>
 
       {/* TOP TABS: KOL VS SHOP */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-[#F3EFE6] p-1.5">
+      <div className="rounded-2xl border border-[#EAE4D7] bg-white p-1.5" aria-label="Loại hồ sơ">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <button type="button" onClick={() => { setActiveTab('kol'); setFilterStatus('ALL'); }} className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${activeTab === 'kol' ? 'border-[#EEDFC6] bg-white text-[#231D15] shadow-sm' : 'border-transparent text-[#7D715E] hover:bg-white/70'}`}>
+          <button type="button" aria-pressed={activeTab === 'kol'} onClick={() => { setActiveTab('kol'); setSearch(''); setFilterStatus('UNVERIFIED'); }} className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${activeTab === 'kol' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#231D15]' : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5]'}`}>
             <Sparkles className="h-4 w-4 text-[#B88E4F]" /><span>Đối tác KOL</span><span className="rounded-full bg-[#FBF5EB] px-2 py-0.5 text-[10px] text-[#8F682E]">{pendingKolCount} chờ duyệt</span>
           </button>
-          <button type="button" onClick={() => { setActiveTab('shop'); setFilterStatus('ALL'); }} className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${activeTab === 'shop' ? 'border-[#EEDFC6] bg-white text-[#231D15] shadow-sm' : 'border-transparent text-[#7D715E] hover:bg-white/70'}`}>
+          <button type="button" aria-pressed={activeTab === 'shop'} onClick={() => { setActiveTab('shop'); setSearch(''); setFilterStatus(pendingShopCount > 0 ? 'REVIEW_PENDING' : 'ALL'); }} className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${activeTab === 'shop' ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#231D15]' : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5]'}`}>
             <Store className="h-4 w-4 text-[#8F7B5E]" /><span>Gian hàng</span><span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-[#7D715E]">{pendingShopCount} chờ duyệt</span>
           </button>
         </div>
@@ -390,35 +393,39 @@ export default function KycApprovalPage() {
       {/* THẺ THỐNG KÊ */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
-          { label: activeTab === 'kol' ? 'Đã xác minh' : 'Gian hàng đã duyệt', value: activeTab === 'kol' ? verifiedKolCount : verifiedShopCount, hint: activeTab === 'kol' ? 'Đối tác đủ điều kiện hoạt động' : 'Đã hoàn tất xác minh', icon: <ShieldCheck className="h-4 w-4" /> },
-          { label: activeTab === 'kol' ? 'Tổng hồ sơ KOL' : 'Tổng hồ sơ gian hàng', value: activeTab === 'kol' ? displayKols.length : displayShops.length, hint: 'Tổng hồ sơ trong hệ thống', icon: <CreditCard className="h-4 w-4" /> },
-          { label: 'Chờ thẩm định', value: activeTab === 'kol' ? pendingKolCount : pendingShopCount, hint: 'Hồ sơ cần quản trị viên xử lý', icon: <Clock className="h-4 w-4" /> },
+          { label: activeTab === 'kol' ? 'Đã xác minh' : 'Gian hàng đã duyệt', value: activeTab === 'kol' ? verifiedKolCount : verifiedShopCount, filter: 'VERIFIED', hint: activeTab === 'kol' ? 'Đối tác đủ điều kiện hoạt động' : 'Đã hoàn tất xác minh', icon: <ShieldCheck className="h-4 w-4" /> },
+          { label: activeTab === 'kol' ? 'Tổng hồ sơ KOL' : 'Tổng hồ sơ gian hàng', value: activeTab === 'kol' ? displayKols.length : displayShops.length, filter: 'ALL', hint: 'Xem tất cả hồ sơ', icon: <CreditCard className="h-4 w-4" /> },
+          { label: 'Chờ thẩm định', value: activeTab === 'kol' ? pendingKolCount : pendingShopCount, filter: activeTab === 'kol' ? 'UNVERIFIED' : 'REVIEW_PENDING', hint: 'Xem hồ sơ cần xử lý', icon: <Clock className="h-4 w-4" /> },
         ].map((stat, index) => (
-          <div key={stat.label} className="flex min-h-[104px] items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3.5 shadow-[0_2px_8px_rgba(35,29,21,0.025)]">
-            <div className="min-w-0"><span className="block text-xs font-medium text-[#7D715E]">{stat.label}</span><strong className="mt-1 block text-2xl font-bold leading-none text-[#1A1612]">{stat.value}</strong><span className="mt-1.5 block text-[10px] text-[#9A8D78]">{stat.hint}</span></div>
+          <button type="button" key={stat.label} aria-pressed={filterStatus === stat.filter} onClick={() => { setFilterStatus(stat.filter); setSearch(''); }} className="flex items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3.5 text-left transition hover:border-[#C59B58] cursor-pointer min-h-[104px]">
+            <div className="min-w-0"><span className="block text-xs font-medium text-[#7D715E]">{stat.label}</span><strong className="mt-1 block text-2xl font-bold leading-none tabular-nums text-[#1A1612]">{stat.value}</strong><span className="mt-1.5 block text-[10px] text-[#9A8D78]">{stat.hint}</span></div>
             <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${index === 2 && stat.value > 0 ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]' : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F]'}`}>{stat.icon}</span>
-          </div>
+          </button>
         ))}
       </div>
 
       {/* BỘ LỌC TÌM KIẾM */}
-      <Card className="flex flex-wrap items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3.5">
+      <Card className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_230px_auto] items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3.5 shadow-none">
         <Input
+          aria-label={activeTab === 'kol' ? 'Tìm hồ sơ KOL' : 'Tìm hồ sơ gian hàng'}
           placeholder={activeTab === 'kol' ? 'Tìm theo tên KOL, email hoặc CCCD...' : 'Tìm theo tên gian hàng, chủ shop hoặc MST...'}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           clearable
           onClear={() => setSearch('')}
           icon={<Search className="h-4 w-4 text-[#8F7B5E]" />}
-          className="min-w-[240px] flex-1 border-[#EAE4D7] bg-[#FAF8F5] focus-within:border-[#C59B58] focus-within:ring-[#C59B58]/15"
+          className="border-[#EAE4D7] bg-white focus-within:border-[#C59B58] focus-within:ring-[#C59B58]/15"
         />
 
         <Select
+          aria-label="Lọc trạng thái hồ sơ"
+          className="w-full"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           options={activeTab === 'shop'
             ? [
                 { value: 'ALL', label: 'Tất cả trạng thái' },
+                { value: 'REVIEW_PENDING', label: 'Chờ thẩm định (tất cả)' },
                 { value: 'PENDING_APPROVAL', label: 'Chờ duyệt hồ sơ' },
                 { value: 'NEEDS_INFO', label: 'Cần Shop bổ sung' },
                 { value: 'VERIFIED', label: 'Đã xác minh' },
@@ -431,17 +438,17 @@ export default function KycApprovalPage() {
                 { value: 'REJECTED', label: 'Bị từ chối' },
               ]}
         />
-        <span className="ml-auto whitespace-nowrap text-[11px] text-[#7D715E]">{activeTab === 'kol' ? filteredKols.length : filteredShops.length} kết quả</span>
+        <span className="whitespace-nowrap text-xs text-[#7D715E]" aria-live="polite">{activeTab === 'kol' ? filteredKols.length : filteredShops.length} kết quả</span>
       </Card>
 
       {/* TAB 1: BẢNG DUYỆT KOL */}
       {activeTab === 'kol' && (
-        <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-[0_4px_18px_rgba(35,29,21,0.035)]">
+        <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-none">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3.5 sm:px-5">
             <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Sparkles className="h-4 w-4" /></span><div><h2 className="m-0 text-sm font-bold text-[#1A1612]">Danh sách đối tác KOL</h2><p className="mb-0 mt-0.5 text-[11px] text-[#7D715E]">Hồ sơ, kênh mạng xã hội và trạng thái xác minh</p></div></div>
             <span className="rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1 text-[11px] font-semibold text-[#7D715E]">{filteredKols.length} / {displayKols.length} hồ sơ</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="max-w-full overflow-x-auto" role="region" aria-label="Danh sách hồ sơ KOL" tabIndex={0}>
             <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-xs">
               <colgroup><col className="w-[20%]" /><col className="w-[21%]" /><col className="w-[17%]" /><col className="w-[10%]" /><col className="w-[14%]" /><col className="w-[10%]" /><col className="w-[8%]" /></colgroup>
               <thead>
@@ -546,12 +553,12 @@ export default function KycApprovalPage() {
 
       {/* TAB 2: BẢNG DUYỆT SHOP */}
       {activeTab === 'shop' && (
-        <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-[0_4px_18px_rgba(35,29,21,0.035)]">
+        <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-none">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3.5 sm:px-5">
             <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#8F7B5E]"><Store className="h-4 w-4" /></span><div><h2 className="m-0 text-sm font-bold text-[#1A1612]">Danh sách gian hàng</h2><p className="mb-0 mt-0.5 text-[11px] text-[#7D715E]">Thông tin chủ sở hữu, thuế và địa chỉ kho</p></div></div>
             <span className="rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1 text-[11px] font-semibold text-[#7D715E]">{filteredShops.length} / {displayShops.length} hồ sơ</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="max-w-full overflow-x-auto" role="region" aria-label="Danh sách hồ sơ gian hàng" tabIndex={0}>
             <table className="w-full min-w-[1120px] table-fixed border-collapse text-left text-xs">
               <colgroup><col className="w-[16%]" /><col className="w-[17%]" /><col className="w-[11%]" /><col className="w-[21%]" /><col className="w-[12%]" /><col className="w-[10%]" /><col className="w-[13%]" /></colgroup>
               <thead>
@@ -623,7 +630,7 @@ export default function KycApprovalPage() {
                             setRejectReason('');
                           }}
                         >
-                          Thẩm định GPKD
+                          Thẩm định
                         </Button>
                       </td>
                     </tr>
@@ -786,9 +793,10 @@ export default function KycApprovalPage() {
         <Modal
           isOpen={true}
           onClose={() => setInspectStore(null)}
-          title={`Thẩm định Gian Hàng: ${inspectStore.name}`}
+          title="Thẩm định hồ sơ gian hàng"
+          subtitle={inspectStore.name}
           maxWidth="lg"
-          className="max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain"
+          className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain"
         >
           <div className="space-y-5 text-left text-xs">
             <div className="flex flex-wrap items-center gap-2">
@@ -811,10 +819,10 @@ export default function KycApprovalPage() {
             {/* 1. Pháp nhân & Kho hàng (Nghị định 85) */}
             <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-3">
               <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
-                1. Thông tin pháp nhân &amp; Kho hàng (Nghị định 85/2021/NĐ-CP)
+                1. Thông tin pháp nhân và kho hàng
               </strong>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <span className="text-[#7D715E] block">Tên Gian Hàng:</span>
                   <strong className="text-[#1A1612] text-sm font-bold block">{inspectStore.name}</strong>
@@ -825,7 +833,7 @@ export default function KycApprovalPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <span className="text-[#7D715E] block">Chủ sở hữu / Người đại diện:</span>
                   <strong className="text-[#1A1612] font-bold block">{inspectStore.ownerName}</strong>
@@ -891,9 +899,9 @@ export default function KycApprovalPage() {
             {/* 3. Tài khoản ngân hàng nhận tiền doanh thu */}
             <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-2">
               <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
-                3. Tài khoản ngân hàng nhận doanh thu bán hàng (Đối soát)
+                3. Ngân hàng nhận doanh thu
               </strong>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <span className="text-[#7D715E] block">Ngân hàng:</span>
                   <strong className="text-[#1A1612] font-bold">{inspectStore.bankName}</strong>

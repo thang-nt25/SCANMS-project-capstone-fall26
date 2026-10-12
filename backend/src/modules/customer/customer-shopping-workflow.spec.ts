@@ -62,18 +62,17 @@ describe('Customer shopping rules', () => {
       data: expect.objectContaining({
         customerId: 'customer-1',
         originalOrderStatus: OrderStatus.COMPLETED,
-        items: {
-          create: [
-            { orderItemId: 'line-1', quantity: 2, unitPrice: '100000.00' },
-          ],
-        },
+        reason: 'DAMAGED',
+        unboxingVideoUrl: 'https://example.com/video.mp4',
       }),
     });
-    expect(tx.returnEvent.create).toHaveBeenCalledWith({
+    expect(tx.notification.create).toHaveBeenCalledWith({
       data: {
-        returnRequestId: 'request-1',
-        actorId: 'customer-1',
-        type: 'REQUEST_CREATED',
+        userId: 'owner-1',
+        title: 'Yêu cầu đổi trả mới',
+        message: expect.stringContaining('S-001'),
+        type: 'RETURN_REQUESTED',
+        data: { orderId: 'order-1', returnRequestId: 'request-1' },
       },
     });
   });
@@ -94,6 +93,43 @@ describe('Customer shopping rules', () => {
     expect(prisma.productReview.create).not.toHaveBeenCalled();
   });
 
+  it('notifies the customer when they confirm receipt and complete the order', async () => {
+    const notificationCreate = jest.fn();
+    const completedOrder = {
+      id: 'order-1',
+      externalOrderSn: 'DH-2026-ABC123',
+      customerId: 'customer-1',
+      status: OrderStatus.COMPLETED,
+    };
+    const tx = {
+      order: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(completedOrder),
+      },
+      notification: { create: notificationCreate },
+    };
+    const service = serviceWith({
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
+    });
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({
+      id: 'order-1',
+      externalOrderSn: 'DH-2026-ABC123',
+      customerId: 'customer-1',
+      status: OrderStatus.DELIVERED,
+      returnRequest: null,
+    } as any);
+
+    await service.confirmReceipt('customer-1', 'order-1');
+
+    expect(notificationCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'customer-1',
+        type: 'ORDER_COMPLETED',
+        data: expect.objectContaining({ actionUrl: '/customer/orders' }),
+      }),
+    });
+  });
+
   it('replaces only the signed-in customer cart in PostgreSQL', async () => {
     const tx = {
       customerCartItem: {
@@ -107,6 +143,7 @@ describe('Customer shopping rules', () => {
           {
             id: 'product-1',
             isActive: true,
+            moderationStatus: 'APPROVED',
             stockQuantity: 8,
             variants: [],
           },

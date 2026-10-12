@@ -43,7 +43,7 @@ import {
   validateExcelFile,
   validateManualItems,
   type ManualItemForm,
-} from "@/utils/validations/manual-order.validation";
+} from "@/validations/manual-order.validation";
 import {
   ShippingLabel,
   generateTrackingCode,
@@ -51,6 +51,9 @@ import {
 } from "../../components/orders/ShippingLabel";
 import { shippingService, type GhnTrackingDetail } from "../../services/shipping.service";
 import { CustomSelect } from "../../components/ui/CustomSelect";
+import { returnStatusLabel } from '../../utils/return-status.utils';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatCard } from '../../components/ui/StatCard';
 
 type OrderAction = "manual" | "excel";
 interface Props {
@@ -796,49 +799,83 @@ export default function OrdersManagementPage({
     </div>
   );
   return (
-    <div className="space-y-6 text-ink text-left pt-3 sm:pt-4 pb-6">
+    <div className="merchant-orders-page space-y-4 text-ink text-left pb-6">
       {!initialAction && (
         <>
-          {/* Success Alert Banner */}
+          {/* 1. Page Header Chuẩn Hóa */}
+          <PageHeader
+            title="Quản lý Đơn hàng"
+            description="Theo dõi tiến độ vận hành, xuất nhập Excel và kiểm soát đơn hàng từ các kênh tiếp thị"
+            icon={<ShoppingBag className="w-5 h-5" />}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOrdersRefreshCount((c) => c + 1)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Làm mới</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => open("excel")}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
+                  <span>Nhập Excel</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => open("manual")}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tạo đơn thủ công</span>
+                </button>
+              </div>
+            }
+          />
+
+          {/* Success Alert Banner (Chuẩn màu Vàng Be) */}
           {actionSuccessMsg && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612] text-xs font-semibold animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
               <span>{actionSuccessMsg}</span>
             </div>
           )}
 
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <span className="text-xs font-bold text-[#7D715E] block">Tổng đơn hàng</span>
-              <strong className="text-xl sm:text-2xl font-black text-[#1A1612] mt-1 block">
-                {ordersTotal}
-              </strong>
-            </div>
-            <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <span className="text-xs font-bold text-[#B88E4F] block">Chờ xử lý / Đóng gói</span>
-              <strong className="text-xl sm:text-2xl font-black text-[#B88E4F] mt-1 block">
-                {orders.filter((o) => o.status === "PENDING").length}
-              </strong>
-            </div>
-            <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <span className="text-xs font-bold text-[#2563EB] block">Đang giao bưu cục</span>
-              <strong className="text-xl sm:text-2xl font-black text-[#2563EB] mt-1 block">
-                {orders.filter((o) => o.status === "SHIPPING").length}
-              </strong>
-            </div>
-            <div className="p-4 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs">
-              <span className="text-xs font-bold text-emerald-600 block">Đã giao thành công</span>
-              <strong className="text-xl sm:text-2xl font-black text-emerald-700 mt-1 block">
-                {orders.filter((o) => o.status === "DELIVERED" || o.status === "COMPLETED").length}
-              </strong>
-            </div>
+          {/* 2. Quick Metrics Bar Chuẩn Hóa */}
+          <div className="merchant-orders-metrics grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatCard
+              title="Tổng đơn hàng"
+              value={ordersTotal}
+              icon={<ShoppingBag className="w-4 h-4" />}
+            />
+            <StatCard
+              title="Chờ xử lý / Đóng gói"
+              value={orders.filter((o) => o.status === "PENDING").length}
+              note="Cần chuẩn bị giao bưu cục"
+              icon={<PackagePlus className="w-4 h-4" />}
+            />
+            <StatCard
+              title="Đang giao bưu cục"
+              value={orders.filter((o) => o.status === "SHIPPING").length}
+              note="Đơn vị vận chuyển đang xử lý"
+              icon={<Truck className="w-4 h-4" />}
+            />
+            <StatCard
+              title="Đã giao thành công"
+              value={orders.filter((o) => o.status === "DELIVERED" || o.status === "COMPLETED").length}
+              trendText="Hoàn tất đơn"
+              icon={<CheckCircle2 className="w-4 h-4" />}
+            />
           </div>
 
           {/* Filter & Search Bar */}
-          <div className="p-3 bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+          <div className="p-3 bg-white border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
             {/* Status Tabs - Modern Segmented Control */}
-            <div className="inline-flex items-center p-1 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] overflow-x-auto no-scrollbar max-w-full shrink-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Lọc đơn hàng theo trạng thái">
               {[
                 { id: "ALL", label: "Tất cả" },
                 { id: "UNPAID", label: "Chờ thanh toán" },
@@ -853,6 +890,7 @@ export default function OrdersManagementPage({
                   <button
                     key={tab.id}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => {
                       setStatusFilter(tab.id);
                       setOrdersPage(1);
@@ -871,12 +909,13 @@ export default function OrdersManagementPage({
             </div>
 
             {/* Search Input & Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="merchant-orders-actions flex flex-wrap items-center gap-2.5">
               {/* Search input */}
               <div className="relative flex-1 sm:w-56 lg:w-64">
                 <Search className="w-3.5 h-3.5 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
+                  aria-label="Tìm đơn hàng theo mã đơn, tên hoặc số điện thoại"
                   placeholder="Tìm mã đơn, tên, SĐT..."
                   value={orderSearchQuery}
                   onChange={(e) => {
@@ -919,7 +958,7 @@ export default function OrdersManagementPage({
                 className="h-9 px-3.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#1A1612] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>Import Excel</span>
+                <span>Nhập Excel</span>
               </button>
 
               {/* Tạo đơn thủ công button */}
@@ -936,7 +975,15 @@ export default function OrdersManagementPage({
           </div>
 
           {/* Orders Table */}
-          <div className="bg-white border border-[#EAE4D7] rounded-2xl shadow-2xs overflow-hidden">
+          <div className="merchant-orders-table @container/order-list bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
+            <div className="merchant-orders-table-heading flex items-center justify-between flex-wrap gap-2 p-3.5 sm:p-[14px_18px] border-b border-[#EAE4D7]">
+              <div>
+                <h2 className="text-[15px] font-[650] text-[#1A1612]">
+                  Danh sách đơn hàng <span className="inline-block ml-1.5 px-2 py-0.5 rounded-[20px] bg-[#FBF5EB] text-[11px] font-medium text-[#7D715E]">{ordersTotal} đơn</span>
+                </h2>
+                <p className="text-[11px] text-[#7D715E] mt-0.5">Theo dõi trạng thái và xử lý từng đơn hàng</p>
+              </div>
+            </div>
             {ordersLoading ? (
               <div className="p-12 text-center text-xs font-semibold text-[#7D715E] flex items-center justify-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin text-[#B88E4F]" />
@@ -957,17 +1004,17 @@ export default function OrdersManagementPage({
                 </div>
               </div>
             ) : (
-              <div className="overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#EAE4D7] hover:[&::-webkit-scrollbar-thumb]:bg-[#C59B58]/40">
-                <table className="w-full min-w-[1420px] table-fixed border-collapse text-left text-xs">
+              <div className="merchant-orders-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Bảng đơn hàng, có thể cuộn ngang">
+                <table className="merchant-orders-data w-full table-fixed border-collapse text-left text-xs">
                   <colgroup>
                     <col style={{ width: '12%' }} />
-                    <col style={{ width: '13.5%' }} />
-                    <col style={{ width: '22.5%' }} />
-                    <col style={{ width: '8%' }} />
-                    <col style={{ width: '10.5%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '11.5%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '14%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '14%' }} />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-[#EAE4D7] bg-[#FFFCF7] text-xs font-bold uppercase tracking-wide text-[#7D715E] select-none">
@@ -978,7 +1025,7 @@ export default function OrdersManagementPage({
                       <th className="px-2.5 py-3.5 font-bold whitespace-nowrap">Trạng thái</th>
                       <th className="px-2.5 py-3.5 font-bold whitespace-nowrap">Vận đơn</th>
                       <th className="px-2.5 py-3.5 font-bold whitespace-nowrap">Hoa hồng CTV</th>
-                      <th className="px-2 py-3.5 text-right font-bold whitespace-nowrap">Thao tác</th>
+                      <th className="px-2 py-3.5 text-center font-bold whitespace-nowrap">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EAE4D7]/70 bg-white">
@@ -1056,7 +1103,7 @@ export default function OrdersManagementPage({
                       return (
                         <tr key={order.id} className="group even:bg-[#FFFEFC] hover:bg-[#FBF5EB]/55 transition-colors duration-150">
                           {/* Mã đơn */}
-                          <td className="py-3.5 px-2 align-middle">
+                          <td data-label="Mã đơn & Ngày tạo" className="py-3.5 px-2 align-middle">
                             <div className="flex flex-col items-start gap-1">
                               <span className="font-mono font-bold text-xs text-[#1A1612] bg-[#FAF8F5] px-2 py-0.5 rounded-lg border border-[#EAE4D7] shadow-2xs group-hover:border-[#C59B58]/40 transition-colors whitespace-nowrap inline-block tracking-tight">
                                 #{order.externalOrderSn}
@@ -1077,7 +1124,7 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Khách hàng */}
-                          <td className="py-3.5 px-3 align-middle">
+                          <td data-label="Khách hàng" className="py-3.5 px-3 align-middle">
                             <div className="flex max-w-[185px] flex-col gap-1">
                               <strong className="text-[#1A1612] font-bold text-[13px] truncate block leading-tight" title={order.customerName || "Khách lẻ"}>
                                 {order.customerName || "Khách lẻ"}
@@ -1101,7 +1148,7 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Sản phẩm */}
-                          <td className="py-3.5 px-3 align-middle">
+                          <td data-label="Sản phẩm" className="py-3.5 px-3 align-middle">
                             <div className="flex min-w-0 max-w-[340px] flex-col gap-1.5">
                               {order.items.slice(0, 1).map((item, idx) => {
                                 const thumb = getItemThumbnail(item);
@@ -1109,7 +1156,7 @@ export default function OrdersManagementPage({
                                   <div key={idx} className="flex items-center gap-2.5">
                                     <ProductThumbnail src={thumb} alt={item.title} quantity={item.quantity} />
                                     <div className="flex flex-col min-w-0 flex-1">
-                                      <span className="font-bold text-[13px] text-[#1A1612] truncate block" title={item.title}>
+                                      <span className="merchant-order-product-name font-semibold text-[13px] text-[#1A1612] block" title={item.title}>
                                         {item.title}
                                       </span>
                                       <div className="flex items-center gap-2 mt-0.5">
@@ -1143,7 +1190,7 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Tổng tiền */}
-                          <td className="py-3.5 px-2.5 align-middle whitespace-nowrap">
+                          <td data-label="Tổng tiền" className="py-3.5 px-2.5 align-middle whitespace-nowrap">
                             <div className="flex flex-col items-start gap-1">
                               <strong className="text-[13px] font-bold text-[#1A1612] font-mono block whitespace-nowrap">
                                 {order.finalAmount.toLocaleString("vi-VN")} ₫
@@ -1161,9 +1208,9 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Trạng thái */}
-                          <td className="py-3.5 px-2.5 align-middle whitespace-nowrap">
+                          <td data-label="Trạng thái" className="py-3.5 px-2.5 align-middle whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs whitespace-nowrap shrink-0 ${badge.bg} ${badge.text} ${badge.border}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-[#EAE4D7] bg-white text-[#1A1612] whitespace-nowrap shrink-0"
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                               <span>{badge.label}</span>
@@ -1171,15 +1218,15 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Vận đơn */}
-                          <td className="py-3.5 px-2.5 align-middle whitespace-nowrap">
+                          <td data-label="Vận đơn" className="py-3.5 px-2.5 align-middle whitespace-nowrap">
                             {order.trackingNumber ? (
                               <div className="flex flex-col items-start gap-1">
                                 <span className="font-mono text-xs font-bold text-[#1A1612] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#EAE4D7] shadow-2xs whitespace-nowrap">
                                   {order.trackingNumber}
                                 </span>
-                                <span className="flex items-center gap-1 text-[11px] text-[#7D715E] font-medium whitespace-nowrap">
-                                  <Truck className="w-3 h-3 text-[#B88E4F]" />
-                                  {order.carrierName || "Bưu cục"}
+                                <span className="merchant-order-carrier flex items-start gap-1 text-[11px] text-[#7D715E] font-medium">
+                                  <Truck className="w-3 h-3 mt-0.5 shrink-0 text-[#B88E4F]" />
+                                  <span>{order.carrierName || "Bưu cục"}</span>
                                 </span>
                               </div>
                             ) : (
@@ -1190,18 +1237,18 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Hoa hồng CTV */}
-                          <td className="py-3.5 px-2.5 align-middle whitespace-nowrap">
+                          <td data-label="Hoa hồng CTV" className="py-3.5 px-2.5 align-middle whitespace-nowrap">
                             {order.totalCommission > 0 ? (
                               <div className="flex flex-col items-start gap-0.5">
                                 <strong className="text-xs font-bold text-[#B88E4F] font-mono block whitespace-nowrap">
                                   +{order.totalCommission.toLocaleString("vi-VN")} ₫
                                 </strong>
                                 <span
-                                  className="flex min-w-0 max-w-full items-center gap-1 text-[11px] text-[#7D715E] truncate whitespace-nowrap"
+                                  className="merchant-order-collaborator flex min-w-0 max-w-full items-start gap-1 text-[11px] text-[#7D715E]"
                                   title={order.attributedCollaborator?.fullName || order.couponCode || "CTV"}
                                 >
-                                  <Users className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
-                                    <span className="min-w-0 truncate">
+                                  <Users className="w-2.5 h-2.5 mt-0.5 text-[#B88E4F] shrink-0" />
+                                  <span className="min-w-0">
                                     {order.attributedCollaborator?.fullName || order.couponCode || "CTV"}
                                   </span>
                                 </span>
@@ -1212,7 +1259,7 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Thao tác */}
-                          <td className="py-3.5 px-2 align-middle text-right whitespace-nowrap">
+                          <td data-label="Thao tác" className="py-3.5 px-2 align-middle text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                               {order.status === "PENDING" && (
                                 <button
@@ -1346,7 +1393,6 @@ export default function OrdersManagementPage({
               </div>
             )}
           </div>
-
           {!action && noticeView}
         </>
       )}
@@ -1781,38 +1827,44 @@ export default function OrdersManagementPage({
 
       {/* Modal Chi tiết Đơn hàng */}
       {selectedOrderDetails && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-lg bg-white rounded-2xl border border-[#EAE4D7] shadow-xl p-6 text-left flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150 max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-[#EAE4D7] pb-3">
+        <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-[#231D15]/35 backdrop-blur-xs">
+          <div role="dialog" aria-modal="true" aria-labelledby="order-detail-title" className="w-full max-w-[580px] max-h-[86dvh] flex flex-col overflow-hidden border border-[#EAE4D7] rounded-2xl bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)] text-left">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#EAE4D7] shrink-0">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><ShoppingBag size={20} /></div>
               <div>
-                <h3 className="text-base font-extrabold text-[#1A1612] m-0">
-                  Chi tiết Đơn hàng #{selectedOrderDetails.externalOrderSn}
+                <h3 id="order-detail-title" className="text-base font-bold text-[#1A1612] m-0">
+                  Chi tiết đơn hàng
                 </h3>
+                <span className="font-mono text-xs font-bold text-[#B88E4F]">#{selectedOrderDetails.externalOrderSn}</span>
                 <p className="text-xs text-[#7D715E] mt-0.5 m-0">
                   Ngày đặt: {new Date(selectedOrderDetails.createdAt).toLocaleString("vi-VN")}
                 </p>
               </div>
               <button
+                type="button"
+                aria-label="Đóng chi tiết đơn hàng"
                 onClick={() => setSelectedOrderDetails(null)}
-                className="p-1 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6]"
+                className="ml-auto p-1 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6] transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
+            <div className="flex flex-col gap-4 p-5 overflow-y-auto">
             {/* Khách hàng & Địa chỉ */}
-            <div className="p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl flex flex-col gap-1.5 text-xs">
-              <strong className="text-xs font-bold text-[#1A1612]">Thông tin người nhận:</strong>
-              <div>Họ tên: <strong className="text-[#1A1612]">{selectedOrderDetails.customerName}</strong></div>
-              <div>Số điện thoại: <strong className="text-[#1A1612]">{selectedOrderDetails.customerPhone}</strong></div>
+            <section className="p-3.5 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] space-y-2">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612] m-0"><Users size={16} /> Thông tin người nhận</h4>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div><dt className="text-[11px] text-[#7D715E]">Họ tên</dt><dd className="font-semibold text-[#1A1612] mt-0.5">{selectedOrderDetails.customerName}</dd></div>
+              <div><dt className="text-[11px] text-[#7D715E]">Số điện thoại</dt><dd className="font-semibold text-[#1A1612] mt-0.5">{selectedOrderDetails.customerPhone}</dd></div>
               {selectedOrderDetails.customerEmail && (
-                <div>Email: <strong className="text-[#1A1612]">{selectedOrderDetails.customerEmail}</strong></div>
+                <div className="sm:col-span-2"><dt className="text-[11px] text-[#7D715E]">Email</dt><dd className="font-semibold text-[#1A1612] mt-0.5">{selectedOrderDetails.customerEmail}</dd></div>
               )}
-              <div>Địa chỉ: <strong className="text-[#1A1612]">{selectedOrderDetails.shippingAddress}</strong></div>
-            </div>
+              <div className="sm:col-span-2"><dt className="text-[11px] text-[#7D715E]">Địa chỉ giao hàng</dt><dd className="font-semibold text-[#1A1612] mt-0.5">{selectedOrderDetails.shippingAddress}</dd></div>
+              </dl>
+            </section>
 
             {/* Sản phẩm trong đơn */}
-            <div className="flex flex-col gap-2">
+            <section className="p-3.5 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[#1A1612]">Sản phẩm ({selectedOrderDetails.items.length}):</span>
                 <span className="text-[11px] text-[#7D715E]">
@@ -1823,14 +1875,14 @@ export default function OrdersManagementPage({
                 {selectedOrderDetails.items.map((item, idx) => {
                   const thumb = getItemThumbnail(item);
                   return (
-                    <div key={idx} className="p-3 flex items-center justify-between gap-3 text-xs bg-white hover:bg-[#FAF8F5]/60 transition-colors">
+                    <div key={idx} className="order-detail-product p-3 flex items-center justify-between gap-3 text-xs bg-white hover:bg-[#FAF8F5]/60 transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <ProductThumbnail src={thumb} alt={item.title} quantity={item.quantity} />
                         <div className="min-w-0">
-                          <strong className="text-[#1A1612] block truncate" title={item.title}>
+                          <strong className="text-[#1A1612] block" title={item.title}>
                             {item.title}
                           </strong>
-                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#7D715E]">
+                          <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-[#7D715E]">
                             <span>{item.quantity} × {item.unitPrice.toLocaleString("vi-VN")} ₫</span>
                             {item.sku && <span className="text-[10px] font-mono bg-[#F3EFE6] px-1 py-0.2 rounded">SKU: {item.sku}</span>}
                           </div>
@@ -1843,21 +1895,22 @@ export default function OrdersManagementPage({
                   );
                 })}
               </div>
-            </div>
+            </section>
 
             {selectedOrderDetails.returnRequest && (
-              <section className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 space-y-3 text-xs">
-                <h4 className="font-bold text-[#1A1612]">Hồ sơ đổi trả / hoàn tiền</h4>
-                <p>Trạng thái: <strong>{selectedOrderDetails.returnRequest.status}</strong> · Gửi lúc {new Date(selectedOrderDetails.returnRequest.submittedAt).toLocaleString('vi-VN')}</p>
-                <p>Lý do: <strong>{selectedOrderDetails.returnRequest.reason}</strong></p>
+              <section className="order-detail-return order-detail-section space-y-3 text-xs">
+                <h4><RefreshCw size={16} /> Hồ sơ đổi trả / hoàn tiền</h4>
+                <span className="order-detail-return-status">{returnStatusLabel(selectedOrderDetails.returnRequest.status)}</span>
+                <p className="order-detail-submitted">Gửi lúc {new Date(selectedOrderDetails.returnRequest.submittedAt).toLocaleString('vi-VN')}</p>
+                <p>Lý do: <strong>{({ DAMAGED: 'Sản phẩm hư hỏng', WRONG_ITEM: 'Giao sai sản phẩm', EXPIRED: 'Sản phẩm hết hạn', OTHER: 'Lý do khác' } as Record<string, string>)[selectedOrderDetails.returnRequest.reason] || selectedOrderDetails.returnRequest.reason}</strong></p>
                 {selectedOrderDetails.returnRequest.details && <p>{selectedOrderDetails.returnRequest.details}</p>}
-                <div className="flex flex-wrap gap-2">
+                <div className="order-detail-evidence flex flex-wrap gap-2">
                   {selectedOrderDetails.returnRequest.imageUrls.map((url, index) => (
                     <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Ảnh {index + 1}</a>
                   ))}
-                  <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Video mở hộp</a>
+                  {selectedOrderDetails.returnRequest.unboxingVideoUrl && <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Video mở hộp</a>}
                 </div>
-                {selectedOrderDetails.returnRequest.shopResponse && <p>Phản hồi của Shop: {selectedOrderDetails.returnRequest.shopResponse}</p>}
+                {selectedOrderDetails.returnRequest.shopResponse && <div className="order-detail-response"><span>Phản hồi của gian hàng</span><p>{selectedOrderDetails.returnRequest.shopResponse}</p></div>}
                 {selectedOrderDetails.returnRequest.status === 'REQUESTED' && (
                   <div className="space-y-2">
                     <label className="block font-bold">Hướng xử lý gửi khách
@@ -1878,7 +1931,8 @@ export default function OrdersManagementPage({
             )}
 
             {/* Tài chính & Hoa hồng */}
-            <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl flex flex-col gap-1.5 text-xs">
+            <section className="order-detail-finance order-detail-section flex flex-col gap-1.5 text-xs">
+              <h4><ShoppingBag size={16} /> Thanh toán & hoa hồng</h4>
               <div className="flex justify-between">
                 <span className="text-[#7D715E]">Tiền hàng:</span>
                 <span className="font-bold">{selectedOrderDetails.subtotalAmount.toLocaleString("vi-VN")} ₫</span>
@@ -1903,13 +1957,13 @@ export default function OrdersManagementPage({
                   +{selectedOrderDetails.totalCommission.toLocaleString("vi-VN")} ₫
                 </span>
               </div>
+            </section>
             </div>
-
-            <div className="flex justify-end pt-2 border-t border-[#EAE4D7]">
+            <div className="px-5 py-3 border-t border-[#EAE4D7] flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedOrderDetails(null)}
-                className="px-4 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold transition shadow-xs"
+                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-xs cursor-pointer"
               >
                 Đóng
               </button>
@@ -2385,7 +2439,7 @@ export default function OrdersManagementPage({
                         !addresses.length ||
                         Boolean(productError)
                       }
-                      className={`${buttonClass} !border-brand !bg-brand !text-white hover:!bg-brand-strong`}
+                      className={`${buttonClass} scanms-brand-action`}
                     >
                       {busy ? "Đang tạo đơn..." : "Tạo đơn hàng"}
                     </button>
@@ -2546,7 +2600,7 @@ export default function OrdersManagementPage({
                         !storeId ||
                         Boolean(productError)
                       }
-                      className={`${buttonClass} !border-brand !bg-brand !text-white hover:!bg-brand-strong`}
+                      className={`${buttonClass} scanms-brand-action`}
                       onClick={importExcel}
                     >
                       {busy ? "Đang xử lý file..." : "Import đơn hàng"}

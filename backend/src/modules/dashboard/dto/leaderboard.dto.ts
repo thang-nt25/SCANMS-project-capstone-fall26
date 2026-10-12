@@ -117,7 +117,7 @@ export class LeaderboardQueryDto {
 }
 
 export class LeaderboardItemDto {
-  @ApiProperty({ description: 'Thứ hạng xếp hạng (1, 2, 3...)', example: 1 })
+  @ApiProperty({ description: 'Thứ hạng; cùng tiêu chí chính và phụ thì đồng hạng (1, 1, 3...)', example: 1 })
   rank: number;
 
   @ApiProperty({
@@ -181,7 +181,7 @@ export class LeaderboardItemDto {
   conversionRate: number;
 
   @ApiProperty({
-    description: 'Tổng hoa hồng thực nhận trong kỳ (VNĐ)',
+    description: 'Hoa hồng đã duyệt hoặc đã trả từ đơn được ghi nhận trong kỳ (VNĐ)',
     example: 21427500,
   })
   totalCommission: number;
@@ -207,27 +207,27 @@ export class LeaderboardItemDto {
 
 export class LeaderboardPodiumDto {
   @ApiProperty({
-    description: 'Hạng 1 - Quán Quân (Gold/Diamond Trophy)',
+    description: 'Creator đầu tiên trong danh sách dẫn đầu; xem rank để biết thứ hạng thực tế',
     type: LeaderboardItemDto,
   })
   rank1: LeaderboardItemDto | null;
 
   @ApiProperty({
-    description: 'Hạng 2 - Á Quân 1 (Silver Medal)',
+    description: 'Creator thứ hai trong danh sách dẫn đầu, có thể đồng hạng',
     type: LeaderboardItemDto,
   })
   rank2: LeaderboardItemDto | null;
 
   @ApiProperty({
-    description: 'Hạng 3 - Á Quân 2 (Bronze Shield)',
+    description: 'Creator thứ ba trong danh sách dẫn đầu, có thể đồng hạng',
     type: LeaderboardItemDto,
   })
   rank3: LeaderboardItemDto | null;
 }
 
 export class MyRankStatusDto {
-  @ApiProperty({ description: 'Vị trí thứ hạng hiện tại của tôi', example: 12 })
-  myRank: number;
+  @ApiProperty({ description: 'Vị trí thứ hạng hiện tại; null nếu chưa có kết quả đủ điều kiện', type: Number, nullable: true, example: 12 })
+  myRank: number | null;
 
   @ApiProperty({ description: 'Biến động thứ hạng (+3, -1, 0)', example: 3 })
   rankDelta: number;
@@ -295,7 +295,7 @@ export class LeaderboardFullResponseDto {
   podium: LeaderboardPodiumDto;
 
   @ApiProperty({
-    description: 'Danh sách Top 4 đến 20',
+    description: 'Các Creator sau ba vị trí hiển thị đầu tiên; thứ hạng có thể trùng khi đồng hạng',
     type: [LeaderboardItemDto],
   })
   rankings: LeaderboardItemDto[];

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
   Bell,
   CheckCheck,
@@ -10,10 +11,12 @@ import {
   Clock,
   Loader2,
   Radio,
+  X,
 } from 'lucide-react';
 import { notificationsService, type AppNotification } from '../../services/notifications.service';
 import { authService } from '../../services/auth.service';
 import { liveBroadcastService } from '@/services/live-broadcast.service';
+import { getNotificationSection } from '../../utils/notification-categories.utils';
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,6 +26,27 @@ export const NotificationDropdown: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelTop, setPanelTop] = useState(72);
+  const [panelRight, setPanelRight] = useState(12);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const position = () => {
+      const bounds = bellRef.current?.getBoundingClientRect();
+      setPanelTop((bounds?.bottom || 64) + 8);
+      setPanelRight(window.innerWidth < 640 ? 12 : Math.max(12, window.innerWidth - (bounds?.right || window.innerWidth - 12)));
+    };
+    position();
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setIsOpen(false); bellRef.current?.focus(); }
+    };
+    window.addEventListener("resize", position);
+    document.addEventListener("keydown", dismiss);
+    panelRef.current?.focus();
+    return () => { window.removeEventListener("resize", position); document.removeEventListener("keydown", dismiss); };
+  }, [isOpen]);
 
   // Phát âm thanh chime nhẹ khi có thông báo mới (Web Audio API)
   const playNotificationChime = () => {
@@ -63,7 +87,9 @@ export const NotificationDropdown: React.FC = () => {
     const user = authService.getCurrentUser();
     let backendUnread = 0;
     if (user) {
-      backendUnread = await notificationsService.getUnreadCount();
+      const unreadCount = await notificationsService.getUnreadCount();
+      if (unreadCount === null) return;
+      backendUnread = unreadCount;
     }
     const totalCount = backendUnread + unreadBroadcasts;
     setUnreadCount((prev) => {
@@ -133,9 +159,14 @@ export const NotificationDropdown: React.FC = () => {
       if (activeTab === 'ALL') {
         combined = [...liveItems, ...deduplicatedBackend];
       } else if (activeTab === 'PROMOTION') {
-        combined = [...liveItems, ...deduplicatedBackend.filter((i) => i.type.includes('PROMOTION') || i.type.includes('COUPON'))];
+        combined = [
+          ...liveItems,
+          ...deduplicatedBackend.filter((item) => getNotificationSection(item.type) === 'PROMOTION'),
+        ];
       } else {
-        combined = deduplicatedBackend;
+        combined = deduplicatedBackend.filter(
+          (item) => getNotificationSection(item.type) === activeTab,
+        );
       }
 
       setNotifications(combined);
@@ -183,7 +214,7 @@ export const NotificationDropdown: React.FC = () => {
   // Click outside listener
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) && !panelRef.current?.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -228,7 +259,7 @@ export const NotificationDropdown: React.FC = () => {
     }
 
     // 1. Live stream broadcast notification -> dẫn thẳng vào phòng livestream
-    if (notif.type.startsWith('LIVE_') || notif.type.includes('LIVE')) {
+    if ((notif.type.startsWith('LIVE_') || notif.type.includes('LIVE')) && !notif.type.startsWith('LIVE_ORDER_')) {
       const liveUrl = notif.data?.liveUrl;
       if (liveUrl) {
         if (liveUrl.startsWith('http')) {
@@ -272,7 +303,12 @@ export const NotificationDropdown: React.FC = () => {
     const returnId = notif.data?.returnId || notif.data?.returnRequestId;
     const payoutId = notif.data?.payoutId;
 
-    if (notif.type.startsWith('ORDER_') || notif.type.startsWith('DISPUTE_') || notif.type.startsWith('RETURN_')) {
+    if (
+      notif.type.startsWith('ORDER_') ||
+      notif.type.startsWith('DISPUTE_') ||
+      notif.type.startsWith('RETURN_') ||
+      notif.type.startsWith('LIVE_ORDER_')
+    ) {
       if (returnId) {
         if (userRole === 'CUSTOMER') {
           navigate(`/customer/returns/${encodeURIComponent(returnId)}`);
@@ -310,6 +346,9 @@ export const NotificationDropdown: React.FC = () => {
 
   const getNotificationIcon = (type: string) => {
     if (type === 'LIVE_GOVERNANCE') return <ShieldAlert className="h-4 w-4 text-[#B88E4F]" />;
+    if (type.startsWith('ORDER_') || type.startsWith('LIVE_ORDER_')) {
+      return <ShoppingBag className="w-4 h-4 text-[#C59B58]" />;
+    }
     if (type.startsWith('LIVE_') || type.includes('LIVE')) {
       return (
         <div className="relative">
@@ -343,158 +382,145 @@ export const NotificationDropdown: React.FC = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Button */}
       <button
+        ref={bellRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#7D715E] hover:text-[#B88E4F] transition-all cursor-pointer shadow-2xs group flex items-center justify-center active:scale-95"
-        title="Trung tâm thông báo SCANMS"
-        aria-label={`Thông báo: ${unreadCount} chưa đọc`}
+        className="relative grid place-items-center w-[36px] h-[36px] border border-[#EAE4D7] rounded-full bg-white text-[#7D715E] cursor-pointer hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+        title="Thông báo SCANMS"
+        aria-label={"Thông báo: " + unreadCount + " chưa đọc"}
+        aria-expanded={isOpen}
+        aria-controls="scanms-notification-panel"
       >
-        <Bell className="w-5 h-5 transition-transform group-hover:scale-105" />
+        <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#DC2626] text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-in zoom-in">
+          <span className="absolute -top-[4px] -right-[4px] grid place-items-center min-w-[17px] h-[17px] px-[4px] border-2 border-white rounded-[20px] bg-[#DC2626] text-white text-[9px] font-[600] leading-none">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
-
-      {/* Dropdown Panel */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl z-50 overflow-hidden text-left animate-in fade-in slide-in-from-top-2 duration-150">
-          {/* Header */}
-          <div className="p-3.5 bg-[#FAF8F5] border-b border-[#EAE4D7] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-[#1A1612]">Thông Báo</span>
+      {isOpen && createPortal(
+        <div
+          id="scanms-notification-panel"
+          ref={panelRef}
+          role="region"
+          aria-label="Trung tâm thông báo"
+          tabIndex={-1}
+          className="fixed z-[100] flex flex-col w-[380px] max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100dvh-var(--notification-top)-12px))] border border-[#EAE4D7] rounded-[14px] bg-white text-[#1A1612] shadow-[0_12px_32px_rgb(35_29_21_/_0.1)] overflow-hidden text-left outline-none max-[639px]:right-[12px] max-[639px]:w-[calc(100vw-24px)]"
+          style={{ top: panelTop, right: panelRight }}
+        >
+          <header className="flex items-center justify-between shrink-0 gap-[12px] p-[13px_14px_11px]">
+            <div className="flex items-center gap-[7px]">
+              <h3 className="m-0 text-[14px] leading-[1.5] font-[600] text-[#1A1612]">Thông báo</h3>
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-[#C59B58]/15 text-[#8C6226] text-[10px] font-bold">
+                <span className="p-[3px_6px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[9px] leading-[1.3]">
                   {unreadCount} mới
                 </span>
               )}
             </div>
-
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-[4px]">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="inline-flex items-center justify-center gap-[4px] min-h-[28px] p-[5px_6px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+                >
+                  <CheckCheck size={13} className="text-[#B88E4F]" />
+                  <span>Đọc tất cả</span>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleMarkAllRead}
-                className="text-[11px] font-bold text-[#B88E4F] hover:text-[#8C6226] flex items-center gap-1 transition cursor-pointer"
+                aria-label="Đóng thông báo"
+                className="inline-flex items-center justify-center w-[26px] min-h-[28px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+                onClick={() => { setIsOpen(false); bellRef.current?.focus(); }}
               >
-                <CheckCheck className="w-3.5 h-3.5" />
-                <span>Đã đọc tất cả</span>
+                <X size={15} />
               </button>
-            )}
+            </div>
+          </header>
+
+          <div className="grid grid-cols-4 gap-[4px] p-[0_12px_11px] shrink-0 border-b border-[#EAE4D7]" role="group" aria-label="Loại thông báo">
+            {([
+              { id: 'ALL', label: 'Tất cả' },
+              { id: 'ORDER', label: 'Đơn hàng' },
+              { id: 'PROMOTION', label: 'Live & ưu đãi' },
+              { id: 'SYSTEM', label: 'Hệ thống' },
+            ] as const).map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  type="button"
+                  key={tab.id}
+                  aria-pressed={isActive}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`min-h-[32px] p-[6px_4px] border rounded-[7px] text-[10px] font-[500] leading-[1.4] whitespace-nowrap cursor-pointer transition-colors hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px] ${
+                    isActive
+                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
+                      : 'border-transparent bg-white text-[#7D715E]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex border-b border-[#EAE4D7] bg-white px-2 pt-2 gap-1 text-xs">
-            {(
-              [
-                { id: 'ALL', label: 'Tất cả' },
-                { id: 'ORDER', label: 'Đơn hàng' },
-                { id: 'PROMOTION', label: 'Livestream & Deal' },
-                { id: 'SYSTEM', label: 'Hệ thống' },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-1.5 px-2 text-center font-bold rounded-lg transition-all cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]'
-                    : 'text-[#7D715E] hover:text-[#1A1612]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Notification List */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-[#EAE4D7]/60">
+          <div className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:thin]" aria-busy={loading}>
             {loading ? (
-              <div className="p-8 text-center text-[#7D715E]">
-                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#C59B58]" />
-                <span className="text-xs">Đang tải thông báo...</span>
+              <div className="flex flex-col items-center justify-center gap-[7px] p-[34px_16px] text-[#7D715E] text-center" role="status">
+                <Loader2 size={22} className="animate-spin text-[#B88E4F]" />
+                <p className="text-[11px] leading-[1.6] m-0">Đang tải thông báo…</p>
               </div>
-            ) : notifications.length === 0 ? (
-              <div className="p-8 text-center text-[#7D715E]">
-                <Bell className="w-8 h-8 mx-auto mb-2 text-[#EAE4D7]" />
-                <p className="text-xs font-bold text-[#1A1612]">Không có thông báo nào</p>
-                <p className="text-[11px] mt-0.5">Bạn đã cập nhật toàn bộ hoạt động mới nhất.</p>
+            ) : !notifications.length ? (
+              <div className="flex flex-col items-center justify-center gap-[7px] p-[34px_16px] text-[#7D715E] text-center">
+                <Bell size={24} className="text-[#B88E4F]" />
+                <h4 className="text-[12px] font-[500] text-[#1A1612] m-0">Chưa có thông báo</h4>
+                <p className="text-[11px] leading-[1.6] m-0">Thông báo mới sẽ xuất hiện tại đây.</p>
               </div>
             ) : (
-              notifications.map((n) => {
+              notifications.map(n => {
                 const isLive = n.type.startsWith('LIVE_') || n.type.includes('LIVE');
-
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={n.id}
-                    onClick={() => handleNotificationClick(n)}
-                    className={`p-3.5 hover:bg-[#FAF8F5] transition cursor-pointer flex items-start gap-3 relative group ${
-                      isLive
-                        ? !n.isRead
-                          ? 'bg-rose-50/40 border-l-4 border-l-rose-500'
-                          : 'bg-white hover:bg-rose-50/20'
-                        : !n.isRead
-                        ? 'bg-[#FBF5EB]/50'
-                        : 'bg-white'
-                    }`}
+                    onClick={() => void handleNotificationClick(n)}
+                    className="relative flex items-start gap-[10px] w-full p-[13px_14px] border-b border-[#EAE4D7] last:border-b-0 bg-white hover:bg-[#FAF8F5] text-left transition-colors cursor-pointer"
                   >
-                    <div className={`w-8 h-8 rounded-xl shadow-xs flex items-center justify-center shrink-0 mt-0.5 ${
-                      isLive
-                        ? 'bg-rose-50 border border-rose-200 text-rose-600'
-                        : 'bg-white border border-[#EAE4D7]'
-                    }`}>
+                    <span className="grid place-items-center shrink-0 w-[28px] h-[28px] mt-[1px] border border-[#EEDFC6] rounded-[8px] bg-white text-[#B88E4F]">
                       {getNotificationIcon(n.type)}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <h4 className="text-xs font-black text-[#1A1612] truncate group-hover:text-[#B88E4F] transition-colors">
-                            {n.title}
-                          </h4>
-                        </div>
-                        {isLive ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[9px] font-black uppercase tracking-wider shrink-0 shadow-2xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                            LIVE
-                          </span>
-                        ) : (
-                          !n.isRead && (
-                            <span className="w-2 h-2 rounded-full bg-[#C59B58] shrink-0" />
-                          )
-                        )}
-                      </div>
-                      <p className="text-[11px] text-[#7D715E] line-clamp-2 leading-relaxed">
+                    </span>
+                    <span className="block flex-1 min-w-0">
+                      <span className="flex items-start gap-[8px]">
+                        <strong title={n.title} className={`line-clamp-2 flex-1 text-[#1A1612] text-[12px] leading-[1.5] ${!n.isRead ? 'font-[600]' : 'font-[500]'}`}>
+                          {n.title}
+                        </strong>
+                        {!n.isRead && <span className="shrink-0 w-[5px] h-[5px] mt-[6px] rounded-full bg-[#C59B58]" aria-label="Chưa đọc" />}
+                      </span>
+                      <span className="line-clamp-2 mt-[4px] text-[#7D715E] text-[11px] leading-[1.6] block">
                         {n.message}
-                      </p>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <div className="flex items-center gap-1 text-[10px] text-[#A89D8B] font-medium">
-                          <Clock className="w-3 h-3" />
-                          <span>{formatTimeAgo(n.createdAt)}</span>
-                        </div>
-                        {isLive && (
-                          <span className="text-[10.5px] font-extrabold text-rose-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                            Vào xem ngay →
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                      </span>
+                      <span className="flex items-center justify-between flex-wrap gap-[5px] mt-[7px]">
+                        <time dateTime={n.createdAt} className="inline-flex items-center gap-[4px] text-[#9A8E7C] text-[9px] leading-[1.5]">
+                          <Clock size={11} />
+                          {formatTimeAgo(n.createdAt)}
+                        </time>
+                        {isLive && <span className="text-[#B88E4F] text-[9px] font-[500] hover:underline">Xem phiên live →</span>}
+                      </span>
+                    </span>
+                  </button>
                 );
               })
             )}
           </div>
 
-          {/* Footer */}
-          <div className="p-2.5 bg-[#FAF8F5] border-t border-[#EAE4D7] text-center">
-            <span className="text-[10px] text-[#7D715E]">
-              Thông báo trực tiếp • Nền tảng tiếp thị liên kết SCANMS
-            </span>
-          </div>
-        </div>
+          <footer className="flex items-center justify-center gap-[5px] shrink-0 p-[10px_12px] border-t border-[#EAE4D7] bg-white text-[#9A8E7C] text-[9px] leading-[1.5]">
+            <span className="w-[4px] h-[4px] rounded-full bg-[#C59B58]" />
+            Cập nhật hoạt động trên SCANMS
+          </footer>
+        </div>,
+        document.body
       )}
     </div>
   );

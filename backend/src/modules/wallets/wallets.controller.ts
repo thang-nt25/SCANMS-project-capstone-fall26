@@ -6,6 +6,8 @@ import {
   Put,
   Body,
   Query,
+  Param,
+  ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -15,9 +17,37 @@ import type { AuthenticatedUser } from '../../common/interfaces/authenticated-re
 import { WalletSummaryService } from './wallet-summary.service';
 import { WalletsService } from './wallets.service';
 import { QueryLedgerDto } from './dto/query-ledger.dto';
+import { IsInt, IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { WalletPayosService } from './wallet-payos.service';
+
+class PayosTopUpDto {
+  @IsInt()
+  @Min(10000)
+  @Max(50000000)
+  amount: number;
+}
 
 class TopUpDemoDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(50000000)
   amount: number;
+}
+
+class UpdateBankAccountDto {
+  @IsString()
+  @IsNotEmpty()
+  bankName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  bankAccountNumber: string;
+
+  @IsString()
+  @IsNotEmpty()
+  bankAccountName: string;
 }
 
 @ApiTags('Wallets')
@@ -28,6 +58,7 @@ export class WalletsController {
   constructor(
     private readonly summaryService: WalletSummaryService,
     private readonly walletsService: WalletsService,
+    private readonly walletPayos: WalletPayosService,
   ) {}
 
   @Get('me')
@@ -46,13 +77,34 @@ export class WalletsController {
     return this.walletsService.topUpDemo(user.id, amount);
   }
 
+  @Get('top-up-payos/availability')
+  payosAvailability() { return this.walletPayos.availability(); }
+
+  @Post('top-up-payos')
+  createPayosTopUp(@CurrentUser() user: AuthenticatedUser, @Body() body: PayosTopUpDto) {
+    return this.walletPayos.create(user.id, body.amount);
+  }
+
+  @Get('top-up-payos/pending')
+  pendingPayosTopUp(@CurrentUser() user: AuthenticatedUser) { return this.walletPayos.latest(user.id); }
+
+  @Get('top-up-payos/:id/status')
+  payosTopUpStatus(@CurrentUser() user: AuthenticatedUser, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.walletPayos.status(user.id, id);
+  }
+
   @Put('me/bank-account')
   @ApiOperation({ summary: 'Cập nhật tài khoản ngân hàng nhận tiền của KOL' })
   updateBankAccount(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { bankName: string; bankAccountNumber: string; bankAccountName: string },
+    @Body() body: UpdateBankAccountDto,
   ) {
     return this.summaryService.updateBankAccount(user.id, body);
+  }
+
+  @Post('top-up-payos/:id/cancel')
+  cancelPayosTopUp(@CurrentUser() user: AuthenticatedUser, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.walletPayos.cancel(user.id, id);
   }
 
   @Delete('me/bank-account')

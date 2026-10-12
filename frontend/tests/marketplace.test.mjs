@@ -11,8 +11,8 @@ async function loadTypeScript(relativePath) {
   const output = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ESNext } }).outputText;
   return import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
 }
-const { marketplaceProducts: products, marketplaceKOLs: creators, marketplaceVideos: videos } = await loadTypeScript('../src/features/marketplace/marketplaceData.ts');
-const { calculateCart, normalizeSearch, formatMoney } = await loadTypeScript('../src/features/marketplace/marketplaceUtils.ts');
+const { marketplaceProducts: products, marketplaceKOLs: creators, marketplaceVideos: videos } = await loadTypeScript('./fixtures/marketplaceData.ts');
+const { calculateCart, normalizeSearch, formatMoney } = await loadTypeScript('../src/utils/marketplace.utils.ts');
 
 test('Vietnamese search ignores case, diacritics and đ', () => {
   assert.equal(normalizeSearch('  Nguyễn Đình Tuấn  '), 'nguyen dinh tuan');

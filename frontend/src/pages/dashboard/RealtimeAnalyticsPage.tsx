@@ -162,7 +162,7 @@ export const RealtimeAnalyticsPage: React.FC = () => {
   }, [topProducts]);
 
   return (
-    <div className="space-y-4 pb-8">
+    <div className="realtime-analytics-page space-y-4 pb-8">
       {error && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
           {error}
@@ -183,6 +183,7 @@ export const RealtimeAnalyticsPage: React.FC = () => {
             ].map(tab => (
               <button
                 key={tab.key}
+                aria-pressed={range === tab.key}
                 onClick={() => {
                   setRange(tab.key);
                   setIsCustomOpen(false);
@@ -197,6 +198,7 @@ export const RealtimeAnalyticsPage: React.FC = () => {
               </button>
             ))}
             <button
+              aria-pressed={range === 'custom' || isCustomOpen}
               onClick={() => setIsCustomOpen(!isCustomOpen)}
               className={`flex items-center space-x-1 whitespace-nowrap rounded-lg px-2.5 py-2 transition-all cursor-pointer ${
                 range === 'custom'
@@ -284,7 +286,7 @@ export const RealtimeAnalyticsPage: React.FC = () => {
       )}
 
       {/* 2. Top Summary KPI Cards (5 metrics) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="analytics-kpis grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {/* Clicks */}
         <div className="group space-y-2 rounded-xl border border-[#EAE4D7] bg-white p-4 shadow-xs transition-colors hover:border-[#C59B58]/50">
           <div className="flex items-center justify-between">
@@ -443,7 +445,7 @@ export const RealtimeAnalyticsPage: React.FC = () => {
             <div>
               <h2 className="flex items-center gap-2 text-base font-bold text-[#1A1612]">
                 <Flame className="h-4 w-4 text-[#B88E4F]" />
-                <span>Biểu Đồ Diễn Biến Hiệu Suất Theo Thời Gian</span>
+                <span>Hiệu suất theo thời gian</span>
               </h2>
               <p className="text-xs text-[#7D715E] mt-0.5">
                 {range === 'today' ? 'Thống kê chi tiết theo 24 khung giờ trong ngày' : 'Thống kê xu hướng biến động theo ngày'}
@@ -453,6 +455,7 @@ export const RealtimeAnalyticsPage: React.FC = () => {
             {/* Sub-tabs for switching metrics displayed in Chart */}
             <div className="flex items-center rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] p-1 text-xs font-semibold">
               <button
+                aria-pressed={activeChartTab === 'traffic'}
                 onClick={() => setActiveChartTab('traffic')}
                 className={`rounded-md px-2.5 py-1.5 transition-colors cursor-pointer ${
                   activeChartTab === 'traffic'
@@ -460,9 +463,10 @@ export const RealtimeAnalyticsPage: React.FC = () => {
                     : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'
                 }`}
               >
-                Traffic & Đơn Hàng
+                Lượt nhấp & đơn hàng
               </button>
               <button
+                aria-pressed={activeChartTab === 'financial'}
                 onClick={() => setActiveChartTab('financial')}
                 className={`rounded-md px-2.5 py-1.5 transition-colors cursor-pointer ${
                   activeChartTab === 'financial'
@@ -470,13 +474,13 @@ export const RealtimeAnalyticsPage: React.FC = () => {
                     : 'text-[#7D715E] hover:bg-white hover:text-[#1A1612]'
                 }`}
               >
-                Doanh Thu & Hoa Hồng
+                Doanh thu & hoa hồng
               </button>
             </div>
           </div>
 
           {/* Chart Canvas */}
-          <div className="h-64 w-full sm:h-72">
+          <div className="analytics-chart-canvas h-64 w-full sm:h-72">
             {loading ? (
               <div className="h-full flex items-center justify-center text-[#7D715E] text-xs animate-pulse">
                 Đang nạp dữ liệu biểu đồ thời gian thực...
@@ -559,11 +563,11 @@ export const RealtimeAnalyticsPage: React.FC = () => {
         </div>
 
         {/* Conversion Funnel */}
-        <div className="flex flex-col justify-between space-y-4 rounded-xl border border-[#EAE4D7] bg-white p-4 shadow-xs">
+        <div className="analytics-funnel flex flex-col justify-between space-y-4 rounded-xl border border-[#EAE4D7] bg-white p-4 shadow-xs">
           <div>
             <h2 className="flex items-center gap-2 text-base font-bold text-[#1A1612]">
               <Layers className="h-4 w-4 text-[#B88E4F]" />
-              <span>Phễu Chuyển Đổi (Funnel)</span>
+              <span>Phễu chuyển đổi</span>
             </h2>
             <p className="text-xs text-[#7D715E] mt-0.5">
               Đo lường độ thất thoát traffic từ lúc click link tới khi đơn giao hoàn tất.
@@ -617,7 +621,7 @@ export const RealtimeAnalyticsPage: React.FC = () => {
             <div>
               <h3 className="flex items-center gap-2 text-base font-bold text-[#1A1612]">
                 <Package className="h-4 w-4 text-[#B88E4F]" />
-                <span>Top Sản Phẩm Mang Lại Doanh Số Cao Nhất</span>
+                <span>Sản phẩm có doanh số cao</span>
               </h3>
               <p className="text-xs text-[#7D715E] mt-0.5">Xếp hạng theo tổng giá trị đơn hàng thực tế phát sinh.</p>
             </div>
@@ -670,7 +674,7 @@ export const RealtimeAnalyticsPage: React.FC = () => {
           <div>
             <h3 className="flex items-center gap-2 text-base font-bold text-[#1A1612]">
               <Share2 className="h-4 w-4 text-[#B88E4F]" />
-              <span>Phân Bổ Kênh Tiếp Thị</span>
+              <span>Hiệu quả kênh tiếp thị</span>
             </h3>
             <p className="text-xs text-[#7D715E] mt-0.5">Tỷ trọng lưu lượng và đơn hàng theo từng mạng xã hội.</p>
           </div>

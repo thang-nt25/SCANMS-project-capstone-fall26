@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import {
@@ -13,6 +14,7 @@ import {
   MatchAnalysisRequestDto,
 } from './dto/ai-recommendation.dto';
 import { OrderStatus, UserRole } from '@prisma/client';
+import { textMatchesCategory } from './category-match.utils';
 
 @Injectable()
 export class AiRecommendationService {
@@ -56,8 +58,8 @@ export class AiRecommendationService {
           'Chỉ được quét KOL cho sản phẩm của gian hàng mình.',
         );
       }
-      targetCategory =
-        query.category || targetProduct.categoryName || undefined;
+      targetCategory = targetProduct.categoryName?.trim() || query.category?.trim() || undefined;
+      if (!targetCategory) throw new BadRequestException('Sản phẩm chưa có ngành hàng. Hãy chọn ngành hàng trong bộ lọc trước khi đối sánh KOL.');
       targetPrice = Number(targetProduct.price || 0);
     }
 
@@ -195,6 +197,11 @@ export class AiRecommendationService {
       let categoryScore = 0;
       let primaryCategory = 'Chưa có lịch sử bán hàng';
       let maxCatCount = 0;
+      let categoryMatchSource: 'SALES' | 'PROFILE' | 'NONE' = 'NONE';
+      const profileText = [c.collaboratorProfile?.bio, ...socialChannels.map(channel => channel.channelName)].filter(Boolean).join(' ');
+      const hasCategoryEvidence = (category: string) => [...stats.categoryOrderCounts.keys()].some(cat => textMatchesCategory(cat, category)) || textMatchesCategory(profileText, category);
+      if (targetCategory && !hasCategoryEvidence(targetCategory)) continue;
+      if (query.category?.trim() && !hasCategoryEvidence(query.category.trim())) continue;
 
       for (const [cat, count] of stats.categoryOrderCounts.entries()) {
         if (count > maxCatCount) {
@@ -204,13 +211,9 @@ export class AiRecommendationService {
       }
 
       if (targetCategory) {
-        const targetCatNormalized = targetCategory.toLowerCase();
         let directMatchOrders = 0;
         for (const [cat, count] of stats.categoryOrderCounts.entries()) {
-          if (
-            cat.toLowerCase().includes(targetCatNormalized) ||
-            targetCatNormalized.includes(cat.toLowerCase())
-          ) {
+          if (textMatchesCategory(cat, targetCategory)) {
             directMatchOrders += count;
           }
         }
@@ -219,9 +222,8 @@ export class AiRecommendationService {
         else if (directMatchOrders >= 20) categoryScore = 92;
         else if (directMatchOrders >= 5) categoryScore = 85;
         else if (directMatchOrders > 0) categoryScore = 75;
-        else if (primaryCategory.toLowerCase().includes(targetCatNormalized))
-          categoryScore = 80;
-        else categoryScore = 0;
+        else if (textMatchesCategory(profileText, targetCategory)) categoryScore = 35;
+        categoryMatchSource = directMatchOrders > 0 ? 'SALES' : 'PROFILE';
       } else if (stats.totalOrders > 0) {
         categoryScore = Math.min(
           100,
@@ -374,6 +376,7 @@ export class AiRecommendationService {
         tierName,
         finalMatchScore,
         stats.totalOrders,
+        categoryMatchSource,
       );
 
       // 7. Tạo 3 điểm mạnh cốt lõi (Key Strengths)
@@ -395,11 +398,13 @@ export class AiRecommendationService {
         collaboratorId: c.id,
         fullName: c.fullName,
         email: c.email,
-        avatarUrl: c.collaboratorProfile?.avatarUrl || undefined,
+        avatarUrl: c.collaboratorProfile?.avatarUrl || c.avatarUrl || undefined,
         tierName,
         bio: c.collaboratorProfile?.bio || 'Chưa cập nhật giới thiệu',
         matchScore: finalMatchScore,
         matchLevel,
+        categoryMatchSource,
+        matchedCategory: targetCategory,
         scoreBreakdown,
         aiReasoning,
         keyStrengths,
@@ -500,10 +505,14 @@ export class AiRecommendationService {
     tier: string,
     score: number,
     orders: number,
+    categorySource: 'SALES' | 'PROFILE' | 'NONE',
   ): string {
+    const categoryEvidence = categorySource === 'PROFILE'
+      ? ` Hồ sơ/kênh có nội dung liên quan đến ${category}; chưa có đơn hoàn tất trong ngành này.`
+      : categorySource === 'SALES' ? ` Có lịch sử đơn hoàn tất trong nhóm ngành ${category}.` : '';
     if (!orders)
-      return `${kolName} chưa có đơn affiliate hoàn tất trên SCANMS. Điểm ${score}/100 chủ yếu dựa trên hồ sơ; chưa đủ dữ liệu để đánh giá hiệu quả bán "${productTitle}".`;
-    return `${kolName}: ${score}/100 điểm gợi ý cho "${productTitle}" với ngành mục tiêu ${category}. Căn cứ: ${orders} đơn affiliate đã giao/hoàn tất trên SCANMS, tỷ lệ đơn trên lượt nhấp hợp lệ duy nhất ${cr}% và hạng ${tier}. Điểm dùng để xếp hạng tham khảo, không phải xác suất chốt đơn.`;
+      return `${kolName} chưa có đơn affiliate hoàn tất trên SCANMS. Điểm ${score}/100 chủ yếu dựa trên hồ sơ; chưa đủ dữ liệu để đánh giá hiệu quả bán "${productTitle}".${categoryEvidence}`;
+    return `${kolName}: ${score}/100 điểm gợi ý cho "${productTitle}" với ngành mục tiêu ${category}.${categoryEvidence} Căn cứ chung: ${orders} đơn affiliate đã giao/hoàn tất trên SCANMS, tỷ lệ đơn trên lượt nhấp hợp lệ duy nhất ${cr}% và hạng ${tier}. Điểm dùng để xếp hạng tham khảo, không phải xác suất chốt đơn.`;
   }
 
   private generateKeyStrengths(

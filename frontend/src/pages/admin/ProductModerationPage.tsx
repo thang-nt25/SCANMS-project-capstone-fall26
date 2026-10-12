@@ -5,7 +5,6 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { productService, type Product } from '../../services/product.service';
 import { toast } from '../../utils/toast';
-import './ProductModerationPage.css';
 
 type ModerationProduct = Product & {
   createdAt?: string;
@@ -109,7 +108,7 @@ export default function ProductModerationPage() {
     : [];
 
   return (
-    <main className="product-moderation min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-0 py-5 text-[#1A1612]">
+    <main className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-0 py-5 text-[#1A1612]">
       <div className="mx-0 w-full min-w-0 max-w-none space-y-4">
         <section className="rounded-xl border border-[#EAE4D7] bg-white p-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -139,7 +138,6 @@ export default function ProductModerationPage() {
             </div>
           </div>
         </section>
-        <p role="status" className="text-xs text-[#7D715E]">{loading ? 'Đang tải danh sách…' : filteredProducts.length + ' sản phẩm'}</p>
 
         {loading ? (
           <div className="rounded-2xl border border-[#EAE4D7] bg-white p-12 text-center text-sm text-[#7D715E]">Đang tải hồ sơ sản phẩm...</div>
@@ -150,12 +148,12 @@ export default function ProductModerationPage() {
             <p className="mt-1 text-sm text-[#7D715E]">Sản phẩm Shop vừa tạo sẽ xuất hiện ở mục “Chờ duyệt”.</p>
           </div>
         ) : (
-          <div className="moderation-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {filteredProducts.map((product) => {
               const pending = product.moderationStatus === 'DRAFT';
               const rejected = product.moderationStatus === 'REJECTED';
               return (
-                <article key={product.id} className="moderation-card min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-[0_2px_8px_rgba(35,29,21,0.025)]">
+                <article key={product.id} className="flex flex-col min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
                   <div className="flex gap-3 p-4">
                     <div className="grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EAE4D7] bg-white">
                       {imageUrl(product) ? <img src={imageUrl(product)} alt={product.title} className="h-full w-full object-contain" /> : <ImageIcon className="h-6 w-6 text-[#B88E4F]" />}
@@ -176,10 +174,10 @@ export default function ProductModerationPage() {
                     </div>
                   </div>
                   {rejected && product.moderationReason && <p className="mx-4 mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Lý do từ chối: {product.moderationReason}</p>}
-                  <div className="moderation-actions mx-4 flex flex-wrap items-center gap-2 border-t border-[#EAE4D7] py-3">
+                  <div className="mt-auto mx-4 flex flex-wrap items-center gap-2 border-t border-[#EAE4D7] py-3">
                     <Button size="sm" variant="outline" icon={<Eye className="h-4 w-4" />} onClick={() => setSelected(product)}>Xem hồ sơ</Button>
                     {pending && <>
-                      <Button className="moderation-reject" size="sm" variant="outline" disabled={savingId === product.id} icon={<XCircle className="h-4 w-4" />} onClick={() => { setRejectionTarget(product); setRejectionReason(''); }}>Từ chối</Button>
+                      <Button className="text-[#DC2626] border-[#EAE4D7] hover:bg-rose-50 hover:border-rose-200" size="sm" variant="outline" disabled={savingId === product.id} icon={<XCircle className="h-4 w-4" />} onClick={() => { setRejectionTarget(product); setRejectionReason(''); }}>Từ chối</Button>
                       <Button size="sm" variant="dark" icon={<BadgeCheck className="h-4 w-4" />} loading={savingId === product.id} onClick={() => void moderate(product, 'APPROVED')}>Phê duyệt</Button>
                     </>}
                   </div>

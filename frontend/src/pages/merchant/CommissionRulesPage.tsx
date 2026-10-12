@@ -411,7 +411,7 @@ export const CommissionRulesPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto box-border flex w-full max-w-[1520px] flex-col gap-5 pb-10 pt-4 font-sans sm:pt-5">
+    <div className="promotions-commission mx-auto box-border flex w-full max-w-[1520px] flex-col gap-5 pb-10 pt-4 font-sans sm:pt-5">
 
 
 
@@ -485,7 +485,7 @@ export const CommissionRulesPage: React.FC = () => {
       )}
 
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
+      <div className="commission-metrics grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
         <article className="flex min-h-[142px] flex-col justify-between rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_3px_12px_rgba(35,29,21,0.04)] sm:p-5">
           <div className="flex items-center justify-between gap-3 text-sm font-semibold text-[#7D715E]">
             <span>Số mốc cấu hình</span>
@@ -503,7 +503,7 @@ export const CommissionRulesPage: React.FC = () => {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Layers size={18} /></span>
           </div>
           <div>
-            <div className="text-xl font-extrabold tracking-tight text-[#8A642C]">Lũy tiến theo khoảng</div>
+            <div className="text-lg font-bold tracking-tight text-[#1A1612]">Lũy tiến theo khoảng</div>
             <div className="mt-1 text-xs text-[#7D715E]">Cộng thưởng cố định khi đạt KPI</div>
           </div>
         </article>
@@ -527,16 +527,16 @@ export const CommissionRulesPage: React.FC = () => {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#059669]"><CheckCircle2 size={18} /></span>
           </div>
           <div>
-            <div className="text-xl font-extrabold tracking-tight text-[#8A642C]">Có lưu snapshot</div>
+            <div className="text-lg font-bold tracking-tight text-[#1A1612]">Lưu lịch sử</div>
             <div className="mt-1 text-xs text-[#7D715E]">Giữ nguyên lịch sử chốt thưởng</div>
           </div>
         </article>
       </div>
 
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2 xl:gap-5">
+      <div className="commission-columns grid grid-cols-1 items-start gap-4 xl:grid-cols-2 xl:gap-5">
 
-        <section className="min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_4px_18px_rgba(35,29,21,0.04)] sm:p-5 lg:p-6">
+        <section className="commission-tier-panel min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_4px_18px_rgba(35,29,21,0.04)] sm:p-5 lg:p-6">
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h2 className="m-0 text-lg font-extrabold tracking-tight text-[#1A1612] sm:text-xl">
@@ -592,7 +592,7 @@ export const CommissionRulesPage: React.FC = () => {
               {rules.map((rule, idx) => (
                 <div
                   key={rule.id}
-                  className={`grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-2xl border p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.035)] transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-4 sm:p-4 ${rule.isActive ? 'border-[#EAE4D7] bg-white' : 'border-[#ECE1CD] bg-[#FAF8F5] opacity-80'}`}
+                  className={`commission-rule-card grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-2xl border p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.035)] transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-4 sm:p-4 ${rule.isActive ? 'border-[#EAE4D7] bg-white' : 'border-[#ECE1CD] bg-[#FAF8F5] opacity-80'}`}
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-sm font-extrabold text-[#8A642C] sm:h-11 sm:w-11">
                     #{idx + 1}
@@ -685,9 +685,9 @@ export const CommissionRulesPage: React.FC = () => {
         </section>
 
 
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="commission-right-column flex min-w-0 flex-col gap-4">
 
-          <section className="min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_4px_18px_rgba(35,29,21,0.04)] sm:p-5 lg:p-5">
+          <section className="commission-simulator min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_4px_18px_rgba(35,29,21,0.04)] sm:p-5 lg:p-5">
             <div className="mb-4 flex items-center gap-3 border-b border-[#F0EAE0] pb-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Calculator size={19} /></span>
               <div className="min-w-0">
@@ -712,7 +712,7 @@ export const CommissionRulesPage: React.FC = () => {
             </div>
 
             {simResult && (
-              <div className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+              <div className="commission-simulation-result rounded-2xl border border-[#EAE4D7] bg-white p-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5">
                     <span className="block text-[11px] text-[#7D715E]">Mốc cao nhất đạt</span>
@@ -758,8 +758,9 @@ export const CommissionRulesPage: React.FC = () => {
           </section>
 
 
-          <section className="min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_4px_18px_rgba(35,29,21,0.04)] sm:p-5 lg:p-6">
-            <div className="mb-5 flex items-center gap-3 border-b border-[#F0EAE0] pb-4">
+        </div>
+          <section className="commission-settlement min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_4px_18px_rgba(35,29,21,0.04)] sm:p-5 lg:p-6">
+            <div className="commission-settlement-heading mb-5 flex items-center gap-3 border-b border-[#F0EAE0] pb-4">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><History size={19} /></span>
               <div>
                 <h2 className="m-0 text-lg font-extrabold tracking-tight text-[#1A1612] sm:text-xl">Chốt thưởng tháng</h2>
@@ -770,7 +771,7 @@ export const CommissionRulesPage: React.FC = () => {
 
             <div className="mb-4">
               <label htmlFor={settleMonthInputId} className="mb-2 block text-xs font-semibold text-[#5F5547] sm:text-sm">
-                Kỳ chốt thưởng tháng
+                Kỳ nhận thưởng
               </label>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
@@ -798,6 +799,7 @@ export const CommissionRulesPage: React.FC = () => {
                 <div>
                   <input
                     type="number"
+                    aria-label="Năm chốt thưởng"
                     min="2000"
                     max="2099"
                     value={selectedYear}
@@ -808,7 +810,7 @@ export const CommissionRulesPage: React.FC = () => {
                 </div>
               </div>
               <div className="mt-2 text-xs text-[#7D715E]">
-                Đang chọn <strong className="text-[#8A642C]">Tháng {selectedMonth}/{selectedYear}</strong> <span className="text-[#A99D8A]">· Kỳ hệ thống: <code className="rounded bg-[#FAF8F5] px-1.5 py-0.5">{settleYearMonth}</code></span>
+                Chốt thưởng cho <strong className="text-[#8A642C]">tháng {selectedMonth}/{selectedYear}</strong>
               </div>
             </div>
 
@@ -816,7 +818,7 @@ export const CommissionRulesPage: React.FC = () => {
             <div className="mb-4">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <label htmlFor={settleKolInputId} className="text-xs font-semibold text-[#5F5547] sm:text-sm">
-                  Cộng tác viên / KOL nhận thưởng
+                  KOL / CTV nhận thưởng
                 </label>
                 {settleKolId ? (
                   <span className="rounded-full bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-bold text-[#8A642C]">
@@ -829,48 +831,9 @@ export const CommissionRulesPage: React.FC = () => {
                 type="text"
                 value={settleKolId}
                 onChange={(e) => setSettleKolId(e.target.value)}
-                placeholder="Nhập UUID hoặc mã định danh của CTV/KOL..."
+                placeholder="Nhập mã KOL / CTV nhận thưởng"
                 className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 text-sm font-medium text-[#1A1612] outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:bg-white focus:ring-2 focus:ring-[#C59B58]/15"
               />
-              {import.meta.env.DEV && (
-                <div style={{ display: 'flex', gap: 10, marginTop: 9, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, color: '#7D715E' }}>[Dev] Gợi ý:</span>
-                  <button
-                    type="button"
-                    onClick={() => setSettleKolId('237a7208-1c74-4322-96b2-51d810660723')}
-                    style={{
-                      background: settleKolId === '237a7208-1c74-4322-96b2-51d810660723' ? '#EFE2CC' : '#FAF8F5',
-                      border: '1px solid #DEBE85',
-                      borderRadius: 7,
-                      padding: '4px 12px',
-                      fontSize: 13,
-                      color: '#7D715E',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                    }}
-                    title="Điền UUID mẫu KOL Nguyễn Thành Thắng"
-                  >
-                    Nguyễn Thành Thắng (kol1@scanms.vn)
-                  </button>
-                  {settleKolId && (
-                    <button
-                      type="button"
-                      onClick={() => setSettleKolId('')}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#7D715E',
-                        fontSize: 13,
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        padding: 0,
-                      }}
-                    >
-                      Xóa trống để tự nhập
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
 
             {!isReadOnlyAdmin ? (
@@ -878,9 +841,9 @@ export const CommissionRulesPage: React.FC = () => {
                 onClick={handleSettleBonus}
                 disabled={settleLoading}
                 type="button"
-                className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#C59B58] bg-[#C59B58] px-4 text-sm font-bold text-[#231D15] shadow-sm transition hover:bg-[#B88E4F] disabled:cursor-wait disabled:opacity-60"
+                className="commission-settlement-submit inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#C59B58] bg-[#C59B58] px-4 text-sm font-bold text-[#231D15] shadow-sm transition hover:bg-[#B88E4F] disabled:cursor-wait disabled:opacity-60"
               >
-                {settleLoading ? 'Đang quét đơn COMPLETED & chốt thưởng...' : 'Thực Hiện Chốt Thưởng Tháng'}
+                {settleLoading ? 'Đang chốt thưởng…' : <><CheckCircle2 size={15} />Chốt thưởng tháng</>}
               </button>
             ) : (
               <div style={{
@@ -907,12 +870,11 @@ export const CommissionRulesPage: React.FC = () => {
               </div>
             )}
           </section>
-        </div>
       </div>
 
 
-      <section className="min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_4px_18px_rgba(35,29,21,0.04)] sm:p-5 lg:p-6">
-        <div className="mb-4 flex flex-col gap-3 border-b border-[#F0EAE0] pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="commission-history min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_4px_18px_rgba(35,29,21,0.04)] sm:p-5 lg:p-6">
+        <div className="commission-history-heading mb-4 flex flex-col gap-3 border-b border-[#F0EAE0] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="m-0 text-lg font-extrabold tracking-tight text-[#1A1612] sm:text-xl">Lịch sử chốt thưởng</h2>
             <p className="m-0 mt-1 text-xs text-[#7D715E]">{historyList.length} lượt chốt · Tháng {selectedMonth}/{selectedYear}</p>
@@ -927,9 +889,10 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
 
         {historyLoading ? (
-          <div className="rounded-xl bg-[#FAF8F5] px-4 py-10 text-center text-sm text-[#7D715E]">Đang tải lịch sử...</div>
+          <div className="commission-history-empty rounded-xl bg-[#FAF8F5] px-4 py-10 text-center text-sm text-[#7D715E]">Đang tải lịch sử...</div>
         ) : historyList.length === 0 ? (
-          <div className="rounded-xl bg-[#FAF8F5] px-4 py-10 text-center text-sm text-[#7D715E]">
+          <div className="commission-history-empty rounded-xl bg-[#FAF8F5] px-4 py-10 text-center text-sm text-[#7D715E]">
+            <History size={17} aria-hidden="true" />
             Chưa có lượt chốt thưởng nào cho kỳ Tháng {selectedMonth}/{selectedYear}.
           </div>
         ) : (
@@ -1038,147 +1001,43 @@ export const CommissionRulesPage: React.FC = () => {
 
 
       {isCreateOpen && renderModalPortal(
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsCreateOpen(false);
-          }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(44, 33, 20, 0.45)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px',
-            overflowY: 'auto',
-            zIndex: 99999,
-            overscrollBehavior: 'contain',
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-          }}
-        >
-          <div style={{
-            background: '#FFFFFF',
-            border: '1.5px solid #EAE4D7',
-            borderRadius: 20,
-            padding: '30px 36px',
-            width: '100%',
-            maxWidth: 580,
-            boxShadow: '0 24px 60px -10px rgba(110, 84, 39, 0.28)',
-            margin: 'auto',
-            maxHeight: 'calc(100vh - 48px)',
-            overflowY: 'auto',
-            boxSizing: 'border-box',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: '#1A1612' }}>Thêm Mốc Thưởng Doanh Số</h3>
-              <button
-                type="button"
-                onClick={() => setIsCreateOpen(false)}
-                style={{
-                  background: '#FAF8F5',
-                  border: '1px solid #EAE4D7',
-                  borderRadius: 8,
-                  color: '#7D715E',
-                  cursor: 'pointer',
-                  padding: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
+        <div className="commission-rule-overlay" onClick={event => { if (event.target === event.currentTarget) setIsCreateOpen(false); }}>
+          <div className="commission-rule-dialog" role="dialog" aria-modal="true" aria-labelledby="commission-create-title">
+            <header className="commission-rule-header">
+              <span className="commission-rule-icon"><Award size={18} /></span>
+              <div><h3 id="commission-create-title">Thêm mốc thưởng</h3><p>Thiết lập thưởng theo doanh số tháng.</p></div>
+              <button type="button" onClick={() => setIsCreateOpen(false)} aria-label="Đóng cửa sổ thêm mốc thưởng"><X size={17} /></button>
+            </header>
             <form onSubmit={handleCreate}>
-              <div style={{ marginBottom: 16 }}>
-                <label htmlFor={ruleNameInputId} style={{ display: 'block', fontSize: 14, fontWeight: 650, color: '#7D715E', marginBottom: 6 }}>Tên mốc thưởng *</label>
-                <input
-                  id={ruleNameInputId}
-                  type="text"
-                  required
-                  maxLength={150}
-                  placeholder="Ví dụ: Mốc Bạc (>= 50 Triệu)"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  style={{ width: '100%', background: '#FAF8F5', border: '1.5px solid #EAE4D7', borderRadius: 10, padding: '12px 15px', color: '#1A1612', boxSizing: 'border-box', fontSize: 14.5, outline: 'none' }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <label htmlFor={ruleDescInputId} style={{ display: 'block', fontSize: 14, fontWeight: 650, color: '#7D715E', marginBottom: 6 }}>Mô tả chính sách</label>
-                <input
-                  id={ruleDescInputId}
-                  type="text"
-                  maxLength={500}
-                  placeholder="Mô tả quyền lợi hoặc điều kiện áp dụng"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  style={{ width: '100%', background: '#FAF8F5', border: '1.5px solid #EAE4D7', borderRadius: 10, padding: '12px 15px', color: '#1A1612', boxSizing: 'border-box', fontSize: 14.5, outline: 'none' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 14, marginBottom: 16 }}>
-                <div>
-                  <label htmlFor={ruleRevenueInputId} style={{ display: 'block', fontSize: 14, fontWeight: 650, color: '#7D715E', marginBottom: 6 }}>Doanh số tối thiểu (VND) *</label>
-                  <input
-                    id={ruleRevenueInputId}
-                    type="number"
-                    required
-                    placeholder="50000000"
-                    value={formData.minMonthlyRevenue}
-                    onChange={(e) => setFormData({ ...formData, minMonthlyRevenue: e.target.value })}
-                    style={{ width: '100%', background: '#FAF8F5', border: '1.5px solid #EAE4D7', borderRadius: 10, padding: '12px 15px', color: '#1A1612', boxSizing: 'border-box', fontSize: 14.5, outline: 'none' }}
-                  />
+              <div className="commission-rule-fields">
+                <div className="commission-rule-field">
+                  <label htmlFor={ruleNameInputId}>Tên mốc thưởng <span>*</span></label>
+                  <input id={ruleNameInputId} type="text" required maxLength={150} placeholder="Ví dụ: Mốc Bạc — 50 triệu" value={formData.name} onChange={event => setFormData({ ...formData, name: event.target.value })} />
                 </div>
-
-                <div>
-                  <label htmlFor={ruleAchieveInputId} style={{ display: 'block', fontSize: 14, fontWeight: 650, color: '#7D715E', marginBottom: 6 }}>Thưởng đạt KPI (VND)</label>
-                  <input
-                    id={ruleAchieveInputId}
-                    type="number"
-                    placeholder="500000"
-                    value={formData.achievementBonus}
-                    onChange={(e) => setFormData({ ...formData, achievementBonus: e.target.value })}
-                    style={{ width: '100%', background: '#FAF8F5', border: '1.5px solid #EAE4D7', borderRadius: 10, padding: '12px 15px', color: '#1A1612', boxSizing: 'border-box', fontSize: 14.5, outline: 'none' }}
-                  />
+                <div className="commission-rule-field">
+                  <label htmlFor={ruleDescInputId}>Mô tả chính sách <small>Không bắt buộc</small></label>
+                  <textarea id={ruleDescInputId} rows={2} maxLength={500} placeholder="Quyền lợi hoặc điều kiện áp dụng" value={formData.description} onChange={event => setFormData({ ...formData, description: event.target.value })} />
                 </div>
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label htmlFor={ruleBonusInputId} style={{ display: 'block', fontSize: 14, fontWeight: 650, color: '#7D715E', marginBottom: 6 }}>Tỷ lệ thưởng phần vượt (%) *</label>
-                <input
-                  id={ruleBonusInputId}
-                  type="number"
-                  step="0.01"
-                  required
-                  placeholder="2.00"
-                  value={formData.bonusPercentage}
-                  onChange={(e) => setFormData({ ...formData, bonusPercentage: e.target.value })}
-                  style={{ width: '100%', background: '#FAF8F5', border: '1.5px solid #EAE4D7', borderRadius: 10, padding: '12px 15px', color: '#1A1612', boxSizing: 'border-box', fontSize: 14.5, outline: 'none' }}
-                />
-                <div style={{ fontSize: 12.5, color: '#7D715E', marginTop: 6, lineHeight: 1.45 }}>
-                  Công thức: Đạt KPI thưởng cố định + phần vượt mốc tính theo tỷ lệ này.
+                <div className="commission-rule-pair">
+                  <div className="commission-rule-field">
+                    <label htmlFor={ruleRevenueInputId}>Doanh số tối thiểu <span>*</span></label>
+                    <div className="commission-rule-input-unit"><input id={ruleRevenueInputId} type="number" required placeholder="50000000" value={formData.minMonthlyRevenue} onChange={event => setFormData({ ...formData, minMonthlyRevenue: event.target.value })} /><span>₫</span></div>
+                    <small className="commission-rule-money-hint">{formData.minMonthlyRevenue && Number.isFinite(Number(formData.minMonthlyRevenue)) ? `${Number(formData.minMonthlyRevenue).toLocaleString('vi-VN')} ₫` : 'Ngưỡng doanh số để đạt mốc'}</small>
+                  </div>
+                  <div className="commission-rule-field">
+                    <label htmlFor={ruleAchieveInputId}>Thưởng đạt KPI</label>
+                    <div className="commission-rule-input-unit"><input id={ruleAchieveInputId} type="number" placeholder="500000" value={formData.achievementBonus} onChange={event => setFormData({ ...formData, achievementBonus: event.target.value })} /><span>₫</span></div>
+                    <small className="commission-rule-money-hint">{formData.achievementBonus && Number.isFinite(Number(formData.achievementBonus)) ? `${Number(formData.achievementBonus).toLocaleString('vi-VN')} ₫` : 'Thưởng cố định khi đạt mốc'}</small>
+                  </div>
                 </div>
+                <div className="commission-rule-rate">
+                  <div><label htmlFor={ruleBonusInputId}>Thưởng phần vượt <span>*</span></label><p>Tính theo doanh số vượt mốc</p></div>
+                  <div className="commission-rule-input-unit"><input id={ruleBonusInputId} type="number" step="0.01" required placeholder="2.00" value={formData.bonusPercentage} onChange={event => setFormData({ ...formData, bonusPercentage: event.target.value })} /><span>%</span></div>
+                </div>
+                <p className="commission-rule-formula"><Calculator size={14} /><span>Thưởng đạt KPI + thưởng phần doanh số vượt mốc.</span></p>
+                {errorMsg && <p className="commission-rule-error" role="alert">{errorMsg}</p>}
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateOpen(false)}
-                  style={{ background: '#F6EFE3', border: '1px solid #EAE4D7', color: '#7D715E', borderRadius: 10, padding: '12px 24px', fontWeight: 650, cursor: 'pointer', fontSize: 14.5 }}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  style={{ background: 'linear-gradient(135deg, #DEBE85 0%, #DEBE85 100%)', border: '1px solid #DEBE85', color: '#1A1612', borderRadius: 10, padding: '12px 28px', fontWeight: 750, cursor: 'pointer', boxShadow: '0 3px 10px rgba(201, 163, 99, 0.3)', fontSize: 14.5 }}
-                >
-                  Lưu Mốc Thưởng
-                </button>
-              </div>
+              <footer className="commission-rule-footer"><button type="button" onClick={() => setIsCreateOpen(false)}>Hủy</button><button type="submit"><CheckCircle2 size={14} />Lưu mốc thưởng</button></footer>
             </form>
           </div>
         </div>
@@ -1322,7 +1181,7 @@ export const CommissionRulesPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  style={{ background: 'linear-gradient(135deg, #DEBE85 0%, #DEBE85 100%)', border: '1px solid #DEBE85', color: '#1A1612', borderRadius: 10, padding: '12px 30px', fontWeight: 750, cursor: 'pointer', boxShadow: '0 3px 12px rgba(201, 163, 99, 0.32)', fontSize: 14.5 }}
+                  style={{ background: 'var(--action-bg)', border: '1px solid var(--action-border)', color: 'var(--action-ink)', borderRadius: 10, padding: '12px 30px', fontWeight: 750, cursor: 'pointer', boxShadow: 'none', fontSize: 14.5 }} className="scanms-brand-action"
                 >
                   Cập Nhật Mốc
                 </button>

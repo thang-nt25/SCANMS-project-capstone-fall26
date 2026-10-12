@@ -37,7 +37,7 @@ const LiveStreamRoomPage = lazyRetry(() => import('../pages/public/LiveStreamRoo
 const ProductManagementPage = lazyRetry(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazyRetry(() => import('../pages/merchant/ShopDashboardPage'));
 const ShopSettingsPage = lazyRetry(() => import('../pages/merchant/ShopSettingsPage'));
-const KycApprovalPage = lazyRetry(() => import('../pages/merchant/KycApprovalPage'));
+const KycApprovalPage = lazyRetry(() => import('../pages/admin/KycApprovalPage'));
 const OrdersManagementPage = lazyRetry(() => import('../pages/merchant/OrdersManagementPage'));
 const PayoutApprovalPage = lazyRetry(() => import('../pages/merchant/PayoutApprovalPage'));
 
@@ -60,10 +60,11 @@ const CollaboratorLiveSessionsPage = lazy(() => import('../pages/collaborator/Li
 const AdminOversightHubPage = lazy(() => import('../pages/admin/AdminOversightHubPage'));
 const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHubPage'));
 const AdminSampleRequestsPage = lazy(() => import('../pages/admin/AdminSampleRequestsPage'));
+const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage'));
 const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
 
 // AI Anti-Fraud Sentinel & Traffic Defense
-const AiFraudSentinelPage = lazy(() => import('../pages/merchant/AiFraudSentinelPage'));
+const AiFraudSentinelPage = lazy(() => import('../pages/admin/AiFraudSentinelPage'));
 
 // Audit Logs & Security Trail
 const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
@@ -196,9 +197,9 @@ function AppRoutes() {
               <Route path="merchant/kol-hub" element={<ShopKolHubPage />} />
               <Route path="merchant/customer-messages" element={<ChatBoxPage />} />
               <Route path="merchant/promotions" element={<ShopPromotionsHubPage />} />
-              <Route path="merchant/fraud-sentinel" element={<AiFraudSentinelPage />} />
-              <Route path="merchant/ai-fraud" element={<AiFraudSentinelPage />} />
-              <Route path="merchant/audit-logs" element={<AuditLogsPage />} />
+              <Route path="merchant/fraud-sentinel" element={<Navigate to="/admin/fraud-sentinel" replace />} />
+              <Route path="merchant/ai-fraud" element={<Navigate to="/admin/fraud-sentinel" replace />} />
+              <Route path="merchant/audit-logs" element={<Navigate to="/admin/audit-logs" replace />} />
               <Route path="merchant/returns" element={<ShopReturnRequestsPage />} />
               <Route path="merchant/return-requests" element={<ShopReturnRequestsPage />} />
 
@@ -212,7 +213,7 @@ function AppRoutes() {
               <Route path="merchant/collaborators" element={<Navigate to="/merchant/kol-hub?tab=collaborators" replace />} />
               <Route path="merchant/sample-requests" element={<Navigate to="/merchant/kol-hub?tab=samples" replace />} />
               <Route path="merchant/campaigns" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
-              <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?tab=ai-matching" replace />} />
+              <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?mode=ai-matching" replace />} />
               <Route path="merchant/messages" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
               <Route path="merchant/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
               <Route path="shop/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
@@ -250,10 +251,10 @@ function AppRoutes() {
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />
               <Route path="collaborator/social-channels" element={<Navigate to="/collaborator/profile?tab=social" replace />} />
               <Route path="collaborator/tiers" element={<Navigate to="/collaborator/profile?tab=tiers" replace />} />
-              <Route path="collaborator/bonus-progress" element={<Navigate to="/collaborator/profile?tab=tiers" replace />} />
-              <Route path="kol/bonus-progress" element={<Navigate to="/collaborator/profile?tab=tiers" replace />} />
+              <Route path="collaborator/bonus-progress" element={<CreatorProfilePage />} />
+              <Route path="kol/bonus-progress" element={<Navigate to="/collaborator/bonus-progress" replace />} />
               <Route path="collaborator/analytics" element={<RealtimeAnalyticsPage />} />
-              <Route path="collaborator/leaderboard" element={<LeaderboardPage />} />
+              <Route path="collaborator/leaderboard" element={<CreatorProfilePage />} />
               <Route path="collaborator/stats" element={<RealtimeAnalyticsPage />} />
             </Route>
           </Route>
@@ -264,6 +265,7 @@ function AppRoutes() {
               <Route path="admin/analytics" element={<AdminAnalyticsHubPage />} />
               <Route path="admin/affiliate-oversight" element={<AdminOversightHubPage />} />
               <Route path="admin/users" element={<KycApprovalPage />} />
+              <Route path="admin/profile" element={<AdminProfilePage />} />
               <Route path="admin/audit-logs" element={<AuditLogsPage />} />
               <Route path="admin/audit" element={<AuditLogsPage />} />
               <Route path="admin/fraud-sentinel" element={<AiFraudSentinelPage />} />

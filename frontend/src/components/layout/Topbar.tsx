@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, ChevronDown, Store, LogOut, Settings, Camera, Loader2, ShoppingBag } from 'lucide-react';
+import { Sun, Moon, Store, LogOut, Settings, Camera, Loader2, ShoppingBag } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { NotificationDropdown } from './NotificationDropdown';
-import { ChatBell } from '../chat/ChatBell';
-import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 import { ScanMSLogo } from '../common/ScanMSLogo';
+import { HeaderAccountButton } from './HeaderAccountButton';
+import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
@@ -22,6 +22,16 @@ export function Topbar({
   onToggleTheme: propToggleTheme,
   onLogout,
 }: TopbarProps) {
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const updateHeight = () => document.documentElement.style.setProperty('--workspace-header-height', `${header.getBoundingClientRect().height}px`);
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
   const [internalTheme, setInternalTheme] = useState<'light' | 'dark'>('light');
   const theme = propTheme || internalTheme;
   const onToggleTheme = propToggleTheme || (() => {
@@ -34,7 +44,6 @@ export function Topbar({
     }
   });
   const location = useLocation();
-  const pathname = location.pathname;
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -73,33 +82,20 @@ export function Topbar({
   const isCustomer = role === 'CUSTOMER';
   const isAdmin = role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER';
 
-  const portalSectionName = isShop
-    ? 'KÊNH NGƯỜI BÁN'
-    : isAdmin
-    ? 'BAN QUẢN TRỊ'
-    : isCustomer
-    ? 'CỔNG KHÁCH HÀNG'
-    : 'CỔNG NHÀ SÁNG TẠO';
-
   const displayName =
     currentUser?.fullName ||
     (isShop ? 'Chủ gian hàng' : isCustomer ? 'Khách mua sắm' : isAdmin ? 'Quản trị viên' : 'Cộng tác viên');
-
   const displaySub = isShop
     ? currentUser?.stores?.[0]?.name || 'Chủ gian hàng'
     : isCustomer
     ? 'Khách mua sắm'
     : isAdmin
-    ? 'Quản trị viên Hệ thống'
+    ? role === 'SYSTEM_MANAGER' ? 'Vận hành & tuân thủ' : 'Quản trị hệ thống'
     : currentUser?.collaboratorProfile?.tier?.name
     ? `KOL Hạng ${currentUser.collaboratorProfile.tier.name}`
     : 'KOL / KOC Đối Tác';
 
-  const userProfile = {
-    avatar: currentUser?.fullName?.charAt(0).toUpperCase() || (isShop ? 'S' : isCustomer ? 'K' : isAdmin ? 'A' : 'K'),
-    name: displayName,
-    sub: displaySub,
-  };
+  const avatarInitial = currentUser?.fullName?.charAt(0).toUpperCase() || (isShop ? 'S' : isCustomer ? 'K' : isAdmin ? 'A' : 'K');
 
   const handleLogoutClick = () => {
     setIsMenuOpen(false);
@@ -143,153 +139,58 @@ export function Topbar({
     : isCustomer
     ? '/customer/profile'
     : isAdmin
-    ? '/admin/users'
+    ? '/admin/profile'
     : '/collaborator/profile';
 
-  const getPageTitle = () => {
-    if (pathname === '/leaderboard' || pathname.endsWith('/leaderboard')) return 'Bảng xếp hạng Creators';
-    if (pathname === '/' || pathname === '/collaborator/dashboard') {
-      if (isShop) return 'Tổng quan Shop';
-      if (isAdmin) return 'Giám sát Toàn Sàn';
-      return 'Tổng quan & Doanh số';
-    }
-    if (pathname.includes('/collaborator/marketing') || pathname.includes('/collaborator/referral-links') || pathname.includes('/collaborator/media-hub')) {
-      return 'Trung tâm Tiếp thị';
-    }
-    if (pathname.includes('/collaborator/live-sessions')) {
-      return 'Phiên Livestream';
-    }
-    if (pathname.includes('/collaborator/collaboration') || pathname.includes('/collaborator/sample-requests') || pathname.includes('/collaborator/messages')) {
-      return 'Hợp tác & Liên hệ Shop';
-    }
-    if (pathname.includes('/collaborator/profile') || pathname.includes('/collaborator/kyc') || pathname.includes('/collaborator/tiers')) {
-      return 'Hồ sơ & Cấp bậc KOL';
-    }
-    if (pathname.includes('/collaborator/wallet')) return 'Ví Hoa Hồng & Rút Tiền';
-
-    if (pathname.includes('/merchant/dashboard')) return 'Tổng quan Gian Hàng';
-    if (pathname.includes('/merchant/products')) return 'Danh mục Sản phẩm & Kho';
-    if (pathname.includes('/merchant/orders')) return 'Quản lý Đơn hàng Sàn';
-    if (pathname.includes('/merchant/kol-hub')) return 'Mạng lưới KOL & Hợp tác';
-    if (pathname.includes('/merchant/promotions')) return 'Khuyến mãi & Hoa hồng';
-    if (pathname.includes('/merchant/live-sessions')) return 'Chiến dịch Livestream & Voucher';
-    if (pathname.includes('/merchant/payouts')) return 'Duyệt Chi trả Hoa hồng';
-    if (pathname.includes('/merchant/settings')) return 'Cài đặt Gian hàng';
-    if (pathname.includes('/merchant/fraud-sentinel') || pathname.includes('/merchant/ai-fraud')) return 'AI Chống Gian Lận (Sentinel)';
-    if (pathname.includes('/merchant/customer-messages')) return 'Tin Nhắn Khách Hàng';
-    if (pathname.includes('/merchant/analytics') || pathname.includes('/merchant/stats')) return 'Phân Tích & Thống Kê Gian Hàng';
-
-    if (pathname.includes('/admin/analytics')) return 'Giám sát Toàn sàn';
-    if (pathname.includes('/admin/affiliate-oversight')) return 'Tiếp thị & Dòng tiền Sàn';
-    if (pathname.includes('/admin/sample-requests')) return 'Quản trị hàng mẫu KOL';
-    if (pathname.includes('/admin/product-moderation') || pathname.includes('/admin/products/moderation')) return 'Kiểm duyệt Sản phẩm Sàn';
-    if (pathname.includes('/admin/disputes')) return 'Giải quyết Tranh chấp Sàn';
-    if (pathname.includes('/admin/audit-logs') || pathname.includes('/merchant/audit-logs')) return 'Nhật ký Hệ thống & Kiểm toán';
-    if (pathname.includes('/admin/users') || pathname.includes('/merchant/kyc-approval')) {
-      return 'Quản trị Người dùng & Duyệt KYC';
-    }
-
-    if (pathname.includes('/chat')) return 'Tin nhắn & Trò chuyện Trực tiếp';
-
-    if (pathname.startsWith('/customer')) {
-      const search = typeof window !== 'undefined' ? window.location.search : '';
-      if (pathname.includes('/wallet') || search.includes('tab=wallet')) return 'Ví Mua Sắm SCANMS';
-      if (pathname.includes('/upgrade') || search.includes('tab=upgrade')) return 'Nâng Cấp Đối Tác (KOL / Shop)';
-      if (pathname.includes('/wishlist') || search.includes('tab=wishlist')) return 'Danh Sách Yêu Thích';
-      if (pathname.includes('/vouchers') || search.includes('tab=vouchers')) return 'Kho Mã Giảm Giá';
-      if (pathname.includes('/notifications') || search.includes('tab=notifications')) return 'Trung Tâm Thông Báo';
-      if (pathname.includes('/profile') || search.includes('tab=profile')) return 'Hồ Sơ & Bảo Mật';
-      if (pathname.includes('/identity') || search.includes('tab=identity')) return 'Xác Minh CCCD';
-      if (pathname.includes('/addresses') || search.includes('tab=addresses')) return 'Sổ Địa Chỉ Nhận Hàng';
-      if (pathname.includes('/security') || search.includes('tab=security')) return 'Bảo Mật & Mật Khẩu';
-      if (pathname.includes('/orders') || search.includes('tab=orders')) return 'Đơn Hàng Của Tôi';
-      return 'Cổng Mua Sắm Khách Hàng';
-    }
-
-    if (isShop) return 'Kênh Người Bán SCANMS';
-    if (isAdmin) return 'Trung Tâm Quản Trị Toàn Sàn';
-    return 'Cổng Nhà Sáng Tạo (KOL) SCANMS';
-  };
-
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
+    <header ref={headerRef} className="scanms-site-header sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
       <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6">
-        {/* Left: Brand Logo + Section Breadcrumb */}
-        <div className="flex items-center gap-3 shrink-0">
-          <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
-            <ScanMSLogo size="md" />
+        {/* Left: Brand Logo */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Link to="/marketplace" className="flex items-center gap-2 group shrink-0" title="Về trang chủ Sàn SCANMS">
+            <ScanMSLogo size="md" className="scanms-header-logo" />
           </Link>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs text-[#7D715E] pl-3 border-l border-[#EAE4D7]">
-            <span className="font-extrabold text-[#B88E4F] tracking-wide">
-              {portalSectionName}
-            </span>
-            <span className="text-[#CDC4B5]">/</span>
-            <strong className="text-[#1A1612] font-bold truncate max-w-[220px] md:max-w-xs">{getPageTitle()}</strong>
-          </div>
         </div>
 
         {/* Right: Actions, Switcher, Notifications & User Card */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Hệ thống trực tuyến</span>
-          </div>
+          <WorkspaceSwitcher variant="header" />
 
-          <Link
-            to="/marketplace"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] hover:bg-[#ECE1CD] transition shadow-2xs group"
-            title="Xem Sàn Mua Sắm & Tiếp Thị Đa Gian Hàng"
-          >
-            <Store className="w-3.5 h-3.5 text-[#B88E4F]" />
-            <span>Sàn mua sắm</span>
-          </Link>
+          <div className="hidden lg:inline-flex items-center gap-[7px] h-8 p-[5px_10px_5px_6px] border border-[#EAE4D7] rounded-[10px] bg-white whitespace-nowrap" title="Hệ thống trực tuyến">
+            <span className="grid place-items-center w-5 h-5 rounded-[6px] bg-[#FBF5EB]" aria-hidden="true">
+              <span className="w-[5px] h-[5px] rounded-full bg-[#059669]" />
+            </span>
+            <span className="text-[#7D715E] text-[11px] leading-4 font-normal">
+              Hệ thống <strong className="text-[#1A1612] font-semibold">trực tuyến</strong>
+            </span>
+          </div>
 
           <button
             type="button"
             onClick={onToggleTheme}
-            aria-label="Đổi giao diện"
+            aria-label={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+            title={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+            aria-pressed={theme === 'dark'}
             className="w-8.5 h-8.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] flex items-center justify-center transition cursor-pointer shadow-2xs"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-[#B88E4F]" /> : <Moon className="w-4 h-4 text-[#7D715E]" />}
           </button>
 
-          {currentUser && <WorkspaceSwitcher variant="header" />}
-
           <NotificationDropdown />
-          {(isCustomer || isShop || currentUser?.role === 'CUSTOMER' || currentUser?.role === 'SHOP_MANAGER') && currentUser?.id && <ChatBell userId={currentUser.id} isShop={isShop} />}
 
           <div className="relative" ref={menuRef}>
-            <div
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
-            >
-              {currentUser?.avatarUrl ? (
-                <img
-                  src={currentUser.avatarUrl}
-                  alt="Avatar"
-                  className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#E8D4B0] shadow-2xs"
-                />
-              ) : (
-                <span
-                  className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-[#EAE4D7] text-[#B88E4F]"
-                >
-                  {userProfile.avatar}
-                </span>
-              )}
-              <div className="text-left hidden md:block">
-                <strong className="block text-xs font-bold text-[#1A1612] leading-none">
-                  {userProfile.name}
-                </strong>
-                <small className="text-[11px] font-semibold text-[#B88E4F] leading-tight block mt-0.5">
-                  {userProfile.sub}
-                </small>
-              </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#7D715E] transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-[#B88E4F]' : ''}`} />
-            </div>
+            <HeaderAccountButton
+              user={currentUser}
+              role={role}
+              expanded={isMenuOpen}
+              menuId="topbar-account-menu"
+              detail={displaySub}
+              onClick={() => setIsMenuOpen((open) => !open)}
+            />
 
             {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+              <div id="topbar-account-menu" className="absolute right-0 top-full mt-2 w-64 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
                 <div className="p-2.5 border-b border-[#EAE4D7] flex items-center gap-2.5">
                   <div className="relative group shrink-0">
                     {currentUser?.avatarUrl ? (
@@ -300,7 +201,7 @@ export function Topbar({
                       />
                     ) : (
                       <span className="w-10 h-10 rounded-xl bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-bold text-sm border border-[#EAE4D7]">
-                        {userProfile.avatar}
+                        {avatarInitial}
                       </span>
                     )}
                     <button

@@ -36,7 +36,7 @@ describe('VietQR workbook', () => {
   it('uses net payment, preserves account zeros and stores untrusted text as strings', async () => {
     const buffer = await service.buildWorkbook(batch, [request]);
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    await workbook.xlsx.load(buffer as any);
     const sheet = workbook.getWorksheet('VietQR')!;
     expect(sheet.getCell('H2').value).toBe('00123456789');
     expect(sheet.getCell('I2').value).toBe(request.bankAccountName);

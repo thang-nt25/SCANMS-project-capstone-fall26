@@ -200,6 +200,12 @@ export class KolMatchResultDto {
   })
   matchLevel: string;
 
+  @ApiPropertyOptional({ enum: ['SALES', 'PROFILE', 'NONE'], description: 'Căn cứ liên quan đến ngành hàng: lịch sử đơn hoặc hồ sơ/kênh.' })
+  categoryMatchSource?: 'SALES' | 'PROFILE' | 'NONE';
+
+  @ApiPropertyOptional({ description: 'Ngành hàng đang được đối sánh.' })
+  matchedCategory?: string;
+
   @ApiProperty({
     description: 'Chi tiết điểm số 4 tiêu chí',
     type: ScoreBreakdownDto,

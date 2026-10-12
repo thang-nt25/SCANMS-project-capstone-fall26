@@ -186,8 +186,10 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       title: 'Kem chống nắng SPF50',
       isActive: true,
       isAffiliateEnabled: true,
+      moderationStatus: 'APPROVED',
       deletedAt: null,
       customCommissionRate: 15,
+      moderationStatus: 'APPROVED',
       store: {
         id: validStoreId,
         defaultCommissionRate: 10,

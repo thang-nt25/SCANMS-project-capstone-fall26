@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, BadRequestException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { AiRecommendationService } from '../ai-recommendation.service';
 import { PriceRangeFilter } from '../dto/ai-recommendation.dto';
@@ -8,7 +8,7 @@ describe('KOL recommendations from real attribution records', () => {
     id,
     fullName: id,
     email: `${id}@example.test`,
-    collaboratorProfile: { tier: { name: tier }, kycStatus: 'VERIFIED' },
+    collaboratorProfile: { tier: { name: tier }, kycStatus: 'VERIFIED', bio: 'Chuyên mỹ phẩm & skincare' },
     socialChannels: [],
   });
   const item = (collaboratorId: string, price: number, quantity = 1) => ({
@@ -52,6 +52,18 @@ describe('KOL recommendations from real attribution records', () => {
     );
   });
 
+  it('uses the profile avatar first and falls back to the account avatar', async () => {
+    prisma.user.findMany.mockResolvedValue([
+      { ...creator('a'), avatarUrl: '/account-a.jpg', collaboratorProfile: { ...creator('a').collaboratorProfile, avatarUrl: '/profile-a.jpg' } },
+      { ...creator('b'), avatarUrl: '/account-b.jpg' },
+      creator('c'),
+    ]);
+    const result = await service.getRecommendedKols({}, 'owner', UserRole.SHOP_MANAGER);
+    expect(result.recommendedKols.find(k => k.collaboratorId === 'a')?.avatarUrl).toBe('/profile-a.jpg');
+    expect(result.recommendedKols.find(k => k.collaboratorId === 'b')?.avatarUrl).toBe('/account-b.jpg');
+    expect(result.recommendedKols.find(k => k.collaboratorId === 'c')?.avatarUrl).toBeUndefined();
+  });
+
   it('does not invent sales history or price/conversion fit for a cold profile', async () => {
     const result = await service.getRecommendedKols(
       { productId: 'product' },
@@ -60,13 +72,64 @@ describe('KOL recommendations from real attribution records', () => {
     );
     const kol = result.recommendedKols[0];
     expect(kol.scoreBreakdown).toMatchObject({
-      categoryScore: 0,
+      categoryScore: 35,
       conversionRateScore: 0,
       priceFitScore: 0,
     });
     expect(kol.matchLevel).toBe('Chưa đủ dữ liệu bán hàng');
     expect(kol.aiReasoning).toContain('chưa đủ dữ liệu');
     expect(result.targetProduct?.commissionRate).toBe(0);
+    expect(kol.categoryMatchSource).toBe('PROFILE');
+    expect(kol.aiReasoning).toContain('chưa có đơn hoàn tất trong ngành này');
+  });
+
+  it('excludes an unrelated tech seller even with high tier and conversion', async () => {
+    const tech = creator('tech', 'Kim cương');
+    tech.collaboratorProfile.bio = 'Chuyên review công nghệ và tai nghe';
+    prisma.user.findMany.mockResolvedValue([tech, creator('beauty')]);
+    prisma.order.findMany.mockResolvedValue([{ orderItems: [{ ...item('tech', 350000), product: { categoryName: 'Phụ kiện Âm thanh' } }] }]);
+    prisma.clickTrafficLog.groupBy.mockResolvedValue([{ collaboratorId: 'tech', _count: { _all: 1 } }]);
+    const result = await service.getRecommendedKols({ productId: 'product' }, 'owner', UserRole.SHOP_MANAGER);
+    expect(result.recommendedKols.map(k => k.collaboratorId)).toEqual(['beauty']);
+  });
+
+  it('matches skincare sales to the broader beauty catalog category', async () => {
+    const seller = creator('seller'); seller.collaboratorProfile.bio = '';
+    prisma.user.findMany.mockResolvedValue([seller]);
+    prisma.order.findMany.mockResolvedValue([{ orderItems: [{ ...item('seller', 350000), product: { categoryName: 'Chăm sóc da' } }] }]);
+    const result = await service.getRecommendedKols({ productId: 'product' }, 'owner', UserRole.SHOP_MANAGER);
+    expect(result.recommendedKols[0].categoryMatchSource).toBe('SALES');
+    expect(result.recommendedKols[0].scoreBreakdown.categoryScore).toBe(75);
+  });
+
+  it('does not replace the product category with a conflicting category filter', async () => {
+    const result = await service.getRecommendedKols({ productId: 'product', category: 'Công nghệ & Thiết bị số' }, 'owner', UserRole.SHOP_MANAGER);
+    expect(result.targetProduct?.category).toBe('Mỹ phẩm & Làm đẹp');
+    expect(result.recommendedKols).toEqual([]);
+  });
+
+  it('does not fall back to unrelated creators when none have category evidence', async () => {
+    const unknown = creator('unknown'); unknown.collaboratorProfile.bio = '';
+    prisma.user.findMany.mockResolvedValue([unknown]);
+    const result = await service.getRecommendedKols({ productId: 'product' }, 'owner', UserRole.SHOP_MANAGER);
+    expect(result.recommendedKols).toEqual([]);
+  });
+
+  it('requires a category for an uncategorized product instead of ranking all creators', async () => {
+    prisma.product.findFirst.mockResolvedValue({ id: 'product', price: 350000, store: { ownerId: 'owner' } });
+    await expect(service.getRecommendedKols({ productId: 'product' }, 'owner', UserRole.SHOP_MANAGER)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+    const result = await service.getRecommendedKols({ productId: 'product', category: 'Mỹ phẩm' }, 'owner', UserRole.SHOP_MANAGER);
+    expect(result.recommendedKols).toHaveLength(2);
+  });
+
+  it('uses channel descriptions as profile evidence without counting them as sales', async () => {
+    const channelCreator: any = creator('channel'); channelCreator.collaboratorProfile.bio = '';
+    channelCreator.socialChannels = [{ id: 'channel', platformName: 'TIKTOK', channelName: 'Linh Beauty', channelUrl: '', followerCount: 0 }];
+    prisma.user.findMany.mockResolvedValue([channelCreator]);
+    const result = await service.getRecommendedKols({ productId: 'product' }, 'owner', UserRole.SHOP_MANAGER);
+    expect(result.recommendedKols[0].categoryMatchSource).toBe('PROFILE');
+    expect(result.recommendedKols[0].lifetimeStats.totalOrders).toBe(0);
   });
 
   it('counts a multi-KOL order once per KOL and attributes only their own items', async () => {

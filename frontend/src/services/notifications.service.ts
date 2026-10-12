@@ -39,13 +39,13 @@ export const notificationsService = {
     return res?.data?.data || res?.data || res;
   },
 
-  async getUnreadCount(): Promise<number> {
+  async getUnreadCount(): Promise<number | null> {
     try {
       const res: any = await api.get('/notifications/unread-count');
       const data = res?.data?.data || res?.data || res;
-      return typeof data?.unreadCount === 'number' ? data.unreadCount : 0;
+      return typeof data?.unreadCount === 'number' ? data.unreadCount : null;
     } catch {
-      return 0;
+      return null;
     }
   },
 
@@ -56,16 +56,17 @@ export const notificationsService = {
       PROMOTION: number;
       SYSTEM: number;
     };
-  }> {
+  } | null> {
     try {
       const res: any = await api.get('/notifications/unread-count');
       const data = res?.data?.data || res?.data || res;
+      if (typeof data?.unreadCount !== 'number') return null;
       return {
-        unreadCount: typeof data?.unreadCount === 'number' ? data.unreadCount : 0,
+        unreadCount: data.unreadCount,
         categoryUnreadCounts: data?.categoryUnreadCounts || { ORDER: 0, PROMOTION: 0, SYSTEM: 0 },
       };
     } catch {
-      return { unreadCount: 0, categoryUnreadCounts: { ORDER: 0, PROMOTION: 0, SYSTEM: 0 } };
+      return null;
     }
   },
 

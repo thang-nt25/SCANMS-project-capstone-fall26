@@ -7,6 +7,7 @@ import { CheckoutMetricsService } from './checkout-metrics.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
+import { PaymentMethod } from './dto/create-order.dto';
 
 describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
   let service: OrdersService;
@@ -55,6 +56,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         price: '250000',
         stockQuantity: 10,
         isActive: true,
+        moderationStatus: 'APPROVED',
         store: {
           id: 'store-1',
           name: 'Shop A',
@@ -103,6 +105,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         price: '300000',
         stockQuantity: 1,
         isActive: true,
+        moderationStatus: 'APPROVED',
         store: {
           id: 'store-2',
           name: 'Shop B',
@@ -146,6 +149,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 50,
         isActive: true,
         isDeleted: false,
+        moderationStatus: 'APPROVED',
         store: {
           id: storeId,
           name: 'Sora Shop',
@@ -235,8 +239,9 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
       customerPhone: '0987654321',
       shippingAddress:
         '123 Đường Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
-      paymentMethod: 'COD',
+      paymentMethod: PaymentMethod.COD,
       idempotencyKey: 'test-variant-order-1',
+      policyAccepted: true,
       items: [
         { productId, variantId: variantId1, quantity: 1 },
         { productId, variantId: variantId2, quantity: 2 },
@@ -267,6 +272,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 10,
         isActive: true,
         isDeleted: false,
+        moderationStatus: 'APPROVED',
         store: {
           id: storeAId,
           name: 'Shop A',
@@ -283,6 +289,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 5,
         isActive: true,
         isDeleted: false,
+        moderationStatus: 'APPROVED',
         store: {
           id: storeBId,
           name: 'Shop B',
@@ -342,8 +349,9 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         customerName: 'Nguyễn Văn B',
         customerPhone: '0987654322',
         shippingAddress: '456 Đường Nguyễn Trãi, Thanh Xuân, Hà Nội',
-        paymentMethod: 'COD',
+        paymentMethod: PaymentMethod.COD,
         idempotencyKey: 'multi-store-test-rollback',
+        policyAccepted: true,
         items: [
           { productId: prodAId, quantity: 1 },
           { productId: prodBId, quantity: 10 }, // Out of stock on Shop B

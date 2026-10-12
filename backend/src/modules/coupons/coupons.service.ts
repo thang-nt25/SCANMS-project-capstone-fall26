@@ -299,6 +299,9 @@ export class CouponsService {
             logoUrl: true,
             description: true,
             defaultCommissionRate: true,
+            owner: {
+              select: { avatarUrl: true },
+            },
           },
         },
       },

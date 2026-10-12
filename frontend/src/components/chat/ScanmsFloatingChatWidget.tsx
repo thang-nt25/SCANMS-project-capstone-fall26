@@ -17,10 +17,9 @@ import {
   Search,
   Copy,
   Check,
-  ExternalLink,
-  Sparkles,
   Trash2,
   GripVertical,
+  MessageSquare,
 } from 'lucide-react';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useScanmsChat, isUnsafeShopLogo, parseExclusiveDealMessage, type ChatCouponVoucher, type ChatExclusiveDeal } from '../../context/ScanmsChatContext';
@@ -30,6 +29,7 @@ import { couponService, type PublicStoreCoupon } from '../../services/coupon.ser
 import { authService, type UserProfile } from '../../services/auth.service';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import type { ChatAttachmentType } from '@/types/chat.types';
+import { ExclusiveDealCardBubble } from './ExclusiveDealCardBubble';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 const emojiCategories: NonNullable<PickerProps['categories']> = [
@@ -59,123 +59,8 @@ async function fetchProductsForStore(storeId: string) {
   return items;
 }
 
-function ExclusiveDealMessageBubble({
-  card,
-  isMine,
-  isShop,
-  timestamp,
-}: {
-  card: ChatExclusiveDeal;
-  isMine: boolean;
-  isShop: boolean;
-  timestamp: string;
-}) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState<ChatExclusiveDeal['status']>(card.status || 'PENDING');
-  const [shortUrl, setShortUrl] = useState(card.shortUrl || null);
-  const [error, setError] = useState('');
-  const isDecision = card.type === 'EXCLUSIVE_DEAL_DECISION';
-  const canReview = isShop && !isMine && !isDecision && status === 'PENDING';
-
-  const decide = async (approve: boolean) => {
-    if (!card.proposalId || isLoading) return;
-    setIsLoading(true);
-    setError('');
-    try {
-      const response: any = await api.patch(
-        `/affiliate-deals/${card.proposalId}/${approve ? 'approve' : 'reject'}`,
-        approve ? {} : { reason: '' },
-      );
-      const result = response?.data?.data || response?.data || response;
-      setStatus(approve ? 'APPROVED' : 'REJECTED');
-      if (result?.shortUrl) setShortUrl(result.shortUrl);
-      toast.success(approve ? 'Đã duyệt deal và tạo link VIP.' : 'Đã từ chối đề xuất deal.');
-    } catch (actionError: any) {
-      setError(actionError?.response?.data?.message || 'Không thể xử lý đề xuất lúc này.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const isApproved = status === 'APPROVED';
-  const isRejected = status === 'REJECTED';
-
-  return (
-    <div className={`my-2 flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-      <article className="w-full max-w-[340px] rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 text-[#1A1612] shadow-sm">
-        <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#B88E4F]">
-            <Sparkles className="h-3.5 w-3.5" /> EXCLUSIVE DEAL
-          </span>
-          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${isApproved ? 'bg-white text-[#B88E4F]' : isRejected ? 'bg-rose-50 text-rose-700' : 'bg-[#F3EFE6] text-[#7D715E]'}`}>
-            {isApproved ? 'Đã duyệt' : isRejected ? 'Đã từ chối' : 'Chờ Shop duyệt'}
-          </span>
-        </div>
-        <div className="mt-3">
-          <div className="text-sm font-extrabold">{card.productTitle || 'Sản phẩm'}</div>
-          {card.storeName && <div className="mt-0.5 text-[11px] text-[#7D715E]">Shop: {card.storeName}</div>}
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5">
-            Hoa hồng sàn<strong className="mt-1 block text-sm">{card.publicCommissionRate ?? '—'}%</strong>
-          </div>
-          <div className="rounded-lg border border-[#EEDFC6] bg-white p-2.5">
-            Hoa hồng độc quyền<strong className="mt-1 block text-sm text-[#B88E4F]">{card.approvedCommissionRate ?? card.proposedCommissionRate ?? '—'}%</strong>
-          </div>
-        </div>
-        {card.isRevision && card.currentCommissionRate != null && (
-          <div className="mt-2 rounded-lg border border-[#EEDFC6] bg-white p-2.5 text-xs">
-            Hoa hồng độc quyền đang áp dụng<strong className="mt-1 block text-sm text-[#B88E4F]">{card.currentCommissionRate}%</strong>
-          </div>
-        )}
-        {isMine && status === 'PENDING' && card.isRevision && (
-          <p className="mt-2 text-[11px] leading-relaxed text-[#7D715E]">Mức hoa hồng độc quyền hiện tại vẫn áp dụng trong lúc Shop xem xét đề xuất mới.</p>
-        )}
-        {!isMine && status === 'PENDING' && card.isRevision && (
-          <p className="mt-2 text-[11px] leading-relaxed text-[#7D715E]">Đề xuất điều chỉnh hoa hồng độc quyền. Nếu duyệt, mức mới áp dụng cho đơn hàng mới; đơn đã tạo giữ nguyên mức cũ.</p>
-        )}
-        {isDecision && card.message && <p className="mt-2 text-xs leading-relaxed text-[#7D715E]">{card.message}</p>}
-        {card.salesCommitment && (
-          <div className="mt-3 rounded-lg border border-[#EAE4D7] bg-white p-3">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-[#7D715E]">Cam kết doanh số</div>
-            <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed">{card.salesCommitment}</p>
-          </div>
-        )}
-        {card.shopResponse && <p className="mt-2 text-xs text-[#7D715E]">Phản hồi Shop: {card.shopResponse}</p>}
-        {error && <p role="alert" className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
-        {isApproved && shortUrl && (
-          <div className="mt-3 flex items-center gap-2">
-            <a href={shortUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 break-all text-xs font-bold text-[#B88E4F] underline">
-              <ExternalLink className="h-3.5 w-3.5 shrink-0" /> Link tiếp thị độc quyền
-            </a>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(shortUrl);
-                toast.success('Đã sao chép link tiếp thị độc quyền!');
-              }}
-              className="p-1 rounded text-[#7D715E] hover:text-[#B88E4F] hover:bg-white border border-[#EAE4D7] cursor-pointer"
-              title="Sao chép link tiếp thị"
-            >
-              <Copy className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-        {canReview && (
-          <div className="mt-3 flex gap-2">
-            <button type="button" disabled={isLoading} onClick={() => void decide(false)} className="flex-1 rounded-lg border border-[#EAE4D7] bg-white px-2 py-2 text-xs font-bold text-[#7D715E] hover:bg-[#F3EFE6] disabled:opacity-50">
-              Từ chối
-            </button>
-            <button type="button" disabled={isLoading} onClick={() => void decide(true)} className="flex-1 rounded-lg bg-[#C59B58] px-2 py-2 text-xs font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50">
-              {isLoading ? 'Đang xử lý...' : card.isRevision ? 'Duyệt đổi deal' : 'Duyệt & tạo link'}
-            </button>
-          </div>
-        )}
-        {isMine && status === 'PENDING' && <div className="mt-3 text-center text-[11px] font-semibold text-[#7D715E]">Đã gửi Shop · Đang chờ phản hồi</div>}
-        <div className="mt-2 text-right text-[10px] text-[#7D715E]">{timestamp}</div>
-      </article>
-    </div>
-  );
+function ExclusiveDealMessageBubble({ card, isMine, isShop, timestamp }: { card: ChatExclusiveDeal; isMine: boolean; isShop: boolean; timestamp: string }) {
+  return <div className={`my-2 flex flex-col ${isMine ? 'items-end' : 'items-start'}`}><ExclusiveDealCardBubble card={card} isMine={isMine} isShop={isShop} compact /><div className="mt-1 text-right text-[10px] text-[#7D715E]">{timestamp}</div></div>;
 }
 
 function currentUserIsShopManager() {
@@ -749,7 +634,7 @@ export function ScanmsFloatingChatWidget() {
               }
             : undefined
         }
-        className={`fixed z-40 px-3.5 py-2.5 bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A77D3E] text-white rounded-full border-2 border-[#FAF8F5] select-none group touch-none ${
+        className={`fixed z-40 select-none group touch-none min-h-[46px] p-[7px_16px_7px_9px] border border-[#EEDFC6] rounded-[16px] bg-white text-[#231D15] shadow-[0_4px_18px_rgba(35,29,21,0.1),0_1px_3px_rgba(35,29,21,0.05)] hover:bg-[#FBF5EB] hover:border-[#C59B58] hover:shadow-[0_5px_20px_rgba(35,29,21,0.15)] focus-visible:outline-2 focus-visible:outline-[#B88E4F] ${
           isCustomPositioned
             ? ''
             : isLiveRoute
@@ -757,25 +642,23 @@ export function ScanmsFloatingChatWidget() {
               : 'bottom-4 right-4'
         } ${
           isDraggingLauncher
-            ? 'cursor-grabbing shadow-2xl scale-105 transition-none'
-            : 'cursor-grab shadow-xl shadow-[#C59B58]/25 transition-all duration-200 active:scale-95'
+            ? 'cursor-grabbing scale-105 transition-none'
+            : 'cursor-grab transition-all duration-200 active:scale-95'
         }`}
         title="Bấm để mở Chat • Giữ & kéo để di chuyển vị trí bất kỳ (Chuột phải để về mặc định)"
         aria-label="Chat"
       >
-        <div className="flex items-center gap-1.5 pointer-events-none">
-          <GripVertical className="w-3.5 h-3.5 text-white/70 group-hover:text-white transition-colors shrink-0" />
-          <div className="relative">
-            <svg viewBox="0 0 16 16" className="w-4.5 h-4.5 fill-current">
-              <path d="M14 1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h2v3.5L8.5 12H14a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm-3 7.5a4.5 4.5 0 0 1-6 0 .5.5 0 0 1 .7-.7 3.5 3.5 0 0 0 4.6 0 .5.5 0 0 1 .7.7z" />
-            </svg>
+        <div className="flex items-center gap-2 pointer-events-none">
+          <GripVertical className="text-[#9B8B72] w-3.5 h-3.5 shrink-0" />
+          <div className="grid place-items-center w-[30px] h-[30px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F] relative">
+            <MessageSquare size={18} strokeWidth={1.8} />
             {totalUnread > 0 && (
               <span className="absolute -top-2 -right-2.5 w-4 h-4 bg-[#DC2626] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
                 {totalUnread}
               </span>
             )}
           </div>
-          <span className="font-bold text-xs tracking-wide">Chat {totalUnread > 0 ? `(${totalUnread})` : ''}</span>
+          <span className="text-[13px] font-semibold leading-5 text-[#231D15]">Chat</span>
         </div>
       </button>
     );

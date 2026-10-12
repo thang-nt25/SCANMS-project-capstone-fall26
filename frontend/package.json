@@ -20,6 +20,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "emoji-picker-react": "^4.22.2",
+    "jszip": "3.10.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.22.0",
     "qrcode": "^1.5.4",

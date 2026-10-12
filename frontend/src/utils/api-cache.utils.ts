@@ -10,21 +10,29 @@ interface CacheEntry {
   ttlMs: number;
 }
 
+const MAX_CACHE_ENTRIES = 120;
 const memoryCache = new Map<string, CacheEntry>();
 
 // Danh sách các tiền tố URL an toàn được phép lưu tạm (Cache-friendly GET requests)
 const CACHEABLE_URL_PREFIXES = [
   '/stores',
   '/products',
+  '/orders',
+  '/chat/conversations',
+  '/wallets',
+  '/payouts',
+  '/analytics',
+  '/audit',
   '/kyc/profile',
+  '/kyc/pending',
   '/social-channels',
   '/sample-requests',
   '/media',
-  '/chat/conversations',
   '/tiers',
   '/campaigns',
-  '/wallets',
   '/coupons',
+  '/referral-links',
+  '/returns',
 ];
 
 function generateKey(url: string, params?: any): string {
@@ -39,35 +47,89 @@ export const apiCache = {
   isCacheable(url?: string): boolean {
     if (!url) return false;
     // Không cache các endpoint auth hoặc nhạy cảm
-    if (url.includes('/auth/') || url.includes('/refresh') || url.includes('/otp')) {
+    if (
+      url.includes('/auth/') ||
+      url.includes('/refresh') ||
+      url.includes('/otp') ||
+      url.includes('/wallets/top-up-demo')
+    ) {
       return false;
     }
     return CACHEABLE_URL_PREFIXES.some((prefix) => url.includes(prefix));
   },
 
   /**
-   * Lấy dữ liệu đã lưu tạm nếu còn hiệu lực (chưa hết hạn TTL)
+   * Xác định domain dữ liệu bị ảnh hưởng khi có POST/PUT/PATCH/DELETE
+   * để chỉ xóa cache liên quan, tránh xóa nhầm dữ liệu của các trang khác.
+   */
+  getAffectedDomain(url?: string): string | null {
+    if (!url) return null;
+    // Đọc tin nhắn chat không cần xóa danh sách tin nhắn hoặc cuộc trò chuyện
+    if (url.includes('/chat/conversations/') && url.includes('/read')) {
+      return null;
+    }
+    if (url.includes('/orders')) return '/orders';
+    if (url.includes('/products')) return '/products';
+    if (url.includes('/chat')) return '/chat';
+    if (url.includes('/wallets') || url.includes('/payouts')) return '/wallets';
+    if (url.includes('/coupons')) return '/coupons';
+    if (url.includes('/stores')) return '/stores';
+    if (url.includes('/sample-requests')) return '/sample-requests';
+    if (url.includes('/kyc')) return '/kyc';
+    if (url.includes('/returns')) return '/returns';
+    if (url.includes('/campaigns')) return '/campaigns';
+    return null;
+  },
+
+  /**
+   * Lấy dữ liệu đã lưu tạm (sống suốt phiên tab cho tới khi F5 hoặc mutate)
+   * Sử dụng cơ chế LRU: truy cập vào entry nào thì đưa entry đó lên đầu
    */
   get<T = any>(url: string, params?: any): T | null {
     const key = generateKey(url, params);
     const entry = memoryCache.get(key);
     if (!entry) return null;
 
-    const now = Date.now();
-    if (now - entry.timestamp > entry.ttlMs) {
-      memoryCache.delete(key);
-      return null;
+    // Kiểm tra nếu có thiết lập TTL hữu hạn riêng biệt
+    if (entry.ttlMs && entry.ttlMs !== Infinity) {
+      const now = Date.now();
+      if (now - entry.timestamp > entry.ttlMs) {
+        memoryCache.delete(key);
+        return null;
+      }
     }
+
+    // Đẩy entry lên vị trí mới nhất (LRU hit)
+    memoryCache.delete(key);
+    memoryCache.set(key, entry);
 
     return entry.data as T;
   },
 
   /**
-   * Lưu tạm dữ liệu vào bộ nhớ
-   * @param ttlMs Thời gian tồn tại mặc định: 90 giây
+   * Kiểm tra xem dữ liệu đã có trong cache chưa
    */
-  set(url: string, params: any, data: any, ttlMs: number = 90000): void {
+  has(url: string, params?: any): boolean {
     const key = generateKey(url, params);
+    return memoryCache.has(key);
+  },
+
+  /**
+   * Lưu tạm dữ liệu vào bộ nhớ RAM
+   * Mặc định lưu suốt phiên làm việc của Tab (ttlMs = Infinity) cho tới khi F5 hoặc Mutate
+   * Có cơ chế giới hạn MAX_CACHE_ENTRIES = 120 để chống rò rỉ RAM (Zero Memory Leak)
+   */
+  set(url: string, params: any, data: any, ttlMs: number = Infinity): void {
+    const key = generateKey(url, params);
+
+    // Nếu đã chạm trần 120 mục, xóa mục cũ nhất (mục đầu tiên trong Map)
+    if (memoryCache.size >= MAX_CACHE_ENTRIES && !memoryCache.has(key)) {
+      const oldestKey = memoryCache.keys().next().value;
+      if (oldestKey) {
+        memoryCache.delete(oldestKey);
+      }
+    }
+
     memoryCache.set(key, {
       data,
       timestamp: Date.now(),
@@ -76,9 +138,10 @@ export const apiCache = {
   },
 
   /**
-   * Xóa cache của một URL hoặc xóa toàn bộ cache khi có thao tác thêm/sửa/xóa
+   * Xóa cache của một domain hoặc xóa toàn bộ cache khi có thao tác thêm/sửa/xóa
    */
-  invalidate(urlPattern?: string): void {
+  invalidate(urlPattern?: string | null): void {
+    if (urlPattern === null) return; // Bỏ qua nếu là thao tác vô hại (như đánh dấu đã đọc)
     if (!urlPattern) {
       memoryCache.clear();
       return;

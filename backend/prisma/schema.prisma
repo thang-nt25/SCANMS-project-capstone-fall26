@@ -308,6 +308,7 @@ model User {
   attributedOrders          Order[]                     @relation("AttributedCollaboratorOrders")
   commissions               Commission[]
   wallet                    Wallet?
+  walletTopUps              WalletTopUp[]
   payoutRequests            PayoutRequest[]
   collaboratorConversations Conversation[]              @relation("CollaboratorConversations")
   sentChatMessages          ChatMessage[]               @relation("SentChatMessages")
@@ -1376,6 +1377,31 @@ model Wallet {
   storeWallets     StoreWallet[]
 
   @@map("wallets")
+}
+
+model WalletTopUp {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  orderCode     BigInt   @unique @map("order_code")
+  amount        Decimal  @db.Decimal(15, 2)
+  status        String   @default("CREATING") @db.VarChar(20)
+  paymentLinkId String?  @unique @map("payment_link_id")
+  checkoutUrl   String?  @map("checkout_url")
+  qrCode        String?  @map("qr_code")
+  bin           String?
+  accountNumber String?  @map("account_number")
+  accountName   String?  @map("account_name")
+  description   String?
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(6)
+  paidAt        DateTime? @map("paid_at") @db.Timestamptz(6)
+  nextCheckAt   DateTime @default(now()) @map("next_check_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status, nextCheckAt])
+  @@map("wallet_top_ups")
 }
 
 model FinancialLedger {

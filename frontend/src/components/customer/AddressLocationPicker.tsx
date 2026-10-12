@@ -191,22 +191,22 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
   );
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB]">
-      <div className="p-3.5 sm:p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <section className="address-location-picker overflow-hidden rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB]">
+      <div className="address-location-header p-3.5 sm:p-4">
+        <div className="address-location-toolbar flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <strong className="flex items-center gap-2 text-xs font-black text-[#1A1612]">
-              <MapPin className="w-4 h-4 text-[#B88E4F]" /> Ghim vị trí giao hàng chính xác
+              <MapPin className="w-4 h-4 text-[#B88E4F]" /> Vị trí giao hàng
             </strong>
             <span className="block mt-1 text-[11px] text-[#7D715E]">
-              Bấm lên bản đồ hoặc kéo ghim để điều chỉnh vị trí.
+              Bấm bản đồ hoặc kéo ghim để chọn vị trí.
             </span>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="address-location-actions flex gap-2 shrink-0">
             <button type="button" onClick={searchAddress} disabled={isResolving} className="rounded-xl border border-[#EEDFC6] bg-white px-3 py-2 text-[11px] font-bold text-[#B88E4F] hover:bg-[#F3EFE6] disabled:opacity-50 flex items-center gap-1.5">
               <Search className="w-3.5 h-3.5" /> Tìm địa chỉ
             </button>
-            <button type="button" onClick={locateMe} disabled={isLocating || isResolving} className="rounded-xl bg-[#C59B58] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50 flex items-center gap-1.5">
+            <button type="button" onClick={locateMe} disabled={isLocating || isResolving} className="address-location-locate rounded-xl bg-[#C59B58] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50 flex items-center gap-1.5">
               {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crosshair className="w-3.5 h-3.5" />}
               Vị trí của tôi
             </button>
@@ -214,7 +214,7 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
         </div>
       </div>
 
-      <div className="relative h-56 border-y border-[#EEDFC6] bg-[#F3EFE6]">
+      <div className="address-location-map relative h-56 border-y border-[#EEDFC6] bg-[#F3EFE6]">
         <MapContainer center={position} zoom={draftPosition ? 16 : 11} scrollWheelZoom className="h-full w-full" attributionControl>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
@@ -244,8 +244,8 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
         )}
       </div>
 
-      <div className="flex items-start justify-between gap-3 px-4 py-3 text-[10px]">
-        <span className={message?.startsWith('Đã') ? 'text-[#B88E4F] font-semibold' : 'text-[#7D715E]'}>
+      <div className="address-location-status flex items-start justify-between gap-3 px-4 py-3 text-[10px]">
+        <span role="status" className={message?.startsWith('Đã') ? 'text-[#B88E4F] font-semibold' : 'text-[#7D715E]'}>
           {message || 'Thông tin bản đồ được cung cấp bởi OpenStreetMap.'}
         </span>
         <span className="font-mono text-[#7D715E] shrink-0">{coordinateLabel}</span>
