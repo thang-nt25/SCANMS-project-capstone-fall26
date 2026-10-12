@@ -25,7 +25,6 @@ import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { Select } from '../../components/ui/Select';
-import './AdminSampleRequestsPage.css';
 
 interface StatusConfig {
   label: string;
@@ -305,9 +304,9 @@ export default function AdminSampleRequestsPage() {
       : 'Mở gửi bù hàng mẫu';
 
   return (
-    <main className="admin-samples-page text-[#1A1612]">
+    <div className="w-full min-w-0 pb-6 text-[#1A1612]">
       <div className="mx-0 w-full min-w-0 space-y-4">
-        <div className="sample-metrics grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 p-2 border border-[#EAE4D7] rounded-2xl bg-white">
           {[
             {label:'Tổng yêu cầu',value:stats.total,filter:'ALL',icon:Package},
             {label:'Đang xử lý',value:stats.shipping,filter:'IN_PROGRESS',icon:Truck},
@@ -318,16 +317,16 @@ export default function AdminSampleRequestsPage() {
           ].map((item) => {
             const Icon = item.icon;
             const active = item.filter === 'BLOCKED' ? view === 'blocked' : view === 'requests' && statusFilter === item.filter;
-            return <button key={item.filter} type="button" aria-pressed={active} onClick={() => { setView(item.filter === 'BLOCKED' ? 'blocked' : 'requests'); setSearchQuery(''); if(item.filter !== 'BLOCKED')setStatusFilter(item.filter); }} className={'rounded-xl border bg-white px-3 py-3 text-left transition cursor-pointer ' + (active ? 'border-[#C59B58]' : 'border-[#EAE4D7] hover:border-[#C59B58]')}>
-              <div className="flex items-center justify-between gap-2 text-[11px] text-[#7D715E]"><span>{item.label}</span><Icon className={'h-3.5 w-3.5 ' + (['RISK_GROUP','BLOCKED'].includes(item.filter) && item.value > 0 ? 'text-[#DC2626]' : 'text-[#B88E4F]')} /></div>
-              <div className="mt-2 text-xl font-semibold text-[#1A1612]">{item.value}</div>
+            return <button key={item.filter} type="button" aria-pressed={active} onClick={() => { setView(item.filter === 'BLOCKED' ? 'blocked' : 'requests'); setSearchQuery(''); if(item.filter !== 'BLOCKED')setStatusFilter(item.filter); }} className={'rounded-xl border bg-white px-3 py-3 text-left transition cursor-pointer min-h-[82px] ' + (active ? 'border-[#EEDFC6] bg-[#FBF5EB]' : 'border-[#EAE4D7] hover:bg-[#FAF8F5]')}>
+              <div className="flex items-center justify-between gap-2 text-xs text-[#7D715E]"><span>{item.label}</span><Icon className={'h-3.5 w-3.5 ' + (['RISK_GROUP','BLOCKED'].includes(item.filter) && item.value > 0 ? 'text-[#DC2626]' : 'text-[#B88E4F]')} /></div>
+              <div className="mt-2 text-2xl font-semibold tabular-nums text-[#1A1612]">{item.value}</div>
             </button>;
           })}
         </div>
 
         {/* Toolbar: Tabs, Search & Status Dropdown */}
-        <div className="sample-toolbar rounded-xl border border-[#EAE4D7] bg-white p-3">
-          <div className="sample-view-tabs flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 xl:grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-6 rounded-xl border border-[#EAE4D7] bg-white p-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               aria-pressed={view === 'requests'}
@@ -356,11 +355,11 @@ export default function AdminSampleRequestsPage() {
             </button>
           </div>
 
-          <div className="sample-filter-controls">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 min-w-0">
             {view === 'requests' && (
               <>
                 {/* Search input */}
-                <div className="sample-search relative min-w-0">
+                <div className="relative min-w-0 flex-1 max-w-full xl:max-w-[460px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7D715E]" />
                   <input
                     type="text"
@@ -382,7 +381,7 @@ export default function AdminSampleRequestsPage() {
                 </div>
 
                 {/* Status filter dropdown */}
-                <div className="sample-status-filter min-w-0">
+                <div className="w-full sm:w-[230px] shrink-0 min-w-0">
                   <Select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value)}
@@ -928,6 +927,6 @@ export default function AdminSampleRequestsPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

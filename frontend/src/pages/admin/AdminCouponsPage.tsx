@@ -19,7 +19,6 @@ import {
   type CouponStatus,
 } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
-import './AdminMarketingPanels.css';
 
 const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: string; border: string }> = {
   ACTIVE: {
@@ -193,11 +192,11 @@ export const AdminCouponsPage: React.FC = () => {
   const totalRedemptions = coupons.reduce((acc, curr) => acc + (curr.usageCount || 0), 0);
 
   return (
-    <div className="admin-marketing-page admin-coupons-page">
-      <div className="admin-marketing-content">
+    <div className="w-full min-w-0 text-[#1A1612]">
+      <div className="grid gap-4 min-w-0">
 
-        <div className="admin-marketing-metrics">
-          <div className="admin-coupon-metric">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs min-w-0">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">Mã giảm giá toàn sàn</span>
               <Tag className="w-4 h-4 text-[#B88E4F]" />
@@ -205,15 +204,15 @@ export const AdminCouponsPage: React.FC = () => {
             <p className="text-2xl font-bold text-[#1A1612]">{totalCount}</p>
           </div>
 
-          <div className="admin-coupon-metric">
+          <div className="p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs min-w-0">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">Đang hoạt động</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <CheckCircle2 className="w-4 h-4 text-[#059669]" />
             </div>
             <p className="text-2xl font-bold text-[#1A1612]">{activeCount}</p>
           </div>
 
-          <div className="admin-coupon-metric">
+          <div className="p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs min-w-0">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">Bị khóa vi phạm</span>
               <ShieldAlert className="w-4 h-4 text-red-600" />
@@ -221,7 +220,7 @@ export const AdminCouponsPage: React.FC = () => {
             <p className="text-2xl font-bold text-red-600">{blockedCount}</p>
           </div>
 
-          <div className="admin-coupon-metric">
+          <div className="p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs min-w-0">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-[#7D715E]">Tổng lượt sử dụng</span>
               <Percent className="w-4 h-4 text-[#B88E4F]" />
@@ -231,8 +230,8 @@ export const AdminCouponsPage: React.FC = () => {
         </div>
 
 
-        <div className="admin-coupon-toolbar">
-          <div className="admin-marketing-search">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 border border-[#EAE4D7] rounded-xl bg-white">
+          <div className="relative flex-1 min-w-0">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
             <input
               type="text"
@@ -243,7 +242,7 @@ export const AdminCouponsPage: React.FC = () => {
             />
           </div>
 
-          <div className="admin-coupon-status-filters">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
             {[
               { key: 'ALL', label: 'Tất cả' },
               { key: 'ACTIVE', label: 'Đang chạy' },
@@ -256,7 +255,11 @@ export const AdminCouponsPage: React.FC = () => {
                 key={tab.key}
                 aria-pressed={statusFilter === tab.key}
                 onClick={() => setStatusFilter(tab.key)}
-                className="admin-coupon-filter"
+                className={`inline-flex items-center justify-center gap-1 min-h-[34px] px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer border ${
+                  statusFilter === tab.key
+                    ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] font-semibold'
+                    : 'border-transparent bg-white text-[#7D715E] hover:border-[#EEDFC6] hover:bg-[#FBF5EB]'
+                }`}
               >
                 {tab.label}
               </button>
@@ -288,9 +291,9 @@ export const AdminCouponsPage: React.FC = () => {
             <p className="text-xs text-[#7D715E] mt-1">Thử thay đổi từ khóa hoặc bộ lọc trạng thái để tra cứu.</p>
           </div>
         ) : (
-          <div className="admin-coupon-panel">
-            <div className="admin-coupon-table-region">
-              <table className="admin-coupon-table">
+          <div className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[950px] border-collapse text-left text-xs">
                 <colgroup><col style={{width: 165}} /><col style={{width: "22%"}} /><col /><col style={{width: 95}} /><col style={{width: 125}} /><col style={{width: 85}} /><col style={{width: 120}} /><col style={{width: 110}} /></colgroup>
                 <thead className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-[#7D715E] font-semibold">
                   <tr>
@@ -412,8 +415,8 @@ export const AdminCouponsPage: React.FC = () => {
 
 
       {detailCoupon && (
-        <div className="admin-coupon-modal-backdrop">
-          <div role="dialog" aria-modal="true" aria-labelledby="coupon-detail-title" className="admin-coupon-modal admin-coupon-detail">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/35 backdrop-blur-xs">
+          <div role="dialog" aria-modal="true" aria-labelledby="coupon-detail-title" className="w-full max-w-lg max-h-[calc(100dvh-32px)] overflow-y-auto p-5 border border-[#EAE4D7] rounded-2xl bg-white text-[#1A1612] shadow-xl">
             <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-4 mb-4">
               <div className="flex items-center gap-2">
                 <Tag className="w-5 h-5 text-[#B88E4F]" />
@@ -517,8 +520,8 @@ export const AdminCouponsPage: React.FC = () => {
 
 
       {blockTarget && (
-        <div className="admin-coupon-modal-backdrop">
-          <div role="dialog" aria-modal="true" aria-labelledby="coupon-block-title" className="admin-coupon-modal admin-coupon-block-modal">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/35 backdrop-blur-xs">
+          <div role="dialog" aria-modal="true" aria-labelledby="coupon-block-title" className="w-full max-w-md p-5 border border-[#EAE4D7] rounded-2xl bg-white text-[#1A1612] shadow-xl">
             <div className="flex items-center gap-2.5 text-red-600 mb-3">
               <ShieldAlert className="w-5 h-5" />
               <h3 id="coupon-block-title" className="text-base font-bold text-[#1A1612]">
