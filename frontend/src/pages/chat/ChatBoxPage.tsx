@@ -25,13 +25,12 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '@/types/chat.types';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
-import './CustomerChat.css';
-import './NewConversationModal.css';
 import { CampaignCardBubble } from '../../components/chat/CampaignCardBubble';
 import { ExclusiveDealCardBubble } from '../../components/chat/ExclusiveDealCardBubble';
 import { ProductInquiryCardBubble, type ProductInquiryCardData } from '../../components/chat/ProductInquiryCardBubble';
@@ -381,32 +380,31 @@ function NewConversationModal({
 
   return (
     <div
-      className="new-chat-overlay"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#231D15]/35 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="new-chat-dialog"
+        className="w-full max-w-[520px] max-h-[min(680px,calc(100dvh-40px))] flex flex-col overflow-hidden bg-white text-[#1A1612] border border-[#EAE4D7] rounded-2xl sm:rounded-[20px] shadow-[0_24px_80px_rgba(35,29,21,0.16)] outline-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-chat-title"
         onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
         onClick={e => e.stopPropagation()}
       >
-
-        <div className="new-chat-header">
-          <div className="new-chat-heading">
-            <div className="new-chat-heading-icon">
+        <div className="flex items-center justify-between gap-3 p-4 sm:p-5 pb-3 sm:pb-4 border-b border-[#F3EFE6]">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="grid place-items-center shrink-0 w-9 sm:w-10 h-9 sm:h-10 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
               <MessageSquare className="w-4 h-4" />
             </div>
             <div>
-              <h3 id="new-chat-title" className="new-chat-title">Cuộc trò chuyện mới</h3>
-              <p className="new-chat-subtitle">
+              <h3 id="new-chat-title" className="m-0 text-base sm:text-[19px] font-bold leading-snug tracking-tight text-[#1A1612]">Cuộc trò chuyện mới</h3>
+              <p className="m-0 mt-1 text-xs leading-relaxed text-[#7D715E]">
                 {isShop ? 'Chọn KOL / CTV để trao đổi hợp tác.' : 'Chọn gian hàng để bắt đầu trao đổi.'}
               </p>
             </div>
           </div>
           <button
-            className="new-chat-close"
+            className="grid place-items-center shrink-0 w-8 h-8 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] transition-colors cursor-pointer"
             onClick={onClose}
             title="Đóng"
           >
@@ -414,10 +412,9 @@ function NewConversationModal({
           </button>
         </div>
 
-
-        <div className="new-chat-search-area">
-          <div className="new-chat-search-field">
-            <Search className="new-chat-search-icon" />
+        <div className="px-4 sm:px-5 pb-2.5">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7D715E] pointer-events-none" />
             <input
               id="new-chat-search"
               aria-label={isShop ? 'Tìm KOL / CTV' : 'Tìm gian hàng'}
@@ -429,11 +426,11 @@ function NewConversationModal({
               }
               value={query}
               onChange={e => setQuery(e.target.value)}
-              className="new-chat-search-input"
+              className="block w-full h-11 pl-10 pr-10 border border-[#EAE4D7] rounded-[11px] bg-[#FAF8F5] text-[#1A1612] text-xs sm:text-[13px] outline-none focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10 transition-all placeholder:text-[#7D715E]"
             />
             {query && (
               <button
-                className="new-chat-clear"
+                className="grid place-items-center shrink-0 w-8 h-8 text-[#7D715E] hover:text-[#1A1612] absolute right-1.5 top-1/2 -translate-y-1/2 cursor-pointer"
                 aria-label="Xóa tìm kiếm"
                 onClick={() => setQuery('')}
               >
@@ -443,19 +440,18 @@ function NewConversationModal({
           </div>
         </div>
 
-
-        <div className="new-chat-list">
+        <div className="flex-1 min-h-[180px] overflow-y-auto overscroll-contain px-2 sm:px-3 pb-2 [scrollbar-width:thin]">
           {loading && (
-            <div className="new-chat-state">
-              <div className="new-chat-spinner" />
+            <div className="flex flex-col items-center gap-2.5 py-12 px-4 text-xs text-[#7D715E]">
+              <Loader2 className="w-5 h-5 animate-spin text-[#B88E4F]" />
               <span>Đang tìm kiếm...</span>
             </div>
           )}
 
           {!loading && results.length === 0 && (
-            <div className="new-chat-state">
+            <div className="flex flex-col items-center gap-2.5 py-12 px-4 text-xs text-[#7D715E]">
               <Search className="w-8 h-8 text-stone-300 stroke-1" />
-              <p>Không tìm thấy {isShop ? 'KOL / CTV nào' : 'Cửa hàng nào'}</p>
+              <p className="m-0">Không tìm thấy {isShop ? 'KOL / CTV nào' : 'Cửa hàng nào'}</p>
             </div>
           )}
 
@@ -464,21 +460,21 @@ function NewConversationModal({
               <div
                 key={item.id}
                 id={`new-chat-${item.id}`}
-                className="new-chat-contact"
+                className="flex items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-[11px] hover:bg-[#FAF8F5] transition-colors border-t border-[#F3EFE6] first:border-t-0"
               >
-                <div className="new-chat-contact-info">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <ChatAvatar
-                    className="new-chat-avatar"
+                    className="w-9 sm:w-[38px] h-9 sm:h-[38px] shrink-0 grid place-items-center bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl text-[#B88E4F] text-sm font-bold"
                     src={isShop
                       ? item.collaboratorProfile?.avatarUrl || item.avatarUrl
                       : item.logoUrl || item.owner?.avatarUrl}
                     name={(isShop ? item.fullName : item.name) || '?'}
                   />
                   <div className="min-w-0">
-                    <div className="new-chat-contact-name">
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold leading-snug text-[#1A1612]">
                       {isShop ? item.fullName : item.name}
                     </div>
-                    <div className="new-chat-contact-detail">
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap mt-0.5 text-[#7D715E] text-[11px] leading-snug">
                       {isShop
                         ? item.email
                         : item.owner?.fullName
@@ -489,22 +485,22 @@ function NewConversationModal({
                 </div>
 
                 <button
-                  className="new-chat-message-button"
+                  className="inline-flex items-center justify-center gap-1.5 shrink-0 min-w-[80px] sm:min-w-[94px] min-h-[34px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-[9px] bg-[#FBF5EB] text-[#1A1612] text-[11px] sm:text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors cursor-pointer disabled:opacity-55"
                   disabled={creating === item.id}
                   onClick={() => startChat(item)}
                 >
-                  <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+                  <MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
                   {creating === item.id ? 'Đang mở...' : 'Nhắn tin'}
                 </button>
               </div>
             ))}
         </div>
-        <div className="new-chat-footer">
-          <div className="new-chat-list-label">
+        <div className="px-4 sm:px-5 py-3 border-t border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] text-[11px]">
+          <div className="flex items-center justify-between gap-3 font-semibold">
             <span>{isShop ? 'KOL / CTV' : 'Gian hàng'}</span>
-            <span aria-live="polite">{loading ? 'Đang tìm…' : `${results.length} kết quả`}</span>
+            <span aria-live="polite" className="font-normal">{loading ? 'Đang tìm…' : `${results.length} kết quả`}</span>
           </div>
-          <p>Chọn người nhận để mở cuộc trò chuyện.</p>
+          <p className="m-0 mt-1">Chọn người nhận để mở cuộc trò chuyện.</p>
         </div>
       </div>
     </div>
@@ -566,6 +562,19 @@ const LEGACY_ID_MAP: Record<string, string> = {
   'kol-003': '237a7208-1c74-4322-96b2-51d810660723',
 };
 
+// Global in-memory chat session cache: Giữ lại hội thoại và tin nhắn khi chuyển trang
+interface GlobalChatSessionCache {
+  conversations: Conversation[];
+  messagesByConvId: Map<string, ChatMessage[]>;
+  activeConvId: string | null;
+}
+
+const chatSessionCache: GlobalChatSessionCache = {
+  conversations: [],
+  messagesByConvId: new Map(),
+  activeConvId: null,
+};
+
 export default function ChatBoxPage({
   embedded = false,
   targetStoreId,
@@ -605,11 +614,16 @@ export default function ChatBoxPage({
     : undefined;
   const effectiveProductContext = initialProductContext || queryProductContext;
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const conversationsRef = useRef<Conversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(() => chatSessionCache.conversations);
+  const conversationsRef = useRef<Conversation[]>(chatSessionCache.conversations);
   conversationsRef.current = conversations;
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(() => chatSessionCache.activeConvId);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (chatSessionCache.activeConvId && chatSessionCache.messagesByConvId.has(chatSessionCache.activeConvId)) {
+      return chatSessionCache.messagesByConvId.get(chatSessionCache.activeConvId) || [];
+    }
+    return [];
+  });
   const [inputText, setInputText] = useState('');
   const [pinnedProduct, setPinnedProduct] = useState<ProductContextData | null>(
     effectiveProductContext || null
@@ -706,6 +720,13 @@ export default function ChatBoxPage({
             console.warn('Không thể khởi tạo hội thoại thật với KOL:', err);
           }
         }
+      } else if (activeConvIdRef.current) {
+        const currentActive = list.find((c) => c.id === activeConvIdRef.current);
+        if (currentActive) {
+          openConversationRef.current(currentActive);
+        } else if (list.length > 0) {
+          openConversationRef.current(list[0]);
+        }
       } else if (list.length > 0) {
         openConversationRef.current(list[0]);
       }
@@ -718,6 +739,7 @@ export default function ChatBoxPage({
         const all: Conversation[] = Array.isArray(res) ? res : res?.data || [];
         const list = onlyCustomerChats ? all.filter((conversation) => Boolean(conversation.customerId)) : all;
         setConversations(list);
+        chatSessionCache.conversations = list;
         setupContext(list);
       })
       .catch((err) => {
@@ -758,14 +780,23 @@ export default function ChatBoxPage({
         }).catch(() => undefined);
       }
       if (msg.conversationId === activeConvIdRef.current) {
-        setMessages(prev => prev.some((item) => item.id === msg.id) ? prev : [...prev, msg]);
+        setMessages(prev => {
+          const updated = prev.some((item) => item.id === msg.id) ? prev : [...prev, msg];
+          chatSessionCache.messagesByConvId.set(msg.conversationId, updated);
+          return updated;
+        });
         if (msg.senderId !== currentUser?.id) {
           api.patch(`/chat/conversations/${msg.conversationId}/read`).catch(() => undefined);
         }
         setTimeout(() => scrollToBottom(true), 50);
+      } else {
+        const existing = chatSessionCache.messagesByConvId.get(msg.conversationId);
+        if (existing && !existing.some((item) => item.id === msg.id)) {
+          chatSessionCache.messagesByConvId.set(msg.conversationId, [...existing, msg]);
+        }
       }
-      setConversations(prev =>
-        prev
+      setConversations(prev => {
+        const updated = prev
           .map(c =>
             c.id === msg.conversationId
               ? {
@@ -789,8 +820,10 @@ export default function ChatBoxPage({
           .sort(
             (a, b) =>
               new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-          )
-      );
+          );
+        chatSessionCache.conversations = updated;
+        return updated;
+      });
     };
     const onRead = ({ conversationId, readerId }: { conversationId: string; readerId: string }) => {
       if (conversationId === activeConvIdRef.current && readerId !== currentUser?.id) {
@@ -838,21 +871,36 @@ export default function ChatBoxPage({
 
     setActiveConvId(conv.id);
     activeConvIdRef.current = conv.id;
-    setMessages([]);
+    chatSessionCache.activeConvId = conv.id;
+
+    // Hiển thị ngay lập tức nếu đã có tin nhắn trong bộ nhớ cache (0ms delay)
+    const cached = chatSessionCache.messagesByConvId.get(conv.id);
+    if (cached && cached.length > 0) {
+      setMessages(cached);
+      setIsLoadingMsgs(false);
+      setTimeout(() => scrollToBottom(), 10);
+    } else {
+      setMessages([]);
+      setIsLoadingMsgs(true);
+    }
     setHasMore(false);
     setOldestMsgId(undefined);
-    setIsLoadingMsgs(true);
 
     if (UUID_REGEX.test(conv.id)) {
       try {
         const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`);
         const msgs: ChatMessage[] = Array.isArray(res) ? res : res?.data || [];
         setMessages(msgs);
+        chatSessionCache.messagesByConvId.set(conv.id, msgs);
         setHasMore(msgs.length === 50);
         setOldestMsgId(msgs[0]?.id);
         await api.patch(`/chat/conversations/${conv.id}/read`);
-        setConversations(prev => prev.map(item => item.id === conv.id
-          ? { ...item, _count: { chatMessages: 0 }, chatMessages: item.chatMessages?.[0] ? [{ ...item.chatMessages[0], isRead: true }] : [] } : item));
+        setConversations(prev => {
+          const updated = prev.map(item => item.id === conv.id
+            ? { ...item, _count: { chatMessages: 0 }, chatMessages: item.chatMessages?.[0] ? [{ ...item.chatMessages[0], isRead: true }] : [] } : item);
+          chatSessionCache.conversations = updated;
+          return updated;
+        });
       } catch (err) {
         console.error(err);
       } finally {
@@ -1048,7 +1096,7 @@ export default function ChatBoxPage({
   );
 
   return (
-    <div className={`${onlyCustomerChats && !embedded ? 'merchant-customer-chat ' : ''}${embedded ? 'h-full w-full' : 'mx-auto flex w-full max-w-[1520px] flex-col pt-3 pb-4 sm:pt-4'}`}>
+    <div className={`${onlyCustomerChats && !embedded ? 'merchant-customer-chat ' : ''}${embedded ? 'h-full w-full' : 'flex w-full min-w-0 flex-col pb-4'}`}>
       <div
         className={`flex min-h-0 min-w-0 ${embedded ? 'h-full w-full' : 'h-[calc(100dvh-130px)] min-h-[460px] sm:min-h-[560px]'} overflow-hidden rounded-3xl border border-[#EAE4D7] bg-white shadow-[0_12px_36px_rgba(35,29,21,0.08)] ${className}`}
         id="chat-page"

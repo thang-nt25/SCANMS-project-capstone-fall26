@@ -16,7 +16,6 @@ import CustomerPayosTopUp from './CustomerPayosTopUp';
 import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
 import { Link } from 'react-router-dom';
-import './CustomerWalletTab.css';
 
 const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
 
@@ -109,73 +108,154 @@ export const CustomerWalletTab: React.FC = () => {
   };
 
   return (
-    <section className="customer-wallet" aria-labelledby="customer-wallet-title">
-      <header className="cw-page-heading">
-        <span className="cw-heading-icon" aria-hidden="true"><Wallet size={21} /></span>
-        <div className="cw-heading-copy">
-          <h1 id="customer-wallet-title">Ví mua sắm</h1>
-          <p>Quản lý số dư, nạp tiền và theo dõi giao dịch.</p>
+    <section className="@container/wallet grid gap-[14px] w-full max-w-[1120px] min-w-0 text-left text-[#1A1612] max-[767px]:pb-[64px]" aria-labelledby="customer-wallet-title">
+      <header className="flex items-center flex-wrap gap-[10px_12px] pt-[4px] pb-[14px] border-b border-[#EAE4D7]">
+        <div className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true">
+          <Wallet size={21} />
         </div>
-        <div className="cw-actions">
-          <button type="button" className="cw-button cw-refresh" disabled={loading} onClick={() => void fetchWalletData()}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" /><span>Làm mới</span>
+        <div className="flex-1 min-w-[220px] @max-[599px]:min-w-0">
+          <h1 id="customer-wallet-title" className="m-0 font-inherit text-[20px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612] @max-[599px]:text-[19px]">
+            Ví mua sắm
+          </h1>
+          <p className="m-[3px_0_0] text-[12px] leading-[1.5] text-[#7D715E] @max-[599px]:text-[11px]">
+            Quản lý số dư, nạp tiền và theo dõi giao dịch.
+          </p>
+        </div>
+        <div className="flex items-center gap-[8px] @max-[599px]:gap-[6px] @max-[599px]:w-full @max-[599px]:ml-[52px] @max-[599px]:flex-wrap">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center gap-[6px] min-h-[34px] px-[12px] py-[7px] border border-[#EAE4D7] rounded-[8px] bg-white text-[#1A1612] text-[12px] font-[550] no-underline cursor-pointer whitespace-nowrap hover:border-[#C59B58] hover:bg-[#FBF5EB] disabled:opacity-50 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px] @max-[599px]:px-[9px] @max-[599px]:py-[7px] @max-[599px]:text-[11px]"
+            disabled={loading}
+            onClick={() => void fetchWalletData()}
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin text-[#B88E4F]' : 'text-[#B88E4F]'} aria-hidden="true" />
+            <span>Làm mới</span>
           </button>
-          <Link to="/marketplace" className="cw-button cw-shopping">
-            <ShoppingBag size={14} aria-hidden="true" /><span>Mua sắm</span>
+          <Link
+            to="/marketplace"
+            className="inline-flex items-center justify-center gap-[6px] min-h-[34px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[550] no-underline cursor-pointer whitespace-nowrap hover:border-[#C59B58] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px] @max-[599px]:px-[9px] @max-[599px]:py-[7px] @max-[599px]:text-[11px]"
+          >
+            <ShoppingBag size={14} className="text-[#B88E4F]" aria-hidden="true" />
+            <span>Mua sắm</span>
           </Link>
         </div>
       </header>
-      <section className="cw-balance" aria-label="Số dư ví" aria-busy={loading}>
-        <div className="cw-balance-primary">
-          <div className="cw-available">
-            <span className="cw-label">Số dư khả dụng</span>
-            <strong className="cw-amount">{loading && !wallet ? '—' : formatMoney(Number(wallet?.availableBalance || 0))}</strong>
+
+      <section
+        className="relative grid grid-cols-[minmax(0,1fr)_240px] items-center gap-[20px] p-[18px_20px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_3px_12px_#231D1504] before:content-[''] before:absolute before:top-[-1px] before:left-[20px] before:w-[36px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58] @max-[599px]:grid-cols-[minmax(0,1fr)] @max-[599px]:gap-[14px] @max-[599px]:p-[16px]"
+        aria-label="Số dư ví"
+        aria-busy={loading}
+      >
+        <div className="flex items-center gap-[14px] min-w-0 @max-[599px]:gap-[12px]">
+          <div className="grid gap-[5px] min-w-0">
+            <span className="flex items-center gap-[6px] text-[11px] font-[450] text-[#7D715E]">
+              Số dư khả dụng
+            </span>
+            <strong className="text-[32px] leading-[1.2] tracking-[-0.8px] font-[650] tabular-nums break-words text-[#1A1612] @max-[599px]:text-[28px]">
+              {loading && !wallet ? '—' : formatMoney(Number(wallet?.availableBalance || 0))}
+            </strong>
           </div>
         </div>
-        <div className="cw-balance-secondary">
-          <span className="cw-state"><Check size={12} /> Đang hoạt động</span>
-          <div className="cw-pending">
-            <span className="cw-label"><Clock size={14} /> Chờ xử lý</span>
-            <strong>{loading && !wallet ? '—' : formatMoney(Number(wallet?.pendingBalance || 0))}</strong>
+        <div className="grid gap-[6px] min-w-0 pl-[20px] border-l border-[#EAE4D7] @max-[599px]:gap-[8px] @max-[599px]:p-[12px_0_0] @max-[599px]:border-l-0 @max-[599px]:border-t @max-[599px]:border-[#EAE4D7]">
+          <span className="flex items-center order-2 justify-self-start gap-[5px] text-[#7D715E] text-[10px] whitespace-nowrap">
+            <Check size={12} className="text-[#059669]" /> Đang hoạt động
+          </span>
+          <div className="grid gap-[5px] min-w-0 @max-[599px]:flex @max-[599px]:items-center @max-[599px]:justify-between @max-[599px]:gap-[12px]">
+            <span className="flex items-center gap-[6px] text-[11px] font-[450] text-[#7D715E] whitespace-nowrap">
+              <Clock size={13} /> Chờ xử lý
+            </span>
+            <strong className="text-[22px] font-[600] tabular-nums break-words text-left text-[#1A1612] @max-[599px]:text-[18px] @max-[599px]:text-right">
+              {loading && !wallet ? '—' : formatMoney(Number(wallet?.pendingBalance || 0))}
+            </strong>
           </div>
         </div>
       </section>
-      <details className="cw-panel cw-deposit">
-        <summary className="cw-panel-summary">
-          <span className="cw-icon"><Plus size={17} /></span>
-          <span className="cw-panel-copy"><strong>Nạp tiền vào ví</strong><small>Chọn số tiền và phương thức nạp</small></span>
-          <span className="cw-summary-action"><span className="cw-closed-label">Nạp tiền</span><span className="cw-open-label">Thu gọn</span><ChevronDown size={15} /></span>
+
+      <details className="block min-w-0 border border-[#EAE4D7] rounded-[12px] bg-white overflow-hidden [&[open]>summary]:border-b [&[open]>summary]:border-[#EAE4D7] [&[open]>summary_.cw-chevron]:rotate-180 [&[open]>summary_.cw-action-arrow]:rotate-180">
+        <summary className="flex items-center gap-[11px] min-h-[64px] p-[12px_16px] cursor-pointer list-none hover:bg-[#FAF8F5] transition-colors select-none [&::-webkit-details-marker]:none @max-[599px]:gap-[9px] @max-[599px]:p-[13px_12px] @max-[599px]:grid @max-[599px]:grid-cols-[34px_minmax(0,1fr)_auto]">
+          <span className="inline-flex items-center justify-center shrink-0 w-[34px] h-[34px] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]">
+            <Plus size={17} />
+          </span>
+          <span className="grid gap-[3px] min-w-0 text-left">
+            <strong className="text-[14px] font-[600] text-[#1A1612] @max-[599px]:text-[13px]">Nạp tiền vào ví</strong>
+            <small className="text-[11px] text-[#7D715E] @max-[599px]:text-[10px] @max-[599px]:max-w-[185px]">Chọn số tiền và phương thức nạp</small>
+          </span>
+          <span className="flex items-center gap-[7px] ml-auto p-[7px_10px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[11px] font-[550] whitespace-nowrap @max-[599px]:col-start-3 @max-[599px]:row-start-1 @max-[599px]:ml-0 @max-[599px]:p-[6px]">
+            <span className="[[details[open]>&]:hidden">Nạp tiền</span>
+            <span className="hidden [[details[open]>&]:inline">Thu gọn</span>
+            <ChevronDown size={14} className="cw-action-arrow text-[#B88E4F] transition-transform duration-200" />
+          </span>
         </summary>
-        <div className="cw-deposit-body">
-          <div className="cw-methods" role="group" aria-label="Phương thức nạp tiền">
-            <button type="button" aria-pressed={topUpTab === 'SANDBOX'} onClick={() => setTopUpTab('SANDBOX')}>Sandbox (Demo)</button>
-            <button type="button" aria-pressed={topUpTab === 'PAYOS'} onClick={() => setTopUpTab('PAYOS')}><QrCode size={14} />payOS ngân hàng</button>
+        <div className="grid gap-[12px] p-[16px] max-w-[860px] text-left @max-[599px]:p-[14px_12px]">
+          <div className="flex gap-[4px] w-fit max-w-full p-[3px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] @max-[599px]:w-full" role="group" aria-label="Phương thức nạp tiền">
+            <button
+              type="button"
+              aria-pressed={topUpTab === 'SANDBOX'}
+              onClick={() => setTopUpTab('SANDBOX')}
+              className={`inline-flex items-center justify-center gap-[6px] min-h-[32px] px-[12px] py-[6px] border rounded-[6px] text-[12px] font-[500] cursor-pointer transition @max-[599px]:flex-1 @max-[599px]:px-[8px] @max-[599px]:py-[6px] @max-[599px]:text-[11px] ${topUpTab === 'SANDBOX' ? 'bg-white text-[#1A1612] border-[#EEDFC6] shadow-xs' : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'}`}
+            >
+              Sandbox (Demo)
+            </button>
+            <button
+              type="button"
+              aria-pressed={topUpTab === 'PAYOS'}
+              onClick={() => setTopUpTab('PAYOS')}
+              className={`inline-flex items-center justify-center gap-[6px] min-h-[32px] px-[12px] py-[6px] border rounded-[6px] text-[12px] font-[500] cursor-pointer transition @max-[599px]:flex-1 @max-[599px]:px-[8px] @max-[599px]:py-[6px] @max-[599px]:text-[11px] ${topUpTab === 'PAYOS' ? 'bg-white text-[#1A1612] border-[#EEDFC6] shadow-xs' : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'}`}
+            >
+              <QrCode size={14} />payOS ngân hàng
+            </button>
           </div>
           {topUpTab === 'SANDBOX' ? (
-            <div className="cw-sandbox">
-              <p className="cw-demo-note">Nạp thử nghiệm · Số dư được cộng ngay sau khi nạp.</p>
-              <div className="cw-quick" role="group" aria-label="Chọn mức nạp nhanh">
+            <div className="grid gap-[12px]">
+              <p className="m-0 text-[11px] text-[#7D715E]">Nạp thử nghiệm · Số dư được cộng ngay sau khi nạp.</p>
+              <div className="grid grid-cols-6 gap-[7px] @max-[599px]:grid-cols-3" role="group" aria-label="Chọn mức nạp nhanh">
                 {QUICK_AMOUNTS.map((amt) => (
-                  <button key={amt} type="button" aria-pressed={customAmount === String(amt)} onClick={() => setCustomAmount(String(amt))}>
+                  <button
+                    key={amt}
+                    type="button"
+                    aria-pressed={customAmount === String(amt)}
+                    onClick={() => setCustomAmount(String(amt))}
+                    className={`min-h-[34px] p-[6px] border rounded-[7px] text-[12px] font-[550] cursor-pointer transition ${customAmount === String(amt) ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F]' : 'bg-white border-[#EAE4D7] text-[#1A1612] hover:bg-[#FBF5EB]'}`}
+                  >
                     +{amt >= 1000000 ? (amt / 1000000) + 'M' : (amt / 1000) + 'k'}
                   </button>
                 ))}
               </div>
-              <div className="cw-amount-row">
-                <div className="cw-input-wrap">
-                  <label htmlFor="cw-demo-amount">Số tiền nạp</label>
-                  <div className="cw-input">
-                    <input id="cw-demo-amount" type="number" min="10000" step="50000" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="Tối thiểu 10.000" />
-                    <span>VNĐ</span>
+              <div className="flex items-end gap-[10px] @max-[599px]:flex-wrap">
+                <div className="flex-1 min-w-0 @max-[599px]:basis-full">
+                  <label htmlFor="cw-demo-amount" className="block mb-[5px] text-[11px] text-[#7D715E]">Số tiền nạp</label>
+                  <div className="flex items-center gap-[8px] min-h-[38px] px-[12px] border border-[#EAE4D7] focus-within:border-[#C59B58] rounded-[8px] bg-white">
+                    <input
+                      id="cw-demo-amount"
+                      type="number"
+                      min="10000"
+                      step="50000"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      placeholder="Tối thiểu 10.000"
+                      className="w-full min-w-0 py-[8px] border-0 outline-none bg-transparent text-[#1A1612] text-[14px] font-[550]"
+                    />
+                    <span className="text-[11px] text-[#7D715E]">VNĐ</span>
                   </div>
                 </div>
-                <button type="button" className="cw-button cw-primary" disabled={topUpLoading} onClick={() => handleTopUp(Number(customAmount))}>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-[6px] min-h-[38px] px-[16px] py-[8px] border border-[#C59B58] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[600] cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50 disabled:cursor-wait @max-[599px]:w-full @max-[599px]:text-[12px]"
+                  disabled={topUpLoading}
+                  onClick={() => handleTopUp(Number(customAmount))}
+                >
                   {topUpLoading ? <RefreshCw size={15} className="animate-spin" /> : <Plus size={15} />}
                   {topUpLoading ? 'Đang xử lý...' : 'Nạp tiền (Demo)'}
                 </button>
               </div>
-              <details className="cw-help"><summary>Thông tin nạp thử nghiệm<ChevronDown size={13} /></summary>
-                <p>Nạp trực tiếp vào số dư ví để kiểm thử đặt hàng và luân chuyển dòng tiền. Chính sách hoàn tiền đổi trả áp dụng trong 14 ngày (ORDER_REFUND).</p>
+              <details className="border-t border-[#EAE4D7] pt-[10px] [&[open]>summary_svg]:rotate-180">
+                <summary className="flex items-center gap-[7px] w-fit text-[11px] text-[#7D715E] cursor-pointer list-none select-none">
+                  <span>Thông tin nạp thử nghiệm</span>
+                  <ChevronDown size={13} className="transition-transform duration-200" />
+                </summary>
+                <p className="m-[8px_0_0] text-[12px] leading-[1.6] text-[#7D715E]">
+                  Nạp trực tiếp vào số dư ví để kiểm thử đặt hàng và luân chuyển dòng tiền. Chính sách hoàn tiền đổi trả áp dụng trong 14 ngày (ORDER_REFUND).
+                </p>
               </details>
             </div>
           ) : (
@@ -183,107 +263,116 @@ export const CustomerWalletTab: React.FC = () => {
           )}
         </div>
       </details>
-      <details className="cw-panel cw-history">
-        <summary className="cw-panel-summary">
-          <span className="cw-icon"><Clock size={17} /></span>
-          <span className="cw-panel-copy"><strong>Lịch sử giao dịch</strong><small>Nạp tiền, thanh toán & hoàn tiền</small></span>
-          <span className="cw-history-count">{ledger?.total ?? 0}<span> giao dịch</span></span>
-          <ChevronDown className="cw-chevron" size={15} />
-        </summary>
-        <div className="cw-history-body">
-        {loading ? (
-          <div className="cw-empty" role="status">
-            <RefreshCw className="w-5 h-5 text-[#B88E4F] animate-spin" />
-            <span>Đang tải lịch sử giao dịch ví...</span>
-          </div>
-        ) : !ledger?.entries || ledger.entries.length === 0 ? (
-          <div className="cw-empty">
-            <Wallet className="cw-empty-icon" />
-            <p className="text-xs text-[#7D715E]">Chưa có giao dịch</p>
-            <p className="text-[11px] text-gray-400">Các khoản nạp, thanh toán và hoàn tiền sẽ xuất hiện tại đây.</p>
-          </div>
-        ) : (
-          <div className="cw-table-scroll" tabIndex={0} aria-label="Lịch sử biến động số dư">
-            <table className="cw-table w-full text-left text-xs">
-              <thead className="bg-[#FAF8F5] text-[#7D715E] uppercase text-[10px] font-bold border-b border-[#EAE4D7]">
-                <tr>
-                  <th className="py-3 px-4">Thời Gian</th>
-                  <th className="py-3 px-4">Nội Dung Biến Động</th>
-                  <th className="py-3 px-4 text-right">Số Tiền</th>
-                  <th className="py-3 px-4 text-right">Số Dư Trước</th>
-                  <th className="py-3 px-4 text-right">Số Dư Sau</th>
-                  <th className="py-3 px-4 text-center">Mã Tham Chiếu</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#FAF8F5]">
-                {ledger.entries.map((entry) => {
-                  const badge = getLedgerBadge(entry);
-                  return (
-                    <tr key={entry.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
-                      <td className="py-3.5 px-4 text-[#7D715E] whitespace-nowrap">
-                        {new Date(entry.createdAt).toLocaleString('vi-VN')}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badge.badgeClass}`}>
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className={`py-3.5 px-4 text-right font-mono font-bold whitespace-nowrap ${badge.colorClass}`}>
-                        {badge.sign}{formatMoney(Number(entry.amount))}
-                      </td>
-                      <td className="py-3.5 px-4 text-right text-gray-500 font-mono whitespace-nowrap">
-                        {formatMoney(Number(entry.balanceBefore))}
-                      </td>
-                      <td className="py-3.5 px-4 text-right text-[#1A1612] font-mono font-semibold whitespace-nowrap">
-                        {formatMoney(Number(entry.balanceAfter))}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-[#7D715E] font-mono text-[11px]">
-                        {entry.referenceId ? (
-                          <span className="bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[120px] inline-block" title={entry.referenceId}>
-                            {entry.referenceId.slice(0, 8)}...
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
 
-        {/* Phân trang */}
-        {ledger && ledger.total > ledger.limit && (
-          <div className="cw-pagination">
-            <span className="text-[#7D715E]">
-              Trang {ledger.page} / {Math.ceil(ledger.total / ledger.limit)}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white hover:bg-gray-50 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 font-semibold"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Trước</span>
-              </button>
-              <button
-                type="button"
-                disabled={page >= Math.ceil(ledger.total / ledger.limit)}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white hover:bg-gray-50 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 font-semibold"
-              >
-                <span>Sau</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+      <details className="block min-w-0 border border-[#EAE4D7] rounded-[12px] bg-white overflow-hidden [&[open]>summary]:border-b [&[open]>summary]:border-[#EAE4D7] [&[open]>summary_.cw-chevron]:rotate-180">
+        <summary className="flex items-center gap-[11px] min-h-[64px] p-[12px_16px] cursor-pointer list-none hover:bg-[#FAF8F5] transition-colors select-none [&::-webkit-details-marker]:none @max-[599px]:gap-[9px] @max-[599px]:p-[13px_12px]">
+          <span className="inline-flex items-center justify-center shrink-0 w-[34px] h-[34px] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]">
+            <Clock size={17} />
+          </span>
+          <span className="grid gap-[3px] min-w-0 text-left">
+            <strong className="text-[14px] font-[600] text-[#1A1612] @max-[599px]:text-[13px]">Lịch sử giao dịch</strong>
+            <small className="text-[11px] text-[#7D715E] @max-[599px]:text-[10px]">Nạp tiền, thanh toán & hoàn tiền</small>
+          </span>
+          <span className="ml-auto p-[3px_7px] rounded-[6px] bg-[#F3EFE6] text-[10px] text-[#7D715E] whitespace-nowrap @max-[599px]:[&>span]:hidden">
+            {ledger?.total ?? 0}<span> giao dịch</span>
+          </span>
+          <ChevronDown className="cw-chevron text-[#B88E4F] ml-2 shrink-0 transition-transform duration-200" size={15} />
+        </summary>
+        <div>
+          {loading ? (
+            <div className="grid justify-items-center gap-[6px] p-[22px_18px] text-[#7D715E] text-center" role="status">
+              <RefreshCw className="w-5 h-5 text-[#B88E4F] animate-spin" />
+              <span className="text-[12px]">Đang tải lịch sử giao dịch ví...</span>
             </div>
-          </div>
-        )}
+          ) : !ledger?.entries || ledger.entries.length === 0 ? (
+            <div className="grid justify-items-center gap-[6px] p-[22px_18px] text-[#7D715E] text-center">
+              <Wallet className="w-[26px] h-[26px] text-[#C59B58] stroke-[1.5] mb-[2px]" />
+              <p className="m-0 text-[12px] text-[#7D715E]">Chưa có giao dịch</p>
+              <p className="m-0 text-[11px] text-[#7D715E]">Các khoản nạp, thanh toán và hoàn tiền sẽ xuất hiện tại đây.</p>
+            </div>
+          ) : (
+            <div className="max-w-full overflow-x-auto" tabIndex={0} aria-label="Lịch sử biến động số dư">
+              <table className="min-w-[760px] w-full text-left text-[12px]">
+                <thead className="bg-[#FAF8F5] text-[#7D715E] text-[11px] font-[550] border-b border-[#EAE4D7]">
+                  <tr>
+                    <th className="p-[11px_16px] font-[550]">Thời Gian</th>
+                    <th className="p-[11px_16px] font-[550]">Nội Dung Biến Động</th>
+                    <th className="p-[11px_16px] text-right font-[550]">Số Tiền</th>
+                    <th className="p-[11px_16px] text-right font-[550]">Số Dư Trước</th>
+                    <th className="p-[11px_16px] text-right font-[550]">Số Dư Sau</th>
+                    <th className="p-[11px_16px] text-center font-[550]">Mã Tham Chiếu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#FAF8F5]">
+                  {ledger.entries.map((entry) => {
+                    const badge = getLedgerBadge(entry);
+                    return (
+                      <tr key={entry.id} className="hover:bg-[#FAF8F5] transition-colors">
+                        <td className="p-[11px_16px] text-[#7D715E] whitespace-nowrap">
+                          {new Date(entry.createdAt).toLocaleString('vi-VN')}
+                        </td>
+                        <td className="p-[11px_16px]">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold border ${badge.badgeClass}`}>
+                            {badge.label}
+                          </span>
+                        </td>
+                        <td className={`p-[11px_16px] text-right font-mono font-semibold whitespace-nowrap ${badge.colorClass}`}>
+                          {badge.sign}{formatMoney(Number(entry.amount))}
+                        </td>
+                        <td className="p-[11px_16px] text-right text-[#7D715E] font-mono whitespace-nowrap">
+                          {formatMoney(Number(entry.balanceBefore))}
+                        </td>
+                        <td className="p-[11px_16px] text-right text-[#1A1612] font-mono font-semibold whitespace-nowrap">
+                          {formatMoney(Number(entry.balanceAfter))}
+                        </td>
+                        <td className="p-[11px_16px] text-center text-[#7D715E] font-mono text-[11px]">
+                          {entry.referenceId ? (
+                            <span className="bg-[#F3EFE6] px-1.5 py-0.5 rounded truncate max-w-[120px] inline-block" title={entry.referenceId}>
+                              {entry.referenceId.slice(0, 8)}...
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Phân trang */}
+          {ledger && ledger.total > ledger.limit && (
+            <div className="flex items-center justify-between flex-wrap gap-[10px] p-[12px_16px] border-t border-[#EAE4D7] bg-[#FAF8F5] text-[11px]">
+              <span className="text-[#7D715E]">
+                Trang {ledger.page} / {Math.ceil(ledger.total / ledger.limit)}
+              </span>
+              <div className="flex items-center gap-[6px]">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="px-[10px] py-[5px] rounded-[7px] border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] disabled:opacity-40 transition cursor-pointer flex items-center gap-1 font-[550] text-[#1A1612]"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Trước</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={page >= Math.ceil(ledger.total / ledger.limit)}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="px-[10px] py-[5px] rounded-[7px] border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] disabled:opacity-40 transition cursor-pointer flex items-center gap-1 font-[550] text-[#1A1612]"
+                >
+                  <span>Sau</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </details>
     </section>
   );
 };
+

@@ -54,8 +54,9 @@ api.interceptors.response.use(
     if (method === 'get' && url && apiCache.isCacheable(url)) {
       apiCache.set(url, response.config.params, response.data);
     } else if (['post', 'put', 'patch', 'delete'].includes(method)) {
-      // Khi có hành động thay đổi dữ liệu (tạo mới, cập nhật, xóa) -> Invalidate cache để đồng bộ dữ liệu mới nhất
-      apiCache.invalidate();
+      // Khi có hành động thay đổi dữ liệu -> Invalidate cache của domain bị ảnh hưởng (targeted invalidation)
+      const affectedDomain = apiCache.getAffectedDomain(url);
+      apiCache.invalidate(affectedDomain);
     }
 
     return response.data;

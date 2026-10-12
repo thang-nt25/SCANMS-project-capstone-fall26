@@ -5,202 +5,29 @@ import api from '../services/api';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { customerService } from '../services/customer.service';
 import { normalizeOrderVariantId } from '@/utils/order-variant.utils';
+import type {
+  CartVariantInfo,
+  CartItem,
+  StoreCartGroup,
+  AddItemParams,
+  CartContextType,
+} from '@/types/cart.types';
+import {
+  getCartStorageKey,
+  getSelectedStorageKey,
+  PENDING_CHECKOUT_KEY,
+  CART_OWNER_KEY,
+  loadCartFromStorage,
+  loadSelectedFromStorage,
+} from '@/utils/cart-storage.utils';
 
-export interface CartVariantInfo {
-  id: string;
-  name: string;
-  sku: string;
-  price?: number | string | null;
-  stockQuantity: number;
-  isActive?: boolean;
-}
-
-export interface CartItem {
-  cartItemId: string; // `${productId}_${variantId || 'base'}`
-  productId: string;
-  liveSessionId?: string;
-  liveCouponCode?: string;
-  variantId?: string;
-  variantName?: string;
-  title: string;
-  sku: string;
-  price: number;
-  originalPrice?: number;
-  imageUrl: string;
-  quantity: number;
-  stockQuantity: number;
-  isActive: boolean;
-  store: {
-    id: string;
-    name: string;
-    slug?: string;
-    logoUrl?: string;
-    policyReturn?: string;
-    policyWarranty?: string;
-    policyShipping?: string;
-  };
-  availableVariants?: CartVariantInfo[];
-}
-
-export interface StoreCartGroup {
-  storeId: string;
-  storeName: string;
-  storeSlug?: string;
-  storeLogoUrl?: string;
-  items: CartItem[];
-  subtotal: number;
-  selectedSubtotal: number;
-  allSelected: boolean;
-  someSelected: boolean;
-  hasOutOfStock: boolean;
-}
-
-interface AddItemParams {
-  liveSessionId?: string;
-  liveCouponCode?: string;
-  product: {
-    id: string;
-    title?: string;
-    name?: string;
-    sku?: string;
-    price: number | string;
-    originalPrice?: number | string;
-    origPrice?: number | string;
-    imageUrl?: string;
-    image?: string;
-    stockQuantity?: number;
-    isActive?: boolean;
-    variants?: CartVariantInfo[];
-  };
-  variantId?: string;
-  quantity?: number;
-  store: {
-    id: string;
-    name: string;
-    slug?: string;
-    logoUrl?: string;
-    policyReturn?: string;
-    policyWarranty?: string;
-    policyShipping?: string;
-  };
-  openCartAfterAdd?: boolean;
-}
-
-interface CartContextType {
-  cart: CartItem[];
-  selectedItemIds: string[];
-  totalCount: number;
-  selectedCount: number;
-  selectedSubtotal: number;
-  cartSubtotal: number;
-  isCartOpen: boolean;
-  setIsCartOpen: (open: boolean) => void;
-  openCart: () => void;
-  closeCart: () => void;
-  addItem: (params: AddItemParams) => void;
-  updateQuantity: (cartItemId: string, newQuantity: number) => void;
-  updateVariant: (cartItemId: string, newVariantId: string) => void;
-  removeItem: (cartItemId: string) => void;
-  removeItems: (cartItemIds: string[]) => void;
-  toggleSelectItem: (cartItemId: string) => void;
-  toggleSelectStore: (storeId: string, selectAll?: boolean) => void;
-  toggleSelectAll: (selectAll?: boolean) => void;
-  clearCart: () => void;
-  groupedByStore: StoreCartGroup[];
-  selectedItems: CartItem[];
-  isCheckoutOpen: boolean;
-  setIsCheckoutOpen: (open: boolean) => void;
-  checkoutItems: CartItem[];
-  checkoutCouponCode?: string;
-  startCheckout: (customItems?: CartItem[], couponCode?: string) => void;
-  buyNow: (params: AddItemParams, couponCode?: string) => void;
-  editCheckoutCart: (items: CartItem[]) => void;
-  continueShoppingFromCheckout: (items: CartItem[]) => void;
-  closeCheckout: () => void;
-  refreshCartStock: () => Promise<void>;
-  isValidatingStock: boolean;
-  isCartSyncing: boolean;
-  cartSyncedAt: string | null;
-}
-
-const getCartStorageKey = (userId?: string | null) => {
-  return userId ? `scanms_cart_u_${userId}` : 'scanms_cart_guest';
+export type {
+  CartVariantInfo,
+  CartItem,
+  StoreCartGroup,
+  AddItemParams,
+  CartContextType,
 };
-
-const getSelectedStorageKey = (userId?: string | null) => {
-  return userId ? `scanms_cart_selected_u_${userId}` : 'scanms_cart_selected_guest';
-};
-
-const PENDING_CHECKOUT_KEY = 'scanms_pending_checkout';
-const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
-
-const normalizeStoredCartItem = (rawItem: any): CartItem => {
-  const item = rawItem && typeof rawItem === 'object' ? rawItem : {};
-  const currentVariantId = typeof item.variantId === 'string' ? item.variantId.trim() : '';
-  const variants = Array.isArray(item.availableVariants) ? item.availableVariants : [];
-  const tokens = new Set(
-    [currentVariantId, item.sku, item.variantName]
-      .filter((value): value is string => typeof value === 'string')
-      .map((value) => value.trim().toLocaleLowerCase())
-      .filter(Boolean),
-  );
-  const matchedVariant = UUID_RE.test(currentVariantId)
-    ? variants.find((variant: CartVariantInfo) => variant.id === currentVariantId)
-    : variants.find((variant: CartVariantInfo) =>
-        UUID_RE.test(variant.id) &&
-        [variant.id, variant.sku, variant.name]
-          .map((value) => value?.trim().toLocaleLowerCase())
-          .some((token) => token && tokens.has(token)),
-      ) || (variants.length === 1 && UUID_RE.test(String(variants[0]?.id || '')) ? variants[0] : null);
-
-  return {
-    ...item,
-    ...(matchedVariant
-      ? {
-          variantId: matchedVariant.id,
-          variantName: matchedVariant.name || item.variantName,
-          sku: matchedVariant.sku || item.sku,
-          price: matchedVariant.price !== null && matchedVariant.price !== undefined
-            ? Number(matchedVariant.price)
-            : item.price,
-          stockQuantity: matchedVariant.stockQuantity ?? item.stockQuantity,
-        }
-      : {}),
-    imageUrl: getSafeProductImageUrl(item.imageUrl, item.title, item.variantName),
-  } as CartItem;
-};
-
-const loadCartFromStorage = (uid: string | null): CartItem[] => {
-  try {
-    const key = getCartStorageKey(uid);
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        return parsed.map(normalizeStoredCartItem);
-      }
-    }
-  } catch {
-    // Fallback
-  }
-  return [];
-};
-
-const loadSelectedFromStorage = (uid: string | null): string[] => {
-  try {
-    const key = getSelectedStorageKey(uid);
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch {
-    // Fallback
-  }
-  return [];
-};
-
-const CART_OWNER_KEY = 'scanms_cart_owner';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
