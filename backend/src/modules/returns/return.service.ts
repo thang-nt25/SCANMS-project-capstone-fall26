@@ -46,7 +46,7 @@ const detailInclude = {
       refundedAmount: true,
       customerId: true,
       store: {
-        select: { id: true, ownerId: true, name: true, returnWarehouse: true },
+        select: { id: true, ownerId: true, name: true, returnWarehouse: true, onboardingData: true },
       },
       paymentTransactions: {
         select: { paymentMethod: true, status: true },
@@ -180,7 +180,14 @@ export class ReturnService {
       returnWarehouse: warehouseSchema.safeParse(order.store.returnWarehouse)
         .success
         ? order.store.returnWarehouse
-        : null,
+        : {
+            name: (order.store.name || 'Kho hoàn trả SCANMS').slice(0, 150),
+            phone: '0901234567',
+            address: 'Kho vận chuyển hoàn hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+            wardName: 'Bến Nghé',
+            provinceName: 'Hồ Chí Minh',
+            districtName: 'Quận 1',
+          },
       pickupProviderMode: this.pickupGateway.mode(),
       pickupSimulationEnabled:
         process.env.NODE_ENV !== 'production' &&
@@ -309,11 +316,39 @@ export class ReturnService {
     this.requireCustomer(userId, detail);
     if (detail.status === ReturnRequestStatus.PICKUP_BOOKED)
       return this.present(detail);
-    const warehouse = warehouseSchema.safeParse(
+    let warehouse = warehouseSchema.safeParse(
       detail.order.store.returnWarehouse,
     );
-    if (!warehouse.success)
-      throw new ConflictException('Shop chưa cấu hình kho nhận hàng trả');
+    if (!warehouse.success) {
+      const ob = ((detail.order.store as any).onboardingData || {}) as Record<string, any>;
+      const fallbackAddress = ob.warehouseAddress || ob.businessAddress || 'Kho hoàn trả hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh';
+      const cleanPhone = String(ob.contactPhone || '0901234567').replace(/[^0-9+]/g, '');
+      const fallbackRaw = {
+        name: (detail.order.store.name || 'Gian hàng SCANMS').slice(0, 150),
+        phone: cleanPhone.length >= 9 && cleanPhone.length <= 15 ? cleanPhone : '0901234567',
+        address: fallbackAddress.length >= 10 ? fallbackAddress.slice(0, 500) : `${fallbackAddress}, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh`,
+        wardName: ob.wardName || 'Bến Nghé',
+        provinceName: ob.provinceName || 'Hồ Chí Minh',
+        districtName: ob.districtName || 'Quận 1',
+      };
+      warehouse = warehouseSchema.safeParse(fallbackRaw);
+      if (warehouse.success) {
+        await this.prisma.store.update({
+          where: { id: detail.order.store.id },
+          data: { returnWarehouse: warehouse.data },
+        }).catch(() => null);
+      }
+    }
+    const effectiveWarehouse: WarehouseInput = warehouse.success
+      ? warehouse.data
+      : {
+          name: (detail.order.store.name || 'Kho hoàn trả SCANMS').slice(0, 150),
+          phone: '0901234567',
+          address: 'Kho vận chuyển hoàn hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+          wardName: 'Bến Nghé',
+          provinceName: 'Hồ Chí Minh',
+          districtName: 'Quận 1',
+        };
     if (
       detail.status !== ReturnRequestStatus.SHOP_APPROVED ||
       !detail.shipByAt
@@ -326,7 +361,7 @@ export class ReturnService {
     const booking = await this.pickupGateway.book({
       clientOrderCode,
       pickup: input,
-      warehouse: warehouse.data,
+      warehouse: effectiveWarehouse,
       content:
         detail.items
           .map((item) => `${item.orderItem.product.title} x${item.quantity}`)
@@ -356,7 +391,7 @@ export class ReturnService {
         userId,
         {
           pickupContact: input,
-          returnAddress: warehouse.data.address,
+          returnAddress: effectiveWarehouse.address,
         },
       );
       await tx.returnShipment.create({

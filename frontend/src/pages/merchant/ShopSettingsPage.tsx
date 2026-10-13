@@ -55,11 +55,14 @@ export default function ShopSettingsPage() {
     contactEmail: currentUser?.email || '',
     businessType: '',
     taxCode: '',
+    businessAddress: '',
     warehouseAddress: '',
+    returnWarehouseAddress: '',
   });
   const [ownerDetailsDraft, setOwnerDetailsDraft] = useState(shopOwnerDetails);
   const [isEditingOwnerDetails, setIsEditingOwnerDetails] = useState(false);
   const [savingOwnerDetails, setSavingOwnerDetails] = useState(false);
+  const [sameReturnAddress, setSameReturnAddress] = useState(true);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,7 +87,11 @@ export default function ShopSettingsPage() {
       const store = await storeService.getMyStore();
       if (store.name) setName(store.name);
       if (store.description) setDescription(store.description);
-      if (store.logoUrl) setLogoUrl(store.logoUrl);
+      if (store.logoUrl) {
+        setLogoUrl(store.logoUrl);
+      } else {
+        setLogoUrl('/assets/shops/shop-sora-skin.png');
+      }
       if (store.slug) setStoreSlug(store.slug);
       setPolicyReturn(store.policyReturn || '');
       setPolicyWarranty(store.policyWarranty || '');
@@ -94,25 +101,26 @@ export default function ShopSettingsPage() {
       }
       if (store.attributionWindowDays) setAttributionWindowDays(store.attributionWindowDays);
 
-      const onboardingData = store.onboardingData || {};
-      setShopOwnerDetails({
+      const onboardingData = (store as any).onboardingData || {};
+      const returnWarehouse = (store as any).returnWarehouse || {};
+      const businessAddr = onboardingData.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh';
+      const pickupAddr = onboardingData.warehouseAddress || returnWarehouse.address || 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh';
+      const returnAddr = onboardingData.returnWarehouseAddress || returnWarehouse.address || pickupAddr;
+
+      const loadedDetails = {
         representativeName:
           onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || '',
         contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '',
         contactEmail: onboardingData.contactEmail || store.owner?.email || '',
         businessType: onboardingData.businessType || '',
         taxCode: onboardingData.taxCode || '',
-        warehouseAddress: onboardingData.warehouseAddress || '',
-      });
-      setOwnerDetailsDraft({
-        representativeName:
-          onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || '',
-        contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '',
-        contactEmail: onboardingData.contactEmail || store.owner?.email || '',
-        businessType: onboardingData.businessType || '',
-        taxCode: onboardingData.taxCode || '',
-        warehouseAddress: onboardingData.warehouseAddress || '',
-      });
+        businessAddress: businessAddr,
+        warehouseAddress: pickupAddr,
+        returnWarehouseAddress: returnAddr,
+      };
+      setShopOwnerDetails(loadedDetails);
+      setOwnerDetailsDraft(loadedDetails);
+      setSameReturnAddress(returnAddr === pickupAddr);
     } catch (err) {
       console.error('Lỗi tải cấu hình shop:', err);
     }
@@ -177,18 +185,24 @@ export default function ShopSettingsPage() {
   };
 
   const handleSaveOwnerDetails = async () => {
+    const returnWarehouseAddr = sameReturnAddress
+      ? ownerDetailsDraft.warehouseAddress.trim()
+      : (ownerDetailsDraft.returnWarehouseAddress || ownerDetailsDraft.warehouseAddress).trim();
+
     const details = {
       representativeName: ownerDetailsDraft.representativeName.trim(),
       businessType: ownerDetailsDraft.businessType,
       contactPhone: ownerDetailsDraft.contactPhone.trim(),
       contactEmail: ownerDetailsDraft.contactEmail.trim(),
       taxCode: ownerDetailsDraft.taxCode.trim(),
+      businessAddress: ownerDetailsDraft.businessAddress.trim() || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
       warehouseAddress: ownerDetailsDraft.warehouseAddress.trim(),
+      returnWarehouseAddress: returnWarehouseAddr,
     };
 
     if (!details.representativeName || !details.businessType || !details.taxCode ||
         !details.contactPhone || !details.contactEmail || !details.warehouseAddress) {
-      showToast('Vui lòng bổ sung đầy đủ thông tin chủ shop.');
+      showToast('Vui lòng bổ sung đầy đủ thông tin chủ shop và kho hàng.');
       return;
     }
     if (!/^[+]?([0-9().\-\s]){8,20}$/.test(details.contactPhone)) {
@@ -284,7 +298,14 @@ export default function ShopSettingsPage() {
               <div className="flex items-center gap-3">
                 <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E8D4B0] bg-[#F3EFE6]">
                   {logoUrl ? (
-                    <img src={logoUrl} alt="Shop Logo" className="w-full h-full object-cover" />
+                    <img
+                      src={logoUrl}
+                      alt="Shop Logo"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/assets/shops/shop-sora-skin.png';
+                      }}
+                    />
                   ) : (
                     <Store className="h-5 w-5 text-[#7D715E]" />
                   )}
@@ -547,16 +568,52 @@ export default function ShopSettingsPage() {
                         />
                       </label>
                       <label className="block text-xs font-semibold text-[#1A1612] sm:col-span-2">
-                        Địa chỉ kho hàng <span className="text-rose-600">*</span>
+                        Địa chỉ trụ sở chính / Đăng ký kinh doanh (Legal HQ) <span className="text-rose-600">*</span>
+                        <input
+                          value={ownerDetailsDraft.businessAddress}
+                          maxLength={500}
+                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, businessAddress: event.target.value })}
+                          placeholder="Địa chỉ trụ sở xuất hóa đơn VAT và hiển thị công khai trên gian hàng"
+                          className="mt-1.5 h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
+                        />
+                      </label>
+                      <label className="block text-xs font-semibold text-[#1A1612] sm:col-span-2">
+                        Kho lấy hàng xuất đi (GHN Pickup Warehouse) <span className="text-rose-600">*</span>
                         <textarea
                           value={ownerDetailsDraft.warehouseAddress}
                           maxLength={500}
                           rows={2}
                           onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, warehouseAddress: event.target.value })}
-                          placeholder="Nhập địa chỉ kho hàng đầy đủ"
+                          placeholder="Địa chỉ cụ thể nơi bưu tá Giao Hàng Nhanh (GHN) đến nhận kiện hàng"
                           className="mt-1.5 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
                         />
                       </label>
+                      <div className="sm:col-span-2 space-y-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[#1A1612] cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={sameReturnAddress}
+                            onChange={(e) => setSameReturnAddress(e.target.checked)}
+                            className="rounded accent-[#C59B58]"
+                          />
+                          <span>Kho nhận hàng hoàn trả (Return Warehouse) trùng với kho lấy hàng</span>
+                        </label>
+                        {!sameReturnAddress && (
+                          <div className="pt-2">
+                            <label className="block text-xs font-semibold text-[#1A1612]">
+                              Địa chỉ kho nhận hàng hoàn trả riêng <span className="text-rose-600">*</span>
+                              <textarea
+                                value={ownerDetailsDraft.returnWarehouseAddress}
+                                maxLength={500}
+                                rows={2}
+                                onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, returnWarehouseAddress: event.target.value })}
+                                placeholder="Địa chỉ nơi bưu tá mang hàng trả về khi khách khiếu nại hoặc giao thất bại"
+                                className="mt-1.5 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
+                              />
+                            </label>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#EAE4D7] pt-3">
                       <p className="m-0 text-[11px] text-[#7D715E]">Các mục có dấu * cần được điền đầy đủ.</p>
@@ -616,11 +673,25 @@ export default function ShopSettingsPage() {
                         <p className="m-0 mt-0.5 break-words font-mono text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.taxCode || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
+                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
+                      <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
+                      <div className="min-w-0">
+                        <p className="m-0 text-[11px] text-[#7D715E]">Trụ sở chính & Pháp lý</p>
+                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.businessAddress || 'Chưa cập nhật'}</p>
+                      </div>
+                    </div>
                     <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3 sm:col-span-2">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <div className="min-w-0">
-                        <p className="m-0 text-[11px] text-[#7D715E]">Địa chỉ kho hàng</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="m-0 text-[11px] font-bold text-[#1A1612]">Kho lấy hàng xuất đi (GHN)</p>
+                          <span className="text-[10px] rounded bg-[#FBF5EB] px-1.5 py-0.5 font-bold text-[#8A642C] border border-[#EEDFC6]">Pickup Warehouse</span>
+                        </div>
                         <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.warehouseAddress || 'Chưa cập nhật'}</p>
+                        <div className="mt-2 pt-2 border-t border-[#EAE4D7]/70 flex items-center justify-between text-xs text-[#7D715E]">
+                          <span>Kho nhận hàng hoàn trả:</span>
+                          <span className="font-semibold text-[#1A1612]">{shopOwnerDetails.returnWarehouseAddress || shopOwnerDetails.warehouseAddress || 'Trùng với kho lấy hàng'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>

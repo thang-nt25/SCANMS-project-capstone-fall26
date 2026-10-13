@@ -1092,20 +1092,37 @@ export default function ReferralLinksPage() {
   );
 
   return (
-    <div className="kol-referral-links">
-
-      <div className="kol-link-stats" aria-label="Thống kê liên kết tiếp thị">
+    <div className="space-y-4">
+      {/* 4 Thẻ Thống Kê Chuẩn Warm Sand & Brand Gold */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5" aria-label="Thống kê liên kết tiếp thị">
         {[
-          { label: 'Liên kết tiếp thị', value: totalLinks, icon: Layers, suffix: '/ 500 tối đa' },
-          { label: 'Lượt nhấp', value: totalClicks, icon: MousePointerClick },
-          { label: 'Lượt nhấp duy nhất', value: totalUniqueClicks, icon: TrendingUp },
-          { label: 'Đơn hàng chuyển đổi', value: totalOrders, icon: ShoppingBag },
-        ].map(({ label, value, icon: Icon, suffix }) => (
-          <div className="kol-link-stat" key={label}>
-            <div className="kol-link-stat-icon"><Icon /></div>
-            <div className="kol-link-stat-content">
-              <div className="kol-link-stat-label">{label}</div>
-              <div className="kol-link-stat-value">{value.toLocaleString('vi-VN')}{suffix && <span>{suffix}</span>}</div>
+          { label: 'Liên kết tiếp thị', value: totalLinks, icon: Layers, suffix: 'liên kết', badge: 'Đang hoạt động' },
+          { label: 'Lượt nhấp (Clicks)', value: totalClicks, icon: MousePointerClick, suffix: 'lượt', badge: 'Toàn thời gian' },
+          { label: 'Lượt nhấp duy nhất', value: totalUniqueClicks, icon: TrendingUp, suffix: 'lượt', badge: 'Khách duy nhất' },
+          { label: 'Đơn hàng chuyển đổi', value: totalOrders, icon: ShoppingBag, suffix: 'đơn', badge: 'Thành công' },
+        ].map(({ label, value, icon: Icon, suffix, badge }) => (
+          <div
+            key={label}
+            className="group relative overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs hover:border-[#C59B58]/60 hover:shadow-sm transition-all text-left"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">{label}</span>
+              <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Icon className="w-4 h-4 text-[#B88E4F]" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black tracking-tight text-[#1A1612] tabular-nums">
+                {value.toLocaleString('vi-VN')}
+              </span>
+              {suffix && (
+                <span className="text-xs font-semibold text-[#7D715E]">{suffix}</span>
+              )}
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-[#EAE4D7]/60 flex items-center justify-between text-[11px]">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#FAF8F5] text-[#8D6936] font-medium border border-[#EAE4D7]">
+                {badge}
+              </span>
             </div>
           </div>
         ))}
@@ -1406,52 +1423,56 @@ export default function ReferralLinksPage() {
         )}
       </section>
 
-      <section className="kol-link-workspace" aria-label="Danh sách liên kết tiếp thị">
-      <form onSubmit={handleSearchSubmit} className="kol-link-filters flex flex-col md:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
+      <section className="space-y-3" aria-label="Danh sách liên kết tiếp thị">
+      <form onSubmit={handleSearchSubmit} className="p-3 bg-white rounded-2xl border border-[#EAE4D7] shadow-2xs flex flex-col md:flex-row items-center gap-2.5">
+        <div className="relative flex-1 w-full min-w-0">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
           <input
             type="text"
             aria-label="Tìm liên kết tiếp thị"
-            placeholder="Tìm mã link, sản phẩm hoặc nhãn..."
+            placeholder="Tìm mã link, tên sản phẩm hoặc nhãn chiến dịch..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 rounded-xl border border-[#EAE4D7] bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 text-xs sm:text-sm text-[#1A1612] outline-none transition-all shadow-2xs"
+            className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 text-xs sm:text-sm text-[#1A1612] outline-none transition-all"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={selectedStatus}
-            aria-label="Lọc trạng thái liên kết"
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-44 text-xs sm:text-sm font-medium"
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="ACTIVE">Đang hoạt động</option>
-            <option value="PAUSED">Tạm ngừng</option>
-            <option value="EXPIRED">Đã hết hạn</option>
-            <option value="BLOCKED">Đã bị khóa</option>
-          </Select>
+        <div className="flex items-center gap-2 w-full md:w-auto shrink-0 flex-nowrap">
+          <div className="flex-1 sm:w-44">
+            <Select
+              value={selectedStatus}
+              aria-label="Lọc trạng thái liên kết"
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full text-xs sm:text-sm font-medium"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="PAUSED">Tạm ngừng</option>
+              <option value="EXPIRED">Đã hết hạn</option>
+              <option value="BLOCKED">Đã bị khóa</option>
+            </Select>
+          </div>
 
-          <Select
-            value={selectedChannel}
-            aria-label="Lọc kênh tiếp thị"
-            onChange={(e) => setSelectedChannel(e.target.value)}
-            className="w-40 text-xs sm:text-sm font-medium"
-          >
-            <option value="">Tất cả kênh</option>
-            <option value="TIKTOK">TikTok</option>
-            <option value="YOUTUBE">YouTube</option>
-            <option value="FACEBOOK">Facebook</option>
-            <option value="INSTAGRAM">Instagram</option>
-            <option value="ZALO">Zalo</option>
-            <option value="OTHER">Kênh khác</option>
-          </Select>
+          <div className="flex-1 sm:w-40">
+            <Select
+              value={selectedChannel}
+              aria-label="Lọc kênh tiếp thị"
+              onChange={(e) => setSelectedChannel(e.target.value)}
+              className="w-full text-xs sm:text-sm font-medium"
+            >
+              <option value="">Tất cả kênh</option>
+              <option value="TIKTOK">TikTok</option>
+              <option value="YOUTUBE">YouTube</option>
+              <option value="FACEBOOK">Facebook</option>
+              <option value="INSTAGRAM">Instagram</option>
+              <option value="ZALO">Zalo</option>
+              <option value="OTHER">Kênh khác</option>
+            </Select>
+          </div>
 
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] border border-[#C59B58] text-xs sm:text-sm text-[#231D15] font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] border border-[#C59B58] text-xs sm:text-sm text-white font-bold shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
           >
             Áp dụng
           </button>
@@ -1498,10 +1519,12 @@ export default function ReferralLinksPage() {
             <table className="w-full min-w-[1080px] table-fixed text-left border-collapse">
               <thead>
                 <tr className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-xs font-bold text-[#7D715E] uppercase tracking-wider">
-                  <th className="kol-link-product-heading w-[24%] py-3 px-3">
-                    <div className="kol-link-product-heading-content">
+                  <th className="w-[24%] py-3 px-3">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span>Sản phẩm &amp; Cửa hàng</span>
-                      <span className="kol-link-table-count">{totalLinks.toLocaleString('vi-VN')} liên kết</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold">
+                        {totalLinks.toLocaleString('vi-VN')} liên kết
+                      </span>
                     </div>
                   </th>
                   <th className="w-[20%] py-3 px-3">Mã rút gọn &amp; Kênh</th>
@@ -1550,27 +1573,28 @@ export default function ReferralLinksPage() {
 
 
                       <td data-label="Mã rút gọn & Kênh" className="py-2.5 px-3 overflow-hidden">
-                        <div className="flex flex-col gap-1">
-                          <div className="kol-link-code-control">
-                            <span className="font-mono">
+                        <div className="flex flex-col gap-1.5 text-left">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] w-fit">
+                            <span className="font-mono font-bold text-xs text-[#B88E4F]">
                               {link.shortCode}
                             </span>
                             <button
+                              type="button"
                               onClick={() => handleCopyLink(link.shortUrl, link.shortCode)}
-                              className="kol-link-copy-button"
+                              className="p-1 rounded hover:bg-white text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
                               title={isCopied ? 'Đã sao chép' : 'Sao chép liên kết'}
                               aria-label={`${isCopied ? 'Đã sao chép' : 'Sao chép liên kết'} ${link.shortCode}`}
                             >
-                              {isCopied ? <Check className="text-[#059669]" /> : <Copy />}
+                              {isCopied ? <Check className="w-3.5 h-3.5 text-[#059669]" /> : <Copy className="w-3.5 h-3.5" />}
                             </button>
                           </div>
 
-                          <div className="kol-link-channel-label">
-                            <span className="kol-link-channel">{getChannelLabel(link.channel)}</span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E]">
+                            <span className="font-bold text-[#1A1612]">{getChannelLabel(link.channel)}</span>
                             {link.label && (
                               <>
                                 <span className="text-[#B88E4F]">•</span>
-                                <span className="kol-link-campaign-label" title={link.label}>
+                                <span className="truncate max-w-[140px] text-[#7D715E]" title={link.label}>
                                   {link.label.replace(/_/g, ' ')}
                                 </span>
                               </>

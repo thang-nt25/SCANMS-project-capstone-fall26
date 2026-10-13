@@ -51,12 +51,12 @@ export default function MarketingToolkitPage() {
         onClick={() => {
           if (activeTab !== 'links') {
             handleTabChange('links');
-            setTimeout(() => window.dispatchEvent(new CustomEvent('scanms_open_create_link')), 150);
+            setTimeout(() => window.dispatchEvent(new CustomEvent('scanms_open_create_link')), 200);
           } else {
             window.dispatchEvent(new CustomEvent('scanms_open_create_link'));
           }
         }}
-        className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-2 border border-[#C59B58] rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition-colors whitespace-nowrap shrink-0 shadow-xs cursor-pointer"
+        className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-2 border border-[#C59B58] rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition-colors whitespace-nowrap shrink-0 shadow-xs cursor-pointer active:scale-95"
         title="Tạo link tiếp thị mới"
       >
         <Plus className="w-3.5 h-3.5" />
