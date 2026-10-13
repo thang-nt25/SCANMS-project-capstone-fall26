@@ -251,12 +251,14 @@ async function main() {
 
   const store = await prisma.store.upsert({
     where: { slug: 'techstore-flagship' },
-    update: {},
+    update: {
+      logoUrl: '/assets/shops/shop-techstore.png',
+    },
     create: {
       ownerId: shopOwner.id,
       name: 'TechStore Flagship Store',
       slug: 'techstore-flagship',
-      logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200',
+      logoUrl: '/assets/shops/shop-techstore.png',
       description: 'Cửa hàng chính hãng chuyên phụ kiện âm thanh và thiết bị công nghệ cao cấp.',
       websiteUrl: 'https://techstore.vn',
       defaultCommissionRate: 10.0,
@@ -296,16 +298,17 @@ async function main() {
       isActive: true,
       isVerified: true,
       onboardingStatus: 'VERIFIED',
+      logoUrl: '/assets/shops/shop-sora-skin.png',
     },
     create: {
       id: soraStoreId,
       ownerId: shopOwner.id,
       name: 'Sora Skin Official',
       slug: 'sora-skin-official',
-      logoUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200',
+      logoUrl: '/assets/shops/shop-sora-skin.png',
       description: 'Gian hàng phân phối chính hãng dòng sản phẩm chăm sóc da chuyên sâu Sora Skin Flagship.',
       websiteUrl: '',
-      defaultCommissionRate: 15.0,
+      defaultCommissionRate: 10.0,
       attributionWindowDays: 30,
       isActive: true,
       isVerified: true,

@@ -253,7 +253,7 @@ export const NotificationDropdown: React.FC = () => {
       const role = authService.getCurrentUser()?.role;
       const sessionQuery = `session=${encodeURIComponent(notif.data?.sessionId || '')}`;
       if (role === 'COLLABORATOR') navigate(`/collaborator/live-sessions?${sessionQuery}`);
-      else if (role === 'SHOP_MANAGER') navigate(`/merchant/promotions?tab=live-sessions&${sessionQuery}`);
+      else if (role === 'SHOP_MANAGER') navigate(`/merchant/live-sessions?${sessionQuery}`);
       else if (role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER') navigate(`/admin/affiliate-oversight?tab=live-sessions&${sessionQuery}`);
       return;
     }

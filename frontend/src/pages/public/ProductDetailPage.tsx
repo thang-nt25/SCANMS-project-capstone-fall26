@@ -242,7 +242,7 @@ export default function ProductDetailPage() {
     } : {
       id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
       name: 'Sora Skin Official Store',
-      logoUrl: '',
+      logoUrl: '/assets/shops/shop-sora-skin.png',
       slug: 'sora-skin',
       isVerified: true,
     };

@@ -438,6 +438,30 @@
 
 ---
 
+### [2026-10-14] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (Tái cơ cấu Kiến trúc Quản lý Đơn hàng & Hàng mẫu Toàn Shop, Bổ sung View Switcher, Tinh gọn Không gian CRM 1-1, và Hoàn thiện Governance Thực tế)
+- **Hạng mục đã thực hiện**:
+  1. **Tái cơ cấu Quản lý Đơn hàng & Chuyển Bảng Hàng mẫu Toàn Shop (`OrdersManagementPage.tsx`, `ShopSampleManagementTab.tsx`)**:
+     - Bổ sung View Switcher 2 chế độ ngay kế bên tiêu đề H1 `Quản lý Đơn hàng` (`📦 Đơn bán hàng` vs `🏢 Bảng quản lý toàn shop`).
+     - Tách module độc lập `ShopSampleManagementTab.tsx` quản lý toàn bộ luồng hàng mẫu xuất kho cho KOL: 4 Stat Badges tương tác nhanh, Hàng đợi mẫu toàn shop, Bảng xếp hạng KOL tiếp thị, Thỏa thuận deal VIP.
+     - Tích hợp quy trình duyệt gửi, từ chối, tạo vận đơn GHN cho đơn mẫu, nhắc nộp video và nghiệm thu video review.
+  2. **Tinh gọn Giao diện Hội thoại & CRM 1-1 Đối Tác (`ShopKolHubPage.tsx`)**:
+     - Loại bỏ hoàn toàn thanh công cụ top bar cồng kềnh (xóa switch và 3 nút thừa do đã tích hợp sẵn trong CRM/Chat).
+     - Mở rộng chiều cao khung chat/CRM full height (`h-[calc(100dvh-110px)]`), mang lại không gian làm việc chuyên nghiệp, thoáng đãng.
+  3. **Chuẩn hóa Thực thi Nghiệp vụ TMĐT Thực tế (Real-world E-Commerce Governance)**:
+     - Cam kết nộp video 14 ngày: Bổ sung bộ đếm ngược thời hạn nộp video chính xác (ngày + giờ), cảnh báo gấp $\le 3$ ngày, banner cảnh báo khóa quyền xin mẫu toàn sàn khi quá hạn (`ShopCollaborationPage.tsx`).
+     - Khóa đặt hàng ẩn danh: Bắt buộc đăng nhập khi checkout, Quick Auth Modal tại chỗ không làm mất giỏ hàng (`GuestCheckoutModal.tsx`).
+     - Phiếu giao hàng A6 chuẩn Barcode Code-128 & QR tra cứu, cam kết *"Cho xem hàng, không cho thử"*, xóa sạch nhãn simulator (`ShippingLabel.tsx`).
+     - Ví CTV/KOL tách bạch số dư, Chip trạng thái Escrow thích ứng chu kỳ đối soát và ngày nghỉ lễ Việt Nam (`WalletPage.tsx`).
+     - Fallback kho nhận hàng hoàn trả an toàn 100% trong `return.service.ts`.
+- **Màn hình UI**: `frontend/src/pages/merchant/OrdersManagementPage.tsx`, `frontend/src/pages/merchant/ShopSampleManagementTab.tsx`, `frontend/src/pages/merchant/ShopKolHubPage.tsx`, `frontend/src/pages/collaborator/ShopCollaborationPage.tsx`, `frontend/src/pages/collaborator/WalletPage.tsx`, `frontend/src/components/checkout/GuestCheckoutModal.tsx`, `frontend/src/components/orders/ShippingLabel.tsx`
+- **API Endpoint**: `GET /sample-requests/shop`, `PATCH /sample-requests/:id/approve`, `PATCH /sample-requests/:id/reject`, `PATCH /sample-requests/:id/ship`, `PATCH /media/:id/review`
+- **Backend File**: `backend/src/modules/returns/return.service.ts`, `backend/src/modules/orders/orders.service.ts`
+- **CSDL**: Bảng `sample_requests`, `orders`, `order_items`, `wallets`, `collaborator_profiles`
+- **Ghi chú**: Đã kiểm tra build TypeScript sạch lỗi 100% cả Backend (`npx tsc --noEmit`) và Frontend (`npx tsc -b`). Sẵn sàng nghiệm thu.
+
+---
+
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:
 
 Mỗi khi bạn hoặc thành viên trong nhóm hoàn thành một đoạn code / màn hình UI / API mới, chỉ cần gõ lệnh:

@@ -82,13 +82,31 @@ export class UpdateStoreDto {
 
   @ApiPropertyOptional({
     example: 'Số 1, đường A, phường B, TP. Hồ Chí Minh',
-    description: 'Địa chỉ kho hàng',
+    description: 'Địa chỉ kho xuất hàng (Pickup Warehouse cho GHN)',
   })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
   warehouseAddress?: string;
+
+  @ApiPropertyOptional({
+    example: 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+    description: 'Địa chỉ trụ sở chính / đăng ký kinh doanh pháp lý',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  businessAddress?: string;
+
+  @ApiPropertyOptional({
+    example: 'Kho Logistics SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+    description: 'Địa chỉ kho nhận hàng hoàn trả (Return Warehouse)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  returnWarehouseAddress?: string;
 
   @ApiPropertyOptional({
     description: 'Ngân hàng dùng để chi trả hoa hồng KOL',

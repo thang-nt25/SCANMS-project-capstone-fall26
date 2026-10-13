@@ -24,7 +24,7 @@ export function HeaderAccountButton({ user, role, expanded, menuId, detail, onCl
   const { label, icon: RoleIcon } = roles[role];
   const fullName = user?.fullName || user?.email || label;
   const name = fullName.replace(/\s*\((?:Top\s+KOL|KOL[^)]*|Vận Hành & Tuân Thủ|Super Admin|Admin|Ban Quản Trị Tối Cao|Quản trị viên Hệ thống)\)\s*$/iu, '').trim() || fullName;
-  const avatarUrl = user?.avatarUrl;
+  const avatarUrl = user?.avatarUrl || (role === 'SHOP_MANAGER' ? '/assets/shops/shop-sora-skin.png' : undefined);
   const description = `${fullName} · ${label}${detail && detail !== label ? ` · ${detail}` : ''}`;
 
   return (
