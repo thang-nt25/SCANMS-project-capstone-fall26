@@ -19,11 +19,15 @@ import {
   ChevronRight,
   AlertCircle,
   Clock,
-  MapPin,
   Phone,
   Users,
   Printer,
   Zap,
+  ChevronDown,
+  MoreHorizontal,
+  Copy,
+  Check,
+  Building2,
 } from "lucide-react";
 import { toast } from "../../utils/toast";
 import { Select } from "../../components/ui/Select";
@@ -54,6 +58,9 @@ import { CustomSelect } from "../../components/ui/CustomSelect";
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
+import ShopSampleManagementTab from './ShopSampleManagementTab';
+
+export type OrderSearchField = "ALL" | "ORDER_SN" | "CUSTOMER_NAME" | "PHONE" | "TRACKING" | "PRODUCT";
 
 type OrderAction = "manual" | "excel";
 interface Props {
@@ -118,6 +125,11 @@ export default function OrdersManagementPage({
   onCompleted,
 }: Props = {}) {
   const [searchParams] = useSearchParams();
+  const [activeOrderView, setActiveOrderView] = useState<'COMMERCIAL' | 'SAMPLES'>(
+    searchParams.get('tab') === 'samples' || searchParams.get('view') === 'samples'
+      ? 'SAMPLES'
+      : 'COMMERCIAL'
+  );
   const deepLinkHandledRef = useRef<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
@@ -174,7 +186,81 @@ export default function OrdersManagementPage({
   const [ordersPage, setOrdersPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [searchField, setSearchField] = useState<OrderSearchField>("ALL");
   const [ordersRefreshCount, setOrdersRefreshCount] = useState(0);
+  const [activeDropdownOrderId, setActiveDropdownOrderId] = useState<string | null>(null);
+  const [copiedTrackingId, setCopiedTrackingId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdownOrderId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleCopyTracking = (tracking: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(tracking);
+    setCopiedTrackingId(tracking);
+    toast.success(`Đã sao chép mã vận đơn: ${tracking}`);
+    setTimeout(() => setCopiedTrackingId(null), 2000);
+  };
+
+  const searchPlaceholder = useMemo(() => {
+    switch (searchField) {
+      case "ORDER_SN":
+        return "Nhập mã đơn (#DH-...)...";
+      case "CUSTOMER_NAME":
+        return "Nhập tên khách hàng...";
+      case "PHONE":
+        return "Nhập số điện thoại nhận hàng...";
+      case "TRACKING":
+        return "Nhập mã vận đơn (GHN-...)...";
+      case "PRODUCT":
+        return "Nhập tên sản phẩm...";
+      default:
+        return "Tìm mã đơn, tên, SĐT, vận đơn...";
+    }
+  }, [searchField]);
+
+  const displayedOrders = useMemo(() => {
+    if (!orderSearchQuery.trim() || searchField === "ALL") return orders;
+    const q = orderSearchQuery.trim().toLowerCase();
+    switch (searchField) {
+      case "ORDER_SN":
+        return orders.filter(
+          (o) =>
+            o.externalOrderSn?.toLowerCase().includes(q) ||
+            o.id.toLowerCase().includes(q)
+        );
+      case "CUSTOMER_NAME":
+        return orders.filter((o) =>
+          o.customerName?.toLowerCase().includes(q)
+        );
+      case "PHONE":
+        return orders.filter((o) =>
+          o.customerPhone?.replace(/\s+/g, "").includes(q.replace(/\s+/g, ""))
+        );
+      case "TRACKING":
+        return orders.filter((o) =>
+          o.trackingNumber?.toLowerCase().includes(q)
+        );
+      case "PRODUCT":
+        return orders.filter((o) =>
+          o.items?.some(
+            (it) =>
+              it.title?.toLowerCase().includes(q) ||
+              it.sku?.toLowerCase().includes(q)
+          )
+        );
+      default:
+        return orders;
+    }
+  }, [orders, orderSearchQuery, searchField]);
 
   // Modals for order fulfillment & viewing
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<StoreOrderRecord | null>(null);
@@ -805,45 +891,78 @@ export default function OrdersManagementPage({
           {/* 1. Page Header Chuẩn Hóa */}
           <PageHeader
             title="Quản lý Đơn hàng"
-            description="Theo dõi tiến độ vận hành, xuất nhập Excel và kiểm soát đơn hàng từ các kênh tiếp thị"
             icon={<ShoppingBag className="w-5 h-5" />}
-            actions={
-              <div className="flex flex-wrap items-center gap-2">
+            badge={
+              <div className="flex items-center gap-1 p-1 bg-[#F3EFE6] rounded-xl border border-[#EAE4D7] ml-1 sm:ml-2">
                 <button
                   type="button"
-                  onClick={() => setOrdersRefreshCount((c) => c + 1)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer"
+                  onClick={() => setActiveOrderView("COMMERCIAL")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    activeOrderView === "COMMERCIAL"
+                      ? "bg-[#C59B58] text-white shadow-xs"
+                      : "text-[#7D715E] hover:text-[#1A1612]"
+                  }`}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Làm mới</span>
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Đơn bán hàng</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => open("excel")}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
+                  onClick={() => setActiveOrderView("SAMPLES")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    activeOrderView === "SAMPLES"
+                      ? "bg-[#C59B58] text-white shadow-xs"
+                      : "text-[#7D715E] hover:text-[#1A1612]"
+                  }`}
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Nhập Excel</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => open("manual")}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Tạo đơn thủ công</span>
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Bảng quản lý toàn shop</span>
                 </button>
               </div>
             }
+            actions={
+              activeOrderView === "COMMERCIAL" ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOrdersRefreshCount((c) => c + 1)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${ordersLoading ? "animate-spin" : ""}`} />
+                    <span>Làm mới</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => open("excel")}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    <span>Nhập Excel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => open("manual")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Tạo đơn thủ công</span>
+                  </button>
+                </div>
+              ) : null
+            }
           />
 
-          {/* Success Alert Banner (Chuẩn màu Vàng Be) */}
-          {actionSuccessMsg && (
-            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612] text-xs font-semibold animate-in fade-in">
-              <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
-              <span>{actionSuccessMsg}</span>
-            </div>
-          )}
+          {activeOrderView === "SAMPLES" ? (
+            <ShopSampleManagementTab />
+          ) : (
+            <>
+              {/* Success Alert Banner (Chuẩn màu Vàng Be) */}
+              {actionSuccessMsg && (
+                <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612] text-xs font-semibold animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
+                  <span>{actionSuccessMsg}</span>
+                </div>
+              )}
 
           {/* 2. Quick Metrics Bar Chuẩn Hóa */}
           <div className="merchant-orders-metrics grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -853,21 +972,18 @@ export default function OrdersManagementPage({
               icon={<ShoppingBag className="w-4 h-4" />}
             />
             <StatCard
-              title="Chờ xử lý / Đóng gói"
+              title="Chờ xử lý"
               value={orders.filter((o) => o.status === "PENDING").length}
-              note="Cần chuẩn bị giao bưu cục"
               icon={<PackagePlus className="w-4 h-4" />}
             />
             <StatCard
-              title="Đang giao bưu cục"
+              title="Đang giao"
               value={orders.filter((o) => o.status === "SHIPPING").length}
-              note="Đơn vị vận chuyển đang xử lý"
               icon={<Truck className="w-4 h-4" />}
             />
             <StatCard
               title="Đã giao thành công"
               value={orders.filter((o) => o.status === "DELIVERED" || o.status === "COMPLETED").length}
-              trendText="Hoàn tất đơn"
               icon={<CheckCircle2 className="w-4 h-4" />}
             />
           </div>
@@ -908,34 +1024,58 @@ export default function OrdersManagementPage({
               })}
             </div>
 
-            {/* Search Input & Action Buttons */}
-            <div className="merchant-orders-actions flex flex-wrap items-center gap-2.5">
-              {/* Search input */}
-              <div className="relative flex-1 sm:w-56 lg:w-64">
-                <Search className="w-3.5 h-3.5 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  aria-label="Tìm đơn hàng theo mã đơn, tên hoặc số điện thoại"
-                  placeholder="Tìm mã đơn, tên, SĐT..."
-                  value={orderSearchQuery}
-                  onChange={(e) => {
-                    setOrderSearchQuery(e.target.value);
-                    setOrdersPage(1);
-                  }}
-                  className="w-full h-9 pl-9 pr-7 text-xs rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] placeholder:text-[#7D715E]/60 shadow-2xs outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
-                />
-                {orderSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOrderSearchQuery("");
+            {/* Search Input with Criteria Dropdown */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 border-t border-[#EAE4D7]/70">
+              <div className="flex items-center flex-1 rounded-xl border border-[#EAE4D7] bg-white shadow-2xs focus-within:border-[#C59B58] focus-within:ring-1 focus-within:ring-[#C59B58]/20 transition overflow-hidden">
+                {/* Search Criteria Dropdown */}
+                <div className="relative shrink-0 border-r border-[#EAE4D7] bg-[#FAF8F5]">
+                  <select
+                    value={searchField}
+                    onChange={(e) => {
+                      setSearchField(e.target.value as OrderSearchField);
                       setOrdersPage(1);
                     }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7D715E] hover:text-[#1A1612] text-xs font-bold cursor-pointer"
+                    aria-label="Chọn tiêu chí tìm kiếm"
+                    className="h-9 pl-3 pr-7 text-xs font-semibold text-[#1A1612] bg-transparent outline-none cursor-pointer appearance-none"
                   >
-                    ✕
-                  </button>
-                )}
+                    <option value="ALL">Tất cả tiêu chí</option>
+                    <option value="ORDER_SN">Mã đơn hàng</option>
+                    <option value="CUSTOMER_NAME">Tên khách hàng</option>
+                    <option value="PHONE">Số điện thoại</option>
+                    <option value="TRACKING">Mã vận đơn</option>
+                    <option value="PRODUCT">Tên sản phẩm</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-[#7D715E] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                {/* Text Input */}
+                <div className="relative flex-1 flex items-center">
+                  <Search className="w-3.5 h-3.5 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    aria-label="Tìm kiếm đơn hàng"
+                    placeholder={searchPlaceholder}
+                    value={orderSearchQuery}
+                    onChange={(e) => {
+                      setOrderSearchQuery(e.target.value);
+                      setOrdersPage(1);
+                    }}
+                    className="w-full h-9 pl-9 pr-8 text-xs bg-transparent text-[#1A1612] placeholder:text-[#7D715E]/60 outline-none"
+                  />
+                  {orderSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrderSearchQuery("");
+                        setOrdersPage(1);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#EAE4D7] text-[#7D715E] hover:text-[#1A1612] hover:bg-[#D9D1C1] text-[10px] font-bold grid place-items-center cursor-pointer transition"
+                      title="Xóa tìm kiếm"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Refresh button */}
@@ -943,33 +1083,10 @@ export default function OrdersManagementPage({
                 type="button"
                 onClick={() => setOrdersRefreshCount((c) => c + 1)}
                 title="Tải lại danh sách"
-                className="h-9 w-9 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] transition grid place-items-center shadow-2xs cursor-pointer active:scale-95 shrink-0"
+                className="h-9 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0 text-xs font-semibold"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${ordersLoading ? "animate-spin text-[#B88E4F]" : ""}`} />
-              </button>
-
-              <div className="h-5 w-px bg-[#EAE4D7] hidden sm:block shrink-0" />
-
-              {/* Import Excel button */}
-              <button
-                type="button"
-                onClick={() => open("excel")}
-                title="Nhập danh sách đơn hàng từ tệp Excel"
-                className="h-9 px-3.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#1A1612] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>Nhập Excel</span>
-              </button>
-
-              {/* Tạo đơn thủ công button */}
-              <button
-                type="button"
-                onClick={() => open("manual")}
-                title="Tạo đơn hàng thủ công mới"
-                className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 shrink-0"
-              >
-                <PackagePlus className="w-3.5 h-3.5 text-white" />
-                <span>Tạo đơn thủ công</span>
+                <span className="hidden sm:inline">Làm mới</span>
               </button>
             </div>
           </div>
@@ -977,11 +1094,13 @@ export default function OrdersManagementPage({
           {/* Orders Table */}
           <div className="merchant-orders-table @container/order-list bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
             <div className="merchant-orders-table-heading flex items-center justify-between flex-wrap gap-2 p-3.5 sm:p-[14px_18px] border-b border-[#EAE4D7]">
-              <div>
-                <h2 className="text-[15px] font-[650] text-[#1A1612]">
-                  Danh sách đơn hàng <span className="inline-block ml-1.5 px-2 py-0.5 rounded-[20px] bg-[#FBF5EB] text-[11px] font-medium text-[#7D715E]">{ordersTotal} đơn</span>
+              <div className="flex items-center gap-2">
+                <h2 className="text-[14px] font-bold text-[#1A1612]">
+                  Danh sách đơn hàng
                 </h2>
-                <p className="text-[11px] text-[#7D715E] mt-0.5">Theo dõi trạng thái và xử lý từng đơn hàng</p>
+                <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8A642C]">
+                  {displayedOrders.length !== ordersTotal ? `${displayedOrders.length} / ${ordersTotal} đơn` : `${ordersTotal} đơn`}
+                </span>
               </div>
             </div>
             {ordersLoading ? (
@@ -989,7 +1108,7 @@ export default function OrdersManagementPage({
                 <RefreshCw className="w-4 h-4 animate-spin text-[#B88E4F]" />
                 <span>Đang tải đơn hàng...</span>
               </div>
-            ) : orders.length === 0 ? (
+            ) : displayedOrders.length === 0 ? (
               <div className="p-12 text-center flex flex-col items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] grid place-items-center">
                   <ShoppingBag className="w-6 h-6" />
@@ -998,38 +1117,38 @@ export default function OrdersManagementPage({
                   <h3 className="text-sm font-extrabold text-[#1A1612]">Chưa có đơn hàng</h3>
                   <p className="text-xs text-[#7D715E] mt-1">
                     {orderSearchQuery || statusFilter !== "ALL"
-                      ? "Không tìm thấy đơn hàng phù hợp."
+                      ? "Không tìm thấy đơn hàng phù hợp với điều kiện lọc."
                       : "Đơn hàng mới sẽ hiển thị tại đây."}
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="merchant-orders-scroll overflow-x-auto" tabIndex={0} role="region" aria-label="Bảng đơn hàng, có thể cuộn ngang">
+              <div className="merchant-orders-scroll overflow-x-auto min-h-[340px]" tabIndex={0} role="region" aria-label="Bảng đơn hàng, có thể cuộn ngang">
                 <table className="merchant-orders-data w-full table-fixed border-collapse text-left text-xs">
                   <colgroup>
+                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '11%' }} />
                     <col style={{ width: '12%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '18%' }} />
-                    <col style={{ width: '9%' }} />
-                    <col style={{ width: '14%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '9%' }} />
-                    <col style={{ width: '14%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '10%' }} />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-[#EAE4D7] bg-[#FFFCF7] text-xs font-bold uppercase tracking-wide text-[#7D715E] select-none">
-                      <th className="px-2 py-3.5 font-bold whitespace-nowrap">Mã đơn &amp; Ngày tạo</th>
+                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Mã đơn &amp; Ngày tạo</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Khách hàng</th>
                       <th className="px-3 py-3.5 font-bold">Sản phẩm</th>
-                      <th className="px-2.5 py-3.5 font-bold whitespace-nowrap">Tổng tiền</th>
-                      <th className="px-2.5 py-3.5 font-bold whitespace-nowrap">Trạng thái</th>
-                      <th className="px-2.5 py-3.5 font-bold whitespace-nowrap">Vận đơn</th>
-                      <th className="px-2.5 py-3.5 font-bold whitespace-nowrap">Hoa hồng CTV</th>
-                      <th className="px-2 py-3.5 text-center font-bold whitespace-nowrap">Thao tác</th>
+                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Tổng tiền</th>
+                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Trạng thái</th>
+                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Vận đơn</th>
+                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Hoa hồng CTV</th>
+                      <th className="px-3 py-3.5 text-right font-bold whitespace-nowrap">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EAE4D7]/70 bg-white">
-                    {orders.map((order) => {
+                    {displayedOrders.map((order, orderIdx) => {
                       const statusBadgeConfig: Record<
                         string,
                         { label: string; bg: string; text: string; border: string; dot: string }
@@ -1103,7 +1222,7 @@ export default function OrdersManagementPage({
                       return (
                         <tr key={order.id} className="group even:bg-[#FFFEFC] hover:bg-[#FBF5EB]/55 transition-colors duration-150">
                           {/* Mã đơn */}
-                          <td data-label="Mã đơn & Ngày tạo" className="py-3.5 px-2 align-middle">
+                          <td data-label="Mã đơn & Ngày tạo" className="py-3 px-3 align-middle">
                             <div className="flex flex-col items-start gap-1">
                               <span className="font-mono font-bold text-xs text-[#1A1612] bg-[#FAF8F5] px-2 py-0.5 rounded-lg border border-[#EAE4D7] shadow-2xs group-hover:border-[#C59B58]/40 transition-colors whitespace-nowrap inline-block tracking-tight">
                                 #{order.externalOrderSn}
@@ -1123,52 +1242,39 @@ export default function OrdersManagementPage({
                             </div>
                           </td>
 
-                          {/* Khách hàng */}
-                          <td data-label="Khách hàng" className="py-3.5 px-3 align-middle">
-                            <div className="flex max-w-[185px] flex-col gap-1">
-                              <strong className="text-[#1A1612] font-bold text-[13px] truncate block leading-tight" title={order.customerName || "Khách lẻ"}>
+                          {/* Khách hàng (Tinh gọn, không phơi bày địa chỉ) */}
+                          <td data-label="Khách hàng" className="py-3 px-3 align-middle">
+                            <div className="flex max-w-[170px] flex-col gap-0.5">
+                              <strong className="text-[#1A1612] font-bold text-xs truncate block" title={order.customerName || "Khách lẻ"}>
                                 {order.customerName || "Khách lẻ"}
                               </strong>
                               {order.customerPhone && (
-                                <span className="flex items-center gap-1 text-[11px] text-[#7D715E] font-mono leading-none">
+                                <span className="flex items-center gap-1 text-[11px] text-[#7D715E] font-mono">
                                   <Phone className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
                                   <span>{order.customerPhone}</span>
-                                </span>
-                              )}
-                              {order.shippingAddress && (
-                                <span
-                                  className="flex items-center gap-1 text-[10.5px] text-[#7D715E] truncate leading-tight mt-0.5"
-                                  title={order.shippingAddress}
-                                >
-                                  <MapPin className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
-                                  <span className="truncate">{order.shippingAddress}</span>
                                 </span>
                               )}
                             </div>
                           </td>
 
-                          {/* Sản phẩm */}
-                          <td data-label="Sản phẩm" className="py-3.5 px-3 align-middle">
-                            <div className="flex min-w-0 max-w-[340px] flex-col gap-1.5">
+                          {/* Sản phẩm (Tinh gọn, không lặp lại SKU và đơn giá lẻ) */}
+                          <td data-label="Sản phẩm" className="py-3 px-3 align-middle">
+                            <div className="flex min-w-0 max-w-[280px] flex-col gap-1.5">
                               {order.items.slice(0, 1).map((item, idx) => {
                                 const thumb = getItemThumbnail(item);
                                 return (
                                   <div key={idx} className="flex items-center gap-2.5">
                                     <ProductThumbnail src={thumb} alt={item.title} quantity={item.quantity} />
                                     <div className="flex flex-col min-w-0 flex-1">
-                                      <span className="merchant-order-product-name font-semibold text-[13px] text-[#1A1612] block" title={item.title}>
+                                      <span
+                                        className="font-medium text-xs text-[#1A1612] line-clamp-2 leading-snug"
+                                        title={item.title}
+                                      >
                                         {item.title}
                                       </span>
-                                      <div className="flex items-center gap-2 mt-0.5">
-                                        <span className="font-mono font-bold text-xs text-[#B88E4F] whitespace-nowrap">
-                                          {item.unitPrice.toLocaleString("vi-VN")} ₫
-                                        </span>
-                                        {item.sku && (
-                                          <span className="text-[10px] text-[#7D715E] font-mono bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#EAE4D7] truncate max-w-[90px] whitespace-nowrap" title={item.sku}>
-                                            {item.sku}
-                                          </span>
-                                        )}
-                                      </div>
+                                      <span className="text-[11px] text-[#7D715E] mt-0.5">
+                                        SL: <strong className="text-[#1A1612] font-semibold">{item.quantity}</strong>
+                                      </span>
                                     </div>
                                   </div>
                                 );
@@ -1190,9 +1296,9 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Tổng tiền */}
-                          <td data-label="Tổng tiền" className="py-3.5 px-2.5 align-middle whitespace-nowrap">
+                          <td data-label="Tổng tiền" className="py-3 px-3 align-middle whitespace-nowrap">
                             <div className="flex flex-col items-start gap-1">
-                              <strong className="text-[13px] font-bold text-[#1A1612] font-mono block whitespace-nowrap">
+                              <strong className="text-xs font-bold text-[#1A1612] font-mono block whitespace-nowrap">
                                 {order.finalAmount.toLocaleString("vi-VN")} ₫
                               </strong>
                               <span
@@ -1208,64 +1314,75 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Trạng thái */}
-                          <td data-label="Trạng thái" className="py-3.5 px-2.5 align-middle whitespace-nowrap">
+                          <td data-label="Trạng thái" className="py-3 px-3 align-middle whitespace-nowrap">
                             <span
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-[#EAE4D7] bg-white text-[#1A1612] whitespace-nowrap shrink-0"
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badge.border} ${badge.bg} ${badge.text} whitespace-nowrap shrink-0`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                               <span>{badge.label}</span>
                             </span>
                           </td>
 
-                          {/* Vận đơn */}
-                          <td data-label="Vận đơn" className="py-3.5 px-2.5 align-middle whitespace-nowrap">
+                          {/* Vận đơn (Copy 1-chạm & Tên đơn vị) */}
+                          <td data-label="Vận đơn" className="py-3 px-3 align-middle whitespace-nowrap">
                             {order.trackingNumber ? (
                               <div className="flex flex-col items-start gap-1">
-                                <span className="font-mono text-xs font-bold text-[#1A1612] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#EAE4D7] shadow-2xs whitespace-nowrap">
-                                  {order.trackingNumber}
-                                </span>
-                                <span className="merchant-order-carrier flex items-start gap-1 text-[11px] text-[#7D715E] font-medium">
-                                  <Truck className="w-3 h-3 mt-0.5 shrink-0 text-[#B88E4F]" />
-                                  <span>{order.carrierName || "Bưu cục"}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopyTracking(order.trackingNumber!, e)}
+                                  title="Sao chép mã vận đơn"
+                                  className="group/copy inline-flex items-center gap-1 font-mono text-xs font-bold text-[#1A1612] bg-[#FAF8F5] hover:bg-[#FBF5EB] px-2 py-0.5 rounded border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer"
+                                >
+                                  <span>{order.trackingNumber}</span>
+                                  {copiedTrackingId === order.trackingNumber ? (
+                                    <Check className="w-3 h-3 text-[#059669]" />
+                                  ) : (
+                                    <Copy className="w-3 h-3 text-[#7D715E] group-hover/copy:text-[#B88E4F]" />
+                                  )}
+                                </button>
+                                <span className="flex items-center gap-1 text-[11px] text-[#7D715E] font-medium">
+                                  <Truck className="w-3 h-3 shrink-0 text-[#B88E4F]" />
+                                  <span className="truncate max-w-[120px]">{order.carrierName || "Bưu cục"}</span>
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-[#7D715E]/70 italic whitespace-nowrap">
+                              <span className="text-[11px] text-[#7D715E]/60 italic whitespace-nowrap">
                                 Chưa tạo vận đơn
                               </span>
                             )}
                           </td>
 
                           {/* Hoa hồng CTV */}
-                          <td data-label="Hoa hồng CTV" className="py-3.5 px-2.5 align-middle whitespace-nowrap">
+                          <td data-label="Hoa hồng CTV" className="py-3 px-3 align-middle whitespace-nowrap">
                             {order.totalCommission > 0 ? (
                               <div className="flex flex-col items-start gap-0.5">
                                 <strong className="text-xs font-bold text-[#B88E4F] font-mono block whitespace-nowrap">
                                   +{order.totalCommission.toLocaleString("vi-VN")} ₫
                                 </strong>
                                 <span
-                                  className="merchant-order-collaborator flex min-w-0 max-w-full items-start gap-1 text-[11px] text-[#7D715E]"
+                                  className="flex min-w-0 max-w-[110px] items-center gap-1 text-[10px] text-[#7D715E] truncate"
                                   title={order.attributedCollaborator?.fullName || order.couponCode || "CTV"}
                                 >
-                                  <Users className="w-2.5 h-2.5 mt-0.5 text-[#B88E4F] shrink-0" />
-                                  <span className="min-w-0">
+                                  <Users className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
+                                  <span className="truncate">
                                     {order.attributedCollaborator?.fullName || order.couponCode || "CTV"}
                                   </span>
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-[#7D715E]/50 whitespace-nowrap">—</span>
+                              <span className="text-[11px] text-[#7D715E]/40 whitespace-nowrap">—</span>
                             )}
                           </td>
 
-                          {/* Thao tác */}
-                          <td data-label="Thao tác" className="py-3.5 px-2 align-middle text-right whitespace-nowrap">
+                          {/* Thao tác (1 CTA chính + Mắt chi tiết + Menu ... phụ) */}
+                          <td data-label="Thao tác" className="py-3 px-3 align-middle text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                              {/* 1. Nút Thao tác chính theo chu kỳ đơn hàng */}
                               {order.status === "PENDING" && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenShippingModal(order)}
-                                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] text-white text-[11px] font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+                                  className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A37B3E] text-white text-[11px] font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
                                   title="Nhập mã vận đơn & giao hàng"
                                 >
                                   <Truck className="w-3.5 h-3.5" />
@@ -1273,79 +1390,40 @@ export default function OrdersManagementPage({
                                 </button>
                               )}
 
-                              {order.status === "PENDING" && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmDeliveredOrder(order)}
-                                    disabled={updatingFulfillment}
-                                    className="px-3 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#C59B58] text-[#B88E4F] hover:text-white border border-[#EEDFC6] hover:border-[#C59B58] text-[11px] font-bold transition shadow-2xs flex items-center gap-1 disabled:opacity-50 active:scale-95 cursor-pointer whitespace-nowrap shrink-0 group/btn"
-                                    title="Xác nhận khách đã nhận được hàng"
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-[#059669] group-hover/btn:text-white transition-colors" />
-                                    <span>Đã giao</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setCancelModalOrder(order);
-                                      setCancelReason("");
-                                      setCancelCustomReason("");
-                                    }}
-                                    className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
-                                    title="Shop hủy đơn — hoàn kho & thu hồi hoa hồng KOL"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                    <span>Hủy đơn</span>
-                                  </button>
-                                </>
-                              )}
-
                               {order.status === "SHIPPING" && (
-                                <>
-                                  <button
-                                    onClick={() => handleOpenGhnTracking(order)}
-                                    disabled={loadingTracking}
-                                    className="px-2 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50"
-                                    title="Tra cứu hành trình vận chuyển GHN"
-                                  >
-                                    {loadingTracking ? (
-                                      <RefreshCw className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
-                                    ) : (
-                                      <Truck className="w-3.5 h-3.5 text-emerald-600" />
-                                    )}
-                                    <span>Tra cứu</span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setPrintPreviewOrder({
-                                        ...order,
-                                        trackingNumber: order.trackingNumber || order.externalOrderSn,
-                                        carrierName: order.carrierName || "GHN",
-                                      });
-                                    }}
-                                    className="px-2 py-1.5 rounded-lg border border-[#C59B58] bg-[#FAF8F5] text-[#8C6B32] hover:bg-[#F3EFE6] text-[11px] font-bold transition flex items-center gap-1"
-                                    title="In phiếu giao hàng A6 chuẩn Barcode"
-                                  >
-                                    <Printer className="w-3.5 h-3.5 text-[#C59B58]" />
-                                    <span>In A6</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmDeliveredOrder(order)}
-                                    disabled={updatingFulfillment}
-                                    className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
-                                    title="Xác nhận khách đã nhận được hàng"
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>Đã giao</span>
-                                  </button>
-                                </>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenGhnTracking(order)}
+                                  disabled={loadingTracking}
+                                  className="px-2.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C] hover:bg-[#F3EFE6] text-[11px] font-bold transition flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
+                                  title="Tra cứu hành trình vận chuyển GHN"
+                                >
+                                  {loadingTracking ? (
+                                    <RefreshCw className="w-3.5 h-3.5 text-[#B88E4F] animate-spin" />
+                                  ) : (
+                                    <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
+                                  )}
+                                  <span>Tra cứu</span>
+                                </button>
                               )}
 
+                              {(order.status === "RETURN_REQUESTED" || order.status === "DISPUTED") && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedOrderDetails(order);
+                                    setReturnResponse("");
+                                    setReturnError("");
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 text-[11px] font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                                  title="Xem yêu cầu khiếu nại / hoàn tiền"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>Xử lý đổi trả</span>
+                                </button>
+                              )}
+
+                              {/* 2. Nút Xem chi tiết (Con mắt) */}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1353,11 +1431,89 @@ export default function OrdersManagementPage({
                                   setReturnResponse("");
                                   setReturnError("");
                                 }}
-                                className="w-8 h-8 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#B88E4F] hover:border-[#B88E4F] transition grid place-items-center shadow-2xs cursor-pointer active:scale-95 shrink-0"
-                                title="Xem chi tiết đơn"
+                                className="w-7 h-7 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#B88E4F] hover:border-[#B88E4F] transition grid place-items-center shadow-2xs cursor-pointer active:scale-95 shrink-0"
+                                title="Xem chi tiết đơn hàng (Địa chỉ, SKU, biến thể, tài chính)"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
+
+                              {/* 3. Menu Thao tác phụ (...) */}
+                              <div className="relative inline-block text-left" ref={activeDropdownOrderId === order.id ? dropdownRef : undefined}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDropdownOrderId(activeDropdownOrderId === order.id ? null : order.id);
+                                  }}
+                                  className="w-7 h-7 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition grid place-items-center shadow-2xs cursor-pointer active:scale-95 shrink-0"
+                                  title="Thao tác khác"
+                                >
+                                  <MoreHorizontal className="w-3.5 h-3.5" />
+                                </button>
+
+                                {activeDropdownOrderId === order.id && (
+                                  <div
+                                    className={`absolute right-0 ${
+                                      orderIdx >= displayedOrders.length - 2 && displayedOrders.length > 2
+                                        ? "bottom-full mb-1"
+                                        : "top-full mt-1"
+                                    } w-44 rounded-xl border border-[#EAE4D7] bg-white shadow-lg py-1 z-30 animate-in fade-in zoom-in-95 text-left`}
+                                  >
+                                    {/* In phiếu A6 */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setPrintPreviewOrder({
+                                          ...order,
+                                          trackingNumber: order.trackingNumber || order.externalOrderSn,
+                                          carrierName: order.carrierName || "GHN",
+                                        });
+                                        setActiveDropdownOrderId(null);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left text-xs font-medium text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] flex items-center gap-2 cursor-pointer transition"
+                                    >
+                                      <Printer className="w-3.5 h-3.5 text-[#B88E4F]" />
+                                      <span>In phiếu giao A6</span>
+                                    </button>
+
+                                    {/* Xác nhận đã giao */}
+                                    {(order.status === "PENDING" || order.status === "SHIPPING") && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setConfirmDeliveredOrder(order);
+                                          setActiveDropdownOrderId(null);
+                                        }}
+                                        disabled={updatingFulfillment}
+                                        className="w-full px-3 py-1.5 text-left text-xs font-medium text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#059669] flex items-center gap-2 cursor-pointer transition disabled:opacity-50"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-[#059669]" />
+                                        <span>Xác nhận đã giao</span>
+                                      </button>
+                                    )}
+
+                                    {/* Hủy đơn */}
+                                    {(order.status === "PENDING" || order.status === "SHIPPING") && (
+                                      <>
+                                        <div className="h-px bg-[#EAE4D7] my-1" />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setCancelModalOrder(order);
+                                            setCancelReason("");
+                                            setCancelCustomReason("");
+                                            setActiveDropdownOrderId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition"
+                                        >
+                                          <X className="w-3.5 h-3.5 text-rose-500" />
+                                          <span>Hủy đơn hàng</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -1396,6 +1552,8 @@ export default function OrdersManagementPage({
           {!action && noticeView}
         </>
       )}
+    </>
+  )}
 
       {/* Modal Cập nhật Vận đơn Bưu cục (Shipping) */}
       {shippingModalOrder && (

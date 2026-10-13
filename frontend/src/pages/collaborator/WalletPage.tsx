@@ -36,8 +36,9 @@ import { toast } from "../../utils/toast";
 import { cn } from "../../utils/cn";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
-import { Select } from "../../components/ui/Select";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
+import api from "../../services/api";
 import { type VietQrBank, findBankByQuery, VIETNAM_BANKS } from "@/config/banks.config";
 import type {
   PayoutStatus,
@@ -114,6 +115,7 @@ export default function WalletPage() {
   const [savingBank, setSavingBank] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isDisconnectConfirmOpen, setIsDisconnectConfirmOpen] = useState(false);
+  const [escrowPolicy, setEscrowPolicy] = useState<any>(null);
 
   const handleCopyId = async (id: string, label: string = 'mã') => {
     try {
@@ -192,13 +194,17 @@ export default function WalletPage() {
     const sequence = ++loadSequence.current;
     setLoading(true);
     try {
-      const [summary, withdrawals, ledgerHistory] = await Promise.all([
+      const [summary, withdrawals, ledgerHistory, escrowRes] = await Promise.all([
         walletService.getMyWallet(),
         walletService.getMyWithdrawals(page),
         walletService.getMyLedger(ledgerPage),
+        api.get('/commissions/escrow-info').catch(() => null),
       ]);
       if (sequence !== loadSequence.current) return;
       setWallet(summary);
+      if (escrowRes?.data || escrowRes) {
+        setEscrowPolicy(escrowRes?.data || escrowRes);
+      }
       setStoreId((current) =>
         summary.stores.some(
           (store) => store.storeId === current && store.isActive,
@@ -504,6 +510,26 @@ export default function WalletPage() {
         </div>
       </section>
 
+      {/* Trạng thái Động cơ Bảo Chứng Escrow Thích ứng Lễ/Tết */}
+      {escrowPolicy && (
+        <div className="flex items-center justify-between flex-wrap gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-[#EAE4D7] text-xs text-[#7D715E] shadow-2xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <ShieldCheck className="w-4 h-4 text-[#B88E4F] shrink-0" />
+            <span className="truncate">
+              Quỹ bảo chứng Escrow 14 ngày:{' '}
+              <strong className={escrowPolicy.isHolidayNow ? 'text-[#D97706]' : 'text-[#1A1612]'}>
+                {escrowPolicy.currentStatus}
+              </strong>
+            </span>
+          </div>
+          {escrowPolicy.upcomingHolidays?.[0] && (
+            <span className="text-[11px] text-[#7D715E] shrink-0">
+              Kỳ nghỉ kế tiếp: <strong className="text-[#1A1612]">{escrowPolicy.upcomingHolidays[0].name}</strong> ({escrowPolicy.upcomingHolidays[0].startDate})
+            </span>
+          )}
+        </div>
+      )}
+
       {/* SECTION TÀI KHOẢN NHẬN TIỀN & YÊU CẦU RÚT TIỀN (TIKTOK SHOP & SHOPEE CREATOR COMPACT STYLE) */}
       <section className="grid grid-cols-1 lg:grid-cols-[minmax(260px,0.7fr)_minmax(0,1.3fr)] items-stretch gap-4">
         {/* Cột 1: Quản lý tài khoản ngân hàng thụ hưởng (VietQR) */}
@@ -790,7 +816,7 @@ export default function WalletPage() {
               <Select
                 id="withdrawal-store"
                 value={storeId}
-                onChange={(event) => setStoreId(event.target.value)}
+                onChange={(event: { target: { value: string } }) => setStoreId(event.target.value)}
                 required
                 disabled={loading || submitting}
                 className="w-full h-9.5 sm:h-10 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/40 hover:bg-white focus:bg-white px-3 text-xs sm:text-sm text-[#1A1612] focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition"

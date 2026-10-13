@@ -13,11 +13,11 @@ import {
   Users,
   Tag,
   Sparkles,
-  MapPin,
   Heart,
   User,
   Package,
   Radio,
+  Bell,
   type LucideProps,
 } from 'lucide-react';
 
@@ -45,9 +45,8 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/customer/wallet', label: 'Ví Mua Sắm SCANMS', icon: Wallet, badge: 'Ví', section: 'MUA SẮM & VÍ' },
       { path: '/customer/vouchers', label: 'Kho Voucher', icon: Tag, section: 'MUA SẮM & VÍ' },
       { path: '/customer/wishlist', label: 'Sản phẩm yêu thích', icon: Heart, section: 'MUA SẮM & VÍ' },
+      { path: '/customer/notifications', label: 'Thông báo', icon: Bell, section: 'MUA SẮM & VÍ' },
       { path: '/customer/profile', label: 'Hồ sơ cá nhân', icon: User, section: 'TÀI KHOẢN & BẢO MẬT' },
-      { path: '/customer/addresses', label: 'Sổ địa chỉ nhận hàng', icon: MapPin, section: 'TÀI KHOẢN & BẢO MẬT' },
-      { path: '/customer/security', label: 'Bảo mật & Mật khẩu', icon: ShieldCheck, section: 'TÀI KHOẢN & BẢO MẬT' },
     ],
   },
   COLLABORATOR: {
@@ -72,6 +71,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/merchant/customer-messages', label: 'Tin nhắn khách hàng', icon: MessageSquare, section: 'VẬN HÀNH & HÀNG HÓA' },
       { path: '/merchant/kol-hub', label: 'Mạng lưới KOL & Hợp tác', icon: Sparkles, section: 'TIẾP THỊ & MẠNG LƯỚI KOL' },
       { path: '/merchant/promotions', label: 'Khuyến mãi & Hoa hồng', icon: Tag, section: 'TIẾP THỊ & MẠNG LƯỚI KOL' },
+      { path: '/merchant/live-sessions', label: 'Phiên & Voucher Live', icon: Radio, section: 'TIẾP THỊ & MẠNG LƯỚI KOL' },
       { path: '/merchant/payouts', label: 'Ví & Chi trả KOL', icon: Wallet, section: 'TÀI CHÍNH & CÀI ĐẶT' },
       { path: '/merchant/settings', label: 'Cài đặt gian hàng', icon: Settings, section: 'TÀI CHÍNH & CÀI ĐẶT' },
     ],

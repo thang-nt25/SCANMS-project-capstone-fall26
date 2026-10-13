@@ -91,7 +91,7 @@ export default function ShopStorefrontPage() {
           id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
           name: 'Sora Skin Official Store',
           slug: 'sora-skin',
-          logoUrl: '',
+          logoUrl: '/assets/shops/shop-sora-skin.png',
           description: 'Gian hàng chính hãng phân phối dược mỹ phẩm phục hồi da thế hệ mới.',
           isVerified: true,
         };
@@ -475,6 +475,9 @@ export default function ShopStorefrontPage() {
                         src={storeData.logoUrl}
                         alt={storeData.name}
                         className="w-16 h-16 sm:w-18 sm:h-18 rounded-xl object-cover border-2 border-[#EEDFC6] shadow-xs"
+                        onError={(e) => {
+                          e.currentTarget.src = '/assets/shops/shop-sora-skin.png';
+                        }}
                       />
                     ) : (
                       <div className="w-16 h-16 sm:w-18 sm:h-18 shrink-0 rounded-xl bg-white text-[#B88E4F] flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-[#EEDFC6] shadow-xs">

@@ -189,7 +189,6 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       moderationStatus: 'APPROVED',
       deletedAt: null,
       customCommissionRate: 15,
-      moderationStatus: 'APPROVED',
       store: {
         id: validStoreId,
         defaultCommissionRate: 10,

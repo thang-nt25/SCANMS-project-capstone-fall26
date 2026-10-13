@@ -32,6 +32,7 @@ import api from '../../services/api';
 import { kycService, type KycProfile } from '../../services/kyc.service';
 import { socialService, type SocialChannel } from '../../services/social.service';
 import { mediaService, type MediaAsset } from '../../services/media.service';
+import { referralLinksService } from '../../services/referral-links.service';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
 import ChatBoxPage from '../chat/ChatBoxPage';
 import { toast } from '../../utils/toast';
@@ -222,6 +223,18 @@ export default function ShopCollaborationPage() {
   // Modal 3: Nộp link video nghiệm thu
   const [submitVideoSample, setSubmitVideoSample] = useState<any | null>(null);
 
+  // Modal 5: Đề xuất Deal hoa hồng riêng kèm cam kết (KOL -> Shop)
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [dealModalProduct, setDealModalProduct] = useState<any | null>(null);
+  const [dealModalProducts, setDealModalProducts] = useState<any[]>([]);
+  const [dealProposedRate, setDealProposedRate] = useState<number>(25);
+  const [dealDurationMonths, setDealDurationMonths] = useState<number>(3);
+  const [dealOrderCommitment, setDealOrderCommitment] = useState<number>(100);
+  const [dealRevenueCommitment, setDealRevenueCommitment] = useState<string>('25.000.000');
+  const [dealContentPlan, setDealContentPlan] = useState<string>('3 Video TikTok/Reels chuyên sâu + 1 Phiên Livestream đẩy số');
+  const [dealTermsAccepted, setDealTermsAccepted] = useState(false);
+  const [submittingDeal, setSubmittingDeal] = useState(false);
+
   // Discover Stores Modal
   const [showDiscoverModal, setShowDiscoverModal] = useState(false);
   const [marketplaceStores, setMarketplaceStores] = useState<any[]>([]);
@@ -311,6 +324,46 @@ export default function ShopCollaborationPage() {
   const visibleSamples = sampleStatusFilter === 'ALL'
     ? samples
     : samples.filter((sample) => sample.status === sampleStatusFilter);
+
+  const overdueSamplesCount = useMemo(() => {
+    return samples.filter((s: any) => {
+      if (s.status === 'OVERDUE') return true;
+      if (['RECEIVED', 'REVISION_REQUIRED'].includes(s.status)) {
+        const dl = s.revisionDeadlineAt || s.deadlineAt;
+        if (dl && new Date(dl).getTime() <= Date.now()) return true;
+      }
+      return false;
+    }).length;
+  }, [samples]);
+
+  const urgentSamplesCount = useMemo(() => {
+    return samples.filter((s: any) => {
+      if (['RECEIVED', 'REVISION_REQUIRED'].includes(s.status)) {
+        const dl = s.revisionDeadlineAt || s.deadlineAt;
+        if (dl) {
+          const diff = new Date(dl).getTime() - Date.now();
+          return diff > 0 && diff <= 3 * 86400000;
+        }
+      }
+      return false;
+    }).length;
+  }, [samples]);
+
+  const formatDeadlineCountdown = (deadlineStr: string) => {
+    const diffMs = new Date(deadlineStr).getTime() - Date.now();
+    if (diffMs <= 0) {
+      return { isOverdue: true, text: 'Quá hạn 14 ngày', isUrgent: true, days: 0, hours: 0 };
+    }
+    const days = Math.floor(diffMs / 86400000);
+    const hours = Math.floor((diffMs % 86400000) / 3600000);
+    return {
+      isOverdue: false,
+      text: days > 0 ? `Còn ${days} ngày ${hours} giờ` : `Còn ${hours} giờ`,
+      isUrgent: days <= 3,
+      days,
+      hours,
+    };
+  };
 
   const handleCancelSampleRequest = async (sampleId: string) => {
     try {
@@ -506,6 +559,111 @@ export default function ShopCollaborationPage() {
     else if (activeTab === 'samples') loadStoreSamples(selectedStore.id);
     else if (activeTab === 'media') loadStoreMedia(selectedStore.id);
   }, [selectedStore.id, activeTab, loadStoreProducts, loadStoreSamples, loadStoreMedia]);
+
+  // Chọn / bỏ chọn sản phẩm để tạo gói deal
+  const handleToggleProductSelection = (productId: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId],
+    );
+  };
+
+  const handleSelectAllProducts = () => {
+    if (selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0) {
+      setSelectedProductIds([]);
+    } else {
+      setSelectedProductIds(filteredProducts.map((p) => p.id));
+    }
+  };
+
+  // Mở modal Đề xuất Deal hoa hồng riêng (Đơn lẻ hoặc Gói nhiều sản phẩm)
+  const handleOpenDealModal = (singleProduct?: any, bulkProducts?: any[]) => {
+    let prodsToDeal: any[] = [];
+    if (bulkProducts && bulkProducts.length > 0) {
+      prodsToDeal = bulkProducts;
+    } else if (singleProduct) {
+      prodsToDeal = [singleProduct];
+    } else if (selectedProductIds.length > 0) {
+      prodsToDeal = products.filter((p) => selectedProductIds.includes(p.id));
+    } else if (products.length > 0) {
+      prodsToDeal = [products[0]];
+    }
+
+    if (!prodsToDeal.length) {
+      toast.error('Gian hàng chưa có sản phẩm để tạo đề xuất deal.');
+      return;
+    }
+
+    setDealModalProducts(prodsToDeal);
+    setDealModalProduct(prodsToDeal[0]);
+    // Mức hoa hồng sàn cao nhất trong danh sách sản phẩm được chọn
+    const maxBaseRate = Math.max(...prodsToDeal.map((p) => Number(p.commissionRate || 15)));
+    setDealProposedRate(Math.min(40, maxBaseRate + 5));
+    setDealDurationMonths(3);
+    const orderCount = prodsToDeal.length > 1 ? 150 : 100;
+    setDealOrderCommitment(orderCount);
+    const avgPrice = prodsToDeal.reduce((sum, p) => sum + Number(p.price || 250000), 0) / prodsToDeal.length;
+    const estimatedRev = Math.round(avgPrice * orderCount).toLocaleString('vi-VN');
+    setDealRevenueCommitment(estimatedRev);
+    setDealContentPlan(
+      prodsToDeal.length > 1
+        ? `Quảng bá trọn bộ Combo ${prodsToDeal.length} sản phẩm: 4 Video TikTok chuyên sâu + 2 Phiên Livestream đẩy số`
+        : '3 Video TikTok/Reels chuyên sâu + 1 Phiên Livestream đẩy số',
+    );
+    setDealTermsAccepted(false);
+  };
+
+  // Submit đề xuất Deal hoa hồng kèm cam kết qua API thực tế (Cách 1: Đồng loạt)
+  const handleSubmitDealProposal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const items = dealModalProducts.length > 0 ? dealModalProducts : (dealModalProduct ? [dealModalProduct] : []);
+    if (!items.length) return;
+    if (!dealTermsAccepted) {
+      toast.error('Vui lòng tích cam kết tuân thủ Quy chế thực thi Deal của SCANMS.');
+      return;
+    }
+    const rate = Number(dealProposedRate);
+    const maxBaseRate = Math.max(...items.map((p) => Number(p.commissionRate || 10)));
+    if (rate <= maxBaseRate) {
+      toast.error(`Mức hoa hồng đề xuất (${rate}%) phải cao hơn mức sàn cao nhất trong gói (${maxBaseRate}%).`);
+      return;
+    }
+    if (rate > 40) {
+      toast.error('Mức hoa hồng đề xuất không được vượt quá trần an toàn 40%.');
+      return;
+    }
+
+    setSubmittingDeal(true);
+    try {
+      const isBundle = items.length > 1;
+      const commitmentSummary = isBundle
+        ? `[GÓI DEAL ${items.length} SẢN PHẨM] Kỳ hạn: ${dealDurationMonths} tháng | Cam kết: ${dealOrderCommitment} đơn (Mục tiêu ~${dealRevenueCommitment} ₫) | Kế hoạch: ${dealContentPlan.trim()}`
+        : `Kỳ hạn: ${dealDurationMonths} tháng | Cam kết: ${dealOrderCommitment} đơn (Mục tiêu ~${dealRevenueCommitment} ₫) | Kế hoạch: ${dealContentPlan.trim()}`;
+
+      // Gửi proposal cho từng sản phẩm trong gói
+      for (const item of items) {
+        await referralLinksService.createExclusiveDeal({
+          productId: item.id,
+          proposedCommissionRate: rate,
+          salesCommitment: commitmentSummary,
+        });
+      }
+
+      toast.success(
+        isBundle
+          ? `Đã gửi đề xuất Gói Deal cho ${items.length} sản phẩm (${rate}%) vào khung Chat cho Shop!`
+          : `Đã gửi đề xuất Deal độc quyền ${rate}% kèm cam kết doanh số vào khung Chat cho Shop!`,
+      );
+      setDealModalProduct(null);
+      setDealModalProducts([]);
+      setSelectedProductIds([]);
+      setActiveTab('messages');
+      updateUrl(selectedStore.id, 'messages');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Không thể gửi đề xuất deal.');
+    } finally {
+      setSubmittingDeal(false);
+    }
+  };
 
   // Open Link Generator Modal (Giải pháp 1)
   const handleOpenLinkModal = async (prod: any) => {
@@ -972,7 +1130,7 @@ export default function ShopCollaborationPage() {
             aria-label="Nội dung hợp tác với gian hàng"
           >
             {[
-              { id: 'messages', label: 'Tin nhắn & Deal', icon: MessageSquare },
+              { id: 'messages', label: 'Tin nhắn', icon: MessageSquare },
               { id: 'products', label: 'Sản phẩm', icon: Package },
               { id: 'samples', label: 'Hàng mẫu', icon: Truck },
               { id: 'media', label: 'Kho nội dung', icon: Sparkles },
@@ -1008,26 +1166,6 @@ export default function ShopCollaborationPage() {
             {/* 1. CHAT TAB */}
             {activeTab === 'messages' && (
               <div className="h-full w-full overflow-hidden animate-in fade-in-50 duration-200 flex flex-col">
-                {/* Thanh Deal Bar Đàm Phán Hoa Hồng VIP Tinh Tế */}
-                <div className="bg-white border-b border-[#EAE4D7] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0 flex-wrap">
-                  <div className="flex items-center gap-2 text-[#B88E4F]">
-                    <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0" />
-                    <span className="flex flex-col text-xs leading-tight">
-                      <strong>Thỏa thuận hoa hồng</strong>
-                      <span className="text-[#7D715E]">Trao đổi mức hoa hồng riêng với Shop.</span>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toast.info('Đã gửi đề xuất hoa hồng đối tác VIP 30% vào khung chat!');
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] font-semibold hover:bg-[#FAF8F5] hover:border-[#C59B58] transition shrink-0 cursor-pointer"
-                  >
-                    <Plus size={13} aria-hidden="true" /> Đề xuất deal 30%
-                  </button>
-                </div>
-
                 <div className="flex-1 min-h-0">
                   <ChatBoxPage
                     embedded
@@ -1073,6 +1211,52 @@ export default function ShopCollaborationPage() {
                       </label>
                     </div>
 
+                    {/* Multi-select Action Bar */}
+                    {filteredProducts.length > 0 && (
+                      <div className="flex items-center justify-between flex-wrap gap-2.5 p-2.5 px-3.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]">
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-[#1A1612]">
+                            <input
+                              type="checkbox"
+                              checked={selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0}
+                              onChange={handleSelectAllProducts}
+                              className="rounded border-[#DEBE85] text-[#C59B58] focus:ring-[#C59B58] w-4 h-4 cursor-pointer"
+                            />
+                            <span>Chọn tất cả ({filteredProducts.length} sản phẩm)</span>
+                          </label>
+                          {selectedProductIds.length > 0 && (
+                            <span className="text-xs text-[#8D6936] font-semibold">
+                              (Đã chọn <strong className="text-[#B88E4F]">{selectedProductIds.length}</strong> món)
+                            </span>
+                          )}
+                        </div>
+
+                        {selectedProductIds.length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProductIds([])}
+                              className="px-2.5 py-1 text-xs text-[#7D715E] hover:text-[#1A1612] font-semibold cursor-pointer"
+                            >
+                              Bỏ chọn
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDealModal(undefined, products.filter((p) => selectedProductIds.includes(p.id)))}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-2xs cursor-pointer active:scale-95"
+                            >
+                              <Sparkles size={13} />
+                              <span>Đề xuất Deal Gói ({selectedProductIds.length} món)</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-[#7D715E] italic">
+                            Tích chọn nhiều sản phẩm để gửi đề xuất Deal Gói đồng loạt tới Shop.
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {loadingProducts ? (
                       <div className="grid place-items-center gap-2 min-h-[140px] p-6 border border-dashed border-[#EAE4D7] rounded-xl bg-white text-[#7D715E] text-xs text-center" role="status">
                         <Loader2 className="w-5 h-5 text-[#B88E4F] animate-spin" aria-hidden="true" />
@@ -1091,18 +1275,34 @@ export default function ShopCollaborationPage() {
                             const canRequestThisProduct = Boolean(
                               canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
                             );
+                            const isSelectedForBundle = selectedProductIds.includes(prod.id);
 
                             return (
                               <div
                                 key={prod.id}
-                                className="grid grid-rows-[1fr_auto_auto] content-start gap-2.5 min-w-0 p-3 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs hover:border-[#E2C99F] hover:shadow-sm transition"
+                                className={`grid grid-rows-[1fr_auto_auto] content-start gap-2.5 min-w-0 p-3 border rounded-xl bg-white shadow-2xs transition ${
+                                  isSelectedForBundle ? 'border-[#C59B58] ring-1 ring-[#C59B58]/30 bg-[#FBF5EB]/20 shadow-xs' : 'border-[#EAE4D7] hover:border-[#E2C99F] hover:shadow-sm'
+                                }`}
                               >
                                 <div className="flex items-start gap-3 min-w-0">
-                                  <img
-                                    src={prod.imageUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150'}
-                                    alt={prod.title}
-                                    className="w-[68px] h-[72px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] object-contain"
-                                  />
+                                  <div className="relative shrink-0">
+                                    <img
+                                      src={prod.imageUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150'}
+                                      alt={prod.title}
+                                      className="w-[68px] h-[72px] border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] object-contain"
+                                    />
+                                    <label
+                                      className="absolute -top-1.5 -left-1.5 p-0.5 rounded-md bg-white border border-[#EAE4D7] shadow-xs cursor-pointer hover:border-[#C59B58]"
+                                      title="Chọn sản phẩm này vào gói Deal"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelectedForBundle}
+                                        onChange={() => handleToggleProductSelection(prod.id)}
+                                        className="rounded border-[#DEBE85] text-[#C59B58] focus:ring-[#C59B58] w-3.5 h-3.5 block cursor-pointer"
+                                      />
+                                    </label>
+                                  </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-1 min-w-0">
                                       <span className="text-[10px] text-[#7D715E] font-mono font-medium truncate">
@@ -1177,6 +1377,15 @@ export default function ShopCollaborationPage() {
                                     <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
                                     <span>{!canRequestSample ? 'Khóa điều kiện' : canRequestThisProduct ? 'Xin mẫu thử' : 'Chưa cấp mẫu'}</span>
                                   </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenDealModal(prod)}
+                                    className="col-span-2 inline-flex items-center justify-center gap-1.5 min-h-[32px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#8D6936] text-[11px] font-bold hover:bg-[#FBF5EB] hover:border-[#C59B58] hover:text-[#B88E4F] transition cursor-pointer"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                                    <span>Đề xuất Deal hoa hồng riêng với Shop</span>
+                                  </button>
                                 </div>
                               </div>
                             );
@@ -1229,6 +1438,26 @@ export default function ShopCollaborationPage() {
                         </div>
                       </div>
                     </section>
+
+                    {/* Banners cảnh báo hạn nộp video / khóa quyền xin mẫu */}
+                    {overdueSamplesCount > 0 ? (
+                      <div className="p-3.5 rounded-xl border border-[#F1C9C6] bg-[#FEF2F1] text-xs text-[#DC2626] flex items-start gap-2.5">
+                        <ShieldAlert className="w-4 h-4 shrink-0 text-[#DC2626] mt-0.5" />
+                        <div className="flex-1">
+                          <strong className="block font-bold">Khóa quyền xin mẫu mới do có đơn quá hạn 14 ngày</strong>
+                          <p className="mt-0.5 text-[11px] text-[#7D715E] leading-relaxed">
+                            Bạn có <strong className="text-[#DC2626]">{overdueSamplesCount}</strong> đơn mẫu quá hạn chưa nghiệm thu video. Vui lòng bấm "Nộp Link Video Review" ở các đơn bên dưới để mở lại quyền nhận mẫu toàn sàn.
+                          </p>
+                        </div>
+                      </div>
+                    ) : urgentSamplesCount > 0 ? (
+                      <div className="p-3 rounded-xl border border-[#F59E0B]/40 bg-[#FFFBEB] text-xs text-[#92400E] flex items-center gap-2.5">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-[#D97706]" />
+                        <div className="flex-1 text-[11px]">
+                          Nhắc nhở: Bạn có <strong className="text-[#D97706]">{urgentSamplesCount}</strong> đơn mẫu sắp hết hạn nộp video review (dưới 3 ngày). Vui lòng nộp video sớm để duy trì quyền nhận mẫu.
+                        </div>
+                      </div>
+                    ) : null}
 
                     {/* Danh sách mẫu */}
                     <div className="flex items-center justify-between gap-3 min-w-0 py-1">
@@ -1285,9 +1514,7 @@ export default function ShopCollaborationPage() {
                           const activeDeadline = samp.revisionDeadlineAt && ['REVISION_REQUIRED', 'OVERDUE'].includes(status)
                             ? samp.revisionDeadlineAt
                             : samp.deadlineAt;
-                          const daysLeft = activeDeadline
-                            ? Math.ceil((new Date(activeDeadline).getTime() - Date.now()) / 86400000)
-                            : null;
+                          const deadlineInfo = activeDeadline ? formatDeadlineCountdown(activeDeadline) : null;
                           const statusLabel: Record<string, string> = {
                             PENDING: 'Chờ Shop duyệt', APPROVED: 'Shop đã duyệt', SHIPPED: 'Đang giao',
                             RECEIVED: 'Đã nhận · chờ video', VIDEO_SUBMITTED: 'Chờ Shop nghiệm thu',
@@ -1321,9 +1548,23 @@ export default function ShopCollaborationPage() {
                                         Mã vận đơn: <strong className="ml-1 text-[#1A1612] font-bold">{samp.trackingNumber}</strong> ({samp.carrier || 'Đơn vị vận chuyển'})
                                       </span>
                                     )}
-                                    {activeDeadline && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(status) && (
-                                      <span className={`inline-flex items-center px-2 py-0.5 border rounded-md text-[10px] font-semibold ${daysLeft !== null && daysLeft <= 0 ? 'border-[#F1C9C6] bg-[#FEF2F1] text-[#B42318]' : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8D6936]'}`}>
-                                        {daysLeft !== null && daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Đã quá hạn'} · hạn {new Date(activeDeadline).toLocaleDateString('vi-VN')}
+                                    {deadlineInfo && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(status) && (
+                                      <span
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 border rounded-md text-[10px] font-semibold ${
+                                          deadlineInfo.isOverdue
+                                            ? 'border-[#F1C9C6] bg-[#FEF2F1] text-[#DC2626]'
+                                            : deadlineInfo.isUrgent
+                                            ? 'border-[#F59E0B]/50 bg-[#FFFBEB] text-[#D97706]'
+                                            : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8D6936]'
+                                        }`}
+                                      >
+                                        {deadlineInfo.isOverdue ? (
+                                          <ShieldAlert size={11} className="text-[#DC2626]" />
+                                        ) : deadlineInfo.isUrgent ? (
+                                          <AlertTriangle size={11} className="text-[#D97706]" />
+                                        ) : null}
+                                        <span>{deadlineInfo.text}</span>
+                                        <span className="text-[#7D715E] font-normal">· hạn {new Date(activeDeadline).toLocaleDateString('vi-VN')}</span>
                                       </span>
                                     )}
                                   </div>
@@ -2083,6 +2324,354 @@ export default function ShopCollaborationPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL 5: ĐỀ XUẤT DEAL HOA HỒNG RIÊNG (KOL -> SHOP) */}
+      {(dealModalProduct || dealModalProducts.length > 0) && (() => {
+        const isBundle = dealModalProducts.length > 1;
+        const currentProducts = isBundle ? dealModalProducts : [dealModalProduct];
+        const maxBaseRate = Math.max(...currentProducts.map((p) => Number(p?.commissionRate || 15)));
+        const avgPrice = Math.round(
+          currentProducts.reduce((sum, p) => sum + Number(p?.price || 250000), 0) / currentProducts.length,
+        );
+
+        return (
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 z-50 bg-[#231D15]/30 backdrop-blur-[4px] animate-in fade-in duration-200"
+            onClick={() => {
+              if (!submittingDeal) {
+                setDealModalProduct(null);
+                setDealModalProducts([]);
+              }
+            }}
+          >
+            <div
+              className="bg-white w-full max-w-[660px] max-h-[calc(100dvh-32px)] border border-[#EAE4D7] rounded-2xl shadow-[0_20px_70px_rgba(35,29,21,0.18)] flex flex-col overflow-hidden text-left"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="deal-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between gap-3 p-4 sm:px-5 border-b border-[#EAE4D7] bg-[#FAF8F5]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="grid place-items-center shrink-0 w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
+                        {isBundle ? `BUNDLE DEAL (${currentProducts.length} SẢN PHẨM)` : 'EXCLUSIVE DEAL PROPOSAL'}
+                      </span>
+                    </div>
+                    <h3 id="deal-modal-title" className="mt-0.5 text-base font-bold text-[#1A1612] truncate">
+                      {isBundle
+                        ? `Đề xuất Gói Deal Đồng Loạt cho ${currentProducts.length} sản phẩm`
+                        : `Đề xuất Deal hoa hồng riêng với ${selectedStore.name}`}
+                    </h3>
+                    <p className="text-[11px] text-[#7D715E] m-0 truncate">
+                      {isBundle
+                        ? `Đàm phán mức hoa hồng VIP chung cho danh mục sản phẩm kèm cam kết tổng doanh số.`
+                        : 'Thương thảo mức hoa hồng VIP và gửi cam kết doanh số vào khung Chat.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={submittingDeal}
+                  onClick={() => {
+                    setDealModalProduct(null);
+                    setDealModalProducts([]);
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] transition cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Form Body */}
+              <form onSubmit={handleSubmitDealProposal} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar">
+                  {/* 1. Danh sách sản phẩm áp dụng */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#1A1612]">
+                        {isBundle ? `Danh mục sản phẩm trong gói (${currentProducts.length} món)` : 'Sản phẩm áp dụng Deal'}
+                      </label>
+                      {isBundle && (
+                        <span className="text-[11px] font-medium text-[#7D715E]">
+                          Mức sàn cao nhất trong gói: <strong className="text-[#B88E4F]">{maxBaseRate}%</strong>
+                        </span>
+                      )}
+                    </div>
+
+                    {isBundle ? (
+                      /* Danh sách các sản phẩm trong Gói */
+                      <div className="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar p-1">
+                        {currentProducts.map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={p.imageUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150'}
+                                alt={p.title}
+                                className="w-10 h-10 rounded-lg object-contain bg-white border border-[#EAE4D7] shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <h5 className="text-xs font-bold text-[#1A1612] truncate">{p.title}</h5>
+                                <div className="text-[11px] text-[#7D715E]">
+                                  {Number(p.price || 0).toLocaleString('vi-VN')} ₫ · Sàn: <strong className="text-[#B88E4F]">{p.commissionRate || 15}%</strong>
+                                </div>
+                              </div>
+                            </div>
+                            {currentProducts.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const remaining = currentProducts.filter((item) => item.id !== p.id);
+                                  setDealModalProducts(remaining);
+                                  if (remaining.length === 1) setDealModalProduct(remaining[0]);
+                                }}
+                                className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold px-2 py-1 rounded hover:bg-rose-50 transition cursor-pointer shrink-0"
+                              >
+                                Bỏ bớt
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      /* Sản phẩm đơn lẻ */
+                      <div className="flex items-center gap-3 p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]">
+                        <img
+                          src={dealModalProduct?.imageUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150'}
+                          alt={dealModalProduct?.title}
+                          className="w-14 h-14 rounded-lg object-contain bg-white border border-[#EAE4D7] shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-[#1A1612] truncate">{dealModalProduct?.title}</h4>
+                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#7D715E]">
+                            <span>Giá bán: <strong className="text-[#1A1612]">{Number(dealModalProduct?.price || 0).toLocaleString('vi-VN')} ₫</strong></span>
+                            <span>·</span>
+                            <span>Hoa hồng sàn: <strong className="text-[#B88E4F]">{dealModalProduct?.commissionRate || 15}%</strong></span>
+                          </div>
+                          <div className="text-[10px] text-[#7D715E] mt-0.5">
+                            Thu nhập sàn: ~{Math.round((Number(dealModalProduct?.price || 0) * (dealModalProduct?.commissionRate || 15)) / 100).toLocaleString('vi-VN')} ₫/đơn
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. Mức hoa hồng đề xuất ĐỒNG LOẠT (Cách 1) */}
+                  <div className="p-3.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
+                        <span>{isBundle ? 'Mức hoa hồng VIP đề xuất ĐỒNG LOẠT cho cả gói (%)' : 'Mức hoa hồng VIP bạn đề xuất (%)'}</span>
+                        <span className="text-[#DC2626]">*</span>
+                      </label>
+                      <span className="text-[11px] font-semibold text-[#8D6936]">
+                        Sàn tối thiểu: {maxBaseRate}%
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          min={maxBaseRate + 1}
+                          max={40}
+                          step={1}
+                          value={dealProposedRate}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setDealProposedRate(val);
+                          }}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAE4D7] bg-white text-base font-black text-[#1A1612] outline-none focus:border-[#C59B58] transition"
+                          required
+                        />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-black text-[#7D715E]">%</span>
+                      </div>
+
+                      {/* Quick Boost chips */}
+                      <div className="flex items-center gap-1.5">
+                        {[2, 5, 8, 10].map((delta) => {
+                          const targetRate = Math.min(40, maxBaseRate + delta);
+                          const isSelected = dealProposedRate === targetRate;
+                          return (
+                            <button
+                              key={delta}
+                              type="button"
+                              onClick={() => setDealProposedRate(targetRate)}
+                              className={`px-2.5 py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#C59B58] text-white border-[#C59B58] shadow-xs'
+                                  : 'bg-white text-[#8D6936] border-[#EEDFC6] hover:bg-[#FAF8F5]'
+                              }`}
+                            >
+                              +{delta}%
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Thu nhập thực tế ước tính */}
+                    <div className="mt-2.5 pt-2 border-t border-[#EEDFC6]/60 flex items-center justify-between text-xs text-[#8D6936]">
+                      <span>Ước tính thu nhập trung bình:</span>
+                      <strong className="text-sm font-black text-[#B88E4F]">
+                        ~{Math.round((avgPrice * dealProposedRate) / 100).toLocaleString('vi-VN')} ₫ / đơn
+                        <span className="ml-1 text-[11px] font-normal text-[#7D715E]">
+                          (+{Math.round((avgPrice * (dealProposedRate - maxBaseRate)) / 100).toLocaleString('vi-VN')} ₫ so với sàn)
+                        </span>
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* 3. Cam kết doanh số SMART */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612]">
+                      <Handshake className="w-4 h-4 text-[#B88E4F]" />
+                      <span>{isBundle ? `Cam kết doanh số toàn Gói (${currentProducts.length} sản phẩm)` : 'Cam kết doanh số & Kế hoạch hợp tác'}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Kỳ hạn hợp tác */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">
+                          Kỳ hạn hợp tác cam kết
+                        </label>
+                        <select
+                          value={dealDurationMonths}
+                          onChange={(e) => setDealDurationMonths(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-white border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
+                        >
+                          <option value={1}>1 Tháng (Thử nghiệm)</option>
+                          <option value={3}>3 Tháng (Khuyến nghị chuẩn sàn)</option>
+                          <option value={6}>6 Tháng (Đối tác chiến lược)</option>
+                          <option value={12}>12 Tháng (Hợp đồng năm)</option>
+                        </select>
+                      </div>
+
+                      {/* Số đơn cam kết */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">
+                          {isBundle ? 'Mục tiêu tổng số đơn cả gói' : 'Mục tiêu số đơn tối thiểu'}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={10}
+                            step={10}
+                            value={dealOrderCommitment}
+                            onChange={(e) => {
+                              const count = Number(e.target.value);
+                              setDealOrderCommitment(count);
+                              const rev = Math.round(avgPrice * count).toLocaleString('vi-VN');
+                              setDealRevenueCommitment(rev);
+                            }}
+                            className="w-full px-3 py-2 bg-white border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
+                            required
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#7D715E]">đơn</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Doanh thu cam kết */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">
+                        Ước tính tổng doanh số mang về cho Shop (VNĐ)
+                      </label>
+                      <input
+                        type="text"
+                        value={dealRevenueCommitment}
+                        onChange={(e) => setDealRevenueCommitment(e.target.value)}
+                        placeholder="Ví dụ: 50.000.000"
+                        className="w-full px-3 py-2 bg-white border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
+                      />
+                    </div>
+
+                    {/* Kế hoạch nội dung */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">
+                        Kế hoạch sản xuất nội dung quảng bá cho gói
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={dealContentPlan}
+                        onChange={(e) => setDealContentPlan(e.target.value)}
+                        placeholder="Ví dụ: Quảng bá trọn bộ Routine: 4 Video TikTok chuyên sâu + 2 buổi Livestream bán hàng đẩy số..."
+                        className="w-full px-3 py-2 bg-white border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#C59B58] resize-none"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* 4. Điều khoản cam kết */}
+                  <div className="p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs space-y-2">
+                    <div className="flex items-start gap-2 text-[#7D715E] leading-relaxed">
+                      <ShieldAlert className="w-4 h-4 text-[#B88E4F] shrink-0 mt-0.5" />
+                      <span>
+                        Đề xuất {isBundle ? `Gói Deal cho ${currentProducts.length} sản phẩm` : 'Deal'} sẽ được chuyển thẳng tới Shop qua <strong>Chat</strong>. Nếu Shop chấp thuận, toàn bộ link tiếp thị độc quyền sẽ được tự động kích hoạt.
+                      </span>
+                    </div>
+                    <label className="flex items-start gap-2.5 pt-2 border-t border-[#EAE4D7] cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={dealTermsAccepted}
+                        onChange={(e) => setDealTermsAccepted(e.target.checked)}
+                        className="mt-0.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                        required
+                      />
+                      <span className="text-[11px] font-medium text-[#1A1612]">
+                        Tôi cam kết nỗ lực hoàn thành chỉ tiêu doanh số đã nêu và tuân thủ Quy chế Chế tài trách nhiệm của SCANMS.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 sm:px-5 border-t border-[#EAE4D7] bg-white flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    disabled={submittingDeal}
+                    onClick={() => {
+                      setDealModalProduct(null);
+                      setDealModalProducts([]);
+                    }}
+                    className="px-4 py-2 border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#7D715E] hover:bg-[#FAF8F5] transition cursor-pointer"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingDeal || !dealTermsAccepted || dealProposedRate <= maxBaseRate}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  >
+                    {submittingDeal ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang gửi đề xuất...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>
+                          {isBundle
+                            ? `Gửi Đề Xuất Gói Deal (${currentProducts.length} sản phẩm)`
+                            : 'Gửi đề xuất Deal qua Chat'}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

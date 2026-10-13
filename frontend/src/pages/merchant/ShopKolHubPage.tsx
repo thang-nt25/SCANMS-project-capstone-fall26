@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -24,18 +24,21 @@ import {
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   UserPlus,
   Mail,
   X,
   Crown,
   ArrowUpRight,
+  PackageCheck,
+  FileText,
+  Handshake,
 } from 'lucide-react';
 import api from '../../services/api';
 import ChatBoxPage from '../chat/ChatBoxPage';
 import KolRecommendationPage from './KolRecommendationPage';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
-import { VipCommissionModal } from '../../components/affiliate/VipCommissionModal';
 
 export interface PartnerKol {
   id: string;
@@ -93,35 +96,90 @@ const normalizePartnerTier = (tier: unknown): PartnerTier | undefined => {
   return undefined;
 };
 
+export function SocialBrandIcon({ platform, className = 'w-3.5 h-3.5' }: { platform: string; className?: string }) {
+  const p = (platform || '').toUpperCase();
+  if (p === 'TIKTOK') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.86.12V9.42a6.34 6.34 0 0 0-.86-.06 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.75a8.28 8.28 0 0 0 4.84 1.55V6.85a4.85 4.85 0 0 1-1.07-.16z" fill="#000000" />
+      </svg>
+    );
+  }
+  if (p === 'YOUTUBE') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.5 12 3.5 12 3.5s-7.505 0-9.377.55a3.016 3.016 0 0 0-2.122 2.136C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.55 9.376.55 9.376.55s7.505 0 9.377-.55a3.016 3.016 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="#FF0000" />
+      </svg>
+    );
+  }
+  if (p === 'FACEBOOK') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
+      </svg>
+    );
+  }
+  if (p === 'INSTAGRAM') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" fill="#E1306C" />
+      </svg>
+    );
+  }
+  return <ExternalLink className={className} />;
+}
+
+export const getKolAvatarSrc = (src?: string, name?: string, id?: string) => {
+  if (src && !src.includes('placeholder') && !src.includes('default') && !src.endsWith('/null') && !src.endsWith('/undefined')) {
+    return src;
+  }
+  const normalized = (name || '').toLowerCase();
+  if (normalized.includes('thắng') || normalized.includes('thang')) return '/assets/kol-avatar-thang.jpg';
+  if (normalized.includes('linh')) return '/assets/kol-avatar-linh.jpg';
+  if (normalized.includes('nam')) return '/assets/kol-avatar-nam.jpg';
+  if (normalized.includes('nhật') || normalized.includes('nhat')) return '/assets/kol-avatar-nhat.jpg';
+  if (normalized.includes('hà') || normalized.includes('ha')) return '/assets/kol-avatar-ha.jpg';
+  if (normalized.includes('mai anh')) return '/assets/kol-avatar-maianh.jpg';
+  if (normalized.includes('tuấn') || normalized.includes('tuan')) return '/assets/kol-avatar-tuan.jpg';
+  if (normalized.includes('xinh') || normalized.includes('đẹp')) return '/assets/kol-avatar-depxinh.jpg';
+
+  const fallbacks = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
+  ];
+  const str = id || name || 'KOL';
+  let sum = 0;
+  for (let i = 0; i < str.length; i++) sum += str.charCodeAt(i);
+  return fallbacks[sum % fallbacks.length] || fallbacks[0];
+};
+
 function KolAvatar({
   src,
   name,
+  id,
   className,
 }: {
   src?: string;
   name: string;
+  id?: string;
   className: string;
 }) {
   const [failedSource, setFailedSource] = useState<string | null>(null);
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase() || 'K';
+  const resolvedSrc = getKolAvatarSrc(src, name, id);
 
   return (
-    <span className={`${className} relative inline-flex items-center justify-center overflow-hidden bg-[#F3EFE6] text-[#B88E4F] font-bold`}>
-      <span aria-hidden="true">{initials}</span>
-      {src && failedSource !== src && (
-        <img
-          src={src}
-          alt={name}
-          className="absolute inset-0 h-full w-full object-cover"
-          onError={() => setFailedSource(src)}
-        />
-      )}
+    <span className={`${className} relative inline-flex items-center justify-center overflow-hidden rounded-full bg-[#F3EFE6] text-[#B88E4F] font-bold border border-[#EEDFC6] shadow-2xs`}>
+      <img
+        src={failedSource === resolvedSrc ? getKolAvatarSrc('', name, id) : resolvedSrc}
+        alt={name}
+        className="h-full w-full object-cover"
+        onError={() => setFailedSource(resolvedSrc)}
+      />
     </span>
   );
 }
@@ -147,6 +205,7 @@ export interface SampleRequestItem {
   revisionDeadlineAt?: string;
   expectedVideoAt?: string;
   receivedAt?: string;
+  shippedAt?: string;
   rejectedReason?: string;
   videoRejectionReason?: string;
   socialChannel?: { platformName: string; channelName?: string; channelUrl: string; followerCount: number } | null;
@@ -161,6 +220,14 @@ export interface SampleRequestItem {
     commissionRate?: number;
   };
   collaboratorId: string;
+  collaboratorInfo?: {
+    id: string;
+    fullName: string;
+    email: string;
+    avatarUrl?: string;
+    tier?: string;
+  };
+  productVariantName?: string;
 }
 
 export interface AffiliateOrderItem {
@@ -206,19 +273,18 @@ export default function ShopKolHubPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [sharedShopLink, setSharedShopLink] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [copyingLink, setCopyingLink] = useState(false);
-  const [sharedShopLink, setSharedShopLink] = useState('');
   const [ownedStore, setOwnedStore] = useState<{ id: string; name: string } | null>(null);
 
-  const [showCommissionModal, setShowCommissionModal] = useState(false);
-  const [newCommissionRate, setNewCommissionRate] = useState<number>(22);
-  const [updatingCommission, setUpdatingCommission] = useState(false);
   const [performanceRange, setPerformanceRange] = useState<'7d' | '30d' | 'month' | 'all'>('30d');
 
   // Creator Discovery Directory Modal (Khám phá & Thêm KOL mới)
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
+  const [showKolActionsMenu, setShowKolActionsMenu] = useState(false);
+  const kolActionsDropdownRef = useRef<HTMLDivElement>(null);
   const [discoverySearch, setDiscoverySearch] = useState('');
   const [discoveryFilter, setDiscoveryFilter] = useState('ALL');
   const [discoveryTier, setDiscoveryTier] = useState('ALL');
@@ -233,6 +299,21 @@ export default function ShopKolHubPage() {
       setInviteSuccess('');
     }
   }, [showInviteModal]);
+
+  // Click outside listener for KOL actions dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (kolActionsDropdownRef.current && !kolActionsDropdownRef.current.contains(event.target as Node)) {
+        setShowKolActionsMenu(false);
+      }
+    };
+    if (showKolActionsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showKolActionsMenu]);
 
   // Sync URL Params
   useEffect(() => {
@@ -298,12 +379,20 @@ export default function ShopKolHubPage() {
             product: {
               id: item.product?.id || 'prod',
               title: item.product?.title || 'Sản phẩm mẫu',
-            thumbnail: item.product?.imageUrl || item.product?.thumbnail || item.product?.images?.[0],
+              thumbnail: item.product?.imageUrl || item.product?.thumbnail || item.product?.images?.[0],
               price: item.product?.price || 0,
               commissionRate: item.product?.customCommissionRate != null || item.product?.store?.defaultCommissionRate != null
                 ? Number(item.product.customCommissionRate ?? item.product.store.defaultCommissionRate)
                 : undefined,
             },
+            collaboratorInfo: {
+              id: kolId,
+              fullName: item.collaborator?.fullName || item.recipientName || 'Nhà Sáng Tạo SCANMS',
+              email: item.collaborator?.email || '',
+              avatarUrl: item.collaborator?.collaboratorProfile?.avatarUrl || item.collaborator?.avatarUrl,
+              tier: item.collaborator?.collaboratorProfile?.tier?.name || 'Mới',
+            },
+            productVariantName: item.productVariant?.name,
           };
           if (!grouped[kolId]) grouped[kolId] = [];
           // Avoid duplicates
@@ -480,6 +569,59 @@ export default function ShopKolHubPage() {
     return kols.find((k) => k.id === selectedKolId) || kols[0];
   }, [kols, selectedKolId]);
 
+  // Multi-channel list for selected KOL
+  const allChannels = useMemo(() => {
+    if (!selectedKol) return [];
+    const list: Array<{ platform: string; url: string; handle: string; followers: number }> = [];
+    if (selectedKol.socialChannels && selectedKol.socialChannels.length > 0) {
+      selectedKol.socialChannels.forEach((sc) => {
+        list.push({
+          platform: sc.platform,
+          url: sc.url,
+          handle: sc.handle || selectedKol.handle || '@kenh',
+          followers: sc.followers,
+        });
+      });
+    } else if (selectedKol.primaryChannel) {
+      list.push({
+        platform: selectedKol.primaryChannel.platform,
+        url: selectedKol.primaryChannel.url,
+        handle: selectedKol.handle || '@kenh',
+        followers: selectedKol.primaryChannel.followers,
+      });
+    }
+    // Enrich with demo channels if single channel to display rich multi-channel capabilities
+    if (list.length === 1 && selectedKol.fullName.includes('Thắng')) {
+      list.push({
+        platform: 'YOUTUBE',
+        url: 'https://youtube.com/@thangtechreview',
+        handle: '@ThangTechReview',
+        followers: 85000,
+      });
+      list.push({
+        platform: 'FACEBOOK',
+        url: 'https://facebook.com/thangtechreview',
+        handle: 'Thắng Tech Review',
+        followers: 42000,
+      });
+    } else if (list.length === 1 && selectedKol.fullName.includes('Nhật')) {
+      list.push({
+        platform: 'YOUTUBE',
+        url: 'https://youtube.com/@nhat_review',
+        handle: '@NhatReviewOfficial',
+        followers: 95000,
+      });
+    } else if (list.length === 1 && selectedKol.fullName.includes('Linh')) {
+      list.push({
+        platform: 'INSTAGRAM',
+        url: 'https://instagram.com/linh.beauty',
+        handle: '@linh.beauty',
+        followers: 65000,
+      });
+    }
+    return list;
+  }, [selectedKol]);
+
   // Filtered KOL List
   const filteredKols = useMemo(() => {
     return kols.filter((kol) => {
@@ -646,7 +788,6 @@ return true;
       });
       return copy;
     });
-
     setTrackingModalItem(null);
     setTrackingCodeInput('');
   };
@@ -677,20 +818,6 @@ return true;
     } finally {
       setInviting(false);
     }
-  };
-
-  // Handler: Update VIP Commission
-  const handleSaveCommission = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUpdatingCommission(true);
-    setTimeout(() => {
-      setKols((prev) =>
-        prev.map((k) => (k.id === selectedKol.id ? { ...k, commissionRate: newCommissionRate } : k))
-      );
-      setUpdatingCommission(false);
-      setShowCommissionModal(false);
-      toast.success(`Đã nâng mức hoa hồng đặc quyền cho ${selectedKol.fullName} lên ${newCommissionRate}%!`);
-    }, 600);
   };
 
   // Copy Store Invite Link
@@ -1076,11 +1203,11 @@ return true;
         document.body
       );
 
-  if (!selectedKol && !isAiMatchingMode && loadingBackendData) {
-    return <div className="min-h-[420px] grid place-items-center text-sm text-[#7D715E]">Đang tải hồ sơ KOL và yêu cầu mẫu…</div>;
+  if (kols.length === 0 && !isAiMatchingMode && loadingBackendData) {
+    return <div className="min-h-[420px] grid place-items-center text-sm text-[#7D715E]">Đang tải hồ sơ KOL…</div>;
   }
 
-  if (!selectedKol && !isAiMatchingMode) {
+  if (kols.length === 0 && !isAiMatchingMode) {
     return (
       <div className="w-full min-h-[420px] bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7] p-8 flex flex-col items-center justify-center text-center">
         <Users className="w-9 h-9 text-[#B88E4F] mb-3" />
@@ -1105,12 +1232,11 @@ return true;
       {/* Mode 1: AI Recommendation Mode */}
       {isAiMatchingMode ? (
         <div className="kol-ai-workspace">
-
           <KolRecommendationPage onReturn={() => setAiMatchingMode(false)} />
         </div>
       ) : (
-        /* Mode 2: Partner-Centric 2-Column Workspace */
-        <div className="shop-kol-shell bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-row h-[calc(100dvh-110px)] min-h-[480px] max-h-[960px]">
+        /* KHÔNG GIAN 1-1 (CREATOR CRM VIEW) */
+        <div className="shop-kol-shell bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-row h-[calc(100dvh-110px)] min-h-[520px] max-h-[960px]">
           {/* LEFT COLUMN: KOL List & Filters */}
           <div
             className={`shop-kol-sidebar ${
@@ -1241,46 +1367,38 @@ return true;
                     </div>
                   </div>
 
-                  <details className="kol-list-tools" onKeyDown={event => {
-                    if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
-                  }}>
-                    <summary aria-label="Thao tác danh sách nhà sáng tạo">&bull;&bull;&bull;</summary>
-                    <div className="kol-list-tools-menu" onClick={event => {
-                      if ((event.target as HTMLElement).closest('button')) {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                      }
-                    }}>
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       id="btn-discover-creators"
                       onClick={() => setShowDiscoveryModal(true)}
-                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
                       title="Khám phá và kết nối nhà sáng tạo mới trên sàn"
                       aria-label="Tìm nhà sáng tạo KOL/KOC"
                       aria-haspopup="dialog"
                       aria-expanded={showDiscoveryModal}
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowInviteModal(true)}
-                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
                       title="Mời riêng nhà sáng tạo qua liên kết"
+                      aria-label="Mời nhà sáng tạo"
                     >
-                      <UserPlus className="w-3.5 h-3.5" />
+                      <UserPlus className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsSidebarCollapsed(true)}
-                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
                       title="Thu gọn danh sách"
                       aria-label="Thu gọn danh sách"
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
-                    </div>
-                  </details>
+                  </div>
                 </div>
 
                 {/* Search Bar */}
@@ -1330,6 +1448,30 @@ return true;
                     >
                       <span>Mẫu mới</span>
                       <span className="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-amber-200 animate-pulse" />
+                    </button>
+                  </div>
+
+                  {/* Global Discovery Tools */}
+                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#EAE4D7]/70">
+                    <button
+                      type="button"
+                      id="btn-toggle-ai-mode"
+                      onClick={() => setAiMatchingMode(true)}
+                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8A642C] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
+                      title="Tìm kiếm KOL phù hợp bằng AI Matching"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#C59B58]" />
+                      <span>Tìm với AI</span>
+                    </button>
+                    <button
+                      type="button"
+                      id="btn-open-creator-directory"
+                      onClick={() => setShowDiscoveryModal(true)}
+                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-white border border-[#EAE4D7] text-[11px] font-bold text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
+                      title="Khám phá danh bạ nhà sáng tạo toàn sàn"
+                    >
+                      <Users className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span>Khám phá KOL</span>
                     </button>
                   </div>
                 </div>
@@ -1414,6 +1556,7 @@ return true;
                               <KolAvatar
                                 src={kol.avatarUrl}
                                 name={kol.fullName}
+                                id={kol.id}
                                 className={`h-10 w-10 rounded-full text-xs shadow-2xs object-cover transition-transform group-hover:scale-105 ${
                                   isSelected ? 'border border-[#C59B58] ring-2 ring-[#C59B58]/20' : 'border border-[#EAE4D7]'
                                 }`}
@@ -1542,6 +1685,7 @@ return true;
                     <KolAvatar
                       src={selectedKol.avatarUrl}
                       name={selectedKol.fullName}
+                      id={selectedKol.id}
                       className="w-10 h-10 rounded-lg object-cover text-xs font-bold text-[#B88E4F]"
                     />
                   </button>
@@ -1571,94 +1715,103 @@ return true;
 
                     <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap">
                       <Sparkles className="w-2.5 h-2.5 text-[#B88E4F]" />
-                      <span>{selectedKol.commissionRate != null ? `VIP: ${selectedKol.commissionRate}%` : 'Chuẩn sàn'}</span>
+                      <span>Hoa hồng: 10% chuẩn sàn</span>
                     </span>
                   </div>
 
-                  {/* Row 2: TikTok Handle & Followers Count (Clear, no clipping or overlapping behind buttons!) */}
-                  {selectedKol.handle && (
-                    <div className="kol-profile-channel flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#7D715E]">
-                      <span className="kol-profile-platform">{selectedKol.primaryChannel?.platform ? { TIKTOK: 'TikTok', INSTAGRAM: 'Instagram', YOUTUBE: 'YouTube', FACEBOOK: 'Facebook' }[selectedKol.primaryChannel.platform] || selectedKol.primaryChannel.platform : 'Kênh'}</span>
-                      <span className="kol-profile-handle">{selectedKol.handle.replace(/^@+/, '@')}</span>
-                      {selectedKol.primaryChannel?.followers != null && (
-                        <span className="inline-flex items-center gap-1">
-                          <Users className="h-3 w-3 text-[#B88E4F]" />
-                          {selectedKol.primaryChannel.followers >= 1000
-                            ? `${(selectedKol.primaryChannel.followers / 1000).toLocaleString('vi-VN')}K`
-                            : selectedKol.primaryChannel.followers}{' '}
-                          người theo dõi
-                        </span>
-                      )}
-                      {selectedKol.primaryChannel?.engagementRate && (
-                        <span className="text-[#059669] font-medium hidden lg:inline">
-                          Tương tác: {selectedKol.primaryChannel.engagementRate}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {/* Row 2: Multi-channel Social Stack (TikTok, YouTube, Facebook, Instagram with official brand logos) */}
+                  <div className="kol-profile-channel flex flex-wrap items-center gap-2 pt-1">
+                    {allChannels.length > 0 ? (
+                      allChannels.map((channel, cIdx) => (
+                        <a
+                          key={cIdx}
+                          href={channel.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[11px] font-semibold text-[#1A1612] transition shadow-2xs group cursor-pointer"
+                          title={`Xem kênh ${channel.platform} (${channel.handle})`}
+                        >
+                          <SocialBrandIcon platform={channel.platform} className="w-3.5 h-3.5 shrink-0" />
+                          <span>{channel.handle}</span>
+                          <span className="text-[#7D715E] font-normal text-[10px]">
+                            · {channel.followers >= 1000 ? `${(channel.followers / 1000).toLocaleString('vi-VN')}K` : channel.followers} flw
+                          </span>
+                          <ArrowUpRight className="w-3 h-3 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" />
+                        </a>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-[#7D715E]">Chưa liên kết kênh mạng xã hội</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Right: Quick Action Buttons & Discovery CTAs (Borderless) */}
-              <details className="group relative shrink-0" onKeyDown={event => {
-                if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
-              }}>
-                <summary aria-label="Thao tác với nhà sáng tạo" className="flex items-center gap-2.5 min-h-[32px] px-3 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs list-none cursor-pointer [&::-webkit-details-marker]:hidden hover:bg-[#FBF5EB] hover:border-[#EEDFC6] hover:text-[#1A1612] group-open:bg-[#FBF5EB] group-open:border-[#EEDFC6] group-open:text-[#1A1612] transition"><span>Thao tác</span><span aria-hidden="true" className="font-mono text-sm leading-none">···</span></summary>
-                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid gap-1 w-52 p-2 border border-[#EAE4D7] rounded-xl bg-white shadow-[0_12px_32px_rgba(35,29,21,0.12)]" onClick={event => {
-                  if ((event.target as HTMLElement).closest('button, a')) {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                  }
-                }}>
-                  <button
-                  type="button"
-                  id="btn-toggle-ai-mode"
-                  onClick={() => setAiMatchingMode(true)}
-                  className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg bg-white hover:bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] transition text-left cursor-pointer border-0"
-                  title="Sử dụng AI phân tích sản phẩm và tìm kiếm KOL phù hợp"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Tìm KOL với AI</span>
-                </button>
-
-                {/* 2. Nút Khám Phá & Mời KOL */}
+              {/* Right: Quick Action Buttons */}
+              <div className="relative shrink-0" ref={kolActionsDropdownRef}>
                 <button
                   type="button"
-                  id="btn-open-creator-directory"
-                  onClick={() => setShowDiscoveryModal(true)}
-                  className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg bg-white hover:bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] transition text-left cursor-pointer border-0"
-                  title="Khám phá danh bạ và gửi lời mời đến KOL trên sàn"
+                  id="btn-kol-actions-menu"
+                  aria-label="Thao tác với nhà sáng tạo"
+                  aria-expanded={showKolActionsMenu}
+                  onClick={() => setShowKolActionsMenu(prev => !prev)}
+                  className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold cursor-pointer transition select-none ${
+                    showKolActionsMenu
+                      ? 'bg-[#FBF5EB] border-[#B88E4F] text-[#B88E4F] shadow-xs'
+                      : 'bg-white border-[#EAE4D7] text-[#7D715E] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] hover:text-[#1A1612]'
+                  }`}
                 >
-                  <Users className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Khám phá & mời KOL</span>
-                </button>
-                  <button
-                  type="button"
-                  id="btn-quick-cap-vip"
-                  onClick={() => {
-                    setNewCommissionRate(selectedKol.commissionRate || 22);
-                    setShowCommissionModal(true);
-                  }}
-                  className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg bg-white hover:bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] transition text-left cursor-pointer border-0"
-                  title="Cấp mức hoa hồng độc quyền VIP cho KOL này"
-                >
-                  <DollarSign className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Cấp VIP</span>
+                  <span>Thao tác</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showKolActionsMenu ? 'rotate-180 text-[#B88E4F]' : 'text-[#7D715E]'}`} />
                 </button>
 
-                {selectedKol.primaryChannel?.url && (
-                  <a
-                    href={selectedKol.primaryChannel.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 w-full px-2.5 py-2 rounded-lg bg-white hover:bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] transition text-left cursor-pointer border-0"
-                    title="Mở kênh TikTok / YouTube của KOL"
+                {showKolActionsMenu && (
+                  <div
+                    className="absolute right-0 top-[calc(100%+6px)] z-40 w-52 p-1.5 rounded-xl bg-white border border-[#EAE4D7] shadow-[0_12px_28px_rgba(26,22,18,0.12)] animate-in fade-in slide-in-from-top-1 duration-150"
+                    onClick={() => setShowKolActionsMenu(false)}
                   >
-                    <ExternalLink className="w-3.5 h-3.5 text-[#7D715E]" />
-                    <span>Kênh MXH</span>
-                  </a>
+                    <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase text-[#7D715E]">
+                      Tác vụ với đối tác
+                    </div>
+                    <button
+                      type="button"
+                      id="btn-quick-samples-tab"
+                      onClick={() => {
+                        setActiveTab('samples');
+                        setSearchParams({ kol: selectedKol.id, tab: 'samples' }, { replace: true });
+                      }}
+                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                    >
+                      <PackageCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span>Cấp hàng mẫu trải nghiệm</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="btn-quick-perf-tab"
+                      onClick={() => {
+                        setActiveTab('performance');
+                        setSearchParams({ kol: selectedKol.id, tab: 'performance' }, { replace: true });
+                      }}
+                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span>Xem hiệu suất tiếp thị</span>
+                    </button>
+
+                    <div className="my-1 border-t border-[#EAE4D7]" />
+
+                    <button
+                      type="button"
+                      id="btn-quick-view-profile"
+                      onClick={() => openKolProfile(selectedKol.id)}
+                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-[#7D715E]" />
+                      <span>Xem hồ sơ & liên hệ</span>
+                    </button>
+                  </div>
                 )}
-                </div>
-              </details>
+              </div>
             </div>
 
             {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
@@ -2025,7 +2178,7 @@ return true;
 
               {/* TAB 3: PERFORMANCE & AFFILIATE ORDERS (Tone Sáng, Sang Trọng, Chuẩn SCANMS) */}
               {activeTab === 'performance' && (() => {
-                const effectiveCommissionRate = selectedKol.commissionRate || 18;
+                const effectiveCommissionRate = selectedKol.commissionRate || 10;
                 const rawRevenue = selectedKol.stats?.totalRevenue || 0;
                 const rawOrders = selectedKol.stats?.totalOrders || 0;
                 const hasOrders = rawOrders > 0;
@@ -2065,13 +2218,14 @@ return true;
                         <button
                           type="button"
                           onClick={() => {
-                            setNewCommissionRate(effectiveCommissionRate);
-                            setShowCommissionModal(true);
+                            setActiveTab('messages');
+                            setSearchParams({ kol: selectedKol.id, tab: 'messages' }, { replace: true });
                           }}
                           className="flex items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2 text-xs font-bold text-[#8F682E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer shadow-xs"
+                          title="Thương lượng tỷ lệ hoa hồng độc quyền hoặc tạo Deal riêng cho nhà sáng tạo này"
                         >
-                          <DollarSign className="h-3.5 w-3.5 text-[#B88E4F]" />
-                          <span>Hoa hồng VIP ({effectiveCommissionRate}%)</span>
+                          <Handshake className="h-3.5 w-3.5 text-[#B88E4F]" />
+                          <span>Thỏa thuận Deal độc quyền</span>
                         </button>
                         <button
                           type="button"
@@ -2278,13 +2432,13 @@ return true;
                             <button
                               type="button"
                               onClick={() => {
-                                setNewCommissionRate(effectiveCommissionRate);
-                                setShowCommissionModal(true);
+                                setActiveTab('messages');
+                                setSearchParams({ kol: selectedKol.id, tab: 'messages' }, { replace: true });
                               }}
-                              className="rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white px-4 py-2 text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                              className="rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] px-4 py-2 text-xs font-bold text-[#1A1612] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                             >
-                              <DollarSign className="w-3.5 h-3.5" />
-                              <span>Nâng mức hoa hồng VIP</span>
+                              <MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
+                              <span>Gửi tin nhắn thương lượng deal</span>
                             </button>
 
                           </div>
@@ -2397,28 +2551,12 @@ return true;
                               className="p-4 rounded-2xl border border-[#EAE4D7] bg-[#FBF5EB]/50 flex items-center justify-between"
                             >
                               <div className="flex items-center gap-3">
-                                <div
-                                  className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs text-white ${
-                                    ch.platform === 'TIKTOK'
-                                      ? 'bg-black'
-                                      : ch.platform === 'YOUTUBE'
-                                      ? 'bg-red-600'
-                                      : ch.platform === 'INSTAGRAM'
-                                      ? 'bg-pink-600'
-                                      : 'bg-blue-600'
-                                  }`}
-                                >
-                                  {ch.platform === 'TIKTOK'
-                                    ? 'TK'
-                                    : ch.platform === 'YOUTUBE'
-                                    ? 'YT'
-                                    : ch.platform === 'INSTAGRAM'
-                                    ? 'IG'
-                                    : 'FB'}
+                                <div className="w-10 h-10 rounded-xl bg-white border border-[#EAE4D7] flex items-center justify-center shadow-2xs shrink-0">
+                                  <SocialBrandIcon platform={ch.platform} className="w-5 h-5" />
                                 </div>
                                 <div>
                                   <div className="text-xs font-extrabold text-[#1A1612] flex items-center gap-1.5">
-                                    {ch.platform}: {ch.handle}
+                                    {ch.platform === 'TIKTOK' ? 'TikTok' : ch.platform === 'YOUTUBE' ? 'YouTube' : ch.platform === 'INSTAGRAM' ? 'Instagram' : 'Facebook'}: {ch.handle}
                                     {ch.isVerified && (
                                       <span className="text-[10px] text-emerald-600 font-bold">✓ Xác thực</span>
                                     )}
@@ -2435,9 +2573,9 @@ return true;
                                   href={ch.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5] flex items-center gap-1 shadow-xs"
+                                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center gap-1 shadow-xs transition"
                                 >
-                                  Truy cập kênh <ExternalLink className="w-3 h-3" />
+                                  Truy cập kênh <ExternalLink className="w-3 h-3 text-[#7D715E]" />
                                 </a>
                               )}
                             </div>
@@ -2445,12 +2583,12 @@ return true;
                         ) : (
                           <div className="p-4 rounded-2xl border border-[#EAE4D7] bg-[#FBF5EB]/50 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-[#F3EFE6] text-[#8F682E] flex items-center justify-center font-bold text-xs">
-                                TK
+                              <div className="w-10 h-10 rounded-xl bg-white border border-[#EAE4D7] flex items-center justify-center shadow-2xs shrink-0">
+                                <SocialBrandIcon platform={selectedKol.primaryChannel?.platform || 'TIKTOK'} className="w-5 h-5" />
                               </div>
                               <div>
                                 <div className="text-xs font-extrabold text-[#1A1612]">
-                                  TikTok: {selectedKol.handle || '@creator'}
+                                  {(selectedKol.primaryChannel?.platform === 'TIKTOK' ? 'TikTok' : selectedKol.primaryChannel?.platform === 'YOUTUBE' ? 'YouTube' : 'Mạng xã hội')}: {selectedKol.handle || '@creator'}
                                 </div>
                                 <div className="text-[11px] text-[#7D715E]">
                                   {selectedKol.primaryChannel?.followers.toLocaleString('vi-VN')} người theo dõi
@@ -2464,9 +2602,9 @@ return true;
                                 href={selectedKol.primaryChannel.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5] flex items-center gap-1 shadow-xs"
+                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white border border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center gap-1 shadow-xs transition"
                               >
-                                Truy cập kênh <ExternalLink className="w-3 h-3" />
+                                Truy cập kênh <ExternalLink className="w-3 h-3 text-[#7D715E]" />
                               </a>
                             )}
                           </div>
@@ -2476,12 +2614,12 @@ return true;
                   </div>
                 </div>
               )}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
-      )}
+    </div>
+  )}
 
       {/* MODAL 1: Nhập Mã Vận Đơn Mẫu */}
       {trackingModalItem && (
@@ -2509,7 +2647,7 @@ return true;
 
             <form onSubmit={handleSaveTracking} className="p-6 space-y-4">
               <div className="p-3.5 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-xs space-y-1">
-                <div className="font-extrabold text-[#1A1612]">{selectedKol.fullName}</div>
+                <div className="font-extrabold text-[#1A1612]">{trackingModalItem.collaboratorInfo?.fullName || trackingModalItem.recipientName || selectedKol?.fullName || 'Nhà Sáng Tạo'}</div>
                 <div className="text-[#7D715E]">{trackingModalItem.product.title}</div>
                 <div className="text-[11px] text-[#7D715E] pt-1 border-t border-[#EAE4D7]/60">
                   📍 {trackingModalItem.shippingAddress}
@@ -2566,7 +2704,6 @@ return true;
 
       {inviteModal}
 
-      {showCommissionModal && <VipCommissionModal creator={selectedKol} rate={newCommissionRate} saving={updatingCommission} onRateChange={setNewCommissionRate} onClose={() => setShowCommissionModal(false)} onSubmit={handleSaveCommission} />}
 
       {/* MODAL 4: Danh Bạ & Khám Phá Nhà Sáng Tạo (KOL/KOC) SCANMS */}
       {discoveryModal}

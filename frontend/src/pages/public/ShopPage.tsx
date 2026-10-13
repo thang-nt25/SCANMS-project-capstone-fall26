@@ -90,7 +90,18 @@ export default function ShopPage() {
         <section className="rounded-3xl border border-[#EAE4D7] bg-white p-5 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#EAE4D7] bg-[#F3EFE6] text-3xl font-bold text-[#B88E4F] sm:h-28 sm:w-28">
-              {shop.logoUrl ? <img src={shop.logoUrl} alt={`Logo ${shop.name}`} className="h-full w-full object-cover" /> : <Store size={36} />}
+              {shop.logoUrl ? (
+                <img
+                  src={shop.logoUrl}
+                  alt={`Logo ${shop.name}`}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = '/assets/shops/shop-sora-skin.png';
+                  }}
+                />
+              ) : (
+                <Store size={36} />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="flex items-center gap-2 text-2xl font-bold sm:text-3xl">{shop.name}{shop.isVerified && <BadgeCheck size={22} className="text-[#B88E4F]" aria-label="Shop đã xác minh" />}</h1>

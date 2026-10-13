@@ -1006,7 +1006,7 @@ export class OrdersService {
     }
     const liveSources = requestedLiveIds.length ? await tx.liveShoppingSession.findMany({
       where: { id: { in: requestedLiveIds }, storeId: store.id, platform: 'SCANMS', inviteStatus: 'ACCEPTED', status: { in: ['LIVE', 'SCHEDULED'] }, startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
-      select: { id: true, products: { select: { productId: true, variantId: true } } },
+      select: { id: true, commissionRate: true, products: { select: { productId: true, variantId: true } } },
     }) : [];
     const liveSessionIds = liveSources.filter((session) => dto.items.some((item) =>
       item.liveSessionId === session.id && session.products.some((product) =>
@@ -1642,14 +1642,30 @@ export class OrdersService {
         );
       }
       const regularCommissionRate = finalCommissionRate;
-      if (
+      const matchedLiveSource = item.liveSessionId
+        ? liveSources.find(
+            (session) =>
+              session.id === item.liveSessionId &&
+              session.products.some(
+                (p) =>
+                  p.productId === prod.id &&
+                  (!p.variantId || p.variantId === item.variantId),
+              ),
+          )
+        : null;
+
+      const effectiveLiveSessionRate =
         couponValidationResult?.sessionCommissionRate !== null &&
         couponValidationResult?.sessionCommissionRate !== undefined &&
         couponValidationResult.eligibleProductIds.includes(prod.id)
-      ) {
-        finalCommissionRate = Number(
-          couponValidationResult.sessionCommissionRate,
-        );
+          ? Number(couponValidationResult.sessionCommissionRate)
+          : matchedLiveSource?.commissionRate !== null &&
+            matchedLiveSource?.commissionRate !== undefined
+          ? Number(matchedLiveSource.commissionRate)
+          : null;
+
+      if (effectiveLiveSessionRate !== null) {
+        finalCommissionRate = effectiveLiveSessionRate;
       }
       const itemSubtotal = unitPrice * quantity;
       const netItemSubtotal = itemSubtotal * txDiscountRatio;
@@ -1664,13 +1680,9 @@ export class OrdersService {
         appliedCommissionRate: finalCommissionRate,
         calculatedCommissionAmount: calculatedCommission,
         regularCommissionRate:
-          couponValidationResult?.sessionCommissionRate !== null &&
-          couponValidationResult?.sessionCommissionRate !== undefined
-            ? regularCommissionRate
-            : null,
+          effectiveLiveSessionRate !== null ? regularCommissionRate : null,
         regularCommissionAmount:
-          couponValidationResult?.sessionCommissionRate !== null &&
-          couponValidationResult?.sessionCommissionRate !== undefined
+          effectiveLiveSessionRate !== null
             ? itemSubtotal * (regularCommissionRate / 100)
             : null,
       });
@@ -3713,6 +3725,18 @@ export class OrdersService {
         { externalOrderSn: { contains: search, mode: 'insensitive' } },
         { customerPhone: { contains: search } },
         { customerName: { contains: search, mode: 'insensitive' } },
+        {
+          rawPayload: {
+            path: ['trackingNumber'],
+            string_contains: search,
+          },
+        },
+        {
+          rawPayload: {
+            path: ['ghnOrderCode'],
+            string_contains: search,
+          },
+        },
       ];
     }
 

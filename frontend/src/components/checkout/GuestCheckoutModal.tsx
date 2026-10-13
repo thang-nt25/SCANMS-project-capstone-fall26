@@ -1048,7 +1048,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
     if (!currentUser && (!localStorage.getItem('token') || !authService.getCurrentUser())) {
       setErrorMessage(
-        'Vui lòng đăng nhập hoặc xác thực với Google trước khi hoàn tất đặt hàng để kích hoạt quyền lợi bảo hộ đơn hàng và chính sách Escrow 14 ngày.',
+        'Vui lòng đăng nhập hoặc xác thực Google ở phía trên để hoàn tất đặt hàng.',
       );
       const gateEl = document.getElementById('mandatory-auth-gate');
       if (gateEl) {
@@ -1448,17 +1448,14 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     <Lock className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-[#EEDFC6] text-[10px] font-black text-[#B88E4F] uppercase tracking-wider mb-1">
-                      BẮT BUỘC XÁC THỰC KHÁCH HÀNG (MANDATORY AUTH GATE)
+                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider mb-1">
+                      XÁC THỰC TÀI KHOẢN KHÁCH HÀNG
                     </div>
-                    <h3 className="text-sm sm:text-base font-black text-[#1A1612]">
-                      Đăng Nhập Hoặc Xác Thực Google Trước Khi Đặt Hàng
+                    <h3 className="text-sm sm:text-base font-bold text-[#1A1612]">
+                      Đăng nhập để tiếp tục thanh toán
                     </h3>
                     <p className="text-xs text-[#7D715E] mt-1 leading-relaxed">
-                      Hệ thống SCANMS yêu cầu liên kết tài khoản để đảm bảo:
-                      <span className="font-semibold text-[#1A1612]"> (1) Kích hoạt Quỹ Bảo Chứng Escrow 14 ngày</span>,
-                      <span className="font-semibold text-[#1A1612]"> (2) Quyền gửi khiếu nại Trọng tài độc lập</span>, và
-                      <span className="font-semibold text-[#1A1612]"> (3) Quản lý đơn hàng trong tài khoản</span>.
+                      Vui lòng xác thực tài khoản Google hoặc Email để quản lý đơn mua và kích hoạt bảo hộ Escrow 14 ngày.
                     </p>
 
                     {loginError && (
@@ -2320,7 +2317,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       e.preventDefault();
                       toast.info('Chính sách giao dịch an toàn SCANMS: Escrow 14 ngày & Bảo hộ 100%.');
                     }}
-                    className="text-[#0055AA] hover:underline"
+                    className="text-[#B88E4F] hover:underline font-medium"
                   >
                     Điều khoản SCANMS
                   </a>{' '}
@@ -2337,6 +2334,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <Loader2 className="w-4 h-4 animate-spin text-[#1A1612]" />
                       <span>ĐANG XỬ LÝ...</span>
                     </>
+                  ) : !currentUser ? (
+                    <span>ĐĂNG NHẬP ĐỂ ĐẶT HÀNG</span>
                   ) : (
                     <span>ĐẶT HÀNG</span>
                   )}

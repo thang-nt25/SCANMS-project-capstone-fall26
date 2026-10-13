@@ -75,7 +75,7 @@ export class LiveSessionsService {
 
   async getShopCatalog(userId: string, storeId: string) {
     await this.assertStoreOwner(userId, storeId);
-    const [products, collaborators, store] = await Promise.all([
+    const [products, collaborators, store, approvedDeals, activeCampaigns] = await Promise.all([
       this.prisma.product.findMany({
         where: {
           storeId,
@@ -113,11 +113,83 @@ export class LiveSessionsService {
         orderBy: { approvedAt: 'desc' },
       }),
       this.prisma.store.findUnique({ where: { id: storeId }, select: { defaultCommissionRate: true } }),
+      this.prisma.exclusiveDealProposal.findMany({
+        where: { storeId, status: 'APPROVED', approvedCommissionRate: { not: null } },
+        select: {
+          collaboratorId: true,
+          approvedCommissionRate: true,
+        },
+      }),
+      this.prisma.campaign.findMany({
+        where: {
+          storeId,
+          isActive: true,
+          startDate: { lte: new Date() },
+          endDate: { gte: new Date() },
+        },
+        select: {
+          id: true,
+          name: true,
+          bonusCommissionRate: true,
+          participants: {
+            where: { status: 'ACCEPTED' },
+            select: { collaboratorId: true },
+          },
+        },
+      }),
     ]);
+
+    const defaultCommissionRate = Number(store?.defaultCommissionRate ?? 10);
+
+    const dealRateMap = new Map<string, number>();
+    for (const deal of approvedDeals) {
+      if (deal.approvedCommissionRate !== null) {
+        const rate = Number(deal.approvedCommissionRate);
+        const current = dealRateMap.get(deal.collaboratorId) || 0;
+        if (rate > current) dealRateMap.set(deal.collaboratorId, rate);
+      }
+    }
+
+    const campaignBonusMap = new Map<string, number>();
+    for (const camp of activeCampaigns) {
+      const bonus = Number(camp.bonusCommissionRate);
+      for (const p of camp.participants) {
+        const current = campaignBonusMap.get(p.collaboratorId) || 0;
+        if (bonus > current) campaignBonusMap.set(p.collaboratorId, bonus);
+      }
+    }
+
+    const creators = collaborators.map((item) => {
+      const c = item.collaborator;
+      const exclusiveDealRate = dealRateMap.get(c.id) ?? null;
+      const campaignBonusRate = campaignBonusMap.get(c.id) ?? 0;
+      const isExclusiveVip = exclusiveDealRate !== null;
+      const baseRate = exclusiveDealRate ?? defaultCommissionRate;
+      const currentEffectiveRate = baseRate + campaignBonusRate;
+      return {
+        ...c,
+        isExclusiveVip,
+        exclusiveDealRate,
+        campaignBonusRate,
+        baseRate,
+        currentEffectiveRate,
+      };
+    });
+
+    // Ưu tiên đối tác VIP lên đầu, sau đó theo số follower
+    creators.sort((a, b) => {
+      if (a.isExclusiveVip !== b.isExclusiveVip) {
+        return a.isExclusiveVip ? -1 : 1;
+      }
+      const followersA = a.collaboratorProfile?.totalFollowers || 0;
+      const followersB = b.collaboratorProfile?.totalFollowers || 0;
+      return followersB - followersA;
+    });
+
     return {
       products,
-      creators: collaborators.map((item) => item.collaborator),
-      defaultCommissionRate: Number(store?.defaultCommissionRate ?? 10),
+      creators,
+      defaultCommissionRate,
       serverTime: new Date().toISOString(),
     };
   }
@@ -297,6 +369,54 @@ export class LiveSessionsService {
           data: { sessionId, storeId: dto.storeId },
         },
       });
+
+      // Tự động gửi tin nhắn mời Live vào phòng Chat giữa Shop và KOL
+      try {
+        let conversation = await tx.conversation.findFirst({
+          where: { storeId: dto.storeId, collaboratorId: dto.creatorId },
+          select: { id: true },
+        });
+        if (!conversation) {
+          conversation = await tx.conversation.create({
+            data: { storeId: dto.storeId, collaboratorId: dto.creatorId },
+            select: { id: true },
+          });
+        }
+
+        const kolName = creator.collaborator?.fullName || 'KOL';
+        const startsAtVn = new Date(startsAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+        const endsAtVn = new Date(endsAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+        const discountText = dto.discountValue
+          ? `Giảm ${dto.discountValue}${dto.discountType === 'PERCENTAGE' ? '%' : '₫'}`
+          : 'Ưu đãi độc quyền';
+
+        const defaultInviteText =
+          `🔴 LỜI MỜI LIVESTREAM TỪ GIAN HÀNG ${store.name}\n` +
+          `Chào ${kolName}, Shop trân trọng gửi lời mời bạn tham gia phiên phát sóng "${dto.title.trim()}".\n\n` +
+          `⏰ Lịch phát sóng: ${startsAtVn} – ${endsAtVn}\n` +
+          `💰 Hoa hồng phiên Live: ${dto.commissionRate}%\n` +
+          `🎁 Voucher độc quyền: ${discountText} (Tổng ${dto.usageLimitTotal ?? 'không giới hạn'} lượt)\n` +
+          `📦 Sản phẩm ghim: ${productIds.length} sản phẩm chiến lược\n\n` +
+          `👉 Bạn vui lòng kiểm tra và xác nhận tham gia phiên live nhé!`;
+
+        const finalMessageText = dto.customMessage?.trim()
+          ? `${dto.customMessage.trim()}\n\n---\n${defaultInviteText}`
+          : defaultInviteText;
+
+        await tx.chatMessage.create({
+          data: {
+            conversationId: conversation.id,
+            senderId: userId,
+            messageText: finalMessageText,
+          },
+        });
+        await tx.conversation.update({
+          where: { id: conversation.id },
+          data: { lastMessageAt: new Date() },
+        });
+      } catch (chatErr) {
+        this.logger.error('Lỗi tự động gửi tin nhắn mời live qua Chat:', chatErr);
+      }
 
       // Thông báo tới icon chuông của tất cả user khi Chủ Shop tạo phiên live
       try {

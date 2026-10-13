@@ -56,6 +56,7 @@ const MarketingToolkitPage = lazy(() => import('../pages/collaborator/MarketingT
 const CreatorProfilePage = lazy(() => import('../pages/collaborator/CreatorProfilePage'));
 const ShopKolHubPage = lazy(() => import('../pages/merchant/ShopKolHubPage'));
 const ShopPromotionsHubPage = lazy(() => import('../pages/merchant/ShopPromotionsHubPage'));
+const LiveSessionsPage = lazy(() => import('../pages/merchant/LiveSessionsPage'));
 const CollaboratorLiveSessionsPage = lazy(() => import('../pages/collaborator/LiveSessionsPage'));
 const AdminOversightHubPage = lazy(() => import('../pages/admin/AdminOversightHubPage'));
 const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHubPage'));
@@ -197,6 +198,8 @@ function AppRoutes() {
               <Route path="merchant/kol-hub" element={<ShopKolHubPage />} />
               <Route path="merchant/customer-messages" element={<ChatBoxPage />} />
               <Route path="merchant/promotions" element={<ShopPromotionsHubPage />} />
+              <Route path="merchant/live-sessions" element={<LiveSessionsPage />} />
+              <Route path="merchant/livestream" element={<Navigate to="/merchant/live-sessions" replace />} />
               <Route path="merchant/fraud-sentinel" element={<Navigate to="/admin/fraud-sentinel" replace />} />
               <Route path="merchant/ai-fraud" element={<Navigate to="/admin/fraud-sentinel" replace />} />
               <Route path="merchant/audit-logs" element={<Navigate to="/admin/audit-logs" replace />} />

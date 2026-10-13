@@ -18,6 +18,7 @@ const ROUTE_LOADERS: Record<string, ComponentLoader> = {
   '/merchant/customer-messages': () => import('@/pages/chat/ChatBoxPage'),
   '/merchant/kol-hub': () => import('@/pages/merchant/ShopKolHubPage'),
   '/merchant/promotions': () => import('@/pages/merchant/ShopPromotionsHubPage'),
+  '/merchant/live-sessions': () => import('@/pages/merchant/LiveSessionsPage'),
   '/merchant/payouts': () => import('@/pages/merchant/PayoutApprovalPage'),
   '/merchant/settings': () => import('@/pages/merchant/ShopSettingsPage'),
 
@@ -45,19 +46,22 @@ const ROUTE_LOADERS: Record<string, ComponentLoader> = {
 };
 
 const ROUTE_DATA_PREFETCH: Record<string, () => Promise<any>> = {
-  '/merchant/orders': () => api.get('/orders', { params: { page: 1, limit: 10 } }),
+  '/merchant/orders': () => api.get('/orders/my-store', { params: { page: 1, limit: 10 } }),
   '/merchant/products': () => api.get('/products', { params: { page: 1, limit: 10 } }),
   '/merchant/customer-messages': () => api.get('/chat/conversations'),
-  '/merchant/kol-hub': () => api.get('/sample-requests'),
-  '/merchant/payouts': () => api.get('/payouts/history'),
+  '/merchant/kol-hub': () => api.get('/sample-requests/shop'),
+  '/merchant/payouts': () => {
+    const sId = localStorage.getItem('current_store_id');
+    return sId ? api.get(`/stores/${sId}/payouts`, { params: { page: 1, limit: 10 } }) : Promise.resolve();
+  },
   '/collaborator/marketing': () => api.get('/referral-links'),
-  '/collaborator/collaboration': () => api.get('/campaigns'),
-  '/collaborator/wallet': () => api.get('/wallets/my'),
+  '/collaborator/collaboration': () => api.get('/campaigns/my-invitations'),
+  '/collaborator/wallet': () => api.get('/wallets/me'),
   '/admin/users': () => api.get('/kyc/pending'),
   '/admin/audit-logs': () => api.get('/audit'),
   '/admin/fraud-sentinel': () => api.get('/audit/fraud-alerts'),
   '/admin/product-moderation': () => api.get('/products', { params: { status: 'PENDING_APPROVAL' } }),
-  '/customer/orders': () => api.get('/orders/my'),
+  '/customer/orders': () => api.get('/customer/orders'),
   '/marketplace': () => api.get('/products'),
 };
 

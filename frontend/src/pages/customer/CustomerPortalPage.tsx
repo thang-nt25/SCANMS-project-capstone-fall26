@@ -3,19 +3,16 @@ import { useSearchParams, useNavigate, Link, useLocation } from 'react-router-do
 import {
   ShoppingBag,
   MapPin,
-  Heart,
   Search,
   Truck,
   CheckCircle2,
   Clock,
-  LogOut,
   ArrowLeft,
   Plus,
   Trash2,
   Edit2,
   AlertCircle,
   Loader2,
-  Store,
   Store as StoreIcon,
   ShieldCheck,
   RotateCcw,
@@ -23,8 +20,6 @@ import {
   X,
   XCircle,
   Camera,
-  Bell,
-  Ticket,
   MessageCircle,
   User,
   HelpCircle,
@@ -32,7 +27,6 @@ import {
   Mail,
   KeyRound,
   Lock,
-  Wallet,
   ChevronDown,
 } from 'lucide-react';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -55,6 +49,7 @@ import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { Topbar } from '../../components/layout/Topbar';
+import { Sidebar } from '../../components/layout/Sidebar';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
 import { CustomerWishlistTab } from './CustomerWishlistTab';
 import { CustomerVouchersTab } from './CustomerVouchersTab';
@@ -77,6 +72,7 @@ import {
 
 type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'identity' | 'upgrade' | 'vouchers' | 'notifications' | 'security' | 'wallet';
 type OrderFilterStatus = 'ALL' | 'UNPAID' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'RECEIVING' | 'COMPLETED' | 'RETURN_REQUESTED' | 'CANCELLED' | 'RETURNED';
+export type ProfileSubTab = 'info' | 'addresses' | 'identity' | 'security';
 
 const normalizeAdministrativeName = (value: string) => value
   .normalize('NFD')
@@ -102,20 +98,20 @@ export default function CustomerPortalPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const isProfilePath =
+    location.pathname.includes('/customer/profile') ||
+    location.pathname.includes('/customer/addresses') ||
+    location.pathname.includes('/customer/identity') ||
+    location.pathname.includes('/customer/security');
+
   const pathTab = location.pathname.includes('/customer/wallet')
     ? 'wallet'
     : location.pathname.includes('/customer/upgrade')
     ? 'upgrade'
-    : location.pathname.includes('/customer/identity')
-    ? 'identity'
-    : location.pathname.includes('/customer/addresses')
-    ? 'addresses'
+    : isProfilePath
+    ? 'profile'
     : location.pathname.includes('/customer/wishlist')
     ? 'wishlist'
-    : location.pathname.includes('/customer/profile')
-    ? 'profile'
-    : location.pathname.includes('/customer/security')
-    ? 'security'
     : location.pathname.includes('/customer/vouchers')
     ? 'vouchers'
     : location.pathname.includes('/customer/notifications')
@@ -123,7 +119,32 @@ export default function CustomerPortalPage() {
     : location.pathname.includes('/customer/orders')
     ? 'orders'
     : null;
-  const currentTab = pathTab || (searchParams.get('tab') as CustomerTab) || 'orders';
+
+  const rawQueryTab = searchParams.get('tab');
+  const normalizedQueryTab: CustomerTab | null =
+    rawQueryTab === 'addresses' || rawQueryTab === 'identity' || rawQueryTab === 'security'
+      ? 'profile'
+      : (rawQueryTab as CustomerTab | null);
+
+  const currentTab: CustomerTab = pathTab || normalizedQueryTab || 'orders';
+
+  const querySubTab = searchParams.get('sub');
+  const activeProfileSubTab: ProfileSubTab =
+    location.pathname.includes('/customer/addresses') || querySubTab === 'addresses' || rawQueryTab === 'addresses'
+      ? 'addresses'
+      : location.pathname.includes('/customer/identity') || querySubTab === 'identity' || rawQueryTab === 'identity'
+      ? 'identity'
+      : location.pathname.includes('/customer/security') || querySubTab === 'security' || rawQueryTab === 'security'
+      ? 'security'
+      : 'info';
+
+  const handleSelectProfileSubTab = (sub: ProfileSubTab) => {
+    if (sub === 'info') {
+      navigate('/customer/profile');
+    } else {
+      navigate(`/customer/profile?sub=${sub}`);
+    }
+  };
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
   const [profileData, setProfileData] = useState<CustomerProfileResponse | null>(null);
@@ -257,18 +278,6 @@ export default function CustomerPortalPage() {
     return `*********${last2}`;
   };
 
-  const displayName =
-    profileData?.user?.fullName?.trim() ||
-    currentUser?.fullName?.trim() ||
-    profileData?.user?.email?.split('@')[0] ||
-    currentUser?.email?.split('@')[0] ||
-    'Khách Hàng SCANMS';
-
-  const username =
-    profileData?.user?.email?.split('@')[0] ||
-    currentUser?.email?.split('@')[0] ||
-    'khachhang';
-
   // Avatar Upload State & Handler
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -331,10 +340,20 @@ export default function CustomerPortalPage() {
   // Handle Tab changes
   useEffect(() => {
     if (currentTab === 'orders') fetchOrders();
-    if (currentTab === 'addresses') fetchAddresses();
     if (currentTab === 'wishlist') fetchWishlist();
-    if (currentTab === 'identity') fetchIdentity();
+    if (currentTab === 'profile') {
+      fetchProfile();
+      fetchAddresses();
+      fetchIdentity();
+    }
   }, [currentTab, orderStatusFilter]);
+
+  useEffect(() => {
+    if (currentTab === 'profile') {
+      if (activeProfileSubTab === 'addresses') fetchAddresses();
+      if (activeProfileSubTab === 'identity') fetchIdentity();
+    }
+  }, [currentTab, activeProfileSubTab]);
 
   // Handle Notifications load & tab changes
   useEffect(() => {
@@ -989,7 +1008,7 @@ export default function CustomerPortalPage() {
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(addressForm.districtCode));
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612]">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
       <Topbar
         currentUser={currentUser}
         onLogout={() => {
@@ -998,236 +1017,25 @@ export default function CustomerPortalPage() {
         }}
       />
 
-      <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-4 sm:pb-5 flex-1">
-        <div className="flex flex-col lg:flex-row gap-5 items-start">
+      <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col">
+        <div className="flex flex-col lg:flex-row gap-5 items-start flex-1 min-h-0">
           {/* ========================================================= */}
-          {/* LEFT SIDEBAR - USER CARD & SCANMS Standard NAVIGATION MENU */}
+          {/* CỘT TRÁI: SIDEBAR DÙNG CHUNG 100% TOÀN SÀN SCANMS */}
           {/* ========================================================= */}
-          <div className="workspace-sidebar-slot relative lg:self-stretch after:content-[''] after:absolute after:pointer-events-none after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-gradient-to-r after:from-transparent after:via-[#EEDFC6] after:to-transparent lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-gradient-to-b lg:after:from-transparent lg:after:via-[#EEDFC6] lg:after:to-transparent">
-          <aside className="customer-portal-sidebar w-full lg:w-[250px] shrink-0 bg-transparent px-2 py-3.5 sticky top-[var(--workspace-header-height,69px)] self-start text-left select-none flex flex-col gap-2.5 z-30">
-            {/* User Identity Header (SCANMS UI Reference Style matching Sidebar.tsx) */}
-            <div className="flex items-center gap-3 px-1 py-1">
-              {/* Hidden file input for avatar upload */}
-              <input
-                type="file"
-                ref={avatarInputRef}
-                onChange={handleAvatarFileSelected}
-                accept="image/png,image/jpeg,image/webp,image/jpg"
-                className="hidden"
-              />
-
-              <div className="relative shrink-0 group">
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={uploadingAvatar}
-                  className="w-12 h-12 rounded-full border border-[#EAE4D7] overflow-hidden bg-[#FAF8F5] flex items-center justify-center text-[#8C6226] font-bold text-lg select-none relative cursor-pointer group-hover:opacity-90 transition shadow-2xs"
-                  title="Bấm vào để tải/đổi ảnh đại diện"
-                >
-                  {uploadingAvatar ? (
-                    <Loader2 className="w-4 h-4 text-[#B88E4F] animate-spin" />
-                  ) : (profileData?.user.avatarUrl || currentUser?.avatarUrl) ? (
-                    <img
-                      src={profileData?.user.avatarUrl || currentUser?.avatarUrl || ''}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>
-                      {profileData?.user.fullName ? profileData.user.fullName.charAt(0).toUpperCase() : currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
-                    </span>
-                  )}
-                  {/* Hover Camera Overlay */}
-                  {!uploadingAvatar && (
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                      <Camera className="w-4 h-4 text-white drop-shadow" />
-                    </div>
-                  )}
-                </button>
-              </div>
-
-              <div className="min-w-0 flex-1 text-left">
-                <strong className="block text-sm font-bold text-[#1A1612] truncate" title={displayName}>
-                  {displayName}
-                </strong>
-                <button
-                  type="button"
-                  onClick={() => setTab('profile')}
-                  className="inline-flex items-center gap-1 text-xs text-[#7D715E] hover:text-[#C59B58] transition-colors mt-0.5 cursor-pointer font-normal"
-                >
-                  <Edit2 className="w-3 h-3 text-[#7D715E]" />
-                  <span>Sửa Hồ Sơ</span>
-                </button>
-              </div>
-            </div>
-
-            {/* SCANMS Standard Minimalist Navigation List */}
-            <nav className="flex flex-col gap-0.5 text-xs sm:text-[13px]" aria-label="Menu chức năng khách hàng">
-              <button
-                type="button"
-                onClick={() => setTab('orders')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'orders'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <ShoppingBag className={`w-4 h-4 shrink-0 ${currentTab === 'orders' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Đơn Mua Của Tôi</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTab('wallet')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'wallet'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Wallet className={`w-4 h-4 shrink-0 ${currentTab === 'wallet' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Ví Mua Sắm SCANMS</span>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab('vouchers')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'vouchers'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Ticket className={`w-4 h-4 shrink-0 ${currentTab === 'vouchers' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Kho Voucher</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTab('wishlist')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'wishlist'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Heart className={`w-4 h-4 shrink-0 ${currentTab === 'wishlist' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Sản Phẩm Yêu Thích</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTab('notifications')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'notifications'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Bell className={`w-4 h-4 shrink-0 ${currentTab === 'notifications' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Thông Báo</span>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab('profile')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'profile'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <User className={`w-4 h-4 shrink-0 ${currentTab === 'profile' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Hồ Sơ Cá Nhân</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTab('identity')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'identity'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <ShieldCheck className={`w-4 h-4 shrink-0 ${currentTab === 'identity' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Xác Minh CCCD</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTab('addresses')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'addresses'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <MapPin className={`w-4 h-4 shrink-0 ${currentTab === 'addresses' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Sổ Địa Chỉ</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTab('security')}
-                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer ${
-                  currentTab === 'security'
-                    ? 'text-[#B88E4F] font-bold'
-                    : 'text-[#574C3D] hover:text-[#B88E4F] font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Lock className={`w-4 h-4 shrink-0 ${currentTab === 'security' ? 'text-[#B88E4F]' : 'text-[#7D715E] group-hover:text-[#B88E4F]'}`} />
-                  <span>Đổi Mật Khẩu</span>
-                </div>
-              </button>
-            </nav>
-
-            {/* Bottom Actions (SCANMS UI Reference Style matching Sidebar.tsx) */}
-            <div className="pt-2 flex flex-col gap-1 text-xs sm:text-[13px]">
-              <Link
-                to="/marketplace"
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium text-[#7D715E] hover:text-[#B88E4F] transition cursor-pointer group"
-                title="Quay lại Sàn Mua Sắm SCANMS"
-              >
-                <ArrowLeft className="w-4 h-4 text-[#7D715E] group-hover:text-[#B88E4F] shrink-0" aria-hidden="true" />
-                <Store className="w-4 h-4 text-[#7D715E] group-hover:text-[#B88E4F] shrink-0" />
-                <span>Sàn Mua Sắm</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => {
-                  authService.logout();
-                  navigate('/login');
-                }}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] font-semibold text-rose-600 hover:text-rose-700 transition cursor-pointer text-left w-full"
-              >
-                <LogOut className="w-4 h-4 text-rose-500 shrink-0" />
-                <span>Đăng xuất</span>
-              </button>
-            </div>
-          </aside>
+          <div className="relative w-full lg:w-[250px] lg:shrink-0 lg:h-full lg:flex lg:flex-col after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]">
+            <Sidebar
+              currentUser={currentUser}
+              onLogout={() => {
+                authService.logout();
+                navigate('/login');
+              }}
+            />
           </div>
 
           {/* ========================================================= */}
           {/* RIGHT MAIN PANEL - CONTENT ACCORDING TO ACTIVE TAB */}
           {/* ========================================================= */}
-          <div className="workspace-page-column w-full flex-1 min-w-0 flex flex-col gap-4 text-left">
+          <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
             {/* ------------------------------------------------------------- */}
             {/* TAB 1: ĐƠN MUA CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}
@@ -1664,112 +1472,6 @@ export default function CustomerPortalPage() {
               </section>
             )}
 
-            {/* ------------------------------------------------------------- */}
-            {/* TAB 2: SỔ ĐỊA CHỈ NHẬN HÀNG (ADDRESS BOOK) */}
-            {/* ------------------------------------------------------------- */}
-            {currentTab === 'addresses' && (
-              <section className="@container/addresses grid gap-[14px] w-full max-w-[1120px] min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-labelledby="customer-address-book-title">
-                <div className="flex items-center justify-between flex-wrap gap-[12px] @max-[419px]:gap-[10px] pt-[4px] pb-[16px] @max-[419px]:pb-[12px] border-b border-[#EAE4D7]">
-                  <div className="flex items-center gap-[10px] min-w-0">
-                    <span className="grid place-items-center shrink-0 w-[40px] h-[40px] @max-[419px]:w-[34px] @max-[419px]:h-[36px] border border-[#EEDFC6] rounded-[11px] @max-[419px]:rounded-[9px] bg-white text-[#B88E4F]" aria-hidden="true"><MapPin size={18} /></span>
-                    <div>
-                      <div className="flex items-center flex-wrap gap-[8px]">
-                        <h1 id="customer-address-book-title" className="m-0 text-[20px] @max-[419px]:text-[18px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Địa chỉ nhận hàng</h1>
-                        {!addressesLoading && (
-                          <span className="px-[7px] py-[2px] rounded-[5px] bg-[#F3EFE6] text-[#7D715E] text-[11px] leading-[1.5] whitespace-nowrap" aria-live="polite">{addresses.length} địa chỉ</span>
-                        )}
-                      </div>
-                      <p className="mt-[3px] mb-0 text-[#7D715E] text-[12px] @max-[419px]:text-[11px] leading-[1.5]">Lưu địa chỉ để đặt hàng thuận tiện hơn.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center shrink-0 gap-[8px] @max-[419px]:ml-[44px]">
-                    <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[9px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px] transition-colors">
-                      <Plus size={15} className="text-[#B88E4F]" aria-hidden="true" />
-                      <span>Thêm địa chỉ</span>
-                    </button>
-                  </div>
-                </div>
-
-                {addressesLoading ? (
-                  <div className="flex flex-col items-center justify-center gap-[10px] min-h-[160px] p-[28px_14px] border border-[#EAE4D7] rounded-[13px] bg-white text-[#7D715E] text-center text-[12px]" aria-live="polite">
-                    <Loader2 className="animate-spin text-[#B88E4F]" size={25} aria-hidden="true" />
-                    <span>Đang tải sổ địa chỉ…</span>
-                  </div>
-                ) : addresses.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center gap-[10px] min-h-[160px] p-[28px_14px] border border-[#EAE4D7] rounded-[13px] bg-white text-[#7D715E] text-center text-[12px]">
-                    <span className="grid place-items-center w-[40px] h-[40px] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><MapPin size={23} /></span>
-                    <div>
-                      <strong className="text-[#1A1612] text-[16px] font-[600]">Chưa có địa chỉ nhận hàng</strong>
-                      <p className="mt-[4px] mb-0 text-[#7D715E] text-[12px] leading-[1.5]">Thêm địa chỉ đầu tiên để thuận tiện hơn khi đặt mua.</p>
-                    </div>
-                    <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[9px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px] transition-colors">
-                      <Plus size={15} className="text-[#B88E4F]" aria-hidden="true" /> Thêm địa chỉ
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 @max-[719px]:grid-cols-1 items-stretch gap-[14px]">
-                    {addresses.map((addr) => (
-                      <article key={addr.id} className={`relative grid grid-cols-[38px_minmax(0,1fr)] content-start gap-[12px] min-w-0 @max-[719px]:max-w-[580px] p-[20px_20px_12px] border rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] text-left transition-colors ${addr.isDefault ? 'border-[#EEDFC6] before:content-[\'\'] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]' : 'border-[#EAE4D7] hover:border-[#EEDFC6]'}`}>
-                        <span className="grid place-items-center w-[38px] h-[42px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><MapPin size={19} /></span>
-                        <div className="flex flex-col gap-[5px] min-w-0">
-                          <div className="flex justify-between items-start flex-wrap gap-[6px_8px] mb-[3px]">
-                            <div className="flex flex-col items-start gap-[2px] min-w-0">
-                              <strong className="text-[#1A1612] text-[16px] font-[650] leading-[1.4] break-words">{addr.fullName}</strong>
-                              <span className="text-[#7D715E] text-[12px] leading-[1.5] font-mono tabular-nums">{addr.phoneNumber}</span>
-                            </div>
-                            {addr.isDefault && (
-                              <span className="inline-flex items-center gap-[4px] shrink-0 px-[6px] py-[3px] rounded-[5px] bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-[550] leading-[1.5] whitespace-nowrap"><CheckCircle2 size={11} aria-hidden="true" />Mặc định</span>
-                            )}
-                          </div>
-                          <p className="m-0 text-[#1A1612] font-[500] text-[12px] leading-[1.6] break-words">{addr.detailAddress}</p>
-                          <p className="m-0 text-[#7D715E] text-[12px] leading-[1.6] break-words">{addr.wardName}, {addr.districtName}, {addr.provinceName}</p>
-                        </div>
-
-                        <div className="col-span-full flex items-center justify-between flex-wrap gap-[6px] mt-[1px] pt-[10px] border-t border-[#EAE4D7]">
-                          {!addr.isDefault ? (
-                            <button
-                              type="button"
-                              onClick={() => handleSetDefaultAddress(addr.id)}
-                              className="min-h-[30px] py-[5px] border-0 bg-transparent text-[#B88E4F] text-[11px] font-[550] text-left cursor-pointer hover:underline hover:underline-offset-[3px] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px]"
-                            >
-                              Đặt làm mặc định
-                            </button>
-                          ) : (
-                            <span className="inline-flex items-center gap-[5px] text-[#7D715E] text-[11px] leading-[1.5]">
-                              <CheckCircle2 size={14} className="text-[#059669] shrink-0" aria-hidden="true" />
-                              <span>Giao đến địa chỉ này</span>
-                            </span>
-                          )}
-
-                          <div className="flex items-center shrink-0 gap-[4px]">
-                            <button
-                              type="button"
-                              onClick={() => openEditAddressModal(addr)}
-                              title="Sửa địa chỉ"
-                              aria-label={`Sửa địa chỉ của ${addr.fullName}`}
-                              className="inline-flex items-center justify-center gap-[5px] min-h-[30px] px-[8px] py-[5px] border border-transparent rounded-[7px] bg-transparent text-[#7D715E] text-[11px] font-[550] cursor-pointer hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px] transition-colors"
-                            >
-                              <Edit2 size={15} className="text-[#B88E4F]" aria-hidden="true" />
-                              <span>Sửa</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setAddressPendingDeletion(addr)}
-                              title="Xóa địa chỉ"
-                              aria-label={`Xóa địa chỉ của ${addr.fullName}`}
-                              className="inline-flex items-center justify-center gap-[5px] min-h-[30px] px-[8px] py-[5px] border border-transparent rounded-[7px] bg-transparent text-[#7D715E] text-[11px] font-[550] cursor-pointer hover:border-[#EAE4D7] hover:bg-[#FAF8F5] hover:text-[#DC2626] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px] transition-colors"
-                            >
-                              <Trash2 size={15} aria-hidden="true" />
-                              <span>Xóa</span>
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
 
             {/* ------------------------------------------------------------- */}
             {/* TAB 3: SẢN PHẨM YÊU THÍCH (WISHLIST) */}
@@ -1797,110 +1499,492 @@ export default function CustomerPortalPage() {
               />
             )}
             {/* ------------------------------------------------------------- */}
-            {/* TAB 4: HỒ SƠ CỦA TÔI (SCANMS Standard - IMAGE 1) */}
+            {/* TAB: HỒ SƠ CÁ NHÂN (TÍCH HỢP ĐỊA CHỈ, ĐỊNH DANH CCCD, BẢO MẬT) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'profile' && (
-              <section className="@container/profile grid gap-[14px] w-full max-w-[1040px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-labelledby="customer-profile-title">
+              <section className="@container/profile grid gap-[16px] w-full max-w-[1040px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-labelledby="customer-profile-title">
                 <header className="flex items-center gap-[10px] pt-[4px] pb-[14px] border-b border-[#EAE4D7]">
                   <span className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true"><User size={18} /></span>
                   <div>
-                    <h1 id="customer-profile-title" className="m-0 text-[20px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Hồ sơ của tôi</h1>
-                    <p className="mt-[3px] mb-0 text-[#7D715E] text-[12px] leading-[1.5]">Quản lý thông tin cá nhân và thông tin liên hệ.</p>
+                    <h1 id="customer-profile-title" className="m-0 text-[20px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Hồ sơ cá nhân</h1>
                   </div>
                 </header>
 
-                <div className="grid grid-cols-[minmax(0,1fr)_220px] @max-[719px]:grid-cols-1 items-start gap-[14px] min-w-0">
-                  <div className="relative min-w-0 border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]">
-                    <form onSubmit={handleUpdateProfile} className="flex flex-col gap-[16px] @max-[519px]:gap-[14px] min-w-0 p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
-                      <div className="flex items-center gap-[10px] p-[10px_12px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5]">
-                        <span className="grid place-items-center shrink-0 w-[34px] h-[36px] rounded-[8px] bg-white text-[#B88E4F]" aria-hidden="true"><User size={16} /></span>
-                        <div className="min-w-0">
-                          <span className="block text-[#7D715E] text-[10px] leading-[1.5]">Tên đăng nhập</span>
-                          <strong className="block text-[13px] font-[600] leading-[1.5] break-words text-[#1A1612]">{username}</strong>
-                          <p className="mt-[2px] mb-0 text-[#7D715E] text-[11px] leading-[1.5]">Tên đăng nhập chỉ có thể thay đổi một lần.</p>
-                        </div>
-                      </div>
+                {/* Sub-tabs Navigation Bar - Trải đều full-width cân đối */}
+                <nav className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#F3EFE6] rounded-xl border border-[#EAE4D7] w-full" aria-label="Phân mục hồ sơ cá nhân">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectProfileSubTab('info')}
+                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                      activeProfileSubTab === 'info'
+                        ? 'bg-white text-[#1A1612] shadow-xs border border-[#EEDFC6] font-bold'
+                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
+                    }`}
+                  >
+                    <User size={15} className={activeProfileSubTab === 'info' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
+                    <span>Thông tin cá nhân</span>
+                  </button>
 
-                      <div className="flex flex-col gap-[6px] min-w-0">
-                        <label htmlFor="customer-profile-name" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Họ và tên</label>
-                        <input id="customer-profile-name" type="text" autoComplete="name" value={nameInput} onChange={(e) => setNameInput(e.target.value)} required placeholder="Nhập họ và tên" className="w-full min-w-0 h-[40px] px-[10px] py-[8px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition" />
-                      </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectProfileSubTab('addresses')}
+                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                      activeProfileSubTab === 'addresses'
+                        ? 'bg-white text-[#1A1612] shadow-xs border border-[#EEDFC6] font-bold'
+                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
+                    }`}
+                  >
+                    <MapPin size={15} className={activeProfileSubTab === 'addresses' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
+                    <span>Địa chỉ nhận hàng</span>
+                    {!addressesLoading && addresses.length > 0 && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                        activeProfileSubTab === 'addresses'
+                          ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]'
+                          : 'bg-[#EAE4D7] text-[#7D715E]'
+                      }`}>
+                        {addresses.length}
+                      </span>
+                    )}
+                  </button>
 
-                      <div className="grid grid-cols-2 @max-[519px]:grid-cols-1 gap-[12px]">
-                        <div className="flex flex-col gap-[6px] min-w-0">
-                          <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Email</span>
-                          <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
-                            <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{maskEmail(profileData?.user.email || currentUser?.email)}</span>
-                            <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-[24px] px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => toast.info('Email đã được bảo mật theo chuẩn định danh')} aria-label="Thay đổi email"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectProfileSubTab('identity')}
+                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                      activeProfileSubTab === 'identity'
+                        ? 'bg-white text-[#1A1612] shadow-xs border border-[#EEDFC6] font-bold'
+                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
+                    }`}
+                  >
+                    <ShieldCheck size={15} className={activeProfileSubTab === 'identity' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
+                    <span>Xác minh CCCD</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                      cccdVerified
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      {cccdVerified ? 'Đã xác thực' : 'Chưa xác thực'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectProfileSubTab('security')}
+                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                      activeProfileSubTab === 'security'
+                        ? 'bg-white text-[#1A1612] shadow-xs border border-[#EEDFC6] font-bold'
+                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
+                    }`}
+                  >
+                    <KeyRound size={15} className={activeProfileSubTab === 'security' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
+                    <span>Bảo mật & Mật khẩu</span>
+                  </button>
+                </nav>
+
+                {/* SubTab 1: Thông tin cá nhân */}
+                {activeProfileSubTab === 'info' && (
+                  <div className="grid grid-cols-[minmax(0,1fr)_220px] @max-[719px]:grid-cols-1 items-start gap-[14px] min-w-0">
+                    <div className="relative min-w-0 border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]">
+                      <form onSubmit={handleUpdateProfile} className="flex flex-col gap-[16px] @max-[519px]:gap-[14px] min-w-0 p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
+                        <div className="flex items-center gap-[10px] p-[10px_12px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5]">
+                          <span className="grid place-items-center shrink-0 w-[34px] h-[36px] rounded-[8px] bg-white text-[#B88E4F]" aria-hidden="true"><User size={16} /></span>
+                          <div className="min-w-0">
+                            <span className="block text-[#7D715E] text-[10px] leading-[1.5]">Tài khoản đăng nhập</span>
+                            <strong className="block text-[13px] font-[600] leading-[1.5] break-words text-[#1A1612]">
+                              {profileData?.user.email || currentUser?.email || 'Tài khoản SCANMS'}
+                            </strong>
                           </div>
                         </div>
 
                         <div className="flex flex-col gap-[6px] min-w-0">
-                          <label htmlFor={isEditingPhone ? 'customer-profile-phone' : undefined} className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Số điện thoại</label>
-                          {isEditingPhone ? (
-                            <div className="flex gap-[6px] items-center">
-                              <input id="customer-profile-phone" type="tel" autoComplete="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} placeholder="0912345678" autoFocus className="w-full min-w-0 h-[40px] px-[10px] py-[8px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition" />
-                              <button type="button" className="inline-flex items-center justify-center shrink-0 min-h-[30px] px-[8px] py-[5px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[11px] font-[550] cursor-pointer" onClick={() => setIsEditingPhone(false)}>Xong</button>
-                            </div>
-                          ) : (
+                          <label htmlFor="customer-profile-name" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Họ và tên</label>
+                          <input id="customer-profile-name" type="text" autoComplete="name" value={nameInput} onChange={(e) => setNameInput(e.target.value)} required placeholder="Nhập họ và tên" className="w-full min-w-0 h-[40px] px-[10px] py-[8px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition" />
+                        </div>
+
+                        <div className="grid grid-cols-2 @max-[519px]:grid-cols-1 gap-[12px]">
+                          <div className="flex flex-col gap-[6px] min-w-0">
+                            <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Email</span>
                             <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
-                              <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{phoneInput ? maskPhone(phoneInput) : 'Chưa cập nhật'}</span>
-                              <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-[24px] px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => setIsEditingPhone(true)} aria-label="Thay đổi số điện thoại"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
+                              <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{maskEmail(profileData?.user.email || currentUser?.email)}</span>
+                              <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-[24px] px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => toast.info('Email đã được bảo mật theo chuẩn định danh')} aria-label="Thay đổi email"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
                             </div>
+                          </div>
+
+                          <div className="flex flex-col gap-[6px] min-w-0">
+                            <label htmlFor={isEditingPhone ? 'customer-profile-phone' : undefined} className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Số điện thoại</label>
+                            {isEditingPhone ? (
+                              <div className="flex gap-[6px] items-center">
+                                <input id="customer-profile-phone" type="tel" autoComplete="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} placeholder="0912345678" autoFocus className="w-full min-w-0 h-[40px] px-[10px] py-[8px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition" />
+                                <button type="button" className="inline-flex items-center justify-center shrink-0 min-h-[30px] px-[8px] py-[5px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[11px] font-[550] cursor-pointer" onClick={() => setIsEditingPhone(false)}>Xong</button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
+                                <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{phoneInput ? maskPhone(phoneInput) : 'Chưa cập nhật'}</span>
+                                <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-[24px] px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => setIsEditingPhone(true)} aria-label="Thay đổi số điện thoại"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <fieldset className="m-0 p-0 border-0 min-w-0">
+                          <legend className="p-0 mb-[6px] text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Giới tính</legend>
+                          <div className="inline-flex flex-wrap gap-[6px]">
+                            {([{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: 'Nữ' }, { value: 'OTHER', label: 'Khác' }] as const).map((option) => (
+                              <label key={option.value} className={`inline-flex items-center gap-[6px] min-h-[36px] px-[12px] py-[7px] border rounded-[7px] text-[12px] cursor-pointer transition-colors ${gender === option.value ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] font-[550]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>
+                                <input type="radio" name="gender" checked={gender === option.value} onChange={() => setGender(option.value)} className="m-0 w-[14px] h-[14px] accent-[#B88E4F]" />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </fieldset>
+
+                        <div className="flex flex-col gap-[6px] min-w-0">
+                          <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]" id="customer-profile-birthday-label">Ngày sinh</span>
+                          <div className="grid grid-cols-3 gap-[8px] @max-[339px]:gap-[5px]" role="group" aria-labelledby="customer-profile-birthday-label">
+                            <Select value={birthDay} onChange={(e) => setBirthDay(e.target.value)} className="w-full" aria-label="Ngày sinh">
+                              {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => <option key={d} value={d}>Ngày {d}</option>)}
+                            </Select>
+                            <Select value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)} className="w-full" aria-label="Tháng sinh">
+                              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => <option key={m} value={m}>Tháng {m}</option>)}
+                            </Select>
+                            <Select value={birthYear} onChange={(e) => setBirthYear(e.target.value)} className="w-full" aria-label="Năm sinh">
+                              {Array.from({ length: 70 }, (_, i) => String(2015 - i)).map((y) => <option key={y} value={y}>Năm {y}</option>)}
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end -mx-[20px] @max-[519px]:-mx-[16px] p-[14px_20px] @max-[519px]:p-[14px_16px] border-t border-[#EAE4D7] rounded-b-[13px] bg-[#FAF8F5]">
+                          <button type="submit" disabled={updatingProfile || profileLoading} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait">
+                            {(updatingProfile || profileLoading) ? <Loader2 size={14} className="animate-spin text-[#B88E4F]" aria-hidden="true" /> : <CheckCircle2 size={14} className="text-[#B88E4F]" aria-hidden="true" />}
+                            <span>{updatingProfile ? 'Đang lưu…' : 'Lưu thay đổi'}</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+
+                    <aside className="flex flex-col items-center gap-[14px] min-w-0 p-[20px_14px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] @max-[719px]:row-start-1 @max-[719px]:grid @max-[719px]:grid-cols-[64px_minmax(0,1fr)] @max-[719px]:gap-[5px_12px] @max-[719px]:items-center @max-[719px]:justify-items-start @max-[719px]:p-[12px_14px]" aria-labelledby="customer-profile-avatar-title">
+                      <h2 id="customer-profile-avatar-title" className="m-0 text-[13px] font-[600] text-[#1A1612] @max-[719px]:col-start-2 @max-[719px]:row-start-1">Ảnh đại diện</h2>
+                      <input
+                        type="file"
+                        ref={avatarInputRef}
+                        onChange={handleAvatarFileSelected}
+                        accept="image/png,image/jpeg,image/webp,image/jpg"
+                        className="hidden"
+                      />
+                      <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="relative grid place-items-center w-[88px] h-[88px] @max-[719px]:w-[64px] @max-[719px]:h-[64px] @max-[719px]:col-start-1 @max-[719px]:row-span-2 p-0 border border-[#EEDFC6] rounded-full bg-[#FAF8F5] text-[#B88E4F] cursor-pointer overflow-hidden" aria-label="Chọn ảnh đại diện mới">
+                        {uploadingAvatar ? <Loader2 size={24} className="animate-spin" /> : profileData?.user.avatarUrl || currentUser?.avatarUrl ? (
+                          <img src={profileData?.user.avatarUrl || currentUser?.avatarUrl || ''} alt="Ảnh đại diện của bạn" className="w-full h-full object-cover" />
+                        ) : <User size={32} aria-hidden="true" />}
+                        <span className="absolute -bottom-px -right-px grid place-items-center w-[28px] h-[28px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Camera size={12} /></span>
+                      </button>
+                      <div className="flex flex-col items-center gap-[8px] @max-[719px]:col-start-2 @max-[719px]:row-start-2 @max-[719px]:flex-row @max-[719px]:flex-wrap @max-[719px]:justify-start @max-[719px]:gap-[6px_10px]">
+                        <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] @max-[719px]:min-h-[32px] px-[12px] @max-[719px]:px-[10px] py-[7px] @max-[719px]:py-[6px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] @max-[719px]:text-[11px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait"><Camera size={13} className="text-[#B88E4F]" aria-hidden="true" />{uploadingAvatar ? 'Đang tải…' : 'Chọn ảnh'}</button>
+                        <p className="m-0 text-[#7D715E] text-[10px] leading-[1.5] text-center">JPEG, PNG, WEBP · Tối đa 5 MB</p>
+                      </div>
+                    </aside>
+                  </div>
+                )}
+
+                {/* SubTab 2: Địa chỉ nhận hàng */}
+                {activeProfileSubTab === 'addresses' && (
+                  <div className="flex flex-col gap-[14px] min-w-0">
+                    <div className="flex items-center justify-between flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
+                      <div>
+                        <h2 className="m-0 text-[16px] font-[650] leading-[1.4] text-[#1A1612]">Sổ địa chỉ nhận hàng</h2>
+                      </div>
+                      <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-[38px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors">
+                        <Plus size={15} className="text-[#B88E4F]" aria-hidden="true" />
+                        <span>Thêm địa chỉ</span>
+                      </button>
+                    </div>
+
+                    {addressesLoading ? (
+                      <div className="flex flex-col items-center justify-center gap-[10px] min-h-[160px] p-[28px_14px] border border-[#EAE4D7] rounded-[13px] bg-white text-[#7D715E] text-center text-[12px]" aria-live="polite">
+                        <Loader2 className="animate-spin text-[#B88E4F]" size={25} aria-hidden="true" />
+                        <span>Đang tải sổ địa chỉ…</span>
+                      </div>
+                    ) : addresses.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center gap-[10px] min-h-[160px] p-[28px_14px] border border-[#EAE4D7] rounded-[13px] bg-white text-[#7D715E] text-center text-[12px]">
+                        <span className="grid place-items-center w-[40px] h-[40px] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><MapPin size={23} /></span>
+                        <div>
+                          <strong className="text-[#1A1612] text-[16px] font-[600]">Chưa có địa chỉ nhận hàng</strong>
+                          <p className="mt-[4px] mb-0 text-[#7D715E] text-[12px] leading-[1.5]">Thêm địa chỉ đầu tiên để thuận tiện hơn khi đặt mua.</p>
+                        </div>
+                        <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[9px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors">
+                          <Plus size={15} className="text-[#B88E4F]" aria-hidden="true" /> Thêm địa chỉ
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 @max-[719px]:grid-cols-1 items-stretch gap-[14px]">
+                        {addresses.map((addr) => (
+                          <article key={addr.id} className={`relative grid grid-cols-[38px_minmax(0,1fr)] content-start gap-[12px] min-w-0 p-[20px_20px_12px] border rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] text-left transition-colors ${addr.isDefault ? 'border-[#EEDFC6] before:content-[\'\'] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]' : 'border-[#EAE4D7] hover:border-[#EEDFC6]'}`}>
+                            <span className="grid place-items-center w-[38px] h-[42px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><MapPin size={19} /></span>
+                            <div className="flex flex-col gap-[5px] min-w-0">
+                              <div className="flex justify-between items-start flex-wrap gap-[6px_8px] mb-[3px]">
+                                <div className="flex flex-col items-start gap-[2px] min-w-0">
+                                  <strong className="text-[#1A1612] text-[16px] font-[650] leading-[1.4] break-words">{addr.fullName}</strong>
+                                  <span className="text-[#7D715E] text-[12px] leading-[1.5] font-mono tabular-nums">{addr.phoneNumber}</span>
+                                </div>
+                                {addr.isDefault && (
+                                  <span className="inline-flex items-center gap-[4px] shrink-0 px-[6px] py-[3px] rounded-[5px] bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-[550] leading-[1.5] whitespace-nowrap"><CheckCircle2 size={11} aria-hidden="true" />Mặc định</span>
+                                )}
+                              </div>
+                              <p className="m-0 text-[#1A1612] font-[500] text-[12px] leading-[1.6] break-words">{addr.detailAddress}</p>
+                              <p className="m-0 text-[#7D715E] text-[12px] leading-[1.6] break-words">{addr.wardName}, {addr.districtName}, {addr.provinceName}</p>
+                            </div>
+
+                            <div className="col-span-full flex items-center justify-between flex-wrap gap-[6px] mt-[1px] pt-[10px] border-t border-[#EAE4D7]">
+                              {!addr.isDefault ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetDefaultAddress(addr.id)}
+                                  className="min-h-[30px] py-[5px] border-0 bg-transparent text-[#B88E4F] text-[11px] font-[550] text-left cursor-pointer hover:underline hover:underline-offset-[3px] transition-colors"
+                                >
+                                  Đặt làm mặc định
+                                </button>
+                              ) : (
+                                <span className="inline-flex items-center gap-[5px] text-[#7D715E] text-[11px] leading-[1.5]">
+                                  <CheckCircle2 size={14} className="text-[#059669] shrink-0" aria-hidden="true" />
+                                  <span>Giao đến địa chỉ này</span>
+                                </span>
+                              )}
+
+                              <div className="flex items-center shrink-0 gap-[4px]">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditAddressModal(addr)}
+                                  title="Sửa địa chỉ"
+                                  aria-label={`Sửa địa chỉ của ${addr.fullName}`}
+                                  className="inline-flex items-center justify-center gap-[5px] min-h-[30px] px-[8px] py-[5px] border border-transparent rounded-[7px] bg-transparent text-[#7D715E] text-[11px] font-[550] cursor-pointer hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#1A1612] transition-colors"
+                                >
+                                  <Edit2 size={15} className="text-[#B88E4F]" aria-hidden="true" />
+                                  <span>Sửa</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setAddressPendingDeletion(addr)}
+                                  title="Xóa địa chỉ"
+                                  aria-label={`Xóa địa chỉ của ${addr.fullName}`}
+                                  className="inline-flex items-center justify-center gap-[5px] min-h-[30px] px-[8px] py-[5px] border border-transparent rounded-[7px] bg-transparent text-[#7D715E] text-[11px] font-[550] cursor-pointer hover:border-[#EAE4D7] hover:bg-[#FAF8F5] hover:text-[#DC2626] transition-colors"
+                                >
+                                  <Trash2 size={15} aria-hidden="true" />
+                                  <span>Xóa</span>
+                                </button>
+                              </div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SubTab 3: Định danh CCCD */}
+                {activeProfileSubTab === 'identity' && (
+                  <div className="flex flex-col gap-[14px] min-w-0">
+                    <div className="flex items-center justify-between flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
+                      <div>
+                        <div className="flex items-center flex-wrap gap-[8px]">
+                          <h2 className="m-0 text-[16px] font-[650] leading-[1.4] text-[#1A1612]">Xác minh định danh CCCD</h2>
+                          {cccdVerified && (
+                            <span className="inline-flex items-center gap-[4px] px-[6px] py-[2px] border border-[#EEDFC6] rounded-[5px] bg-[#FBF5EB] text-[#7D715E] text-[11px] leading-[1.5] whitespace-nowrap">
+                              <CheckCircle2 size={12} className="text-[#059669] shrink-0" aria-hidden="true" />
+                              Đã xác thực
+                            </span>
                           )}
                         </div>
                       </div>
-
-                      <fieldset className="m-0 p-0 border-0 min-w-0">
-                        <legend className="p-0 mb-[6px] text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Giới tính</legend>
-                        <div className="inline-flex flex-wrap gap-[6px]">
-                          {([{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: 'Nữ' }, { value: 'OTHER', label: 'Khác' }] as const).map((option) => (
-                            <label key={option.value} className={`inline-flex items-center gap-[6px] min-h-[36px] px-[12px] py-[7px] border rounded-[7px] text-[12px] cursor-pointer transition-colors ${gender === option.value ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] font-[550]' : 'border-[#EAE4D7] bg-white text-[#7D715E]'}`}>
-                              <input type="radio" name="gender" checked={gender === option.value} onChange={() => setGender(option.value)} className="m-0 w-[14px] h-[14px] accent-[#B88E4F]" />
-                              <span>{option.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </fieldset>
-
-                      <div className="flex flex-col gap-[6px] min-w-0">
-                        <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]" id="customer-profile-birthday-label">Ngày sinh</span>
-                        <div className="grid grid-cols-3 gap-[8px] @max-[339px]:gap-[5px]" role="group" aria-labelledby="customer-profile-birthday-label">
-                          <Select value={birthDay} onChange={(e) => setBirthDay(e.target.value)} className="w-full" aria-label="Ngày sinh">
-                            {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => <option key={d} value={d}>Ngày {d}</option>)}
-                          </Select>
-                          <Select value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)} className="w-full" aria-label="Tháng sinh">
-                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => <option key={m} value={m}>Tháng {m}</option>)}
-                          </Select>
-                          <Select value={birthYear} onChange={(e) => setBirthYear(e.target.value)} className="w-full" aria-label="Năm sinh">
-                            {Array.from({ length: 70 }, (_, i) => String(2015 - i)).map((y) => <option key={y} value={y}>Năm {y}</option>)}
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end -mx-[20px] @max-[519px]:-mx-[16px] p-[14px_20px] @max-[519px]:p-[14px_16px] border-t border-[#EAE4D7] rounded-b-[13px] bg-[#FAF8F5]">
-                        <button type="submit" disabled={updatingProfile || profileLoading} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait">
-                          {(updatingProfile || profileLoading) ? <Loader2 size={14} className="animate-spin text-[#B88E4F]" aria-hidden="true" /> : <CheckCircle2 size={14} className="text-[#B88E4F]" aria-hidden="true" />}
-                          <span>{updatingProfile ? 'Đang lưu…' : 'Lưu thay đổi'}</span>
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-
-                  <aside className="flex flex-col items-center gap-[14px] min-w-0 p-[20px_14px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] @max-[719px]:row-start-1 @max-[719px]:grid @max-[719px]:grid-cols-[64px_minmax(0,1fr)] @max-[719px]:gap-[5px_12px] @max-[719px]:items-center @max-[719px]:justify-items-start @max-[719px]:p-[12px_14px]" aria-labelledby="customer-profile-avatar-title">
-                    <h2 id="customer-profile-avatar-title" className="m-0 text-[13px] font-[600] text-[#1A1612] @max-[719px]:col-start-2 @max-[719px]:row-start-1">Ảnh đại diện</h2>
-                    <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="relative grid place-items-center w-[88px] h-[88px] @max-[719px]:w-[64px] @max-[719px]:h-[64px] @max-[719px]:col-start-1 @max-[719px]:row-span-2 p-0 border border-[#EEDFC6] rounded-full bg-[#FAF8F5] text-[#B88E4F] cursor-pointer overflow-hidden" aria-label="Chọn ảnh đại diện mới">
-                      {uploadingAvatar ? <Loader2 size={24} className="animate-spin" /> : profileData?.user.avatarUrl || currentUser?.avatarUrl ? (
-                        <img src={profileData?.user.avatarUrl || currentUser?.avatarUrl || ''} alt="Ảnh đại diện của bạn" className="w-full h-full object-cover" />
-                      ) : <User size={32} aria-hidden="true" />}
-                      <span className="absolute -bottom-px -right-px grid place-items-center w-[28px] h-[28px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Camera size={12} /></span>
-                    </button>
-                    <div className="flex flex-col items-center gap-[8px] @max-[719px]:col-start-2 @max-[719px]:row-start-2 @max-[719px]:flex-row @max-[719px]:flex-wrap @max-[719px]:justify-start @max-[719px]:gap-[6px_10px]">
-                      <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] @max-[719px]:min-h-[32px] px-[12px] @max-[719px]:px-[10px] py-[7px] @max-[719px]:py-[6px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] @max-[719px]:text-[11px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait"><Camera size={13} className="text-[#B88E4F]" aria-hidden="true" />{uploadingAvatar ? 'Đang tải…' : 'Chọn ảnh'}</button>
-                      <p className="m-0 text-[#7D715E] text-[10px] leading-[1.5] text-center">JPEG, PNG, WEBP · Tối đa 5 MB</p>
                     </div>
-                  </aside>
-                </div>
+
+                    <div className="relative min-w-0 border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[36px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]">
+                      {loadingIdentity ? (
+                        <div className="flex flex-col items-center justify-center gap-[10px] min-h-[140px] text-[#7D715E] text-[12px]" aria-live="polite">
+                          <Loader2 className="animate-spin text-[#B88E4F]" size={24} aria-hidden="true" />
+                          <span>Đang tải thông tin cá nhân…</span>
+                        </div>
+                      ) : (
+                        <form onSubmit={handleSubmitIdentity} className="grid grid-cols-2 @max-[519px]:grid-cols-1 gap-[16px] @max-[519px]:gap-[12px] p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
+                          <div className="flex flex-col gap-[6px] min-w-0">
+                            <label htmlFor="customer-identity-name" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Họ và tên <span className="text-[#B88E4F]">*</span></label>
+                            <div className="relative min-w-0">
+                              <User size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
+                              <input
+                                id="customer-identity-name"
+                                type="text"
+                                autoComplete="name"
+                                aria-describedby="customer-identity-name-hint"
+                                value={cccdFullName}
+                                onChange={(e) => setCccdFullName(e.target.value)}
+                                placeholder="Nhập họ và tên trên CCCD"
+                                className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
+                              />
+                            </div>
+                            <span className="text-[#7D715E] text-[11px] leading-[1.5]" id="customer-identity-name-hint">Họ tên đầy đủ theo giấy tờ.</span>
+                          </div>
+
+                          <div className="flex flex-col gap-[6px] min-w-0">
+                            <label htmlFor="customer-identity-number" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Số CCCD <span className="text-[#B88E4F]">*</span></label>
+                            <div className="relative min-w-0">
+                              <Shield size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
+                              <input
+                                id="customer-identity-number"
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="off"
+                                maxLength={12}
+                                aria-describedby="customer-identity-number-hint"
+                                value={cccdIdNumber}
+                                onChange={(e) => setCccdIdNumber(e.target.value.replace(/\D/g, ''))}
+                                placeholder="Nhập 12 chữ số trên CCCD"
+                                className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
+                              />
+                            </div>
+                            <span className="text-[#7D715E] text-[11px] leading-[1.5]" id="customer-identity-number-hint">Số định danh cá nhân trên CCCD.</span>
+                          </div>
+
+                          <div className="col-span-2 @max-[519px]:col-auto flex flex-col gap-[6px] min-w-0">
+                            <div className="flex items-center justify-between gap-[10px]">
+                              <label htmlFor="customer-identity-address" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Địa chỉ thường trú <span className="text-[#B88E4F]">*</span></label>
+                              <span className="text-[#7D715E] text-[11px] leading-[1.5] tabular-nums whitespace-nowrap" id="customer-identity-address-count">
+                                {cccdAddress.length}/200
+                              </span>
+                            </div>
+                            <div className="relative min-w-0">
+                              <MapPin size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
+                              <input
+                                id="customer-identity-address"
+                                type="text"
+                                autoComplete="street-address"
+                                maxLength={200}
+                                value={cccdAddress}
+                                onChange={(e) => setCccdAddress(e.target.value)}
+                                placeholder="Nhập địa chỉ thường trú trên CCCD"
+                                aria-describedby="customer-identity-address-count"
+                                className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="col-span-2 @max-[519px]:col-auto flex items-center justify-between flex-wrap @max-[519px]:flex-col-reverse @max-[519px]:items-stretch gap-[10px] m-[2px_-20px_0] @max-[519px]:m-[2px_-16px_0] p-[14px_20px] @max-[519px]:p-[14px_16px] border-t border-[#EAE4D7] rounded-b-[13px] bg-[#FAF8F5]">
+                            <span className="inline-flex items-center gap-[6px] max-w-[310px] @max-[519px]:max-w-none @max-[519px]:justify-center text-[#7D715E] text-[11px] @max-[519px]:text-[10px] leading-[1.6]">
+                              <Lock size={12} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
+                              Thông tin được bảo mật theo chính sách SCANMS.
+                            </span>
+                            <button
+                              type="submit"
+                              disabled={
+                                submittingIdentity ||
+                                !cccdFullName.trim() ||
+                                !cccdIdNumber.trim() ||
+                                !cccdAddress.trim()
+                              }
+                              className="w-auto @max-[519px]:w-full inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[7px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px] disabled:border-[#EAE4D7] disabled:bg-white disabled:text-[#7D715E] disabled:opacity-65 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {submittingIdentity ? <Loader2 className="animate-spin text-[#B88E4F]" size={14} aria-hidden="true" /> : <ShieldCheck size={14} className="text-[#B88E4F]" aria-hidden="true" />}
+                              <span>{submittingIdentity ? 'Đang xác nhận…' : 'Xác nhận thông tin'}</span>
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* SubTab 4: Bảo mật & Mật khẩu */}
+                {activeProfileSubTab === 'security' && (
+                  <div className="flex flex-col gap-[14px] min-w-0">
+                    <div className="flex items-center justify-between flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
+                      <div>
+                        <h2 className="m-0 text-[16px] font-[650] leading-[1.4] text-[#1A1612]">Bảo mật tài khoản & Mật khẩu</h2>
+                      </div>
+                    </div>
+
+                    {securityMode === 'VERIFY_METHOD' && (
+                      <div className="grid grid-cols-[minmax(0,1fr)_264px] @max-[659px]:grid-cols-[minmax(0,1fr)] items-start gap-[14px]">
+                        <section className="relative min-w-0 p-[20px] @max-[379px]:p-[16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] flex flex-col gap-[12px] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]" aria-labelledby="security-method-title">
+                          <div className="flex items-center gap-[9px]">
+                            <span className="grid place-items-center shrink-0 w-[36px] h-[38px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Mail size={17} /></span>
+                            <div>
+                              <h3 id="security-method-title" className="m-0 font-inherit text-[16px] font-[600] leading-[1.4]">Xác minh qua email</h3>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between flex-wrap gap-[4px_10px] p-[10px_12px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[12px] leading-[1.5]">
+                            <span className="text-[#7D715E] text-[11px]">Email nhận mã</span>
+                            <strong className="text-[12px] font-[550] break-all">{maskedSecurityEmail || maskEmail(currentUser?.email)}</strong>
+                          </div>
+                          <button type="button" onClick={handleSendSecurityOtp} disabled={sendingSecurityOtp} className="w-full inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[8px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] disabled:opacity-60 disabled:cursor-wait transition-colors">
+                            {sendingSecurityOtp ? <Loader2 className="animate-spin text-[#B88E4F]" size={14} aria-hidden="true" /> : <Mail size={14} className="text-[#B88E4F] shrink-0" aria-hidden="true" />}
+                            <span>{sendingSecurityOtp ? 'Đang gửi mã xác minh…' : 'Gửi mã xác minh qua email'}</span>
+                          </button>
+                          <div className="flex items-center gap-[6px] pt-[10px] border-t border-[#EAE4D7]">
+                            <Lock size={13} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
+                            <button type="button" onClick={() => setSecurityMode('DIRECT_CHANGE')} className="inline-flex items-center justify-between flex-1 gap-[6px] p-[3px_0] border-0 bg-transparent text-[#7D715E] hover:text-[#B88E4F] font-inherit text-[11px] font-[550] leading-[1.5] text-left cursor-pointer transition-colors">Đổi bằng mật khẩu hiện tại <ArrowLeft size={13} className="rotate-180" aria-hidden="true" /></button>
+                          </div>
+                        </section>
+                        <aside className="min-w-0 p-[14px_16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-none" aria-labelledby="security-help-title">
+                          <h3 id="security-help-title" className="flex items-center gap-[6px] m-0 mb-[8px] font-inherit text-[13px] font-[600] leading-[1.5]"><HelpCircle size={15} className="text-[#B88E4F]" aria-hidden="true" /> Trợ giúp xác minh</h3>
+                          <details className="border-t border-[#EAE4D7] first:border-t-0 group">
+                            <summary className="flex items-center justify-between gap-[6px] p-[10px_0] list-none text-[11px] font-[500] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] select-none [&::-webkit-details-marker]:hidden">Vì sao cần xác minh? <ChevronDown size={13} className="shrink-0 text-[#7D715E] transition-transform duration-200 group-open:rotate-180" aria-hidden="true" /></summary>
+                            <p className="m-0 pb-[10px] text-[#7D715E] text-[11px] leading-[1.7]">SCANMS xác minh email trước khi cho phép thiết lập mật khẩu mới để bảo vệ tài khoản của bạn.</p>
+                          </details>
+                          <details className="border-t border-[#EAE4D7] first:border-t-0 group">
+                            <summary className="flex items-center justify-between gap-[6px] p-[10px_0] list-none text-[11px] font-[500] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] select-none [&::-webkit-details-marker]:hidden">Chưa nhận được email? <ChevronDown size={13} className="shrink-0 text-[#7D715E] transition-transform duration-200 group-open:rotate-180" aria-hidden="true" /></summary>
+                            <p className="m-0 pb-[10px] text-[#7D715E] text-[11px] leading-[1.7]">Kiểm tra thư mục Spam. Nếu vẫn chưa nhận được, hãy liên hệ CSKH qua Chat hỗ trợ.</p>
+                          </details>
+                        </aside>
+                      </div>
+                    )}
+
+                    {securityMode === 'AWAIT_OTP' && (
+                      <section className="flex flex-col gap-[14px] w-full max-w-[460px] p-[20px] @max-[379px]:p-[16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] min-w-0" aria-labelledby="security-otp-title">
+                        <button type="button" className="inline-flex items-center gap-[5px] self-start p-0 border-0 bg-transparent text-[#7D715E] hover:text-[#B88E4F] font-inherit text-[11px] leading-[1.5] cursor-pointer transition-colors" onClick={() => setSecurityMode('VERIFY_METHOD')}><ArrowLeft size={13} aria-hidden="true" /> Quay lại</button>
+                        <div className="flex items-center gap-[9px]">
+                          <span className="grid place-items-center shrink-0 w-[36px] h-[38px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Mail size={17} /></span>
+                          <div><h3 id="security-otp-title" className="m-0 font-inherit text-[16px] font-[600] leading-[1.4]">Nhập mã xác thực</h3><p className="m-0 mt-[3px] text-[#7D715E] text-[11px] leading-[1.5]">Mã 6 số đã được gửi đến email của bạn.</p></div>
+                        </div>
+                        <div className="flex items-center justify-between flex-wrap gap-[4px_10px] p-[10px_12px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[12px] leading-[1.5]"><span className="text-[#7D715E] text-[11px]">Email nhận mã</span><strong className="text-[12px] font-[550] break-all">{maskedSecurityEmail || maskEmail(currentUser?.email)}</strong></div>
+                        <form onSubmit={handleVerifySecurityOtp} className="flex flex-col gap-[12px] min-w-0">
+                          <div className="flex flex-col gap-[6px]">
+                            <label htmlFor="customer-security-otp" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Mã OTP</label>
+                            <input id="customer-security-otp" type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" maxLength={6} autoFocus value={securityOtp} onChange={(e) => setSecurityOtp(e.target.value.replace(/\D/g, ''))} placeholder="••••••" className="w-full min-w-0 h-[46px] p-[8px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] font-mono text-[22px] tracking-[0.45em] text-center outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] placeholder:text-[#7D715E] transition-colors" />
+                          </div>
+                          <div className="text-[#7D715E] text-[11px] leading-[1.5]">
+                            {otpCountdown > 0 ? <span>Gửi lại sau <strong className="text-[#B88E4F] font-[550]">{otpCountdown}s</strong></span> : <button type="button" onClick={handleSendSecurityOtp} disabled={sendingSecurityOtp} className="p-0 border-0 bg-transparent text-[#B88E4F] font-inherit text-[11px] cursor-pointer hover:underline disabled:opacity-60 disabled:cursor-wait">{sendingSecurityOtp ? 'Đang gửi…' : 'Gửi lại mã OTP'}</button>}
+                          </div>
+                          <button type="submit" disabled={verifyingSecurityOtp || securityOtp.length < 6} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[8px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] disabled:opacity-60 disabled:cursor-wait transition-colors">
+                            {verifyingSecurityOtp ? <Loader2 size={14} className="animate-spin text-[#B88E4F] shrink-0" aria-hidden="true" /> : <ShieldCheck size={14} className="text-[#B88E4F] shrink-0" aria-hidden="true" />}
+                            <span>{verifyingSecurityOtp ? 'Đang xác thực…' : 'Xác nhận mã'}</span>
+                          </button>
+                        </form>
+                      </section>
+                    )}
+
+                    {(securityMode === 'SET_NEW_PASSWORD' || securityMode === 'DIRECT_CHANGE') && (
+                      <section className="flex flex-col gap-[14px] w-full max-w-[560px] p-[20px] @max-[379px]:p-[16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] min-w-0" aria-labelledby="security-password-title">
+                        <button type="button" className="inline-flex items-center gap-[5px] self-start p-0 border-0 bg-transparent text-[#7D715E] hover:text-[#B88E4F] font-inherit text-[11px] leading-[1.5] cursor-pointer transition-colors" onClick={() => setSecurityMode('VERIFY_METHOD')}><ArrowLeft size={13} aria-hidden="true" /> Quay lại</button>
+                        <div className="flex items-center gap-[9px]">
+                          <span className="grid place-items-center shrink-0 w-[36px] h-[38px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><KeyRound size={17} /></span>
+                          <div><h3 id="security-password-title" className="m-0 font-inherit text-[16px] font-[600] leading-[1.4]">{securityMode === 'DIRECT_CHANGE' ? 'Đổi mật khẩu' : 'Thiết lập mật khẩu mới'}</h3></div>
+                        </div>
+                        <form onSubmit={securityMode === 'DIRECT_CHANGE' ? handleChangePassword : handleSaveNewPasswordWithOtp} className="flex flex-col gap-[12px] min-w-0">
+                          <input type="email" name="username" value={currentUser?.email || ''} autoComplete="username" readOnly tabIndex={-1} aria-hidden="true" className="sr-only" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, width: 0 }} />
+                          {securityMode === 'DIRECT_CHANGE' && (
+                            <div className="flex flex-col gap-[6px]"><label htmlFor="customer-security-current" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Mật khẩu hiện tại</label><input id="customer-security-current" type="password" value={currentPass} onChange={(e) => setCurrentPass(e.target.value)} required autoComplete="current-password" placeholder="Nhập mật khẩu hiện tại" className="w-full min-w-0 h-[40px] p-[8px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] placeholder:text-[#7D715E] transition-colors" /></div>
+                          )}
+                          <div className="flex flex-col gap-[6px]"><label htmlFor="customer-security-new" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Mật khẩu mới</label><input id="customer-security-new" type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} required minLength={6} autoComplete="new-password" placeholder="Tối thiểu 6 ký tự" className="w-full min-w-0 h-[40px] p-[8px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] placeholder:text-[#7D715E] transition-colors" /></div>
+                          <div className="flex flex-col gap-[6px]"><label htmlFor="customer-security-confirm" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Xác nhận mật khẩu mới</label><input id="customer-security-confirm" type="password" value={confirmNewPass} onChange={(e) => setConfirmNewPass(e.target.value)} required autoComplete="new-password" placeholder="Nhập lại mật khẩu mới" className="w-full min-w-0 h-[40px] p-[8px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] placeholder:text-[#7D715E] transition-colors" /></div>
+                          <div className="flex items-center justify-end flex-wrap @max-[379px]:flex-col @max-[379px]:items-stretch gap-[10px] pt-[12px] border-t border-[#EAE4D7]">
+                            <button type="submit" disabled={securityMode === 'DIRECT_CHANGE' ? updatingPassword : settingNewPassword} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[8px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] disabled:opacity-60 disabled:cursor-wait transition-colors">
+                              {(updatingPassword || settingNewPassword) ? <Loader2 size={14} className="animate-spin text-[#B88E4F] shrink-0" aria-hidden="true" /> : <CheckCircle2 size={14} className="text-[#B88E4F] shrink-0" aria-hidden="true" />}
+                              <span>{(updatingPassword || settingNewPassword) ? 'Đang lưu…' : 'Lưu mật khẩu mới'}</span>
+                            </button>
+                          </div>
+                          {securityMode === 'DIRECT_CHANGE' && <button type="button" className="inline-flex items-center justify-start gap-[5px] p-0 border-0 bg-transparent text-[#B88E4F] hover:text-[#B88E4F]/80 font-inherit text-[11px] leading-[1.6] text-left cursor-pointer transition-colors" onClick={() => setSecurityMode('VERIFY_METHOD')}>Quên mật khẩu hoặc dùng Google? Xác minh qua email <ArrowLeft size={12} className="rotate-180 shrink-0" aria-hidden="true" /></button>}
+                        </form>
+                      </section>
+                    )}
+                  </div>
+                )}
               </section>
             )}
 
@@ -1913,120 +1997,6 @@ export default function CustomerPortalPage() {
             {/* TAB 5: NÂNG CẤP ĐỐI TÁC (KOL / SHOP MANAGER) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'upgrade' && <PartnerUpgradeTab />}
-
-            {currentTab === 'identity' && (
-              <section className="@container/identity grid gap-[14px] w-full max-w-[820px] min-w-0 text-[#1A1612] max-md:pb-[64px]" aria-labelledby="customer-identity-title">
-                <header className="flex items-center gap-[10px] p-[4px_0_14px] border-b border-[#EAE4D7]">
-                  <div className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true"><ShieldCheck size={18} /></div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center flex-wrap gap-[8px]">
-                      <h1 id="customer-identity-title" className="m-0 font-inherit text-[20px] @max-[519px]:text-[19px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Xác minh CCCD</h1>
-                      {cccdVerified && (
-                        <span className="inline-flex items-center gap-[4px] p-[2px_6px] border border-[#EEDFC6] rounded-[5px] bg-[#FBF5EB] text-[#7D715E] text-[11px] leading-[1.5] whitespace-nowrap">
-                          <CheckCircle2 size={12} className="text-[#059669] shrink-0" aria-hidden="true" />
-                          Đã xác thực
-                        </span>
-                      )}
-                    </div>
-                    <p className="m-0 mt-[3px] text-[12px] leading-[1.5] text-[#7D715E]">
-                      Điền thông tin đúng như trên CCCD của bạn.
-                    </p>
-                  </div>
-                </header>
-
-                <div className="relative min-w-0 border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[36px] before:h-[3px] before:rounded-[0_0_3px_3px] before:bg-[#C59B58]">
-                  {loadingIdentity ? (
-                    <div className="flex flex-col items-center justify-center gap-[10px] min-h-[140px] text-[#7D715E] text-[12px]" aria-live="polite">
-                      <Loader2 className="animate-spin text-[#B88E4F]" size={24} aria-hidden="true" />
-                      <span>Đang tải thông tin cá nhân…</span>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleSubmitIdentity} className="grid grid-cols-2 @max-[519px]:grid-cols-1 gap-[16px] @max-[519px]:gap-[12px] p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
-                      <div className="flex flex-col gap-[6px] min-w-0">
-                        <label htmlFor="customer-identity-name" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Họ và tên <span className="text-[#B88E4F]">*</span></label>
-                        <div className="relative min-w-0">
-                          <User size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
-                          <input
-                            id="customer-identity-name"
-                            type="text"
-                            autoComplete="name"
-                            aria-describedby="customer-identity-name-hint"
-                            value={cccdFullName}
-                            onChange={(e) => setCccdFullName(e.target.value)}
-                            placeholder="Nhập họ và tên trên CCCD"
-                            className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
-                          />
-                        </div>
-                        <span className="text-[#7D715E] text-[11px] leading-[1.5]" id="customer-identity-name-hint">Họ tên đầy đủ theo giấy tờ.</span>
-                      </div>
-
-                      <div className="flex flex-col gap-[6px] min-w-0">
-                        <label htmlFor="customer-identity-number" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Số CCCD <span className="text-[#B88E4F]">*</span></label>
-                        <div className="relative min-w-0">
-                          <Shield size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
-                          <input
-                            id="customer-identity-number"
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="off"
-                            maxLength={12}
-                            aria-describedby="customer-identity-number-hint"
-                            value={cccdIdNumber}
-                            onChange={(e) => setCccdIdNumber(e.target.value.replace(/\D/g, ''))}
-                            placeholder="Nhập 12 chữ số trên CCCD"
-                            className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
-                          />
-                        </div>
-                        <span className="text-[#7D715E] text-[11px] leading-[1.5]" id="customer-identity-number-hint">Số định danh cá nhân trên CCCD.</span>
-                      </div>
-
-                      <div className="col-span-2 @max-[519px]:col-auto flex flex-col gap-[6px] min-w-0">
-                        <div className="flex items-center justify-between gap-[10px]">
-                          <label htmlFor="customer-identity-address" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Địa chỉ thường trú <span className="text-[#B88E4F]">*</span></label>
-                          <span className="text-[#7D715E] text-[11px] leading-[1.5] tabular-nums whitespace-nowrap" id="customer-identity-address-count">
-                            {cccdAddress.length}/200
-                          </span>
-                        </div>
-                        <div className="relative min-w-0">
-                          <MapPin size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
-                          <input
-                            id="customer-identity-address"
-                            type="text"
-                            autoComplete="street-address"
-                            maxLength={200}
-                            value={cccdAddress}
-                            onChange={(e) => setCccdAddress(e.target.value)}
-                            placeholder="Nhập địa chỉ thường trú trên CCCD"
-                            aria-describedby="customer-identity-address-count"
-                            className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="col-span-2 @max-[519px]:col-auto flex items-center justify-between flex-wrap @max-[519px]:flex-col-reverse @max-[519px]:items-stretch gap-[10px] m-[2px_-20px_0] @max-[519px]:m-[2px_-16px_0] p-[14px_20px] @max-[519px]:p-[14px_16px] border-t border-[#EAE4D7] rounded-[0_0_13px_13px] bg-[#FAF8F5]">
-                        <span className="inline-flex items-center gap-[6px] max-w-[310px] @max-[519px]:max-w-none @max-[519px]:justify-center text-[#7D715E] text-[11px] @max-[519px]:text-[10px] leading-[1.6]">
-                          <Lock size={12} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
-                          Thông tin được bảo mật theo chính sách SCANMS.
-                        </span>
-                        <button
-                          type="submit"
-                          disabled={
-                            submittingIdentity ||
-                            !cccdFullName.trim() ||
-                            !cccdIdNumber.trim() ||
-                            !cccdAddress.trim()
-                          }
-                          className="w-auto @max-[519px]:w-full inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[7px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px] disabled:border-[#EAE4D7] disabled:bg-white disabled:text-[#7D715E] disabled:opacity-65 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {submittingIdentity ? <Loader2 className="animate-spin text-[#B88E4F]" size={14} aria-hidden="true" /> : <ShieldCheck size={14} className="text-[#B88E4F]" aria-hidden="true" />}
-                          <span>{submittingIdentity ? 'Đang xác nhận…' : 'Xác nhận thông tin'}</span>
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              </section>
-            )}
 
             {/* ------------------------------------------------------------- */}
             {/* TAB: KHO VOUCHER (COUPONS & DISCOUNTS) */}
@@ -2054,104 +2024,6 @@ export default function CustomerPortalPage() {
                 onRetry={() => void fetchNotifications(activeNotifCategory)}
                 getCategory={getCategoryFromType}
               />
-            )}
-            {/* ------------------------------------------------------------- */}
-            {/* TAB: ĐỔI MẬT KHẨU & BẢO MẬT (Chuẩn SCANMS XÁC THỰC EMAIL) */}
-            {/* ------------------------------------------------------------- */}
-            {currentTab === 'security' && (
-              <section className="@container/security grid gap-[14px] w-full max-w-[900px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-labelledby="customer-security-title">
-                <header className="flex items-center gap-[10px] p-[4px_0_14px] border-b border-[#EAE4D7]">
-                  <span className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true"><Shield size={18} /></span>
-                  <div>
-                    <h1 id="customer-security-title" className="m-0 font-inherit text-[20px] @max-[379px]:text-[19px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Bảo mật tài khoản</h1>
-                    <p className="m-0 mt-[3px] text-[#7D715E] text-[12px] leading-[1.5]">Xác minh email và quản lý mật khẩu của bạn.</p>
-                  </div>
-                </header>
-                {securityMode === 'VERIFY_METHOD' && (
-                  <div className="grid grid-cols-[minmax(0,1fr)_264px] @max-[659px]:grid-cols-[minmax(0,1fr)] items-start gap-[14px]">
-                    <section className="relative min-w-0 p-[20px] @max-[379px]:p-[16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] flex flex-col gap-[12px] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-[0_0_3px_3px] before:bg-[#C59B58]" aria-labelledby="security-method-title">
-                      <div className="flex items-center gap-[9px]">
-                        <span className="grid place-items-center shrink-0 w-[36px] h-[38px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Mail size={17} /></span>
-                        <div>
-                          <h2 id="security-method-title" className="m-0 font-inherit text-[16px] font-[600] leading-[1.4]">Xác minh qua email</h2>
-                          <p className="m-0 mt-[3px] text-[#7D715E] text-[11px] leading-[1.5]">Nhận mã OTP để thiết lập mật khẩu mới.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between flex-wrap gap-[4px_10px] p-[10px_12px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[12px] leading-[1.5]">
-                        <span className="text-[#7D715E] text-[11px]">Email nhận mã</span>
-                        <strong className="text-[12px] font-[550] break-all">{maskedSecurityEmail || maskEmail(currentUser?.email)}</strong>
-                      </div>
-                      <button type="button" onClick={handleSendSecurityOtp} disabled={sendingSecurityOtp} className="w-full inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[8px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] disabled:opacity-60 disabled:cursor-wait transition-colors">
-                        {sendingSecurityOtp ? <Loader2 className="animate-spin text-[#B88E4F]" size={14} aria-hidden="true" /> : <Mail size={14} className="text-[#B88E4F] shrink-0" aria-hidden="true" />}
-                        <span>{sendingSecurityOtp ? 'Đang gửi mã xác minh…' : 'Gửi mã xác minh qua email'}</span>
-                      </button>
-                      <div className="flex items-center gap-[6px] pt-[10px] border-t border-[#EAE4D7]">
-                        <Lock size={13} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
-                        <button type="button" onClick={() => setSecurityMode('DIRECT_CHANGE')} className="inline-flex items-center justify-between flex-1 gap-[6px] p-[3px_0] border-0 bg-transparent text-[#7D715E] hover:text-[#B88E4F] font-inherit text-[11px] font-[550] leading-[1.5] text-left cursor-pointer transition-colors">Đổi bằng mật khẩu hiện tại <ArrowLeft size={13} className="rotate-180" aria-hidden="true" /></button>
-                      </div>
-                    </section>
-                    <aside className="min-w-0 p-[14px_16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-none" aria-labelledby="security-help-title">
-                      <h2 id="security-help-title" className="flex items-center gap-[6px] m-0 mb-[8px] font-inherit text-[13px] font-[600] leading-[1.5]"><HelpCircle size={15} className="text-[#B88E4F]" aria-hidden="true" /> Trợ giúp xác minh</h2>
-                      <details className="border-t border-[#EAE4D7] first:border-t-0 group">
-                        <summary className="flex items-center justify-between gap-[6px] p-[10px_0] list-none text-[11px] font-[500] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] select-none [&::-webkit-details-marker]:hidden">Vì sao cần xác minh? <ChevronDown size={13} className="shrink-0 text-[#7D715E] transition-transform duration-200 group-open:rotate-180" aria-hidden="true" /></summary>
-                        <p className="m-0 pb-[10px] text-[#7D715E] text-[11px] leading-[1.7]">SCANMS xác minh email trước khi cho phép thiết lập mật khẩu mới để bảo vệ tài khoản của bạn.</p>
-                      </details>
-                      <details className="border-t border-[#EAE4D7] first:border-t-0 group">
-                        <summary className="flex items-center justify-between gap-[6px] p-[10px_0] list-none text-[11px] font-[500] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] select-none [&::-webkit-details-marker]:hidden">Chưa nhận được email? <ChevronDown size={13} className="shrink-0 text-[#7D715E] transition-transform duration-200 group-open:rotate-180" aria-hidden="true" /></summary>
-                        <p className="m-0 pb-[10px] text-[#7D715E] text-[11px] leading-[1.7]">Kiểm tra thư mục Spam. Nếu vẫn chưa nhận được, hãy liên hệ CSKH qua Chat hỗ trợ.</p>
-                      </details>
-                    </aside>
-                  </div>
-                )}
-                {securityMode === 'AWAIT_OTP' && (
-                  <section className="flex flex-col gap-[14px] w-full max-w-[460px] p-[20px] @max-[379px]:p-[16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] min-w-0" aria-labelledby="security-otp-title">
-                    <button type="button" className="inline-flex items-center gap-[5px] self-start p-0 border-0 bg-transparent text-[#7D715E] hover:text-[#B88E4F] font-inherit text-[11px] leading-[1.5] cursor-pointer transition-colors" onClick={() => setSecurityMode('VERIFY_METHOD')}><ArrowLeft size={13} aria-hidden="true" /> Quay lại</button>
-                    <div className="flex items-center gap-[9px]">
-                      <span className="grid place-items-center shrink-0 w-[36px] h-[38px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Mail size={17} /></span>
-                      <div><h2 id="security-otp-title" className="m-0 font-inherit text-[16px] font-[600] leading-[1.4]">Nhập mã xác thực</h2><p className="m-0 mt-[3px] text-[#7D715E] text-[11px] leading-[1.5]">Mã 6 số đã được gửi đến email của bạn.</p></div>
-                    </div>
-                    <div className="flex items-center justify-between flex-wrap gap-[4px_10px] p-[10px_12px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[12px] leading-[1.5]"><span className="text-[#7D715E] text-[11px]">Email nhận mã</span><strong className="text-[12px] font-[550] break-all">{maskedSecurityEmail || maskEmail(currentUser?.email)}</strong></div>
-                    <form onSubmit={handleVerifySecurityOtp} className="flex flex-col gap-[12px] min-w-0">
-                      <div className="flex flex-col gap-[6px]">
-                        <label htmlFor="customer-security-otp" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Mã OTP</label>
-                        <input id="customer-security-otp" type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" maxLength={6} autoFocus value={securityOtp} onChange={(e) => setSecurityOtp(e.target.value.replace(/\D/g, ''))} placeholder="••••••" className="w-full min-w-0 h-[46px] p-[8px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] font-mono text-[22px] tracking-[0.45em] text-center outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] placeholder:text-[#7D715E] transition-colors" />
-                      </div>
-                      <div className="text-[#7D715E] text-[11px] leading-[1.5]">
-                        {otpCountdown > 0 ? <span>Gửi lại sau <strong className="text-[#B88E4F] font-[550]">{otpCountdown}s</strong></span> : <button type="button" onClick={handleSendSecurityOtp} disabled={sendingSecurityOtp} className="p-0 border-0 bg-transparent text-[#B88E4F] font-inherit text-[11px] cursor-pointer hover:underline disabled:opacity-60 disabled:cursor-wait">{sendingSecurityOtp ? 'Đang gửi…' : 'Gửi lại mã OTP'}</button>}
-                      </div>
-                      <button type="submit" disabled={verifyingSecurityOtp || securityOtp.length < 6} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[8px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] disabled:opacity-60 disabled:cursor-wait transition-colors">
-                        {verifyingSecurityOtp ? <Loader2 size={14} className="animate-spin text-[#B88E4F] shrink-0" aria-hidden="true" /> : <ShieldCheck size={14} className="text-[#B88E4F] shrink-0" aria-hidden="true" />}
-                        <span>{verifyingSecurityOtp ? 'Đang xác thực…' : 'Xác nhận mã'}</span>
-                      </button>
-                    </form>
-                  </section>
-                )}
-                {(securityMode === 'SET_NEW_PASSWORD' || securityMode === 'DIRECT_CHANGE') && (
-                  <section className="flex flex-col gap-[14px] w-full max-w-[560px] p-[20px] @max-[379px]:p-[16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] min-w-0" aria-labelledby="security-password-title">
-                    <button type="button" className="inline-flex items-center gap-[5px] self-start p-0 border-0 bg-transparent text-[#7D715E] hover:text-[#B88E4F] font-inherit text-[11px] leading-[1.5] cursor-pointer transition-colors" onClick={() => setSecurityMode('VERIFY_METHOD')}><ArrowLeft size={13} aria-hidden="true" /> Quay lại</button>
-                    <div className="flex items-center gap-[9px]">
-                      <span className="grid place-items-center shrink-0 w-[36px] h-[38px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><KeyRound size={17} /></span>
-                      <div><h2 id="security-password-title" className="m-0 font-inherit text-[16px] font-[600] leading-[1.4]">{securityMode === 'DIRECT_CHANGE' ? 'Đổi mật khẩu' : 'Thiết lập mật khẩu mới'}</h2><p className="m-0 mt-[3px] text-[#7D715E] text-[11px] leading-[1.5]">Mật khẩu mới cần có tối thiểu 6 ký tự.</p></div>
-                    </div>
-                    <form onSubmit={securityMode === 'DIRECT_CHANGE' ? handleChangePassword : handleSaveNewPasswordWithOtp} className="flex flex-col gap-[12px] min-w-0">
-                      <input type="email" name="username" value={currentUser?.email || ''} autoComplete="username" readOnly tabIndex={-1} aria-hidden="true" className="sr-only" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, width: 0 }} />
-                      {securityMode === 'DIRECT_CHANGE' && (
-                        <div className="flex flex-col gap-[6px]"><label htmlFor="customer-security-current" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Mật khẩu hiện tại</label><input id="customer-security-current" type="password" value={currentPass} onChange={(e) => setCurrentPass(e.target.value)} required autoComplete="current-password" placeholder="Nhập mật khẩu hiện tại" className="w-full min-w-0 h-[40px] p-[8px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] placeholder:text-[#7D715E] transition-colors" /></div>
-                      )}
-                      <div className="flex flex-col gap-[6px]"><label htmlFor="customer-security-new" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Mật khẩu mới</label><input id="customer-security-new" type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} required minLength={6} autoComplete="new-password" placeholder="Tối thiểu 6 ký tự" className="w-full min-w-0 h-[40px] p-[8px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] placeholder:text-[#7D715E] transition-colors" /></div>
-                      <div className="flex flex-col gap-[6px]"><label htmlFor="customer-security-confirm" className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Xác nhận mật khẩu mới</label><input id="customer-security-confirm" type="password" value={confirmNewPass} onChange={(e) => setConfirmNewPass(e.target.value)} required autoComplete="new-password" placeholder="Nhập lại mật khẩu mới" className="w-full min-w-0 h-[40px] p-[8px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] outline-none hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] placeholder:text-[#7D715E] transition-colors" /></div>
-                      <div className="flex items-center justify-between flex-wrap @max-[379px]:flex-col @max-[379px]:items-stretch gap-[10px] pt-[12px] border-t border-[#EAE4D7]">
-                        <span className="inline-flex items-center gap-[5px] text-[#7D715E] text-[11px] leading-[1.5]"><Lock size={12} className="shrink-0 text-[#B88E4F]" aria-hidden="true" /> Không chia sẻ mật khẩu của bạn.</span>
-                        <button type="submit" disabled={securityMode === 'DIRECT_CHANGE' ? updatingPassword : settingNewPassword} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[8px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] disabled:opacity-60 disabled:cursor-wait transition-colors">
-                          {(updatingPassword || settingNewPassword) ? <Loader2 size={14} className="animate-spin text-[#B88E4F] shrink-0" aria-hidden="true" /> : <CheckCircle2 size={14} className="text-[#B88E4F] shrink-0" aria-hidden="true" />}
-                          <span>{(updatingPassword || settingNewPassword) ? 'Đang lưu…' : 'Lưu mật khẩu mới'}</span>
-                        </button>
-                      </div>
-                      {securityMode === 'DIRECT_CHANGE' && <button type="button" className="inline-flex items-center justify-start gap-[5px] p-0 border-0 bg-transparent text-[#B88E4F] hover:text-[#B88E4F]/80 font-inherit text-[11px] leading-[1.6] text-left cursor-pointer transition-colors" onClick={() => setSecurityMode('VERIFY_METHOD')}>Quên mật khẩu hoặc dùng Google? Xác minh qua email <ArrowLeft size={12} className="rotate-180 shrink-0" aria-hidden="true" /></button>}
-                    </form>
-                  </section>
-                )}
-              </section>
             )}
           </div>
         </div>
