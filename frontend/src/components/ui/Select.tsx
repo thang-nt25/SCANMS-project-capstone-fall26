@@ -31,6 +31,8 @@ export interface SelectProps {
   'aria-label'?: string;
   children?: ReactNode;
   searchable?: boolean;
+  placement?: 'bottom' | 'top' | 'auto';
+  align?: 'left' | 'right';
 }
 
 function getLabelFromNode(node: ReactNode): string {
@@ -88,6 +90,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
       style,
       'aria-label': ariaLabel,
       searchable,
+      placement = 'auto',
+      align = 'left',
       children,
     },
     ref
@@ -95,6 +99,9 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
     const options = optionsProp || (children ? extractOptions(children) : []);
 
     const [isOpen, setIsOpen] = useState(false);
+    const [openDirection, setOpenDirection] = useState<'down' | 'up'>(
+      placement === 'top' ? 'up' : 'down'
+    );
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +115,31 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
 
     const containerRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
+
+    // Detect open direction (upwards or downwards)
+    useEffect(() => {
+      if (!isOpen || !containerRef.current) return;
+      if (placement === 'top') {
+        setOpenDirection('up');
+        return;
+      }
+      if (placement === 'bottom') {
+        setOpenDirection('down');
+        return;
+      }
+      try {
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+          setOpenDirection('up');
+        } else {
+          setOpenDirection('down');
+        }
+      } catch {
+        setOpenDirection('down');
+      }
+    }, [isOpen, placement]);
 
     // Filter options based on search query
     const filteredOptions = useMemo(() => {
@@ -229,7 +261,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
           <ChevronDown
             className={cn(
               'w-4 h-4 text-[#7D715E] shrink-0 transition-transform duration-200',
-              isOpen && 'rotate-180 text-[#B88E4F]'
+              isOpen && (openDirection === 'up' ? '-rotate-180 text-[#B88E4F]' : 'rotate-180 text-[#B88E4F]')
             )}
           />
         </button>
@@ -240,7 +272,11 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
             ref={listRef}
             role="listbox"
             tabIndex={-1}
-            className="absolute z-50 left-0 right-0 mt-1.5 min-w-[200px] w-full bg-white border border-[#EEDFC6] rounded-2xl shadow-xl py-1.5 max-h-64 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            className={cn(
+              'absolute z-50 min-w-[200px] w-full bg-white border border-[#EEDFC6] rounded-2xl shadow-xl py-1.5 max-h-60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150',
+              align === 'right' ? 'right-0' : 'left-0',
+              openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+            )}
             style={{ colorScheme: 'light' }}
           >
             {(searchable || options.length > 7) && (

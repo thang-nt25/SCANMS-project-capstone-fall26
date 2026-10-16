@@ -2110,9 +2110,9 @@ export default function ShopCollaborationPage() {
       {/* MODAL 2: XIN HÀNG MẪU KÈM CAM KẾT NỘI DUNG (PHIÊN BẢN GỌN XỊN, TONE SÁNG VÀNG BE CHUẨN SCANMS) */}
       {requestSampleModalProduct && (
         <div className="fixed inset-0 bg-[#231D15]/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-[560px] shadow-2xl overflow-hidden flex flex-col text-left animate-in zoom-in-95 duration-150">
+          <div className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-[560px] shadow-2xl relative flex flex-col text-left animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="px-5 py-3.5 border-b border-[#EAE4D7] flex items-center justify-between bg-white shrink-0">
+            <div className="px-5 py-3.5 border-b border-[#EAE4D7] flex items-center justify-between bg-white rounded-t-2xl shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
                   <Truck className="w-4 h-4 text-[#B88E4F]" />
@@ -2161,7 +2161,7 @@ export default function ShopCollaborationPage() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmitSampleRequest} className="p-5 flex flex-col gap-3.5">
+            <form onSubmit={handleSubmitSampleRequest} className="p-5 flex flex-col gap-3.5 overflow-visible">
               {/* Row 1: Kênh MXH & Định dạng */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -2235,13 +2235,14 @@ export default function ShopCollaborationPage() {
                 </div>
               </div>
 
-              {/* Row 3: 3 Dropdown Tỉnh/Quận/Xã GHN trên 1 hàng */}
+              {/* Row 3: 3 Dropdown Tỉnh/Quận/Xã GHN trên 1 hàng (Mở hướng lên trên) */}
               <div>
                 <label className="text-[11px] font-bold text-[#1A1612] block mb-1">
                   Địa chỉ nhận hàng GHN <span className="text-rose-600">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   <Select
+                    placement="top"
                     searchable
                     required
                     value={sampleProvinceId}
@@ -2262,6 +2263,7 @@ export default function ShopCollaborationPage() {
                   />
 
                   <Select
+                    placement="top"
                     searchable
                     required
                     disabled={!sampleProvinceId}
@@ -2282,6 +2284,8 @@ export default function ShopCollaborationPage() {
                   />
 
                   <Select
+                    placement="top"
+                    align="right"
                     searchable
                     required
                     disabled={!sampleDistrictId}
