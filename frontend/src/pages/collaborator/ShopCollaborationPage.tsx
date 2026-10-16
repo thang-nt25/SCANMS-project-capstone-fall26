@@ -1600,7 +1600,7 @@ export default function ShopCollaborationPage() {
                           return (
                             <div
                               key={samp.id}
-                              className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-3 p-3 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs hover:border-[#E2C99F] transition"
+                              className="grid grid-cols-1 items-start gap-3 min-w-0 p-3 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs hover:border-[#E2C99F] transition"
                               data-status={status.toLowerCase()}
                             >
                               <div className="flex items-start gap-3 min-w-0">
@@ -1610,7 +1610,7 @@ export default function ShopCollaborationPage() {
                                   className="w-13 h-13 shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] object-cover"
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <strong className="block truncate text-[#1A1612] text-xs font-bold">
+                                  <strong className="block break-words text-[#1A1612] text-xs font-bold">
                                     {samp.product?.title || 'Sản phẩm mẫu'}
                                   </strong>
                                   <div className="flex flex-wrap items-center gap-1.5 mt-1">
@@ -1618,7 +1618,7 @@ export default function ShopCollaborationPage() {
                                       {statusLabel[status] || status}
                                     </span>
                                     {samp.trackingNumber && (
-                                      <span className="inline-flex items-center px-2 py-0.5 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#7D715E] font-mono text-[10px]">
+                                      <span className="inline-flex max-w-full flex-wrap items-center gap-x-1 px-2 py-0.5 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#7D715E] font-mono text-[10px]">
                                         Mã vận đơn: <strong className="ml-1 text-[#1A1612] font-bold">{samp.trackingNumber}</strong> ({samp.carrier || 'Đơn vị vận chuyển'})
                                       </span>
                                     )}
@@ -1676,7 +1676,7 @@ export default function ShopCollaborationPage() {
                                 </div>
                               </div>
 
-                              <div className="flex flex-wrap items-center sm:justify-end gap-1.5">
+                              <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 border-t border-[#EAE4D7] pt-3">
                                 {status === 'PENDING' && (
                                   <button
                                     type="button"
@@ -1687,7 +1687,7 @@ export default function ShopCollaborationPage() {
                                   </button>
                                 )}
                                 {isShipped && samp.carrier?.toUpperCase().includes('GHN') && (
-                                  <span className="text-[11px] text-[#7D715E] italic">Hạn nộp video bắt đầu khi GHN xác nhận giao thành công.</span>
+                                  <span className="basis-full text-[11px] text-[#7D715E] italic">Hạn nộp video bắt đầu khi GHN xác nhận giao thành công.</span>
                                 )}
                                 {samp.trackingNumber && samp.carrier?.toUpperCase().includes('GHN') && (
                                   <button
@@ -2107,82 +2107,105 @@ export default function ShopCollaborationPage() {
       )}
 
       {/* MODAL 2: XIN HÀNG MẪU KÈM CAM KẾT NỘI DUNG */}
+      {/* MODAL 2: XIN HÀNG MẪU KÈM CAM KẾT NỘI DUNG (PHIÊN BẢN GỌN XỊN, TONE SÁNG VÀNG BE CHUẨN SCANMS) */}
       {requestSampleModalProduct && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden text-left">
-            <div className="p-5 border-b border-[#EAE4D7] flex items-center justify-between bg-[#FAF8F5]">
-              <div className="flex items-center gap-2">
-                <Truck className="w-5 h-5 text-[#B88E4F]" />
-                <h3 className="text-sm font-extrabold text-[#1A1612] m-0">
-                  Đăng Ký Nhận Hàng Mẫu &amp; Cam Kết Review
-                </h3>
+        <div className="fixed inset-0 bg-[#231D15]/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-[560px] shadow-2xl overflow-hidden flex flex-col text-left animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-5 py-3.5 border-b border-[#EAE4D7] flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
+                  <Truck className="w-4 h-4 text-[#B88E4F]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#1A1612] m-0">
+                    Đăng Ký Nhận Hàng Mẫu
+                  </h3>
+                  <p className="text-[11px] text-[#7D715E] m-0">
+                    Tài trợ 100% miễn phí • Cam kết review trong 14 ngày
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setRequestSampleModalProduct(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer"
+                aria-label="Đóng"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitSampleRequest} className="p-5 flex flex-col gap-3.5">
-              <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-2xl flex items-center gap-3">
+            {/* Product Mini Bar */}
+            <div className="px-5 py-2.5 bg-[#FAF8F5] border-b border-[#EAE4D7] flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <img
                   src={requestSampleModalProduct.imageUrl}
                   alt={requestSampleModalProduct.title}
-                  className="w-12 h-12 rounded-xl object-cover border border-[#EAE4D7] bg-white shrink-0"
+                  className="w-10 h-10 rounded-lg object-cover border border-[#EAE4D7] bg-white shrink-0"
                 />
-                <div className="flex-1 min-w-0">
-                  <strong className="text-xs font-bold text-[#1A1612] line-clamp-1 block">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[#1A1612] truncate m-0">
                     {requestSampleModalProduct.title}
-                  </strong>
-                  <span className="text-[11px] text-[#B88E4F] font-semibold block mt-0.5">
-                    Tài trợ 100% miễn phí • Giá trị gốc: {Number(requestSampleModalProduct.price).toLocaleString('vi-VN')} ₫
-                  </span>
+                  </p>
+                  <p className="text-[11px] text-[#7D715E] m-0 mt-0.5 flex items-center gap-2">
+                    <span>{selectedStore?.name || 'Sora Skin'}</span>
+                    <span>•</span>
+                    <span>Giá gốc: <strong className="text-[#1A1612] font-semibold">{Number(requestSampleModalProduct.price).toLocaleString('vi-VN')} ₫</strong></span>
+                  </p>
                 </div>
               </div>
+              <span className="px-2 py-0.5 rounded-md bg-[#FBF5EB] text-[#8A642C] border border-[#EEDFC6] text-[10px] font-bold whitespace-nowrap shrink-0">
+                Miễn phí 100%
+              </span>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
+            {/* Modal Body */}
+            <form onSubmit={handleSubmitSampleRequest} className="p-5 flex flex-col gap-3.5">
+              {/* Row 1: Kênh MXH & Định dạng */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                    Kênh mạng xã hội đã liên kết *
+                  <label className="text-[11px] font-bold text-[#1A1612] block mb-1">
+                    Kênh mạng xã hội <span className="text-rose-600">*</span>
                   </label>
                   <Select
+                    searchable={socialChannels.length > 5}
                     value={sampleSocialChannelId}
                     onChange={(e) => setSampleSocialChannelId(e.target.value)}
-                    className="w-full text-xs"
+                    className="w-full text-xs h-9 py-0 px-2.5"
+                    placeholder="Chọn kênh đăng video"
                     required
-                  >
-                    <option value="">Chọn kênh đăng video</option>
-                    {socialChannels.map((channel) => (
-                      <option key={channel.id} value={channel.id}>
-                        {channel.platformName} · {channel.channelName || channel.channelUrl} · {Number(channel.followerCount || 0).toLocaleString('vi-VN')} followers
-                      </option>
-                    ))}
-                  </Select>
+                    options={[
+                      { value: '', label: 'Chọn kênh đăng video', disabled: true },
+                      ...socialChannels.map((channel) => ({
+                        value: channel.id,
+                        label: `${channel.platformName} · ${channel.channelName || channel.channelUrl} (${Number(channel.followerCount || 0).toLocaleString('vi-VN')} fl)`,
+                      })),
+                    ]}
+                  />
                 </div>
 
-                <p className="text-xs text-[#7D715E]">Hạn đăng video là 14 ngày kể từ thời điểm GHN xác nhận giao hàng thành công.</p>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                  Định dạng nội dung cam kết *
-                </label>
-                <input
-                  type="text"
-                  value={sampleContentType}
-                  onChange={(e) => setSampleContentType(e.target.value)}
-                  placeholder="VD: Video Review 60s hướng dẫn quy trình dưỡng da..."
-                  className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1">Họ tên người nhận *</label>
+                  <label className="text-[11px] font-bold text-[#1A1612] block mb-1">
+                    Định dạng review <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={sampleContentType}
+                    onChange={(e) => setSampleContentType(e.target.value)}
+                    placeholder="VD: Video Review 60s..."
+                    className="w-full h-9 px-3 bg-white border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Tên & SĐT người nhận */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-[#1A1612] block mb-1">
+                    Họ tên người nhận <span className="text-rose-600">*</span>
+                  </label>
                   <input
                     type="text"
                     maxLength={150}
@@ -2190,78 +2213,150 @@ export default function ShopCollaborationPage() {
                     value={sampleRecipientName}
                     onChange={(e) => setSampleRecipientName(e.target.value)}
                     placeholder="Nguyễn Văn A"
-                    className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none"
+                    className="w-full h-9 px-3 bg-white border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1">Số điện thoại *</label>
+                  <label className="text-[11px] font-bold text-[#1A1612] block mb-1">
+                    Số điện thoại nhận hàng <span className="text-rose-600">*</span>
+                  </label>
                   <input
                     type="tel"
                     maxLength={20}
                     required
                     value={sampleRecipientPhone}
-                    onChange={(e) => { setSampleRecipientPhone(e.target.value); setSampleRecipientPhoneConfirmed(false); }}
+                    onChange={(e) => {
+                      setSampleRecipientPhone(e.target.value);
+                      setSampleRecipientPhoneConfirmed(false);
+                    }}
                     placeholder="09xx xxx xxx"
-                    className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none"
+                    className="w-full h-9 px-3 bg-white border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]"
                   />
                 </div>
               </div>
 
-              <label className="flex items-start gap-2 text-xs text-[#7D715E]"><input type="checkbox" checked={sampleRecipientPhoneConfirmed} onChange={(e) => setSampleRecipientPhoneConfirmed(e.target.checked)} className="mt-0.5 accent-[#C59B58]" required /><span>Tôi xác nhận đây là số điện thoại của người nhận thực tế và GHN có thể gọi để giao hàng mẫu.</span></label>
-
+              {/* Row 3: 3 Dropdown Tỉnh/Quận/Xã GHN trên 1 hàng */}
               <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1">Địa chỉ nhận hàng mẫu chuẩn GHN *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-                  <select required value={sampleProvinceId} onChange={(e) => {
-                    setSampleProvinceId(e.target.value); setSampleDistrictId(''); setSampleWardCode('');
-                  }} className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612]">
-                    <option value="">Tỉnh / Thành phố</option>
-                    {sampleProvinces.map((item) => <option key={item.ProvinceID} value={item.ProvinceID}>{item.ProvinceName}</option>)}
-                  </select>
-                  <select required value={sampleDistrictId} disabled={!sampleProvinceId} onChange={(e) => {
-                    setSampleDistrictId(e.target.value); setSampleWardCode('');
-                  }} className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612]">
-                    <option value="">Quận / Huyện</option>
-                    {sampleDistricts.map((item) => <option key={item.DistrictID} value={item.DistrictID}>{item.DistrictName}</option>)}
-                  </select>
-                  <select required value={sampleWardCode} disabled={!sampleDistrictId} onChange={(e) => setSampleWardCode(e.target.value)} className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612]">
-                    <option value="">Phường / Xã</option>
-                    {sampleWards.map((item) => <option key={item.WardCode} value={item.WardCode}>{item.WardName}</option>)}
-                  </select>
+                <label className="text-[11px] font-bold text-[#1A1612] block mb-1">
+                  Địa chỉ nhận hàng GHN <span className="text-rose-600">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Select
+                    searchable
+                    required
+                    value={sampleProvinceId}
+                    placeholder="Tỉnh / Thành"
+                    className="w-full text-xs h-9 py-0 px-2"
+                    options={[
+                      { value: '', label: 'Tỉnh / Thành', disabled: true },
+                      ...sampleProvinces.map((item) => ({
+                        value: String(item.ProvinceID),
+                        label: item.ProvinceName,
+                      })),
+                    ]}
+                    onChange={(e) => {
+                      setSampleProvinceId(e.target.value);
+                      setSampleDistrictId('');
+                      setSampleWardCode('');
+                    }}
+                  />
+
+                  <Select
+                    searchable
+                    required
+                    disabled={!sampleProvinceId}
+                    value={sampleDistrictId}
+                    placeholder={sampleProvinceId ? 'Quận / Huyện' : 'Quận / Huyện'}
+                    className="w-full text-xs h-9 py-0 px-2"
+                    options={[
+                      { value: '', label: 'Quận / Huyện', disabled: true },
+                      ...sampleDistricts.map((item) => ({
+                        value: String(item.DistrictID),
+                        label: item.DistrictName,
+                      })),
+                    ]}
+                    onChange={(e) => {
+                      setSampleDistrictId(e.target.value);
+                      setSampleWardCode('');
+                    }}
+                  />
+
+                  <Select
+                    searchable
+                    required
+                    disabled={!sampleDistrictId}
+                    value={sampleWardCode}
+                    placeholder={sampleDistrictId ? 'Phường / Xã' : 'Phường / Xã'}
+                    className="w-full text-xs h-9 py-0 px-2"
+                    options={[
+                      { value: '', label: 'Phường / Xã', disabled: true },
+                      ...sampleWards.map((item) => ({
+                        value: String(item.WardCode),
+                        label: item.WardName,
+                      })),
+                    ]}
+                    onChange={(e) => setSampleWardCode(e.target.value)}
+                  />
                 </div>
-                <input type="text" required minLength={5} value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
-                  placeholder="Số nhà, tên đường, tòa nhà..."
-                  className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none" />
-                {sampleAddressError && <p className="text-xs text-[#DC2626] mt-1" role="alert">{sampleAddressError}</p>}
               </div>
 
-              <label className="p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-[11px] text-[#7D715E] leading-relaxed flex items-start gap-2 cursor-pointer">
+              {/* Row 4: Địa chỉ chi tiết */}
+              <div>
+                <input
+                  type="text"
+                  required
+                  minLength={5}
+                  value={shippingAddress}
+                  onChange={(e) => setShippingAddress(e.target.value)}
+                  placeholder="Số nhà, tên đường, tòa nhà, căn hộ..."
+                  className="w-full h-9 px-3 bg-white border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]"
+                />
+                {sampleAddressError && (
+                  <p className="text-[11px] text-[#DC2626] mt-1 m-0" role="alert">
+                    {sampleAddressError}
+                  </p>
+                )}
+              </div>
+
+              {/* Row 5: Cam kết gọn gàng */}
+              <label className="p-2.5 bg-[#FAF8F5] hover:bg-[#F3EFE6]/50 border border-[#EAE4D7] rounded-xl flex items-start gap-2.5 text-xs text-[#7D715E] cursor-pointer transition">
                 <input
                   type="checkbox"
-                  checked={sampleTermsAccepted}
-                  onChange={(e) => setSampleTermsAccepted(e.target.checked)}
-                  className="mt-0.5 accent-[#C59B58]"
+                  checked={sampleTermsAccepted && sampleRecipientPhoneConfirmed}
+                  onChange={(e) => {
+                    setSampleTermsAccepted(e.target.checked);
+                    setSampleRecipientPhoneConfirmed(e.target.checked);
+                  }}
+                  className="mt-0.5 accent-[#C59B58] w-4 h-4 cursor-pointer shrink-0"
                   required
                 />
-                <span>⚖️ <strong>Cam kết trách nhiệm:</strong> Từ lúc GHN xác nhận giao hàng mẫu, bạn có tối đa <strong>14 ngày</strong> để nộp link video đăng trên kênh đã chọn. Khi quá hạn, hệ thống ghi nhận và cảnh báo; Shop có thể báo cáo để Admin xét duyệt khóa quyền nhận mẫu mới. Chỉ Admin được mở khóa.</span>
+                <span className="text-[11.5px] leading-relaxed text-[#1A1612]">
+                  Xác nhận SĐT chính xác để shipper GHN liên hệ và cam kết nộp link video review trong <strong>14 ngày</strong> kể từ khi nhận kiện hàng.
+                </span>
               </label>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
-                <button
-                  type="button"
-                  onClick={() => setRequestSampleModalProduct(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#7D715E] hover:bg-[#FAF8F5] cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                >
-                  {submittingSample && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Gửi Cam Kết &amp; Xin Mẫu</span>
-                </button>
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#EAE4D7]">
+                <span className="text-[11px] text-[#7D715E] flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-[#B88E4F]" /> Miễn phí ship GHN
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRequestSampleModalProduct(null)}
+                    className="h-9 px-4 rounded-xl text-xs font-semibold text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-transparent hover:border-[#EAE4D7] transition cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingSample}
+                    className="h-9 px-5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                  >
+                    {submittingSample && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Gửi Cam Kết &amp; Xin Mẫu</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
