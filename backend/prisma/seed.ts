@@ -140,7 +140,7 @@ async function main() {
       data: {
         name: 'Vàng (Gold)',
         minRevenueThreshold: 50000000,
-        extraBonusPercentage: 3.0,
+        extraBonusPercentage: 2.0,
       },
     });
   }
@@ -151,7 +151,7 @@ async function main() {
       data: {
         name: 'Kim Cương (Diamond)',
         minRevenueThreshold: 100000000,
-        extraBonusPercentage: 5.0,
+        extraBonusPercentage: 3.0,
       },
     });
   }

@@ -222,10 +222,7 @@ export class ReferralLinksService {
     });
 
     return products.map((p) => {
-      const estimatedRate =
-        p.customCommissionRate !== null
-          ? Number(p.customCommissionRate)
-          : Number(p.store.defaultCommissionRate);
+      const estimatedRate = 10;
       return {
         ...p,
         estimatedCommissionRate: estimatedRate,
@@ -325,10 +322,7 @@ export class ReferralLinksService {
       );
     }
 
-    const commissionRate =
-      product.customCommissionRate !== null
-        ? Number(product.customCommissionRate)
-        : Number(product.store.defaultCommissionRate);
+    const commissionRate = 10;
 
     if (commissionRate <= 0) {
       throw new ForbiddenException(

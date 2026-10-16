@@ -58,7 +58,11 @@
 #admin-analytics-hub .kol-recommendation-page > section > div > span { background: var(--theme-surface, #FFFFFF); border: 1px solid var(--theme-line, #EEDFC6); }
 #admin-analytics-hub .kol-recommendation-page > section label { padding: 7px 10px; border: 1px solid var(--theme-line, #EAE4D7); background: var(--theme-surface, #FFFFFF); font-size: 10px; }
 #admin-analytics-hub .kol-matching-controls > div { padding: 14px; border-radius: 12px; }
-#admin-analytics-hub .kol-matching-controls > div > div:first-child > span:first-child, #admin-analytics-hub .kol-matching-controls > div > div:first-child > div > span:first-child { background: var(--theme-surface, #FFFFFF); border: 1px solid var(--theme-line, #EEDFC6); border-radius: 8px; width: 28px; height: 28px; flex-shrink: 0; }
+#admin-analytics-hub .kol-matching-controls > .kol-ai-product > div:first-child > span:first-child { background:transparent; border:0; width:auto; height:auto; flex-shrink:0; }
+#admin-analytics-hub .kol-ai-filters .kol-ai-live { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; }
+#admin-analytics-hub .kol-ai-live>.kol-ai-updated { width:auto; height:auto; padding:0; border:0; background:transparent; white-space:nowrap; flex-shrink:0; line-height:20px; }
+#admin-analytics-hub .kol-ai-live>.kol-ai-auto { display:inline-flex; align-items:center; gap:7px; margin:0; padding:0; border:0; background:transparent; white-space:nowrap; flex-shrink:0; line-height:20px; }
+#admin-analytics-hub .kol-ai-auto>.kol-ai-switch { width:28px; height:16px; flex-shrink:0; }
 #admin-analytics-hub .kol-matching-controls > div > div:first-child > div > span:last-child { width: auto; height: auto; white-space: normal; border: 0; background: transparent; font-size: 12px; }
 #admin-analytics-hub .leaderboard-podium > div > div:first-child:not(:has(svg)) { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--theme-line, #EAE4D7); font-size: 11px; }
 #admin-analytics-hub .kol-matching-controls input[type="text"] { height: 36px; font-size: 11px; border-radius: 8px; }
@@ -69,7 +73,26 @@
 #admin-analytics-hub .kol-matching-results article h3 { font-size: 12px; line-height: 1.5; }
 #admin-analytics-hub .kol-matching-results article > div:first-child > span:last-child { font-size: 13px; background: var(--theme-surface, #FFFFFF); color: var(--theme-ink, #1A1612); padding: 5px 7px; border-radius: 7px; }
 #admin-analytics-hub .kol-matching-category { min-height: 0; font-size: 11px; line-height: 1.6; }
-#admin-analytics-hub .kol-matching-results article > dl { padding: 10px 0; border-top: 1px solid var(--theme-line, #EAE4D7); border-bottom: 1px solid var(--theme-line, #EAE4D7); border-radius: 0; background: var(--theme-surface, #FFFFFF); gap: 10px; }
+#admin-analytics-hub .kol-matching-results article > .kol-ai-card-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); padding:10px 12px; border:1px solid #F0EAE0; border-radius:9px; background:#FAF8F5; gap:10px; }
+#admin-analytics-hub .kol-ai-card-stats>div { display:block; min-width:0; }
+#admin-analytics-hub .kol-ai-card-stats dt { font-size:10px; line-height:1.5; white-space:nowrap; }
+#admin-analytics-hub .kol-ai-card-stats dd { margin:4px 0 0; font-size:14px; line-height:1.4; font-weight:600; color:#1A1612; }
+#admin-analytics-hub .kol-ai-card-identity { gap:11px; }
+#admin-analytics-hub .kol-ai-card-identity h3 { font-size:13px; line-height:1.5; font-weight:600; }
+#admin-analytics-hub .kol-ai-card-identity>div:first-child>img,
+#admin-analytics-hub .kol-ai-card-identity>div:first-child>div { width:38px; height:38px; border-radius:11px; }
+#admin-analytics-hub .kol-ai-score { width:66px; }
+#admin-analytics-hub .kol-ai-score strong { font-size:22px; }
+#admin-analytics-hub .kol-ai-card-actions { justify-content:center; }
+#admin-analytics-hub .kol-ai-card-actions button { width:100%; min-height:34px; font-size:11px; }
+#admin-analytics-hub .kol-ai-evidence-toggle { min-height:34px; white-space:nowrap; }
+@container(min-width:1100px) {
+ #admin-analytics-hub .kol-matching-results .kol-ai-card { grid-template-columns:minmax(250px,1.15fr) 76px minmax(280px,1fr) 116px 72px; gap:16px; padding:16px; }
+ #admin-analytics-hub .kol-ai-card>.kol-ai-card-stats { grid-column:3; grid-row:1; }
+ #admin-analytics-hub .kol-ai-card>.kol-ai-card-actions { grid-column:4; grid-row:1; }
+ #admin-analytics-hub .kol-ai-card>.kol-ai-evidence-toggle { grid-column:5; grid-row:1; }
+ #admin-analytics-hub .kol-ai-card>.kol-ai-evidence-panel { grid-row:2; }
+}
 #admin-analytics-hub .kol-matching-results dt { font-size: 10px; }
 #admin-analytics-hub .kol-matching-results dd { font-size: 13px; font-weight: 600; }
 #admin-analytics-hub .kol-matching-results article > div:last-child button:first-child { background: var(--theme-brand-soft, #FBF5EB); border: 1px solid var(--theme-line, #EEDFC6); color: var(--theme-ink, #1A1612); }

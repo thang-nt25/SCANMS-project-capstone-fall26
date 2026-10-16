@@ -17,7 +17,7 @@ const tiers: Record<string, string> = { GOLD: 'Vàng', SILVER: 'Bạc', BRONZE: 
 
 export function VipCommissionModal({ creator, rate, saving, onRateChange, onClose, onSubmit }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const currentRate = creator.commissionRate ?? 18;
+  const currentRate = creator.commissionRate ?? 10;
   const difference = (rate - currentRate) * 5000;
 
   useEffect(() => {
@@ -51,9 +51,9 @@ export function VipCommissionModal({ creator, rate, saving, onRateChange, onClos
             </section>
             <section className="vip-commission-control">
               <div className="vip-commission-rate-heading"><div className="vip-commission-current"><span>Hiện tại</span><strong>{currentRate}<span>%</span></strong></div><ArrowRight size={16} aria-hidden="true" /><div className="vip-commission-next"><label htmlFor="vip-commission-rate">Tỷ lệ VIP mới</label><output htmlFor="vip-commission-rate">{rate}<span>%</span></output></div></div>
-              <input id="vip-commission-rate" type="range" min={10} max={45} step={1} value={rate} disabled={saving} onChange={event => onRateChange(Number(event.target.value))} style={{ background: `linear-gradient(to right, #C59B58 ${Math.max(0, Math.min(100, (rate - 10) / 35 * 100))}%, #EAE4D7 0)` }} />
-              <div className="vip-commission-range-labels"><span>Tối thiểu 10%</span><span>Tối đa 45%</span></div>
-              <div className="vip-commission-presets" role="group" aria-label="Chọn nhanh tỷ lệ hoa hồng">{[18, 22, 28, 35].map(value => <button key={value} type="button" aria-pressed={rate === value} disabled={saving} onClick={() => onRateChange(value)}>{value}%</button>)}</div>
+              <input id="vip-commission-rate" type="range" min={11} max={13} step={1} value={rate} disabled={saving} onChange={event => onRateChange(Number(event.target.value))} style={{ background: `linear-gradient(to right, #C59B58 ${Math.max(0, Math.min(100, (rate - 11) / 2 * 100))}%, #EAE4D7 0)` }} />
+              <div className="vip-commission-range-labels"><span>10% cơ bản + 1% VIP</span><span>10% cơ bản + 3% VIP</span></div>
+              <div className="vip-commission-presets" role="group" aria-label="Chọn nhanh tỷ lệ hoa hồng">{[11, 12, 13].map(value => <button key={value} type="button" aria-pressed={rate === value} disabled={saving} onClick={() => onRateChange(value)}>{value}%</button>)}</div>
             </section>
             <details className="vip-commission-details"><summary>Xem dự tính hoa hồng <ChevronDown size={14} aria-hidden="true" /></summary>
             <div className="vip-commission-partner-meta"><span>{(creator.handle || creator.email).replace(/^@+/, '@')}</span>{creator.tier && <span className="vip-commission-tier">{tiers[creator.tier] || creator.tier}</span>}</div>

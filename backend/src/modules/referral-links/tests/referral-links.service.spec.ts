@@ -144,7 +144,7 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       const query = mockPrismaService.product.findMany.mock.calls[0][0];
       expect(query.where.AND).toHaveLength(2);
       expect(products).toHaveLength(1);
-      expect(products[0].estimatedCommissionRate).toBe(15);
+      expect(products[0].estimatedCommissionRate).toBe(10);
     });
   });
 

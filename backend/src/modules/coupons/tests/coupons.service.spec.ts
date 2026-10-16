@@ -103,6 +103,8 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         {
           id: 'coupon-uuid-1',
           displayCode: 'SORA15',
+          codeNormalized: 'SORA15',
+          fundingSource: 'SHOP_FUNDED',
           discountType: DiscountType.PERCENTAGE,
           discountValue: new Prisma.Decimal(15),
           minimumOrderAmount: new Prisma.Decimal(200000),
@@ -128,6 +130,9 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         {
           id: 'coupon-uuid-1',
           code: 'SORA15',
+          displayCode: 'SORA15',
+          codeNormalized: 'SORA15',
+          fundingSource: 'SHOP_FUNDED',
           discountType: DiscountType.PERCENTAGE,
           discountValue: 15,
           minimumOrderAmount: 200000,

@@ -50,16 +50,25 @@ const TIERS = [
   { label: 'Kim Cương (Diamond)', value: 'DIAMOND' },
 ];
 
+function matchingPreferencesKey() {
+  return `scanms-kol-matching:v2:${window.location.pathname}:${localStorage.getItem('current_store_id') || 'platform'}`;
+}
+
+function readMatchingPreferences(): { productId?: string; autoScan?: boolean } {
+  try { return JSON.parse(sessionStorage.getItem(matchingPreferencesKey()) || '{}') || {}; }
+  catch { return {}; }
+}
+
 export default function KolRecommendationPage({ onReturn }: { onReturn?: () => void } = {}) {
   const [products, setProducts] = useState<any[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState<string>(() => readMatchingPreferences().productId || '');
   const [targetProduct, setTargetProduct] = useState<TargetProductSummary | null>(null);
   const [kols, setKols] = useState<KolMatchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [analyzingKol, setAnalyzingKol] = useState<KolMatchResult | null>(null);
 
   const [productsReady, setProductsReady] = useState(false);
-  const [autoScan, setAutoScan] = useState(false);
+  const [autoScan, setAutoScan] = useState(() => readMatchingPreferences().autoScan === true);
   const [calculatedAt, setCalculatedAt] = useState('');
   const [scanError, setScanError] = useState('');
   const scanVersion = useRef(0);
@@ -74,6 +83,12 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!productsReady) return;
+    try { sessionStorage.setItem(matchingPreferencesKey(), JSON.stringify({ productId: selectedProductId, autoScan })); }
+    catch { /* Storage can be unavailable in restricted browser sessions. */ }
+  }, [productsReady, selectedProductId, autoScan]);
 
   // VIP Invitation Modal State
   const [invitingKol, setInvitingKol] = useState<KolMatchResult | null>(null);
@@ -100,7 +115,9 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
         const list = (Array.isArray(body) ? body : body?.items || []).filter((p: any) => p.moderationStatus === 'APPROVED' && p.isActive !== false && !p.isDeleted);
         if (Array.isArray(list) && list.length > 0) {
           setProducts(list);
-          setSelectedProductId(list[0].id);
+          setSelectedProductId(previous => list.some((product: any) => product.id === previous) ? previous : '');
+        } else {
+          setSelectedProductId('');
         }
       } catch {
         toast.error('Không tải được sản phẩm của shop. Bạn vẫn có thể quét hồ sơ KOL chung.');
@@ -461,6 +478,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
                   </div>
 
                   <div className="kol-ai-score" aria-label={`Điểm đối sánh ${kol.matchScore} trên 100`}>
+                    <small className="kol-ai-score-label">Đối sánh</small>
                     <div><strong>{kol.matchScore}</strong><span>/100</span></div>
                     <span className="kol-ai-score-track" aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, kol.matchScore))}%` }} /></span>
                   </div>

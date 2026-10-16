@@ -71,8 +71,18 @@
 .merchant-payout-page .payout-approval-table thead th:last-child { background: var(--theme-surface, #fff); }
 .merchant-payout-page .payout-approval-table tbody td { padding-top: 14px; padding-bottom: 14px; }
 .merchant-payout-page .payout-approval-table tbody td:nth-child(6) > div { color: var(--theme-ink, #1A1612); }
-.merchant-payout-page .payout-approval-table tbody td:nth-child(7) > span { background: var(--theme-surface, #fff); }
+.merchant-payout-page .payout-approval-table tbody td:nth-child(7) > .payout-status-pill { background: #FBF5EB; }
+.merchant-payout-page .payout-approval-table tbody td:nth-child(7) > .payout-status-pill.payout-status-rejected { border-color:#FECACA; background:#FEF2F2; color:#DC2626; }
 .merchant-payout-page .payout-approval-table :is(td, th) { font-variant-numeric: tabular-nums; }
+.merchant-payout-page .payout-approval-table thead th { padding-top: 13px; padding-bottom: 13px; font-size: 10px; font-weight: 600; color: #7D715E; }
+.merchant-payout-page .payout-approval-table tbody tr { transition:background-color .15s ease; }
+.merchant-payout-page .payout-approval-table tbody tr:hover { background:#FAF8F5; }
+.merchant-payout-page .payout-approval-table tbody td { border-color:#F0EAE0; }
+.merchant-payout-page .payout-status-cell { min-width:205px; }
+.merchant-payout-page .payout-status-pill { line-height:1.35; }
+.merchant-payout-page .payout-status-reference { width:max-content; max-width:100%; overflow-wrap:anywhere; line-height:1.45; }
+.merchant-payout-page .payout-approval-table > div:last-child { min-height:54px; background:#FFF; }
+.merchant-payout-page .payout-approval-table > div:last-child button { min-width:76px; border-radius:9px; font-weight:500; }
 .merchant-payout-page :is(button, [role="button"], [role="region"]):focus-visible {
   outline: 2px solid #C59B58;
   outline-offset: 2px;
@@ -92,7 +102,7 @@
   .payout-approval-table table { display: block; min-width: 0; width: 100%; }
   .payout-approval-table colgroup, .payout-approval-table thead { display: none; }
   .payout-approval-table tbody { display: block; }
-  .payout-approval-table tbody tr { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px 24px; padding: 18px 16px 18px 42px; }
+  .payout-approval-table tbody tr { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px 20px; padding: 18px 16px 18px 42px; border-bottom:1px solid #EAE4D7; border-top:0; }
   .payout-approval-table tbody td { display: block; min-width: 0; padding: 0; text-align: left; }
   .payout-approval-table tbody td:first-child { position: absolute; left: 16px; top: 20px; }
   .payout-approval-table tbody td:nth-child(2) { grid-column: 1; grid-row: 1; }
@@ -106,6 +116,11 @@
   .payout-approval-table tbody td:nth-child(8) button { width: auto; padding-left: 14px; padding-right: 14px; }
   .payout-approval-table tbody td[data-label]::before { content: attr(data-label); display: block; color: var(--theme-muted, #7D715E); font-size: 11px; margin-bottom: 4px; }
   .payout-approval-table tbody td:nth-child(7) > div { margin-left: 0; }
+  .merchant-payout-page .payout-status-cell { min-width:0; text-align:left; }
+  .merchant-payout-page .payout-status-cell .payout-status-pill { max-width:100%; text-align:center; }
+  .merchant-payout-page .payout-status-reference { margin-left:0; text-align:left; }
+  .merchant-payout-page .payout-approval-table > div:last-child { align-items:flex-start; flex-direction:column; }
+  .merchant-payout-page .payout-approval-table > div:last-child > div { align-self:flex-end; }
 }
 @container (max-width: 479px) {
   .payout-approval-table tbody tr { grid-template-columns: minmax(0, 1fr); gap: 12px; }

@@ -8,11 +8,11 @@ const tier = (id: string, name: string, threshold: number, bonus: number) => ({
 });
 const bronze = tier('bronze', 'Đồng (Bronze)', 0, 0);
 const silver = tier('silver', 'Bạc (Silver)', 20_000_000, 1);
-const gold = tier('gold', 'Vàng (Gold)', 50_000_000, 3);
-const diamond = tier('diamond', 'Kim Cương (Diamond)', 100_000_000, 5);
+const gold = tier('gold', 'Vàng (Gold)', 50_000_000, 2);
+const diamond = tier('diamond', 'Kim Cương (Diamond)', 100_000_000, 3);
 const policies = [bronze, silver, gold, diamond];
 
-describe('TiersService applied tier and cumulative progression', () => {
+describe('TiersService applied tier and previous-month progression', () => {
   let prisma: any;
   let service: TiersService;
 
@@ -23,9 +23,10 @@ describe('TiersService applied tier and cumulative progression', () => {
         findUnique: jest.fn().mockResolvedValue({ id: 'profile', userId: 'creator', tier: bronze }),
         findMany: jest.fn(), update: jest.fn(),
       },
-      order: { aggregate: jest.fn().mockResolvedValue({
-        _sum: { finalAmount: new Prisma.Decimal(1_161_000) }, _count: { id: 1 },
-      }) },
+      order: { findMany: jest.fn().mockResolvedValue([{
+        id: 'order-1', subtotalAmount: new Prisma.Decimal(1_261_000), couponDiscountAmount: new Prisma.Decimal(100_000),
+        finalAmount: new Prisma.Decimal(1_200_000), refundedAmount: new Prisma.Decimal(0),
+      }]) },
     };
     service = new TiersService(prisma);
   });
@@ -33,14 +34,20 @@ describe('TiersService applied tier and cumulative progression', () => {
   it('uses the assigned tier that the leaderboard and commissions apply', async () => {
     prisma.collaboratorProfile.findUnique.mockResolvedValue({ tier: gold });
     const status = await service.getMyTierStatus('creator');
-    expect(status.currentTier).toMatchObject({ id: 'gold', extraBonusPercentage: 3 });
+    expect(status.currentTier).toMatchObject({ id: 'gold', extraBonusPercentage: 2 });
     expect(status.qualifiedTier.id).toBe('bronze');
     expect(status.nextTier?.id).toBe('diamond');
     expect(status.revenueNeeded).toBe(98_839_000);
     expect(status.progressPercentage).toBe(0);
-    expect(status.revenueBasis).toBe('LIFETIME');
-    expect(prisma.order.aggregate).toHaveBeenCalledWith(expect.objectContaining({
-      where: { attributedCollaboratorId: 'creator', status: { in: ['COMPLETED', 'DELIVERED'] } },
+    expect(status.revenueBasis).toBe('PREVIOUS_MONTH_VIETNAM');
+    expect(status.currentRevenue).toBe(1_161_000);
+    expect(prisma.order.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({ subtotalAmount: true, couponDiscountAmount: true, refundedAmount: true }),
+      where: expect.objectContaining({
+        attributedCollaboratorId: 'creator',
+        status: { in: ['COMPLETED', 'DELIVERED'] },
+        createdAt: expect.objectContaining({ gte: expect.any(Date), lt: expect.any(Date) }),
+      }),
     }));
     expect(prisma.collaboratorProfile.update).not.toHaveBeenCalled();
   });
@@ -60,7 +67,7 @@ describe('TiersService applied tier and cumulative progression', () => {
   });
 
   it('reports eligibility without granting a new commission rate on a read', async () => {
-    prisma.order.aggregate.mockResolvedValue({ _sum: { finalAmount: 50_000_000 }, _count: { id: 20 } });
+    prisma.order.findMany.mockResolvedValue([{ id: 'order-2', subtotalAmount: 50_000_000, couponDiscountAmount: 0, finalAmount: 50_000_000, refundedAmount: 0 }]);
     const status = await service.getMyTierStatus('creator');
     expect(status.currentTier.id).toBe('bronze');
     expect(status.qualifiedTier.id).toBe('gold');
@@ -74,6 +81,22 @@ describe('TiersService applied tier and cumulative progression', () => {
     const status = await service.getMyTierStatus('creator');
     expect(status.nextTier).toBeNull();
     expect(status.progressPercentage).toBe(100);
+  });
+
+  it('reduces prior-month goods GMV proportionally after a partial refund', async () => {
+    prisma.order.findMany.mockResolvedValue([{ id: 'order-refunded', subtotalAmount: 1_000_000,
+      couponDiscountAmount: 100_000, finalAmount: 1_000_000, refundedAmount: 250_000 }]);
+    const status = await service.getMyTierStatus('creator');
+    expect(status.currentRevenue).toBe(675_000);
+    expect(status.totalOrders).toBe(1);
+  });
+
+  it('excludes a fully refunded order from net GMV and valid order count', async () => {
+    prisma.order.findMany.mockResolvedValue([{ id: 'order-refunded', subtotalAmount: 1_000_000,
+      couponDiscountAmount: 100_000, finalAmount: 1_000_000, refundedAmount: 1_000_000 }]);
+    const status = await service.getMyTierStatus('creator');
+    expect(status.currentRevenue).toBe(0);
+    expect(status.totalOrders).toBe(0);
   });
 
   it('returns a clear error for missing policy configuration or a missing profile', async () => {

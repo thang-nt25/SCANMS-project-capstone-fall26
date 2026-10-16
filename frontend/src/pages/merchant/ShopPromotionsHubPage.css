@@ -234,6 +234,9 @@
 #shop-promotions-hub .live-session-form button[type="submit"] { height:44px; border-radius:10px; font-size:12px; font-weight:600; box-shadow:none; }
 #shop-promotions-hub .live-session-form { width:100%; max-width:none; margin-inline:0; gap:16px; padding:24px; }
 #shop-promotions-hub .live-session-form>.live-form-info { padding:0 0 18px; border:0; border-bottom:1px solid #EAE4D7; border-radius:0; }
+#shop-promotions-hub .live-form-info>div:first-child { flex-wrap:wrap; }
+#shop-promotions-hub .live-approved-creators { display:inline-flex; align-items:center; gap:6px; margin-left:auto; padding:6px 10px; border:1px solid #EAE4D7; border-radius:8px; background:#FAF8F5; color:#7D715E; font-size:12px; font-weight:500; white-space:nowrap; }
+#shop-promotions-hub .live-approved-creators svg { color:#B88E4F; }
 #shop-promotions-hub .live-session-form>.live-form-schedule { padding:16px; border:1px solid #EAE4D7; background:#FAF8F5; }
 #shop-promotions-hub .live-form-schedule>div.grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 #shop-promotions-hub .live-form-schedule>div.grid>div:nth-child(n+3) { grid-column:1/-1; }
@@ -259,9 +262,57 @@
 #shop-promotions-hub .live-form-voucher>div.grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 #shop-promotions-hub .live-form-voucher textarea { min-height:60px; }
 #shop-promotions-hub .live-form-voucher>div.grid>label:last-child { grid-column:1/-1; }
+#shop-promotions-hub .live-voucher-editor { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:14px; padding:14px; }
+#shop-promotions-hub .live-voucher-discount, #shop-promotions-hub .live-voucher-conditions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:12px; min-width:0; }
+#shop-promotions-hub .live-voucher-discount { padding:12px; border:1px solid #EEDFC6; border-radius:10px; background:#FBF5EB; }
+#shop-promotions-hub .live-voucher-conditions { padding:12px 0; }
+#shop-promotions-hub .live-voucher-limits { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding-top:14px; border-top:1px solid #EAE4D7; }
+#shop-promotions-hub .live-voucher-editor label { font-size:12px; font-weight:500; gap:6px; }
+#shop-promotions-hub .live-voucher-editor input:not([type="checkbox"]), #shop-promotions-hub .live-voucher-editor button[aria-haspopup="listbox"] { width:100%; height:38px; min-height:38px; padding:8px 11px; font-size:13px; border-radius:8px; }
+#shop-promotions-hub .live-voucher-amount { display:flex; align-items:center; gap:4px; height:38px; padding-right:12px; border:1px solid #EEDFC6; border-radius:8px; background:#FFF; }
+#shop-promotions-hub .live-voucher-amount:focus-within { border-color:#C59B58; box-shadow:0 0 0 2px #C59B5814; }
+#shop-promotions-hub .live-voucher-amount input:not([type="checkbox"]) { min-width:0; flex:1; width:0; height:100%; min-height:0; border:0; background:transparent; font-size:19px; font-weight:600; color:#B88E4F; outline:none; box-shadow:none; }
+#shop-promotions-hub .live-voucher-amount>span { color:#B88E4F; font-size:14px; }
+#shop-promotions-hub .live-voucher-description { grid-column:1/-1; border-top:1px solid #EAE4D7; padding-top:10px; }
+#shop-promotions-hub .live-voucher-description>summary { display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none; color:#7D715E; font-size:12px; min-height:26px; }
+#shop-promotions-hub .live-voucher-description>summary::-webkit-details-marker { display:none; }
+#shop-promotions-hub .live-voucher-description>summary>span { font-size:10px; color:#7D715E; }
+#shop-promotions-hub .live-voucher-description>summary>svg { margin-left:auto; color:#B88E4F; }
+#shop-promotions-hub .live-voucher-description[open]>summary>svg { transform:rotate(180deg); }
+#shop-promotions-hub .live-voucher-description>label { margin-top:8px; }
+@container(max-width:850px) {
+ #shop-promotions-hub .live-voucher-editor { grid-template-columns:minmax(0,1fr); gap:12px; }
+ #shop-promotions-hub .live-voucher-conditions { padding:0; }
+}
+@container(max-width:500px) {
+ #shop-promotions-hub .live-voucher-editor { padding:10px; }
+ #shop-promotions-hub .live-voucher-discount, #shop-promotions-hub .live-voucher-conditions, #shop-promotions-hub .live-voucher-limits { grid-template-columns:minmax(0,1fr); }
+}
 #shop-promotions-hub .live-session-form label, #shop-promotions-hub .live-form-info>div.grid>div, #shop-promotions-hub .live-form-schedule>div.grid>div { font-size:13px; }
 #shop-promotions-hub .live-form-schedule .scanms-datetime-trigger span { font-size:13px; }
 #shop-promotions-hub .live-form-schedule .scanms-datetime-trigger { padding:10px 13px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-popover--compact { width:380px; max-width:calc(100vw - 64px); padding:12px; border-radius:12px; box-shadow:0 8px 28px #231D1512; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-heading { margin-bottom:10px; padding-bottom:8px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-heading>span { font-size:12px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-close { width:24px; height:24px; border-radius:7px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-content { gap:10px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-calendar>div:first-child { margin-bottom:6px; padding:0; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-calendar>div:first-child button { width:24px; height:24px; border-radius:7px; box-shadow:none; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-calendar>div.grid { gap:2px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-calendar>div.grid>div { min-width:0; width:auto; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-day { height:28px; border-radius:7px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-day:disabled { background:transparent; text-decoration:none; color:#B9B1A5; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-time { width:106px; padding-left:10px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-time>div { gap:6px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-time-list { height:166px; padding:3px; border:1px solid #EAE4D7; border-radius:8px; background:#FAF8F5; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-time-list button { height:27px; border-radius:6px; font-size:11px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-time-list button[aria-pressed="true"] { background:#FFF; border-color:#C59B58; color:#8A642C; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-footer { margin-top:10px; padding-top:9px; }
+#shop-promotions-hub .live-form-schedule .scanms-datetime-footer button { height:30px; padding:5px 10px; border-radius:7px; }
+@media(max-width:639px) {
+ #shop-promotions-hub .live-form-schedule .scanms-datetime-time { width:100%; padding-left:0; }
+ #shop-promotions-hub .live-form-schedule .scanms-datetime-time-list { height:166px; }
+}
 #shop-promotions-hub .live-session-form>div:first-child { padding-bottom:18px; }
 #shop-promotions-hub .live-session-form button[type="submit"] { padding-inline:18px; font-size:13px; }
 @container(max-width:500px) {

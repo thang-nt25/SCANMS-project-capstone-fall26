@@ -55,6 +55,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         price: '250000',
         stockQuantity: 10,
         isActive: true,
+        moderationStatus: 'APPROVED',
         store: {
           id: 'store-1',
           name: 'Shop A',
@@ -103,6 +104,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         price: '300000',
         stockQuantity: 1,
         isActive: true,
+        moderationStatus: 'APPROVED',
         store: {
           id: 'store-2',
           name: 'Shop B',
@@ -146,6 +148,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 50,
         isActive: true,
         isDeleted: false,
+        moderationStatus: 'APPROVED',
         store: {
           id: storeId,
           name: 'Sora Shop',
@@ -267,6 +270,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 10,
         isActive: true,
         isDeleted: false,
+        moderationStatus: 'APPROVED',
         store: {
           id: storeAId,
           name: 'Shop A',
@@ -283,6 +287,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         stockQuantity: 5,
         isActive: true,
         isDeleted: false,
+        moderationStatus: 'APPROVED',
         store: {
           id: storeBId,
           name: 'Shop B',

@@ -27,6 +27,7 @@ import {
   CreateSampleRequestDto,
   RejectSampleRequestDto,
   ReportSampleDeliveryIssueDto,
+  ReportSampleViolationDto,
   ShipSampleRequestDto,
   SubmitSampleVideoDto,
 } from './dto/sample-request.dto';
@@ -70,18 +71,6 @@ export class SamplesController {
   @ApiOperation({ summary: '[KOL] Hủy yêu cầu khi Shop chưa duyệt' })
   cancelRequest(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     return this.samplesService.cancelRequest(id, req.user?.id || req.user?.sub);
-  }
-
-  @Patch(':id/receive')
-  @Roles('COLLABORATOR')
-  @ApiOperation({
-    summary: '[KOL] Xác nhận đã nhận mẫu và bắt đầu hạn nộp video 14 ngày',
-  })
-  confirmReceived(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
-    return this.samplesService.confirmReceived(
-      id,
-      req.user?.id || req.user?.sub,
-    );
   }
 
   @Post(':id/video')
@@ -226,6 +215,24 @@ export class SamplesController {
   }
 
   // ---- Shared ----
+
+  @Post(':id/report-violation')
+  @Roles('SHOP_MANAGER')
+  @ApiOperation({
+    summary:
+      '[Shop] Báo cáo quá hạn và đề nghị Admin xem xét khóa quyền nhận mẫu',
+  })
+  reportViolation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReportSampleViolationDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.reportViolation(
+      id,
+      req.user?.id || req.user?.sub,
+      dto.reason,
+    );
+  }
 
   @Get(':id')
   @Roles('COLLABORATOR', 'SHOP_MANAGER', 'SYSTEM_MANAGER', 'SYSTEM_ADMIN')

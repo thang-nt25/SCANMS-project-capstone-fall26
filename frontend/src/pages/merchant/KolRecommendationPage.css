@@ -16,9 +16,10 @@
 .kol-ai-method[open] summary>span { transform:rotate(45deg); }
 .kol-ai-method p { max-width:580px; margin-top:4px; line-height:1.7; }
 .kol-ai-live { display:flex; align-items:center; gap:12px; min-height:24px; flex-shrink:0; }
-.kol-ai-auto { display:flex; align-items:center; gap:6px; position:relative; cursor:pointer; }
+.kol-ai-updated { display:inline-flex; align-items:center; flex-shrink:0; white-space:nowrap; line-height:20px; }
+.kol-ai-auto { display:inline-flex; align-items:center; gap:7px; position:relative; flex-shrink:0; white-space:nowrap; line-height:20px; cursor:pointer; }
 .kol-ai-auto input { position:absolute; width:28px; height:16px; opacity:0; cursor:pointer; }
-.kol-ai-switch { display:block; width:28px; height:16px; border:1px solid #EAE4D7; border-radius:12px; background:#F3EFE6; }
+.kol-ai-switch { display:block; flex-shrink:0; width:28px; height:16px; border:1px solid #EAE4D7; border-radius:12px; background:#F3EFE6; }
 .kol-ai-switch::after { content:''; display:block; width:10px; height:10px; margin:2px; border-radius:50%; background:#FFF; box-shadow:0 1px 3px #231D1520; transition:transform .15s; }
 .kol-ai-auto input:checked+.kol-ai-switch { background:#C59B58; border-color:#C59B58; }
 .kol-ai-auto input:checked+.kol-ai-switch::after { transform:translateX(12px); }
@@ -66,6 +67,7 @@
 .kol-ai-profile-meta>span:first-child { padding:1px 6px; border:0; border-radius:5px; font-size:9px; font-weight:500; }
 .kol-ai-profile-meta .kol-matching-category { color:#7D715E; font-size:10px; line-height:16px; }
 .kol-ai-score { grid-column:2; grid-row:1; width:60px; }
+.kol-ai-score-label { display:block; margin-bottom:3px; color:#7D715E; font-size:9px; line-height:1.4; font-weight:400; }
 .kol-ai-score>div { display:flex; align-items:baseline; gap:3px; }
 .kol-ai-score strong { font-size:19px; font-weight:650; color:#B88E4F; font-variant-numeric:tabular-nums; line-height:24px; }
 .kol-ai-score>div>span { font-size:9px; color:#7D715E; }

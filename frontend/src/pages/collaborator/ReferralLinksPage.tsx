@@ -767,11 +767,8 @@ export default function ReferralLinksPage() {
     const currentDeal = dealProposals.find(
       (deal) => deal.productId === product.id && deal.isCurrentDeal,
     );
-    const minimumRate = Math.max(
-      Number(product.estimatedCommissionRate),
-      Number(currentDeal?.approvedCommissionRate ?? 0),
-    );
-    setDealProposalRate(String(Math.min(100, minimumRate + 5)));
+    const minimumRate = Math.max(10, Number(currentDeal?.approvedCommissionRate ?? 0));
+    setDealProposalRate(String(Math.min(13, minimumRate + 1)));
     setDealVideoCount(4);
     setDealLiveCount(2);
     setDealTargetOrders(80);
@@ -835,18 +832,6 @@ export default function ReferralLinksPage() {
     }
   };
 
-  const normalizeDealProposalRate = (value: string) => {
-    const normalized = value.replace(/,/g, '.').replace(/[^\d.]/g, '');
-    const decimalIndex = normalized.indexOf('.');
-    const integerPart = (decimalIndex === -1 ? normalized : normalized.slice(0, decimalIndex))
-      .replace(/^0+(?=\d)/, '');
-
-    if (decimalIndex === -1) return integerPart;
-
-    const decimalPart = normalized.slice(decimalIndex + 1).replace(/\./g, '').slice(0, 2);
-    return `${integerPart || '0'}.${decimalPart}`;
-  };
-
   const handleSubmitExclusiveDeal = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!dealProposalProduct || submittingDealProposal) return;
@@ -860,14 +845,14 @@ export default function ReferralLinksPage() {
       toast.error('Vui lòng tích xác nhận cam kết tuân thủ Quy chế Chế tài 4 Cấp độ của SCANMS.');
       return;
     }
-    const openRate = Number(dealProposalProduct.estimatedCommissionRate);
+    const openRate = 10;
     const currentDeal = dealProposals.find(
       (deal) => deal.productId === dealProposalProduct.id && deal.isCurrentDeal,
     );
     const minimumRate = Math.max(openRate, Number(currentDeal?.approvedCommissionRate ?? 0));
     const proposedRate = Number(dealProposalRate);
-    if (!dealProposalRate.trim() || !Number.isFinite(proposedRate) || proposedRate <= minimumRate || proposedRate > 100) {
-      toast.error(`Mức đề xuất phải cao hơn mức đang áp dụng (${minimumRate}%) và không quá 100%.`);
+    if (![11, 12, 13].includes(proposedRate) || proposedRate <= minimumRate) {
+      toast.error(`Chọn nấc +1%, +2% hoặc +3% cao hơn deal đang áp dụng (${minimumRate}%).`);
       return;
     }
     if (dealSalesCommitment.trim().length < 5) {
@@ -1087,7 +1072,7 @@ export default function ReferralLinksPage() {
     ? dealProposals.find((deal) => deal.productId === dealProposalProduct.id && deal.isCurrentDeal)
     : undefined;
   const dealProposalMinimumRate = Math.max(
-    Number(dealProposalProduct?.estimatedCommissionRate ?? 0),
+    10,
     Number(dealProposalCurrentDeal?.approvedCommissionRate ?? 0),
   );
 
@@ -3113,31 +3098,31 @@ export default function ReferralLinksPage() {
                   Mức hoa hồng độc quyền đề xuất (%) <span className="text-[#DC2626]">*</span>
                 </label>
                 <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="decimal"
+                  <select
                     value={dealProposalRate}
-                    onChange={(event) => setDealProposalRate(normalizeDealProposalRate(event.target.value))}
-                    onFocus={(event) => event.currentTarget.select()}
-                    aria-label="Mức hoa hồng độc quyền đề xuất theo phần trăm"
-                    className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-sm font-bold text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-3 focus:ring-[#C59B58]/12"
+                    onChange={(event) => setDealProposalRate(event.target.value)}
+                    aria-label="Nấc thưởng Deal độc quyền"
+                    className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-sm font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
                     required
-                  />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#7D715E]">%</span>
+                  >
+                    {[1, 2, 3].map((bonus) => <option key={bonus} value={10 + bonus} disabled={10 + bonus <= dealProposalMinimumRate}>
+                      +{bonus}% (tổng {10 + bonus}%)
+                    </option>)}
+                  </select>
                 </div>
                 <span className={`mt-1.5 block text-xs font-medium ${
-                  dealProposalMinimumRate >= 100 ||
-                  Number(dealProposalRate) > 100 ||
+                  dealProposalMinimumRate >= 13 ||
+                  Number(dealProposalRate) > 13 ||
                   (dealProposalRate.trim() && Number(dealProposalRate) <= dealProposalMinimumRate)
                     ? 'text-[#DC2626]'
                     : 'text-[#7D715E]'
                 }`}>
-                  {dealProposalMinimumRate >= 100
-                    ? 'Mức deal hiện tại đã là 100%, không thể đề xuất cao hơn trong giới hạn cho phép.'
-                    : Number(dealProposalRate) > 100
-                      ? 'Mức đề xuất không được vượt quá 100%.'
+                  {dealProposalMinimumRate >= 13
+                    ? 'Deal hiện tại đã ở nấc +3%, không thể đề xuất cao hơn.'
+                    : Number(dealProposalRate) > 13
+                      ? 'Mức đề xuất không được vượt quá nấc +3%.'
                       : dealProposalRate.trim() && Number(dealProposalRate) <= dealProposalMinimumRate
-                        ? `Mức đề xuất phải cao hơn ${dealProposalMinimumRate}%. Ví dụ: ${Math.min(100, dealProposalMinimumRate + 1)}%.`
+                        ? `Mức đề xuất phải cao hơn ${dealProposalMinimumRate}%.`
                         : `Mức cao nhất hiện tại là ${dealProposalMinimumRate}%; hãy nhập mức cao hơn.`}
                 </span>
               </div>
@@ -3378,7 +3363,7 @@ export default function ReferralLinksPage() {
                   {dealProposalStep === 1 ? 'Hủy' : 'Quay lại'}
                 </button>
                 {dealProposalStep < 3 ? <button type="submit" className="kol-deal-proposal-next"
-                  disabled={submittingDealProposal || Boolean(kolDealStatus?.isBlocked) || (dealProposalStep === 1 ? !dealProposalRate.trim() || !Number.isFinite(Number(dealProposalRate)) || Number(dealProposalRate) <= dealProposalMinimumRate || Number(dealProposalRate) > 100 : dealSalesCommitment.trim().length < 5)}>
+                  disabled={submittingDealProposal || Boolean(kolDealStatus?.isBlocked) || (dealProposalStep === 1 ? !dealProposalRate.trim() || ![11, 12, 13].includes(Number(dealProposalRate)) || Number(dealProposalRate) <= dealProposalMinimumRate : dealSalesCommitment.trim().length < 5)}>
                   {dealProposalStep === 1 ? 'Tiếp tục' : 'Xem lại đề xuất'} <ChevronRight className="h-4 w-4" />
                 </button> : <button
                   type="submit"

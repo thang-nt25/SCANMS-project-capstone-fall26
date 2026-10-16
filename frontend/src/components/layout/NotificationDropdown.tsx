@@ -25,6 +25,7 @@ export const NotificationDropdown: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM'>('ALL');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -304,6 +305,13 @@ export const NotificationDropdown: React.FC = () => {
     const returnId = notif.data?.returnId || notif.data?.returnRequestId;
     const payoutId = notif.data?.payoutId;
 
+    if (notif.type.startsWith('SAMPLE_')) {
+      if (userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM_MANAGER') navigate('/admin/sample-requests');
+      else if (userRole === 'SHOP_MANAGER') navigate('/merchant/kol-hub?tab=samples');
+      else if (userRole === 'COLLABORATOR') navigate('/collaborator/collaboration?tab=samples');
+      return;
+    }
+
     if (
       notif.type.startsWith('ORDER_') ||
       notif.type.startsWith('DISPUTE_') ||
@@ -362,7 +370,7 @@ export const NotificationDropdown: React.FC = () => {
       return <ShoppingBag className="w-4 h-4 text-[#C59B58]" />;
     }
     if (type.startsWith('COMMISSION_') || type.startsWith('PAYOUT_')) {
-      return <DollarSign className="w-4 h-4 text-[#059669]" />;
+      return <DollarSign className="w-4 h-4 text-[#B88E4F]" />;
     }
     if (type.startsWith('DISPUTE_')) {
       return <ShieldAlert className="w-4 h-4 text-[#DC2626]" />;
@@ -390,7 +398,10 @@ export const NotificationDropdown: React.FC = () => {
       {isOpen && createPortal(
         <div id="scanms-notification-panel" ref={panelRef} role="region" aria-label="Trung tâm thông báo" tabIndex={-1} className="scanms-notification-panel" style={{ '--notification-top': panelTop + 'px', '--notification-right': panelRight + 'px' } as React.CSSProperties}>
           <header className="scanms-notification-header">
-            <div><h3>Thông báo</h3>{unreadCount > 0 && <span className="scanms-notification-new">{unreadCount} mới</span>}</div>
+            <div className="scanms-notification-heading">
+              <span className="scanms-notification-heading-icon"><Bell size={18} /></span>
+              <div><div className="scanms-notification-heading-title"><h3>Thông báo</h3>{unreadCount > 0 && <span className="scanms-notification-new">{unreadCount} mới</span>}</div><p>Cập nhật dành cho bạn</p></div>
+            </div>
             <div className="scanms-notification-header-actions">
               {unreadCount > 0 && <button type="button" onClick={handleMarkAllRead} className="scanms-notification-read-all"><CheckCheck size={13} /><span>Đọc tất cả</span></button>}
               <button type="button" aria-label="Đóng thông báo" className="scanms-notification-close" onClick={() => { setIsOpen(false); bellRef.current?.focus(); }}><X size={15} /></button>
@@ -407,14 +418,19 @@ export const NotificationDropdown: React.FC = () => {
               : !notifications.length ? <div className="scanms-notification-empty"><Bell size={24} /><h4>Chưa có thông báo</h4><p>Thông báo mới sẽ xuất hiện tại đây.</p></div>
               : notifications.map(n => {
                 const isLive = n.type.startsWith('LIVE_') || n.type.includes('LIVE');
-                return <button type="button" key={n.id} onClick={() => void handleNotificationClick(n)} className={'scanms-notification-item' + (!n.isRead ? ' is-unread' : '')}>
+                const expanded = expandedMessages.has(n.id);
+                const section = getNotificationSection(n.type);
+                return <div key={n.id} className={'scanms-notification-entry' + (!n.isRead ? ' is-unread' : '')}>
+                <button type="button" onClick={() => void handleNotificationClick(n)} className="scanms-notification-item">
                   <span className="scanms-notification-icon">{getNotificationIcon(n.type)}</span>
                   <span className="scanms-notification-content">
                     <span className="scanms-notification-title-row"><strong title={n.title}>{n.title}</strong>{!n.isRead && <span className="scanms-notification-unread-dot" aria-label="Chưa đọc" />}</span>
-                    <span className="scanms-notification-message">{n.message}</span>
-                    <span className="scanms-notification-meta"><time dateTime={n.createdAt}><Clock size={11} />{formatTimeAgo(n.createdAt)}</time>{isLive && <span className="scanms-notification-live-link">Xem phiên live →</span>}</span>
+                    <span className={'scanms-notification-message' + (expanded ? ' is-expanded' : '')}>{n.message}</span>
+                    <span className="scanms-notification-meta"><span className="scanms-notification-category">{section === 'ORDER' ? 'Đơn hàng' : section === 'PROMOTION' ? 'Live & ưu đãi' : 'Hệ thống'}</span><time dateTime={n.createdAt} title={new Date(n.createdAt).toLocaleString('vi-VN')}><Clock size={11} />{formatTimeAgo(n.createdAt)}</time>{isLive && <span className="scanms-notification-live-link">Xem phiên live →</span>}</span>
                   </span>
-                </button>;
+                </button>
+                {n.message.length > 100 && <button type="button" className="scanms-notification-expand" aria-expanded={expanded} onClick={() => setExpandedMessages(prev => { const next = new Set(prev); if (next.has(n.id)) next.delete(n.id); else next.add(n.id); return next; })}>{expanded ? 'Thu gọn' : 'Xem đầy đủ'}</button>}
+                </div>;
               })}
           </div>
           <footer className="scanms-notification-footer"><span className="scanms-notification-footer-dot" />Cập nhật hoạt động trên SCANMS</footer>

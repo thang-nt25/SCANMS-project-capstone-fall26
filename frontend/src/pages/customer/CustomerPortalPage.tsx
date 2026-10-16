@@ -76,6 +76,7 @@ import {
 } from '../../services/notifications.service';
 import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal';
 import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
+import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
 import {
   AddressLocationPicker,
   type AddressLocationResult,
@@ -2245,6 +2246,10 @@ export default function CustomerPortalPage() {
                 <span className="font-bold text-[#1A1612]">Hoàn tất</span>
               </div>
             </div>
+
+            {(selectedOrderDetails.rawPayload?.ghnOrderCode || selectedOrderDetails.rawPayload?.trackingNumber) && (
+              <GhnTrackingTimeline orderCode={selectedOrderDetails.rawPayload.ghnOrderCode || selectedOrderDetails.rawPayload.trackingNumber} />
+            )}
 
             {/* Dispute / Return Banner if Returned */}
             {selectedOrderDetails.status === 'RETURNED' && (

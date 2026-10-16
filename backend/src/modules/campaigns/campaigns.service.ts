@@ -57,6 +57,7 @@ export class CampaignsService {
         storeId: store.id,
         name: dto.name.trim(),
         bonusCommissionRate: dto.bonusCommissionRate,
+        bonusBudgetTotal: dto.bonusBudgetTotal,
         startDate: start,
         endDate: end,
         isActive: true,

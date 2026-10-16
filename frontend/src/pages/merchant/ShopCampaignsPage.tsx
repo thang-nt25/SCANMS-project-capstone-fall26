@@ -23,7 +23,7 @@ const isExpired = (endDate: string) => new Date(endDate) < new Date();
 
 
 function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [form, setForm] = useState({ name: '', bonusCommissionRate: 5, startDate: '', endDate: '' });
+  const [form, setForm] = useState({ name: '', bonusCommissionRate: 1, bonusBudgetTotal: 1000000, startDate: '', endDate: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -74,17 +74,13 @@ function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSu
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1.5">% Hoa hồng thưởng thêm</label>
             <div className="flex items-center bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl overflow-hidden focus-within:border-[#B88E4F]">
-              <input
+              <select
                 id="campaign-rate"
                 className="flex-1 bg-transparent px-3.5 py-2.5 text-xs text-[#1A1612] outline-none"
-                type="number"
-                min={0}
-                max={100}
-                step={0.5}
                 value={form.bonusCommissionRate}
                 onChange={(e) => setForm((f) => ({ ...f, bonusCommissionRate: +e.target.value }))}
                 required
-              />
+              ><option value={1}>+1%</option><option value={2}>+2%</option></select>
               <span className="px-3.5 text-xs font-bold text-[#7D715E] bg-[#F3EFE6] py-2.5 border-l border-[#EAE4D7]">
                 %
               </span>
@@ -93,6 +89,9 @@ function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSu
               Mức hoa hồng thưởng thêm ngoài % mặc định của cửa hàng
             </small>
           </div>
+          <label className="block text-xs font-bold text-[#1A1612]">Ngân sách trần cho hoa hồng thưởng (VNĐ)
+            <input type="number" min={1} step={1000} required value={form.bonusBudgetTotal} onChange={(e) => setForm((f) => ({ ...f, bonusBudgetTotal: Number(e.target.value) }))} className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5" />
+          </label>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Ngày bắt đầu</label>

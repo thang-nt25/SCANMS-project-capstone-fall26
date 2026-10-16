@@ -27,6 +27,7 @@ import {
   type CouponItem,
   type ApproveCouponPayload,
   type CreateStoreCouponPayload,
+  type PlatformSubsidySummary,
 } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
@@ -149,6 +150,8 @@ export const ShopCouponsPage: React.FC = () => {
 
   // Store Products for Scope Picker
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; price: number; imageUrl?: string }>>([]);
+  const [platformSubsidy, setPlatformSubsidy] = useState<PlatformSubsidySummary | null>(null);
+  const [storeCampaigns, setStoreCampaigns] = useState<Array<{ id: string; name?: string; title?: string; storeId: string; isActive: boolean; endDate: string }>>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [voucherProductSearch, setVoucherProductSearch] = useState('');
   const normalizeProductSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
@@ -286,7 +289,12 @@ export const ShopCouponsPage: React.FC = () => {
         }
         await Promise.all([
           fetchStoreCoupons(foundStore.id),
+          couponService.getStorePlatformSubsidies(foundStore.id).then((rows) => setPlatformSubsidy(rows[0] || null)).catch(() => setPlatformSubsidy(null)),
           fetchStoreProducts(foundStore.id),
+          api.get('/campaigns/shop').then((res: any) => {
+            const payload = res?.data?.data || res?.data || res;
+            setStoreCampaigns((Array.isArray(payload) ? payload : []).filter((campaign: any) => campaign.storeId === foundStore.id && campaign.isActive && new Date(campaign.endDate) > new Date()));
+          }).catch(() => setStoreCampaigns([])),
         ]);
       } else {
         setLoading(false);
@@ -335,6 +343,7 @@ export const ShopCouponsPage: React.FC = () => {
       setSearchParams({ storeId: selected.id }, { replace: true });
       fetchStoreCoupons(selected.id);
       fetchStoreProducts(selected.id);
+      couponService.getStorePlatformSubsidies(selected.id).then((rows) => setPlatformSubsidy(rows[0] || null)).catch(() => setPlatformSubsidy(null));
     }
   };
 
@@ -606,6 +615,12 @@ export const ShopCouponsPage: React.FC = () => {
   return (
     <div className="promotions-coupons w-full text-[#1A1612]">
       <div className="max-w-[1520px] mx-auto space-y-4 pt-1 pb-8">
+        {platformSubsidy && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm" aria-label="Đối soát voucher sàn">
+          <h2 className="font-bold">Voucher sàn tài trợ cho Shop</h2>
+          <p className="mt-1">{platformSubsidy.orderCount} đơn · Sàn tài trợ {platformSubsidy.amount.toLocaleString('vi-VN')}₫ · Đã ghi nhận chuyển hoàn {platformSubsidy.paidAmount.toLocaleString('vi-VN')}₫ · Còn phải hoàn {platformSubsidy.outstandingAmount.toLocaleString('vi-VN')}₫</p>
+          <details className="mt-2"><summary className="cursor-pointer font-semibold text-[#B88E4F]">Xem theo đơn hàng</summary><ul className="mt-2 space-y-1">{platformSubsidy.orders.map((order) => <li key={order.orderId}>{order.orderCode}: tài trợ {order.amount.toLocaleString('vi-VN')}₫, đã ghi nhận {order.paidAmount.toLocaleString('vi-VN')}₫, còn lại {order.outstandingAmount.toLocaleString('vi-VN')}₫{order.paidAmount > order.amount ? ' — cần đối soát khoản hoàn vượt sau khi đơn đổi trạng thái' : ''}{order.payments.map((payment, index) => <span key={`${payment.bankReference}-${index}`} className="block pl-3 text-xs text-[#7D715E]">Giao dịch {payment.bankReference} · {payment.amount.toLocaleString('vi-VN')}₫ · {new Date(payment.paidAt).toLocaleDateString('vi-VN')}</span>)}</li>)}</ul></details>
+          {!platformSubsidy.reimbursementReady && <p className="mt-2 text-[#DC2626]">Chức năng ghi nhận chuyển hoàn đang chờ cập nhật database.</p>}
+        </section>}
         <section aria-label="Phát hành voucher gian hàng" className="coupon-issuer rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-3">
@@ -1157,6 +1172,11 @@ export const ShopCouponsPage: React.FC = () => {
 
               {/* Left Form: 7 cols */}
               <form id="store-voucher-form" onSubmit={handleCreateSubmit} className="store-voucher-form space-y-4">
+                <label className="block text-sm font-semibold text-[#1A1612]">Voucher áp dụng cho
+                  <select value={createForm.benefitType || 'GOODS'} onChange={(event) => setCreateForm({ ...createForm, benefitType: event.target.value as 'GOODS' | 'SHIPPING', scopeType: 'STORE_WIDE', productIds: [] })} className="block w-full mt-2 border border-[#EAE4D7] rounded-lg p-2 bg-white">
+                    <option value="GOODS">Tiền hàng</option><option value="SHIPPING">Chỉ phí vận chuyển GHN</option>
+                  </select>
+                </label>
                 {createError && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1328,7 +1348,9 @@ export const ShopCouponsPage: React.FC = () => {
                       <ShoppingBag className="w-4 h-4" />
                       <span>Chọn sản phẩm</span>
                     </button>
+                    {createForm.benefitType !== 'SHIPPING' && <button type="button" aria-pressed={createForm.scopeType === 'CAMPAIGN'} onClick={() => setCreateForm({ ...createForm, scopeType: 'CAMPAIGN', productIds: [] })}><Calendar className="w-4 h-4" /><span>Chiến dịch Sale</span></button>}
                   </div>
+                  {createForm.scopeType === 'CAMPAIGN' && <select required value={createForm.campaignId || ''} onChange={(event) => setCreateForm({ ...createForm, campaignId: event.target.value })} className="w-full border border-[#EAE4D7] rounded-lg p-2 mt-2 bg-white"><option value="">Chọn chiến dịch</option>{storeCampaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name || campaign.title || campaign.id}</option>)}</select>}
 
                   {/* Product picker if scope === PRODUCTS */}
                   {createForm.scopeType === 'PRODUCTS' && (

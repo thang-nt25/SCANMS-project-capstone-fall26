@@ -10,6 +10,8 @@ import {
   Equals,
   Matches,
   IsIn,
+  IsInt,
+  Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -40,6 +42,12 @@ export class CreateSampleRequestDto {
   })
   recipientPhone: string;
 
+  @ApiProperty({ description: 'KOL xác nhận đây là số điện thoại thật của người nhận và GHN liên hệ được' })
+  @IsBoolean()
+  @Equals(true, { message: 'Bạn cần xác nhận số điện thoại của người nhận.' })
+  recipientPhoneConfirmed: boolean;
+
+
   @ApiProperty({
     description: 'Địa chỉ nhận hàng mẫu',
     example: '123 Nguyễn Văn A, Q.1, TP.HCM',
@@ -49,6 +57,21 @@ export class CreateSampleRequestDto {
   @MinLength(10)
   @MaxLength(500)
   shippingAddress: string;
+
+  @ApiProperty({ description: 'Mã tỉnh/thành GHN' })
+  @IsInt()
+  @Min(1)
+  ghnProvinceId: number;
+
+  @ApiProperty({ description: 'Mã quận/huyện GHN' })
+  @IsInt()
+  @Min(1)
+  ghnDistrictId: number;
+
+  @ApiProperty({ description: 'Mã phường/xã GHN' })
+  @IsString()
+  @IsNotEmpty()
+  ghnWardCode: string;
 
   @ApiProperty({ description: 'ID kênh mạng xã hội KOL cam kết đăng video' })
   @IsUUID()
@@ -62,9 +85,10 @@ export class CreateSampleRequestDto {
   @MaxLength(500)
   contentType: string;
 
-  @ApiProperty({ description: 'Ngày dự kiến đăng video (ISO 8601)' })
+  @ApiProperty({ description: 'Trường cũ; hạn video được tính sau khi GHN xác nhận giao', required: false })
+  @IsOptional()
   @IsDateString()
-  expectedVideoAt: string;
+  expectedVideoAt?: string;
 
   @ApiProperty({ description: 'KOL đã tích xác nhận cam kết 14 ngày' })
   @IsBoolean()
@@ -143,10 +167,27 @@ export class ShipSampleRequestDto {
 
 export class AdminResolveSampleRequestDto {
   @ApiProperty({
-    enum: ['EXTEND_DEADLINE', 'CANCEL_OBLIGATION', 'RESOLVE_DELIVERY_ISSUE'],
+    enum: [
+      'EXTEND_DEADLINE',
+      'CANCEL_OBLIGATION',
+      'RESOLVE_DELIVERY_ISSUE',
+      'BLOCK_SAMPLE_REQUESTS',
+      'DISMISS_REPORT',
+    ],
   })
-  @IsIn(['EXTEND_DEADLINE', 'CANCEL_OBLIGATION', 'RESOLVE_DELIVERY_ISSUE'])
-  action: 'EXTEND_DEADLINE' | 'CANCEL_OBLIGATION' | 'RESOLVE_DELIVERY_ISSUE';
+  @IsIn([
+    'EXTEND_DEADLINE',
+    'CANCEL_OBLIGATION',
+    'RESOLVE_DELIVERY_ISSUE',
+    'BLOCK_SAMPLE_REQUESTS',
+    'DISMISS_REPORT',
+  ])
+  action:
+    | 'EXTEND_DEADLINE'
+    | 'CANCEL_OBLIGATION'
+    | 'RESOLVE_DELIVERY_ISSUE'
+    | 'BLOCK_SAMPLE_REQUESTS'
+    | 'DISMISS_REPORT';
 
   @ApiProperty({ description: 'Lý do và căn cứ xử lý của quản trị viên' })
   @IsString()
@@ -160,4 +201,14 @@ export class AdminResolveSampleRequestDto {
   @IsOptional()
   @IsDateString()
   deadlineAt?: string;
+}
+
+export class ReportSampleViolationDto {
+  @ApiProperty({
+    description: 'Lý do báo cáo và bằng chứng vi phạm thời hạn video',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason: string;
 }

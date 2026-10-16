@@ -24,6 +24,7 @@ import { Button } from "../../components/ui/Button";
 import { PublicHeader } from "../../components/layout/PublicHeader";
 import { Card } from "../../components/ui/Card";
 import { getSafeProductImageUrl } from "@/utils/marketplace.utils";
+import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
 
 interface OrderItem {
   id: string;
@@ -48,6 +49,7 @@ interface OrderReview {
 }
 
 interface OrderData {
+  trackingNumber?: string | null;
   reviewToken?: string;
   id: string;
   externalOrderSn: string;
@@ -469,6 +471,7 @@ export default function OrderTrackingPage() {
                     </div>
                   ))}
                 </div>
+                {order.trackingNumber && <div className="mt-6"><GhnTrackingTimeline orderCode={order.trackingNumber} /></div>}
               </div>
 
 

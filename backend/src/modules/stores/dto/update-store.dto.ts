@@ -153,8 +153,8 @@ export class UpdateStoreDto {
   })
   @IsOptional()
   @IsNumber({}, { message: 'Tỷ lệ hoa hồng mặc định phải là số' })
-  @Min(0, { message: 'Hoa hồng tối thiểu là 0%' })
-  @Max(100, { message: 'Hoa hồng tối đa là 100%' })
+  @Min(10, { message: 'Hoa hồng nền cố định 10%' })
+  @Max(10, { message: 'Hoa hồng nền cố định 10%' })
   defaultCommissionRate?: number;
 
   @ApiPropertyOptional({

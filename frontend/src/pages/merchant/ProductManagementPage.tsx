@@ -24,6 +24,7 @@ import {
   ExternalLink,
   MessageSquareText,
   Clock3,
+  ChevronDown,
   ShieldCheck,
   EyeOff,
   Ban,
@@ -388,6 +389,9 @@ export default function ProductManagementPage() {
 
   const [selectedVideoProduct, setSelectedVideoProduct] = useState<Product | null>(null);
   const [productVideos, setProductVideos] = useState<any[]>([]);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  useEffect(() => { setActiveVideoId(null); }, [selectedVideoProduct?.id]);
+  const activeReviewVideo = productVideos.find(video => video.id === activeVideoId) || productVideos[0];
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [reviewingMediaId, setReviewingMediaId] = useState<string | null>(null);
   const [rejectionModalMedia, setRejectionModalMedia] = useState<any | null>(null);
@@ -2639,10 +2643,10 @@ export default function ProductManagementPage() {
               Khai báo cân nặng và kích thước kiện hàng sau khi đóng gói. Dữ liệu này được đối tác vận chuyển (GHN, GHTK, Viettel Post) dùng để tính phí vận chuyển chính xác đến người mua.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="product-package-fields grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Cân nặng đóng gói (gram) <span className="text-[#DC2626]">*</span>
+                  Cân nặng <span className="text-[#DC2626]">*</span>
                 </label>
                 <div className="relative flex items-center">
                   <input
@@ -2660,7 +2664,7 @@ export default function ProductManagementPage() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Chiều Dài (cm) <span className="text-[#DC2626]">*</span>
+                  Chiều dài <span className="text-[#DC2626]">*</span>
                 </label>
                 <div className="relative flex items-center">
                   <input
@@ -2678,7 +2682,7 @@ export default function ProductManagementPage() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Chiều Rộng (cm) <span className="text-[#DC2626]">*</span>
+                  Chiều rộng <span className="text-[#DC2626]">*</span>
                 </label>
                 <div className="relative flex items-center">
                   <input
@@ -2696,7 +2700,7 @@ export default function ProductManagementPage() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Chiều Cao (cm) <span className="text-[#DC2626]">*</span>
+                  Chiều cao <span className="text-[#DC2626]">*</span>
                 </label>
                 <div className="relative flex items-center">
                   <input
@@ -3297,7 +3301,18 @@ export default function ProductManagementPage() {
                   </p>
                 </div>
               ) : (
-                productVideos.map((v: any) => {
+                <div className="kol-video-workspace">
+                  <nav className="kol-video-picker" aria-label="Danh sách video cần xem">
+                    <p className="kol-video-picker-count"><span>Danh sách video</span><strong>{productVideos.length}</strong></p>
+                    {productVideos.map((video: any, index: number) => (
+                      <button key={video.id} type="button" className="kol-video-picker-item" data-status={video.status} aria-pressed={activeReviewVideo?.id === video.id} onClick={() => setActiveVideoId(video.id)}>
+                        <span className="kol-video-picker-thumb">{video.posterUrl ? <img src={video.posterUrl} alt="" /> : <Video size={18} />}<span>{index + 1}</span></span>
+                        <span className="kol-video-picker-text"><strong>{video.title || 'Video review sản phẩm'}</strong><span>{video.collaborator?.fullName || 'Nhà sáng tạo'}</span><small>{({ PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối', HIDDEN: 'Đã ẩn' } as Record<string, string>)[video.status] || video.status}{video.isFeatured ? ' · Đã ghim' : ''}</small></span>
+                      </button>
+                    ))}
+                  </nav>
+                  <div className="kol-video-selected">
+                {[activeReviewVideo].filter(Boolean).map((v: any) => {
                   const isPending = v.status === 'PENDING';
                   const isApproved = v.status === 'APPROVED';
                   const isRejected = v.status === 'REJECTED';
@@ -3340,6 +3355,7 @@ export default function ProductManagementPage() {
                           )}
                         </div>
 
+                        <details className="kol-video-details"><summary>Thông tin video & sản phẩm</summary>
                         <div className="kol-video-metadata text-[11px] text-[#7D715E]">
                           <p>KOL: <strong>{v.collaborator?.fullName || 'Nhà sáng tạo'}</strong></p>
                           <p>
@@ -3364,6 +3380,7 @@ export default function ProductManagementPage() {
                             {v.caption}
                           </p>
                         )}
+                        </details>
 
                         {v.rejectionReason && (
                           <p className="text-[11px] text-rose-600 font-semibold m-0">
@@ -3441,7 +3458,9 @@ export default function ProductManagementPage() {
                       </div>
                     </article>
                   );
-                })
+                })}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -3614,20 +3633,17 @@ export default function ProductManagementPage() {
                   return filtered.map((review) => {
                     const currentStatus = getReviewStatus(review);
                     return (
-                      <article
+                      <details
                         key={review.id}
-                        className="customer-review-card min-w-0 rounded-xl border border-[#EAE4D7] bg-white"
+                        className="customer-review-card customer-review-expandable min-w-0 rounded-xl border border-[#EAE4D7] bg-white"
                       >
-                        <div className="min-w-0 flex-1">
+                        <summary className="customer-review-row">
+                          <span className="customer-review-avatar" aria-hidden="true">{(review.customerName || 'Khách hàng').trim().split(/\s+/).filter(Boolean).slice(-2).map((part: string) => part[0]).join('').toUpperCase()}</span>
                           <div className="customer-review-card-heading flex flex-wrap items-center gap-x-2.5 gap-y-2">
                             <strong className="min-w-0 text-sm font-semibold leading-snug text-[#1A1612]">
                               {review.product?.title || 'Sản phẩm'}
                             </strong>
-                            {review.product?.sku && (
-                              <span className="rounded-md bg-[#FAF8F5] px-1.5 py-0.5 text-[11px] text-[#7D715E] font-mono">
-                                ({review.product.sku})
-                              </span>
-                            )}
+                            <span className="customer-review-row-meta"><span>{review.customerName || 'Khách hàng ẩn danh'}</span>{review.product?.sku && <span className="customer-review-row-sku">{review.product.sku}</span>}</span>
                             <span className="customer-review-rating" aria-label={`${review.rating || 5} trên 5 sao`}>
                               {Array.from({length: Math.max(1, Math.min(5, review.rating || 5))}, (_, index) => <Star key={index} className="h-3 w-3 fill-current" aria-hidden="true" />)}
                             </span>
@@ -3636,7 +3652,9 @@ export default function ProductManagementPage() {
                             {currentStatus === 'HIDDEN' && <Badge variant="neutral" className="customer-review-status">Đã ẩn</Badge>}
                             {currentStatus === 'PENDING' && <Badge variant="neutral" className="customer-review-status"><Clock3 className="h-3 w-3 text-[#B88E4F]" />Chờ duyệt</Badge>}
                           </div>
-
+                          <ChevronDown className="customer-review-chevron" size={15} aria-hidden="true" />
+                        </summary>
+                        <div className="customer-review-expanded-body">
                           <p className="customer-review-comment">
                             {review.comment || 'Khách không để lại nội dung bình luận.'}
                           </p>
@@ -3745,7 +3763,7 @@ export default function ProductManagementPage() {
                             </Button>
                           )}
                         </div>
-                      </article>
+                      </details>
                     );
                   });
                 })()

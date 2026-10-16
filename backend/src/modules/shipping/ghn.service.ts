@@ -7,36 +7,46 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/database/prisma.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, SampleRequestStatus } from '@prisma/client';
 import {
   CreateGhnOrderDto,
   CalculateShippingFeeDto,
   GhnRequiredNote,
 } from './dto/shipping.dto';
 import { notifyCustomerOrderEvent } from '../orders/customer-order-notifications';
+import { Cron } from '@nestjs/schedule';
 
-interface GhnProvince {
+export interface GhnProvince {
   ProvinceID: number;
   ProvinceName: string;
   Code: string;
 }
 
-interface GhnDistrict {
+export interface GhnDistrict {
   DistrictID: number;
   ProvinceID: number;
   DistrictName: string;
   Code: string;
 }
 
-interface GhnWard {
+export interface GhnWard {
   WardCode: string;
   DistrictID: number;
   WardName: string;
 }
 
+function parseGhnDeliveryTime(value: unknown): number {
+  if (typeof value !== 'string' || !value.trim()) return NaN;
+  const normalized = value.trim().replace(' ', 'T');
+  // GHN timestamps without an explicit offset represent local Vietnam time.
+  const timestamp = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized) ? normalized : `${normalized}+07:00`;
+  return Date.parse(timestamp);
+}
+
 @Injectable()
 export class GhnService {
   private readonly logger = new Logger(GhnService.name);
+  private sampleReconciliationCursor: string | null = null;
 
   // Cached Master Data
   private cachedProvinces: GhnProvince[] = [];
@@ -59,13 +69,11 @@ export class GhnService {
 
     const apiToken =
       this.configService.get<string>('GHN_API_TOKEN') ||
-      process.env.GHN_API_TOKEN ||
-      '5e129032-6743-4928-9134-72b00b98eab1';
+      process.env.GHN_API_TOKEN;
 
     const shopId =
       this.configService.get<string>('GHN_SHOP_ID') ||
-      process.env.GHN_SHOP_ID ||
-      '6706876';
+      process.env.GHN_SHOP_ID;
 
     return { apiUrl, apiToken, shopId };
   }
@@ -82,6 +90,9 @@ export class GhnService {
     } = {},
   ): Promise<T> {
     const { apiUrl, apiToken, shopId } = this.getConfig();
+    if (!apiToken || (options.includeShopId !== false && !shopId)) {
+      throw new BadRequestException('Chưa cấu hình GHN_API_TOKEN hoặc GHN_SHOP_ID.');
+    }
     const url = `${apiUrl}${endpoint}`;
     const method = options.method || 'GET';
 
@@ -193,74 +204,25 @@ export class GhnService {
     districtId: number;
     wardCode: string;
   }> {
-    const raw = (address || '').toLowerCase();
-
-    // Mặc định an toàn cho khu vực TP. Hồ Chí Minh (Quận 1 / Bến Nghé)
-    let resolvedDistrictId = 1442; // Quận 1, TP.HCM
-    let resolvedWardCode = '20101'; // Phường Bến Nghé
-
-    try {
-      const provinces = await this.getProvinces();
-      let matchedProvince: GhnProvince | undefined;
-
-      // Tìm Tỉnh/Thành phố khớp nhất (ưu tiên chuỗi xuất hiện ở cuối địa chỉ)
-      let bestProvinceIndex = -1;
-      for (const p of provinces) {
-        const pName = p.ProvinceName.toLowerCase()
-          .replace(/tỉnh|thành phố|tp\.?/g, '')
-          .trim();
-        if (pName && raw.includes(pName)) {
-          const idx = raw.lastIndexOf(pName);
-          if (idx > bestProvinceIndex) {
-            bestProvinceIndex = idx;
-            matchedProvince = p;
-          }
-        }
-      }
-
-      if (matchedProvince) {
-        const districts = await this.getDistricts(matchedProvince.ProvinceID);
-        let matchedDistrict: GhnDistrict | undefined;
-        let bestDistrictIndex = -1;
-
-        for (const d of districts) {
-          const dName = d.DistrictName.toLowerCase()
-            .replace(/quận|huyện|thị xã|tp\.?/g, '')
-            .trim();
-          if (dName && raw.includes(dName)) {
-            const idx = raw.lastIndexOf(dName);
-            if (idx > bestDistrictIndex) {
-              bestDistrictIndex = idx;
-              matchedDistrict = d;
-            }
-          }
-        }
-
-        if (matchedDistrict) {
-          resolvedDistrictId = matchedDistrict.DistrictID;
-          const wards = await this.getWards(matchedDistrict.DistrictID);
-
-          for (const w of wards) {
-            const wName = w.WardName.toLowerCase()
-              .replace(/phường|xã|thị trấn/g, '')
-              .trim();
-            if (wName && raw.includes(wName)) {
-              resolvedWardCode = w.WardCode;
-              break;
-            }
-          }
-          if (!resolvedWardCode && wards.length > 0) {
-            resolvedWardCode = wards[0].WardCode;
-          }
-        }
-      }
-    } catch (e: any) {
-      this.logger.warn(
-        `Lỗi phân tích địa chỉ sang GHN location: ${e?.message}`,
-      );
+    const parts = (address || '').split(',').map((part) => part.trim()).filter(Boolean);
+    if (parts.length < 4) {
+      throw new BadRequestException('Địa chỉ GHN cần đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành, ngăn cách bằng dấu phẩy.');
     }
-
-    return { districtId: resolvedDistrictId, wardCode: resolvedWardCode };
+    const canonical = (value: string) => value.toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd')
+      .replace(/^(tinh|thanh pho|tp\.?|quan|huyen|thi xa|phuong|xa|thi tran|p\.)\s*/i, '')
+      .replace(/[^a-z0-9]+/g, ' ').trim();
+    const matchOne = <T>(items: T[], name: (item: T) => string, part: string): T | undefined => {
+      const matches = items.filter((item) => canonical(name(item)) === canonical(part));
+      return matches.length === 1 ? matches[0] : undefined;
+    };
+    const province = matchOne(await this.getProvinces(), (item) => item.ProvinceName, parts[parts.length - 1]);
+    if (!province) throw new BadRequestException('Tỉnh/thành trong địa chỉ chưa khớp danh mục GHN.');
+    const district = matchOne(await this.getDistricts(province.ProvinceID), (item) => item.DistrictName, parts[parts.length - 2]);
+    if (!district) throw new BadRequestException('Quận/huyện trong địa chỉ chưa khớp danh mục GHN.');
+    const ward = matchOne(await this.getWards(district.DistrictID), (item) => item.WardName, parts[parts.length - 3]);
+    if (!ward) throw new BadRequestException('Phường/xã trong địa chỉ chưa khớp danh mục GHN.');
+    return { districtId: district.DistrictID, wardCode: ward.WardCode };
   }
 
   /**
@@ -280,6 +242,8 @@ export class GhnService {
         method: 'POST',
         body: {
           service_type_id: 2, // Chuẩn thương mại điện tử
+          ...(dto.fromDistrictId ? { from_district_id: dto.fromDistrictId } : {}),
+          ...(dto.fromWardCode ? { from_ward_code: dto.fromWardCode } : {}),
           to_district_id: dto.toDistrictId,
           to_ward_code: dto.toWardCode,
           weight: dto.weight || 500,
@@ -304,12 +268,26 @@ export class GhnService {
       );
     }
 
-    return {
-      totalFee: 25000,
-      serviceFee: 25000,
-      insuranceFee: 0,
-      isRealGhn: false,
-    };
+    throw new BadRequestException('GHN chưa trả được cước vận chuyển. Vui lòng thử lại sau.');
+  }
+
+  async quoteAddress(address: string, weight = 500, insuranceValue = 0, storeId?: string) {
+    if (!storeId) throw new BadRequestException('Cần chọn gian hàng để tính cước từ đúng kho xuất.');
+    const store = await this.prisma.store.findUnique({ where: { id: storeId }, select: { onboardingData: true, isActive: true, isDeleted: true } });
+    if (!store?.isActive || store.isDeleted) throw new BadRequestException('Gian hàng không khả dụng.');
+    const warehouseAddress = (store.onboardingData as Record<string, any> | null)?.warehouseAddress;
+    if (!warehouseAddress) throw new BadRequestException('Gian hàng chưa cấu hình địa chỉ kho GHN.');
+    const from = await this.resolveGhnLocation(warehouseAddress);
+    const { districtId, wardCode } = await this.resolveGhnLocation(address);
+    const fee = await this.calculateShippingFee({
+      fromDistrictId: from.districtId,
+      fromWardCode: from.wardCode,
+      toDistrictId: districtId,
+      toWardCode: wardCode,
+      weight,
+      insuranceValue,
+    });
+    return { ...fee, districtId, wardCode };
   }
 
   /**
@@ -336,6 +314,9 @@ export class GhnService {
     if (!order) {
       throw new NotFoundException(`Không tìm thấy đơn hàng #${orderId}`);
     }
+    if (order.status !== OrderStatus.PENDING || (order.rawPayload as any)?.ghnOrderCode) {
+      throw new ConflictException('Chỉ có thể tạo một vận đơn cho đơn đang chờ gửi.');
+    }
 
     if (storeIdContext && order.storeId !== storeIdContext) {
       throw new BadRequestException(
@@ -343,63 +324,73 @@ export class GhnService {
       );
     }
 
-    const { districtId, wardCode } = await this.resolveGhnLocation(
-      order.shippingAddress || '',
-    );
+    if (!order.customerPhone || !order.shippingAddress || order.orderItems.length === 0) {
+      throw new BadRequestException('Đơn hàng thiếu số điện thoại, địa chỉ nhận hoặc sản phẩm để gửi GHN.');
+    }
+
+    const rawPayload = (order.rawPayload as any) || {};
+    const sender = (order.store?.onboardingData as Record<string, any>) || {};
+    if (!sender.warehouseAddress || !sender.contactPhone) {
+      throw new BadRequestException('Shop cần cập nhật địa chỉ kho và số điện thoại liên hệ trước khi gửi GHN.');
+    }
+    const senderLocation = await this.resolveGhnLocation(sender.warehouseAddress);
+    const { districtId, wardCode } = rawPayload.ghnDistrictId && rawPayload.ghnWardCode
+      ? { districtId: Number(rawPayload.ghnDistrictId), wardCode: String(rawPayload.ghnWardCode) }
+      : await this.resolveGhnLocation(order.shippingAddress || '');
 
     // Xác định số tiền COD
-    const rawPayload = (order.rawPayload as any) || {};
     const paymentMethod = rawPayload.paymentMethod || 'COD';
     const isCod = paymentMethod === 'COD';
-    let codAmount =
-      customOptions?.codAmount !== undefined
-        ? customOptions.codAmount
-        : isCod
-          ? Math.round(Number(order.finalAmount))
-          : 0;
+    const codAmount = isCod ? Math.round(Number(order.finalAmount)) : 0;
+    if (customOptions?.codAmount !== undefined && customOptions.codAmount !== codAmount) {
+      throw new BadRequestException('Tiền thu hộ phải khớp số tiền đơn hàng đã chốt.');
+    }
 
     // Chuẩn bị danh sách sản phẩm gửi GHN
     const items = order.orderItems.map((item) => ({
       name: item.product?.title || 'Sản phẩm SCANMS',
       quantity: item.quantity,
       price: Math.round(Number(item.unitPrice)),
-      weight: 200,
+      weight: 500,
     }));
+    const checkoutWeight = Math.max(500, order.orderItems.reduce((total, item) => total + item.quantity, 0) * 500);
+    if ((customOptions?.weight !== undefined && customOptions.weight !== checkoutWeight) ||
+        (customOptions?.length !== undefined && customOptions.length !== 15) ||
+        (customOptions?.width !== undefined && customOptions.width !== 10) ||
+        (customOptions?.height !== undefined && customOptions.height !== 5)) {
+      throw new BadRequestException('Khối lượng hoặc kích thước phải khớp báo giá GHN lúc khách đặt hàng.');
+    }
 
     const buildGhnPayload = (targetCod: number) => ({
-      payment_type_id: 2, // Người nhận trả cước
+      payment_type_id: 1, // Cước đã tính trong đơn; người gửi thanh toán cho GHN.
       note:
         customOptions?.note ||
         `Đơn hàng #${order.externalOrderSn} từ sàn SCANMS`,
       required_note:
         customOptions?.requiredNote || GhnRequiredNote.CHOXEMHANGKHONGTHU,
       from_name: order.store?.name || 'Gian hàng SCANMS',
-      from_phone: '0766824448',
-      from_address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-      from_ward_code: '20101',
-      from_district_id: 1442,
+      from_phone: sender.contactPhone,
+      from_address: sender.warehouseAddress,
+      from_ward_code: senderLocation.wardCode,
+      from_district_id: senderLocation.districtId,
       to_name: order.customerName || 'Khách hàng SCANMS',
-      to_phone: order.customerPhone || '0987654321',
-      to_address:
-        order.shippingAddress ||
-        '72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+      to_phone: order.customerPhone,
+      to_address: order.shippingAddress,
       to_ward_code: wardCode,
       to_district_id: districtId,
       cod_amount: targetCod,
       content: `Đơn hàng #${order.externalOrderSn} - ${items.length} sản phẩm`,
-      weight: customOptions?.weight || 500,
+      weight: checkoutWeight,
       length: customOptions?.length || 15,
       width: customOptions?.width || 10,
       height: customOptions?.height || 5,
+      insurance_value: Math.round(Number(order.subtotalAmount)),
       service_type_id: 2, // Giao chuẩn TMĐT
-      items:
-        items.length > 0
-          ? items
-          : [{ name: 'Sản phẩm SCANMS', quantity: 1, price: 100000 }],
+      items,
     });
 
     let orderCode = '';
-    let totalFee = 25000;
+    let totalFee = 0;
     let expectedDeliveryTime: string | null = null;
     let isRealGhn = false;
     let ghnResponseData: any = null;
@@ -423,34 +414,9 @@ export class GhnService {
         body: buildGhnPayload(codAmount),
       });
 
-      // Nếu tài khoản GHN chưa KYC bị giới hạn hạn mức COD (COD_IS_OVER_LIMIT)
-      if (
-        ghnRes?.code === 400 &&
-        (ghnRes?.code_message === 'COD_IS_OVER_LIMIT' ||
-          ghnRes?.message?.includes('COD'))
-      ) {
-        this.logger.warn(
-          `Tài khoản GHN bị giới hạn COD: "${ghnRes?.message}". Đang tự động điều chỉnh COD về 50.000đ để bắn đơn GHN thành công...`,
-        );
-        codAmount = 50000;
-        ghnRes = await this.ghnFetch<{
-          code: number;
-          message: string;
-          data?: {
-            order_code: string;
-            total_fee: number;
-            expected_delivery_time: string;
-            trans_type: string;
-          };
-        }>('/v2/shipping-order/create', {
-          method: 'POST',
-          body: buildGhnPayload(codAmount),
-        });
-      }
-
       if (ghnRes?.code === 200 && ghnRes.data?.order_code) {
         orderCode = ghnRes.data.order_code;
-        totalFee = ghnRes.data.total_fee || 25000;
+        totalFee = ghnRes.data.total_fee;
         expectedDeliveryTime = ghnRes.data.expected_delivery_time || null;
         isRealGhn = true;
         ghnResponseData = ghnRes.data;
@@ -464,13 +430,9 @@ export class GhnService {
       this.logger.warn(`Kết nối GHN gián đoạn (${err?.message})`);
     }
 
-    // Nếu vẫn chưa tạo được mã thật, fallback sang Smart Simulator
+    // Không ghi nhận vận đơn nếu GHN không xác nhận mã thật.
     if (!orderCode) {
-      const randSuffix = Math.floor(10000000 + Math.random() * 90000000);
-      orderCode = `GHN-${randSuffix}`;
-      const deliveryDate = new Date();
-      deliveryDate.setDate(deliveryDate.getDate() + 3);
-      expectedDeliveryTime = deliveryDate.toISOString();
+      throw new BadRequestException('GHN chưa tạo được vận đơn. Vui lòng kiểm tra địa chỉ, cấu hình và thử lại.');
     }
 
     // Cập nhật trạng thái đơn hàng trong Database
@@ -511,9 +473,7 @@ export class GhnService {
 
     return {
       success: true,
-      message: isRealGhn
-        ? 'Đã tạo vận đơn chính thức trên hệ thống GHN Express thành công!'
-        : 'Đã tạo vận đơn GHN Simulator và sẵn sàng in phiếu giao hàng!',
+      message: 'Đã tạo vận đơn chính thức trên hệ thống GHN Express thành công!',
       orderId: updatedOrder.id,
       orderCode,
       trackingNumber: orderCode,
@@ -524,6 +484,80 @@ export class GhnService {
       isRealGhn,
       orderStatus: updatedOrder.status,
     };
+  }
+
+  async createSampleShippingOrder(requestId: string, shopOwnerId: string) {
+    const sample = await this.prisma.sampleProductRequest.findUnique({
+      where: { id: requestId },
+      include: { product: { include: { store: true } } },
+    });
+    if (!sample) throw new NotFoundException('Không tìm thấy yêu cầu hàng mẫu.');
+    if (sample.product.store.ownerId !== shopOwnerId) {
+      throw new BadRequestException('Bạn không quản lý Shop của yêu cầu này.');
+    }
+    if (sample.status !== SampleRequestStatus.APPROVED && sample.status !== SampleRequestStatus.DELIVERY_ISSUE) {
+      throw new BadRequestException('Chỉ tạo vận đơn cho mẫu đã duyệt hoặc cần gửi lại.');
+    }
+    if (!sample.recipientName || !sample.recipientPhone || !sample.shippingAddress) {
+      throw new BadRequestException('Thiếu tên, số điện thoại hoặc địa chỉ người nhận mẫu.');
+    }
+    const sender = (sample.product.store.onboardingData as Record<string, any>) || {};
+    if (!sender.warehouseAddress || !sender.contactPhone) {
+      throw new BadRequestException('Shop cần cập nhật địa chỉ kho và số điện thoại liên hệ.');
+    }
+    const from = await this.resolveGhnLocation(sender.warehouseAddress);
+    const to = sample.ghnDistrictId && sample.ghnWardCode
+      ? { districtId: sample.ghnDistrictId, wardCode: sample.ghnWardCode }
+      : await this.resolveGhnLocation(sample.shippingAddress);
+    const response = await this.ghnFetch<{ code: number; message?: string; data?: { order_code: string; total_fee: number } }>(
+      '/v2/shipping-order/create', {
+        method: 'POST',
+        body: {
+          payment_type_id: 1,
+          required_note: GhnRequiredNote.CHOXEMHANGKHONGTHU,
+          from_name: sample.product.store.name,
+          from_phone: sender.contactPhone,
+          from_address: sender.warehouseAddress,
+          from_district_id: from.districtId,
+          from_ward_code: from.wardCode,
+          to_name: sample.recipientName,
+          to_phone: sample.recipientPhone,
+          to_address: sample.shippingAddress,
+          to_district_id: to.districtId,
+          to_ward_code: to.wardCode,
+          cod_amount: 0,
+          content: `Hàng mẫu SCANMS - ${sample.product.title}`,
+          weight: 500,
+          length: 15, width: 10, height: 5,
+          service_type_id: 2,
+          items: [{ name: sample.product.title, quantity: 1, price: Math.round(Number(sample.product.price)) }],
+        },
+      },
+    );
+    if (response.code !== 200 || !response.data?.order_code) {
+      throw new BadRequestException(response.message || 'GHN chưa tạo được vận đơn mẫu.');
+    }
+    const trackingNumber = response.data.order_code;
+    await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.sampleProductRequest.updateMany({
+        where: { id: requestId, status: sample.status },
+        data: { status: SampleRequestStatus.SHIPPED, trackingNumber, carrier: 'GHN', rejectedReason: null },
+      });
+      if (changed.count !== 1) throw new ConflictException('Yêu cầu mẫu đã đổi trạng thái trong lúc tạo vận đơn.');
+      await tx.sampleRequestEvent.create({
+        data: { sampleRequestId: requestId, actorId: shopOwnerId, action: 'SAMPLE_REQUEST_SHIPPED', details: { carrier: 'GHN', trackingNumber } },
+      });
+      await tx.notification.create({
+        data: {
+          userId: sample.collaboratorId,
+          title: 'Shop đã gửi hàng mẫu',
+          message: `Hàng mẫu đang được GHN vận chuyển. Mã vận đơn: ${trackingNumber}.`,
+          type: 'SAMPLE_SHIPPED',
+          data: { sampleRequestId: requestId, trackingNumber },
+        },
+      });
+    });
+    return { success: true, requestId, trackingNumber, carrier: 'GHN', totalFee: response.data.total_fee };
   }
 
   /**
@@ -558,12 +592,7 @@ export class GhnService {
       this.logger.warn(`Không lấy được print token GHN: ${e?.message}`);
     }
 
-    return {
-      token: `SIM-PRINT-${Date.now()}`,
-      printA5Url: null,
-      printA6Url: null,
-      isRealGhn: false,
-    };
+    throw new BadRequestException('GHN chưa cấp token in phiếu giao hàng. Vui lòng thử lại.');
   }
 
   /**
@@ -590,66 +619,141 @@ export class GhnService {
       );
     }
 
-    const now = new Date();
-    const createdTime = new Date(now.getTime() - 1000 * 60 * 60 * 4); // 4 giờ trước
-    const pickedTime = new Date(now.getTime() - 1000 * 60 * 60 * 2); // 2 giờ trước
-
     return {
       orderCode,
       carrier: 'Giao Hàng Nhanh (GHN Express)',
-      status: detailData?.status || 'delivering',
-      statusText: this.translateStatus(detailData?.status || 'delivering'),
+      status: detailData?.status || 'unavailable',
+      statusText: detailData?.status
+        ? this.translateStatus(detailData.status)
+        : 'Chưa tra cứu được trạng thái từ GHN',
       trackingUrl: `https://ghn.vn/blogs/trang-thai-don-hang?order_code=${encodeURIComponent(orderCode)}`,
       expectedDeliveryTime:
         detailData?.leadtime || detailData?.expected_delivery_time || null,
-      timeline: [
-        {
-          status: 'ready_to_pick',
-          title: 'Shop đã tạo đơn vận chuyển',
-          description: 'Bưu tá GHN đã tiếp nhận yêu cầu lấy hàng tại kho Shop',
-          time: createdTime.toISOString(),
-          completed: true,
-        },
-        {
-          status: 'picking',
-          title: 'Đã lấy hàng & nhập kho phân loại',
-          description:
-            'Kiện hàng đã được cân đo và phân loại tại bưu cục trung chuyển',
-          time: pickedTime.toISOString(),
-          completed: true,
-        },
-        {
-          status: 'delivering',
-          title: 'Đang vận chuyển đến người nhận',
-          description:
-            'Bưu tá GHN đang tiến hành giao hàng đến địa chỉ của bạn',
-          time: now.toISOString(),
-          completed: true,
-        },
-        {
-          status: 'delivered',
-          title: 'Giao hàng thành công (Kích hoạt Escrow 14 ngày)',
-          description:
-            'Khách hàng nhận hàng và bắt đầu thời gian thẩm định đổi trả 14 ngày',
-          time: null,
-          completed: detailData?.status === 'delivered',
-        },
-      ],
+      shipperName: detailData?.shipper_name || null,
+      shipperPhone: detailData?.shipper_phone || null,
+      timeline: Array.isArray(detailData?.log)
+        ? detailData.log.map((entry: any) => ({
+            status: entry.status,
+            title: this.translateStatus(entry.status),
+            time: entry.updated_date || entry.created_date || null,
+            completed: true,
+          }))
+        : [],
       ghnRawDetail: detailData,
     };
+  }
+
+  async syncSampleDelivery(requestId: string, collaboratorId: string) {
+    const sample = await this.prisma.sampleProductRequest.findUnique({
+      where: { id: requestId },
+      select: { id: true, collaboratorId: true, status: true, carrier: true, trackingNumber: true },
+    });
+    if (!sample || sample.collaboratorId !== collaboratorId) {
+      throw new NotFoundException('Không tìm thấy yêu cầu mẫu của bạn.');
+    }
+    if (sample.status !== SampleRequestStatus.SHIPPED ||
+        !sample.trackingNumber || !sample.carrier?.toUpperCase().includes('GHN')) {
+      return { status: sample.status, synchronized: false };
+    }
+    const detail = await this.trackOrder(sample.trackingNumber);
+    if (detail.ghnRawDetail?.status !== 'delivered') {
+      return { status: sample.status, synchronized: false };
+    }
+    const changed = await this.recordSampleDelivery(sample.id, sample.trackingNumber, detail.ghnRawDetail);
+    return { status: changed ? SampleRequestStatus.RECEIVED : sample.status, synchronized: changed };
+  }
+
+  @Cron('*/10 * * * *')
+  async reconcileShippedSamples() {
+    const where = { status: SampleRequestStatus.SHIPPED, carrier: { contains: 'GHN', mode: 'insensitive' as const }, trackingNumber: { not: null } };
+    let samples = await this.prisma.sampleProductRequest.findMany({
+      where: { ...where, ...(this.sampleReconciliationCursor ? { id: { gt: this.sampleReconciliationCursor } } : {}) },
+      select: { id: true, trackingNumber: true },
+      orderBy: { id: 'asc' },
+      take: 100,
+    });
+    if (!samples.length && this.sampleReconciliationCursor) {
+      this.sampleReconciliationCursor = null;
+      samples = await this.prisma.sampleProductRequest.findMany({ where, select: { id: true, trackingNumber: true }, orderBy: { id: 'asc' }, take: 100 });
+    }
+    if (samples.length) this.sampleReconciliationCursor = samples[samples.length - 1].id;
+    for (const sample of samples) {
+      if (!sample.trackingNumber) continue;
+      try {
+        const detail = await this.trackOrder(sample.trackingNumber);
+        if (detail.ghnRawDetail?.status === 'delivered') {
+          await this.recordSampleDelivery(sample.id, sample.trackingNumber, detail.ghnRawDetail);
+        }
+      } catch (error: any) {
+        this.logger.warn(`Không thể đồng bộ trạng thái mẫu ${sample.id}: ${error?.message}`);
+      }
+    }
+  }
+
+  private async recordSampleDelivery(requestId: string, orderCode: string, ghnDetail?: any) {
+    const deliveredEvents = Array.isArray(ghnDetail?.log)
+      ? ghnDetail.log.filter((entry: any) => String(entry?.status).toLowerCase() === 'delivered')
+      : [];
+    const deliveryTimes = deliveredEvents.map((entry: any) => entry.created_date || entry.updated_date)
+      .map((value: string | undefined) => parseGhnDeliveryTime(value))
+      .filter((value: number) => Number.isFinite(value) && value > 0 && value <= Date.now());
+    // A general update can occur long after delivery; it must never extend the SLA.
+    // Prefer explicit delivered events over the order-level completion timestamp.
+    if (!deliveryTimes.length) {
+      const finishedAt = parseGhnDeliveryTime(ghnDetail?.finish_date);
+      if (Number.isFinite(finishedAt) && finishedAt > 0 && finishedAt <= Date.now()) {
+        deliveryTimes.push(finishedAt);
+      }
+    }
+    if (!deliveryTimes.length) {
+      this.logger.warn(`GHN xác nhận delivered cho ${orderCode} nhưng thiếu thời điểm giao; sẽ kiểm tra lại, không dời hạn video sang thời điểm phát hiện.`);
+      return false;
+    }
+    const receivedAt = new Date(Math.min(...deliveryTimes));
+    const deadlineAt = new Date(receivedAt.getTime() + 14 * 24 * 60 * 60 * 1000);
+    return this.prisma.$transaction(async (tx) => {
+      const changed = await tx.sampleProductRequest.updateMany({
+        where: { id: requestId, status: SampleRequestStatus.SHIPPED, trackingNumber: orderCode },
+        data: { status: SampleRequestStatus.RECEIVED, receivedAt, deadlineAt, expectedVideoAt: deadlineAt },
+      });
+      if (changed.count) {
+        await tx.sampleRequestEvent.create({
+          data: { sampleRequestId: requestId, action: 'GHN_DELIVERED', details: { orderCode, receivedAt: receivedAt.toISOString(), deadlineAt: deadlineAt.toISOString() } },
+        });
+        const sample = await tx.sampleProductRequest.findUnique({ where: { id: requestId }, select: { collaboratorId: true } });
+        if (sample) await tx.notification.create({
+          data: { userId: sample.collaboratorId, title: 'Đã giao hàng mẫu', message: `GHN xác nhận bạn đã nhận hàng mẫu. Hạn đăng video: ${deadlineAt.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}.`, type: 'SAMPLE_RECEIVED', data: { sampleRequestId: requestId } },
+        });
+      }
+      return changed.count === 1;
+    });
   }
 
   /**
    * Xử lý Webhook tự động từ GHN khi bưu tá đổi trạng thái đơn
    */
   async handleGhnWebhook(payload: any) {
-    this.logger.log(`Nhận Webhook từ GHN: ${JSON.stringify(payload)}`);
-
     const orderCode = payload?.OrderCode || payload?.order_code;
-    const ghnStatus = (payload?.Status || payload?.status || '').toLowerCase();
-
-    if (!orderCode) {
+    if (typeof orderCode !== 'string' || !/^[A-Za-z0-9-]{5,100}$/.test(orderCode)) {
       return { success: false, message: 'Missing OrderCode' };
+    }
+    // Webhook công khai không đủ tin cậy để đổi trạng thái tiền/hạn video.
+    // Đọc lại trạng thái trực tiếp từ GHN bằng token của hệ thống.
+    const detail = await this.trackOrder(orderCode);
+    const ghnStatus = detail.ghnRawDetail?.status;
+    if (!ghnStatus || ghnStatus !== String(payload?.Status || payload?.status || '').toLowerCase()) {
+      return { success: false, message: 'GHN status could not be verified' };
+    }
+
+    if (ghnStatus === 'delivered') {
+      const sample = await this.prisma.sampleProductRequest.findFirst({
+        where: { trackingNumber: orderCode, carrier: { contains: 'GHN', mode: 'insensitive' } },
+        select: { id: true, status: true, collaboratorId: true },
+      });
+      if (sample?.status === SampleRequestStatus.SHIPPED) {
+        await this.recordSampleDelivery(sample.id, orderCode, detail.ghnRawDetail);
+        return { success: true, processedOrderCode: orderCode, status: ghnStatus };
+      }
     }
 
     // Tìm đơn hàng có mã vận đơn này
@@ -699,18 +803,6 @@ export class GhnService {
           this.logger.log(`✅ Webhook GHN: Đơn #${order.externalOrderSn} đã được chuyển sang DELIVERED.`);
         }
       }
-    } else if (ghnStatus === 'cancel' && order.status === OrderStatus.PENDING) {
-      await this.prisma.$transaction(async (tx) => {
-        const changed = await tx.order.updateMany({
-          where: { id: order.id, status: OrderStatus.PENDING },
-          data: { status: OrderStatus.CANCELLED },
-        });
-        if (changed.count === 1) {
-          await notifyCustomerOrderEvent(tx, order, 'ORDER_CANCELLED', {
-            reason: 'Đơn vận chuyển bị GHN hủy',
-          });
-        }
-      });
     }
 
     return { success: true, processedOrderCode: orderCode, status: ghnStatus };

@@ -57,6 +57,13 @@ export class CreateGhnOrderDto {
 }
 
 export class CalculateShippingFeeDto {
+  @IsOptional()
+  @IsNumber()
+  fromDistrictId?: number;
+
+  @IsOptional()
+  @IsString()
+  fromWardCode?: string;
   @ApiProperty({ description: 'Mã quận/huyện người nhận (GHN district_id)' })
   @IsNumber()
   toDistrictId: number;
@@ -76,5 +83,26 @@ export class CalculateShippingFeeDto {
   @ApiPropertyOptional({ description: 'Giá trị khai giá bảo hiểm' })
   @IsOptional()
   @IsNumber()
+  insuranceValue?: number;
+}
+
+export class QuoteShippingAddressDto {
+  @ApiProperty({ description: 'ID gian hàng xuất kho' })
+  @IsString()
+  storeId: string;
+  @ApiProperty({ description: 'Địa chỉ đầy đủ đã chọn tỉnh, huyện, xã' })
+  @IsString()
+  address: string;
+
+  @ApiPropertyOptional({ description: 'Trọng lượng kiện hàng (gram)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(10)
+  weight?: number;
+
+  @ApiPropertyOptional({ description: 'Giá trị bảo hiểm (VNĐ)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   insuranceValue?: number;
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
 import {
   Store,
   MessageSquare,
@@ -103,7 +104,7 @@ const REAL_STORES: PartnerStore[] = [
     name: 'Sora Skin Official Store',
     slug: 'sora-skin',
     category: 'Dược mỹ phẩm & Phục hồi da',
-    commissionRange: '20% - 32%',
+    commissionRange: '10% - 21%',
     rating: 4.9,
     location: 'Quận 1, TP.HCM',
     totalProducts: 12,
@@ -114,7 +115,7 @@ const REAL_STORES: PartnerStore[] = [
     name: 'Aura Bio Cosmetics Vietnam',
     slug: 'aura-bio-cosmetics',
     category: 'Mỹ phẩm sinh học & Thuần chay',
-    commissionRange: '25% - 35%',
+    commissionRange: '10% - 21%',
     rating: 4.8,
     location: 'Cầu Giấy, Hà Nội',
     totalProducts: 8,
@@ -125,7 +126,7 @@ const REAL_STORES: PartnerStore[] = [
     name: 'GreenBio Health & Herbs',
     slug: 'greenbio-health',
     category: 'Thực phẩm chức năng & Trà',
-    commissionRange: '18% - 25%',
+    commissionRange: '10% - 21%',
     rating: 4.7,
     location: 'Bình Thạnh, TP.HCM',
     totalProducts: 18,
@@ -136,7 +137,7 @@ const REAL_STORES: PartnerStore[] = [
     name: 'Lumière Lab Vietnam',
     slug: 'lumiere-lab',
     category: 'Serum & Chăm sóc chuyên sâu',
-    commissionRange: '22% - 35%',
+    commissionRange: '10% - 21%',
     rating: 5.0,
     location: 'Quận 1, TP.HCM',
     totalProducts: 6,
@@ -179,7 +180,7 @@ export default function ShopCollaborationPage() {
   );
 
   const [searchShopQuery, setSearchShopQuery] = useState('');
-  const [shopFilter, setShopFilter] = useState<'ALL' | 'CHAT' | 'SAMPLES' | 'HIGH_COMM'>('ALL');
+  const [shopFilter, setShopFilter] = useState<'ALL' | 'CHAT' | 'SAMPLES'>('ALL');
 
   // KOL verification profile & channels (Business Guard)
   const [kycProfile, setKycProfile] = useState<KycProfile | null>(null);
@@ -212,13 +213,58 @@ export default function ShopCollaborationPage() {
   const [requestSampleModalProduct, setRequestSampleModalProduct] = useState<any | null>(null);
   const [sampleSocialChannelId, setSampleSocialChannelId] = useState<string>('');
   const [sampleContentType, setSampleContentType] = useState<string>('Video Review 60s (Routine buổi sáng)');
-  const [sampleExpectedVideoAt, setSampleExpectedVideoAt] = useState(() => new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
-  const maxSampleExpectedVideoAt = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
   const [sampleTermsAccepted, setSampleTermsAccepted] = useState(false);
   const [sampleRecipientName, setSampleRecipientName] = useState('');
   const [sampleRecipientPhone, setSampleRecipientPhone] = useState('');
+  const [sampleRecipientPhoneConfirmed, setSampleRecipientPhoneConfirmed] = useState(false);
   const [shippingAddress, setShippingAddress] = useState('');
+  const [sampleProvinces, setSampleProvinces] = useState<Array<{ ProvinceID: number; ProvinceName: string }>>([]);
+  const [sampleDistricts, setSampleDistricts] = useState<Array<{ DistrictID: number; DistrictName: string }>>([]);
+  const [sampleWards, setSampleWards] = useState<Array<{ WardCode: string; WardName: string }>>([]);
+  const [sampleProvinceId, setSampleProvinceId] = useState('');
+  const [sampleDistrictId, setSampleDistrictId] = useState('');
+  const [sampleWardCode, setSampleWardCode] = useState('');
+  const [sampleAddressError, setSampleAddressError] = useState('');
+  const [trackingSampleId, setTrackingSampleId] = useState<string | null>(null);
   const [submittingSample, setSubmittingSample] = useState(false);
+
+  useEffect(() => {
+    if (!requestSampleModalProduct) return;
+    let active = true;
+    setSampleProvinceId(''); setSampleDistrictId(''); setSampleWardCode('');
+    setSampleAddressError('');
+    api.get('/shipping/ghn/provinces')
+      .then((response: any) => {
+        const data = response?.data?.data || response?.data || response;
+        if (active) setSampleProvinces(Array.isArray(data) ? data : []);
+      })
+      .catch(() => { if (active) setSampleAddressError('Chưa tải được tỉnh/thành GHN. Vui lòng thử lại.'); });
+    return () => { active = false; };
+  }, [requestSampleModalProduct]);
+
+  useEffect(() => {
+    if (!sampleProvinceId) { setSampleDistricts([]); return; }
+    let active = true;
+    api.get(`/shipping/ghn/districts/${sampleProvinceId}`)
+      .then((response: any) => {
+        const data = response?.data?.data || response?.data || response;
+        if (active) setSampleDistricts(Array.isArray(data) ? data : []);
+      })
+      .catch(() => { if (active) setSampleAddressError('Chưa tải được quận/huyện GHN.'); });
+    return () => { active = false; };
+  }, [sampleProvinceId]);
+
+  useEffect(() => {
+    if (!sampleDistrictId) { setSampleWards([]); return; }
+    let active = true;
+    api.get(`/shipping/ghn/wards/${sampleDistrictId}`)
+      .then((response: any) => {
+        const data = response?.data?.data || response?.data || response;
+        if (active) setSampleWards(Array.isArray(data) ? data : []);
+      })
+      .catch(() => { if (active) setSampleAddressError('Chưa tải được phường/xã GHN.'); });
+    return () => { active = false; };
+  }, [sampleDistrictId]);
 
   // Modal 3: Nộp link video nghiệm thu
   const [submitVideoSample, setSubmitVideoSample] = useState<any | null>(null);
@@ -332,6 +378,7 @@ export default function ShopCollaborationPage() {
     setSampleTermsAccepted(false);
     setSampleRecipientName('');
     setSampleRecipientPhone('');
+    setSampleRecipientPhoneConfirmed(false);
     setShippingAddress('');
     setActiveTab('products');
   }, [initialProductContext, searchParams]);
@@ -361,7 +408,7 @@ export default function ShopCollaborationPage() {
             ownerAvatarUrl: st.owner?.avatarUrl || undefined,
             ownerName: st.owner?.fullName || undefined,
             category: 'Thương mại điện tử & Mỹ phẩm',
-            commissionRange: `${st.defaultCommissionRate || 20}% - 35%`,
+            commissionRange: '10% - 21%',
             rating: 4.9,
             location: 'Toàn quốc',
             unreadCount: conv.chatMessages?.[0]?.isRead === false ? 1 : 0,
@@ -379,7 +426,7 @@ export default function ShopCollaborationPage() {
             ownerAvatarUrl: ms.owner?.avatarUrl || undefined,
             ownerName: ms.owner?.fullName || undefined,
             category: ms.description?.slice(0, 30) || 'Mỹ phẩm & Chăm sóc da',
-            commissionRange: `${ms.defaultCommissionRate || 20}% - 30%`,
+            commissionRange: '10% - 21%',
             rating: 4.8,
             location: 'Toàn quốc',
             totalProducts: ms._count?.products || 10,
@@ -541,10 +588,14 @@ export default function ShopCollaborationPage() {
   const handleSubmitSampleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canRequestSample) {
-      toast.error(sampleEligibility?.blockReason || 'Cần hoàn tất KYC, liên kết kênh mạng xã hội và không có yêu cầu mẫu quá hạn.');
+      toast.error(sampleEligibility?.blockReason || 'Cần hoàn tất KYC, liên kết kênh mạng xã hội và không bị Admin khóa quyền nhận mẫu.');
       return;
     }
-    if (!requestSampleModalProduct || !sampleRecipientName.trim() || !sampleRecipientPhone.trim() || !shippingAddress.trim() || !sampleSocialChannelId || !sampleExpectedVideoAt) return;
+    if (!requestSampleModalProduct || !sampleRecipientName.trim() || !sampleRecipientPhone.trim() || !shippingAddress.trim() || !sampleProvinceId || !sampleDistrictId || !sampleWardCode || !sampleSocialChannelId) return;
+    if (!sampleRecipientPhoneConfirmed) {
+      toast.error('Vui lòng xác nhận số điện thoại thuộc người nhận và GHN có thể liên hệ.');
+      return;
+    }
     if (!sampleTermsAccepted) {
       toast.error('Vui lòng xác nhận cam kết nộp video trong 14 ngày sau khi nhận hàng.');
       return;
@@ -552,15 +603,22 @@ export default function ShopCollaborationPage() {
 
     setSubmittingSample(true);
     try {
+      const province = sampleProvinces.find((item) => String(item.ProvinceID) === sampleProvinceId);
+      const district = sampleDistricts.find((item) => String(item.DistrictID) === sampleDistrictId);
+      const ward = sampleWards.find((item) => item.WardCode === sampleWardCode);
+      if (!province || !district || !ward) throw new Error('Địa chỉ GHN chưa đầy đủ.');
       await api.post('/sample-requests', {
         productId: requestSampleModalProduct.id,
         productVariantId: requestSampleModalProduct.productVariantId,
         recipientName: sampleRecipientName.trim(),
         recipientPhone: sampleRecipientPhone.trim(),
-        shippingAddress: shippingAddress.trim(),
+        recipientPhoneConfirmed: true,
+        shippingAddress: [shippingAddress.trim(), ward.WardName, district.DistrictName, province.ProvinceName].join(', '),
+        ghnProvinceId: province.ProvinceID,
+        ghnDistrictId: district.DistrictID,
+        ghnWardCode: ward.WardCode,
         socialChannelId: sampleSocialChannelId,
         contentType: sampleContentType,
-        expectedVideoAt: new Date(`${sampleExpectedVideoAt}T00:00:00`).toISOString(),
         termsAccepted: true,
       });
       toast.success(`Đã gửi yêu cầu nhận mẫu "${requestSampleModalProduct.title}" kèm cam kết video trong 14 ngày sau khi nhận hàng.`);
@@ -572,17 +630,6 @@ export default function ShopCollaborationPage() {
       toast.error(err.message || 'Không thể gửi yêu cầu xin mẫu.');
     } finally {
       setSubmittingSample(false);
-    }
-  };
-
-  // KOL confirms receiving sample -> starts countdown
-  const handleConfirmReceivedSample = async (sampleId: string) => {
-    try {
-      await api.patch(`/sample-requests/${sampleId}/receive`, {});
-      toast.success('Đã xác nhận nhận hàng! Bạn có 14 ngày để nộp video review.');
-      await loadStoreSamples(selectedStore.id);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err.message || 'Không thể xác nhận đã nhận hàng.');
     }
   };
 
@@ -627,8 +674,6 @@ export default function ShopCollaborationPage() {
 
       if (shopFilter === 'CHAT') return Boolean(s.unreadCount);
       if (shopFilter === 'SAMPLES') return Boolean(s.pendingSamplesCount);
-      if (shopFilter === 'HIGH_COMM')
-        return (s.commissionRange || '').includes('25%') || (s.commissionRange || '').includes('30%') || (s.commissionRange || '').includes('32%') || (s.commissionRange || '').includes('35%');
       return true;
     });
   }, [stores, searchShopQuery, shopFilter]);
@@ -653,16 +698,16 @@ export default function ShopCollaborationPage() {
           <div className="flex items-center gap-2 text-[#B88E4F]">
             <ShieldAlert className="w-4 h-4 text-[#B88E4F] shrink-0" />
             <span>
-              <strong>Lưu ý:</strong> Cần hoàn tất KYC, liên kết ít nhất một kênh mạng xã hội và không có yêu cầu mẫu quá hạn để xin mẫu.
+              <strong>Lưu ý:</strong> Cần hoàn tất KYC, liên kết ít nhất một kênh mạng xã hội và không bị khóa quyền nhận mẫu để xin mẫu. Quyết định khóa/mở khóa do Admin xét duyệt.
               {sampleEligibility?.blockReason ? ` ${sampleEligibility.blockReason}` : ''}
             </span>
           </div>
           <button
             type="button"
-            onClick={() => navigate('/collaborator/profile?tab=kyc')}
+            onClick={() => sampleEligibility?.isBlocked ? setActiveTab('messages') : navigate('/collaborator/profile?tab=kyc')}
             className="px-3 py-1 bg-[#EBD08C] hover:bg-[#DEC07A] text-white font-extrabold rounded-xl transition shadow-2xs shrink-0 cursor-pointer"
           >
-            Hoàn tất KYC ngay →
+            {sampleEligibility?.isBlocked ? 'Liên hệ gian hàng để giải trình' : 'Hoàn tất KYC ngay →'}
           </button>
         </div>
       )}
@@ -716,7 +761,7 @@ export default function ShopCollaborationPage() {
                           setSelectedStoreId(st.id);
                           updateUrl(st.id, activeTab);
                         }}
-                        title={`${st.name} • Hoa hồng: ${st.commissionRange || '20%'}`}
+                        title={`${st.name} • Hoa hồng: ${st.commissionRange || '10% - 21%'}`}
                         className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#FBF5EB] ring-2 ring-[#C59B58] shadow-xs'
@@ -772,7 +817,6 @@ export default function ShopCollaborationPage() {
                     { id: 'ALL', label: 'Tất cả' },
                     { id: 'CHAT', label: 'Tin mới' },
                     { id: 'SAMPLES', label: 'Mẫu thử' },
-                    { id: 'HIGH_COMM', label: 'Deal cao' },
                   ].map((f) => (
                     <button
                       key={f.id}
@@ -866,7 +910,7 @@ export default function ShopCollaborationPage() {
                               {st.category}
                             </span>
                             <span className="text-[9.5px] font-extrabold text-[#B88E4F] bg-white px-1.5 py-0.2 rounded border border-[#EAE4D7] shrink-0">
-                              {st.commissionRange || '20%'}
+                              {st.commissionRange || '10% - 21%'}
                             </span>
                           </div>
                         </button>
@@ -938,7 +982,7 @@ export default function ShopCollaborationPage() {
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <TrendingUp className="w-3 h-3 text-[#B88E4F]" />
-                    <span>Hoa hồng: <strong className="text-[#B88E4F]">{selectedStore.commissionRange || '20% - 32%'}</strong></span>
+                    <span>Hoa hồng: <strong className="text-[#B88E4F]">{selectedStore.commissionRange || '10% - 21%'}</strong></span>
                   </span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
@@ -1014,17 +1058,15 @@ export default function ShopCollaborationPage() {
                     <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0" />
                     <span className="collaboration-deal-copy">
                       <strong>Thỏa thuận hoa hồng</strong>
-                      <span>Trao đổi mức hoa hồng riêng với Shop.</span>
+                      <span>Đề xuất thưởng VIP +1%, +2% hoặc +3%; Shop duyệt trước khi áp dụng.</span>
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      toast.info('Đã gửi đề xuất hoa hồng đối tác VIP 30% vào khung chat!');
-                    }}
+                    onClick={() => navigate('/collaborator/marketing?tab=links')}
                     className="collaboration-action px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
                   >
-                    <Plus size={13} aria-hidden="true" /> Đề xuất deal 30%
+                    <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
                   </button>
                 </div>
 
@@ -1084,9 +1126,7 @@ export default function ShopCollaborationPage() {
                     ) : (
                       <div className="collaboration-products-grid">
                         {filteredProducts.map((prod) => {
-                            const isExclusive = prod.policyType === 'EXCLUSIVE' || (prod.commissionRate || 22) >= 30;
-                            const commRate = prod.commissionRate || (isExclusive ? 32 : 22);
-                            const commAmount = Math.round((Number(prod.price) * commRate) / 100);
+                            const isExclusive = prod.policyType === 'EXCLUSIVE';
                             const canRequestThisProduct = Boolean(
                               canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
                             );
@@ -1137,7 +1177,7 @@ export default function ShopCollaborationPage() {
                                 <div className="collaboration-product-commission">
                                   <span>Hoa hồng tiếp thị</span>
                                   <strong>
-                                    {commRate}% (~{commAmount.toLocaleString('vi-VN')} ₫/đơn)
+                                    Nền 10% + thưởng bậc/VIP/chiến dịch/live (tối đa 21% trên tiền hàng sau voucher)
                                   </strong>
                                 </div>
 
@@ -1166,6 +1206,7 @@ export default function ShopCollaborationPage() {
                                       setSampleTermsAccepted(false);
                                       setSampleRecipientName('');
                                       setSampleRecipientPhone('');
+                                      setSampleRecipientPhoneConfirmed(false);
                                       setShippingAddress('');
                                       setRequestSampleModalProduct(prod);
                                     }}
@@ -1291,7 +1332,7 @@ export default function ShopCollaborationPage() {
                             PENDING: 'Chờ Shop duyệt', APPROVED: 'Shop đã duyệt', SHIPPED: 'Đang giao',
                             RECEIVED: 'Đã nhận · chờ video', VIDEO_SUBMITTED: 'Chờ Shop nghiệm thu',
                             REVISION_REQUIRED: 'Shop yêu cầu sửa video', COMPLETED: 'Đã hoàn tất',
-                            OVERDUE: 'Quá hạn · đã khóa quyền xin mẫu', REJECTED: 'Shop từ chối',
+                            OVERDUE: 'Quá hạn video · cần xử lý', REJECTED: 'Shop từ chối',
                             CANCELLED: 'Đã hủy', DELIVERY_ISSUE: 'Có sự cố giao hàng',
                           };
 
@@ -1328,7 +1369,7 @@ export default function ShopCollaborationPage() {
                                   </div>
                                   <p className="collaboration-sample-meta">
                                     Kênh cam kết: {samp.socialPlatformSnapshot || samp.socialChannel?.platformName || '—'} · {samp.socialChannelNameSnapshot || samp.socialChannel?.channelName || '—'}
-                                    {samp.expectedVideoAt ? ` · Dự kiến đăng ${new Date(samp.expectedVideoAt).toLocaleDateString('vi-VN')}` : ''}
+                                    {!activeDeadline && samp.expectedVideoAt ? ` · Dự kiến đăng ${new Date(samp.expectedVideoAt).toLocaleDateString('vi-VN')}` : ''}
                                   </p>
                                   {samp.recipientName && (
                                     <p className="collaboration-sample-meta">
@@ -1370,13 +1411,13 @@ export default function ShopCollaborationPage() {
                                     Hủy yêu cầu
                                   </button>
                                 )}
-                                {isShipped && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleConfirmReceivedSample(samp.id)}
-                                    className="collaboration-sample-action is-primary"
-                                  >
-                                    Đã nhận được hàng
+                                {isShipped && samp.carrier?.toUpperCase().includes('GHN') && (
+                                  <span className="collaboration-sample-action">Hạn nộp video bắt đầu khi GHN xác nhận giao thành công.</span>
+                                )}
+                                {samp.trackingNumber && samp.carrier?.toUpperCase().includes('GHN') && (
+                                  <button type="button" className="collaboration-sample-action is-quiet"
+                                    onClick={() => setTrackingSampleId(trackingSampleId === samp.id ? null : samp.id)}>
+                                    Theo dõi hành trình bưu kiện
                                   </button>
                                 )}
                                 {isShipped && (
@@ -1404,6 +1445,7 @@ export default function ShopCollaborationPage() {
                                   </button>
                                 )}
                               </div>
+                              {trackingSampleId === samp.id && samp.trackingNumber && <GhnTrackingTimeline orderCode={samp.trackingNumber} sampleRequestId={samp.id} onSampleDelivered={() => loadStoreSamples(selectedStore.id)} />}
                             </div>
                           );
                         })}
@@ -1830,20 +1872,7 @@ export default function ShopCollaborationPage() {
                   </Select>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                    Ngày dự kiến đăng video *
-                  </label>
-                  <input
-                    type="date"
-                    min={new Date().toISOString().slice(0, 10)}
-                    max={maxSampleExpectedVideoAt}
-                    value={sampleExpectedVideoAt}
-                    onChange={(e) => setSampleExpectedVideoAt(e.target.value)}
-                    className="w-full p-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none"
-                    required
-                  />
-                </div>
+                <p className="text-xs text-[#7D715E]">Hạn đăng video là 14 ngày kể từ thời điểm GHN xác nhận giao hàng thành công.</p>
               </div>
 
               <div>
@@ -1880,23 +1909,40 @@ export default function ShopCollaborationPage() {
                     maxLength={20}
                     required
                     value={sampleRecipientPhone}
-                    onChange={(e) => setSampleRecipientPhone(e.target.value)}
+                    onChange={(e) => { setSampleRecipientPhone(e.target.value); setSampleRecipientPhoneConfirmed(false); }}
                     placeholder="09xx xxx xxx"
                     className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none"
                   />
                 </div>
               </div>
 
+              <label className="flex items-start gap-2 text-xs text-[#7D715E]"><input type="checkbox" checked={sampleRecipientPhoneConfirmed} onChange={(e) => setSampleRecipientPhoneConfirmed(e.target.checked)} className="mt-0.5 accent-[#C59B58]" required /><span>Tôi xác nhận đây là số điện thoại của người nhận thực tế và GHN có thể gọi để giao hàng mẫu.</span></label>
+
               <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1">Địa chỉ nhận hàng mẫu *</label>
-                <textarea
-                  rows={2}
-                  required
-                  value={shippingAddress}
+                <label className="text-xs font-bold text-[#1A1612] block mb-1">Địa chỉ nhận hàng mẫu chuẩn GHN *</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+                  <select required value={sampleProvinceId} onChange={(e) => {
+                    setSampleProvinceId(e.target.value); setSampleDistrictId(''); setSampleWardCode('');
+                  }} className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612]">
+                    <option value="">Tỉnh / Thành phố</option>
+                    {sampleProvinces.map((item) => <option key={item.ProvinceID} value={item.ProvinceID}>{item.ProvinceName}</option>)}
+                  </select>
+                  <select required value={sampleDistrictId} disabled={!sampleProvinceId} onChange={(e) => {
+                    setSampleDistrictId(e.target.value); setSampleWardCode('');
+                  }} className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612]">
+                    <option value="">Quận / Huyện</option>
+                    {sampleDistricts.map((item) => <option key={item.DistrictID} value={item.DistrictID}>{item.DistrictName}</option>)}
+                  </select>
+                  <select required value={sampleWardCode} disabled={!sampleDistrictId} onChange={(e) => setSampleWardCode(e.target.value)} className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612]">
+                    <option value="">Phường / Xã</option>
+                    {sampleWards.map((item) => <option key={item.WardCode} value={item.WardCode}>{item.WardName}</option>)}
+                  </select>
+                </div>
+                <input type="text" required minLength={5} value={shippingAddress}
                   onChange={(e) => setShippingAddress(e.target.value)}
-                  placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
-                  className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none"
-                />
+                  placeholder="Số nhà, tên đường, tòa nhà..."
+                  className="w-full p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none" />
+                {sampleAddressError && <p className="text-xs text-[#DC2626] mt-1" role="alert">{sampleAddressError}</p>}
               </div>
 
               <label className="p-2.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-[11px] text-[#7D715E] leading-relaxed flex items-start gap-2 cursor-pointer">
@@ -1907,7 +1953,7 @@ export default function ShopCollaborationPage() {
                   className="mt-0.5 accent-[#C59B58]"
                   required
                 />
-                <span>⚖️ <strong>Cam kết trách nhiệm:</strong> Sau khi xác nhận nhận hàng, bạn có tối đa <strong>14 ngày</strong> để nộp link video đăng trên kênh đã chọn. Quá hạn mà chưa nộp, hệ thống sẽ khóa quyền xin mẫu mới cho đến khi Shop nghiệm thu video.</span>
+                <span>⚖️ <strong>Cam kết trách nhiệm:</strong> Từ lúc GHN xác nhận giao hàng mẫu, bạn có tối đa <strong>14 ngày</strong> để nộp link video đăng trên kênh đã chọn. Khi quá hạn, hệ thống ghi nhận và cảnh báo; Shop có thể báo cáo để Admin xét duyệt khóa quyền nhận mẫu mới. Chỉ Admin được mở khóa.</span>
               </label>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
@@ -1920,7 +1966,6 @@ export default function ShopCollaborationPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingSample || !sampleRecipientName.trim() || !sampleRecipientPhone.trim() || !sampleSocialChannelId || !sampleExpectedVideoAt || !shippingAddress.trim() || !sampleTermsAccepted}
                   className="px-5 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-2xs cursor-pointer"
                 >
                   {submittingSample && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

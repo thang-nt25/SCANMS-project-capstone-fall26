@@ -29,7 +29,7 @@ import {
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",
-  PROCESSING: "Đang thanh toán theo lô",
+  PROCESSING: "Chờ chuyển khoản",
   APPROVED: "Đã xác nhận chi trả",
   REJECTED: "Đã từ chối",
 };
@@ -273,7 +273,6 @@ export default function PayoutApprovalPage() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [dialog, setDialog] = useState<{
     request: MerchantPayout;
     action: "approve" | "reject";
@@ -471,7 +470,6 @@ export default function PayoutApprovalPage() {
     inFlight.current = true;
     setBusy(true);
     setError("");
-    setSuccess("");
     try {
       await action();
     } catch (err: unknown) {
@@ -527,11 +525,9 @@ export default function PayoutApprovalPage() {
               bankRefCode: bankRefCode.trim(),
               note: note.trim(),
             });
-            setSuccess(`Đã xác nhận chi trả thành công cho ${dialog.request.collaboratorName}`);
             toast.success(`Duyệt chi trả thành công cho ${dialog.request.collaboratorName}!`);
           } else {
             await payoutService.reject(storeId, dialog.request.id, reason.trim());
-            setSuccess(`Đã từ chối yêu cầu chi trả của ${dialog.request.collaboratorName}`);
             toast.success("Đã từ chối và hoàn tiền về ví shop.");
           }
           setDialog(null);
@@ -564,9 +560,6 @@ export default function PayoutApprovalPage() {
               : item
           )
         );
-        setSuccess(
-          `Đã xác nhận chi trả cho ${dialog.request.collaboratorName}; mã GD: ${approvedCode}`
-        );
         toast.success(`Duyệt chi trả thành công cho ${dialog.request.collaboratorName}!`);
       } else {
         setLocalRequests((prev) =>
@@ -580,7 +573,6 @@ export default function PayoutApprovalPage() {
               : item
           )
         );
-        setSuccess("Đã từ chối yêu cầu và hoàn tiền về ví shop.");
         toast.success("Đã từ chối và hoàn tiền về ví shop.");
       }
 
@@ -728,9 +720,6 @@ export default function PayoutApprovalPage() {
             ...prev,
           ]);
         }
-        setSuccess(
-          `Đã tạo lô VietQR thành công (${targetIds.length} lệnh chi trả)!`
-        );
         toast.success(
           `Đã xuất file đối soát VietQR cho ${targetIds.length} lệnh payout!`
         );
@@ -750,14 +739,6 @@ export default function PayoutApprovalPage() {
           className="rounded-xl border border-danger bg-white p-4 text-sm text-danger"
         >
           {error}
-        </p>
-      )}
-      {success && (
-        <p
-          role="status"
-          className="rounded-xl border border-brand-border bg-brand-soft p-4 text-sm"
-        >
-          {success}
         </p>
       )}
       {billLink && (
@@ -1340,17 +1321,17 @@ export default function PayoutApprovalPage() {
             </label>
             <table
               aria-label="Danh sách payout"
-              className="w-full min-w-[1040px] table-fixed text-left text-xs"
+              className="w-full min-w-[1200px] table-fixed text-left text-xs"
             >
             <colgroup>
               <col className="w-[42px]" />
-              <col className="w-[20%]" />
+              <col className="w-[22%]" />
               <col />
-              <col className="w-[115px]" />
-              <col className="w-[105px]" />
-              <col className="w-[115px]" />
-              <col className="w-[165px]" />
-              <col className="w-[145px]" />
+              <col className="w-[110px]" />
+              <col className="w-[90px]" />
+              <col className="w-[110px]" />
+              <col className="w-[205px]" />
+              <col className="w-[160px]" />
             </colgroup>
             <thead className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
               <tr>
@@ -1406,7 +1387,7 @@ export default function PayoutApprovalPage() {
                       className="accent-[#C59B58] rounded cursor-pointer"
                     />
                   </td>
-                  <td className="px-3 py-2.5 align-middle">
+                  <td data-label="KOL / Mã yêu cầu" className="px-3 py-2.5 align-middle">
                     <div className="truncate font-bold text-xs text-[#1A1612]" title={request.collaboratorName}>
                       {request.collaboratorName}
                     </div>
@@ -1438,7 +1419,7 @@ export default function PayoutApprovalPage() {
                       <span className="shrink-0 whitespace-nowrap">{new Date(request.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 align-middle">
+                  <td data-label="Người thụ hưởng" className="px-3 py-2.5 align-middle">
                     <div className="max-w-full truncate text-xs font-bold uppercase text-[#1A1612]" title={request.bankAccountName ?? "Thiếu thông tin"}>
                       {request.bankAccountName ?? "Thiếu thông tin"}
                     </div>
@@ -1466,9 +1447,9 @@ export default function PayoutApprovalPage() {
                       {Number(request.netAmount) > 0 ? money(request.netAmount) : "Cần đối soát"}
                     </div>
                   </td>
-                  <td className="px-2.5 py-2.5 text-center align-middle">
+                  <td data-label="Trạng thái" className="payout-status-cell px-2.5 py-2.5 text-center align-middle">
                     <span
-                      className={`inline-block max-w-full rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      className={`payout-status-pill inline-flex max-w-full items-center justify-center whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-semibold ${request.status === "REJECTED" ? "payout-status-rejected" : ""} ${
                         request.status === "APPROVED"
                           ? "border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]"
                           : request.status === "REJECTED"
@@ -1479,12 +1460,12 @@ export default function PayoutApprovalPage() {
                       {STATUS_LABELS[request.status]}
                     </span>
                     {request.batchId && (
-                      <div className="mx-auto mt-1 max-w-[160px] truncate font-mono text-[10px] text-[#B88E4F] font-semibold" title={`Lô: ${request.batchId}`}>
+                      <div className="payout-status-reference mx-auto mt-1 max-w-[190px] truncate font-mono text-[10px] text-[#8A642C] font-medium" title={`Lô: ${request.batchId}`}>
                         Lô: {request.batchId}
                       </div>
                     )}
                     {request.bankRefCode && (
-                      <div className="mx-auto mt-0.5 max-w-[160px] truncate text-[10px] font-mono text-[#7D715E]" title={`GD: ${request.bankRefCode}`}>
+                      <div className="payout-status-reference mx-auto mt-0.5 max-w-[190px] truncate text-[10px] font-mono text-[#7D715E]" title={`GD: ${request.bankRefCode}`}>
                         GD: {request.bankRefCode}
                       </div>
                     )}
@@ -1494,7 +1475,7 @@ export default function PayoutApprovalPage() {
                       </div>
                     )}
                   </td>
-                  <td className="sticky right-0 z-10 bg-white px-2.5 py-2.5 align-middle shadow-[-1px_0_0_#EAE4D7]">
+                  <td data-label="Thao tác" className="sticky right-0 z-10 bg-white px-2.5 py-2.5 align-middle shadow-[-1px_0_0_#EAE4D7]">
                     <div className="mx-auto flex w-full max-w-[130px] flex-col gap-1.5">
                       {(request.status === "PENDING" || request.status === "PROCESSING") && (
                         <button

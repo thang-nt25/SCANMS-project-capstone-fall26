@@ -15,9 +15,11 @@ import {
   IsArray,
   IsBoolean,
 } from 'class-validator';
-import { DiscountType, CouponScope } from '@prisma/client';
+import { DiscountType, CouponScope, CouponBenefitType } from '@prisma/client';
 
 export class CreateStoreCouponDto {
+  @ApiPropertyOptional({ enum: CouponBenefitType })
+  @IsOptional() @IsEnum(CouponBenefitType) benefitType?: CouponBenefitType;
   @ApiProperty({
     description:
       'Mã voucher của shop (4-20 ký tự, chữ cái và số, không khoảng trắng, không được toàn số)',
@@ -132,6 +134,9 @@ export class CreateStoreCouponDto {
   @IsOptional()
   @IsEnum(CouponScope, { message: 'Phạm vi áp dụng không hợp lệ' })
   scopeType?: CouponScope;
+
+  @ApiPropertyOptional({ description: 'ID chiến dịch khi scopeType = CAMPAIGN' })
+  @IsOptional() @IsString() campaignId?: string;
 
   @ApiPropertyOptional({
     description: 'Danh sách ID sản phẩm nếu phạm vi là PRODUCTS',

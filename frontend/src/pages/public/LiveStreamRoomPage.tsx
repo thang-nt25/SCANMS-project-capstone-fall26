@@ -1227,7 +1227,7 @@ export default function LiveStreamRoomPage() {
     return list;
   }, [products, pinnedIndex, bagFilterTab, bagSearchQuery]);
 
-  const couponCode = sessionData?.coupon?.displayCode || 'LIVEDEAL25K';
+  const couponCode = sessionData?.coupon?.displayCode || '';
   const couponDiscount = sessionData?.coupon
     ? sessionData.coupon.discountType === 'PERCENTAGE'
       ? `${Number(sessionData.coupon.discountValue)}%`
@@ -1360,7 +1360,7 @@ export default function LiveStreamRoomPage() {
   // Claim voucher
   const handleClaimVoucher = async () => {
     if (isVoucherClaimed) {
-      toast.success(`Bạn đã lưu mã ${couponCode} vào ví rồi!`);
+      toast.success(`Bạn đã nhận mã ${couponCode}.`);
       return;
     }
     setVoucherClaimLoading(true);
@@ -1370,8 +1370,11 @@ export default function LiveStreamRoomPage() {
           claimKey: `claim_${currentUser?.id || 'guest'}_${Date.now()}`,
         });
       }
+      if (sessionData?.coupon?.id && currentUser?.role === 'CUSTOMER') {
+        await api.post(`/coupons/saved/${sessionData.coupon.id}`);
+      }
       setIsVoucherClaimed(true);
-      toast.success(`Đã lưu mã voucher ${couponCode} vào ví! Mã sẽ tự áp dụng khi bạn thanh toán.`);
+      toast.success(`Đã nhận mã voucher ${couponCode}. Nhập mã khi thanh toán để sử dụng.`);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Chưa lưu được voucher. Vui lòng thử lại.');
     } finally {

@@ -458,24 +458,13 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
           if (group) group.open = true;
         }
       }} className="live-session-form space-y-5 rounded-3xl border border-[#EAE4D7] bg-white p-4 shadow-sm sm:p-6 lg:p-7">
-        <div className="flex flex-col gap-4 border-b border-[#EAE4D7] pb-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3.5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Radio className="h-5 w-5" /></span>
-            <div>
-              <p className="mb-1 text-xs font-medium text-[#B88E4F]">Voucher livestream</p>
-              <h2 className="text-lg font-extrabold sm:text-xl">Tạo phiên livestream</h2>
-              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-[#7D715E] sm:text-sm">Mời KOL đã duyệt hợp tác và chọn sản phẩm áp dụng voucher.</p>
-            </div>
-          </div>
-          <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2 text-xs font-semibold text-[#7D715E]">
-            <Users className="h-4 w-4 text-[#B88E4F]" /> {catalog.creators.length} KOL đã duyệt
-          </div>
-        </div>
-
         <section className="live-form-info rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/70 p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-sm font-extrabold text-[#B88E4F] shadow-xs">1</span>
             <div><h3 className="text-sm font-extrabold">Thông tin phiên</h3><p className="text-xs text-[#7D715E]">Đặt tên, chọn KOL và kênh phát sóng.</p></div>
+            <div className="live-approved-creators">
+              <Users size={15} aria-hidden="true" /> {catalog.creators.length} KOL đã duyệt
+            </div>
           </div>
           <div className="grid gap-x-5 gap-y-4 lg:grid-cols-2">
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">
@@ -560,15 +549,24 @@ export default function LiveSessionsPage({ refreshKey, isActive = true }: LiveSe
 
         <details className="live-form-voucher live-form-disclosure">
           <summary><span className="live-disclosure-number">4</span><div><h3 className="text-sm font-extrabold">Ưu đãi & giới hạn sử dụng</h3><p className="text-xs text-[#7D715E]">Thiết lập mức giảm, lượt dùng và hoa hồng cho phiên live.</p></div><ChevronDown className="live-disclosure-chevron" size={15} aria-hidden="true" /></summary>
-          <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="live-voucher-editor">
+            <div className="live-voucher-discount">
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">Loại voucher<Select value={form.discountType} onChange={(e) => setField('discountType', e.target.value)} className="h-11 w-full font-normal"><option value="PERCENTAGE">Giảm theo phần trăm</option><option value="FIXED_AMOUNT">Giảm số tiền</option></Select></label>
-            <label className="grid min-w-0 gap-1.5 text-sm font-bold">Mức giảm<input required type="number" min="0.01" max={form.discountType === 'PERCENTAGE' ? 100 : undefined} step="any" value={form.discountValue} onChange={(e) => setField('discountValue', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder={form.discountType === 'PERCENTAGE' ? 'Ví dụ: 15%' : 'Nhập số tiền giảm'} /></label>
+            <label className="grid min-w-0 gap-1.5 text-sm font-bold">Mức giảm<span className="live-voucher-amount"><input required type="number" min="0.01" max={form.discountType === 'PERCENTAGE' ? 100 : undefined} step="any" value={form.discountValue} onChange={(e) => setField('discountValue', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder={form.discountType === 'PERCENTAGE' ? '15' : '50000'} /><span aria-hidden="true">{form.discountType === 'PERCENTAGE' ? '%' : '₫'}</span></span></label>
+            </div>
+            <div className="live-voucher-conditions">
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">Đơn tối thiểu (₫)<input type="number" min="0" value={form.minimumOrderAmount} onChange={(e) => setField('minimumOrderAmount', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder="Không bắt buộc" /></label>
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">Giảm tối đa (₫)<input type="number" min="0" value={form.maximumDiscountAmount} onChange={(e) => setField('maximumDiscountAmount', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder="Không bắt buộc" /></label>
+            </div>
+            <div className="live-voucher-limits">
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">Tổng lượt dùng<input required type="number" min="1" step="1" value={form.usageLimitTotal} onChange={(e) => setField('usageLimitTotal', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder="Nhập tổng lượt dùng" /></label>
             <label className="grid min-w-0 gap-1.5 text-sm font-bold">Lượt dùng mỗi khách<input required type="number" min="1" max="100" step="1" value={form.usageLimitPerCustomer} onChange={(e) => setField('usageLimitPerCustomer', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder="Nhập lượt dùng mỗi khách" /></label>
-            <label className="grid min-w-0 gap-1.5 text-sm font-bold">Hoa hồng phiên live (%)<input required type="number" min="0" max="100" step="0.01" value={form.commissionRate} onChange={(e) => setField('commissionRate', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]" placeholder="Nhập hoa hồng phiên live" /></label>
-            <label className="grid min-w-0 gap-1.5 text-sm font-bold sm:col-span-2 xl:col-span-3">Mô tả phiên<textarea maxLength={2000} value={form.description} onChange={(e) => setField('description', e.target.value)} rows={3} className="resize-y rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-3 font-normal outline-none focus:border-[#C59B58]" placeholder="Thông tin ưu đãi hoặc nội dung phiên" /></label>
+            <label className="grid min-w-0 gap-1.5 text-sm font-bold">Thưởng hoa hồng khi LIVE<select required value={form.commissionRate} onChange={(e) => setField('commissionRate', e.target.value)} className="h-11 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 font-normal outline-none focus:border-[#C59B58]"><option value="">Chọn mức thưởng</option><option value="2">+2%</option><option value="3">+3%</option></select></label>
+            </div>
+            <details className="live-voucher-description">
+              <summary>Mô tả phiên <span>Không bắt buộc</span><ChevronDown size={14} aria-hidden="true" /></summary>
+              <label className="grid min-w-0 gap-1.5 text-sm font-bold"><span className="sr-only">Mô tả phiên</span><textarea maxLength={2000} value={form.description} onChange={(e) => setField('description', e.target.value)} rows={2} className="resize-y rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-3 font-normal outline-none focus:border-[#C59B58]" placeholder="Thông tin ưu đãi hoặc nội dung phiên" /></label>
+            </details>
           </div>
         </details>
 

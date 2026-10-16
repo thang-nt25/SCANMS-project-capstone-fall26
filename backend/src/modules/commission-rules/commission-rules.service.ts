@@ -1759,6 +1759,56 @@ export class CommissionRulesService {
         }
       }
 
+      const stackedRedemptions = await tx.stackedVoucherRedemption.findMany({
+        where: { orderId, status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.PARTIALLY_REFUNDED] } },
+      });
+      for (const voucher of stackedRedemptions) {
+        const reversed = isFullRefund ? voucher.discountAmount : Prisma.Decimal.min(
+          voucher.discountAmount,
+          voucher.discountAmount.mul(refundRatio).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+        );
+        const shopReversed = isFullRefund ? voucher.shopFundedAmount : Prisma.Decimal.min(
+          voucher.shopFundedAmount,
+          voucher.shopFundedAmount.mul(refundRatio).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+        );
+        const platformReversed = isFullRefund ? voucher.platformFundedAmount : Prisma.Decimal.min(
+          voucher.platformFundedAmount,
+          voucher.platformFundedAmount.mul(refundRatio).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+        );
+        reversedDiscountAmount = reversedDiscountAmount.add(reversed);
+        shopFundedRemaining = shopFundedRemaining.add(voucher.shopFundedAmount.minus(shopReversed));
+        platformFundedRemaining = platformFundedRemaining.add(voucher.platformFundedAmount.minus(platformReversed));
+        await tx.stackedVoucherRedemption.update({
+          where: { orderId_couponId: { orderId, couponId: voucher.couponId } },
+          data: {
+            status: isFullRefund ? CouponRedemptionStatus.REFUNDED : CouponRedemptionStatus.PARTIALLY_REFUNDED,
+            discountAmount: isFullRefund ? 0 : { decrement: reversed },
+            shopFundedAmount: isFullRefund ? 0 : { decrement: shopReversed },
+            platformFundedAmount: isFullRefund ? 0 : { decrement: platformReversed },
+          },
+        });
+        await tx.coupon.update({ where: { id: voucher.couponId }, data: {
+          budgetUsed: { decrement: reversed },
+          ...(isFullRefund ? { usageCount: { decrement: 1 } } : {}),
+        } });
+      }
+
+      const currentRaw = (currentOrder.rawPayload || {}) as Record<string, any>;
+      const campaignReservations = currentRaw.campaignBonusReservations;
+      if (campaignReservations && typeof campaignReservations === 'object') {
+        const remainingReservations: Record<string, number> = {};
+        for (const [campaignId, value] of Object.entries(campaignReservations)) {
+          const remaining = Number(value);
+          if (!/^[0-9a-f-]{36}$/i.test(campaignId) || !Number.isFinite(remaining) || remaining < 0) continue;
+          const release = isFullRefund ? remaining : Math.min(remaining, Math.round(remaining * Number(refundRatio) * 100) / 100);
+          if (release > 0) {
+            await tx.$executeRaw`UPDATE campaigns SET bonus_budget_used = GREATEST(0, bonus_budget_used - ${release}) WHERE id = ${campaignId}::uuid`;
+          }
+          remainingReservations[campaignId] = remaining - release;
+        }
+        await tx.order.update({ where: { id: orderId }, data: { rawPayload: { ...currentRaw, campaignBonusReservations: remainingReservations } } });
+      }
+
       // 1.2 Phân bổ discount theo từng OrderItem và điều chỉnh commission của đơn hiện tại theo dòng hàng hoàn (Issue 5)
       const orderItems = await tx.orderItem.findMany({
         where: { orderId },

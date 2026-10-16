@@ -94,7 +94,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
             </div>
 
             <div className="tier-current-stats">
-              <div><TrendingUp aria-hidden="true" /><span>Doanh số tích lũy</span><strong>{currency(currentRevenue)}</strong></div>
+              <div><TrendingUp aria-hidden="true" /><span>Tiền hàng sau voucher tháng trước</span><strong>{currency(currentRevenue)}</strong></div>
               <div><ShoppingBag aria-hidden="true" /><span>Đơn thành công</span><strong>{totalOrders.toLocaleString('vi-VN')} đơn</strong></div>
               <div><Award aria-hidden="true" /><span>Hoa hồng thưởng</span><strong>+{currentTier.extraBonusPercentage || 0}%</strong></div>
             </div>

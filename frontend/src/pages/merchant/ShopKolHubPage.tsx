@@ -38,7 +38,8 @@ import ChatBoxPage from '../chat/ChatBoxPage';
 import KolRecommendationPage from './KolRecommendationPage';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
-import { VipCommissionModal } from '../../components/affiliate/VipCommissionModal';
+import { ExclusiveDealInbox } from '../../components/affiliate/ExclusiveDealInbox';
+import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
 
 export interface PartnerKol {
   id: string;
@@ -130,6 +131,7 @@ function KolAvatar({
 }
 
 export interface SampleRequestItem {
+  sampleRequestsBlockedAt?: string | null;
   id: string;
   status: string;
   createdAt: string;
@@ -200,7 +202,7 @@ export default function ShopKolHubPage() {
   const [sampleFilter, setSampleFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'REVISION_REQUIRED' | 'OVERDUE' | 'DELIVERY_ISSUE' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'>('ALL');
   const [sampleProgramStats, setSampleProgramStats] = useState<any>(null);
   const [trackingModalItem, setTrackingModalItem] = useState<SampleRequestItem | null>(null);
-  const [carrierInput, setCarrierInput] = useState('GHTK');
+  const [carrierInput] = useState('GHN');
   const [trackingCodeInput, setTrackingCodeInput] = useState('');
   const [updatingSample, setUpdatingSample] = useState(false);
 
@@ -215,9 +217,6 @@ export default function ShopKolHubPage() {
   const [sharedShopLink, setSharedShopLink] = useState('');
   const [ownedStore, setOwnedStore] = useState<{ id: string; name: string } | null>(null);
 
-  const [showCommissionModal, setShowCommissionModal] = useState(false);
-  const [newCommissionRate, setNewCommissionRate] = useState<number>(22);
-  const [updatingCommission, setUpdatingCommission] = useState(false);
   const [performanceRange, setPerformanceRange] = useState<'7d' | '30d' | 'month' | 'all'>('30d');
 
   // Creator Discovery Directory Modal (Khám phá & Thêm KOL mới)
@@ -281,6 +280,7 @@ export default function ShopKolHubPage() {
             reviewVideoUrl: item.videoUrl,
             videoTitle: item.videoTitle,
             videoSubmittedAt: item.videoSubmittedAt,
+            sampleRequestsBlockedAt: item.collaborator?.collaboratorProfile?.sampleRequestsBlockedAt,
             deadlineAt: item.deadlineAt,
             revisionDeadlineAt: item.revisionDeadlineAt,
             expectedVideoAt: item.expectedVideoAt,
@@ -616,14 +616,21 @@ return true;
   // Handler: Submit Shipping Tracking
   const handleSaveTracking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trackingModalItem || !trackingCodeInput.trim()) return;
+    if (!trackingModalItem || (carrierInput !== 'GHN' && !trackingCodeInput.trim())) return;
 
     setUpdatingSample(true);
+    let savedTrackingCode = trackingCodeInput.trim();
     try {
-      await api.patch(`/sample-requests/${trackingModalItem.id}/ship`, {
-        carrier: carrierInput,
-        trackingNumber: trackingCodeInput.trim(),
-      });
+      if (carrierInput === 'GHN') {
+        const response: any = await api.post(`/shipping/ghn/create-sample/${trackingModalItem.id}`);
+        const result = response?.data?.data || response?.data || response;
+        savedTrackingCode = result.trackingNumber;
+      } else {
+        await api.patch(`/sample-requests/${trackingModalItem.id}/ship`, {
+          carrier: carrierInput,
+          trackingNumber: savedTrackingCode,
+        });
+      }
       toast.success('Đã cập nhật mã vận đơn và chuyển sang trạng thái Đang giao hàng!');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Không thể cập nhật mã vận đơn.');
@@ -642,7 +649,7 @@ return true;
                 ...item,
                 status: 'SHIPPED',
                 carrier: carrierInput,
-                trackingCode: trackingCodeInput.trim(),
+                trackingCode: savedTrackingCode,
               }
             : item
         );
@@ -680,20 +687,6 @@ return true;
     } finally {
       setInviting(false);
     }
-  };
-
-  // Handler: Update VIP Commission
-  const handleSaveCommission = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUpdatingCommission(true);
-    setTimeout(() => {
-      setKols((prev) =>
-        prev.map((k) => (k.id === selectedKol.id ? { ...k, commissionRate: newCommissionRate } : k))
-      );
-      setUpdatingCommission(false);
-      setShowCommissionModal(false);
-      toast.success(`Đã nâng mức hoa hồng đặc quyền cho ${selectedKol.fullName} lên ${newCommissionRate}%!`);
-    }, 600);
   };
 
   // Copy Store Invite Link
@@ -1637,15 +1630,12 @@ return true;
                   <button
                   type="button"
                   id="btn-quick-cap-vip"
-                  onClick={() => {
-                    setNewCommissionRate(selectedKol.commissionRate || 22);
-                    setShowCommissionModal(true);
-                  }}
+                  onClick={() => handleTabChange('performance')}
                   className="text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap bg-transparent border-0 p-0"
-                  title="Cấp mức hoa hồng độc quyền VIP cho KOL này"
+                  title="Xem và duyệt đề xuất VIP từ KOL"
                 >
                   <DollarSign className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span>Cấp VIP</span>
+                  <span>Đề xuất VIP</span>
                 </button>
 
                 {selectedKol.primaryChannel?.url && (
@@ -1953,6 +1943,7 @@ return true;
 
                             {/* Actions by status */}
                             <div className="flex shrink-0 flex-wrap items-center gap-2 w-full xl:w-auto xl:max-w-[260px] justify-end border-t xl:border-t-0 pt-3 xl:pt-0 border-[#EAE4D7]">
+                              <SampleViolationAction request={item} blocked={Boolean(item.sampleRequestsBlockedAt)} onSuccess={() => void loadBackendData()} />
                               {item.status === 'PENDING' && (
                                 <>
                                   <button
@@ -2028,7 +2019,7 @@ return true;
 
               {/* TAB 3: PERFORMANCE & AFFILIATE ORDERS (Tone Sáng, Sang Trọng, Chuẩn SCANMS) */}
               {activeTab === 'performance' && (() => {
-                const effectiveCommissionRate = selectedKol.commissionRate || 18;
+                const effectiveCommissionRate = 10;
                 const rawRevenue = selectedKol.stats?.totalRevenue || 0;
                 const rawOrders = selectedKol.stats?.totalOrders || 0;
                 const hasOrders = rawOrders > 0;
@@ -2043,6 +2034,7 @@ return true;
 
                 return (
                   <div className="kol-performance animate-in fade-in-50 duration-200 space-y-4">
+                    <ExclusiveDealInbox />
                     {/* 1. Header Policy & Strategic Overview Bar */}
                     <div className="kol-performance-heading rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FAF8F5] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -2067,14 +2059,11 @@ return true;
                       <div className="flex items-center gap-2 flex-wrap">
                         <button
                           type="button"
-                          onClick={() => {
-                            setNewCommissionRate(effectiveCommissionRate);
-                            setShowCommissionModal(true);
-                          }}
+                          onClick={() => handleTabChange('messages')}
                           className="flex items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2 text-xs font-bold text-[#8F682E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer shadow-xs"
                         >
                           <DollarSign className="h-3.5 w-3.5 text-[#B88E4F]" />
-                          <span>Hoa hồng VIP ({effectiveCommissionRate}%)</span>
+                          <span>Trao đổi Deal VIP</span>
                         </button>
                         <button
                           type="button"
@@ -2281,13 +2270,12 @@ return true;
                             <button
                               type="button"
                               onClick={() => {
-                                setNewCommissionRate(effectiveCommissionRate);
-                                setShowCommissionModal(true);
+                                setActiveTab('performance');
                               }}
                               className="rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white px-4 py-2 text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                             >
                               <DollarSign className="w-3.5 h-3.5" />
-                              <span>Nâng mức hoa hồng VIP</span>
+                              <span>Trao đổi Deal VIP</span>
                             </button>
 
                           </div>
@@ -2521,20 +2509,12 @@ return true;
 
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1">Đơn vị vận chuyển</label>
-                <Select
-                  value={carrierInput}
-                  onChange={(e) => setCarrierInput(e.target.value)}
-                  className="w-full text-xs"
-                >
-                  <option value="GHTK">GHTK — Giao Hàng Tiết Kiệm</option>
-                  <option value="GHN">GHN — Giao Hàng Nhanh</option>
-                  <option value="VIETTELPOST">Viettel Post</option>
-                  <option value="VNPOST">VNPost</option>
-                  <option value="OTHER">Đơn vị khác</option>
-                </Select>
+                <p className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5 text-xs">GHN — Giao Hàng Nhanh</p>
               </div>
 
-              <div>
+              {carrierInput === 'GHN' ? (
+                <p className="text-xs text-[#7D715E]">SCANMS sẽ tạo mã vận đơn thật từ GHN và theo dõi giao thành công tự động.</p>
+              ) : <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1">Mã vận đơn (Tracking code)</label>
                 <input
                   type="text"
@@ -2544,7 +2524,7 @@ return true;
                   onChange={(e) => setTrackingCodeInput(e.target.value)}
                   className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
                 />
-              </div>
+              </div>}
 
               <div className="pt-2 flex justify-end gap-2">
                 <button
@@ -2559,7 +2539,7 @@ return true;
                   disabled={updatingSample}
                   className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#EBD08C] text-white hover:bg-[#DEC07A] transition disabled:opacity-50 cursor-pointer shadow-xs"
                 >
-                  {updatingSample ? 'Đang lưu...' : 'Xác Nhận Đã Gửi Hàng'}
+                  {updatingSample ? 'Đang xử lý...' : carrierInput === 'GHN' ? 'Tạo vận đơn GHN' : 'Xác Nhận Đã Gửi Hàng'}
                 </button>
               </div>
             </form>
@@ -2569,7 +2549,6 @@ return true;
 
       {inviteModal}
 
-      {showCommissionModal && <VipCommissionModal creator={selectedKol} rate={newCommissionRate} saving={updatingCommission} onRateChange={setNewCommissionRate} onClose={() => setShowCommissionModal(false)} onSubmit={handleSaveCommission} />}
 
       {/* MODAL 4: Danh Bạ & Khám Phá Nhà Sáng Tạo (KOL/KOC) SCANMS */}
       {discoveryModal}

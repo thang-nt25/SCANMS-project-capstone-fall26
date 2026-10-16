@@ -144,8 +144,8 @@ export const referralLinksService = {
     return Array.isArray(payload) ? payload : payload?.data || [];
   },
 
-  async approveExclusiveDeal(id: string) {
-    const res: any = await api.patch(`/affiliate-deals/${id}/approve`, {});
+  async approveExclusiveDeal(id: string, voucher: { discountPercent: number; minimumOrderAmount: number; maximumDiscountAmount: number; usageLimitTotal: number; budgetTotal: number; validDays: number }) {
+    const res: any = await api.patch(`/affiliate-deals/${id}/approve`, voucher);
     return res?.data?.data || res?.data || res;
   },
 

@@ -9,6 +9,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { SampleRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { MediaService } from '../media/media.service';
+import { GhnService } from '../shipping/ghn.service';
 import {
   CreateSampleRequestDto,
   AdminResolveSampleRequestDto,
@@ -35,6 +36,7 @@ export class SamplesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
+    private readonly ghnService: GhnService,
   ) {}
 
   async getMyEligibility(collaboratorId: string) {
@@ -88,11 +90,9 @@ export class SamplesService {
       hasSocialChannel: channels.length > 0,
       isBlocked: blocked,
       blockedAt: profile?.sampleRequestsBlockedAt ?? null,
-      blockReason:
-        profile?.sampleRequestsBlockReason ??
-        (overdueRequests.length
-          ? 'Bạn có yêu cầu mẫu quá hạn chưa được Shop nghiệm thu.'
-          : null),
+      blockReason: blocked
+        ? profile?.sampleRequestsBlockReason || 'Admin đã khóa quyền nhận mẫu.'
+        : null,
       overdueRequests,
       channels,
       commitmentDays: SAMPLE_COMMITMENT_DAYS,
@@ -123,19 +123,16 @@ export class SamplesService {
       );
     }
 
-    const expectedVideoAt = new Date(dto.expectedVideoAt);
-    const now = new Date();
-    const latestExpectedAt = new Date(
-      now.getTime() + SAMPLE_COMMITMENT_DAYS * 24 * 60 * 60 * 1000,
-    );
-    if (
-      Number.isNaN(expectedVideoAt.getTime()) ||
-      expectedVideoAt < now ||
-      expectedVideoAt > latestExpectedAt
-    ) {
-      throw new BadRequestException(
-        'Ngày dự kiến đăng video phải nằm trong 14 ngày kể từ hôm nay.',
-      );
+    if (dto.recipientPhoneConfirmed !== true) {
+      throw new BadRequestException('Bạn cần xác nhận số điện thoại của người nhận hàng mẫu.');
+    }
+    const districts = await this.ghnService.getDistricts(dto.ghnProvinceId);
+    if (!districts.some((district) => district.DistrictID === dto.ghnDistrictId && district.ProvinceID === dto.ghnProvinceId)) {
+      throw new BadRequestException('Quận/huyện không thuộc tỉnh/thành đã chọn trên GHN.');
+    }
+    const wards = await this.ghnService.getWards(dto.ghnDistrictId);
+    if (!wards.some((ward) => ward.WardCode === dto.ghnWardCode && ward.DistrictID === dto.ghnDistrictId)) {
+      throw new BadRequestException('Phường/xã không thuộc quận/huyện đã chọn trên GHN.');
     }
 
     const product = await this.prisma.product.findFirst({
@@ -203,24 +200,29 @@ export class SamplesService {
       );
     }
 
-    const request = await this.prisma.sampleProductRequest.create({
-      data: {
-        collaboratorId,
-        productId: dto.productId,
-        productVariantId: dto.productVariantId || null,
-        socialChannelId: socialChannel.id,
-        recipientName: dto.recipientName.trim(),
-        recipientPhone: dto.recipientPhone.trim(),
-        shippingAddress: dto.shippingAddress.trim(),
-        socialPlatformSnapshot: socialChannel.platformName,
-        socialChannelNameSnapshot: socialChannel.channelName,
-        socialChannelUrlSnapshot: socialChannel.channelUrl,
-        socialFollowerSnapshot: socialChannel.followerCount,
-        contentType: dto.contentType.trim(),
-        expectedVideoAt,
-        acceptedTermsAt: new Date(),
-      },
-      include: this.includeRelations(),
+    const request = await this.prisma.$transaction(async (tx) => {
+      return tx.sampleProductRequest.create({
+        data: {
+          collaboratorId,
+          productId: dto.productId,
+          productVariantId: dto.productVariantId || null,
+          socialChannelId: socialChannel.id,
+          recipientName: dto.recipientName.trim(),
+          recipientPhone: dto.recipientPhone.trim(),
+          shippingAddress: dto.shippingAddress.trim(),
+          ghnProvinceId: dto.ghnProvinceId ?? null,
+          ghnDistrictId: dto.ghnDistrictId ?? null,
+          ghnWardCode: dto.ghnWardCode || null,
+          socialPlatformSnapshot: socialChannel.platformName,
+          socialChannelNameSnapshot: socialChannel.channelName,
+          socialChannelUrlSnapshot: socialChannel.channelUrl,
+          socialFollowerSnapshot: socialChannel.followerCount,
+          contentType: dto.contentType.trim(),
+          expectedVideoAt: null,
+          acceptedTermsAt: new Date(),
+        },
+        include: this.includeRelations(),
+      });
     });
     await this.notify({
       userId: product.store.ownerId,
@@ -233,7 +235,7 @@ export class SamplesService {
       productId: product.id,
       productVariantId: variant?.id,
       socialChannelId: socialChannel.id,
-      expectedVideoAt: expectedVideoAt.toISOString(),
+      expectedVideoAt: null,
     });
     return request;
   }
@@ -318,33 +320,12 @@ export class SamplesService {
     }
     const updated = await this.prisma.$transaction(
       async (tx) => {
-        const [creatorProfile, overdueObligations] = await Promise.all([
-          tx.collaboratorProfile.findUnique({
-            where: { userId: req.collaboratorId },
-            select: { sampleRequestsBlockedAt: true },
-          }),
-          tx.sampleProductRequest.count({
-            where: {
-              collaboratorId: req.collaboratorId,
-              OR: [
-                { status: SampleRequestStatus.OVERDUE },
-                {
-                  status: SampleRequestStatus.RECEIVED,
-                  deadlineAt: { lte: new Date() },
-                  videoSubmittedAt: null,
-                },
-                {
-                  status: SampleRequestStatus.REVISION_REQUIRED,
-                  revisionDeadlineAt: { lte: new Date() },
-                },
-              ],
-            },
-          }),
-        ]);
-        if (creatorProfile?.sampleRequestsBlockedAt || overdueObligations > 0) {
-          throw new ConflictException(
-            'KOL đang bị khóa quyền xin mẫu do còn nghĩa vụ video quá hạn.',
-          );
+        const creatorProfile = await tx.collaboratorProfile.findUnique({
+          where: { userId: req.collaboratorId },
+          select: { sampleRequestsBlockedAt: true },
+        });
+        if (creatorProfile?.sampleRequestsBlockedAt) {
+          throw new ConflictException('KOL đang bị Admin khóa quyền nhận mẫu.');
         }
 
         const product = await tx.product.findUnique({
@@ -511,6 +492,9 @@ export class SamplesService {
     dto: ShipSampleRequestDto,
   ) {
     const req = await this.ensureShopOwns(requestId, shopOwnerId);
+    if (dto.carrier?.toUpperCase().includes('GHN')) {
+      throw new BadRequestException('Vui lòng tạo vận đơn GHN trực tiếp từ SCANMS để xác thực mã và trạng thái giao.');
+    }
     if (
       req.status !== SampleRequestStatus.APPROVED &&
       req.status !== SampleRequestStatus.DELIVERY_ISSUE
@@ -545,6 +529,9 @@ export class SamplesService {
 
   async confirmReceived(requestId: string, collaboratorId: string) {
     const req = await this.getOwnedRequest(requestId, collaboratorId);
+    if (req.carrier?.toUpperCase().includes('GHN')) {
+      throw new BadRequestException('Mẫu gửi qua GHN được xác nhận nhận hàng theo trạng thái giao thành công của GHN.');
+    }
     if (req.status !== SampleRequestStatus.SHIPPED) {
       throw new BadRequestException(
         'Chỉ xác nhận nhận hàng khi kiện hàng đang được giao.',
@@ -700,15 +687,6 @@ export class SamplesService {
         },
         include: this.includeRelations(),
       });
-      if (late) {
-        await tx.collaboratorProfile.updateMany({
-          where: { userId: collaboratorId },
-          data: {
-            sampleRequestsBlockedAt: submittedAt,
-            sampleRequestsBlockReason: `Đã nộp video quá hạn cho mẫu ${req.product.title}; chờ Shop nghiệm thu.`,
-          },
-        });
-      }
       return { sample, asset };
     });
     await this.notify({
@@ -722,8 +700,8 @@ export class SamplesService {
       await this.notify({
         userId: collaboratorId,
         title: 'Đã ghi nhận video nộp trễ',
-        message: `Quyền xin mẫu đang bị khóa đến khi Shop nghiệm thu video cho ${req.product.title}.`,
-        type: 'SAMPLE_REQUESTS_BLOCKED',
+        message: `Video cho ${req.product.title} được ghi nhận nộp trễ và đang chờ Shop nghiệm thu. Admin sẽ xem xét nếu có báo cáo vi phạm.`,
+        type: 'SAMPLE_VIDEO_LATE',
         requestId,
       });
     }
@@ -831,11 +809,220 @@ export class SamplesService {
     };
   }
 
+  private pendingViolationReport(
+    events: { action: string; details?: unknown }[],
+  ) {
+    const latest = events.find((event) =>
+      [
+        'SAMPLE_VIOLATION_REPORTED',
+        'SAMPLE_REQUESTS_BLOCKED',
+        'SAMPLE_VIOLATION_DISMISSED',
+        'SAMPLE_ADMIN_DEADLINE_EXTENDED',
+        'SAMPLE_ADMIN_OBLIGATION_CANCELLED',
+      ].includes(event.action),
+    );
+    return latest?.action === 'SAMPLE_VIOLATION_REPORTED' ? latest : null;
+  }
+
+  private hasDeadlineViolation(req: {
+    status: string;
+    deadlineAt: Date | null;
+    revisionDeadlineAt: Date | null;
+    videoSubmittedAt: Date | null;
+    events: { action: string; details: unknown }[];
+  }) {
+    if (req.status === 'OVERDUE') return true;
+    const deadline = req.revisionDeadlineAt || req.deadlineAt;
+    if (['RECEIVED', 'REVISION_REQUIRED'].includes(req.status)) {
+      return Boolean(deadline && deadline <= new Date());
+    }
+    return (
+      req.status === 'VIDEO_SUBMITTED' &&
+      Boolean(
+        (req.videoSubmittedAt && deadline && req.videoSubmittedAt > deadline) ||
+        req.events.some(
+          (event) =>
+            event.action === 'SAMPLE_VIDEO_SUBMITTED' &&
+            (event.details as { late?: boolean } | null)?.late,
+        ),
+      )
+    );
+  }
+
+  async reportViolation(
+    requestId: string,
+    shopOwnerId: string,
+    reason: string,
+  ) {
+    if (!reason?.trim())
+      throw new BadRequestException('Cần ghi lý do và bằng chứng báo cáo.');
+    const normalizedReason = reason.trim();
+    if (normalizedReason.length > 500)
+      throw new BadRequestException('Lý do tối đa 500 ký tự.');
+    await this.ensureShopOwns(requestId, shopOwnerId);
+    const req = await this.prisma.$transaction(async (tx) => {
+      // Lock the request before checking/reporting so repeated submissions cannot create duplicates.
+      await tx.sampleProductRequest.update({
+        where: { id: requestId },
+        data: { updatedAt: new Date() },
+      });
+      const sample = await tx.sampleProductRequest.findUnique({
+        where: { id: requestId },
+        include: this.includeRelations(),
+      });
+      if (!sample || sample.product.store.ownerId !== shopOwnerId)
+        throw new ForbiddenException('Yêu cầu không thuộc gian hàng của bạn.');
+      if (!this.hasDeadlineViolation(sample))
+        throw new BadRequestException(
+          'Chỉ báo cáo yêu cầu đã quá hạn nộp hoặc sửa video.',
+        );
+      if (sample.collaborator.collaboratorProfile?.sampleRequestsBlockedAt)
+        throw new ConflictException('KOL đã bị Admin khóa quyền nhận mẫu.');
+      if (this.pendingViolationReport(sample.events))
+        throw new ConflictException('Báo cáo này đang chờ Admin xử lý.');
+      await tx.sampleRequestEvent.create({
+        data: {
+          sampleRequestId: requestId,
+          actorId: shopOwnerId,
+          action: 'SAMPLE_VIOLATION_REPORTED',
+          details: { reason: normalizedReason },
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: shopOwnerId,
+          action: 'SAMPLE_VIOLATION_REPORTED',
+          details: { sampleRequestId: requestId, reason: normalizedReason },
+        },
+      });
+      return sample;
+    });
+    const admins = await this.prisma.user.findMany({
+      where: {
+        role: { in: ['SYSTEM_ADMIN', 'SYSTEM_MANAGER'] },
+        isActive: true,
+      },
+      select: { id: true },
+    });
+    for (const admin of admins)
+      await this.notify({
+        userId: admin.id,
+        title: 'Shop đề nghị xử lý KOL quá hạn video',
+        message: `${req.product.store.name}: ${req.collaborator.fullName} · ${req.product.title}. Lý do: ${normalizedReason}`,
+        type: 'SAMPLE_VIOLATION_REPORTED',
+        requestId,
+      });
+    await this.notify({
+      userId: req.collaboratorId,
+      title: 'Shop đã báo cáo quá hạn video mẫu',
+      message: `Báo cáo cho ${req.product.title} đang chờ Admin xét duyệt. Lý do: ${normalizedReason}. Bạn có thể liên hệ Shop để giải trình.`,
+      type: 'SAMPLE_VIOLATION_REPORTED',
+      requestId,
+    });
+    return { success: true };
+  }
+
+  private async moderateViolation(
+    requestId: string,
+    adminId: string,
+    action: 'BLOCK_SAMPLE_REQUESTS' | 'DISMISS_REPORT',
+    reason: string,
+  ) {
+    const normalizedReason = reason.trim();
+    if (normalizedReason.length > 500)
+      throw new BadRequestException('Lý do tối đa 500 ký tự.');
+    const req = await this.prisma.$transaction(async (tx) => {
+      const exists = await tx.sampleProductRequest.findUnique({
+        where: { id: requestId },
+        select: { id: true },
+      });
+      if (!exists) throw new NotFoundException('Không tìm thấy yêu cầu mẫu.');
+      await tx.sampleProductRequest.update({
+        where: { id: requestId },
+        data: { updatedAt: new Date() },
+      });
+      const sample = await tx.sampleProductRequest.findUniqueOrThrow({
+        where: { id: requestId },
+        include: this.includeRelations(),
+      });
+      const report = this.pendingViolationReport(sample.events);
+      if (action === 'DISMISS_REPORT' && !report)
+        throw new ConflictException('Không có báo cáo đang chờ xử lý.');
+      if (action === 'BLOCK_SAMPLE_REQUESTS') {
+        if (!this.hasDeadlineViolation(sample))
+          throw new BadRequestException(
+            'Yêu cầu chưa quá hạn hoặc đã hoàn tất nghĩa vụ.',
+          );
+        const updated = await tx.collaboratorProfile.updateMany({
+          where: {
+            userId: sample.collaboratorId,
+            sampleRequestsBlockedAt: null,
+          },
+          data: {
+            sampleRequestsBlockedAt: new Date(),
+            sampleRequestsBlockReason: normalizedReason,
+          },
+        });
+        if (!updated.count)
+          throw new ConflictException(
+            'KOL đã bị khóa hoặc không có hồ sơ KOL.',
+          );
+      }
+      const eventAction =
+        action === 'BLOCK_SAMPLE_REQUESTS'
+          ? 'SAMPLE_REQUESTS_BLOCKED'
+          : 'SAMPLE_VIOLATION_DISMISSED';
+      const details = {
+        reason: normalizedReason,
+        collaboratorId: sample.collaboratorId,
+        source: 'ADMIN_DECISION',
+      };
+      await tx.sampleRequestEvent.create({
+        data: {
+          sampleRequestId: requestId,
+          actorId: adminId,
+          action: eventAction,
+          details,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: adminId,
+          action: eventAction,
+          details: { sampleRequestId: requestId, ...details },
+        },
+      });
+      return sample;
+    });
+    const blocked = action === 'BLOCK_SAMPLE_REQUESTS';
+    for (const userId of [req.collaboratorId, req.product.store.ownerId])
+      await this.notify({
+        userId,
+        title: blocked
+          ? 'Admin đã khóa quyền nhận mẫu của KOL'
+          : 'Admin không chấp nhận đề nghị khóa KOL',
+        message: `${req.product.title}. Lý do: ${normalizedReason}${blocked ? '. Quyền nhận mẫu mới bị khóa trên toàn sàn; KOL vẫn có thể nộp video để hoàn tất nghĩa vụ.' : ''}`,
+        type: blocked
+          ? 'SAMPLE_REQUESTS_BLOCKED'
+          : 'SAMPLE_VIOLATION_DISMISSED',
+        requestId,
+      });
+    return { success: true };
+  }
+
   async resolveRequestAsAdmin(
     requestId: string,
     adminId: string,
     dto: AdminResolveSampleRequestDto,
   ) {
+    if (!dto.reason?.trim())
+      throw new BadRequestException('Cần ghi lý do xử lý.');
+    if (
+      dto.action === 'BLOCK_SAMPLE_REQUESTS' ||
+      dto.action === 'DISMISS_REPORT'
+    ) {
+      return this.moderateViolation(requestId, adminId, dto.action, dto.reason);
+    }
     const req = await this.prisma.sampleProductRequest.findUnique({
       where: { id: requestId },
       include: this.includeRelations(),
@@ -894,7 +1081,6 @@ export class SamplesService {
         data: { status: SampleRequestStatus.CANCELLED, rejectedReason: reason },
         include: this.includeRelations(),
       });
-      await this.clearBlockIfNoOverdue(req.collaboratorId);
       await this.notify({
         userId: req.collaboratorId,
         title: 'Quản trị viên đã giải quyết nghĩa vụ mẫu',
@@ -949,7 +1135,6 @@ export class SamplesService {
           },
       include: this.includeRelations(),
     });
-    await this.clearBlockIfNoOverdue(req.collaboratorId);
     await this.notify({
       userId: req.collaboratorId,
       title: 'Đã gia hạn thời hạn nộp video mẫu',
@@ -972,17 +1157,6 @@ export class SamplesService {
     return updated;
   }
 
-  private async clearBlockIfNoOverdue(collaboratorId: string) {
-    const outstanding = await this.prisma.sampleProductRequest.count({
-      where: { collaboratorId, status: SampleRequestStatus.OVERDUE },
-    });
-    if (outstanding > 0) return;
-    await this.prisma.collaboratorProfile.updateMany({
-      where: { userId: collaboratorId },
-      data: { sampleRequestsBlockedAt: null, sampleRequestsBlockReason: null },
-    });
-  }
-
   async unblockCollaborator(
     collaboratorId: string,
     adminId: string,
@@ -991,24 +1165,39 @@ export class SamplesService {
     if (typeof reason !== 'string' || !reason.trim()) {
       throw new BadRequestException('Cần ghi lý do mở khóa quyền xin mẫu.');
     }
-    const normalizedReason = reason.trim().slice(0, 500);
+    const normalizedReason = reason.trim();
+    if (normalizedReason.length > 500)
+      throw new BadRequestException('Lý do tối đa 500 ký tự.');
     const profile = await this.prisma.collaboratorProfile.findUnique({
       where: { userId: collaboratorId },
     });
     if (!profile) throw new NotFoundException('Không tìm thấy hồ sơ KOL.');
-    await this.prisma.collaboratorProfile.update({
-      where: { userId: collaboratorId },
-      data: { sampleRequestsBlockedAt: null, sampleRequestsBlockReason: null },
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.collaboratorProfile.updateMany({
+        where: {
+          userId: collaboratorId,
+          sampleRequestsBlockedAt: { not: null },
+        },
+        data: {
+          sampleRequestsBlockedAt: null,
+          sampleRequestsBlockReason: null,
+        },
+      });
+      if (!updated.count)
+        throw new ConflictException('KOL không bị khóa quyền nhận mẫu.');
+      await tx.auditLog.create({
+        data: {
+          userId: adminId,
+          action: 'SAMPLE_REQUESTS_UNBLOCKED',
+          details: { collaboratorId, reason: normalizedReason },
+        },
+      });
     });
     await this.notify({
       userId: collaboratorId,
       title: 'Đã mở lại quyền xin sản phẩm mẫu',
       message: `Admin đã mở lại quyền xin mẫu của bạn. Lý do: ${normalizedReason}`,
       type: 'SAMPLE_REQUESTS_UNBLOCKED',
-    });
-    await this.audit(adminId, 'SAMPLE_REQUESTS_UNBLOCKED', undefined, {
-      collaboratorId,
-      reason: normalizedReason,
     });
     return { success: true };
   }
@@ -1018,48 +1207,6 @@ export class SamplesService {
     const now = new Date();
     const remindBefore = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const shopRemindBefore = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-
-    const expectedSoon = await this.prisma.sampleProductRequest.findMany({
-      where: {
-        status: {
-          in: [
-            SampleRequestStatus.RECEIVED,
-            SampleRequestStatus.REVISION_REQUIRED,
-          ],
-        },
-        expectedVideoAt: { gt: now, lte: remindBefore },
-        expectedReminderSentAt: null,
-      },
-      select: {
-        id: true,
-        collaboratorId: true,
-        expectedVideoAt: true,
-        product: {
-          select: { title: true, store: { select: { ownerId: true } } },
-        },
-      },
-    });
-    for (const req of expectedSoon) {
-      const marked = await this.prisma.sampleProductRequest.updateMany({
-        where: { id: req.id, expectedReminderSentAt: null },
-        data: { expectedReminderSentAt: now },
-      });
-      if (!marked.count) continue;
-      await this.notify({
-        userId: req.collaboratorId,
-        title: 'Sắp đến ngày dự kiến đăng video',
-        message: `Bạn đã cam kết đăng video cho ${req.product.title} trước ${req.expectedVideoAt?.toLocaleString('vi-VN')}.`,
-        type: 'SAMPLE_EXPECTED_VIDEO_REMINDER',
-        requestId: req.id,
-      });
-      await this.notify({
-        userId: req.product.store.ownerId,
-        title: 'KOL sắp đến ngày dự kiến đăng video',
-        message: `Ngày đăng dự kiến của yêu cầu ${req.product.title} là ${req.expectedVideoAt?.toLocaleString('vi-VN')}.`,
-        type: 'SAMPLE_EXPECTED_VIDEO_REMINDER',
-        requestId: req.id,
-      });
-    }
 
     const dueForReminder = await this.prisma.sampleProductRequest.findMany({
       where: {
@@ -1236,20 +1383,13 @@ export class SamplesService {
         data: { status: SampleRequestStatus.OVERDUE, overdueAt: now },
       });
       if (!marked.count) continue;
-      await this.prisma.collaboratorProfile.updateMany({
-        where: { userId: req.collaboratorId },
-        data: {
-          sampleRequestsBlockedAt: now,
-          sampleRequestsBlockReason: `${isRevision ? 'Quá hạn sửa video' : 'Quá hạn nộp video'} cho mẫu ${req.product.title}.`,
-        },
-      });
       await this.notify({
         userId: req.collaboratorId,
-        title: 'Đã khóa quyền xin sản phẩm mẫu',
+        title: 'Video mẫu đã quá hạn',
         message: isRevision
-          ? `Bạn chưa nộp lại video cho ${req.product.title} trước hạn chỉnh sửa. Quyền xin mẫu đã bị khóa; hãy gửi video để Shop nghiệm thu.`
-          : `Bạn chưa nộp video cho ${req.product.title} trong 14 ngày sau khi nhận hàng. Hãy nộp video để Shop nghiệm thu; quyền xin mẫu sẽ được mở lại sau khi hoàn tất các yêu cầu quá hạn.`,
-        type: 'SAMPLE_REQUESTS_BLOCKED',
+          ? `Bạn chưa nộp lại video cho ${req.product.title} trước hạn chỉnh sửa. Hãy gửi video hoặc liên hệ Shop để giải trình.`
+          : `Bạn chưa nộp video cho ${req.product.title} trước hạn. Hãy nộp video hoặc liên hệ Shop để giải trình. Quá hạn được ghi nhận để Admin xem xét nếu có báo cáo.`,
+        type: 'SAMPLE_REQUEST_OVERDUE',
         requestId: req.id,
       });
       await this.notify({
@@ -1258,8 +1398,8 @@ export class SamplesService {
           ? 'Video chỉnh sửa mẫu đã quá hạn'
           : 'Yêu cầu mẫu đã quá hạn',
         message: isRevision
-          ? `KOL chưa gửi lại video cho ${req.product.title} trước hạn chỉnh sửa. Quyền xin mẫu đã bị khóa.`
-          : `KOL chưa nộp video cho ${req.product.title} trong 14 ngày. Quyền xin mẫu của KOL đã bị khóa.`,
+          ? `KOL chưa gửi lại video cho ${req.product.title} trước hạn chỉnh sửa. Bạn có thể gửi báo cáo để Admin xem xét.`
+          : `KOL chưa nộp video cho ${req.product.title} trước hạn. Bạn có thể gửi báo cáo để Admin xem xét.`,
         type: 'SAMPLE_REQUEST_OVERDUE',
         requestId: req.id,
       });
@@ -1284,6 +1424,8 @@ export class SamplesService {
           collaboratorProfile: {
             select: {
               kycStatus: true,
+              sampleRequestsBlockedAt: true,
+              sampleRequestsBlockReason: true,
               totalFollowers: true,
               totalOrdersReferred: true,
               tier: { select: { name: true } },

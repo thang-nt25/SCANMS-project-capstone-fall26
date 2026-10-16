@@ -49,7 +49,7 @@ import type {
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",
-  PROCESSING: "Đang thanh toán theo lô",
+  PROCESSING: "Chờ chuyển khoản",
   APPROVED: "Đã duyệt",
   REJECTED: "Đã từ chối",
 };

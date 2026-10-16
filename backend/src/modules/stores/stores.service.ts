@@ -167,6 +167,10 @@ export class StoresService {
     if (dto.logoUrl !== undefined && !dto.logoUrl?.trim()) {
       throw new BadRequestException('Logo gian hàng không được để trống');
     }
+    if (dto.warehouseAddress !== undefined &&
+        dto.warehouseAddress.split(',').map((part) => part.trim()).filter(Boolean).length < 4) {
+      throw new BadRequestException('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành, ngăn cách bằng dấu phẩy.');
+    }
 
     const ownerProfileUpdates = {
       ...(dto.representativeName !== undefined && {
@@ -226,9 +230,7 @@ export class StoresService {
         ...(dto.policyShipping !== undefined && {
           policyShipping: dto.policyShipping?.trim() || null,
         }),
-        ...(dto.defaultCommissionRate !== undefined && {
-          defaultCommissionRate: dto.defaultCommissionRate,
-        }),
+        defaultCommissionRate: 10,
         ...(dto.attributionWindowDays !== undefined && {
           attributionWindowDays: dto.attributionWindowDays,
         }),
@@ -455,10 +457,7 @@ export class StoresService {
         : st.name.toLowerCase().includes('green')
           ? 'Thực phẩm & Sức khỏe'
           : 'Mỹ phẩm & Chăm sóc da',
-      commissionRange: `${Number(st.defaultCommissionRate)}% - ${Math.min(
-        35,
-        Number(st.defaultCommissionRate) + 5,
-      )}%`,
+      commissionRange: '10% cơ bản + thưởng theo bậc/Deal/chiến dịch/Live (tối đa 25%)',
       rating: 4.9,
       location: 'TP.HCM & Hà Nội',
     }));
