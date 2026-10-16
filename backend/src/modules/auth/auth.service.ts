@@ -25,10 +25,12 @@ import {
   ResetPasswordDto,
 } from './dto/forgot-password.dto';
 import { MailService } from './mail.service';
+import { randomBytes, randomInt } from 'node:crypto';
 
 interface StoredOtp {
   code: string;
   expiresAt: number;
+  attempts?: number;
 }
 
 @Injectable()
@@ -62,14 +64,35 @@ export class AuthService {
    * Kiểm tra mật khẩu (Tự động thích ứng cả Argon2id và bcrypt kế thừa)
    */
   async verifyPassword(password: string, hash: string): Promise<boolean> {
-    if (hash.startsWith('$argon2')) {
-      try {
+    try {
+      if (hash.startsWith('$argon2')) {
         return await argon2.verify(hash, password);
-      } catch {
-        return false;
       }
+      return await bcrypt.compare(password, hash);
+    } catch {
+      // Corrupt/unsupported stored hashes must fail authentication, not cause a 500.
+      return false;
     }
-    return bcrypt.compare(password, hash);
+  }
+
+  private assertOtp(key: string, suppliedCode: string): void {
+    const cached = this.otpCache.get(key);
+    if (!cached || Date.now() >= cached.expiresAt) {
+      this.otpCache.delete(key);
+      throw new BadRequestException(
+        'Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng yêu cầu gửi lại.',
+      );
+    }
+    if (
+      !/^\d{6}$/.test(suppliedCode.trim()) ||
+      cached.code !== suppliedCode.trim()
+    ) {
+      cached.attempts = (cached.attempts || 0) + 1;
+      if (cached.attempts >= 5) this.otpCache.delete(key);
+      throw new BadRequestException(
+        'Mã OTP không chính xác. Vui lòng kiểm tra lại.',
+      );
+    }
   }
 
   /**
@@ -89,7 +112,7 @@ export class AuthService {
     }
 
     // Sinh mã ngẫu nhiên 6 chữ số
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpCode = randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
 
     this.otpCache.set(normalizedEmail, { code: otpCode, expiresAt });
@@ -102,8 +125,6 @@ export class AuthService {
     return {
       success: true,
       message: `Mã OTP đã được gửi đến email ${normalizedEmail}`,
-      // Ở môi trường dev trả về kèm để test UI thuận tiện nếu cần
-      debugOtp: process.env.NODE_ENV !== 'production' ? otpCode : undefined,
     };
   }
 
@@ -113,25 +134,22 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
 
-    // Xác thực mã OTP
-    const cached = this.otpCache.get(normalizedEmail);
-    const isDevBypass =
-      process.env.NODE_ENV !== 'production' && dto.otp === '123456';
-
-    if (!isDevBypass) {
-      if (!cached) {
-        throw new BadRequestException(
-          'Vui lòng yêu cầu gửi mã OTP trước khi đăng ký',
-        );
-      }
-      if (Date.now() > cached.expiresAt) {
-        this.otpCache.delete(normalizedEmail);
-        throw new BadRequestException('Mã OTP đã hết hạn, vui lòng lấy mã mới');
-      }
-      if (cached.code !== dto.otp.trim()) {
-        throw new BadRequestException('Mã OTP không chính xác');
-      }
+    // Public registration cannot create administrative accounts, even with a valid OTP.
+    if (
+      dto.role &&
+      !(
+        [
+          UserRole.CUSTOMER,
+          UserRole.COLLABORATOR,
+          UserRole.SHOP_MANAGER,
+        ] as UserRole[]
+      ).includes(dto.role)
+    ) {
+      throw new BadRequestException(
+        'Vai trò không được phép đăng ký công khai',
+      );
     }
+    this.assertOtp(normalizedEmail, dto.otp);
 
     // Xóa OTP sau khi dùng thành công
     this.otpCache.delete(normalizedEmail);
@@ -254,53 +272,9 @@ export class AuthService {
    */
   async validateUser(email: string, pass: string): Promise<any> {
     const normalizedEmail = email.toLowerCase().trim();
-    let user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
-
-    // Tự động khởi tạo tài khoản mẫu Customer nếu chưa có trong DB
-    if (!user && normalizedEmail === 'customer@scanms.vn') {
-      const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
-      user = await this.prisma.user.create({
-        data: {
-          email: 'customer@scanms.vn',
-          passwordHash: defaultPasswordHash,
-          role: UserRole.CUSTOMER,
-          fullName: 'Nguyễn Văn Mua (Khách Hàng Thân Thiết)',
-          phoneNumber: '0912345678',
-        },
-      });
-
-      await this.prisma.customerAddress.create({
-        data: {
-          userId: user.id,
-          fullName: 'Nguyễn Văn Mua',
-          phoneNumber: '0912345678',
-          provinceCode: '79',
-          provinceName: 'Thành phố Hồ Chí Minh',
-          districtCode: '769',
-          districtName: 'Thành phố Thủ Đức',
-          wardCode: '26848',
-          wardName: 'Phường Linh Trung',
-          detailAddress: 'Khu Công Nghệ Cao, Đường D1',
-          isDefault: true,
-        },
-      });
-    }
-
-    // Tự động khởi tạo tài khoản mẫu System Manager nếu chưa có trong DB
-    if (!user && normalizedEmail === 'manager@scanms.vn') {
-      const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
-      user = await this.prisma.user.create({
-        data: {
-          email: 'manager@scanms.vn',
-          passwordHash: defaultPasswordHash,
-          role: UserRole.SYSTEM_MANAGER,
-          fullName: 'Lê Hồng Phúc (Vận Hành & Tuân Thủ)',
-          phoneNumber: '0901000002',
-        },
-      });
-    }
 
     if (!user) {
       return null;
@@ -343,59 +317,7 @@ export class AuthService {
   ) {
     const normalizedEmail = dto.email.toLowerCase().trim();
 
-    // Tự động khởi tạo tài khoản mẫu Customer nếu chưa có trong DB
-    if (normalizedEmail === 'customer@scanms.vn') {
-      const existingCustomer = await this.prisma.user.findUnique({
-        where: { email: 'customer@scanms.vn' },
-      });
-      if (!existingCustomer) {
-        const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
-        const createdCustomer = await this.prisma.user.create({
-          data: {
-            email: 'customer@scanms.vn',
-            passwordHash: defaultPasswordHash,
-            role: UserRole.CUSTOMER,
-            fullName: 'Nguyễn Văn Mua (Khách Hàng Thân Thiết)',
-            phoneNumber: '0912345678',
-          },
-        });
-        await this.prisma.customerAddress.create({
-          data: {
-            userId: createdCustomer.id,
-            fullName: 'Nguyễn Văn Mua',
-            phoneNumber: '0912345678',
-            provinceCode: '79',
-            provinceName: 'Thành phố Hồ Chí Minh',
-            districtCode: '769',
-            districtName: 'Thành phố Thủ Đức',
-            wardCode: '26848',
-            wardName: 'Phường Linh Trung',
-            detailAddress: 'Khu Công Nghệ Cao, Đường D1',
-            isDefault: true,
-          },
-        });
-      }
-    }
-
-    // Tự động khởi tạo tài khoản mẫu System Manager nếu chưa có trong DB
-    if (normalizedEmail === 'manager@scanms.vn') {
-      const existingManager = await this.prisma.user.findUnique({
-        where: { email: 'manager@scanms.vn' },
-      });
-      if (!existingManager) {
-        const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
-        await this.prisma.user.create({
-          data: {
-            email: 'manager@scanms.vn',
-            passwordHash: defaultPasswordHash,
-            role: UserRole.SYSTEM_MANAGER,
-            fullName: 'Lê Hồng Phúc (Vận Hành & Tuân Thủ)',
-            phoneNumber: '0901000002',
-          },
-        });
-      }
-    }
-
+    // Authentication never provisions accounts. Demo accounts belong in the seeder.
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
       include: {
@@ -562,8 +484,8 @@ export class AuthService {
           ? UserRole.COLLABORATOR
           : UserRole.CUSTOMER;
 
-      const randomPassword = Math.random().toString(36).slice(-10) + 'A1!';
-      const passwordHash = await bcrypt.hash(randomPassword, 10);
+      const randomPassword = randomBytes(32).toString('base64url');
+      const passwordHash = await this.hashPassword(randomPassword);
 
       const createdUser = await this.prisma.user.create({
         data: {
@@ -834,7 +756,7 @@ export class AuthService {
     }
 
     // Sinh mã ngẫu nhiên 6 chữ số
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpCode = randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
 
     this.otpCache.set(`reset_${normalizedEmail}`, { code: otpCode, expiresAt });
@@ -847,7 +769,6 @@ export class AuthService {
     return {
       success: true,
       message: `Mã OTP khôi phục mật khẩu đã được gửi đến email ${normalizedEmail}`,
-      debugOtp: process.env.NODE_ENV !== 'production' ? otpCode : undefined,
     };
   }
 
@@ -856,27 +777,7 @@ export class AuthService {
    */
   async verifyResetOtp(dto: VerifyResetOtpDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
-    const cached = this.otpCache.get(`reset_${normalizedEmail}`);
-    const isDevBypass = dto.otp === '123456';
-
-    if (!isDevBypass) {
-      if (!cached) {
-        throw new BadRequestException(
-          'Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng yêu cầu gửi lại.',
-        );
-      }
-      if (Date.now() > cached.expiresAt) {
-        this.otpCache.delete(`reset_${normalizedEmail}`);
-        throw new BadRequestException(
-          'Mã OTP đã hết hạn (quá 5 phút). Vui lòng gửi lại mã mới.',
-        );
-      }
-      if (cached.code !== dto.otp.trim()) {
-        throw new BadRequestException(
-          'Mã OTP không chính xác. Vui lòng kiểm tra lại.',
-        );
-      }
-    }
+    this.assertOtp(`reset_${normalizedEmail}`, dto.otp);
 
     return {
       success: true,
@@ -889,25 +790,11 @@ export class AuthService {
    */
   async resetPassword(dto: ResetPasswordDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
-    const cached = this.otpCache.get(`reset_${normalizedEmail}`);
-    const isDevBypass = dto.otp === '123456';
-
-    if (!isDevBypass) {
-      if (!cached) {
-        throw new BadRequestException(
-          'Phiên xác thực đã hết hạn. Vui lòng yêu cầu gửi mã OTP mới.',
-        );
-      }
-      if (Date.now() > cached.expiresAt) {
-        this.otpCache.delete(`reset_${normalizedEmail}`);
-        throw new BadRequestException(
-          'Mã OTP đã hết hạn. Vui lòng thực hiện lại.',
-        );
-      }
-      if (cached.code !== dto.otp.trim()) {
-        throw new BadRequestException('Mã OTP không khớp.');
-      }
-    }
+    const otpKey = `reset_${normalizedEmail}`;
+    this.assertOtp(otpKey, dto.otp);
+    // Claim before the first await: parallel requests cannot reuse the same OTP.
+    // A failed write requires a newly issued OTP, rather than restoring a used code.
+    this.otpCache.delete(otpKey);
 
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -916,6 +803,8 @@ export class AuthService {
     if (!user || user.isDeleted) {
       throw new NotFoundException('Không tìm thấy tài khoản người dùng.');
     }
+    if (!user.isActive)
+      throw new ForbiddenException('Tài khoản đã bị tạm khóa');
 
     // Băm mật khẩu mới bằng Argon2id
     const newPasswordHash = await this.hashPassword(dto.newPassword);
@@ -924,9 +813,6 @@ export class AuthService {
       where: { id: user.id },
       data: { passwordHash: newPasswordHash },
     });
-
-    // Xóa mã OTP sau khi sử dụng thành công (One-time use)
-    this.otpCache.delete(`reset_${normalizedEmail}`);
 
     return {
       success: true,
