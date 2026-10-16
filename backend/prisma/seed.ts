@@ -299,6 +299,21 @@ async function main() {
       isVerified: true,
       onboardingStatus: 'VERIFIED',
       logoUrl: '/assets/shops/shop-sora-skin.png',
+      onboardingData: {
+        representativeName: 'Sora Skin Official',
+        businessType: 'ENTERPRISE',
+        contactPhone: '0902345678',
+        contactEmail: 'shop@scanms.vn',
+        taxCode: '0316892451',
+        businessAddress: 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+        warehouseAddress: 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+        returnWarehouseAddress: 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+      },
+      returnWarehouse: {
+        name: 'Sora Skin Official',
+        phone: '0902345678',
+        address: 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+      },
     },
     create: {
       id: soraStoreId,
@@ -313,6 +328,21 @@ async function main() {
       isActive: true,
       isVerified: true,
       onboardingStatus: 'VERIFIED',
+      onboardingData: {
+        representativeName: 'Sora Skin Official',
+        businessType: 'ENTERPRISE',
+        contactPhone: '0902345678',
+        contactEmail: 'shop@scanms.vn',
+        taxCode: '0316892451',
+        businessAddress: 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+        warehouseAddress: 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+        returnWarehouseAddress: 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+      },
+      returnWarehouse: {
+        name: 'Sora Skin Official',
+        phone: '0902345678',
+        address: 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+      },
     },
   });
 

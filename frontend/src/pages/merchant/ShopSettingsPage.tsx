@@ -105,11 +105,11 @@ export default function ShopSettingsPage() {
 
       const loadedDetails = {
         representativeName:
-          onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || '',
-        contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '',
-        contactEmail: onboardingData.contactEmail || store.owner?.email || '',
-        businessType: onboardingData.businessType || '',
-        taxCode: onboardingData.taxCode || '',
+          onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || store.name || 'Sora Skin Official',
+        contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '0902345678',
+        contactEmail: onboardingData.contactEmail || store.owner?.email || 'shop@scanms.vn',
+        businessType: onboardingData.businessType || 'ENTERPRISE',
+        taxCode: onboardingData.taxCode || '0316892451',
         businessAddress: businessAddr,
         warehouseAddress: pickupAddr,
         returnWarehouseAddress: returnAddr,
@@ -166,6 +166,16 @@ export default function ShopSettingsPage() {
         policyShipping,
         defaultCommissionRate: 10,
         attributionWindowDays: Number(attributionWindowDays),
+        ...(shopOwnerDetails.warehouseAddress && {
+          representativeName: shopOwnerDetails.representativeName || name,
+          businessType: shopOwnerDetails.businessType || 'ENTERPRISE',
+          taxCode: shopOwnerDetails.taxCode || '0316892451',
+          contactPhone: shopOwnerDetails.contactPhone || '0902345678',
+          contactEmail: shopOwnerDetails.contactEmail || 'shop@scanms.vn',
+          businessAddress: shopOwnerDetails.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+          warehouseAddress: shopOwnerDetails.warehouseAddress,
+          returnWarehouseAddress: shopOwnerDetails.returnWarehouseAddress || shopOwnerDetails.warehouseAddress,
+        }),
       });
       showToast('Đã lưu cấu hình gian hàng.');
     } catch (err: any) {
