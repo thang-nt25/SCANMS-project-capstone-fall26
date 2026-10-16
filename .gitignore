@@ -6,6 +6,9 @@
 backend/.env
 frontend/.env
 
+# Private legacy identity records / exports (never add new copies to Git).
+backend/data/customer-identities*.json
+
 # Dependency directories
 node_modules/
 jspm_packages/

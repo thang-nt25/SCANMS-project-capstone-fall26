@@ -4,16 +4,16 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
 import { OrderStatus, ReviewStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { MailService } from '../auth/mail.service';
+import { AuthService } from '../auth/auth.service';
+import { CustomerIdentityService } from './customer-identity.service';
+import { randomInt } from 'node:crypto';
 import { UpdateCustomerProfileDto } from './dto/update-profile.dto';
 import { ChangeCustomerPasswordDto } from './dto/change-password.dto';
 import { CreateCustomerAddressDto } from './dto/create-address.dto';
 import { UpdateCustomerAddressDto } from './dto/update-address.dto';
-import * as fs from 'fs';
-import * as path from 'path';
 import {
   SetPasswordWithOtpDto,
   VerifyPasswordOtpDto,
@@ -37,6 +37,8 @@ export class CustomerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly authService: AuthService,
+    private readonly identities: CustomerIdentityService,
   ) {}
 
   /**
@@ -146,7 +148,7 @@ export class CustomerService {
       throw new NotFoundException('Không tìm thấy tài khoản người dùng');
     }
 
-    const isMatch = await bcrypt.compare(
+    const isMatch = await this.authService.verifyPassword(
       dto.currentPassword,
       user.passwordHash,
     );
@@ -154,7 +156,7 @@ export class CustomerService {
       throw new BadRequestException('Mật khẩu hiện tại không chính xác');
     }
 
-    const newHash = await bcrypt.hash(dto.newPassword, 10);
+    const newHash = await this.authService.hashPassword(dto.newPassword);
     await this.prisma.user.update({
       where: { id: userId },
       data: { passwordHash: newHash },
@@ -186,7 +188,7 @@ export class CustomerService {
     }
 
     // Sinh mã ngẫu nhiên 6 chữ số
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpCode = randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
 
     this.securityOtpCache.set(userId, { code: otpCode, expiresAt });
@@ -269,7 +271,7 @@ export class CustomerService {
       throw new BadRequestException('Mã OTP không chính xác.');
     }
 
-    const newHash = await bcrypt.hash(dto.newPassword, 10);
+    const newHash = await this.authService.hashPassword(dto.newPassword);
     await this.prisma.user.update({
       where: { id: userId },
       data: { passwordHash: newHash },
@@ -504,7 +506,9 @@ export class CustomerService {
           'Đơn đã thay đổi trạng thái hoặc có yêu cầu đổi trả',
         );
       }
-      const completed = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+      const completed = await tx.order.findUniqueOrThrow({
+        where: { id: orderId },
+      });
       await notifyCustomerOrderEvent(
         tx,
         {
@@ -989,116 +993,17 @@ export class CustomerService {
   // ==========================================
   // 5. XÁC MINH CCCD THÔNG TIN CÁ NHÂN (CHUẨN SHOPEE)
   // ==========================================
-  private getIdentityFilePath(): string {
-    const dir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dir)) {
-      try {
-        fs.mkdirSync(dir, { recursive: true });
-      } catch {}
-    }
-    return path.join(dir, 'customer-identities.json');
-  }
-
-  private loadAllCustomerIdentities(): Record<string, any> {
-    try {
-      const filePath = this.getIdentityFilePath();
-      if (!fs.existsSync(filePath)) return {};
-      const raw = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(raw);
-    } catch {
-      return {};
-    }
-  }
-
-  private saveCustomerIdentityRecord(userId: string, record: any) {
-    try {
-      const filePath = this.getIdentityFilePath();
-      const all = this.loadAllCustomerIdentities();
-      all[userId] = record;
-      fs.writeFileSync(filePath, JSON.stringify(all, null, 2), 'utf8');
-    } catch (err) {
-      console.error('Failed to save customer identity:', err);
-    }
-  }
-
   /**
    * 5.1. Lấy thông tin CCCD của khách hàng (Chuẩn Shopee)
    */
   async getCustomerIdentity(userId: string) {
-    const all = this.loadAllCustomerIdentities();
-    const record = all[userId];
-
-    if (!record) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { fullName: true },
-      });
-      return {
-        isVerified: false,
-        fullName: user?.fullName || '',
-        idCardNumber: '',
-        address: '',
-      };
-    }
-
-    return {
-      isVerified: true,
-      ...record,
-    };
+    return this.identities.getOne(userId);
   }
 
   /**
    * 5.2. Xác thực và lưu thông tin CCCD của khách hàng (Chuẩn Shopee)
    */
   async verifyCustomerIdentity(userId: string, dto: VerifyCustomerIdentityDto) {
-    const fullName = dto.fullName.trim();
-    const cleanId = dto.idCardNumber.trim().replace(/\s+/g, '');
-    const address = dto.address.trim();
-
-    if (!fullName || fullName.length < 2) {
-      throw new BadRequestException('Họ và tên phải có ít nhất 2 ký tự');
-    }
-    if (!/^\d{9,12}$/.test(cleanId)) {
-      throw new BadRequestException('Số CCCD phải gồm 9 hoặc 12 chữ số hợp lệ');
-    }
-    if (!address || address.length < 5) {
-      throw new BadRequestException(
-        'Vui lòng nhập đầy đủ địa chỉ nơi thường trú trên CCCD',
-      );
-    }
-
-    // Cập nhật họ tên của tài khoản đồng bộ với CCCD
-    await this.prisma.user
-      .update({
-        where: { id: userId },
-        data: { fullName },
-      })
-      .catch(() => {});
-
-    // Đồng bộ vào CollaboratorProfile nếu có
-    await this.prisma.collaboratorProfile
-      .update({
-        where: { userId },
-        data: { idCardNumber: cleanId },
-      })
-      .catch(() => {});
-
-    const record = {
-      fullName,
-      idCardNumber: cleanId,
-      address,
-      verifiedAt: new Date().toISOString(),
-    };
-
-    this.saveCustomerIdentityRecord(userId, record);
-
-    return {
-      success: true,
-      message: 'Xác minh thông tin CCCD thành công!',
-      data: {
-        isVerified: true,
-        ...record,
-      },
-    };
+    return this.identities.confirm(userId, dto);
   }
 }
