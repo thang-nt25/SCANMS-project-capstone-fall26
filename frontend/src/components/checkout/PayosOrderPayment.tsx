@@ -3,7 +3,6 @@ import QRCode from 'qrcode';
 import { CheckCircle2, Clock3, ExternalLink, Loader2, QrCode, RefreshCw, ShieldCheck } from 'lucide-react';
 import api from '../../services/api';
 import { formatMoney } from '../../utils/marketplace.utils';
-import './PaymentConfirmation.css';
 
 type PaymentLink = {
   qrCode?: string; checkoutUrl?: string; accountNumber?: string;
@@ -106,54 +105,82 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
 
   const expired = ['CANCELLED', 'EXPIRED'].includes(providerStatus);
   return (
-    <section className="scanms-payos" aria-label={`Thanh toán PayOS ${orderCode}`}>
-      {(showOrderHeading || status === 'PAID') && <div className="scanms-payos-header">
-        <div>
-          <h3 className="scanms-payos-title">
-            {status === 'PAID' ? <CheckCircle2 size={20} className="scanms-payos-paid-icon" /> : <QrCode size={20} />}
-            {status === 'PAID' ? 'Đã xác nhận thanh toán' : 'Quét mã QR để thanh toán'}
-          </h3>
-          <p className="scanms-payos-subtitle">{storeName ? `${storeName} · ` : ''}{orderCode}</p>
+    <section className="min-w-0 mb-3.5 last:mb-0 p-4 sm:p-4.5 border border-[#EAE4D7] rounded-xl bg-white text-[#1A1612] text-left" aria-label={`Thanh toán PayOS ${orderCode}`}>
+      {(showOrderHeading || status === 'PAID') && (
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-[#EAE4D7]">
+          <div>
+            <h3 className="flex items-center gap-2 m-0 text-sm font-semibold">
+              {status === 'PAID' ? <CheckCircle2 size={20} className="text-[#059669]" /> : <QrCode size={20} className="text-[#B88E4F]" />}
+              {status === 'PAID' ? 'Đã xác nhận thanh toán' : 'Quét mã QR để thanh toán'}
+            </h3>
+            <p className="m-0 mt-1 text-[11px] text-[#7D715E] break-all">{storeName ? `${storeName} · ` : ''}{orderCode}</p>
+          </div>
+          {status !== 'PAID' && status !== 'CANCELLED' && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#FBF5EB] text-[11px] text-[#7D715E]">
+              <Clock3 size={12} className="text-[#B88E4F]" />
+              {expired ? 'Mã hết hiệu lực' : 'Chờ thanh toán'}
+            </span>
+          )}
         </div>
-        {status !== 'PAID' && status !== 'CANCELLED' && <span className="scanms-payos-status"><Clock3 size={12} />{expired ? 'Mã hết hiệu lực' : 'Chờ thanh toán'}</span>}
-      </div>}
-      {loading && <p className="scanms-payos-message" role="status"><Loader2 size={18} className="animate-spin" />Đang tạo mã thanh toán…</p>}
+      )}
+      {loading && (
+        <p className="flex items-center gap-2 pt-3.5 m-0 text-xs text-[#7D715E]" role="status">
+          <Loader2 size={18} className="animate-spin text-[#B88E4F]" />
+          Đang tạo mã thanh toán…
+        </p>
+      )}
       {status !== 'PAID' && status !== 'CANCELLED' && !loading && link && !expired && (
         <>
-          <div className="scanms-payos-grid">
-            <div className="scanms-payos-qr">
-              <span className="scanms-payos-qr-label">VIETQR · PAYOS</span>
-              <div className="scanms-payos-qr-frame">
-                {qr ? <img src={qr} alt={`Mã VietQR cho đơn ${orderCode}`} /> : <p className="scanms-payos-message">Đang chuẩn bị hình ảnh QR…</p>}
+          <div className="grid grid-cols-1 sm:grid-cols-[234px_minmax(0,1fr)] gap-4 sm:gap-4.5 pt-3.5">
+            <div className="flex flex-col items-center self-start bg-white">
+              <span className="px-2.5 py-1 rounded-md bg-[#FBF5EB] text-[10px] tracking-wider font-semibold text-[#B88E4F]">VIETQR · PAYOS</span>
+              <div className="grid place-items-center max-w-full my-2.5 p-2.5 border border-[#EAE4D7] rounded-xl bg-white">
+                {qr ? <img src={qr} alt={`Mã VietQR cho đơn ${orderCode}`} className="w-52 h-52 max-w-full object-contain m-0 bg-white" /> : <p className="text-xs text-[#7D715E]">Đang chuẩn bị hình ảnh QR…</p>}
               </div>
-              <p>Quét mã để chuyển khoản</p>
+              <p className="m-0 text-[11px] text-[#7D715E] text-center">Quét mã để chuyển khoản</p>
             </div>
-            <div className="scanms-payos-details">
-              <div className="scanms-payos-amount-panel">
-                <p className="scanms-payos-amount-label">Số tiền cần thanh toán</p>
-                <strong className="scanms-payos-amount">{formatMoney(link.amount ?? 0)}</strong>
+            <div className="min-w-0">
+              <div className="py-2.5 px-3.5 rounded-[10px] bg-[#FBF5EB]">
+                <p className="m-0 text-xs text-[#7D715E]">Số tiền cần thanh toán</p>
+                <strong className="block mt-0.5 text-2xl font-semibold tracking-tight leading-snug tabular-nums text-[#1A1612]">{formatMoney(link.amount ?? 0)}</strong>
               </div>
-              <dl className="scanms-payos-bank">
-                <div><dt>Chủ tài khoản</dt><dd>{link.accountName || 'Xem trên PayOS'}</dd></div>
-                <div><dt>Số tài khoản</dt><dd>{link.accountNumber || 'Xem trên PayOS'}</dd></div>
+              <dl className="my-3 pb-3 border-b border-[#EAE4D7] grid gap-2">
+                <div className="flex justify-between items-baseline gap-2.5 text-xs leading-relaxed"><dt className="text-[#7D715E] shrink-0">Chủ tài khoản</dt><dd className="m-0 text-right font-semibold break-all text-[#1A1612]">{link.accountName || 'Xem trên PayOS'}</dd></div>
+                <div className="flex justify-between items-baseline gap-2.5 text-xs leading-relaxed"><dt className="text-[#7D715E] shrink-0">Số tài khoản</dt><dd className="m-0 text-right font-semibold break-all text-[#1A1612]">{link.accountNumber || 'Xem trên PayOS'}</dd></div>
               </dl>
-              <ol className="scanms-payos-steps">
-                <li><span>1</span>Mở ứng dụng ngân hàng, quét QR.</li>
-                <li><span>2</span>Kiểm tra thông tin và chuyển khoản.</li>
-                <li><span>3</span>Chờ xác nhận thanh toán tự động.</li>
+              <ol className="p-0 m-0 mb-3 list-none grid gap-1.5">
+                <li className="flex items-start gap-2 text-xs leading-relaxed text-[#7D715E]"><span className="grid place-items-center shrink-0 w-4.5 h-4.5 border border-[#EAE4D7] rounded-[5px] bg-white text-[10px] font-medium text-[#B88E4F]">1</span>Mở ứng dụng ngân hàng, quét QR.</li>
+                <li className="flex items-start gap-2 text-xs leading-relaxed text-[#7D715E]"><span className="grid place-items-center shrink-0 w-4.5 h-4.5 border border-[#EAE4D7] rounded-[5px] bg-white text-[10px] font-medium text-[#B88E4F]">2</span>Kiểm tra thông tin và chuyển khoản.</li>
+                <li className="flex items-start gap-2 text-xs leading-relaxed text-[#7D715E]"><span className="grid place-items-center shrink-0 w-4.5 h-4.5 border border-[#EAE4D7] rounded-[5px] bg-white text-[10px] font-medium text-[#B88E4F]">3</span>Chờ xác nhận thanh toán tự động.</li>
               </ol>
-              <a href={link.checkoutUrl} target="_blank" rel="noopener noreferrer" className="scanms-payment-button scanms-payment-button-primary scanms-payos-open-button"><ExternalLink size={15} />Mở trang thanh toán PayOS</a>
+              <a
+                href={link.checkoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-[38px] inline-flex justify-center items-center gap-2 px-3.5 py-2 border border-[#EEDFC6] rounded-[10px] text-xs font-semibold bg-[#FBF5EB] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors cursor-pointer text-center"
+              >
+                <ExternalLink size={15} className="text-[#B88E4F]" />Mở trang thanh toán PayOS
+              </a>
             </div>
           </div>
-          <p className="scanms-payos-note"><ShieldCheck size={14} />Trạng thái tự động cập nhật khi PayOS xác nhận đã nhận đủ tiền.</p>
+          <p className="mt-3.5 p-2.5 rounded-lg bg-[#FAF8F5] flex items-start gap-2 text-xs leading-relaxed text-[#7D715E]">
+            <ShieldCheck size={14} className="shrink-0 mt-0.5 text-[#B88E4F]" />
+            Trạng thái tự động cập nhật khi PayOS xác nhận đã nhận đủ tiền.
+          </p>
         </>
       )}
-      {status === 'PAID' && <p className="scanms-payos-message">PayOS đã xác nhận nhận đủ tiền cho đơn hàng này.</p>}
-      {status === 'CANCELLED' && <p className="scanms-payos-message">Đơn hàng đã hủy.</p>}
-      {expired && status !== 'PAID' && status !== 'CANCELLED' && <p className="scanms-payos-message">Mã thanh toán đã hết hạn hoặc bị hủy. Bạn có thể tạo mã mới cho đơn này.</p>}
-      {error && <p role="alert" className="scanms-payos-error">{error}</p>}
+      {status === 'PAID' && <p className="pt-3 m-0 text-xs text-[#059669]">PayOS đã xác nhận nhận đủ tiền cho đơn hàng này.</p>}
+      {status === 'CANCELLED' && <p className="pt-3 m-0 text-xs text-[#DC2626]">Đơn hàng đã hủy.</p>}
+      {expired && status !== 'PAID' && status !== 'CANCELLED' && <p className="pt-3 m-0 text-xs text-[#7D715E]">Mã thanh toán đã hết hạn hoặc bị hủy. Bạn có thể tạo mã mới cho đơn này.</p>}
+      {error && <p role="alert" className="p-2.5 mt-3 border border-[#EAE4D7] rounded-lg text-xs leading-relaxed text-[#DC2626]">{error}</p>}
       {!loading && status !== 'PAID' && status !== 'CANCELLED' && (!link || expired) && (
-        <button type="button" onClick={() => void prepare()} className="scanms-payment-button scanms-payment-button-primary scanms-payos-retry"><RefreshCw size={14} />Tạo lại mã QR</button>
+        <button
+          type="button"
+          onClick={() => void prepare()}
+          className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 border border-[#EEDFC6] rounded-[10px] text-xs font-semibold bg-[#FBF5EB] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] cursor-pointer"
+        >
+          <RefreshCw size={14} className="text-[#B88E4F]" />Tạo lại mã QR
+        </button>
       )}
     </section>
   );

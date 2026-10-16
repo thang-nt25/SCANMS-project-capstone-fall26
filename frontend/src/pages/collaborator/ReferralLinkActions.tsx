@@ -74,21 +74,97 @@ export function ReferralLinkActions({ link, onQr, onAnalytics, onVideo, onToggle
   };
 
   return (
-    <div className="kol-link-row-actions">
-      <a href={`/r/${link.shortCode}`} target="_blank" rel="noreferrer" title="Mở thử link" aria-label={`Mở link ${link.shortCode}`}>
-        <ExternalLink />
+    <div className="flex items-center justify-end gap-1.5">
+      <a
+        href={`/r/${link.shortCode}`}
+        target="_blank"
+        rel="noreferrer"
+        title="Mở thử link rút gọn"
+        aria-label={`Mở link ${link.shortCode}`}
+        className="w-8 h-8 rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center justify-center transition shadow-2xs cursor-pointer"
+      >
+        <ExternalLink className="w-3.5 h-3.5 text-[#B88E4F]" />
       </a>
-      <button type="button" onClick={onQr} title="Xem mã QR" aria-label={`Mã QR của ${link.shortCode}`}><QrCode /></button>
-      <button type="button" onClick={onAnalytics} title="Thống kê chi tiết" aria-label={`Thống kê ${link.shortCode}`}><TrendingUp /></button>
-      <button type="button" ref={triggerRef} onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined} aria-label={`Thêm thao tác cho ${link.shortCode}`} title="Thêm thao tác"><MoreHorizontal /></button>
+      <button
+        type="button"
+        onClick={onQr}
+        title="Xem mã QR & Tải ảnh"
+        aria-label={`Mã QR của ${link.shortCode}`}
+        className="w-8 h-8 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] hover:bg-[#F3EFE6] hover:border-[#C59B58] flex items-center justify-center transition shadow-2xs cursor-pointer"
+      >
+        <QrCode className="w-3.5 h-3.5 text-[#B88E4F]" />
+      </button>
+      <button
+        type="button"
+        onClick={onAnalytics}
+        title="Thống kê hiệu suất"
+        aria-label={`Thống kê ${link.shortCode}`}
+        className="w-8 h-8 rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center justify-center transition shadow-2xs cursor-pointer"
+      >
+        <TrendingUp className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        ref={triggerRef}
+        onClick={() => setOpen(!open)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        aria-label={`Thao tác khác cho ${link.shortCode}`}
+        title="Thao tác khác"
+        className="w-8 h-8 rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] flex items-center justify-center transition shadow-2xs cursor-pointer"
+      >
+        <MoreHorizontal className="w-3.5 h-3.5" />
+      </button>
       {open && createPortal(
-        <div ref={menuRef} id={menuId} role="menu" aria-label={`Thao tác cho ${link.shortCode}`} className="kol-link-more-menu" style={position}>
-          <button role="menuitem" type="button" onClick={() => run(onVideo)}><Video /><span>Nộp video review</span></button>
-          <button role="menuitem" type="button" disabled={link.status === 'BLOCKED'} onClick={() => run(onToggle)}>
-            {link.status === 'ACTIVE' ? <PauseCircle /> : <PlayCircle />}<span>{link.status === 'ACTIVE' ? 'Tạm ngừng liên kết' : 'Kích hoạt liên kết'}</span>
+        <div
+          ref={menuRef}
+          id={menuId}
+          role="menu"
+          aria-label={`Thao tác cho ${link.shortCode}`}
+          className="fixed z-50 min-w-[210px] p-1.5 bg-white border border-[#EAE4D7] rounded-xl shadow-[0_12px_40px_rgba(35,29,21,0.14)] space-y-0.5 text-left animate-in fade-in-50 duration-150"
+          style={position}
+        >
+          <button
+            role="menuitem"
+            type="button"
+            onClick={() => run(onVideo)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-lg hover:bg-[#FAF8F5] transition cursor-pointer"
+          >
+            <Video className="w-3.5 h-3.5 text-[#B88E4F]" />
+            <span>Nộp video review</span>
           </button>
-          <button role="menuitem" type="button" className="kol-link-more-delete" onClick={() => run(onDelete)}><Trash2 /><span>Xóa liên kết</span></button>
-        </div>, document.body,
+          <button
+            role="menuitem"
+            type="button"
+            disabled={link.status === 'BLOCKED'}
+            onClick={() => run(onToggle)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-lg hover:bg-[#FAF8F5] transition cursor-pointer disabled:opacity-40"
+          >
+            {link.status === 'ACTIVE' ? (
+              <>
+                <PauseCircle className="w-3.5 h-3.5 text-[#D97706]" />
+                <span>Tạm dừng liên kết</span>
+              </>
+            ) : (
+              <>
+                <PlayCircle className="w-3.5 h-3.5 text-[#059669]" />
+                <span>Kích hoạt liên kết</span>
+              </>
+            )}
+          </button>
+          <div className="h-px bg-[#EAE4D7]/70 my-1" />
+          <button
+            role="menuitem"
+            type="button"
+            onClick={() => run(onDelete)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+            <span>Xóa liên kết</span>
+          </button>
+        </div>,
+        document.body,
       )}
     </div>
   );

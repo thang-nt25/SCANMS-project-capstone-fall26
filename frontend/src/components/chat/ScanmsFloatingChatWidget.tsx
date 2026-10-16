@@ -29,7 +29,6 @@ import { couponService, type PublicStoreCoupon } from '../../services/coupon.ser
 import { authService, type UserProfile } from '../../services/auth.service';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import type { ChatAttachmentType } from '@/types/chat.types';
-import './FloatingChatLauncher.css';
 import { ExclusiveDealCardBubble } from './ExclusiveDealCardBubble';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
@@ -635,7 +634,7 @@ export function ScanmsFloatingChatWidget() {
               }
             : undefined
         }
-        className={`scanms-chat-launcher fixed z-40 select-none group touch-none ${
+        className={`fixed z-40 select-none group touch-none min-h-[46px] p-[7px_16px_7px_9px] border border-[#EEDFC6] rounded-[16px] bg-white text-[#231D15] shadow-[0_4px_18px_rgba(35,29,21,0.1),0_1px_3px_rgba(35,29,21,0.05)] hover:bg-[#FBF5EB] hover:border-[#C59B58] hover:shadow-[0_5px_20px_rgba(35,29,21,0.15)] focus-visible:outline-2 focus-visible:outline-[#B88E4F] ${
           isCustomPositioned
             ? ''
             : isLiveRoute
@@ -649,9 +648,9 @@ export function ScanmsFloatingChatWidget() {
         title="Bấm để mở Chat • Giữ & kéo để di chuyển vị trí bất kỳ (Chuột phải để về mặc định)"
         aria-label="Chat"
       >
-        <div className="flex items-center gap-1.5 pointer-events-none">
-          <GripVertical className="scanms-chat-grip w-3.5 h-3.5 shrink-0" />
-          <div className="scanms-chat-launcher-icon relative">
+        <div className="flex items-center gap-2 pointer-events-none">
+          <GripVertical className="text-[#9B8B72] w-3.5 h-3.5 shrink-0" />
+          <div className="grid place-items-center w-[30px] h-[30px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F] relative">
             <MessageSquare size={18} strokeWidth={1.8} />
             {totalUnread > 0 && (
               <span className="absolute -top-2 -right-2.5 w-4 h-4 bg-[#DC2626] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
@@ -659,7 +658,7 @@ export function ScanmsFloatingChatWidget() {
               </span>
             )}
           </div>
-          <span className="scanms-chat-launcher-label">Chat</span>
+          <span className="text-[13px] font-semibold leading-5 text-[#231D15]">Chat</span>
         </div>
       </button>
     );

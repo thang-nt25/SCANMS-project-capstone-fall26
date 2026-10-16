@@ -53,6 +53,7 @@ export class CreateLiveSessionDto {
 
   @IsOptional() @IsString() @MaxLength(1000) coverImageUrl?: string;
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
+  @IsOptional() @IsString() @MaxLength(2000) customMessage?: string;
   @IsEnum(DiscountType) discountType: DiscountType;
   @Type(() => Number) @IsNumber() @Min(0.01) discountValue: number;
   @IsOptional()

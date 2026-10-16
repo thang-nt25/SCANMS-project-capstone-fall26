@@ -1,4 +1,3 @@
-import './PayoutApprovalPage.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useParams } from "react-router-dom";
@@ -25,7 +24,7 @@ import {
   maskBankAccount,
   MAX_PAYOUT_BILL_BYTES,
   validatePayoutBill,
-} from "@/utils/validations/payout-bill.validation";
+} from "@/validations/payout-bill.validation";
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",
@@ -1223,7 +1222,7 @@ export default function PayoutApprovalPage() {
         </div>
       </section>
 
-      <section className="payout-approval-table min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
+      <section className="payout-approval-table @container/payout-approval-table min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
         {/* Toolbar điều hướng & tìm kiếm */}
         <div className="payout-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3.5 sm:p-4">
           <div className="flex flex-wrap items-center gap-2.5">

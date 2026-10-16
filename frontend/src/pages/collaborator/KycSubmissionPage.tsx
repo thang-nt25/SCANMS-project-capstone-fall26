@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import './KolProfile.css';
-import './KycSubmissionPage.css';
 import {
   Link as LinkIcon,
   UserCheck,
@@ -294,29 +292,29 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
 
   if (loading && !profile) {
     return (
-      <section className="kol-profile-loading" role="status" aria-busy="true">
-        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+      <section className="flex items-center gap-2 p-3 sm:px-3.5 border border-[#EAE4D7] rounded-xl bg-white text-[#7D715E] text-xs" role="status" aria-busy="true">
+        <Loader2 size={16} className="animate-spin text-[#B88E4F] shrink-0" aria-hidden="true" />
         <span>Đang tải dữ liệu hồ sơ KYC…</span>
       </section>
     );
   }
 
   if (!profile && loadError) {
-    return <section className="kol-profile-load-error" role="alert">{loadError}</section>;
+    return <section className="p-3 border border-red-200 rounded-xl bg-white text-red-600 text-xs" role="alert">{loadError}</section>;
   }
 
   return (
-    <div className="kol-kyc-page flex flex-col gap-4 w-full text-left" aria-busy={loading || isRefreshing}>
+    <div className="flex flex-col gap-3.5 w-full text-left" aria-busy={loading || isRefreshing}>
       {loading && (
-        <section className="kol-profile-loading" role="status">
-          <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+        <section className="flex items-center gap-2 p-3 sm:px-3.5 border border-[#EAE4D7] rounded-xl bg-white text-[#7D715E] text-xs" role="status">
+          <Loader2 size={16} className="animate-spin text-[#B88E4F] shrink-0" aria-hidden="true" />
           <span>Đang tải dữ liệu hồ sơ KYC…</span>
         </section>
       )}
       {/* 1. KHỐI TRẠNG THÁI XÁC MINH CỦA HỆ THỐNG */}
       {!isVerified && (
       <Card
-        className={`kol-kyc-status p-4 sm:p-5 border transition rounded-2xl w-full ${
+        className={`p-4 sm:p-5 border transition rounded-2xl w-full ${
           isRejected
             ? 'bg-rose-50 border-rose-200'
             : isPending
@@ -386,18 +384,18 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
             panel = panel.parentElement?.closest<HTMLDetailsElement>('details') ?? null;
           }
         }}
-        className="kol-kyc-form bg-white border border-[#EAE4D7] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 w-full"
+        className="bg-white border border-[#EAE4D7] rounded-2xl p-4 sm:p-5 shadow-sm space-y-3.5 w-full"
       >
         {/* 1. BẰNG CHỨNG SỞ HỮU KÊNH TRUYỀN THÔNG (CHUẨN IMAGE 2) */}
-        <details className="kol-kyc-section" data-profile-section="channel" open>
-          <summary>
-            <span className="kol-kyc-section-icon"><LinkIcon size={15} /></span>
-            <span className="kol-kyc-section-copy"><strong>Kênh sáng tạo</strong><span>{channelName || 'Thông tin kênh chính của bạn'}</span></span>
-            <span className="kol-kyc-section-state" data-complete={channelComplete}>{channelComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
-            <ChevronDown size={15} />
+        <details className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden open:border-[#EEDFC6] group" data-profile-section="channel" open>
+          <summary className="flex items-center gap-2.5 p-3 rounded-xl list-none cursor-pointer hover:bg-[#FAF8F5] group-open:rounded-b-none group-open:border-b group-open:border-[#EEDFC6] group-open:bg-[#FBF5EB] select-none transition-colors [&::-webkit-details-marker]:hidden">
+            <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><LinkIcon size={15} /></span>
+            <span className="flex flex-col gap-0.5 min-w-0 flex-1"><strong className="text-sm font-semibold text-[#1A1612]">Kênh sáng tạo</strong><span className="text-[11px] text-[#7D715E] truncate">{channelName || 'Thông tin kênh chính của bạn'}</span></span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[10px] whitespace-nowrap data-[complete=true]:border-[#EAE4D7] data-[complete=true]:bg-white data-[complete=true]:text-[#7D715E]" data-complete={channelComplete}>{channelComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
+            <ChevronDown size={15} className="text-[#B88E4F] shrink-0 transition-transform group-open:rotate-180" />
           </summary>
-          <div className="kol-kyc-section-body kol-kyc-channel-section">
-          <div className="kol-kyc-fields grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-3 p-3 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label htmlFor="kyc-platform" className="text-xs font-bold text-[#1A1612] block mb-1.5">Nền tảng chính *</label>
               <CustomSelect
@@ -460,12 +458,11 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
             />
           </div>
 
-          <div className="kol-kyc-support">
-          <details className="kol-kyc-inline-detail kol-kyc-proof">
-            <summary><Camera size={14} /><span>Ảnh quản trị kênh</span><span className="kol-kyc-inline-meta">{channelProofUrl ? 'Đã đính kèm' : 'Chưa đính kèm'}</span><ChevronDown size={14} /></summary>
-            <div className="kol-kyc-inline-body">
+          <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-2.5">
+          <details className="border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] overflow-hidden group/inline [&::-webkit-details-marker]:hidden">
+            <summary className="flex items-center gap-2 min-h-[36px] px-2.5 py-2 text-xs text-[#7D715E] list-none cursor-pointer select-none hover:bg-[#F3EFE6]/50 [&::-webkit-details-marker]:hidden"><Camera size={14} className="text-[#B88E4F]" /><span>Ảnh quản trị kênh</span><span className="ml-auto text-[10px] whitespace-nowrap text-[#7D715E]">{channelProofUrl ? 'Đã đính kèm' : 'Chưa đính kèm'}</span><ChevronDown size={14} className="text-[#B88E4F] shrink-0 transition-transform group-open/inline:rotate-180" /></summary>
+            <div className="p-2.5 pt-0">
           <ImageUploadDropzone
-            className="kol-kyc-upload"
             label="Ảnh trang quản trị kênh"
             helperText="Ảnh TikTok Studio hoặc Meta Business Suite thể hiện tên kênh và quyền quản trị."
             value={channelProofUrl}
@@ -478,9 +475,9 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
 
           {/* DANH SÁCH CÁC KÊNH PHỤ ĐÃ KẾT NỐI (NẾU CÓ) */}
           {socialChannels.length > 0 && (
-            <details className="kol-kyc-inline-detail">
-              <summary><LinkIcon size={14} /><span>Kênh đã kết nối</span><span className="kol-kyc-inline-meta">{socialChannels.length} kênh</span><ChevronDown size={14} /></summary>
-            <div className="kol-kyc-connected kol-kyc-inline-body">
+            <details className="border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] overflow-hidden group/inline [&::-webkit-details-marker]:hidden">
+              <summary className="flex items-center gap-2 min-h-[36px] px-2.5 py-2 text-xs text-[#7D715E] list-none cursor-pointer select-none hover:bg-[#F3EFE6]/50 [&::-webkit-details-marker]:hidden"><LinkIcon size={14} className="text-[#B88E4F]" /><span>Kênh đã kết nối</span><span className="ml-auto text-[10px] whitespace-nowrap text-[#7D715E]">{socialChannels.length} kênh</span><ChevronDown size={14} className="text-[#B88E4F] shrink-0 transition-transform group-open/inline:rotate-180" /></summary>
+            <div className="p-2.5 pt-0">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-[#7D715E]">
                   Quản lý các kênh của bạn
@@ -498,7 +495,7 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
 
               {/* Form thêm kênh phụ nhanh */}
               {showAddOtherChannel && (
-                <div className="kol-kyc-add-channel mb-3 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl space-y-2">
+                <div className="mb-3 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl space-y-2">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Select
                       value={otherPlatform}
@@ -547,7 +544,7 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
                 </div>
               )}
 
-              <div className="kol-kyc-channel-list grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {socialChannels.map((c) => (
                   <div
                     key={c.id}
@@ -614,14 +611,14 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </details>
 
         {/* 2. ĐỊNH DANH CÁ NHÂN & KÊ KHAI THUẾ TNCN (CHUẨN IMAGE 2) */}
-        <details className="kol-kyc-section" data-profile-section="identity">
-          <summary>
-            <span className="kol-kyc-section-icon"><UserCheck size={15} /></span>
-            <span className="kol-kyc-section-copy"><strong>Định danh & mã số thuế</strong><span>CCCD và ảnh hai mặt giấy tờ</span></span>
-            <span className="kol-kyc-section-state" data-complete={identityComplete}>{identityComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
-            <ChevronDown size={15} />
+        <details className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden open:border-[#EEDFC6] group" data-profile-section="identity">
+          <summary className="flex items-center gap-2.5 p-3 rounded-xl list-none cursor-pointer hover:bg-[#FAF8F5] group-open:rounded-b-none group-open:border-b group-open:border-[#EEDFC6] group-open:bg-[#FBF5EB] select-none transition-colors [&::-webkit-details-marker]:hidden">
+            <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><UserCheck size={15} /></span>
+            <span className="flex flex-col gap-0.5 min-w-0 flex-1"><strong className="text-sm font-semibold text-[#1A1612]">Định danh & mã số thuế</strong><span className="text-[11px] text-[#7D715E] truncate">CCCD và ảnh hai mặt giấy tờ</span></span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[10px] whitespace-nowrap data-[complete=true]:border-[#EAE4D7] data-[complete=true]:bg-white data-[complete=true]:text-[#7D715E]" data-complete={identityComplete}>{identityComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
+            <ChevronDown size={15} className="text-[#B88E4F] shrink-0 transition-transform group-open:rotate-180" />
           </summary>
-          <div className="kol-kyc-section-body">
+          <div className="flex flex-col gap-3 p-3 sm:p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="kyc-id-number" className="text-xs font-bold text-[#1A1612] block mb-1.5">Số CCCD / CMND (12 số) *</label>
@@ -651,7 +648,6 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ImageUploadDropzone
-              className="kol-kyc-upload"
               label="Ảnh mặt trước CCCD"
               helperText="Chụp rõ nét, đủ 4 góc, tối đa 5MB"
               value={frontCardUrl}
@@ -661,7 +657,6 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
               required
             />
             <ImageUploadDropzone
-              className="kol-kyc-upload"
               label="Ảnh mặt sau CCCD"
               helperText="Chụp rõ nét mã QR và nơi cấp"
               value={backCardUrl}
@@ -675,19 +670,19 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </details>
 
         {/* 3. TÀI KHOẢN NGÂN HÀNG NHẬN HOA HỒNG ĐỐI SOÁT (CHUẨN IMAGE 2) */}
-        <details className="kol-kyc-section" data-profile-section="bank">
-          <summary>
-            <span className="kol-kyc-section-icon"><Building size={15} /></span>
-            <span className="kol-kyc-section-copy"><strong>Ngân hàng & hồ sơ giới thiệu</strong><span>{bankName || 'Tài khoản nhận hoa hồng và ngành hàng thế mạnh'}</span></span>
-            <span className="kol-kyc-section-state" data-complete={bankComplete}>{bankComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
-            <ChevronDown size={15} />
+        <details className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden open:border-[#EEDFC6] group" data-profile-section="bank">
+          <summary className="flex items-center gap-2.5 p-3 rounded-xl list-none cursor-pointer hover:bg-[#FAF8F5] group-open:rounded-b-none group-open:border-b group-open:border-[#EEDFC6] group-open:bg-[#FBF5EB] select-none transition-colors [&::-webkit-details-marker]:hidden">
+            <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><Building size={15} /></span>
+            <span className="flex flex-col gap-0.5 min-w-0 flex-1"><strong className="text-sm font-semibold text-[#1A1612]">Ngân hàng & hồ sơ giới thiệu</strong><span className="text-[11px] text-[#7D715E] truncate">{bankName || 'Tài khoản nhận hoa hồng và ngành hàng thế mạnh'}</span></span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[10px] whitespace-nowrap data-[complete=true]:border-[#EAE4D7] data-[complete=true]:bg-white data-[complete=true]:text-[#7D715E]" data-complete={bankComplete}>{bankComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
+            <ChevronDown size={15} className="text-[#B88E4F] shrink-0 transition-transform group-open:rotate-180" />
           </summary>
-          <div className="kol-kyc-section-body">
+          <div className="flex flex-col gap-3 p-3 sm:p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="text-xs font-bold text-[#1A1612] block mb-1.5">Tên ngân hàng *</label>
               <BankSelectTrigger
-                className="kol-kyc-bank-select w-full"
+                className="w-full"
                 value={bankName}
                 onChange={(val) => setBankName(val)}
                 placeholder="-- Chọn ngân hàng thụ hưởng --"
@@ -736,17 +731,17 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </details>
 
         {/* NÚT LƯU & CẬP NHẬT HỒ SƠ KYC */}
-        <div className="kol-kyc-form-footer">
-          <span>Mở từng mục để xem hoặc cập nhật thông tin.</span>
+        <div className="flex items-center justify-between flex-wrap gap-2.5 pt-3 border-t border-[#EAE4D7]">
+          <span className="text-xs text-[#7D715E]">Mở từng mục để xem hoặc cập nhật thông tin.</span>
           <button
             type="submit"
             disabled={saving || loading || isRefreshing}
-            className="kol-kyc-save flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 min-h-[36px] px-4 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors disabled:opacity-50 cursor-pointer"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin text-[#1A1612]" />
             ) : (
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 text-[#B88E4F]" />
             )}
             <span>
               {saving

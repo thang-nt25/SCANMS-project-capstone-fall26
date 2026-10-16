@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import './DateTimePicker.css';
 import {
   Calendar,
   Clock,
@@ -317,7 +316,7 @@ export function DateTimePicker({
   const renderPopover = (node: React.ReactNode) => inlinePopoverRef?.current ? createPortal(node, inlinePopoverRef.current) : node;
 
   return (
-    <div ref={containerRef} className={`relative inline-block w-full ${compact ? 'scanms-datetime--compact' : ''} ${className}`}>
+    <div ref={containerRef} className={`relative inline-block w-full ${className || ''}`}>
       {label && (
         <label className="block text-xs font-bold text-[#1A1612] mb-1.5">{label}</label>
       )}
@@ -339,14 +338,16 @@ export function DateTimePicker({
           }
         }}
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
-        className={`scanms-datetime-trigger group w-full rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2.5 text-left text-xs sm:text-sm font-normal text-[#1A1612] outline-none transition-all flex items-center justify-between gap-2.5 cursor-pointer shadow-xs select-none ${
+        className={`group w-full ${
+          compact ? 'h-[42px] px-2.5 py-2 gap-1.5 rounded-[10px] border-[#EAE4D7]' : 'rounded-xl border-[#EEDFC6] px-3.5 py-2.5 gap-2.5'
+        } bg-white text-left ${compact ? 'text-[11px]' : 'text-xs sm:text-sm'} font-normal text-[#1A1612] outline-none transition-all flex items-center justify-between cursor-pointer select-none border ${
           isOpen
             ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20 shadow-md'
             : 'hover:border-[#C59B58] hover:shadow-xs'
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-[#FAF8F5]' : ''}`}
       >
         <div className="flex items-center gap-2.5 truncate pointer-events-none min-w-0">
-          <div className="scanms-datetime-trigger-icon w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] group-hover:scale-105 transition">
+          <div className={`${compact ? 'w-4 h-5 border-0 bg-transparent rounded-none' : 'w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6]'} flex items-center justify-center shrink-0 text-[#B88E4F] group-hover:scale-105 transition`}>
             {mode === 'datetime' ? <Clock className="w-4 h-4 text-[#B88E4F]" /> : <Calendar className="w-4 h-4 text-[#B88E4F]" />}
           </div>
           <div className="flex flex-col min-w-0 truncate">
@@ -394,21 +395,25 @@ export function DateTimePicker({
         />
       )}
 
-      {/* Dropdown Popover Modal (Tone sáng, ấm, viền vàng be cao cấp) */}
+      {/* Dropdown Popover Modal */}
       {isOpen && renderPopover(
         <div
           ref={popoverRef}
           role="group"
           aria-label={popoverTitle || 'Chọn ngày giờ'}
           onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setIsOpen(false); triggerRef.current?.focus(); } }}
-          className={`${compact ? 'scanms-datetime-popover--compact' : ''} ${inlinePopoverRef ? 'scanms-datetime-popover--inline' : ''} absolute top-[calc(100%+6px)] ${popoverAlign === 'end' ? 'right-0' : 'left-0'} z-50 rounded-2xl border border-[#EEDFC6] bg-white p-4 shadow-2xl shadow-[#C59B58]/10 ring-1 ring-[#C59B58]/15 transition-all animate-in fade-in zoom-in-95 duration-150 ${
+          className={`${
+            inlinePopoverRef ? 'relative inset-auto w-full max-w-full mt-2.5 shadow-none' : 'absolute top-[calc(100%+6px)]'
+          } ${popoverAlign === 'end' ? 'right-0' : 'left-0'} z-50 ${
+            compact ? 'p-3.5 rounded-[14px] border border-[#EEDFC6] shadow-none' : 'rounded-2xl border border-[#EEDFC6] p-4 shadow-2xl shadow-[#C59B58]/10'
+          } bg-white ring-1 ring-[#C59B58]/15 transition-all animate-in fade-in zoom-in-95 duration-150 ${
             mode === 'datetime'
               ? 'w-[320px] sm:w-[480px] max-w-[calc(100vw-2rem)]'
               : 'w-[280px] sm:w-[310px]'
           }`}
         >
           {/* Header Preview */}
-          <div className="scanms-datetime-heading mb-3.5 pb-2.5 border-b border-[#F3EFE6] flex items-center justify-between gap-2">
+          <div className="mb-3.5 pb-2.5 border-b border-[#F3EFE6] flex items-center justify-between gap-2">
             <span className="text-xs font-bold text-[#7D715E] flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58]" />
               {popoverTitle || (mode === 'datetime' ? 'Chọn ngày & giờ phát sóng' : 'Chọn ngày')}
@@ -419,7 +424,16 @@ export function DateTimePicker({
                 {displayLabel}
               </span>
             )}
-            {compact && <button type="button" className="scanms-datetime-close" aria-label="Đóng lịch" onClick={() => { setIsOpen(false); triggerRef.current?.focus(); }}><X size={15} /></button>}
+            {compact && (
+              <button
+                type="button"
+                className="grid place-items-center w-[26px] h-[26px] border-0 rounded-lg bg-[#FAF8F5] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition-colors cursor-pointer"
+                aria-label="Đóng lịch"
+                onClick={() => { setIsOpen(false); triggerRef.current?.focus(); }}
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
 
           {/* Mobile Tab Switcher (if datetime mode on small screens) */}

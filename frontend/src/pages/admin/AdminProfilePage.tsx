@@ -3,7 +3,6 @@ import { Loader2, UserRound, ShieldCheck, Camera, LockKeyhole, Eye, EyeOff, Chec
 import { authService, type UserProfile } from '../../services/auth.service';
 import { customerService } from '../../services/customer.service';
 import { uploadService } from '../../services/upload.service';
-import './AdminProfilePage.css';
 
 export default function AdminProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(authService.getCurrentUser);
@@ -103,47 +102,70 @@ export default function AdminProfilePage() {
   }
 
   return (
-    <section className="admin-personal-profile" aria-label="Hồ sơ cá nhân">
-      {loading ? <div className="admin-profile-loading" role="status"><Loader2 size={18} className="animate-spin" /> Đang tải hồ sơ…</div> : (
-        <div className="admin-profile-grid">
-          <aside className="admin-profile-identity">
-            <div className="admin-profile-avatar-wrap">
-              {user?.avatarUrl ? <img src={user.avatarUrl} alt="Ảnh đại diện" /> : <span className="admin-profile-avatar">{user?.fullName?.charAt(0).toUpperCase() || 'A'}</span>}
-              <button type="button" className="admin-profile-camera" onClick={() => avatarInput.current?.click()} disabled={busy} aria-label="Đổi ảnh đại diện">{uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}</button>
+    <section className="w-full max-w-[1320px] mx-auto text-[#1A1612]" aria-label="Hồ sơ cá nhân">
+      {loading ? <div className="flex items-center gap-2 p-6 text-xs text-[#7D715E]" role="status"><Loader2 size={18} className="animate-spin text-[#B88E4F]" /> Đang tải hồ sơ…</div> : (
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr] gap-5 items-start">
+          <aside className="flex flex-col items-center p-6 sm:p-7 border border-[#EAE4D7] rounded-2xl bg-white text-center shadow-2xs">
+            <div className="relative w-20 h-20 mx-auto mb-3.5">
+              {user?.avatarUrl ? <img src={user.avatarUrl} alt="Ảnh đại diện" className="w-20 h-20 rounded-full object-cover border border-[#EEDFC6] bg-[#FBF5EB]" /> : <span className="grid place-items-center w-20 h-20 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] text-2xl font-semibold">{user?.fullName?.charAt(0).toUpperCase() || 'A'}</span>}
+              <button type="button" className="grid place-items-center absolute -bottom-0.5 -right-0.5 w-7 h-7 border border-[#EAE4D7] rounded-full bg-white text-[#B88E4F] hover:bg-[#FBF5EB] transition-colors cursor-pointer shadow-xs" onClick={() => avatarInput.current?.click()} disabled={busy} aria-label="Đổi ảnh đại diện">{uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}</button>
             </div>
-            <h2>{user?.fullName || 'Tài khoản quản trị'}</h2>
-            <span className="admin-profile-role"><ShieldCheck size={12} /> {roleLabel}</span>
+            <h2 className="m-0 mb-1.5 text-base font-semibold text-[#1A1612] break-all">{user?.fullName || 'Tài khoản quản trị'}</h2>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-4 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[11px] font-medium"><ShieldCheck size={12} /> {roleLabel}</span>
             <input ref={avatarInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={uploadAvatar} />
-            <button type="button" className="admin-profile-secondary" disabled={busy} onClick={() => avatarInput.current?.click()}>{uploading ? 'Đang tải ảnh…' : 'Đổi ảnh đại diện'}</button>
-            <p className="admin-profile-hint">JPG, PNG, WEBP · Tối đa 5 MB</p>
-            {avatarError && <p className="admin-profile-error" role="alert">{avatarError}</p>}
-            {avatarMessage && <p className="admin-profile-feedback" role="status">{avatarMessage}</p>}
-            <div className="admin-profile-contact"><div><Mail size={14} /><span>{user?.email || 'Chưa cập nhật email'}</span></div><div><Phone size={14} /><span>{user?.phoneNumber || 'Chưa cập nhật số điện thoại'}</span></div></div>
-            <div className="admin-profile-identity-note"><LockKeyhole size={14} /><p>Email đăng nhập và vai trò được quản lý bởi hệ thống.</p></div>
+            <button type="button" className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs font-medium hover:bg-[#FBF5EB] hover:text-[#1A1612] transition-colors cursor-pointer disabled:opacity-50" disabled={busy} onClick={() => avatarInput.current?.click()}>{uploading ? 'Đang tải ảnh…' : 'Đổi ảnh đại diện'}</button>
+            <p className="m-0 mt-2 mb-5 text-[11px] text-[#7D715E]">JPG, PNG, WEBP · Tối đa 5 MB</p>
+            {avatarError && <p className="text-xs text-red-600 mb-3" role="alert">{avatarError}</p>}
+            {avatarMessage && <p className="text-xs text-[#059669] mb-3" role="status">{avatarMessage}</p>}
+            <div className="w-full border-y border-[#EAE4D7] py-4 my-2 flex flex-col gap-2.5 text-left text-xs text-[#7D715E]">
+              <div className="flex items-center gap-2"><Mail size={14} className="text-[#B88E4F] shrink-0" /><span className="truncate">{user?.email || 'Chưa cập nhật email'}</span></div>
+              <div className="flex items-center gap-2"><Phone size={14} className="text-[#B88E4F] shrink-0" /><span className="truncate">{user?.phoneNumber || 'Chưa cập nhật số điện thoại'}</span></div>
+            </div>
+            <div className="w-full flex items-start gap-2 pt-3 text-[11px] text-[#7D715E] leading-relaxed text-left"><LockKeyhole size={13} className="text-[#B88E4F] shrink-0 mt-0.5" /><p className="m-0">Email đăng nhập và vai trò được quản lý bởi hệ thống.</p></div>
           </aside>
-          <div className="admin-profile-content">
-            <form onSubmit={save} className="admin-profile-form">
-              <div className="admin-profile-section-title"><span><UserRound size={16} /></span><div><h2>Thông tin cá nhân</h2><p>Cập nhật tên hiển thị và thông tin liên hệ.</p></div></div>
-              {error && <p className="admin-profile-error" role="alert">{error}</p>}
-              {loadFailed && <button type="button" className="admin-profile-secondary" onClick={() => setReload(value => value + 1)}>Tải lại hồ sơ</button>}
-              <fieldset disabled={busy}>
-                <label>Họ và tên <span aria-hidden="true">*</span><input name="fullName" autoComplete="name" required maxLength={150} value={fullName} onChange={event => { setFullName(event.target.value); setSaved(false); }} /></label>
-                <label>Số điện thoại<input name="phoneNumber" autoComplete="tel" type="tel" maxLength={20} placeholder="Nhập số điện thoại" value={phone} onChange={event => { setPhone(event.target.value); setSaved(false); }} /></label>
-                <label>Email đăng nhập<span className="admin-profile-locked-label"><LockKeyhole size={10} /> Chỉ xem</span><input value={user?.email || ''} readOnly type="email" /></label>
-                <label>Vai trò tài khoản<span className="admin-profile-locked-label"><LockKeyhole size={10} /> Chỉ xem</span><input value={roleLabel} readOnly /></label>
+          <div className="flex flex-col gap-4 min-w-0">
+            <form onSubmit={save} className="flex flex-col p-5 sm:p-6 border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs">
+              <div className="flex items-center gap-2.5 mb-5"><span className="w-8 h-8 grid place-items-center shrink-0 border border-[#EAE4D7] rounded-lg text-[#B88E4F] bg-[#FBF5EB]"><UserRound size={16} /></span><div><h2 className="m-0 text-base font-semibold text-[#1A1612]">Thông tin cá nhân</h2><p className="m-0 mt-0.5 text-xs text-[#7D715E]">Cập nhật tên hiển thị và thông tin liên hệ.</p></div></div>
+              {error && <p className="text-xs text-red-600 mb-3" role="alert">{error}</p>}
+              {loadFailed && <button type="button" className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 mb-4 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs font-medium hover:bg-[#FBF5EB]" onClick={() => setReload(value => value + 1)}>Tải lại hồ sơ</button>}
+              <fieldset disabled={busy} className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-0 p-0 m-0 mb-6">
+                <label className="block text-xs font-medium text-[#1A1612]">Họ và tên <span className="text-red-500">*</span><input name="fullName" autoComplete="name" required maxLength={150} value={fullName} onChange={event => { setFullName(event.target.value); setSaved(false); }} className="block w-full h-10 mt-1.5 px-3 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-[#B88E4F]" /></label>
+                <label className="block text-xs font-medium text-[#1A1612]">Số điện thoại<input name="phoneNumber" autoComplete="tel" type="tel" maxLength={20} placeholder="Nhập số điện thoại" value={phone} onChange={event => { setPhone(event.target.value); setSaved(false); }} className="block w-full h-10 mt-1.5 px-3 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-[#B88E4F]" /></label>
+                <label className="block text-xs font-medium text-[#1A1612]">Email đăng nhập<span className="inline-flex items-center gap-1 float-right text-[10px] text-[#7D715E] font-normal"><LockKeyhole size={10} /> Chỉ xem</span><input value={user?.email || ''} readOnly type="email" className="block w-full h-10 mt-1.5 px-3 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#7D715E] text-xs sm:text-sm cursor-not-allowed" /></label>
+                <label className="block text-xs font-medium text-[#1A1612]">Vai trò tài khoản<span className="inline-flex items-center gap-1 float-right text-[10px] text-[#7D715E] font-normal"><LockKeyhole size={10} /> Chỉ xem</span><input value={roleLabel} readOnly className="block w-full h-10 mt-1.5 px-3 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#7D715E] text-xs sm:text-sm cursor-not-allowed" /></label>
               </fieldset>
-              <footer><span role="status">{saved ? <><Check size={13} /> Đã lưu thông tin.</> : dirty ? 'Có thay đổi chưa lưu' : 'Thông tin đã được đồng bộ'}</span><div><button type="button" className="admin-profile-secondary" disabled={busy || !dirty} onClick={() => { setFullName(user?.fullName || ''); setPhone(user?.phoneNumber || ''); setError(''); setSaved(false); }}>Hủy thay đổi</button><button type="submit" className="admin-profile-primary" disabled={busy || !dirty || !fullName.trim()}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{saving ? 'Đang lưu…' : 'Lưu thay đổi'}</button></div></footer>
+              <footer className="flex items-center justify-between flex-wrap gap-3 pt-4 border-t border-[#EAE4D7]">
+                <span className="inline-flex items-center gap-1 text-xs text-[#7D715E]" role="status">{saved ? <><Check size={13} className="text-[#059669]" /> Đã lưu thông tin.</> : dirty ? 'Có thay đổi chưa lưu' : 'Thông tin đã được đồng bộ'}</span>
+                <div className="flex items-center gap-2">
+                  <button type="button" className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs font-semibold hover:bg-[#FAF8F5] hover:text-[#1A1612] transition-colors cursor-pointer disabled:opacity-50" disabled={busy || !dirty} onClick={() => { setFullName(user?.fullName || ''); setPhone(user?.phoneNumber || ''); setError(''); setSaved(false); }}>Hủy thay đổi</button>
+                  <button type="submit" className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-[#B88E4F] rounded-lg bg-[#C59B58] text-white text-xs font-semibold hover:bg-[#B88E4F] transition-colors cursor-pointer disabled:opacity-50 shadow-xs" disabled={busy || !dirty || !fullName.trim()}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{saving ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
+                </div>
+              </footer>
             </form>
-            <details className="admin-profile-security">
-              <summary><span className="admin-profile-section-title"><span><LockKeyhole size={16} /></span><span><strong>Bảo mật tài khoản</strong><small>Đổi mật khẩu đăng nhập</small></span></span><span className="admin-profile-security-action">Đổi mật khẩu</span></summary>
-              <form onSubmit={changePassword}>
-                <fieldset disabled={changingPassword || busy}>
-                  {(['current', 'next', 'confirm'] as const).map(key => <label key={key}>{key === 'current' ? 'Mật khẩu hiện tại' : key === 'next' ? 'Mật khẩu mới' : 'Xác nhận mật khẩu mới'}<input name={key + 'Password'} type={showPasswords ? 'text' : 'password'} autoComplete={key === 'current' ? 'current-password' : 'new-password'} required minLength={key === 'current' ? undefined : 6} value={passwords[key]} onChange={event => { setPasswords(previous => ({ ...previous, [key]: event.target.value })); setPasswordSaved(false); }} /></label>)}
+            <details className="border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs group">
+              <summary className="flex items-center justify-between p-5 cursor-pointer list-none select-none hover:bg-[#FAF8F5]/50 transition-colors">
+                <span className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 grid place-items-center shrink-0 border border-[#EAE4D7] rounded-lg text-[#B88E4F] bg-[#FBF5EB]"><LockKeyhole size={16} /></span>
+                  <div><strong className="block text-sm font-semibold text-[#1A1612]">Bảo mật tài khoản</strong><small className="block text-[11px] text-[#7D715E]">Đổi mật khẩu đăng nhập</small></div>
+                </span>
+                <span className="text-xs font-medium text-[#B88E4F] group-open:rotate-90 transition-transform">Đổi mật khẩu ›</span>
+              </summary>
+              <form onSubmit={changePassword} className="border-t border-[#EAE4D7] p-5">
+                <fieldset disabled={changingPassword || busy} className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-0 p-0 m-0 mb-3">
+                  {(['current', 'next', 'confirm'] as const).map(key => (
+                    <label key={key} className="block text-xs font-medium text-[#1A1612]">
+                      {key === 'current' ? 'Mật khẩu hiện tại' : key === 'next' ? 'Mật khẩu mới' : 'Xác nhận mật khẩu mới'}
+                      <input name={key + 'Password'} type={showPasswords ? 'text' : 'password'} autoComplete={key === 'current' ? 'current-password' : 'new-password'} required minLength={key === 'current' ? undefined : 6} value={passwords[key]} onChange={event => { setPasswords(previous => ({ ...previous, [key]: event.target.value })); setPasswordSaved(false); }} className="block w-full h-10 mt-1.5 px-3 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-[#B88E4F]" />
+                    </label>
+                  ))}
                 </fieldset>
-                <div className="admin-profile-password-tools"><span>Ít nhất 6 ký tự.</span><button type="button" className="admin-profile-text-button" aria-pressed={showPasswords} onClick={() => setShowPasswords(value => !value)}>{showPasswords ? <EyeOff size={13} /> : <Eye size={13} />}{showPasswords ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}</button></div>
-                {passwordError && <p className="admin-profile-error" role="alert">{passwordError}</p>}
-                {passwordSaved && <p className="admin-profile-feedback" role="status"><Check size={13} /> Đã đổi mật khẩu thành công.</p>}
-                <button type="submit" className="admin-profile-primary" disabled={changingPassword || busy || !passwords.current || !passwords.next || !passwords.confirm}>{changingPassword && <Loader2 size={14} className="animate-spin" />}{changingPassword ? 'Đang cập nhật…' : 'Cập nhật mật khẩu'}</button>
+                <div className="flex items-center justify-between gap-2 mb-3 text-xs text-[#7D715E]">
+                  <span>Ít nhất 6 ký tự.</span>
+                  <button type="button" className="inline-flex items-center gap-1 text-xs text-[#7D715E] hover:text-[#1A1612] cursor-pointer" aria-pressed={showPasswords} onClick={() => setShowPasswords(value => !value)}>{showPasswords ? <EyeOff size={13} /> : <Eye size={13} />}{showPasswords ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}</button>
+                </div>
+                {passwordError && <p className="text-xs text-red-600 mb-3" role="alert">{passwordError}</p>}
+                {passwordSaved && <p className="inline-flex items-center gap-1 text-xs text-[#059669] mb-3" role="status"><Check size={13} /> Đã đổi mật khẩu thành công.</p>}
+                <button type="submit" className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-[#B88E4F] rounded-lg bg-[#C59B58] text-white text-xs font-semibold hover:bg-[#B88E4F] transition-colors cursor-pointer disabled:opacity-50 shadow-xs" disabled={changingPassword || busy || !passwords.current || !passwords.next || !passwords.confirm}>{changingPassword && <Loader2 size={14} className="animate-spin" />}{changingPassword ? 'Đang cập nhật…' : 'Cập nhật mật khẩu'}</button>
               </form>
             </details>
           </div>

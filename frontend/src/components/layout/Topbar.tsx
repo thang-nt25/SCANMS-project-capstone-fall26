@@ -5,9 +5,9 @@ import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { NotificationDropdown } from './NotificationDropdown';
-import './Topbar.css';
 import { ScanMSLogo } from '../common/ScanMSLogo';
 import { HeaderAccountButton } from './HeaderAccountButton';
+import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
@@ -155,9 +155,15 @@ export function Topbar({
 
         {/* Right: Actions, Switcher, Notifications & User Card */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="topbar-system-status hidden lg:inline-flex" title="Hệ thống trực tuyến">
-            <span className="topbar-system-status-mark" aria-hidden="true"><span /></span>
-            <span className="topbar-system-status-label">Hệ thống <strong>trực tuyến</strong></span>
+          <WorkspaceSwitcher variant="header" />
+
+          <div className="hidden lg:inline-flex items-center gap-[7px] h-8 p-[5px_10px_5px_6px] border border-[#EAE4D7] rounded-[10px] bg-white whitespace-nowrap" title="Hệ thống trực tuyến">
+            <span className="grid place-items-center w-5 h-5 rounded-[6px] bg-[#FBF5EB]" aria-hidden="true">
+              <span className="w-[5px] h-[5px] rounded-full bg-[#059669]" />
+            </span>
+            <span className="text-[#7D715E] text-[11px] leading-4 font-normal">
+              Hệ thống <strong className="text-[#1A1612] font-semibold">trực tuyến</strong>
+            </span>
           </div>
 
           <button

@@ -19,7 +19,6 @@ import {
 } from '../../services/ai-recommendation.service';
 import api from '../../services/api';
 import { Select } from '../../components/ui/Select';
-import './KolRecommendationPage.css';
 
 const CATEGORIES = [
   'Tất cả danh mục',
@@ -289,19 +288,19 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
         </div>
 
         {/* Right: Smart Filter Toolbar */}
-        <div className="kol-ai-filters space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm lg:col-span-8">
-          <div className="kol-ai-live">
-            {calculatedAt && <span className="kol-ai-updated">Cập nhật {new Date(calculatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
-            <label className="kol-ai-auto">
-              <input type="checkbox" checked={autoScan} onChange={(event) => setAutoScan(event.target.checked)} />
-              <span className="kol-ai-switch" aria-hidden="true" />Tự cập nhật · 60 giây
+        <div className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-sm lg:col-span-8">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#7D715E]">
+            {calculatedAt && <span>Cập nhật {new Date(calculatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[#1A1612]">
+              <input type="checkbox" checked={autoScan} onChange={(event) => setAutoScan(event.target.checked)} className="h-4 w-4 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58]" />
+              <span>Tự cập nhật (60 giây)</span>
             </label>
-            {onReturn && <button type="button" id="btn-return-workspace" onClick={onReturn} className="kol-ai-back"><ChevronLeft size={14} /><span>Về nhà sáng tạo</span></button>}
+            {onReturn && <button type="button" id="btn-return-workspace" onClick={onReturn} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-medium text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] transition"><ChevronLeft size={14} /><span>Về nhà sáng tạo</span></button>}
           </div>
-          <div className="kol-ai-filter-actions">
-            <button type="button" className="kol-ai-filter-toggle" aria-expanded={filtersOpen} aria-controls="kol-ai-advanced-filters" onClick={() => setFiltersOpen(!filtersOpen)}>
-              <Filter size={14} />Bộ lọc<span>{filtersOpen ? '−' : '+'}</span>
-              {(selectedCategory !== 'Tất cả danh mục' || selectedPriceRange !== 'ALL' || selectedMinTier || minConversionRate > 0) && <i aria-label="Đang áp dụng bộ lọc" />}
+          <div className="flex items-center gap-2">
+            <button type="button" aria-expanded={filtersOpen} aria-controls="kol-ai-advanced-filters" onClick={() => setFiltersOpen(!filtersOpen)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#EAE4D7] bg-white text-xs font-medium text-[#1A1612] hover:bg-[#FBF5EB] transition">
+              <Filter size={14} />Bộ lọc<span className="font-mono">{filtersOpen ? '−' : '+'}</span>
+              {(selectedCategory !== 'Tất cả danh mục' || selectedPriceRange !== 'ALL' || selectedMinTier || minConversionRate > 0) && <span className="h-1.5 w-1.5 rounded-full bg-[#B88E4F]" aria-label="Đang áp dụng bộ lọc" />}
             </button>
             <button
               onClick={() => void fetchRecommendations()}
@@ -313,7 +312,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
             </button>
           </div>
 
-          <div id="kol-ai-advanced-filters" className={`kol-ai-filter-fields ${filtersOpen ? 'is-expanded' : ''}`}>
+          <div id="kol-ai-advanced-filters" className={`${filtersOpen ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3 border-t border-[#EAE4D7]' : 'hidden'}`}>
             <div>
               <label className="mb-1 block font-medium text-[#7D715E]">Ngành hàng</label>
               <Select
@@ -473,44 +472,83 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-semibold leading-5 text-[#1A1612]">{kol.fullName}</h3>
-                      <div className="kol-ai-profile-meta">{getTierBadge(kol.tierName)}<span className="kol-matching-category" title={kol.categoryMatchSource === 'PROFILE' ? 'Liên quan qua hồ sơ/kênh; chưa có lịch sử bán trong ngành này.' : kol.categoryMatchSource === 'SALES' ? 'Có đơn hoàn tất trong nhóm ngành này.' : undefined}>{kol.matchedCategory || kol.lifetimeStats?.primaryCategory || 'Chưa có lịch sử ngành hàng'}{kol.categoryMatchSource === 'PROFILE' ? ' · Khớp hồ sơ' : kol.categoryMatchSource === 'SALES' ? ' · Đã bán cùng ngành' : ''}</span></div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">{getTierBadge(kol.tierName)}<span className="text-[11px] text-[#7D715E]" title={kol.categoryMatchSource === 'PROFILE' ? 'Liên quan qua hồ sơ/kênh; chưa có lịch sử bán trong ngành này.' : kol.categoryMatchSource === 'SALES' ? 'Có đơn hoàn tất trong nhóm ngành này.' : undefined}>{kol.matchedCategory || kol.lifetimeStats?.primaryCategory || 'Chưa có lịch sử ngành hàng'}{kol.categoryMatchSource === 'PROFILE' ? ' · Khớp hồ sơ' : kol.categoryMatchSource === 'SALES' ? ' · Đã bán cùng ngành' : ''}</span></div>
                     </div>
                   </div>
 
-                  <div className="kol-ai-score" aria-label={`Điểm đối sánh ${kol.matchScore} trên 100`}>
-                    <small className="kol-ai-score-label">Đối sánh</small>
-                    <div><strong>{kol.matchScore}</strong><span>/100</span></div>
-                    <span className="kol-ai-score-track" aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, kol.matchScore))}%` }} /></span>
+
+                  <div className="mt-2" aria-label={`Điểm đối sánh ${kol.matchScore} trên 100`}>
+                    <div className="flex items-baseline gap-1">
+                      <strong className="text-lg font-bold text-[#B88E4F] tabular-nums">{kol.matchScore}</strong>
+                      <span className="text-[10px] text-[#7D715E]">/100</span>
+                    </div>
+                    <div className="mt-1 h-1 w-full rounded-full bg-[#F3EFE6]" aria-hidden="true">
+                      <div className="h-full rounded-full bg-[#C59B58]" style={{ width: `${Math.max(0, Math.min(100, kol.matchScore))}%` }} />
+                    </div>
+
                   </div>
 
-                  <dl className="kol-ai-card-stats mt-3 grid grid-cols-3 gap-2 rounded-lg bg-[#FAF8F5] px-3 py-2.5">
+                  <dl className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-[#FAF8F5] px-3 py-2.5">
                     <div><dt className="text-[11px] text-[#7D715E]">Đơn hoàn tất</dt><dd className="mt-0.5 text-sm font-semibold text-[#1A1612]">{Number(kol.lifetimeStats?.totalOrders || 0).toLocaleString('vi-VN')}</dd></div>
                     <div><dt className="text-[11px] text-[#7D715E]">Nhấp hợp lệ</dt><dd className="mt-0.5 text-sm font-semibold text-[#1A1612]">{Number(kol.lifetimeStats?.totalClicks || 0).toLocaleString('vi-VN')}</dd></div>
                     <div><dt className="text-[11px] text-[#7D715E]">Đơn / nhấp</dt><dd className="mt-0.5 text-sm font-semibold text-[#1A1612]">{kol.lifetimeStats?.conversionRate || 0}%</dd></div>
                   </dl>
 
-                  <div className="kol-ai-card-actions mt-3 flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" onClick={() => { setInviteMessage(''); setInvitingKol(kol); }} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] transition"><Send className="h-3.5 w-3.5" />Mời hợp tác</button>
                   </div>
-                  <button type="button" className="kol-ai-evidence-toggle" aria-expanded={!!expandedEvidence[kol.collaboratorId]} aria-controls={`kol-evidence-${kol.collaboratorId}`} onClick={() => setExpandedEvidence(previous => ({ ...previous, [kol.collaboratorId]: !previous[kol.collaboratorId] }))}>Chi tiết<ChevronDown size={13} /></button>
-                  {expandedEvidence[kol.collaboratorId] && <div id={`kol-evidence-${kol.collaboratorId}`} className="kol-ai-evidence-panel">
-                      <div className="kol-ai-evidence-heading"><div><h4>Căn cứ đối sánh</h4><span className="kol-ai-match-level">{kol.matchLevel}</span></div><button type="button" onClick={() => setAnalyzingKol(kol)}><BarChart3 size={14} />Xem phân tích</button></div>
-                      <div className="kol-ai-evidence-body">
-                        <div className="kol-ai-evidence-context">
-                          <p className="kol-ai-evidence-source">{kol.categoryMatchSource === 'PROFILE' ? 'Liên quan qua hồ sơ & nội dung kênh' : kol.categoryMatchSource === 'SALES' ? 'Có lịch sử bán cùng nhóm ngành' : 'Đối sánh từ dữ liệu SCANMS'}</p>
-                          <p className="kol-ai-confidence">{kol.lifetimeStats?.dataConfidence === 'HIGH' ? 'Đủ dữ liệu bán hàng để đối sánh.' : kol.lifetimeStats?.dataConfidence === 'MEDIUM' ? 'Dữ liệu ở mức tham khảo.' : 'Dữ liệu còn ít. Nên xem hồ sơ trước khi mời.'}</p>
-                          <details className="kol-ai-reasoning"><summary>Giải thích đề xuất<ChevronDown size={12} /></summary><p>{kol.aiReasoning}</p></details>
-                          {!!kol.socialChannels?.length && <div className="kol-ai-evidence-channels">{kol.socialChannels.map((channel, channelIdx) => <span key={channelIdx}><span>{channel.platform}</span><strong>{Number(channel.followerCount || 0).toLocaleString('vi-VN')}</strong><span>người theo dõi</span></span>)}</div>}
+                  <button type="button" className="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer" aria-expanded={!!expandedEvidence[kol.collaboratorId]} aria-controls={`kol-evidence-${kol.collaboratorId}`} onClick={() => setExpandedEvidence(previous => ({ ...previous, [kol.collaboratorId]: !previous[kol.collaboratorId] }))}>
+                    Chi tiết<ChevronDown size={13} className={`transition-transform ${expandedEvidence[kol.collaboratorId] ? 'rotate-180' : ''}`} />
+                  </button>
+                  {expandedEvidence[kol.collaboratorId] && (
+                    <div id={`kol-evidence-${kol.collaboratorId}`} className="mt-3 rounded-xl border border-[#EAE4D7] bg-white overflow-hidden text-xs">
+                      <div className="flex items-center justify-between gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-[#1A1612]">Căn cứ đối sánh</h4>
+                          <span className="rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-medium text-[#8C6226]">{kol.matchLevel}</span>
                         </div>
-                        <div className="kol-ai-criteria">
-                          {breakdown.map((criterion) => <div key={criterion.label} className="kol-ai-criterion">
-                            <div><span>{criterion.label}<small>Trọng số {criterion.weight}%</small></span><strong>{criterion.value || 0}<small>/100</small></strong></div>
-                            <div className="kol-ai-criterion-track" aria-hidden="true"><span style={{ width: `${Math.max(0, Math.min(100, criterion.value || 0))}%` }} /></div>
-                          </div>)}
-                          <p className="kol-ai-score-note">Điểm tham khảo · Không phải xác suất chốt đơn</p>
+                        <button type="button" onClick={() => setAnalyzingKol(kol)} className="inline-flex items-center gap-1 rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1 text-xs font-medium text-[#7D715E] hover:border-[#C59B58] hover:text-[#1A1612] transition">
+                          <BarChart3 size={14} />Xem phân tích
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5">
+                        <div className="space-y-2">
+                          <p className="font-medium text-[#1A1612]">{kol.categoryMatchSource === 'PROFILE' ? 'Liên quan qua hồ sơ & nội dung kênh' : kol.categoryMatchSource === 'SALES' ? 'Có lịch sử bán cùng nhóm ngành' : 'Đối sánh từ dữ liệu SCANMS'}</p>
+                          <p className="text-[11px] leading-relaxed text-[#7D715E]">{kol.lifetimeStats?.dataConfidence === 'HIGH' ? 'Đủ dữ liệu bán hàng để đối sánh.' : kol.lifetimeStats?.dataConfidence === 'MEDIUM' ? 'Dữ liệu ở mức tham khảo.' : 'Dữ liệu còn ít. Nên xem hồ sơ trước khi mời.'}</p>
+                          <details className="group mt-2">
+                            <summary className="inline-flex items-center gap-1 text-xs font-medium text-[#8C6226] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                              Giải thích đề xuất<ChevronDown size={12} className="group-open:rotate-180 transition-transform" />
+                            </summary>
+                            <p className="mt-1.5 text-xs text-[#7D715E] leading-relaxed bg-[#FAF8F5] p-2.5 rounded-lg border border-[#EAE4D7]">{kol.aiReasoning}</p>
+                          </details>
+                          {!!kol.socialChannels?.length && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {kol.socialChannels.map((channel, channelIdx) => (
+                                <span key={channelIdx} className="inline-flex items-center gap-1 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-1 text-[11px] text-[#7D715E]">
+                                  <span className="font-semibold text-[#1A1612]">{channel.platform}:</span>
+                                  <strong>{Number(channel.followerCount || 0).toLocaleString('vi-VN')}</strong> followers
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          {breakdown.map((criterion) => (
+                            <div key={criterion.label} className="space-y-1">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-[#7D715E]">{criterion.label} <small className="text-[#A79B89]">(Trọng số {criterion.weight}%)</small></span>
+                                <strong className="text-[#1A1612]">{criterion.value || 0}<small className="text-[#7D715E]">/100</small></strong>
+                              </div>
+                              <div className="h-1.5 w-full rounded-full bg-[#F3EFE6]" aria-hidden="true">
+                                <div className="h-full rounded-full bg-[#C59B58]" style={{ width: `${Math.max(0, Math.min(100, criterion.value || 0))}%` }} />
+                              </div>
+                            </div>
+                          ))}
+                          <p className="pt-1 text-[10px] text-[#7D715E]">Điểm tham khảo · Không phải xác suất chốt đơn</p>
                         </div>
                       </div>
-                    </div>}
+                    </div>
+                  )}
 
                 </article>
               );

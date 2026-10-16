@@ -1,21 +1,21 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Tag, Trophy, Link2, Radio } from 'lucide-react';
+import { useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Tag, Trophy, Link2 } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import ShopCouponsPage from './ShopCouponsPage';
 import { CommissionRulesPage } from './CommissionRulesPage';
 import StoreReferralLinksPage from './StoreReferralLinksPage';
-import LiveSessionsPage from './LiveSessionsPage';
-import './ShopPromotionsHubPage.css';
 
 export default function ShopPromotionsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const activeTab = searchParams.get('tab') || 'coupons';
-  const [hasOpenedLiveTab, setHasOpenedLiveTab] = useState(activeTab === 'live-sessions');
 
   useEffect(() => {
-    if (activeTab === 'live-sessions') setHasOpenedLiveTab(true);
-  }, [activeTab]);
+    if (activeTab === 'live-sessions') {
+      navigate('/merchant/live-sessions', { replace: true });
+    }
+  }, [activeTab, navigate]);
 
   const handleTabChange = (tabId: string) => {
     setSearchParams(
@@ -44,21 +44,17 @@ export default function ShopPromotionsHubPage() {
       label: 'Link tiếp thị',
       icon: Link2,
     },
-    {
-      id: 'live-sessions',
-      label: 'Voucher livestream',
-      icon: Radio,
-    },
   ];
 
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-[1520px] flex-col gap-4 pt-3 pb-6 sm:pt-4" id="shop-promotions-hub">
+    <div className="flex w-full min-w-0 flex-col gap-4 pb-6 text-[#1A1612]" id="shop-promotions-hub">
       <HubTabs
         tabs={tabs}
         activeTab={activeTab}
         onChange={handleTabChange}
         compact
         stretchTabs
+        stretchTabColumns={3}
         tone="white"
         className="promotions-tabs mb-0"
       />
@@ -79,12 +75,6 @@ export default function ShopPromotionsHubPage() {
         {activeTab === 'referral-links' && (
           <div className="animate-in fade-in-50 duration-200">
             <StoreReferralLinksPage />
-          </div>
-        )}
-
-        {hasOpenedLiveTab && (
-          <div className={activeTab === 'live-sessions' ? 'animate-in fade-in-50 duration-200' : 'hidden'}>
-            <LiveSessionsPage isActive={activeTab === 'live-sessions'} />
           </div>
         )}
       </div>

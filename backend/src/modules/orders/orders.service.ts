@@ -1023,7 +1023,7 @@ export class OrdersService {
       await tx.$queryRaw`SELECT id FROM live_shopping_sessions WHERE id = ${liveId}::uuid AND store_id = ${store.id}::uuid FOR UPDATE`;
     }
     const liveSources = requestedLiveIds.length ? await tx.liveShoppingSession.findMany({
-      where: { id: { in: requestedLiveIds }, storeId: store.id, platform: 'SCANMS', inviteStatus: 'ACCEPTED', status: 'LIVE', startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
+      where: { id: { in: requestedLiveIds }, storeId: store.id, platform: 'SCANMS', inviteStatus: 'ACCEPTED', status: { in: ['LIVE', 'SCHEDULED'] }, startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
       select: { id: true, commissionRate: true, products: { select: { productId: true, variantId: true } } },
     }) : [];
     const liveSessionIds = liveSources.filter((session) => dto.items.some((item) =>
@@ -3822,6 +3822,18 @@ export class OrdersService {
         { externalOrderSn: { contains: search, mode: 'insensitive' } },
         { customerPhone: { contains: search } },
         { customerName: { contains: search, mode: 'insensitive' } },
+        {
+          rawPayload: {
+            path: ['trackingNumber'],
+            string_contains: search,
+          },
+        },
+        {
+          rawPayload: {
+            path: ['ghnOrderCode'],
+            string_contains: search,
+          },
+        },
       ];
     }
 

@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { useSearchParams } from 'react-router-dom';
 import {
   MessageSquare,
   Plus,
@@ -25,16 +24,19 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
+  Loader2,
+  MoreVertical,
+  Package,
 } from 'lucide-react';
 import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '@/types/chat.types';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
-import './CustomerChat.css';
-import './NewConversationModal.css';
 import { CampaignCardBubble } from '../../components/chat/CampaignCardBubble';
 import { ExclusiveDealCardBubble } from '../../components/chat/ExclusiveDealCardBubble';
 import { ProductInquiryCardBubble, type ProductInquiryCardData } from '../../components/chat/ProductInquiryCardBubble';
+import { productService } from '../../services/product.service';
+import { orderService } from '../../services/order.service';
 
 function removeAccents(str: string): string {
   return str
@@ -381,32 +383,31 @@ function NewConversationModal({
 
   return (
     <div
-      className="new-chat-overlay"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#231D15]/35 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="new-chat-dialog"
+        className="w-full max-w-[520px] max-h-[min(680px,calc(100dvh-40px))] flex flex-col overflow-hidden bg-white text-[#1A1612] border border-[#EAE4D7] rounded-2xl sm:rounded-[20px] shadow-[0_24px_80px_rgba(35,29,21,0.16)] outline-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-chat-title"
         onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
         onClick={e => e.stopPropagation()}
       >
-
-        <div className="new-chat-header">
-          <div className="new-chat-heading">
-            <div className="new-chat-heading-icon">
+        <div className="flex items-center justify-between gap-3 p-4 sm:p-5 pb-3 sm:pb-4 border-b border-[#F3EFE6]">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="grid place-items-center shrink-0 w-9 sm:w-10 h-9 sm:h-10 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
               <MessageSquare className="w-4 h-4" />
             </div>
             <div>
-              <h3 id="new-chat-title" className="new-chat-title">Cuộc trò chuyện mới</h3>
-              <p className="new-chat-subtitle">
+              <h3 id="new-chat-title" className="m-0 text-base sm:text-[19px] font-bold leading-snug tracking-tight text-[#1A1612]">Cuộc trò chuyện mới</h3>
+              <p className="m-0 mt-1 text-xs leading-relaxed text-[#7D715E]">
                 {isShop ? 'Chọn KOL / CTV để trao đổi hợp tác.' : 'Chọn gian hàng để bắt đầu trao đổi.'}
               </p>
             </div>
           </div>
           <button
-            className="new-chat-close"
+            className="grid place-items-center shrink-0 w-8 h-8 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] transition-colors cursor-pointer"
             onClick={onClose}
             title="Đóng"
           >
@@ -414,10 +415,9 @@ function NewConversationModal({
           </button>
         </div>
 
-
-        <div className="new-chat-search-area">
-          <div className="new-chat-search-field">
-            <Search className="new-chat-search-icon" />
+        <div className="px-4 sm:px-5 pb-2.5">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7D715E] pointer-events-none" />
             <input
               id="new-chat-search"
               aria-label={isShop ? 'Tìm KOL / CTV' : 'Tìm gian hàng'}
@@ -429,11 +429,11 @@ function NewConversationModal({
               }
               value={query}
               onChange={e => setQuery(e.target.value)}
-              className="new-chat-search-input"
+              className="block w-full h-11 pl-10 pr-10 border border-[#EAE4D7] rounded-[11px] bg-[#FAF8F5] text-[#1A1612] text-xs sm:text-[13px] outline-none focus:bg-white focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10 transition-all placeholder:text-[#7D715E]"
             />
             {query && (
               <button
-                className="new-chat-clear"
+                className="grid place-items-center shrink-0 w-8 h-8 text-[#7D715E] hover:text-[#1A1612] absolute right-1.5 top-1/2 -translate-y-1/2 cursor-pointer"
                 aria-label="Xóa tìm kiếm"
                 onClick={() => setQuery('')}
               >
@@ -443,19 +443,18 @@ function NewConversationModal({
           </div>
         </div>
 
-
-        <div className="new-chat-list">
+        <div className="flex-1 min-h-[180px] overflow-y-auto overscroll-contain px-2 sm:px-3 pb-2 [scrollbar-width:thin]">
           {loading && (
-            <div className="new-chat-state">
-              <div className="new-chat-spinner" />
+            <div className="flex flex-col items-center gap-2.5 py-12 px-4 text-xs text-[#7D715E]">
+              <Loader2 className="w-5 h-5 animate-spin text-[#B88E4F]" />
               <span>Đang tìm kiếm...</span>
             </div>
           )}
 
           {!loading && results.length === 0 && (
-            <div className="new-chat-state">
+            <div className="flex flex-col items-center gap-2.5 py-12 px-4 text-xs text-[#7D715E]">
               <Search className="w-8 h-8 text-stone-300 stroke-1" />
-              <p>Không tìm thấy {isShop ? 'KOL / CTV nào' : 'Cửa hàng nào'}</p>
+              <p className="m-0">Không tìm thấy {isShop ? 'KOL / CTV nào' : 'Cửa hàng nào'}</p>
             </div>
           )}
 
@@ -464,21 +463,21 @@ function NewConversationModal({
               <div
                 key={item.id}
                 id={`new-chat-${item.id}`}
-                className="new-chat-contact"
+                className="flex items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-[11px] hover:bg-[#FAF8F5] transition-colors border-t border-[#F3EFE6] first:border-t-0"
               >
-                <div className="new-chat-contact-info">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <ChatAvatar
-                    className="new-chat-avatar"
+                    className="w-9 sm:w-[38px] h-9 sm:h-[38px] shrink-0 grid place-items-center bg-[#F3EFE6] border border-[#EAE4D7] rounded-xl text-[#B88E4F] text-sm font-bold"
                     src={isShop
                       ? item.collaboratorProfile?.avatarUrl || item.avatarUrl
                       : item.logoUrl || item.owner?.avatarUrl}
                     name={(isShop ? item.fullName : item.name) || '?'}
                   />
                   <div className="min-w-0">
-                    <div className="new-chat-contact-name">
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold leading-snug text-[#1A1612]">
                       {isShop ? item.fullName : item.name}
                     </div>
-                    <div className="new-chat-contact-detail">
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap mt-0.5 text-[#7D715E] text-[11px] leading-snug">
                       {isShop
                         ? item.email
                         : item.owner?.fullName
@@ -489,22 +488,405 @@ function NewConversationModal({
                 </div>
 
                 <button
-                  className="new-chat-message-button"
+                  className="inline-flex items-center justify-center gap-1.5 shrink-0 min-w-[80px] sm:min-w-[94px] min-h-[34px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-[9px] bg-[#FBF5EB] text-[#1A1612] text-[11px] sm:text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors cursor-pointer disabled:opacity-55"
                   disabled={creating === item.id}
                   onClick={() => startChat(item)}
                 >
-                  <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+                  <MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
                   {creating === item.id ? 'Đang mở...' : 'Nhắn tin'}
                 </button>
               </div>
             ))}
         </div>
-        <div className="new-chat-footer">
-          <div className="new-chat-list-label">
+        <div className="px-4 sm:px-5 py-3 border-t border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] text-[11px]">
+          <div className="flex items-center justify-between gap-3 font-semibold">
             <span>{isShop ? 'KOL / CTV' : 'Gian hàng'}</span>
-            <span aria-live="polite">{loading ? 'Đang tìm…' : `${results.length} kết quả`}</span>
+            <span aria-live="polite" className="font-normal">{loading ? 'Đang tìm…' : `${results.length} kết quả`}</span>
           </div>
-          <p>Chọn người nhận để mở cuộc trò chuyện.</p>
+          <p className="m-0 mt-1">Chọn người nhận để mở cuộc trò chuyện.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const CSKH_QUICK_REPLIES = [
+  'Dạ chào bạn! Shop có thể hỗ trợ giải đáp thông tin gì về sản phẩm cho bạn ạ?',
+  'Sản phẩm bên shop cam kết 100% chính hãng, có tem niêm phong và giấy kiểm định công bố đầy đủ bạn nhé!',
+  'Đơn hàng của bạn đã được shop đóng gói cẩn thận và sẽ bàn giao cho shipper trong ca lấy sớm nhất ạ.',
+  'Hạn sử dụng của sản phẩm hiện tại còn rất dài (trên 24 tháng), bạn yên tâm đặt mua và sử dụng nhé.',
+  'Cảm ơn bạn đã tin tưởng ủng hộ shop! Nếu cần hỗ trợ thêm thông tin gì, bạn cứ nhắn tin cho shop nhé.',
+];
+
+function CustomerCouponModal({
+  storeId,
+  onClose,
+  onSelectCoupon,
+}: {
+  storeId: string;
+  onClose: () => void;
+  onSelectCoupon: (coupon: any) => void;
+}) {
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    api.get(`/coupons/stores/${storeId}/available`)
+      .then((res: any) => {
+        if (!active) return;
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setCoupons(list);
+      })
+      .catch(() => {
+        if (active) setCoupons([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [storeId]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/40 backdrop-blur-xs" onClick={onClose}>
+      <div className="w-full max-w-md overflow-hidden bg-white rounded-2xl border border-[#EAE4D7] shadow-2xl animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-[#EAE4D7] px-5 py-4 bg-[#FAF8F5]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+              <Ticket className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#1A1612]">Tặng Voucher cho Khách</h3>
+              <p className="text-[11px] text-[#7D715E]">Chọn mã giảm giá đang hoạt động của gian hàng</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-lg hover:bg-[#F3EFE6] cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 max-h-[380px] overflow-y-auto space-y-2.5">
+          {loading ? (
+            <div className="py-10 text-center text-xs text-[#7D715E]">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#C59B58] mb-2" />
+              Đang tải danh sách voucher...
+            </div>
+          ) : coupons.length === 0 ? (
+            <div className="py-10 text-center text-xs text-[#7D715E] space-y-2">
+              <Ticket className="w-8 h-8 mx-auto text-[#C59B58]/40" />
+              <p className="font-semibold text-[#1A1612]">Chưa có mã giảm giá khả dụng</p>
+              <p className="text-[11px]">Gian hàng hiện chưa có mã giảm giá nào ở trạng thái Đang hoạt động.</p>
+            </div>
+          ) : (
+            coupons.map((c) => {
+              const discountText = c.discountType === 'PERCENTAGE'
+                ? `Giảm ${c.discountValue}%`
+                : `Giảm ${Number(c.discountValue).toLocaleString('vi-VN')}₫`;
+              return (
+                <div key={c.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:border-[#C59B58] hover:bg-[#FBF5EB] transition">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-black tracking-wide text-[#8F682E] bg-white px-2 py-0.5 rounded border border-[#EEDFC6]">{c.displayCode || c.code}</span>
+                      <span className="text-xs font-bold text-[#1A1612]">{discountText}</span>
+                    </div>
+                    {c.minimumOrderAmount && (
+                      <p className="text-[11px] text-[#7D715E] mt-1">Đơn tối thiểu {Number(c.minimumOrderAmount).toLocaleString('vi-VN')}₫</p>
+                    )}
+                    {c.expiresAt && (
+                      <p className="text-[10px] text-[#7D715E]/80">HSD: {new Date(c.expiresAt).toLocaleDateString('vi-VN')}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectCoupon(c);
+                      onClose();
+                    }}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-2xs transition cursor-pointer"
+                  >
+                    Gửi mã
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomerProductModal({
+  storeId,
+  onClose,
+  onSelectProduct,
+}: {
+  storeId: string;
+  onClose: () => void;
+  onSelectProduct: (product: any) => void;
+}) {
+  const [products, setProducts] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    productService.getProducts({ storeId, search: search.trim() || undefined, limit: 20 })
+      .then((res: any) => {
+        if (!active) return;
+        setProducts(res?.items || []);
+      })
+      .catch(() => {
+        if (active) setProducts([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [storeId, search]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/40 backdrop-blur-xs" onClick={onClose}>
+      <div className="w-full max-w-lg overflow-hidden bg-white rounded-2xl border border-[#EAE4D7] shadow-2xl animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-[#EAE4D7] px-5 py-4 bg-[#FAF8F5]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+              <ShoppingBag className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#1A1612]">Gợi ý Sản phẩm cho Khách</h3>
+              <p className="text-[11px] text-[#7D715E]">Gửi thẻ thông tin sản phẩm vào luồng chat</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-lg hover:bg-[#F3EFE6] cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-3 border-b border-[#EAE4D7] bg-[#FAF8F5]">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#7D715E]" />
+            <input
+              type="text"
+              placeholder="Tìm theo tên sản phẩm..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-[#EAE4D7] bg-white py-2 pl-9 pr-3 text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="p-4 max-h-[380px] overflow-y-auto space-y-2.5">
+          {loading ? (
+            <div className="py-10 text-center text-xs text-[#7D715E]">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#C59B58] mb-2" />
+              Đang tải danh sách sản phẩm...
+            </div>
+          ) : products.length === 0 ? (
+            <div className="py-10 text-center text-xs text-[#7D715E] space-y-2">
+              <ShoppingBag className="w-8 h-8 mx-auto text-[#C59B58]/40" />
+              <p className="font-semibold text-[#1A1612]">Không tìm thấy sản phẩm phù hợp</p>
+            </div>
+          ) : (
+            products.map((p) => {
+              const price = p.salePrice || p.price;
+              const imgUrl = p.thumbnailUrl || p.images?.[0]?.url;
+              return (
+                <div key={p.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:border-[#C59B58] hover:bg-[#FBF5EB] transition">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-12 h-12 rounded-lg border border-[#EAE4D7] bg-white overflow-hidden shrink-0">
+                      {imgUrl ? (
+                        <img src={imgUrl} alt={p.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#7D715E]">
+                          <ShoppingBag className="w-5 h-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-[#1A1612] truncate" title={p.title}>{p.title}</h4>
+                      <p className="text-xs font-extrabold text-[#B88E4F] mt-0.5">
+                        {Number(price).toLocaleString('vi-VN')}₫
+                      </p>
+                      {p.sku && <span className="text-[10px] text-[#7D715E]">SKU: {p.sku}</span>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectProduct(p);
+                      onClose();
+                    }}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-2xs transition cursor-pointer"
+                  >
+                    Gửi thẻ
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomerOrdersDrawer({
+  storeId,
+  customer,
+  onClose,
+  onShareOrderUpdate,
+}: {
+  storeId: string;
+  customer?: any;
+  onClose: () => void;
+  onShareOrderUpdate: (order: any) => void;
+}) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    orderService.getMyStoreOrders({
+      storeId,
+      search: customer?.fullName || customer?.id || undefined,
+      limit: 10,
+    })
+      .then((res: any) => {
+        if (!active) return;
+        const list = res?.orders || res?.items || [];
+        setOrders(list);
+      })
+      .catch(() => {
+        if (active) setOrders([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [storeId, customer]);
+
+  const getStatusBadge = (status: string) => {
+    const map: Record<string, { label: string; bg: string; text: string }> = {
+      PENDING: { label: 'Chờ xác nhận', bg: 'bg-amber-50', text: 'text-amber-700' },
+      CONFIRMED: { label: 'Đã xác nhận', bg: 'bg-blue-50', text: 'text-blue-700' },
+      PROCESSING: { label: 'Đang đóng gói', bg: 'bg-indigo-50', text: 'text-indigo-700' },
+      SHIPPING: { label: 'Đang giao hàng', bg: 'bg-purple-50', text: 'text-purple-700' },
+      DELIVERED: { label: 'Giao thành công', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+      CANCELLED: { label: 'Đã hủy', bg: 'bg-rose-50', text: 'text-rose-700' },
+      RETURNED: { label: 'Trả hàng/Hoàn tiền', bg: 'bg-orange-50', text: 'text-orange-700' },
+    };
+    const s = map[status] || { label: status, bg: 'bg-stone-100', text: 'text-stone-700' };
+    return <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${s.bg} ${s.text}`}>{s.label}</span>;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-[#231D15]/30 backdrop-blur-xs" onClick={onClose}>
+      <div className="w-full max-w-md h-full bg-white border-l border-[#EAE4D7] shadow-2xl flex flex-col animate-in slide-in-from-right duration-200" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-[#EAE4D7] px-5 py-4 bg-[#FAF8F5]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+              <Package className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#1A1612]">Đơn hàng của {customer?.fullName || 'Khách'}</h3>
+              <p className="text-[11px] text-[#7D715E]">Lịch sử đặt hàng tại gian hàng này</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-lg hover:bg-[#F3EFE6] cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {loading ? (
+            <div className="py-12 text-center text-xs text-[#7D715E]">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#C59B58] mb-2" />
+              Đang tra cứu lịch sử đơn hàng...
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="py-12 text-center text-xs text-[#7D715E] space-y-2">
+              <Package className="w-8 h-8 mx-auto text-[#C59B58]/40" />
+              <p className="font-semibold text-[#1A1612]">Chưa tìm thấy đơn hàng gần đây</p>
+              <p className="text-[11px]">Khách hàng này chưa có đơn hàng nào tại gian hàng của bạn.</p>
+            </div>
+          ) : (
+            orders.map((ord) => (
+              <div key={ord.id} className="p-3.5 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-[#1A1612]">#{ord.orderCode || ord.id.slice(0, 8).toUpperCase()}</span>
+                  {getStatusBadge(ord.status)}
+                </div>
+                <div className="flex items-center justify-between text-xs text-[#7D715E]">
+                  <span>Ngày: {new Date(ord.createdAt).toLocaleDateString('vi-VN')}</span>
+                  <span className="font-bold text-[#1A1612]">{Number(ord.totalAmount || ord.total || 0).toLocaleString('vi-VN')}₫</span>
+                </div>
+                {ord.shippingCode && (
+                  <div className="text-[11px] text-[#7D715E] bg-white p-2 rounded-xl border border-[#EAE4D7]">
+                    Mã vận đơn: <span className="font-mono font-bold text-[#1A1612]">{ord.shippingCode}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onShareOrderUpdate(ord);
+                    onClose();
+                  }}
+                  className="w-full mt-1 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#B88E4F] hover:text-[#1A1612] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Gửi trạng thái đơn này vào chat
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomerQuickRepliesModal({
+  onClose,
+  onSelectReply,
+}: {
+  onClose: () => void;
+  onSelectReply: (text: string) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/40 backdrop-blur-xs" onClick={onClose}>
+      <div className="w-full max-w-md overflow-hidden bg-white rounded-2xl border border-[#EAE4D7] shadow-2xl animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-[#EAE4D7] px-5 py-4 bg-[#FAF8F5]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#1A1612]">Tin nhắn mẫu CSKH</h3>
+              <p className="text-[11px] text-[#7D715E]">Chọn câu trả lời nhanh để phản hồi khách ngay lập tức</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-lg hover:bg-[#F3EFE6] cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-2">
+          {CSKH_QUICK_REPLIES.map((text, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                onSelectReply(text);
+                onClose();
+              }}
+              className="w-full text-left p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:border-[#C59B58] hover:bg-[#FBF5EB] text-xs leading-relaxed text-[#1A1612] transition cursor-pointer"
+            >
+              {text}
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -566,6 +948,19 @@ const LEGACY_ID_MAP: Record<string, string> = {
   'kol-003': '237a7208-1c74-4322-96b2-51d810660723',
 };
 
+// Global in-memory chat session cache: Giữ lại hội thoại và tin nhắn khi chuyển trang
+interface GlobalChatSessionCache {
+  conversations: Conversation[];
+  messagesByConvId: Map<string, ChatMessage[]>;
+  activeConvId: string | null;
+}
+
+const chatSessionCache: GlobalChatSessionCache = {
+  conversations: [],
+  messagesByConvId: new Map(),
+  activeConvId: null,
+};
+
 export default function ChatBoxPage({
   embedded = false,
   targetStoreId,
@@ -580,6 +975,7 @@ export default function ChatBoxPage({
   initialProductContext,
 }: ChatBoxPageProps = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = (() => {
     try {
@@ -605,11 +1001,16 @@ export default function ChatBoxPage({
     : undefined;
   const effectiveProductContext = initialProductContext || queryProductContext;
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const conversationsRef = useRef<Conversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(() => chatSessionCache.conversations);
+  const conversationsRef = useRef<Conversation[]>(chatSessionCache.conversations);
   conversationsRef.current = conversations;
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(() => chatSessionCache.activeConvId);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (chatSessionCache.activeConvId && chatSessionCache.messagesByConvId.has(chatSessionCache.activeConvId)) {
+      return chatSessionCache.messagesByConvId.get(chatSessionCache.activeConvId) || [];
+    }
+    return [];
+  });
   const [inputText, setInputText] = useState('');
   const [pinnedProduct, setPinnedProduct] = useState<ProductContextData | null>(
     effectiveProductContext || null
@@ -630,9 +1031,15 @@ export default function ChatBoxPage({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showVipModal, setShowVipModal] = useState(false);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showCustomerOrdersDrawer, setShowCustomerOrdersDrawer] = useState(false);
+  const [showQuickRepliesModal, setShowQuickRepliesModal] = useState(false);
+  const [showCustomerToolsMenu, setShowCustomerToolsMenu] = useState(false);
+  const customerToolsDropdownRef = useRef<HTMLDivElement>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const isShop = currentUser?.role === 'SHOP_MANAGER';
-  const onlyCustomerChats = isShop && window.location.pathname === '/merchant/customer-messages';
+  const onlyCustomerChats = isShop && location.pathname.includes('/customer-messages');
   const canSeeAffiliateDeals = isShop || currentUser?.role === 'COLLABORATOR';
   const visibleMessages = canSeeAffiliateDeals
     ? messages
@@ -706,6 +1113,13 @@ export default function ChatBoxPage({
             console.warn('Không thể khởi tạo hội thoại thật với KOL:', err);
           }
         }
+      } else if (activeConvIdRef.current) {
+        const currentActive = list.find((c) => c.id === activeConvIdRef.current);
+        if (currentActive) {
+          openConversationRef.current(currentActive);
+        } else if (list.length > 0) {
+          openConversationRef.current(list[0]);
+        }
       } else if (list.length > 0) {
         openConversationRef.current(list[0]);
       }
@@ -718,6 +1132,7 @@ export default function ChatBoxPage({
         const all: Conversation[] = Array.isArray(res) ? res : res?.data || [];
         const list = onlyCustomerChats ? all.filter((conversation) => Boolean(conversation.customerId)) : all;
         setConversations(list);
+        chatSessionCache.conversations = list;
         setupContext(list);
       })
       .catch((err) => {
@@ -758,14 +1173,23 @@ export default function ChatBoxPage({
         }).catch(() => undefined);
       }
       if (msg.conversationId === activeConvIdRef.current) {
-        setMessages(prev => prev.some((item) => item.id === msg.id) ? prev : [...prev, msg]);
+        setMessages(prev => {
+          const updated = prev.some((item) => item.id === msg.id) ? prev : [...prev, msg];
+          chatSessionCache.messagesByConvId.set(msg.conversationId, updated);
+          return updated;
+        });
         if (msg.senderId !== currentUser?.id) {
           api.patch(`/chat/conversations/${msg.conversationId}/read`).catch(() => undefined);
         }
         setTimeout(() => scrollToBottom(true), 50);
+      } else {
+        const existing = chatSessionCache.messagesByConvId.get(msg.conversationId);
+        if (existing && !existing.some((item) => item.id === msg.id)) {
+          chatSessionCache.messagesByConvId.set(msg.conversationId, [...existing, msg]);
+        }
       }
-      setConversations(prev =>
-        prev
+      setConversations(prev => {
+        const updated = prev
           .map(c =>
             c.id === msg.conversationId
               ? {
@@ -789,8 +1213,10 @@ export default function ChatBoxPage({
           .sort(
             (a, b) =>
               new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-          )
-      );
+          );
+        chatSessionCache.conversations = updated;
+        return updated;
+      });
     };
     const onRead = ({ conversationId, readerId }: { conversationId: string; readerId: string }) => {
       if (conversationId === activeConvIdRef.current && readerId !== currentUser?.id) {
@@ -838,21 +1264,36 @@ export default function ChatBoxPage({
 
     setActiveConvId(conv.id);
     activeConvIdRef.current = conv.id;
-    setMessages([]);
+    chatSessionCache.activeConvId = conv.id;
+
+    // Hiển thị ngay lập tức nếu đã có tin nhắn trong bộ nhớ cache (0ms delay)
+    const cached = chatSessionCache.messagesByConvId.get(conv.id);
+    if (cached && cached.length > 0) {
+      setMessages(cached);
+      setIsLoadingMsgs(false);
+      setTimeout(() => scrollToBottom(), 10);
+    } else {
+      setMessages([]);
+      setIsLoadingMsgs(true);
+    }
     setHasMore(false);
     setOldestMsgId(undefined);
-    setIsLoadingMsgs(true);
 
     if (UUID_REGEX.test(conv.id)) {
       try {
         const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`);
         const msgs: ChatMessage[] = Array.isArray(res) ? res : res?.data || [];
         setMessages(msgs);
+        chatSessionCache.messagesByConvId.set(conv.id, msgs);
         setHasMore(msgs.length === 50);
         setOldestMsgId(msgs[0]?.id);
         await api.patch(`/chat/conversations/${conv.id}/read`);
-        setConversations(prev => prev.map(item => item.id === conv.id
-          ? { ...item, _count: { chatMessages: 0 }, chatMessages: item.chatMessages?.[0] ? [{ ...item.chatMessages[0], isRead: true }] : [] } : item));
+        setConversations(prev => {
+          const updated = prev.map(item => item.id === conv.id
+            ? { ...item, _count: { chatMessages: 0 }, chatMessages: item.chatMessages?.[0] ? [{ ...item.chatMessages[0], isRead: true }] : [] } : item);
+          chatSessionCache.conversations = updated;
+          return updated;
+        });
       } catch (err) {
         console.error(err);
       } finally {
@@ -973,16 +1414,105 @@ export default function ChatBoxPage({
   };
 
   const activeConv = conversations.find(c => c.id === activeConvId);
+  const isCustomerChat = Boolean(activeConv?.customerId) || onlyCustomerChats;
+  const isCollaboratorChat = Boolean(activeConv?.collaboratorId) && !isCustomerChat;
 
   useEffect(() => {
-    if (!isShop || !activeConv?.collaboratorId || searchParams.get('inviteVip') !== '1') return;
+    if (!isShop || !isCollaboratorChat || searchParams.get('inviteVip') !== '1') return;
     setShowVipModal(true);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('inviteVip');
     setSearchParams(nextParams, { replace: true });
-  }, [isShop, activeConv?.id, activeConv?.collaboratorId, searchParams, setSearchParams]);
+  }, [isShop, isCollaboratorChat, activeConv?.id, searchParams, setSearchParams]);
 
-  const openVipInvite = () => setShowVipModal(true);
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (customerToolsDropdownRef.current && !customerToolsDropdownRef.current.contains(e.target as Node)) {
+        setShowCustomerToolsMenu(false);
+      }
+    };
+    if (showCustomerToolsMenu) {
+      document.addEventListener('mousedown', handleOutsideClick);
+      return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }
+  }, [showCustomerToolsMenu]);
+
+  const openVipInvite = () => {
+    if (isCollaboratorChat) {
+      setShowVipModal(true);
+    }
+  };
+
+  const sendCouponVoucher = (coupon: any) => {
+    if (!activeConvId) return;
+    const socket = getChatSocket();
+    if (!socket.connected) {
+      showErrorToast('Mất kết nối chat, vui lòng thử lại.');
+      return;
+    }
+    socket.timeout(8000).emit('send_message', {
+      conversationId: activeConvId,
+      messageText: JSON.stringify({ type: 'COUPON_VOUCHER', couponId: coupon.id }),
+      messageId: crypto.randomUUID(),
+    }, (err: Error | null, res?: { ok: boolean; error?: string }) => {
+      if (err || !res?.ok) {
+        showErrorToast(res?.error || 'Không gửi được mã giảm giá.');
+      } else {
+        showSuccessToast(`Đã gửi mã giảm giá ${coupon.displayCode || coupon.code} thành công!`);
+      }
+    });
+  };
+
+  const sendProductCard = (product: any) => {
+    if (!activeConvId) return;
+    const socket = getChatSocket();
+    if (!socket.connected) {
+      showErrorToast('Mất kết nối chat, vui lòng thử lại.');
+      return;
+    }
+    socket.timeout(8000).emit('send_message', {
+      conversationId: activeConvId,
+      messageText: JSON.stringify({
+        type: 'PRODUCT_INQUIRY',
+        productId: product.id,
+        productTitle: product.title,
+        productImage: product.thumbnailUrl || product.images?.[0]?.url,
+        productPrice: product.salePrice || product.price,
+        productSku: product.sku,
+        message: 'Shop gợi ý bạn tham khảo sản phẩm này nhé!',
+      }),
+      messageId: crypto.randomUUID(),
+    }, (err: Error | null, res?: { ok: boolean; error?: string }) => {
+      if (err || !res?.ok) {
+        showErrorToast(res?.error || 'Không gửi được thẻ sản phẩm.');
+      } else {
+        showSuccessToast(`Đã gửi gợi ý sản phẩm ${product.title} thành công!`);
+      }
+    });
+  };
+
+  const shareOrderUpdate = (order: any) => {
+    const code = order.orderCode || order.id.slice(0, 8).toUpperCase();
+    const statusMap: Record<string, string> = {
+      PENDING: 'Chờ xác nhận',
+      CONFIRMED: 'Đã xác nhận',
+      PROCESSING: 'Đang đóng gói',
+      SHIPPING: 'Đang giao hàng',
+      DELIVERED: 'Giao thành công',
+      CANCELLED: 'Đã hủy',
+      RETURNED: 'Trả hàng / Hoàn tiền',
+    };
+    const statusName = statusMap[order.status] || order.status;
+    const text = `📦 Thông tin đơn hàng #${code}: Trạng thái hiện tại là [${statusName}]${order.shippingCode ? ` (Mã vận đơn: ${order.shippingCode})` : ''}. Shop đang theo dõi sát sao tiến độ đơn cho bạn ạ!`;
+    setInputText(text);
+    showSuccessToast('Đã điền thông tin đơn hàng vào ô tin nhắn. Bạn có thể gửi ngay hoặc chỉnh sửa.');
+  };
+
+  const selectQuickReply = (text: string) => {
+    setInputText(text);
+    showSuccessToast('Đã điền tin nhắn mẫu vào ô soạn thảo.');
+  };
+
   const filteredConversations = conversations.filter(
     c =>
       (c.store?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1048,7 +1578,7 @@ export default function ChatBoxPage({
   );
 
   return (
-    <div className={`${onlyCustomerChats && !embedded ? 'merchant-customer-chat ' : ''}${embedded ? 'h-full w-full' : 'mx-auto flex w-full max-w-[1520px] flex-col pt-3 pb-4 sm:pt-4'}`}>
+    <div className={`${onlyCustomerChats && !embedded ? 'merchant-customer-chat ' : ''}${embedded ? 'h-full w-full' : 'flex w-full min-w-0 flex-col pb-4'}`}>
       <div
         className={`flex min-h-0 min-w-0 ${embedded ? 'h-full w-full' : 'h-[calc(100dvh-130px)] min-h-[460px] sm:min-h-[560px]'} overflow-hidden rounded-3xl border border-[#EAE4D7] bg-white shadow-[0_12px_36px_rgba(35,29,21,0.08)] ${className}`}
         id="chat-page"
@@ -1154,24 +1684,17 @@ export default function ChatBoxPage({
                 </div>
               </div>
 
-              <details className="chat-list-tools" onKeyDown={event => {
-                if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
-              }}>
-                <summary aria-label="Thao tác danh sách hội thoại"><span aria-hidden="true">···</span></summary>
-                <div className="chat-list-tools-menu" onClick={event => {
-                  if ((event.target as HTMLElement).closest('button')) {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                  }
-                }}>
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   id="btn-new-conversation"
                   className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
                   title="Tạo cuộc trò chuyện mới"
+                  aria-label="Tạo cuộc trò chuyện mới"
                   onClick={() => setShowNewChat(true)}
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Cuộc trò chuyện mới</span>
+                  <span className="sr-only">Cuộc trò chuyện mới</span>
                 </button>
 
                 {/* Button to collapse sidebar */}
@@ -1183,10 +1706,9 @@ export default function ChatBoxPage({
                   aria-label="Thu gọn danh sách"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>Thu gọn danh sách</span>
+                  <span className="sr-only">Thu gọn danh sách</span>
                 </button>
-                </div>
-              </details>
+              </div>
             </div>
 
             {/* Search Bar */}
@@ -1384,16 +1906,76 @@ export default function ChatBoxPage({
 
 
               {isShop && (
-                onlyCustomerChats ? (
-                  <details className="customer-chat-tools" onKeyDown={event => {
-                    if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
-                  }}>
-                    <summary aria-label="Thao tác hội thoại"><span>Thêm</span><span aria-hidden="true">···</span></summary>
-                    <div className="customer-chat-tools-menu" onClick={event => event.currentTarget.closest('details')?.removeAttribute('open')}>
-                      {vipInviteAction}
+                isCollaboratorChat ? (
+                  vipInviteAction
+                ) : isCustomerChat ? (
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    {/* Tặng Voucher */}
+                    <button
+                      type="button"
+                      id="btn-customer-send-voucher"
+                      onClick={() => setShowCouponModal(true)}
+                      className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1.5 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-2xs"
+                      title="Tặng mã giảm giá của Shop cho khách hàng"
+                    >
+                      <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span className="hidden sm:inline">Tặng Voucher</span>
+                    </button>
+
+                    {/* Gợi ý SP */}
+                    <button
+                      type="button"
+                      id="btn-customer-send-product"
+                      onClick={() => setShowProductModal(true)}
+                      className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1.5 text-xs font-bold text-[#7D715E] transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-2xs"
+                      title="Gợi ý sản phẩm phù hợp cho khách hàng"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span className="hidden sm:inline">Gợi ý sản phẩm</span>
+                    </button>
+
+                    {/* Menu CSKH khác */}
+                    <div className="relative" ref={customerToolsDropdownRef}>
+                      <button
+                        type="button"
+                        id="btn-cskh-tools-menu"
+                        onClick={() => setShowCustomerToolsMenu((prev) => !prev)}
+                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#7D715E] shadow-2xs transition hover:border-[#B88E4F] hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                        title="Công cụ CSKH khác"
+                        aria-label="Công cụ CSKH khác"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {showCustomerToolsMenu && (
+                        <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-[#EAE4D7] bg-white p-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95">
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F] transition cursor-pointer"
+                            onClick={() => {
+                              setShowCustomerToolsMenu(false);
+                              setShowCustomerOrdersDrawer(true);
+                            }}
+                          >
+                            <FileText className="w-4 h-4 text-[#B88E4F]" />
+                            <span>Tra cứu đơn của khách</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F] transition cursor-pointer"
+                            onClick={() => {
+                              setShowCustomerToolsMenu(false);
+                              setShowQuickRepliesModal(true);
+                            }}
+                          >
+                            <MessageSquare className="w-4 h-4 text-[#B88E4F]" />
+                            <span>Tin nhắn mẫu CSKH</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </details>
-                ) : vipInviteAction
+                  </div>
+                ) : null
               )}
             </header>
             )}
@@ -1682,15 +2264,38 @@ export default function ChatBoxPage({
                   <Paperclip className="w-5 h-5" />
                 </button>
                 {isShop && (
-                  <button
-                    type="button"
-                    id="btn-composer-vip-invite"
-                    className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                    title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
-                    onClick={openVipInvite}
-                  >
-                    <Crown className="w-5 h-5" />
-                  </button>
+                  isCollaboratorChat ? (
+                    <button
+                      type="button"
+                      id="btn-composer-vip-invite"
+                      className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                      title="Gửi Thẻ Mời VIP Chiến Dịch Tiếp Thị Độc Quyền"
+                      onClick={openVipInvite}
+                    >
+                      <Crown className="w-5 h-5" />
+                    </button>
+                  ) : isCustomerChat ? (
+                    <>
+                      <button
+                        type="button"
+                        id="btn-composer-voucher"
+                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                        title="Tặng Voucher ưu đãi cho khách"
+                        onClick={() => setShowCouponModal(true)}
+                      >
+                        <Ticket className="w-5 h-5" />
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-composer-product"
+                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#7D715E] transition hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                        title="Gợi ý sản phẩm cho khách"
+                        onClick={() => setShowProductModal(true)}
+                      >
+                        <ShoppingBag className="w-5 h-5" />
+                      </button>
+                    </>
+                  ) : null
                 )}
                 <input
                   ref={fileInputRef}
@@ -1767,7 +2372,7 @@ export default function ChatBoxPage({
       )}
 
 
-      {showVipModal && isShop && (
+      {showVipModal && isShop && isCollaboratorChat && (
         <SendVipCampaignModal
           conversationId={activeConv?.collaboratorId && !activeConv.customerId ? activeConv.id : undefined}
           collaboratorName={activeConv?.collaboratorId && !activeConv.customerId ? getOtherParty(activeConv) : undefined}
@@ -1782,6 +2387,38 @@ export default function ChatBoxPage({
             }
             showSuccessToast('Đã gửi Thẻ Mời VIP chiến dịch tới đối tác thành công!');
           }}
+        />
+      )}
+
+      {showCouponModal && activeConv && (
+        <CustomerCouponModal
+          storeId={activeConv.storeId || activeConv.store?.id || ''}
+          onClose={() => setShowCouponModal(false)}
+          onSelectCoupon={sendCouponVoucher}
+        />
+      )}
+
+      {showProductModal && activeConv && (
+        <CustomerProductModal
+          storeId={activeConv.storeId || activeConv.store?.id || ''}
+          onClose={() => setShowProductModal(false)}
+          onSelectProduct={sendProductCard}
+        />
+      )}
+
+      {showCustomerOrdersDrawer && activeConv && (
+        <CustomerOrdersDrawer
+          storeId={activeConv.storeId || activeConv.store?.id || ''}
+          customer={activeConv.customer}
+          onClose={() => setShowCustomerOrdersDrawer(false)}
+          onShareOrderUpdate={shareOrderUpdate}
+        />
+      )}
+
+      {showQuickRepliesModal && (
+        <CustomerQuickRepliesModal
+          onClose={() => setShowQuickRepliesModal(false)}
+          onSelectReply={selectQuickReply}
         />
       )}
 

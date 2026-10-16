@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PayosOrderPayment } from './PayosOrderPayment';
-import './PaymentConfirmation.css';
 import {
   X,
   ShoppingBag,
@@ -1121,7 +1120,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
     if (!currentUser && (!localStorage.getItem('token') || !authService.getCurrentUser())) {
       setErrorMessage(
-        'Vui lòng đăng nhập hoặc xác thực với Google trước khi hoàn tất đặt hàng để kích hoạt quyền lợi bảo hộ đơn hàng và chính sách Escrow 14 ngày.',
+        'Vui lòng đăng nhập hoặc xác thực Google ở phía trên để hoàn tất đặt hàng.',
       );
       const gateEl = document.getElementById('mandatory-auth-gate');
       if (gateEl) {
@@ -1398,18 +1397,18 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
       {/* 3. Main Checkout Container */}
       <main className="max-w-6xl mx-auto px-4 py-5 sm:py-6 space-y-4 sm:space-y-5">
+        {/* Order Confirmation Screen (Requirement 10) */}
         {orderSuccess ? (
-          /* Order Confirmation Screen (Requirement 10) */
-          <div className="scanms-payment-confirmation">
-            <div className="scanms-payment-heading">
-              <div className="scanms-payment-heading-icon">
+          <div className="max-w-[744px] mx-auto p-4 sm:p-6 border border-[#EAE4D7] rounded-[14px] sm:rounded-[20px] bg-white text-[#1A1612] shadow-[0_10px_40px_rgba(35,29,21,0.02)]">
+            <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 pb-3.5 sm:pb-4 border-b border-[#F3EFE6]">
+              <div className="w-9 sm:w-11 h-9 sm:h-11 grid place-items-center shrink-0 border border-[#EEDFC6] rounded-[10px] sm:rounded-[14px] bg-white text-[#B88E4F]">
                 {awaitingPayosPayment ? <Clock3 size={23} strokeWidth={1.7} /> : <CheckCircle2 size={23} strokeWidth={1.7} />}
               </div>
               <div>
-                <h2 id="guest-checkout-title" aria-live="polite">
+                <h2 id="guest-checkout-title" aria-live="polite" className="m-0 text-[19px] sm:text-[22px] font-semibold tracking-tight text-[#1A1612] leading-snug">
                   {awaitingPayosPayment ? 'Chờ thanh toán PayOS' : isPayosOrder ? 'Thanh toán thành công' : 'Đặt hàng thành công'}
                 </h2>
-                <p>
+                <p className="m-0 mt-1 text-xs leading-relaxed text-[#7D715E]">
                   {awaitingPayosPayment
                     ? orderSuccess.isMultiStore
                       ? 'Đã thanh toán ' + paidOrderCount + '/' + orderSuccess.orders.length + ' đơn. Quét mã QR của từng gian hàng để hoàn tất.'
@@ -1419,52 +1418,84 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </p>
               </div>
             </div>
-            <div className="scanms-payment-layout">
-              <aside className="scanms-payment-summary scanms-payment-receipt" aria-label="Thông tin đơn hàng">
+            <div className="grid gap-4 mt-4">
+              <aside className="min-w-0 p-3 sm:p-3.5 bg-white border border-[#EAE4D7] rounded-xl" aria-label="Thông tin đơn hàng">
                 <h3 className="sr-only">Thông tin đơn hàng</h3>
-                {(orderSuccess.isMultiStore || !isPayosOrder) && <div className="scanms-payment-summary-total">
-                  <span className="scanms-payment-summary-label">Tổng giá trị đơn hàng</span>
-                  <strong>{formatMoney(orderSuccess.totalAmount)}</strong>
-                </div>}
+                {(orderSuccess.isMultiStore || !isPayosOrder) && (
+                  <div className="flex justify-between items-center gap-3 pb-2.5 mb-2.5 border-b border-[#EAE4D7]">
+                    <span className="text-xs text-[#7D715E]">Tổng giá trị đơn hàng</span>
+                    <strong className="text-[21px] font-bold text-[#1A1612] tabular-nums">{formatMoney(orderSuccess.totalAmount)}</strong>
+                  </div>
+                )}
                 {orderSuccess.orders.map((subOrder, index) => (
-                  <div key={subOrder.publicOrderCode || index} className="scanms-payment-order">
-                    <div className="scanms-payment-store"><span className="scanms-payment-store-icon"><StoreIcon size={17} /></span><span>{subOrder.storeName || 'Gian hàng đối tác'}</span></div>
-                    <div className="scanms-payment-order-code">
-                      <strong>{subOrder.publicOrderCode}</strong>
-                      <button type="button" className="scanms-payment-icon-button" onClick={() => copyToClipboard(subOrder.publicOrderCode)} title={copiedCode === subOrder.publicOrderCode ? 'Đã sao chép mã đơn' : 'Sao chép mã đơn'} aria-label={'Sao chép mã đơn ' + subOrder.publicOrderCode}>
+                  <div key={subOrder.publicOrderCode || index} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2.5 sm:gap-x-4 items-center py-2.5 border-b border-[#EAE4D7] first:pt-0 last:pb-0 last:border-b-0">
+                    <div className="col-start-1 flex items-center gap-1.5 text-[13px] leading-snug font-semibold text-[#1A1612]">
+                      <span className="w-7 h-7 grid place-items-center shrink-0 rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><StoreIcon size={17} /></span>
+                      <span>{subOrder.storeName || 'Gian hàng đối tác'}</span>
+                    </div>
+                    <div className="col-start-1 flex items-center gap-1.5 mt-1">
+                      <strong className="text-xs font-medium text-[#7D715E] break-all">{subOrder.publicOrderCode}</strong>
+                      <button
+                        type="button"
+                        className="grid place-items-center min-w-7 h-7 shrink-0 border border-[#EAE4D7] rounded-lg bg-white text-[#B88E4F] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] transition-colors cursor-pointer"
+                        onClick={() => copyToClipboard(subOrder.publicOrderCode)}
+                        title={copiedCode === subOrder.publicOrderCode ? 'Đã sao chép mã đơn' : 'Sao chép mã đơn'}
+                        aria-label={'Sao chép mã đơn ' + subOrder.publicOrderCode}
+                      >
                         {copiedCode === subOrder.publicOrderCode ? <Check size={14} className="text-[#059669]" /> : <Copy size={14} />}
                       </button>
                     </div>
-                    <div className="scanms-payment-order-meta">
-                      {isPayosOrder && <span data-payment-status={subOrder.paymentStatus}>
-                        {subOrder.paymentStatus === 'PAID' ? <CheckCircle2 size={13} className="text-[#059669]" /> : <Clock3 size={13} className="text-[#B88E4F]" />}
-                        {subOrder.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}
-                      </span>}
-                      <Link to={'/tracking?sn=' + encodeURIComponent(subOrder.publicOrderCode)} target="_blank" rel="noopener noreferrer">Tra cứu <ExternalLink size={12} /></Link>
+                    <div className="col-start-2 row-span-2 grid justify-items-end gap-1.5 text-[11px] text-[#7D715E]">
+                      {isPayosOrder && (
+                        <span data-payment-status={subOrder.paymentStatus} className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#FBF5EB] rounded-md text-[11px]">
+                          {subOrder.paymentStatus === 'PAID' ? <CheckCircle2 size={13} className="text-[#059669]" /> : <Clock3 size={13} className="text-[#B88E4F]" />}
+                          {subOrder.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}
+                        </span>
+                      )}
+                      <Link
+                        to={'/tracking?sn=' + encodeURIComponent(subOrder.publicOrderCode)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 px-2 py-1 text-[#7D715E] font-medium border border-[#EAE4D7] rounded-[7px] bg-white hover:text-[#B88E4F] hover:border-[#EEDFC6] hover:bg-[#FBF5EB] transition-colors"
+                      >
+                        Tra cứu <ExternalLink size={12} />
+                      </Link>
                     </div>
-                    {orderSuccess.isMultiStore && <div className="scanms-payment-order-amount">{formatMoney(subOrder.finalAmount)}</div>}
+                    {orderSuccess.isMultiStore && <div className="col-start-1 mt-1 text-xs font-semibold text-[#1A1612]">{formatMoney(subOrder.finalAmount)}</div>}
                   </div>
                 ))}
               </aside>
-              <div className="scanms-payment-content">
+              <div className="min-w-0">
                 {isPayosOrder && <>
-                  {orderSuccess.isMultiStore && awaitingPayosPayment && <p className="scanms-payment-multi-note">Mỗi gian hàng có một mã thanh toán riêng. Vui lòng thanh toán các đơn còn chờ bên dưới.</p>}
+                  {orderSuccess.isMultiStore && awaitingPayosPayment && <p className="m-0 mb-3 text-xs leading-relaxed text-[#7D715E]">Mỗi gian hàng có một mã thanh toán riêng. Vui lòng thanh toán các đơn còn chờ bên dưới.</p>}
                   {orderSuccess.orders.map(subOrder => <PayosOrderPayment key={subOrder.publicOrderCode} orderCode={subOrder.publicOrderCode} storeName={subOrder.storeName} showOrderHeading={Boolean(orderSuccess.isMultiStore)} onPaid={() => handlePayosOrderPaid(subOrder.publicOrderCode)} />)}
                 </>}
                 {orderSuccess.paymentMethod === 'WALLET' && (
-                  <section className="scanms-payment-summary">
-                    <h3 className="flex items-center gap-2"><Wallet size={20} className="text-[#B88E4F]" />Đã thanh toán bằng Ví SCANMS</h3>
-                    <p className="text-sm leading-7 text-[#7D715E]">Số tiền đã được trừ từ số dư ví khả dụng. Bạn có thể theo dõi tiến độ xử lý trong danh sách đơn mua.</p>
+                  <section className="p-4 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl">
+                    <h3 className="flex items-center gap-2 m-0 mb-2 text-sm font-semibold text-[#1A1612]"><Wallet size={20} className="text-[#B88E4F]" />Đã thanh toán bằng Ví SCANMS</h3>
+                    <p className="text-sm leading-7 text-[#7D715E] m-0">Số tiền đã được trừ từ số dư ví khả dụng. Bạn có thể theo dõi tiến độ xử lý trong danh sách đơn mua.</p>
                   </section>
                 )}
               </div>
             </div>
             {orderSuccess.confirmationEmailQueued && customerEmail.trim() && (
-              <div className="scanms-payment-email"><Mail size={14} /><p>Mã đơn và liên kết tra cứu được gửi tới <strong>{customerEmail.trim().toLowerCase()}</strong></p></div>
+              <div className="mt-2.5 flex items-start gap-1.5 text-xs leading-relaxed text-[#7D715E]"><Mail size={14} className="shrink-0 mt-0.5 text-[#B88E4F]" /><p className="m-0">Mã đơn và liên kết tra cứu được gửi tới <strong className="text-[#1A1612] font-medium break-all">{customerEmail.trim().toLowerCase()}</strong></p></div>
             )}
-            <div className="scanms-payment-actions">
-              <button type="button" onClick={onClose} className="scanms-payment-button">Tiếp tục mua sắm</button>
-              <Link to="/customer/orders" onClick={onClose} className="scanms-payment-button scanms-payment-button-primary"><ShoppingBag size={16} />Xem đơn mua của tôi</Link>
+            <div className="grid grid-cols-2 sm:flex sm:justify-end gap-2.5 pt-3.5 mt-3.5 border-t border-[#EAE4D7]">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-[38px] inline-flex justify-center items-center gap-2 px-3 sm:px-3.5 py-2 border border-[#EAE4D7] rounded-[10px] text-[11px] sm:text-xs font-medium bg-white text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] transition-colors cursor-pointer text-center"
+              >
+                Tiếp tục mua sắm
+              </button>
+              <Link
+                to="/customer/orders"
+                onClick={onClose}
+                className="min-h-[38px] inline-flex justify-center items-center gap-2 px-3 sm:px-3.5 py-2 border border-[#EEDFC6] rounded-[10px] text-[11px] sm:text-xs font-semibold bg-[#FBF5EB] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-all cursor-pointer text-center"
+              >
+                <ShoppingBag size={16} className="text-[#B88E4F]" />Xem đơn mua của tôi
+              </Link>
             </div>
           </div>
         ) : (
@@ -1499,17 +1530,14 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     <Lock className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-[#EEDFC6] text-[10px] font-black text-[#B88E4F] uppercase tracking-wider mb-1">
-                      BẮT BUỘC XÁC THỰC KHÁCH HÀNG (MANDATORY AUTH GATE)
+                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] uppercase tracking-wider mb-1">
+                      XÁC THỰC TÀI KHOẢN KHÁCH HÀNG
                     </div>
-                    <h3 className="text-sm sm:text-base font-black text-[#1A1612]">
-                      Đăng Nhập Hoặc Xác Thực Google Trước Khi Đặt Hàng
+                    <h3 className="text-sm sm:text-base font-bold text-[#1A1612]">
+                      Đăng nhập để tiếp tục thanh toán
                     </h3>
                     <p className="text-xs text-[#7D715E] mt-1 leading-relaxed">
-                      Hệ thống SCANMS yêu cầu liên kết tài khoản để đảm bảo:
-                      <span className="font-semibold text-[#1A1612]"> (1) Kích hoạt Quỹ Bảo Chứng Escrow 14 ngày</span>,
-                      <span className="font-semibold text-[#1A1612]"> (2) Quyền gửi khiếu nại Trọng tài độc lập</span>, và
-                      <span className="font-semibold text-[#1A1612]"> (3) Quản lý đơn hàng trong tài khoản</span>.
+                      Vui lòng xác thực tài khoản Google hoặc Email để quản lý đơn mua và kích hoạt bảo hộ Escrow 14 ngày.
                     </p>
 
                     {loginError && (
@@ -2389,7 +2417,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       e.preventDefault();
                       toast.info('Chính sách giao dịch an toàn SCANMS: Escrow 14 ngày & Bảo hộ 100%.');
                     }}
-                    className="text-[#0055AA] hover:underline"
+                    className="text-[#B88E4F] hover:underline font-medium"
                   >
                     Điều khoản SCANMS
                   </a>{' '}
@@ -2406,6 +2434,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <Loader2 className="w-4 h-4 animate-spin text-[#1A1612]" />
                       <span>ĐANG XỬ LÝ...</span>
                     </>
+                  ) : !currentUser ? (
+                    <span>ĐĂNG NHẬP ĐỂ ĐẶT HÀNG</span>
                   ) : (
                     <span>ĐẶT HÀNG</span>
                   )}

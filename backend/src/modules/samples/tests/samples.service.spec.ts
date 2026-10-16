@@ -28,6 +28,9 @@ describe('SamplesService', () => {
     sampleQuota: 10,
     sampleGrantedCount: 0,
     storeId: 'store-1',
+    sampleEnabled: true,
+    sampleQuota: 10,
+    sampleGrantedCount: 0,
     store: { id: 'store-1', name: 'Shop đối tác', ownerId: 'shop-1' },
   };
   const request = {

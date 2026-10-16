@@ -187,6 +187,12 @@ export class StoresService {
       ...(dto.warehouseAddress !== undefined && {
         warehouseAddress: dto.warehouseAddress.trim(),
       }),
+      ...(dto.businessAddress !== undefined && {
+        businessAddress: dto.businessAddress.trim(),
+      }),
+      ...(dto.returnWarehouseAddress !== undefined && {
+        returnWarehouseAddress: dto.returnWarehouseAddress.trim(),
+      }),
     };
     const payoutBankUpdates = {
       ...(dto.payoutBankName !== undefined && {
@@ -233,6 +239,13 @@ export class StoresService {
         defaultCommissionRate: 10,
         ...(dto.attributionWindowDays !== undefined && {
           attributionWindowDays: dto.attributionWindowDays,
+        }),
+        ...((dto.returnWarehouseAddress !== undefined || dto.warehouseAddress !== undefined) && {
+          returnWarehouse: {
+            address: (dto.returnWarehouseAddress || dto.warehouseAddress || '').trim(),
+            name: dto.representativeName || store.name,
+            phone: dto.contactPhone || '0902345678',
+          },
         }),
         ...(Object.keys(onboardingUpdates).length > 0 && {
           onboardingData: {

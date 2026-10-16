@@ -4,7 +4,6 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { productService, type Product } from '../../services/product.service';
 import { toast } from '../../utils/toast';
-import './ProductModerationPage.css';
 
 type ModerationProduct = Product & {
   createdAt?: string;
@@ -111,7 +110,7 @@ export default function ProductModerationPage() {
     : [];
 
   return (
-    <main className="product-moderation min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-0 py-5 text-[#1A1612]">
+    <main className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-0 py-5 text-[#1A1612]">
       <div className="mx-0 w-full min-w-0 max-w-none space-y-4">
         <section className="moderation-toolbar rounded-xl border border-[#EAE4D7] bg-white p-3">
           <div className="moderation-toolbar-row">
@@ -150,14 +149,14 @@ export default function ProductModerationPage() {
             <p className="mt-1 text-sm text-[#7D715E]">Sản phẩm Shop vừa tạo sẽ xuất hiện ở mục “Chờ duyệt”.</p>
           </div>
         ) : (
-          <div className="moderation-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {filteredProducts.map((product) => {
               const pending = product.moderationStatus === 'DRAFT';
               const rejected = product.moderationStatus === 'REJECTED';
               return (
-                <article key={product.id} data-status={product.moderationStatus} className="moderation-card">
-                  <div className="moderation-card-main">
-                    <div className="moderation-thumbnail">
+                <article key={product.id} className="flex flex-col min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
+                  <div className="flex gap-3 p-4">
+                    <div className="grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-lg border border-[#EAE4D7] bg-white">
                       {imageUrl(product) ? <img src={imageUrl(product)} alt={product.title} className="h-full w-full object-contain" /> : <ImageIcon className="h-6 w-6 text-[#B88E4F]" />}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -170,16 +169,16 @@ export default function ProductModerationPage() {
                       <p className="moderation-store" title={product.store?.name}><Store size={13} /><span>{product.store?.name || 'Chưa có thông tin Shop'}</span></p>
                     </div>
                   </div>
-                  <dl className="moderation-product-facts">
-                    <div><dt>Giá bán</dt><dd className="moderation-price">{money(product.price)}</dd></div>
-                    <div><dt>Tồn kho</dt><dd>{Number(product.stockQuantity || 0).toLocaleString('vi-VN')}</dd></div>
-                    <div><dt>Ngày gửi</dt><dd>{product.createdAt ? new Date(product.createdAt).toLocaleDateString('vi-VN') : 'Chưa có thông tin'}</dd></div>
+                  <dl className="grid grid-cols-3 gap-2 px-4 py-2 border-t border-[#EAE4D7] text-xs">
+                    <div><dt className="text-[#7D715E]">Giá bán</dt><dd className="font-semibold text-[#1A1612]">{money(product.price)}</dd></div>
+                    <div><dt className="text-[#7D715E]">Tồn kho</dt><dd className="font-semibold text-[#1A1612]">{Number(product.stockQuantity || 0).toLocaleString('vi-VN')}</dd></div>
+                    <div><dt className="text-[#7D715E]">Ngày gửi</dt><dd className="text-[#7D715E]">{product.createdAt ? new Date(product.createdAt).toLocaleDateString('vi-VN') : 'Chưa có thông tin'}</dd></div>
                   </dl>
-                  {rejected && product.moderationReason && <p className="moderation-rejection-note">Lý do từ chối: {product.moderationReason}</p>}
-                  <div className="moderation-actions">
+                  {rejected && product.moderationReason && <p className="mx-4 mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Lý do từ chối: {product.moderationReason}</p>}
+                  <div className="mt-auto mx-4 flex flex-wrap items-center gap-2 border-t border-[#EAE4D7] py-3">
                     <Button size="sm" variant="outline" icon={<Eye className="h-4 w-4" />} onClick={() => setSelected(product)}>Xem hồ sơ</Button>
                     {pending && <>
-                      <Button className="moderation-reject" size="sm" variant="outline" disabled={savingId === product.id} icon={<XCircle className="h-4 w-4" />} onClick={() => { setRejectionTarget(product); setRejectionReason(''); }}>Từ chối</Button>
+                      <Button className="text-[#DC2626] border-[#EAE4D7] hover:bg-rose-50 hover:border-rose-200" size="sm" variant="outline" disabled={savingId === product.id} icon={<XCircle className="h-4 w-4" />} onClick={() => { setRejectionTarget(product); setRejectionReason(''); }}>Từ chối</Button>
                       <Button size="sm" variant="dark" icon={<BadgeCheck className="h-4 w-4" />} loading={savingId === product.id} onClick={() => void moderate(product, 'APPROVED')}>Phê duyệt</Button>
                     </>}
                   </div>

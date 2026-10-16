@@ -406,6 +406,62 @@
 
 ---
 
+### [2026-10-11] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (Tối ưu Form Sản Phẩm Gian Hàng, Tinh gọn UI AI Fraud & Audit Logs cho Người Dùng Cuối, và Chuẩn hóa Phân Quyền Menu Điều Hướng)
+- **Hạng mục đã thực hiện**:
+  1. **Tái thiết kế & Mở rộng Form Thêm/Cập nhật Sản phẩm (`ProductManagementPage.tsx`, `.css`)**:
+     - Mở rộng form gấp đôi (full-width), bố cục 2 cột cân xứng trái phải hoàn hảo; lược bỏ các đoạn văn bản hướng dẫn rườm rà.
+     - Cho phép thêm ảnh sản phẩm tự do (bắt buộc 1 ảnh chính 1:1, ảnh phụ không giới hạn).
+     - Bổ sung ô nhập Giá gốc (giá niêm yết) và Giá bán khuyến mãi trực tiếp, tự động tính và hiển thị % giảm giá nổi bật.
+     - Bố cục 6 khối logic chuẩn sàn TMĐT: Thông tin cơ bản, Thư viện ảnh/video, Biến thể & Kho hàng, Quy cách đóng gói/Vận chuyển, Chính sách KOL, Pháp lý & Giấy tờ kiểm duyệt.
+  2. **Tinh gọn & Việt hóa toàn diện Trang AI Chống Gian Lận Traffic (`AiFraudSentinelPage.tsx`)**:
+     - Thay thế toàn bộ thuật ngữ máy chủ/dev (`Zombie Traffic`, `Click Burst Bot`, `IP Cluster`, `CR`, `CDN & Redis`) bằng thuật ngữ thương mại điện tử thuần Việt thân thiện với người dùng cuối.
+     - 4 thẻ KPI chỉ số rõ ràng: Tổng lượt click đã quét, Cảnh báo đáng ngờ, Hoa hồng giữ an toàn, Tỷ lệ khách thật.
+     - Bảng theo dõi và modal thao tác trực diện: Tạm khóa hoa hồng, Tạm ngưng link, Bỏ qua cảnh báo (Khách thật).
+  3. **Chuẩn hóa & Thân thiện hóa Trang Nhật Ký Hoạt Động / Kiểm Toán (`AuditLogsPage.tsx`)**:
+     - Ẩn khối JSON thô rườm rà, thay bằng bảng thuộc tính 2 cột thân thiện hiển thị rõ số tiền VND và trạng thái.
+     - Việt hóa 100% tên hành động (loại bỏ hoàn toàn các mã event viết hoa tiếng Anh như `ANALYTICS_PAGE_VIEW`).
+     - Đưa khối JSON kỹ thuật gốc vào mục mở rộng thu gọn `[+] Xem dữ liệu kỹ thuật gốc (JSON)` cho đội ngũ kỹ thuật.
+  4. **Chuẩn hóa Phân Quyền & Vai Trò Điều Hướng (`navigation.config.ts`, `AppRoutes.tsx`, `Sidebar.tsx`)**:
+     - Thu hồi hoàn toàn 2 mục *AI Chống gian lận traffic* và *Nhật ký kiểm toán* khỏi menu của Chủ Shop (`SHOP_MANAGER`), đưa về đúng bổn phận của Quản trị sàn.
+     - Quy về 2 vai trò quản trị: `SYSTEM_ADMIN` (Quản trị tối cao) và `SYSTEM_MANAGER` (Chuyên viên vận hành sàn).
+     - Lược bỏ mục thừa `/merchant/products` khỏi menu `SYSTEM_MANAGER`.
+     - Đổi tên `/admin/sample-requests` thành *Trọng tài hàng mẫu KOL*.
+     - Tự động chuyển hướng và chặn truy cập trái phép đối với các route quản trị sàn.
+  5. **Khắc phục Lỗi API Ví Sandbox (`wallets.controller.ts`)**:
+     - Sửa lỗi nạp tiền demo phục vụ kiểm thử đơn hàng và luồng luân chuyển dòng tiền.
+- **Màn hình UI**: `frontend/src/pages/merchant/ProductManagementPage.tsx`, `frontend/src/pages/merchant/AiFraudSentinelPage.tsx`, `frontend/src/pages/admin/AuditLogsPage.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/config/navigation.config.ts`, `frontend/src/routes/AppRoutes.tsx`
+- **API Endpoint**: `POST /api/wallets/top-up-demo`, `GET /api/v1/audit/logs`, `GET /api/v1/audit/stats`, `POST /api/v1/products`
+- **Backend File**: `backend/src/modules/wallets/wallets.controller.ts`, `backend/src/modules/audit/audit.service.ts`
+- **CSDL**: Bảng `products`, `product_variants`, `wallets`, `wallet_transactions`, `audit_logs`
+- **Ghi chú**: Đã kiểm tra build Frontend (`vite build`) và Backend (`nest build`) thành công 100% với 0 lỗi, kiểm thử trực quan trên trình duyệt mượt mà.
+
+---
+
+### [2026-10-14] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (Tái cơ cấu Kiến trúc Quản lý Đơn hàng & Hàng mẫu Toàn Shop, Bổ sung View Switcher, Tinh gọn Không gian CRM 1-1, và Hoàn thiện Governance Thực tế)
+- **Hạng mục đã thực hiện**:
+  1. **Tái cơ cấu Quản lý Đơn hàng & Chuyển Bảng Hàng mẫu Toàn Shop (`OrdersManagementPage.tsx`, `ShopSampleManagementTab.tsx`)**:
+     - Bổ sung View Switcher 2 chế độ ngay kế bên tiêu đề H1 `Quản lý Đơn hàng` (`📦 Đơn bán hàng` vs `🏢 Bảng quản lý toàn shop`).
+     - Tách module độc lập `ShopSampleManagementTab.tsx` quản lý toàn bộ luồng hàng mẫu xuất kho cho KOL: 4 Stat Badges tương tác nhanh, Hàng đợi mẫu toàn shop, Bảng xếp hạng KOL tiếp thị, Thỏa thuận deal VIP.
+     - Tích hợp quy trình duyệt gửi, từ chối, tạo vận đơn GHN cho đơn mẫu, nhắc nộp video và nghiệm thu video review.
+  2. **Tinh gọn Giao diện Hội thoại & CRM 1-1 Đối Tác (`ShopKolHubPage.tsx`)**:
+     - Loại bỏ hoàn toàn thanh công cụ top bar cồng kềnh (xóa switch và 3 nút thừa do đã tích hợp sẵn trong CRM/Chat).
+     - Mở rộng chiều cao khung chat/CRM full height (`h-[calc(100dvh-110px)]`), mang lại không gian làm việc chuyên nghiệp, thoáng đãng.
+  3. **Chuẩn hóa Thực thi Nghiệp vụ TMĐT Thực tế (Real-world E-Commerce Governance)**:
+     - Cam kết nộp video 14 ngày: Bổ sung bộ đếm ngược thời hạn nộp video chính xác (ngày + giờ), cảnh báo gấp $\le 3$ ngày, banner cảnh báo khóa quyền xin mẫu toàn sàn khi quá hạn (`ShopCollaborationPage.tsx`).
+     - Khóa đặt hàng ẩn danh: Bắt buộc đăng nhập khi checkout, Quick Auth Modal tại chỗ không làm mất giỏ hàng (`GuestCheckoutModal.tsx`).
+     - Phiếu giao hàng A6 chuẩn Barcode Code-128 & QR tra cứu, cam kết *"Cho xem hàng, không cho thử"*, xóa sạch nhãn simulator (`ShippingLabel.tsx`).
+     - Ví CTV/KOL tách bạch số dư, Chip trạng thái Escrow thích ứng chu kỳ đối soát và ngày nghỉ lễ Việt Nam (`WalletPage.tsx`).
+     - Fallback kho nhận hàng hoàn trả an toàn 100% trong `return.service.ts`.
+- **Màn hình UI**: `frontend/src/pages/merchant/OrdersManagementPage.tsx`, `frontend/src/pages/merchant/ShopSampleManagementTab.tsx`, `frontend/src/pages/merchant/ShopKolHubPage.tsx`, `frontend/src/pages/collaborator/ShopCollaborationPage.tsx`, `frontend/src/pages/collaborator/WalletPage.tsx`, `frontend/src/components/checkout/GuestCheckoutModal.tsx`, `frontend/src/components/orders/ShippingLabel.tsx`
+- **API Endpoint**: `GET /sample-requests/shop`, `PATCH /sample-requests/:id/approve`, `PATCH /sample-requests/:id/reject`, `PATCH /sample-requests/:id/ship`, `PATCH /media/:id/review`
+- **Backend File**: `backend/src/modules/returns/return.service.ts`, `backend/src/modules/orders/orders.service.ts`
+- **CSDL**: Bảng `sample_requests`, `orders`, `order_items`, `wallets`, `collaborator_profiles`
+- **Ghi chú**: Đã kiểm tra build TypeScript sạch lỗi 100% cả Backend (`npx tsc --noEmit`) và Frontend (`npx tsc -b`). Sẵn sàng nghiệm thu.
+
+---
+
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:
 
 Mỗi khi bạn hoặc thành viên trong nhóm hoàn thành một đoạn code / màn hình UI / API mới, chỉ cần gõ lệnh:

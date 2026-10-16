@@ -24,10 +24,14 @@ describe('AffiliateDealsService', () => {
       chatMessage: { create: jest.fn() },
       conversation: { update: jest.fn() },
     };
+    const productFindMock = jest.fn();
     prisma = {
       user: { findUnique: jest.fn() },
       store: { findUnique: jest.fn() },
-      product: { findFirst: jest.fn() },
+      product: {
+        findUnique: productFindMock,
+        findFirst: productFindMock,
+      },
       collaboratorProfile: {
         findUnique: jest.fn().mockResolvedValue({ socialLinksJson: {} }),
       },

@@ -16,8 +16,7 @@ import {
 import { notificationsService, type AppNotification } from '../../services/notifications.service';
 import { authService } from '../../services/auth.service';
 import { liveBroadcastService } from '@/services/live-broadcast.service';
-import { getNotificationSection } from '../../utils/notificationCategories';
-import './NotificationDropdown.css';
+import { getNotificationSection } from '../../utils/notification-categories.utils';
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -255,7 +254,7 @@ export const NotificationDropdown: React.FC = () => {
       const role = authService.getCurrentUser()?.role;
       const sessionQuery = `session=${encodeURIComponent(notif.data?.sessionId || '')}`;
       if (role === 'COLLABORATOR') navigate(`/collaborator/live-sessions?${sessionQuery}`);
-      else if (role === 'SHOP_MANAGER') navigate(`/merchant/promotions?tab=live-sessions&${sessionQuery}`);
+      else if (role === 'SHOP_MANAGER') navigate(`/merchant/live-sessions?${sessionQuery}`);
       else if (role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER') navigate(`/admin/affiliate-oversight?tab=live-sessions&${sessionQuery}`);
       return;
     }
@@ -390,51 +389,168 @@ export const NotificationDropdown: React.FC = () => {
   };
 
   return (
-    <div className="scanms-notifications" ref={dropdownRef}>
-      <button ref={bellRef} type="button" onClick={() => setIsOpen(!isOpen)} className="scanms-notification-bell" title="Thông báo SCANMS" aria-label={"Thông báo: " + unreadCount + " chưa đọc"} aria-expanded={isOpen} aria-controls="scanms-notification-panel">
+    <div className="relative" ref={dropdownRef}>
+      <button
+        ref={bellRef}
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative grid place-items-center w-[36px] h-[36px] border border-[#EAE4D7] rounded-full bg-white text-[#7D715E] cursor-pointer hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+        title="Thông báo SCANMS"
+        aria-label={"Thông báo: " + unreadCount + " chưa đọc"}
+        aria-expanded={isOpen}
+        aria-controls="scanms-notification-panel"
+      >
         <Bell size={18} />
-        {unreadCount > 0 && <span className="scanms-notification-count">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+        {unreadCount > 0 && (
+          <span className="absolute -top-[4px] -right-[4px] grid place-items-center min-w-[17px] h-[17px] px-[4px] border-2 border-white rounded-[20px] bg-[#DC2626] text-white text-[9px] font-[600] leading-none">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
       </button>
       {isOpen && createPortal(
-        <div id="scanms-notification-panel" ref={panelRef} role="region" aria-label="Trung tâm thông báo" tabIndex={-1} className="scanms-notification-panel" style={{ '--notification-top': panelTop + 'px', '--notification-right': panelRight + 'px' } as React.CSSProperties}>
-          <header className="scanms-notification-header">
-            <div className="scanms-notification-heading">
-              <span className="scanms-notification-heading-icon"><Bell size={18} /></span>
-              <div><div className="scanms-notification-heading-title"><h3>Thông báo</h3>{unreadCount > 0 && <span className="scanms-notification-new">{unreadCount} mới</span>}</div><p>Cập nhật dành cho bạn</p></div>
+        <div
+          id="scanms-notification-panel"
+          ref={panelRef}
+          role="region"
+          aria-label="Trung tâm thông báo"
+          tabIndex={-1}
+          className="fixed z-[100] flex flex-col w-[380px] max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100dvh-var(--notification-top)-12px))] border border-[#EAE4D7] rounded-[14px] bg-white text-[#1A1612] shadow-[0_12px_32px_rgb(35_29_21_/_0.1)] overflow-hidden text-left outline-none max-[639px]:right-[12px] max-[639px]:w-[calc(100vw-24px)]"
+          style={{ top: panelTop, right: panelRight }}
+        >
+          <header className="flex items-center justify-between shrink-0 gap-[12px] p-[13px_14px_11px]">
+            <div className="flex items-center gap-[7px]">
+              <h3 className="m-0 text-[14px] leading-[1.5] font-[600] text-[#1A1612]">Thông báo</h3>
+              {unreadCount > 0 && (
+                <span className="p-[3px_6px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[9px] leading-[1.3]">
+                  {unreadCount} mới
+                </span>
+              )}
             </div>
-            <div className="scanms-notification-header-actions">
-              {unreadCount > 0 && <button type="button" onClick={handleMarkAllRead} className="scanms-notification-read-all"><CheckCheck size={13} /><span>Đọc tất cả</span></button>}
-              <button type="button" aria-label="Đóng thông báo" className="scanms-notification-close" onClick={() => { setIsOpen(false); bellRef.current?.focus(); }}><X size={15} /></button>
+            <div className="flex items-center gap-[4px]">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="inline-flex items-center justify-center gap-[4px] min-h-[28px] p-[5px_6px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+                >
+                  <CheckCheck size={13} className="text-[#B88E4F]" />
+                  <span>Đọc tất cả</span>
+                </button>
+              )}
+              <button
+                type="button"
+                aria-label="Đóng thông báo"
+                className="inline-flex items-center justify-center w-[26px] min-h-[28px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+                onClick={() => { setIsOpen(false); bellRef.current?.focus(); }}
+              >
+                <X size={15} />
+              </button>
             </div>
           </header>
-          <div className="scanms-notification-tabs" role="group" aria-label="Loại thông báo">
+            </div>
+          </header>
+
+          <div className="grid grid-cols-4 gap-[4px] p-[0_12px_11px] shrink-0 border-b border-[#EAE4D7]" role="group" aria-label="Loại thông báo">
             {([
-              {id:'ALL',label:'Tất cả'}, {id:'ORDER',label:'Đơn hàng'},
-              {id:'PROMOTION',label:'Live & ưu đãi'}, {id:'SYSTEM',label:'Hệ thống'},
-            ] as const).map(tab => <button type="button" key={tab.id} aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>)}
+              { id: 'ALL', label: 'Tất cả' },
+              { id: 'ORDER', label: 'Đơn hàng' },
+              { id: 'PROMOTION', label: 'Live & ưu đãi' },
+              { id: 'SYSTEM', label: 'Hệ thống' },
+            ] as const).map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  type="button"
+                  key={tab.id}
+                  aria-pressed={isActive}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`min-h-[32px] p-[6px_4px] border rounded-[7px] text-[10px] font-[500] leading-[1.4] whitespace-nowrap cursor-pointer transition-colors hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px] ${
+                    isActive
+                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
+                      : 'border-transparent bg-white text-[#7D715E]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
-          <div className="scanms-notification-list" aria-busy={loading}>
-            {loading ? <div className="scanms-notification-empty" role="status"><Loader2 size={22} className="animate-spin" /><p>Đang tải thông báo…</p></div>
-              : !notifications.length ? <div className="scanms-notification-empty"><Bell size={24} /><h4>Chưa có thông báo</h4><p>Thông báo mới sẽ xuất hiện tại đây.</p></div>
-              : notifications.map(n => {
+
+          <div className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:thin]" aria-busy={loading}>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center gap-[7px] p-[34px_16px] text-[#7D715E] text-center" role="status">
+                <Loader2 size={22} className="animate-spin text-[#B88E4F]" />
+                <p className="text-[11px] leading-[1.6] m-0">Đang tải thông báo…</p>
+              </div>
+            ) : !notifications.length ? (
+              <div className="flex flex-col items-center justify-center gap-[7px] p-[34px_16px] text-[#7D715E] text-center">
+                <Bell size={24} className="text-[#B88E4F]" />
+                <h4 className="text-[12px] font-[500] text-[#1A1612] m-0">Chưa có thông báo</h4>
+                <p className="text-[11px] leading-[1.6] m-0">Thông báo mới sẽ xuất hiện tại đây.</p>
+              </div>
+            ) : (
+              notifications.map(n => {
                 const isLive = n.type.startsWith('LIVE_') || n.type.includes('LIVE');
                 const expanded = expandedMessages.has(n.id);
-                const section = getNotificationSection(n.type);
-                return <div key={n.id} className={'scanms-notification-entry' + (!n.isRead ? ' is-unread' : '')}>
-                <button type="button" onClick={() => void handleNotificationClick(n)} className="scanms-notification-item">
-                  <span className="scanms-notification-icon">{getNotificationIcon(n.type)}</span>
-                  <span className="scanms-notification-content">
-                    <span className="scanms-notification-title-row"><strong title={n.title}>{n.title}</strong>{!n.isRead && <span className="scanms-notification-unread-dot" aria-label="Chưa đọc" />}</span>
-                    <span className={'scanms-notification-message' + (expanded ? ' is-expanded' : '')}>{n.message}</span>
-                    <span className="scanms-notification-meta"><span className="scanms-notification-category">{section === 'ORDER' ? 'Đơn hàng' : section === 'PROMOTION' ? 'Live & ưu đãi' : 'Hệ thống'}</span><time dateTime={n.createdAt} title={new Date(n.createdAt).toLocaleString('vi-VN')}><Clock size={11} />{formatTimeAgo(n.createdAt)}</time>{isLive && <span className="scanms-notification-live-link">Xem phiên live →</span>}</span>
-                  </span>
-                </button>
-                {n.message.length > 100 && <button type="button" className="scanms-notification-expand" aria-expanded={expanded} onClick={() => setExpandedMessages(prev => { const next = new Set(prev); if (next.has(n.id)) next.delete(n.id); else next.add(n.id); return next; })}>{expanded ? 'Thu gọn' : 'Xem đầy đủ'}</button>}
-                </div>;
-              })}
+                return (
+                  <div key={n.id} className={`relative flex flex-col w-full p-[13px_14px] border-b border-[#EAE4D7] last:border-b-0 ${!n.isRead ? 'bg-[#FBF5EB]/40' : 'bg-white'} hover:bg-[#FAF8F5] transition-colors`}>
+                    <button
+                      type="button"
+                      onClick={() => void handleNotificationClick(n)}
+                      className="flex items-start gap-[10px] w-full text-left cursor-pointer border-0 bg-transparent p-0"
+                    >
+                      <span className="grid place-items-center shrink-0 w-[28px] h-[28px] mt-[1px] border border-[#EEDFC6] rounded-[8px] bg-white text-[#B88E4F]">
+                        {getNotificationIcon(n.type)}
+                      </span>
+                      <span className="block flex-1 min-w-0">
+                        <span className="flex items-start gap-[8px]">
+                          <strong title={n.title} className={`line-clamp-2 flex-1 text-[#1A1612] text-[12px] leading-[1.5] ${!n.isRead ? 'font-[600]' : 'font-[500]'}`}>
+                            {n.title}
+                          </strong>
+                          {!n.isRead && <span className="shrink-0 w-[5px] h-[5px] mt-[6px] rounded-full bg-[#C59B58]" aria-label="Chưa đọc" />}
+                        </span>
+                        <span className={`mt-[4px] text-[#7D715E] text-[11px] leading-[1.6] block ${expanded ? '' : 'line-clamp-2'}`}>
+                          {n.message}
+                        </span>
+                        <span className="flex items-center justify-between flex-wrap gap-[5px] mt-[7px]">
+                          <time dateTime={n.createdAt} className="inline-flex items-center gap-[4px] text-[#9A8E7C] text-[9px] leading-[1.5]">
+                            <Clock size={11} />
+                            {formatTimeAgo(n.createdAt)}
+                          </time>
+                          {isLive && <span className="text-[#B88E4F] text-[9px] font-[500] hover:underline">Xem phiên live →</span>}
+                        </span>
+                      </span>
+                    </button>
+                    {n.message.length > 100 && (
+                      <button
+                        type="button"
+                        className="self-end mt-1 text-[10px] text-[#B88E4F] hover:underline bg-transparent border-0 cursor-pointer p-0"
+                        aria-expanded={expanded}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedMessages(prev => {
+                            const next = new Set(prev);
+                            if (next.has(n.id)) next.delete(n.id);
+                            else next.add(n.id);
+                            return next;
+                          });
+                        }}
+                      >
+                        {expanded ? 'Thu gọn' : 'Xem đầy đủ'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
-          <footer className="scanms-notification-footer"><span className="scanms-notification-footer-dot" />Cập nhật hoạt động trên SCANMS</footer>
-        </div>, document.body
+
+          <footer className="flex items-center justify-center gap-[5px] shrink-0 p-[10px_12px] border-t border-[#EAE4D7] bg-white text-[#9A8E7C] text-[9px] leading-[1.5]">
+            <span className="w-[4px] h-[4px] rounded-full bg-[#C59B58]" />
+            Cập nhật hoạt động trên SCANMS
+          </footer>
+        </div>,
+        document.body
       )}
     </div>
   );

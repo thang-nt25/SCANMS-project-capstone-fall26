@@ -43,7 +43,6 @@ import { toast } from '@/utils/toast';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { LiveSessionDealCard } from '@/components/product/LiveSessionDealCard';
-import './ProductFeedback.css';
 
 
 function getSmartFallbackImage(title?: string, categoryName?: string): string {
@@ -243,7 +242,7 @@ export default function ProductDetailPage() {
     } : {
       id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
       name: 'Sora Skin Official Store',
-      logoUrl: '',
+      logoUrl: '/assets/shops/shop-sora-skin.png',
       slug: 'sora-skin',
       isVerified: true,
     };
@@ -1828,17 +1827,17 @@ export default function ProductDetailPage() {
         </div>
 
 
-        <div className={'scanms-product-feedback' + (!activeVideo && !reviews.items?.length ? ' sf-empty-layout' : '')}>
-        <section className="sf-section sf-video-section" aria-labelledby="product-creator-reviews-title">
-          <div className="sf-heading">
-            <div className="sf-heading-content">
-              <span className="sf-heading-icon"><Play size={20} strokeWidth={1.7} /></span>
+        <div className={`grid gap-4 mt-6 text-[#1A1612] ${!activeVideo && !reviews.items?.length ? 'lg:grid-cols-2' : ''}`}>
+        <section className="min-w-0 p-4 sm:p-5 border border-[#EAE4D7] rounded-2xl bg-white" aria-labelledby="product-creator-reviews-title">
+          <div className="flex items-start sm:items-center justify-between flex-wrap gap-2.5 sm:gap-3 pb-3.5 sm:pb-4 border-b border-[#EAE4D7]">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+              <span className="w-8 sm:w-10 h-8 sm:h-10 grid place-items-center shrink-0 border border-[#EAE4D7] rounded-[10px] sm:rounded-xl text-[#B88E4F] bg-[#FBF5EB]"><Play size={20} strokeWidth={1.7} /></span>
               <div>
-                <h2 id="product-creator-reviews-title">Video từ nhà sáng tạo</h2>
-                <p>{activeVideo ? 'Video review đã được gian hàng ' + store.name + ' phê duyệt.' : 'Khám phá trải nghiệm thực tế về sản phẩm.'}</p>
+                <h2 id="product-creator-reviews-title" className="m-0 text-[17px] sm:text-xl font-semibold tracking-tight leading-snug text-[#1A1612]">Video từ nhà sáng tạo</h2>
+                <p className="m-0 mt-1 text-xs sm:text-[13px] leading-relaxed text-[#7D715E]">{activeVideo ? 'Video review đã được gian hàng ' + store.name + ' phê duyệt.' : 'Khám phá trải nghiệm thực tế về sản phẩm.'}</p>
               </div>
             </div>
-            {videos.length <= 1 && <span className="sf-count">{videos.length} video</span>}
+            {videos.length <= 1 && <span className="shrink-0 px-2 sm:px-2.5 py-1 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#7D715E] text-[10px] sm:text-xs whitespace-nowrap">{videos.length} video</span>}
             {videos && videos.length > 1 && (
               <div className="flex flex-wrap gap-2">
                 {videos.map((vid, vIdx) => (
@@ -2059,43 +2058,43 @@ export default function ProductDetailPage() {
               </div>
             </div>
           ) : (
-            <div className="sf-empty">
-              <span className="sf-empty-icon"><Play size={22} strokeWidth={1.5} /></span>
-              <div><h3>Chưa có video review</h3><p>Video trải nghiệm sẽ hiển thị tại đây sau khi được gian hàng phê duyệt.</p></div>
+            <div className="flex items-center gap-2.5 sm:gap-3.5 mt-4 p-3.5 sm:p-4 rounded-xl bg-[#FAF8F5]">
+              <span className="w-9 sm:w-11 h-9 sm:h-11 grid place-items-center shrink-0 border border-[#EAE4D7] rounded-xl text-[#B88E4F] bg-white"><Play size={22} strokeWidth={1.5} /></span>
+              <div><h3 className="m-0 text-sm font-semibold text-[#1A1612]">Chưa có video review</h3><p className="m-0 mt-1 text-xs text-[#7D715E] leading-relaxed">Video trải nghiệm sẽ hiển thị tại đây sau khi được gian hàng phê duyệt.</p></div>
             </div>
           )}
         </section>
 
 
-        <section className="sf-section sf-customer-section" aria-labelledby="product-customer-reviews-title">
-          <div className="sf-heading">
-            <div className="sf-heading-content">
-              <span className="sf-heading-icon"><Star size={20} strokeWidth={1.7} /></span>
-              <div><h2 id="product-customer-reviews-title">Đánh giá khách hàng</h2><p>Phản hồi đã kiểm duyệt từ người mua thực tế.</p></div>
+        <section className="min-w-0 p-4 sm:p-5 border border-[#EAE4D7] rounded-2xl bg-white" aria-labelledby="product-customer-reviews-title">
+          <div className="flex items-start sm:items-center justify-between flex-wrap gap-2.5 sm:gap-3 pb-3.5 sm:pb-4 border-b border-[#EAE4D7]">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+              <span className="w-8 sm:w-10 h-8 sm:h-10 grid place-items-center shrink-0 border border-[#EAE4D7] rounded-[10px] sm:rounded-xl text-[#B88E4F] bg-[#FBF5EB]"><Star size={20} strokeWidth={1.7} /></span>
+              <div><h2 id="product-customer-reviews-title" className="m-0 text-[17px] sm:text-xl font-semibold tracking-tight leading-snug text-[#1A1612]">Đánh giá khách hàng</h2><p className="m-0 mt-1 text-xs sm:text-[13px] leading-relaxed text-[#7D715E]">Phản hồi đã kiểm duyệt từ người mua thực tế.</p></div>
             </div>
             {reviews.averageRating !== null && reviews.totalReviews > 0 ? (
-              <div className="sf-rating" aria-label={reviews.averageRating + ' trên 5 sao, ' + reviews.totalReviews + ' đánh giá'}>
-                <strong>{reviews.averageRating}<span>/5</span></strong>
-                <div><span className="sf-stars" aria-hidden="true">{[1, 2, 3, 4, 5].map(value => <Star key={value} size={13} className={value <= Math.round(reviews.averageRating || 0) ? 'sf-star-filled' : 'sf-star-empty'} />)}</span><span className="sf-rating-count">{reviews.totalReviews} đánh giá</span></div>
+              <div className="flex items-center gap-2.5" aria-label={reviews.averageRating + ' trên 5 sao, ' + reviews.totalReviews + ' đánh giá'}>
+                <strong className="text-2xl sm:text-[28px] font-semibold tabular-nums leading-none text-[#1A1612]">{reviews.averageRating}<span className="ml-1 text-[13px] font-normal text-[#7D715E]">/5</span></strong>
+                <div><span className="flex gap-0.5" aria-hidden="true">{[1, 2, 3, 4, 5].map(value => <Star key={value} size={13} className={value <= Math.round(reviews.averageRating || 0) ? 'fill-[#C59B58] text-[#B88E4F]' : 'text-[#EAE4D7]'} />)}</span><span className="block mt-1 text-[11px] text-[#7D715E]">{reviews.totalReviews} đánh giá</span></div>
               </div>
-            ) : <span className="sf-count">{reviews.totalReviews} đánh giá</span>}
+            ) : <span className="shrink-0 px-2 sm:px-2.5 py-1 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#7D715E] text-[10px] sm:text-xs whitespace-nowrap">{reviews.totalReviews} đánh giá</span>}
           </div>
 
-          <div className="sf-review-list">
+          <div className="mt-2">
             {reviews.items && reviews.items.length > 0 ? (
               reviews.items.map((rev) => (
                 <div
                   key={rev.id}
-                  className="sf-review"
+                  className="py-4 sm:py-4.5 border-b border-[#EAE4D7] last:border-b-0 last:pb-0"
                 >
-                  <div className="sf-review-heading">
-                    <div className="sf-review-person">
-                      <span className="sf-review-avatar" aria-hidden="true">{rev.customerName.trim().charAt(0).toLocaleUpperCase('vi-VN') || 'K'}</span>
+                  <div className="flex justify-between items-center flex-wrap gap-2.5 mb-2.5">
+                    <div className="flex items-center flex-wrap gap-2">
+                      <span className="w-8 h-8 grid place-items-center rounded-full bg-[#FBF5EB] text-[#1A1612] text-[13px] font-semibold" aria-hidden="true">{rev.customerName.trim().charAt(0).toLocaleUpperCase('vi-VN') || 'K'}</span>
                       <span className="font-bold text-sm text-[#1A1612]">
                         {rev.customerName}
                       </span>
                       {rev.isVerifiedBuyer && (
-                        <span className="sf-verified-buyer">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FBF5EB] text-[#7D715E] text-[10px]">
                           <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" />
                           Đã mua hàng
                         </span>
@@ -2139,9 +2138,9 @@ export default function ProductDetailPage() {
                 </div>
               ))
             ) : (
-              <div className="sf-empty">
-                <span className="sf-empty-icon"><MessageSquare size={22} strokeWidth={1.5} /></span>
-                <div><h3>Chưa có đánh giá</h3><p>Chia sẻ từ người mua sẽ xuất hiện tại đây sau khi được kiểm duyệt.</p></div>
+              <div className="flex items-center gap-2.5 sm:gap-3.5 mt-4 p-3.5 sm:p-4 rounded-xl bg-[#FAF8F5]">
+                <span className="w-9 sm:w-11 h-9 sm:h-11 grid place-items-center shrink-0 border border-[#EAE4D7] rounded-xl text-[#B88E4F] bg-white"><MessageSquare size={22} strokeWidth={1.5} /></span>
+                <div><h3 className="m-0 text-sm font-semibold text-[#1A1612]">Chưa có đánh giá</h3><p className="m-0 mt-1 text-xs text-[#7D715E] leading-relaxed">Chia sẻ từ người mua sẽ xuất hiện tại đây sau khi được kiểm duyệt.</p></div>
               </div>
             )}
           </div>

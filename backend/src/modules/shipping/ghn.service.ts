@@ -338,6 +338,14 @@ export class GhnService {
       ? { districtId: Number(rawPayload.ghnDistrictId), wardCode: String(rawPayload.ghnWardCode) }
       : await this.resolveGhnLocation(order.shippingAddress || '');
 
+    // Xác định thông tin kho lấy hàng của Gian hàng (Store Pickup Warehouse)
+    const onboarding = (order.store?.onboardingData as any) || {};
+    const storeWarehouse = (order.store?.returnWarehouse as any) || {};
+    const fromName = onboarding.representativeName || storeWarehouse.name || order.store?.name || 'Gian hàng SCANMS';
+    const fromPhone = onboarding.contactPhone || storeWarehouse.phone || '0766824448';
+    const fromAddressRaw = onboarding.warehouseAddress || storeWarehouse.address || '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh';
+    const { districtId: fromDistrictId, wardCode: fromWardCode } = await this.resolveGhnLocation(fromAddressRaw);
+
     // Xác định số tiền COD
     const paymentMethod = rawPayload.paymentMethod || 'COD';
     const isCod = paymentMethod === 'COD';
@@ -368,11 +376,11 @@ export class GhnService {
         `Đơn hàng #${order.externalOrderSn} từ sàn SCANMS`,
       required_note:
         customOptions?.requiredNote || GhnRequiredNote.CHOXEMHANGKHONGTHU,
-      from_name: order.store?.name || 'Gian hàng SCANMS',
-      from_phone: sender.contactPhone,
-      from_address: sender.warehouseAddress,
-      from_ward_code: senderLocation.wardCode,
-      from_district_id: senderLocation.districtId,
+      from_name: fromName,
+      from_phone: fromPhone,
+      from_address: fromAddressRaw,
+      from_ward_code: fromWardCode,
+      from_district_id: fromDistrictId,
       to_name: order.customerName || 'Khách hàng SCANMS',
       to_phone: order.customerPhone,
       to_address: order.shippingAddress,
