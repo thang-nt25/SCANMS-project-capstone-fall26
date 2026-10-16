@@ -447,8 +447,6 @@ export const NotificationDropdown: React.FC = () => {
               </button>
             </div>
           </header>
-            </div>
-          </header>
 
           <div className="grid grid-cols-4 gap-[4px] p-[0_12px_11px] shrink-0 border-b border-[#EAE4D7]" role="group" aria-label="Loại thông báo">
             {([

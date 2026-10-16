@@ -103,6 +103,16 @@ export class SamplesController {
     );
   }
 
+  @Patch(':id/receive')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Xác nhận đã nhận được kiện mẫu' })
+  confirmReceived(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: any,
+  ) {
+    return this.samplesService.confirmReceived(id, req.user?.id || req.user?.sub);
+  }
+
   // ---- Shop endpoints ----
 
   @Get('shop')

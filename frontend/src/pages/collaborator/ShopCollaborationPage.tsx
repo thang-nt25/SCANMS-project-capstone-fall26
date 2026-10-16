@@ -790,6 +790,18 @@ export default function ShopCollaborationPage() {
     }
   };
 
+  const handleConfirmReceivedSample = async (sampleId: string) => {
+    try {
+      await api.patch(`/sample-requests/${sampleId}/receive`);
+      toast.success('Đã xác nhận nhận hàng mẫu thành công!');
+      if (selectedStore?.id) {
+        await loadStoreSamples(selectedStore.id);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể xác nhận nhận hàng.');
+    }
+  };
+
   // Connect new store
   const handleConnectStore = async (store: any) => {
     setConnectingStoreId(store.id);
@@ -1335,6 +1347,8 @@ export default function ShopCollaborationPage() {
                               canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
                             );
                             const isSelectedForBundle = selectedProductIds.includes(prod.id);
+                            const commRate = Number(prod.commissionRate || (selectedStore as any)?.commissionRate || 15);
+                            const commAmount = Math.round((Number(prod.price || 0) * commRate) / 100);
 
                             return (
                               <div

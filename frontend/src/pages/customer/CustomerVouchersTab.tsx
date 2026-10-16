@@ -199,12 +199,6 @@ export function CustomerVouchersTab() {
           );
         })}
       </div>
-                </dl>
-              </details>
-            </article>
-          );
-        })}
-      </div>
     </section>
   );
 }

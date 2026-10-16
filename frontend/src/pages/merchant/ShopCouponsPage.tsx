@@ -150,7 +150,7 @@ export const ShopCouponsPage: React.FC = () => {
   // Store Products for Scope Picker
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; price: number; imageUrl?: string }>>([]);
   const [platformSubsidy, setPlatformSubsidy] = useState<PlatformSubsidySummary | null>(null);
-  const [storeCampaigns, setStoreCampaigns] = useState<Array<{ id: string; name?: string; title?: string; storeId: string; isActive: boolean; endDate: string }>>([]);
+  const [_storeCampaigns, setStoreCampaigns] = useState<Array<{ id: string; name?: string; title?: string; storeId: string; isActive: boolean; endDate: string }>>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [voucherProductSearch, setVoucherProductSearch] = useState('');
   const normalizeProductSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
