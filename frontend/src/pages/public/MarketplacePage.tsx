@@ -28,11 +28,9 @@ import {
   Camera,
   Loader2,
   Zap,
-  Star,
   Eye,
   Play,
   Gift,
-  Crown,
   Droplets,
   Palette,
   Bath,
@@ -54,6 +52,7 @@ import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/prod
 import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 import { NotificationDropdown } from '../../components/layout/NotificationDropdown';
 import { HeaderAccountButton } from '../../components/layout/HeaderAccountButton';
+import { SponsoredStores } from '../../components/marketplace/SponsoredStores';
 import { FeaturedStores } from '../../components/marketplace/FeaturedStores';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
 import { MarketplaceHero } from '../../components/marketplace/MarketplaceHero';
@@ -936,26 +935,7 @@ export default function MarketplacePage() {
 
       <FeaturedStores stores={marketplaceStores} loading={storesLoading} failed={storesFailed} onRetry={() => void retryStores()} />
 
-      {/* Clearly disclosed sponsored placement. */}
-      {marketplaceStores[0] && (
-        <section aria-labelledby="sponsored-store-title" className="bg-[#FAF8F5] pb-7 text-left">
-          <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
-            <article className="relative overflow-hidden rounded-[22px] border border-[#EEDFC6] bg-[#231D15] px-5 py-6 text-white shadow-[0_14px_36px_rgba(35,29,21,0.16)] sm:px-8 sm:py-7">
-              <div className="absolute -right-12 -top-20 h-52 w-52 rounded-full border-[34px] border-[#C59B58]/15" aria-hidden="true" />
-              <div className="relative z-10 grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
-                <div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#C59B58] px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white"><Crown className="h-3.5 w-3.5" /> Được tài trợ</span>
-                  <p className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[#EEDFC6]">Gian hàng nổi bật tuần này</p>
-                  <h2 id="sponsored-store-title" className="m-0 text-2xl font-black tracking-[-0.03em] sm:text-3xl">{marketplaceStores[0].name}</h2>
-                  <p className="mt-2 max-w-2xl text-xs leading-5 text-[#D8CCBA]">{marketplaceStores[0].description || `Khám phá bộ sưu tập chính hãng và ưu đãi mới nhất từ ${marketplaceStores[0].name} trên SCANMS.`}</p>
-                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-[#F3EFE6]"><span className="inline-flex items-center gap-1"><BadgeCheck className="h-4 w-4 text-[#C59B58]" /> Đã xác minh</span><span className="inline-flex items-center gap-1"><Package className="h-4 w-4 text-[#C59B58]" /> {marketplaceStores[0].totalProducts || 0} sản phẩm</span><span className="inline-flex items-center gap-1"><Star className="h-4 w-4 fill-[#C59B58] text-[#C59B58]" /> {Number(marketplaceStores[0].rating || 4.9).toFixed(1)} đánh giá</span></div>
-                </div>
-                <Link to={`/shops/${marketplaceStores[0].id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#C59B58] px-5 text-xs font-black text-white transition hover:bg-[#B88E4F]">Khám phá ưu đãi <ArrowRight className="h-4 w-4" /></Link>
-              </div>
-            </article>
-          </div>
-        </section>
-      )}
+      <SponsoredStores />
 
       {/* Live KOC sessions currently happening across merchants. */}
       <section id="live" aria-labelledby="live-now-title" className="border-y border-[#EAE4D7] bg-white py-7 text-left scroll-mt-32">

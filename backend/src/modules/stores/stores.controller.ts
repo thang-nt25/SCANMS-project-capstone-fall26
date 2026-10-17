@@ -90,6 +90,12 @@ export class StoresController {
     return this.storesService.getMarketplaceStores();
   }
 
+  @Get('public/placements')
+  @ApiOperation({ summary: 'Vị trí gian hàng tài trợ đã xác nhận và còn hiệu lực' })
+  getSponsoredPlacements() {
+    return this.storesService.getSponsoredPlacements();
+  }
+
   @Get('public/:slug')
   @ApiOperation({ summary: 'Lấy thông tin công khai của cửa hàng theo Slug' })
   async getStoreBySlug(@Param('slug') slug: string) {

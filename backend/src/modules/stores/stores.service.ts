@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../core/database/prisma.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { Prisma } from '@prisma/client';
+import { activeSponsoredPlacements } from './sponsored-placement.config';
 
 @Injectable()
 export class StoresService {
@@ -424,6 +425,23 @@ export class StoresService {
   /**
    * Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối
    */
+  async getSponsoredPlacements() {
+    const placements = activeSponsoredPlacements(process.env.MARKETPLACE_SPONSORED_PLACEMENTS);
+    if (!placements.length) return [];
+    const stores = await this.prisma.store.findMany({
+      where: {
+        id: { in: placements.map((placement) => placement.storeId) },
+        isDeleted: false, isActive: true, isVerified: true,
+        onboardingStatus: 'VERIFIED', owner: { isActive: true },
+      },
+      select: { id: true, name: true, logoUrl: true, description: true, isVerified: true },
+    });
+    return placements.flatMap((placement) => {
+      const store = stores.find((candidate) => candidate.id === placement.storeId);
+      return store ? [{ store, headline: placement.headline.trim(), endsAt: placement.endsAt }] : [];
+    });
+  }
+
   async getMarketplaceStores() {
     const now = new Date();
     const stores = await this.prisma.store.findMany({
