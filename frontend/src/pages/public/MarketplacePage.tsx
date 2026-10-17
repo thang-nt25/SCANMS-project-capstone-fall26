@@ -31,11 +31,6 @@ import {
   Eye,
   Play,
   Gift,
-  Droplets,
-  Palette,
-  Bath,
-  HeartPulse,
-  Tag,
 } from 'lucide-react';
 import api from '../../services/api';
 import { authService, type UserProfile } from '../../services/auth.service';
@@ -52,6 +47,7 @@ import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/prod
 import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 import { NotificationDropdown } from '../../components/layout/NotificationDropdown';
 import { HeaderAccountButton } from '../../components/layout/HeaderAccountButton';
+import { CategoryQuickNav } from '../../components/marketplace/CategoryQuickNav';
 import { SponsoredStores } from '../../components/marketplace/SponsoredStores';
 import { FeaturedStores } from '../../components/marketplace/FeaturedStores';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
@@ -71,15 +67,6 @@ type PublicLiveSession = {
   coupon?: { displayCode?: string; discountValue?: number; discountType?: string };
   products?: Array<{ product?: { title?: string; name?: string; imageUrl?: string; price?: number } }>;
 };
-
-const CATEGORY_QUICK_NAV = [
-  { label: 'Chăm sóc da', query: 'Chăm sóc da', icon: Droplets, rawQuery: false },
-  { label: 'Trang điểm', query: 'Trang điểm', icon: Palette, rawQuery: false },
-  { label: 'Chăm sóc cơ thể', query: 'Chăm sóc cơ thể', icon: Bath, rawQuery: false },
-  { label: 'Thực phẩm sức khỏe', query: 'Thực phẩm sức khỏe', icon: HeartPulse, rawQuery: false },
-  { label: 'Deal KOC độc quyền', query: 'commission=true', icon: Sparkles, rawQuery: true },
-  { label: 'Ưu đãi hôm nay', query: 'sort=sales&inStock=true', icon: Tag, rawQuery: true },
-] as const;
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
@@ -906,32 +893,7 @@ export default function MarketplacePage() {
 
       <MarketplaceHero stores={marketplaceStores} onOpenLive={() => setIsLiveModalOpen(true)} />
 
-      {/* Fast category discovery for a true multi-merchant marketplace. */}
-      <section aria-labelledby="category-quick-nav-title" className="border-b border-[#EAE4D7] bg-white py-6 text-left">
-        <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
-          <div className="mb-4 flex items-end justify-between gap-3">
-            <div>
-              <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">Khám phá nhanh</p>
-              <h2 id="category-quick-nav-title" className="m-0 text-lg font-black tracking-[-0.02em] text-[#1A1612] sm:text-xl">Mua sắm theo ngành hàng</h2>
-            </div>
-            <Link to="/search" className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:text-[#1A1612]">Tất cả danh mục <ChevronRight className="h-4 w-4" /></Link>
-          </div>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {CATEGORY_QUICK_NAV.map(({ label, query, icon: Icon, rawQuery }) => (
-              <Link
-                key={label}
-                to={rawQuery ? `/search?${query}` : `/search?category=${encodeURIComponent(query)}`}
-                className="group flex min-w-0 flex-col items-center gap-2.5 rounded-2xl border border-transparent px-2 py-3 text-center transition hover:border-[#EEDFC6] hover:bg-[#FBF5EB]"
-              >
-                <span className="flex h-14 w-14 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] shadow-[0_6px_18px_rgba(197,155,88,0.12)] transition group-hover:-translate-y-1 group-hover:bg-[#C59B58] group-hover:text-white sm:h-16 sm:w-16">
-                  <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
-                </span>
-                <span className="line-clamp-2 text-[11px] font-bold leading-4 text-[#1A1612] sm:text-xs">{label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      <CategoryQuickNav />
 
       <FeaturedStores stores={marketplaceStores} loading={storesLoading} failed={storesFailed} onRetry={() => void retryStores()} />
 
