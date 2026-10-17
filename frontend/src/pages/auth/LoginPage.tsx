@@ -19,6 +19,7 @@ import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { ShoppingScene } from '../../components/auth/ShoppingScene';
 import { AnimatedPasswordField, type PasswordAuthState } from '../../components/auth/AnimatedPasswordField';
 import './LoginPage.css';
+import { getDemoLogin } from '../../utils/demo-login';
 
 type RoleType = 'customer' | 'kol' | 'shop' | 'manager' | 'admin';
 
@@ -54,8 +55,10 @@ export default function LoginPage() {
 
   const [role, setRole] = useState<RoleType>('customer');
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const [identifier, setIdentifier] = useState(registeredEmail || '');
-  const [password, setPassword] = useState('');
+  const demoLogin = getDemoLogin(role);
+  const [identifier, setIdentifier] = useState(() => registeredEmail || getDemoLogin('customer')?.identifier || '');
+  const [password, setPassword] = useState(() => registeredEmail ? '' : getDemoLogin('customer')?.password || '');
+  const [identifierEditable, setIdentifierEditable] = useState(false);
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -74,9 +77,15 @@ export default function LoginPage() {
   const ActiveRoleIcon = activeRole.icon;
 
   const handleRoleSelect = (selectedRole: RoleType) => {
+    if (loading || passwordAuthState === 'success') return;
+    if (selectedRole !== role) {
+      const account = getDemoLogin(selectedRole);
+      setIdentifier(account?.identifier || '');
+      setPassword(account?.password || '');
+      setIdentifierEditable(false);
+    }
     setPasswordAuthState('idle');
     setRole(selectedRole);
-    // Switching workspaces must not replace the entered email/phone or password.
     setError(null);
     setIsRoleDropdownOpen(false);
   };
@@ -293,14 +302,16 @@ export default function LoginPage() {
             )}
 
             {/* Form inputs */}
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form key={role} name={`scanms-login-${role}`} autoComplete={demoLogin ? 'off' : 'on'} onSubmit={handleSubmit} className="space-y-3">
               <div className="relative flex items-center">
                 <label htmlFor="login-identifier" className="sr-only">Email hoặc số điện thoại đã đăng ký</label>
                 <input
                   id="login-identifier"
-                  name="username"
+                  name={`username-${role}`}
                   type="text"
-                  autoComplete="username"
+                  autoComplete={demoLogin ? 'off' : `section-${role} username`}
+                  readOnly={Boolean(demoLogin) && !identifierEditable}
+                  onFocus={() => setIdentifierEditable(true)}
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
@@ -316,6 +327,9 @@ export default function LoginPage() {
 
               <label className="sr-only" htmlFor="login-password">Mật khẩu</label>
               <AnimatedPasswordField
+                autoComplete={demoLogin ? 'new-password' : `section-${role} current-password`}
+                name={`password-${role}`}
+                readOnlyUntilFocus={Boolean(demoLogin)}
                 value={password}
                 state={passwordAuthState}
                 onChange={(value) => { setPassword(value); setPasswordAuthState('idle'); }}
