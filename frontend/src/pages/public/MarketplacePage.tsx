@@ -26,23 +26,23 @@ import {
   MapPin,
   Camera,
   Loader2,
-  Zap,
 } from 'lucide-react';
 import api from '../../services/api';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { uploadService } from '../../services/upload.service';
 import { customerService } from '../../services/customer.service';
-import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { formatMoney } from '@/utils/marketplace.utils';
 import type { Product } from '@/types/marketplace.types';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
-import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
+import { useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
 import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 import { NotificationDropdown } from '../../components/layout/NotificationDropdown';
 import { HeaderAccountButton } from '../../components/layout/HeaderAccountButton';
+import { QuickCustomerAuth } from '../../components/marketplace/QuickCustomerAuth';
+import { MarketplaceProductCard } from '../../components/marketplace/MarketplaceProductCard';
 import { LiveNowSection } from '../../components/marketplace/LiveNowSection';
 import { CategoryQuickNav } from '../../components/marketplace/CategoryQuickNav';
 import { SponsoredStores } from '../../components/marketplace/SponsoredStores';
@@ -119,7 +119,7 @@ export default function MarketplacePage() {
   const marketplaceStores = featuredStores;
 
   // Cart & Gateways
-  const { totalCount: totalCartCount, openCart, addItem, buyNow } = useCart();
+  const { totalCount: totalCartCount, openCart, addItem, buyNow, cart, startCheckout } = useCart();
 
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -150,13 +150,7 @@ export default function MarketplacePage() {
     return () => window.removeEventListener('resize', updateHeaderHeight);
   }, []);
 
-  // Checkout modal
-  const [activeCheckoutProduct, setActiveCheckoutProduct] = useState<{
-    product: CheckoutProductItem;
-    store: CheckoutStoreInfo;
-    couponCode?: string;
-    quantity?: number;
-  } | null>(null);
+  const [pendingPurchase, setPendingPurchase] = useState<{ productId: string; variantId?: string; intent: 'cart' | 'buy' } | null>(null);
 
   // Tracking
   const [trackQuery, setTrackQuery] = useState('');
@@ -178,7 +172,6 @@ export default function MarketplacePage() {
 
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
-  const isKolUser = currentUser?.role === 'COLLABORATOR';
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -321,36 +314,35 @@ export default function MarketplacePage() {
     }
   };
 
-  const createCartPayload = (product: Product) => ({
-    product: {
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      price: product.price,
-      origPrice: product.origPrice,
-      image: product.image,
-      stockQuantity: product.stockQuantity,
-      variants: product.variants,
-    },
-    store: {
-      id: product.storeId || `store-${product.brand}`,
-      name: product.brand || 'Gian hàng đối tác',
-    },
-    quantity: 1,
-  });
-
-  const handleAddToCart = (product: Product) => {
-    const payload = createCartPayload(product);
-    if (!authService.getCurrentUser()) {
-      buyNow(payload);
-      toast.info('Sản phẩm đã được giữ trong giỏ. Đăng nhập ngay tại đây để tiếp tục.');
+  const handlePurchase = (product: Product, intent: 'cart' | 'buy', variantId?: string) => {
+    if (!product.storeId) {
+      toast.error('Chưa xác định được gian hàng. Vui lòng mở chi tiết sản phẩm.');
       return;
     }
-    addItem(payload);
+    const payload = {
+      product: { ...product, variants: product.variants?.filter((variant) => variant.isActive !== false) },
+      store: { id: product.storeId, name: product.brand },
+      variantId, quantity: 1, openCartAfterAdd: false,
+    };
+    if (!authService.getCurrentUser() || !localStorage.getItem('token')) {
+      addItem(payload);
+      setPendingPurchase({ productId: product.id, variantId, intent });
+    } else if (intent === 'buy') {
+      buyNow(payload);
+    } else {
+      addItem(payload);
+      openCart();
+    }
   };
 
-  const handleBuyNow = (product: Product) => {
-    buyNow(createCartPayload(product));
+  const finishAuthentication = () => {
+    if (!pendingPurchase) return;
+    const matching = cart.filter((item) => item.productId === pendingPurchase.productId
+      && (!pendingPurchase.variantId || item.variantId === pendingPurchase.variantId));
+    const intent = pendingPurchase.intent;
+    setPendingPurchase(null);
+    if (intent === 'buy' && matching.length) startCheckout(matching);
+    else openCart();
   };
 
   const handleTrackOrder = (e: React.FormEvent) => {
@@ -867,7 +859,7 @@ export default function MarketplacePage() {
       <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-4 bg-[#F3EFE6] py-7 text-left lg:py-9">
         <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
 
-        {/* SCANMS Standard "ĐƠN HÀNG HÔM NAY" Header */}
+        {/* SCANMS Standard "KHÁM PHÁ SẢN PHẨM" Header */}
         <div className="mb-4 bg-white border border-[#EAE4D7] border-b-[4px] border-b-[#B88E4F] shadow-[0_2px_8px_rgba(75,57,34,0.04)]">
           <div className="py-3.5 sm:py-4 px-4 text-center">
             <h2
@@ -881,7 +873,7 @@ export default function MarketplacePage() {
 
         {/* Product Cards Grid (Full-Width Responsive 2-5 Columns) */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {[...Array(12)].map((_, i) => (
               <div key={i} className="animate-pulse overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
                 <div className="aspect-square bg-[#F3EFE6]" />
@@ -910,161 +902,15 @@ export default function MarketplacePage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {items.map((p) => {
-              const productDetailUrl = `/products/${p.sku || p.id}`;
-              return (
-                <div
-                  key={p.id}
-                  className="bg-white border border-[#EAE4D7] rounded-xl overflow-hidden hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(75,57,34,0.12)] hover:border-[#C59B58] transition-all duration-200 flex flex-col justify-between group text-left relative"
-                >
-                  {/* Entire Card Clickable Area -> Product Details (SCANMS Standard) */}
-                  <div
-                    role="link"
-                    tabIndex={0}
-                    onClick={() => navigate(productDetailUrl)}
-                    onKeyDown={(event) => {
-                      if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-                        event.preventDefault();
-                        navigate(productDetailUrl);
-                      }
-                    }}
-                    className="block flex-1 flex flex-col cursor-pointer"
-                    title={p.name}
-                  >
-                    {/* Image Container with Discount Badge & Wishlist Heart */}
-                    <div className="relative aspect-square bg-white overflow-hidden">
-                      <LiveSessionDealBadge deal={liveDeals[p.id]} now={liveDealsNow} />
-                      <img
-                        src={p.image}
-                        alt={p.name}
-                        className="w-full h-full object-contain object-center p-2 transition-transform duration-300 group-hover:scale-[1.03]"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.currentTarget as HTMLImageElement;
-                          if (!target.dataset.hasFallback) {
-                            target.dataset.hasFallback = 'true';
-                            target.src = getSafeProductImageUrl(null, p.name);
-                          }
-                        }}
-                      />
-                      {p.origPrice > p.price && (
-                        <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[9.5px] sm:text-[10px] font-bold border border-[#EEDFC6] z-10">
-                          -{Math.round(((p.origPrice - p.price) / p.origPrice) * 100)}%
-                        </span>
-                      )}
-
-                      {/* Wishlist Heart Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleToggleWishlist(p.id);
-                        }}
-                        className={`absolute top-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm z-10 cursor-pointer active:scale-90 ${
-                          wishlistIds.has(p.id)
-                            ? 'bg-white text-[#DC2626] ring-1 ring-[#DC2626]/30 shadow-[0_2px_8px_rgba(220,38,38,0.25)] hover:scale-110'
-                            : 'bg-white/90 hover:bg-white text-[#7D715E] hover:text-[#DC2626] hover:scale-110 backdrop-blur-xs'
-                        }`}
-                        title={wishlistIds.has(p.id) ? 'Bỏ lưu sản phẩm' : 'Lưu vào danh sách yêu thích'}
-                      >
-                        <Heart className={`w-3.5 h-3.5 transition-colors ${wishlistIds.has(p.id) ? 'fill-[#DC2626] text-[#DC2626]' : ''}`} />
-                      </button>
-                    </div>
-
-{/* Card Content - SCANMS Compact Proportions */}
-                    <div className="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
-                      <div>
-                        {/* Row 1: Store Icon & Shop Name • Chính hãng */}
-                        <div className="flex items-center justify-between gap-1 h-5 mb-1 min-w-0">
-                          <Link
-                            to={p.storeId ? `/shops/${p.storeId}` : `/marketplace?store=${encodeURIComponent(p.brand || '')}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-[10.5px] font-bold text-[#7D715E] hover:text-[#B88E4F] flex items-center gap-1 min-w-0 truncate"
-                            title={p.brand || 'Gian hàng đối tác'}
-                          >
-                            <Store className="w-3 h-3 text-[#B88E4F] shrink-0" />
-                            <span className="truncate">
-                              {p.brand || 'Gian hàng đối tác'}
-                            </span>
-                          </Link>
-                          <span className="inline-flex items-center px-1 py-0.2 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[8.5px] sm:text-[9px] font-extrabold text-[#B88E4F] shrink-0">
-                            Chính hãng
-                          </span>
-                        </div>
-
-                        {/* Keep titles aligned while allowing longer product names to remain readable. */}
-                        <h3
-                          className="text-xs font-semibold text-[#1A1612] group-hover:text-[#B88E4F] transition-colors line-clamp-3 h-[54px] leading-[18px] mb-1 overflow-hidden"
-                          title={p.name}
-                        >
-                          {p.name}
-                        </h3>
-
-                        {/* Availability from inventory and partner commission. */}
-                        <div className="flex items-center gap-1 h-5 mb-1.5 min-w-0">
-                          <span
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[9px] font-black text-[#B88E4F] shrink-0 shadow-2xs tracking-tight"
-                            title={(p.stockQuantity ?? 0) > 0 ? 'Sản phẩm còn hàng' : 'Sản phẩm tạm hết hàng'}
-                          >
-                            <Zap className="w-2.5 h-2.5 fill-[#B88E4F] text-[#B88E4F] shrink-0" />
-                            <span>{(p.stockQuantity ?? 0) > 0 ? 'Sẵn hàng' : 'Hết hàng'}</span>
-                          </span>
-
-                          {isKolUser && (p.commissionRate || 0) > 0 && (
-                            <span className="text-[9px] text-[#B88E4F] font-bold bg-[#FBF5EB] px-1 py-0.5 rounded border border-[#EEDFC6] truncate">
-                              HH {p.commissionRate}%
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Show catalogue prices without an invented sales count. */}
-                      <div className="pt-1.5 border-t border-[#EAE4D7]/60 flex items-center justify-between gap-1">
-                        <span className="text-xs sm:text-sm font-black text-[#1A1612] tracking-tight truncate">
-                          {formatMoney(p.price)}
-                        </span>
-
-                        {p.origPrice > p.price && (
-                          <del className="text-[10px] text-[#7D715E] font-medium shrink-0 whitespace-nowrap">
-                            {formatMoney(p.origPrice)}
-                          </del>
-                        )}
-                      </div>
-                      <div className="mt-2 grid grid-cols-[36px_1fr] gap-1.5">
-                        <button
-                          type="button"
-                          disabled={(p.stockQuantity ?? 0) <= 0}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleAddToCart(p);
-                          }}
-                          className="flex h-9 items-center justify-center rounded-lg border border-[#C59B58] bg-white text-[#B88E4F] transition hover:bg-[#FBF5EB] disabled:cursor-not-allowed disabled:border-[#EAE4D7] disabled:text-[#B9AD9A]"
-                          aria-label={`Thêm ${p.name} vào giỏ hàng`}
-                          title="Thêm vào giỏ"
-                        >
-                          <ShoppingCart className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={(p.stockQuantity ?? 0) <= 0}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleBuyNow(p);
-                          }}
-                          className="h-9 rounded-lg bg-[#C59B58] px-2 text-[10px] font-black text-white transition hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:bg-[#D8CCBA] sm:text-[11px]"
-                        >
-                          {(p.stockQuantity ?? 0) > 0 ? 'Mua ngay' : 'Hết hàng'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {items.map((product) => (
+              <MarketplaceProductCard
+                key={product.id} product={product} wished={wishlistIds.has(product.id)}
+                onWishlist={() => void handleToggleWishlist(product.id)}
+                onPurchase={(intent, variantId) => handlePurchase(product, intent, variantId)}
+                deal={liveDeals[product.id]} now={liveDealsNow}
+              />
+            ))}
           </div>
         )}
 
@@ -1347,32 +1193,7 @@ export default function MarketplacePage() {
         </div>
       )}
 
-      {/* Guest Checkout Modal */}
-      {activeCheckoutProduct && (
-        <GuestCheckoutModal
-          isOpen={true}
-          onClose={() => setActiveCheckoutProduct(null)}
-          product={activeCheckoutProduct.product}
-          store={activeCheckoutProduct.store}
-          initialCouponCode={activeCheckoutProduct.couponCode}
-          initialQuantity={activeCheckoutProduct.quantity}
-          onOrderPlaced={(orderData: any) => {
-            if (orderData.paymentMethod === 'PAYOS') {
-              if (orderData.paymentStatus !== 'PAID') toast.info(`Đơn ${orderData.publicOrderCode} đang chờ thanh toán. Vui lòng quét mã QR PayOS.`);
-              return;
-            }
-            setActiveCheckoutProduct(null);
-            toast.success(`Đặt hàng thành công! Mã đơn: ${orderData.publicOrderCode || orderData.orderCode || orderData.id}`);
-            if (orderData.phone) {
-              setTrackQuery(orderData.phone);
-              setTimeout(() => {
-                trackingRef.current?.scrollIntoView({ behavior: 'smooth' });
-              }, 500);
-            }
-          }}
-        />
-      )}
-
+      {pendingPurchase && <QuickCustomerAuth onClose={() => setPendingPurchase(null)} onSuccess={finishAuthentication} />}
 
       {/* KOC LIVE COMMERCE PREVIEW MODAL */}
       <LiveCommerceHubModal
