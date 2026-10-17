@@ -899,7 +899,40 @@ export class LiveSessionsService {
       orderBy: [{ status: 'asc' }, { startsAt: 'asc' }],
       take: 20,
     });
-    return sessions.map(({ governance: _privateGovernance, ...session }) => session);
+    return Promise.all(sessions.map(async ({ governance, ...session }) => {
+      const pinnedId = governance && typeof governance === 'object' && !Array.isArray(governance)
+        ? governance.pinnedProductId : null;
+      const pinnedProduct = session.products.find((row) => row.productId === pinnedId)?.product ?? null;
+      const stats = session.status === 'LIVE'
+        ? await this.getViewerStats(session.id, session.platform)
+        : { currentViewers: null };
+      return { ...session, pinnedProduct, viewerCount: stats.currentViewers };
+    }));
+  }
+
+  async pinProduct(userId: string, sessionId: string, productId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM live_shopping_sessions WHERE id = ${sessionId}::uuid FOR UPDATE`;
+      const session = await tx.liveShoppingSession.findUnique({
+        where: { id: sessionId }, include: { products: { select: { productId: true } } },
+      });
+      if (!session) throw new NotFoundException('Không tìm thấy phiên Live.');
+      if (session.creatorId !== userId && session.createdBy !== userId) {
+        throw new ForbiddenException('Chỉ chủ phiên và KOC của phiên được ghim sản phẩm.');
+      }
+      if (session.status !== 'LIVE' || session.endsAt <= new Date()) {
+        throw new BadRequestException('Chỉ được ghim trong phiên đang phát.');
+      }
+      if (!session.products.some((row) => row.productId === productId)) {
+        throw new BadRequestException('Sản phẩm không thuộc phiên Live.');
+      }
+      const governance = session.governance && typeof session.governance === 'object' && !Array.isArray(session.governance)
+        ? session.governance : {};
+      await tx.liveShoppingSession.update({
+        where: { id: sessionId }, data: { governance: { ...governance, pinnedProductId: productId } },
+      });
+      return { productId };
+    });
   }
 
   async getReport(userId: string, sessionId: string) {

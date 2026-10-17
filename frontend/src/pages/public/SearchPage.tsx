@@ -21,6 +21,7 @@ import { authService } from '../../services/auth.service';
 import { customerService } from '../../services/customer.service';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import type { Product } from '@/types/marketplace.types';
+import { HOME_CATEGORY_GROUPS, matchesHomeCategory } from '@/utils/marketplace-category.utils';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
@@ -45,6 +46,9 @@ export default function SearchPage() {
 
   const queryParam = searchParams.get('q') || '';
   const categoryParam = searchParams.get('category') || 'all';
+  const categoryGroup = searchParams.get('categoryGroup') || '';
+  const discountedOnly = searchParams.get('discount') === 'true';
+  const categoryGroupLabel = HOME_CATEGORY_GROUPS.find((group) => group.id === categoryGroup)?.label;
   const storeParam = searchParams.get('store') || 'all';
 
   const [items, setItems] = useState<Product[]>([]);
@@ -210,6 +214,7 @@ export default function SearchPage() {
   // Update URL search parameters when filters change
   const updateUrlParams = (updates: Record<string, string | null>) => {
     const newParams = new URLSearchParams(searchParams);
+    if ('category' in updates) newParams.delete('categoryGroup');
     Object.entries(updates).forEach(([key, value]) => {
       if (value === null || value === '' || value === 'all' || value === 'false') {
         newParams.delete(key);
@@ -326,6 +331,8 @@ export default function SearchPage() {
   // Filter and Sort Logic
   const filteredProducts = useMemo(() => {
     return items.filter((p) => {
+      if (!matchesHomeCategory(p.category, categoryGroup)) return false;
+      if (discountedOnly && p.origPrice <= p.price) return false;
       // 1. Search keyword
       if (searchInput.trim()) {
         const q = searchInput.toLowerCase().trim();
@@ -384,6 +391,8 @@ export default function SearchPage() {
     maxPrice,
     onlyHasCommission,
     onlyInStock,
+    categoryGroup,
+    discountedOnly,
   ]);
 
   // Sort
@@ -405,6 +414,8 @@ export default function SearchPage() {
   // Active filter count
   const activeFilterCount = useMemo(() => {
     let count = 0;
+    if (categoryGroupLabel) count++;
+    if (discountedOnly) count++;
     if (searchInput.trim()) count++;
     if (selectedCategory !== 'all') count++;
     if (selectedStore !== 'all') count++;
@@ -412,7 +423,7 @@ export default function SearchPage() {
     if (onlyHasCommission) count++;
     if (onlyInStock) count++;
     return count;
-  }, [searchInput, selectedCategory, selectedStore, pricePreset, minPrice, maxPrice, onlyHasCommission, onlyInStock]);
+  }, [searchInput, selectedCategory, selectedStore, pricePreset, minPrice, maxPrice, onlyHasCommission, onlyInStock, categoryGroupLabel, discountedOnly]);
 
   const handleResetFilters = () => {
     setSearchInput('');
@@ -431,6 +442,12 @@ export default function SearchPage() {
   const renderFilterContent = () => (
     <div className="space-y-3.5 text-left">
       {/* Category Section - SCANMS Standard */}
+      {(categoryGroupLabel || discountedOnly) && (
+        <div className="flex flex-wrap gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs">
+          {categoryGroupLabel && <button type="button" onClick={() => updateUrlParams({ categoryGroup: null })} className="inline-flex items-center gap-2 text-[#1A1612]">{categoryGroupLabel}<X size={14} aria-label="Bỏ lọc ngành hàng" /></button>}
+          {discountedOnly && <button type="button" onClick={() => updateUrlParams({ discount: null })} className="inline-flex items-center gap-2 text-[#1A1612]">Sản phẩm giảm giá<X size={14} aria-label="Bỏ lọc giảm giá" /></button>}
+        </div>
+      )}
       <div>
         <div className="space-y-1">
           {/* Tất cả sản phẩm (Toàn sàn & Mọi gian hàng) */}

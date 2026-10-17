@@ -4,6 +4,7 @@ import { authService } from '../services/auth.service';
 import api from '../services/api';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { customerService } from '../services/customer.service';
+import { mergeCartItems } from '@/utils/cart-merge.utils';
 import { normalizeOrderVariantId } from '@/utils/order-variant.utils';
 import type {
   CartVariantInfo,
@@ -48,131 +49,128 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isValidatingStock, setIsValidatingStock] = useState(false);
   const [isCartSyncing, setIsCartSyncing] = useState(false);
   const [cartSyncedAt, setCartSyncedAt] = useState<string | null>(null);
-  const [authVersion, setAuthVersion] = useState(0);
   const hydratedUserRef = useRef<string | null>(null);
   const skipNextPushRef = useRef(false);
+  const cartRef = useRef(cart);
+  const selectedRef = useRef(selectedItemIds);
+  const userIdRef = useRef(activeUserId);
+  const loadingUserRef = useRef<string | null>(null);
+  const authRevisionRef = useRef(0);
+  cartRef.current = cart;
+  selectedRef.current = selectedItemIds;
 
   useEffect(() => {
-    const onAuthChanged = () => setAuthVersion((value) => value + 1);
-    window.addEventListener('scanms_auth_changed', onAuthChanged);
-    window.addEventListener('storage', onAuthChanged);
+    let mounted = true;
+    const syncIdentity = () => {
+      const user = authService.getCurrentUser();
+      const nextId = localStorage.getItem('token') && user?.id ? user.id : null;
+      const previousId = userIdRef.current;
+      if (nextId === previousId && (hydratedUserRef.current === nextId || loadingUserRef.current === nextId)) return;
+      const revision = ++authRevisionRef.current;
+      const isCurrent = () => mounted && userIdRef.current === nextId && authRevisionRef.current === revision;
+
+      // Capture the guest basket before changing ownership; both auth events can fire together.
+      const guest = !previousId && nextId ? cartRef.current : [];
+      const guestSelection = !previousId && nextId ? selectedRef.current : [];
+      const accountCache = loadCartFromStorage(nextId);
+      const accountSelection = loadSelectedFromStorage(nextId);
+      const staged = mergeCartItems(accountCache, guest, true);
+      userIdRef.current = nextId;
+      cartRef.current = staged;
+      const selection = [...new Set([...accountSelection, ...guestSelection])];
+      if (nextId && guest.length) {
+        try {
+          localStorage.setItem(getCartStorageKey(nextId), JSON.stringify(staged));
+          localStorage.setItem(getSelectedStorageKey(nextId), JSON.stringify(selection));
+          localStorage.removeItem(getCartStorageKey(null));
+          localStorage.removeItem(getSelectedStorageKey(null));
+        } catch {
+          // Keep the in-memory basket and guest recovery copy if storage is full.
+        }
+      }
+      selectedRef.current = selection;
+      setActiveUserId(nextId);
+      setCart(staged);
+      setSelectedItemIds(selection);
+      hydratedUserRef.current = null;
+      loadingUserRef.current = nextId;
+      setCartSyncedAt(null);
+      if (!nextId) {
+        setIsCartSyncing(false);
+        return;
+      }
+
+      setIsCartSyncing(true);
+      void customerService.getCart().then(async (remote) => {
+        if (!isCurrent()) return;
+        const account = mergeCartItems(remote.items || [], accountCache);
+        const combined = mergeCartItems(account, guest, true);
+        const next = mergeCartItems(combined, cartRef.current);
+        // Persist the server-reconciled basket without remounting the checkout form.
+        localStorage.setItem(getCartStorageKey(nextId), JSON.stringify(next));
+        cartRef.current = next;
+        skipNextPushRef.current = true;
+        setCart(next);
+        setSelectedItemIds((previous) => {
+          const selected = new Set(previous);
+          for (const item of remote.items || []) {
+            if (!accountCache.some((cached) => cached.cartItemId === item.cartItemId) && item.isActive && item.stockQuantity > 0) selected.add(item.cartItemId);
+          }
+          return [...selected].filter((id) => next.some((item) => item.cartItemId === id));
+        });
+        hydratedUserRef.current = nextId;
+        localStorage.setItem(CART_OWNER_KEY, nextId);
+        setCartSyncedAt(remote.syncedAt || new Date().toISOString());
+        if (guest.length || accountCache.length) {
+          const synced = await customerService.syncCart(next.map((item) => ({
+            productId: item.productId, variantId: normalizeOrderVariantId(item.variantId), quantity: item.quantity,
+          })));
+          if (isCurrent()) setCartSyncedAt(synced.syncedAt || new Date().toISOString());
+        }
+      }).catch(() => {
+        // The staged account copy remains available offline; retry on the next auth/focus event.
+        if (isCurrent()) hydratedUserRef.current = null;
+      }).finally(() => {
+        if (isCurrent()) {
+          loadingUserRef.current = null;
+          setIsCartSyncing(false);
+        }
+      });
+    };
+    syncIdentity();
+    window.addEventListener('scanms_auth_changed', syncIdentity);
+    window.addEventListener('auth-user-updated', syncIdentity);
+    window.addEventListener('storage', syncIdentity);
+    window.addEventListener('focus', syncIdentity);
     return () => {
-      window.removeEventListener('scanms_auth_changed', onAuthChanged);
-      window.removeEventListener('storage', onAuthChanged);
+      mounted = false;
+      authRevisionRef.current += 1;
+      loadingUserRef.current = null;
+      window.removeEventListener('scanms_auth_changed', syncIdentity);
+      window.removeEventListener('auth-user-updated', syncIdentity);
+      window.removeEventListener('storage', syncIdentity);
+      window.removeEventListener('focus', syncIdentity);
     };
   }, []);
 
-  // Hydrate from PostgreSQL after sign-in and merge only a genuine guest cart.
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    const token = localStorage.getItem('token');
-    if (!token || !user?.id) {
-      if (hydratedUserRef.current) {
-        setCart([]);
-        setSelectedItemIds([]);
-        setCartSyncedAt(null);
-        hydratedUserRef.current = null;
-        localStorage.removeItem(CART_OWNER_KEY);
-      }
-      return;
-    }
-    if (hydratedUserRef.current === user.id) return;
-
-    let active = true;
-    setIsCartSyncing(true);
-    customerService
-      .getCart()
-      .then(async (remote) => {
-        if (!active) return;
-        const previousOwner = localStorage.getItem(CART_OWNER_KEY);
-        // Once a cart belongs to an account, PostgreSQL is authoritative on
-        // subsequent sign-ins. Only an unowned guest cart may be merged.
-        const localItems = previousOwner ? [] : cart;
-        const merged = new Map<string, CartItem>();
-        for (const item of remote.items || []) {
-          const local = loadCartFromStorage(user.id).find((saved) => saved.cartItemId === item.cartItemId);
-          merged.set(item.cartItemId, { ...item, liveSessionId: local?.liveSessionId, liveCouponCode: local?.liveCouponCode } as CartItem);
-        }
-        for (const item of localItems) {
-          const existing = merged.get(item.cartItemId);
-          merged.set(item.cartItemId, existing
-            ? { ...existing, quantity: Math.min(Math.max(existing.quantity, item.quantity), existing.stockQuantity || 1) }
-            : item);
-        }
-        const next = Array.from(merged.values());
-        skipNextPushRef.current = true;
-        setCart(next);
-        setSelectedItemIds(next.filter((item) => item.isActive && item.stockQuantity > 0).map((item) => item.cartItemId));
-        hydratedUserRef.current = user.id;
-        localStorage.setItem(CART_OWNER_KEY, user.id);
-        setCartSyncedAt(remote.syncedAt || new Date().toISOString());
-        if (localItems.length > 0) {
-          const synced = await customerService.syncCart(next.map((item) => ({
-            productId: item.productId,
-            variantId: normalizeOrderVariantId(item.variantId),
-            quantity: item.quantity,
-          })));
-          if (active) setCartSyncedAt(synced.syncedAt || new Date().toISOString());
-        }
-      })
-      .catch(() => {
-        // Keep the local guest cart if the API is temporarily unavailable.
-      })
-      .finally(() => active && setIsCartSyncing(false));
-
-    return () => { active = false; };
-  }, [authVersion]);
-
-  // Persist every signed-in cart mutation to the centralized cart table.
-  useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (!user?.id || hydratedUserRef.current !== user.id) return;
+    if (!activeUserId || hydratedUserRef.current !== activeUserId) return;
     if (skipNextPushRef.current) {
       skipNextPushRef.current = false;
       return;
     }
+    const userId = activeUserId;
     const timer = window.setTimeout(() => {
       setIsCartSyncing(true);
-      customerService
-        .syncCart(cart.map((item) => ({
-          productId: item.productId,
-          variantId: normalizeOrderVariantId(item.variantId),
-          quantity: item.quantity,
-        })))
-        .then((result) => setCartSyncedAt(result.syncedAt || new Date().toISOString()))
-        .catch(() => toast.error('Chưa thể đồng bộ giỏ hàng. Hệ thống sẽ thử lại khi bạn thao tác tiếp.'))
-        .finally(() => setIsCartSyncing(false));
+      customerService.syncCart(cart.map((item) => ({
+        productId: item.productId, variantId: normalizeOrderVariantId(item.variantId), quantity: item.quantity,
+      })))
+        .then((result) => { if (userIdRef.current === userId) setCartSyncedAt(result.syncedAt || new Date().toISOString()); })
+        .catch(() => toast.error('Chưa thể đồng bộ giỏ hàng. Sản phẩm vẫn được giữ trên thiết bị.'))
+        .finally(() => { if (userIdRef.current === userId) setIsCartSyncing(false); });
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [cart]);
-
-  // Clear legacy shared un-scoped cart so it never leaks between different accounts
-  useEffect(() => {
-    try {
-      localStorage.removeItem('scanms_cart_v1');
-      localStorage.removeItem('scanms_cart_selected_v1');
-    } catch {}
-  }, []);
-
-  // Listen to user changes (login, logout, switch account) and update cart accordingly
-  useEffect(() => {
-    const handleUserChange = () => {
-      const currentUid = authService.getCurrentUser()?.id || null;
-      if (currentUid !== activeUserId) {
-        setActiveUserId(currentUid);
-        const userCart = loadCartFromStorage(currentUid);
-        setCart(userCart);
-        setSelectedItemIds(loadSelectedFromStorage(currentUid));
-      }
-    };
-
-    window.addEventListener('auth-user-updated', handleUserChange);
-    window.addEventListener('storage', handleUserChange);
-    return () => {
-      window.removeEventListener('auth-user-updated', handleUserChange);
-      window.removeEventListener('storage', handleUserChange);
-    };
-  }, [activeUserId]);
+  }, [cart, activeUserId]);
 
   // Sync cart to active user's localStorage
   useEffect(() => {
@@ -254,10 +252,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const existingIds = new Set(cart.map((i) => i.cartItemId));
     setSelectedItemIds((prev) => {
       const filtered = prev.filter((id) => existingIds.has(id));
-      // If user had no selection but cart has items, select all in-stock items by default
-      if (filtered.length === 0 && cart.length > 0 && prev.length === 0) {
-        return cart.filter((i) => i.isActive && i.stockQuantity > 0).map((i) => i.cartItemId);
-      }
       return filtered;
     });
   }, [cart]);
@@ -272,12 +266,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token && user && pendingRaw) {
         try {
           const pending = JSON.parse(pendingRaw);
-          localStorage.removeItem(PENDING_CHECKOUT_KEY);
+          if (isCheckoutOpen) {
+            localStorage.removeItem(PENDING_CHECKOUT_KEY);
+            return;
+          }
 
           if (Array.isArray(pending.itemIds) && pending.itemIds.length > 0) {
-            setSelectedItemIds(pending.itemIds);
             const toCheckout = cart.filter((i) => pending.itemIds.includes(i.cartItemId) && i.stockQuantity > 0);
             if (toCheckout.length > 0) {
+              localStorage.removeItem(PENDING_CHECKOUT_KEY);
+              setSelectedItemIds(pending.itemIds);
               setCheckoutItems(toCheckout);
               setIsCheckoutOpen(true);
               toast.info('Chào mừng trở lại! Đã khôi phục các món trong giỏ hàng để bạn tiếp tục đặt mua.');
@@ -290,7 +288,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     checkPendingCheckout();
-  }, [cart]);
+  }, [cart, isCheckoutOpen]);
 
   // Total quantity count of all items
   const totalCount = useMemo(() => {
@@ -776,6 +774,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [stageCheckoutItems]);
 
   const closeCheckout = useCallback(() => {
+    localStorage.removeItem(PENDING_CHECKOUT_KEY);
     setIsCheckoutOpen(false);
     setCheckoutItems([]);
     setCheckoutCouponCode('');
