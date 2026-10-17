@@ -52,13 +52,13 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary:
-      'Đăng nhập tài khoản bằng Email & Mật khẩu (Tự động gửi email thông báo bảo mật)',
+    summary: 'Đăng nhập bằng Email hoặc số điện thoại đã đăng ký và mật khẩu',
   })
   @ApiResponse({ status: 200, description: 'Đăng nhập thành công' })
   @ApiResponse({
     status: 401,
-    description: 'Email hoặc mật khẩu không chính xác',
+    description:
+      'Thông tin đăng nhập không chính xác hoặc số điện thoại không xác định duy nhất một tài khoản',
   })
   async login(
     @Body() dto: LoginDto,

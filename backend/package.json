@@ -16,6 +16,7 @@
     "seed": "prisma db seed",
     "seed:plan": "ts-node --project prisma/tsconfig.seed.json prisma/seed.ts --plan",
     "seed:check": "ts-node --project prisma/tsconfig.seed.json prisma/seed.ts --check",
+    "seed:audit": "ts-node --project prisma/tsconfig.seed.json prisma/seed.ts --audit",
     "seed:typecheck": "tsc --project prisma/tsconfig.seed.json",
     "test:seed": "jest --config prisma/seeds/jest.config.cjs --runInBand",
     "test": "jest --runInBand",

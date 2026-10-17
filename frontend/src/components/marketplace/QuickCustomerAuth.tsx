@@ -6,7 +6,7 @@ import { GoogleOfficialButton } from '@/components/auth/GoogleOfficialButton';
 export function QuickCustomerAuth({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [otp, setOtp] = useState('');
@@ -52,7 +52,7 @@ export function QuickCustomerAuth({ onClose, onSuccess }: { onClose: () => void;
       setBusy(false);
     }
   };
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = identifier.trim().toLowerCase();
 
   return (
     <dialog ref={dialog} aria-labelledby="quick-auth-title" aria-describedby="quick-auth-description"
@@ -65,7 +65,7 @@ export function QuickCustomerAuth({ onClose, onSuccess }: { onClose: () => void;
       <h2 id="quick-auth-title" className="m-0 text-xl font-black">{mode === 'login' ? 'Đăng nhập để tiếp tục' : 'Tạo tài khoản bằng OTP'}</h2>
       <p id="quick-auth-description" className="mb-5 mt-2 text-xs leading-5 text-[#7D715E]">Sản phẩm đã được lưu trong giỏ. Bạn tiếp tục ngay tại đây sau khi xác thực.</p>
       <div aria-busy={busy} className={busy ? 'pointer-events-none opacity-60' : ''}><GoogleOfficialButton onSuccess={(token) => void run(() => authService.googleLogin(token, 'CUSTOMER'))} onError={setError} text="continue_with" /></div>
-      <div className="my-4 flex items-center gap-3 text-[10px] text-[#7D715E]"><span className="h-px flex-1 bg-[#EAE4D7]" />hoặc dùng email<span className="h-px flex-1 bg-[#EAE4D7]" /></div>
+      <div className="my-4 flex items-center gap-3 text-[10px] text-[#7D715E]"><span className="h-px flex-1 bg-[#EAE4D7]" />{mode === 'login' ? 'hoặc dùng email / số điện thoại' : 'hoặc đăng ký bằng email'}<span className="h-px flex-1 bg-[#EAE4D7]" /></div>
       <form onSubmit={(event) => {
         event.preventDefault();
         void run(async () => {
@@ -74,11 +74,11 @@ export function QuickCustomerAuth({ onClose, onSuccess }: { onClose: () => void;
             await authService.register({ email: normalizedEmail, password, fullName: name.trim(), otp, role: 'CUSTOMER' });
             setMode('login');
           }
-          await authService.login(normalizedEmail, password);
+          await authService.login(mode === 'login' ? identifier.trim() : normalizedEmail, password);
         });
       }} className="space-y-3">
         {mode === 'register' && <label className="block text-xs font-semibold">Họ và tên<input required value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" maxLength={150} className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-3 text-sm outline-[#C59B58]" /></label>}
-        <label className="block text-xs font-semibold">Email<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" autoFocus maxLength={254} className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-3 text-sm outline-[#C59B58]" /></label>
+        <label className="block text-xs font-semibold">{mode === 'login' ? 'Email hoặc số điện thoại' : 'Email'}<input required type={mode === 'login' ? 'text' : 'email'} value={identifier} onChange={(event) => setIdentifier(event.target.value)} autoComplete={mode === 'login' ? 'username' : 'email'} placeholder={mode === 'login' ? 'Email hoặc SĐT đã đăng ký' : 'Email nhận mã OTP'} autoFocus maxLength={254} className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-3 text-sm outline-[#C59B58]" /></label>
         <label className="block text-xs font-semibold">Mật khẩu<input required type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={mode === 'register' ? 8 : undefined} maxLength={128} className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-3 text-sm outline-[#C59B58]" /></label>
         {mode === 'register' && <div className="space-y-2">
           <button type="button" disabled={busy || cooldown > 0 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)} onClick={() => void run(async () => { await authService.sendOtp(normalizedEmail); setSentTo(normalizedEmail); setCooldown(60); }, false)} className="min-h-10 text-xs font-bold text-[#B88E4F] disabled:text-[#7D715E]">{cooldown ? `Gửi lại sau ${cooldown}s` : 'Gửi mã OTP xác thực email'}</button>

@@ -2,10 +2,23 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import * as PrismaExports from '@prisma/client';
 import type { DatabaseTarget } from './seed.config';
 import type { SeedDataset, SeedTable } from './seed.types';
-import { ADMIN_ID, assertSeed, DATASET_VERSION, seedId } from './seed.helpers';
+import {
+  ADMIN_ID,
+  assertSeed,
+  DATASET_VERSION,
+  jsonObject,
+  seedId,
+} from './seed.helpers';
 import { inventoryBaseline } from './inventory.seed';
 
 export const MANIFEST_ID = seedId('manifest');
+export function assertManifestVersion(details: unknown): void {
+  if (jsonObject(details).dataset !== DATASET_VERSION) {
+    throw new Error(
+      'An older/different seed revision is installed. Do not overwrite demo progress. Review seed:audit and a backed-up, explicitly authorized database rebuild first.',
+    );
+  }
+}
 const MODEL_NAMES: Record<SeedTable, string> = {
   users: 'User',
   tiers: 'CollaboratorTier',
@@ -171,11 +184,12 @@ export function datasetCounts(data: SeedDataset): Record<SeedTable, number> {
 }
 
 /** Verify fixture IDs without assuming the database contains no other team data. */
-export async function verifyPersistedCounts(
+export async function readPersistedCounts(
   tx: Prisma.TransactionClient,
   target: DatabaseTarget,
   data: SeedDataset,
-): Promise<void> {
+): Promise<Record<SeedTable, number>> {
+  const counts = {} as Record<SeedTable, number>;
   for (const key of Object.keys(WRITERS) as SeedTable[]) {
     const model = modelFor(key);
     const table = Prisma.raw(
@@ -186,19 +200,37 @@ export async function verifyPersistedCounts(
       const identities = data.liveViewers.map(
         (row) => Prisma.sql`(${row.sessionId}::uuid, ${row.clientId})`,
       );
-      if (!identities.length) continue;
+      if (!identities.length) {
+        counts[key] = 0;
+        continue;
+      }
       result =
         await tx.$queryRaw`SELECT count(*) FROM ${table} WHERE (session_id, client_id) IN (${Prisma.join(identities)})`;
     } else {
       const ids = (data[key] as { id?: string }[]).map(
         (row) => Prisma.sql`${row.id}::uuid`,
       );
-      if (!ids.length) continue;
+      if (!ids.length) {
+        counts[key] = 0;
+        continue;
+      }
       result =
         await tx.$queryRaw`SELECT count(*) FROM ${table} WHERE id IN (${Prisma.join(ids)})`;
     }
+    counts[key] = Number(result[0].count);
+  }
+  return counts;
+}
+
+export async function verifyPersistedCounts(
+  tx: Prisma.TransactionClient,
+  target: DatabaseTarget,
+  data: SeedDataset,
+): Promise<void> {
+  const counts = await readPersistedCounts(tx, target, data);
+  for (const key of Object.keys(WRITERS) as SeedTable[]) {
     assertSeed(
-      Number(result[0].count) === data[key].length,
+      counts[key] === data[key].length,
       `persisted ${key} count mismatch`,
     );
   }
@@ -216,7 +248,10 @@ export async function applyDataset(
       const manifest = await tx.auditLog.findUnique({
         where: { id: MANIFEST_ID },
       });
-      if (manifest) return 'unchanged';
+      if (manifest) {
+        assertManifestVersion(manifest.details);
+        return 'unchanged';
+      }
       for (const key of Object.keys(WRITERS) as SeedTable[])
         if (data[key].length) await WRITERS[key](tx, data);
       await verifyPersistedCounts(tx, target, data);
@@ -232,9 +267,10 @@ export async function applyDataset(
             earliestOrderAt: data.orders[0].createdAt!.toString(),
             inventoryBaseline: inventoryBaseline(data),
             unsupported: [
-              'SPONSORED_SHOP_PLACEMENT',
               'ADDITIVE_COMMISSION_ENGINE',
               'SHIPPING_VOUCHER_MODEL',
+              'DYNAMIC_SHIPPING_FEE_POLICY',
+              'PRODUCT_PACKAGE_COLUMNS',
             ],
           },
         },

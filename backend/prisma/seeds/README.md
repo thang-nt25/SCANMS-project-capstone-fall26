@@ -2,6 +2,8 @@
 
 Entry point vẫn là `backend/prisma/seed.ts`, được gọi bằng `npx prisma db seed` theo `prisma.config.ts`. Các module trong thư mục này chỉ xây dựng fixture và ghi dữ liệu qua Prisma; không thay thế controller/service của ứng dụng.
 
+Phiên bản hiện tại là **`scanms-capstone-2026-v2`**. UUID tài khoản/sản phẩm được giữ ổn định theo namespace v1, không sinh tài khoản trùng khi nâng phiên bản. Nếu DB đã có manifest v1, lệnh apply/check dừng rõ ràng; không tự cập nhật manifest hoặc ghi đè tiến độ test. Dùng `seed:audit` để đối chiếu trước khi nhóm quyết định dựng lại DB.
+
 `prisma/seed-runner.cjs` nạp ts-node của chính dự án và `tsconfig.seed.json`, giúp lệnh Prisma chạy được cả khi terminal/CI không có `node_modules/.bin` trên PATH. Nếu PowerShell chặn các shim `.ps1`, dùng `npm.cmd` và `npx.cmd` cho các câu lệnh bên dưới.
 
 ## Phạm vi dữ liệu
@@ -16,8 +18,9 @@ Entry point vẫn là `backend/prisma/seed.ts`, được gọi bằng `npx prism
 | Đơn hàng             |       60 | Hai đơn/khách; có PENDING, SHIPPING, DELIVERED, COMPLETED, RETURN_REQUESTED                     |
 | Đánh giá             |       66 | 2–3 đánh giá/sản phẩm, đều gắn với đơn COMPLETED chứa đúng sản phẩm                             |
 | Hàng mẫu             |       20 | Năm hồ sơ mỗi trạng thái PENDING, SHIPPED, RECEIVED, COMPLETED                                  |
-| Live                 |        5 | Hai phòng LIVE, ba phòng ENDED; có sản phẩm và voucher                                          |
+| Live                 |        5 | Hai phòng LIVE, ba phòng ENDED; có sản phẩm, voucher và governance.pinnedProductId hợp lệ     |
 | Hội thoại / tin nhắn | 50 / 100 | Khách–Shop và KOL–Shop; có thẻ sản phẩm, thẻ đề xuất deal                                       |
+| Thông báo            |      160 | 60 thông báo đơn hàng và 100 thông báo chat; ID/read-state khớp tin nhắn để đọc chat hạ chuông |
 | Voucher              |       40 | 15 mã Shop, 20 mã KOL, 5 mã Live; counter và ngân sách đối soát với redemption                  |
 | Đổi trả              |        6 | Có ảnh/video, hồ sơ chờ duyệt hoặc được duyệt để tiếp tục test lấy hàng                         |
 | Ví / bút toán        | 66 / 212 | Tách AVAILABLE/PENDING; số dư tính từ lịch sử, không tự gán tiền không có nguồn                 |
@@ -63,11 +66,15 @@ Lần đầu, toàn bộ INSERT và audit manifest cùng nằm trong một trans
 
 `seed:check` là kiểm tra chỉ đọc: schema thực tế và sự hiện diện của các ID fixture. Nó không ép dữ liệu đã được tester thao tác trở lại trạng thái ban đầu. Kiểm tra đầy đủ tính đúng của snapshot ban đầu nằm trong unit/integration test.
 
+`npm run seed:audit` không cần mật khẩu demo: chạy trong transaction **READ ONLY / REPEATABLE READ**, báo phiên bản đã cài, toàn bộ số lượng ID fixture, đối soát AVAILABLE/PENDING theo ledger và ví từng Shop, liên kết thông báo chat, lịch sử migration. Không in họ tên, CCCD, tài khoản ngân hàng, mật khẩu hay URL kết nối đầy đủ. Mã thoát 2 báo kiểm tra đã chạy nhưng snapshot/lịch sử chưa đạt; `fullUpgradeReady=false` vẫn được giữ khi các hợp đồng Tuấn/Quý chưa được nghiệm thu. Đây không phải lệnh sửa hoặc tự reset DB.
+
 Migration `20261016120000_seed_schema_alignment` bổ sung cột avatar và các giá trị enum đã có trong schema/code nhưng thiếu trong lịch sử migration cũ. Các câu lệnh đều có `IF NOT EXISTS`; dữ liệu hiện có được giữ. Nhóm cần rà soát và deploy migration này trước khi dựng lại DB mới.
 
 ## Reset dữ liệu cũ
 
 DB hiện có trigger chặn UPDATE, DELETE và TRUNCATE trên `financial_ledgers`. Vì vậy reset dùng quy trình chuẩn `prisma migrate reset --force` để dựng lại schema cùng toàn bộ migration/trigger; không vô hiệu hóa trigger bất biến trong ứng dụng.
+
+Trước khi gọi Prisma reset, script mở kết nối chỉ đọc để đối chiếu các migration đã áp dụng. Thiếu file SQL trong repo, khác nội dung SQL hoặc migration chưa hoàn tất đều **chặn reset**, kể cả có backup và confirmation. Khác biệt CRLF/LF được báo riêng. Không sửa checksum trong DB hoặc tự dựng SQL thay thế để vượt qua chốt này. DB mới hoàn toàn dùng migration deploy trước, không cần reset.
 
 Reset xóa dữ liệu trong schema đích và dựng lại lịch sử migration. Bước reset không thể rollback bằng transaction INSERT sau đó. Chỉ thực hiện sau khi nhóm thống nhất DB dùng demo và có bản sao lưu.
 
@@ -127,14 +134,24 @@ Có thể nhập bằng chứng GHN sandbox qua `SCANMS_SEED_GHN_FIXTURES`, tr�
 
 Đây là cấu trúc nhập, không phải bằng chứng đã gọi GHN thật. `evidenceFile` được tính tương đối từ file manifest (hoặc là đường dẫn tuyệt đối), phải là file JSON response tạo đơn của GHN có `code=200`, `data.order_code` và `data.total_fee` khớp export. Seeder kiểm tra trạng thái export phù hợp với đơn được seed. Chỉ đưa export thực tế vào file; seeder không sinh mã GHN thật từ chuỗi ngẫu nhiên. Payment WALLET và hai payout là demo, không được mô tả với hội đồng là đối soát PayOS/ngân hàng thật. Test E2E qua PayOS/GHN sandbox cần chạy riêng qua API ứng dụng và lưu bằng chứng.
 
-## Phụ thuộc bàn giao của Tuấn và Quý
+## Đồng bộ Marketplace của Quý
+
+Đã tích hợp nhánh `quy` tại `3f71c54` vào nhánh làm việc `thinh`. Lần fetch trước khi push ngày 17/10/2026 xác nhận `origin/dev` tại `78125bc` đã có PR #93 của Quý (kèm refactor `5ccf00d`); không tự merge PR thay thành viên khác.
+
+- `GET /stores/marketplace` đọc rating/reviewCount và campaign đang hiệu lực từ DB; seeder cung cấp 15 Shop, 30 sản phẩm, 66 review và 15 campaign để kiểm tra dữ liệu thật, không gán số 4.9 giả.
+- `GET /live-sessions/public/list` đọc sản phẩm ghim từ `governance.pinnedProductId`. Seeder gán pin đúng thành viên/Shop cho năm phiên; hai phiên LIVE không có viewer giả. KOC vẫn cần bắt đầu phát video thực tế.
+- `GET /stores/public/placements` dùng `MARKETPLACE_SPONSORED_PLACEMENTS`, không có bảng/cột sponsorship riêng để INSERT. `npm run seed:plan` xuất `marketplaceDemo` gồm đúng hai Shop được chọn bằng UUID fixture, thời gian hiệu lực và headline `[DEMO]`.
+- Cấu hình trên là **fixture cho demo, không phải bằng chứng Shop đã thanh toán**. Trạng thái `CONFIRMED` chỉ mô phỏng contract bộ lọc trong môi trường test. Không dùng làm booking trả tiền thật. Script không ghi `.env`, không kích hoạt quảng cáo, không gọi thanh toán và không tự đặt biến môi trường của backend đang chạy.
+- Khi nhóm quyết định chạy demo, người vận hành kiểm tra target/referenceDate và cấu hình JSON hai placement trong **môi trường demo đã được duyệt**, sau đó restart backend. Không đưa thông tin thanh toán/credential vào Git. `seed:audit` báo riêng thiếu cấu hình triển khai, không tự sửa.
+- Popup đăng nhập nhanh mới của Quý được giữ tương thích email/SĐT khi đăng nhập; đăng ký và nhận OTP vẫn dùng email. Giỏ hàng không được reset khi đổi luồng xác thực.
+
+## Phụ thuộc còn lại của Tuấn
 
 | Mục kế hoạch chưa có hợp đồng trên dev          | Xử lý hiện tại                                                                                                       |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Hoa hồng cộng dồn Deal + Campaign + Live + Tier | Giữ snapshot đơn Open Offer 10%; deal và live dùng tổng 12% theo contract hiện tại. Chưa tuyên bố engine đã cộng dồn |
 | Phí GHN động                                    | Seed phí theo policy miễn ship đang có hoặc theo export GHN sandbox được cung cấp                                    |
 | Voucher freeship / voucher sàn tách riêng       | Không giả lập field mà backend chưa hỗ trợ; một voucher tiền hàng trên mỗi order                                     |
-| Hai Shop tài trợ / banner động                  | Schema hiện chưa có bảng/field cho placement/banner; cần hợp đồng của Quý để seed tiếp                               |
 | Barcode, cân nặng, kích thước có cột riêng      | Tạm dùng nhãn văn bản; chuyển sang field chính thức khi danh mục của Tuấn bàn giao                                   |
 
 Chỉ dữ liệu đã có chức năng thật được ghi vào schema. Các mục trên là phần nghiệm thu phụ thuộc bàn giao, cần kiểm lại trước khi báo hoàn tất toàn bộ kế hoạch.
@@ -149,3 +166,14 @@ npm run test:seed
 ```
 
 Các ca kiểm tra gồm rollback khi lỗi khóa ngoại cuối transaction, số lượng và đối soát ledger, chạy lại bảo toàn tiến độ, seed đồng thời, giữ dữ liệu ngoài fixture và trigger bất biến. Unit test kiểm tra các chốt xác nhận/backup trước reset. Việc thực thi reset vẫn cần người vận hành xác nhận, đặc biệt khi Prisma chặn lệnh reset do được gọi từ AI. Test không sửa `.env` và không đổi database mà backend sử dụng khi chạy ứng dụng.
+
+Bản v2 bổ sung test dữ liệu ngân hàng/kho/chính sách Shop, kênh KOL, phân bổ đơn từng khách, ảnh đánh giá, thông báo chat; test READ ONLY audit, phát hiện lệch số dư/thiếu fixture, từ chối ghi lên v1, và luồng thực tế `prisma db seed → --check → seed lại → --audit`. Test dùng ChatService thật để xác nhận đọc tin mẫu đồng bộ Notification.
+
+Kiểm thử tích hợp Marketplace của Quý dùng cùng DB test cô lập, chạy từ `backend`:
+
+```powershell
+$env:SEED_TEST_DATABASE_URL = 'postgresql://<test_user>:<test_password>@127.0.0.1:55433/scanms_seed_test'
+node node_modules/jest/bin/jest.js --runInBand src/modules/stores/marketplace-seed.postgres.integration.spec.ts
+```
+
+Bộ test gọi HTTP thật của Stores/Live controllers, đọc fixture đã seed bằng Prisma; kiểm tra rating có trọng số/không có review, hai placement hợp lệ/hết hạn/chưa xác nhận, viewer thật bằng 0, pin lưu bền và chặn Customer/Shop khác. Chỉ process test đặt biến cấu hình placement và khôi phục sau test; không dùng `.env`/DB nhóm cho các request này.

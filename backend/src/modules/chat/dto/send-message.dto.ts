@@ -11,13 +11,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class SendMessageDto {
   @ApiProperty({ description: 'ID cuộc hội thoại', example: 'uuid-here' })
   @IsUUID()
-  conversationId: string;
+  conversationId!: string;
 
   @ApiProperty({ description: 'Nội dung tin nhắn', example: 'Xin chào!' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(4000)
-  messageText: string;
+  messageText!: string;
 
   @ApiPropertyOptional({ description: 'URL ảnh/file đính kèm' })
   @IsOptional()

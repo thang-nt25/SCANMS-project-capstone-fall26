@@ -49,6 +49,35 @@ export function validateDataset(data: SeedDataset): void {
   const date = (value: Date | string | null | undefined): number =>
     value ? new Date(value).getTime() : NaN;
 
+  for (const session of data.liveSessions) {
+    const productsInSession = data.liveProducts.filter(
+      (row) => row.sessionId === session.id,
+    );
+    const pinnedId = jsonObject(session.governance).pinnedProductId;
+    assertSeed(
+      typeof pinnedId === 'string' &&
+        productsInSession.some((row) => row.productId === pinnedId),
+      'live pin must belong to its session',
+    );
+    assertSeed(
+      productsInSession.every(
+        (row) =>
+          products.get(row.productId)?.storeId === session.storeId &&
+          variants.get(row.variantId!)?.productId === row.productId,
+      ),
+      'live product/variant must belong to its shop',
+    );
+    assertSeed(
+      date(session.startsAt) < date(session.endsAt),
+      'invalid live time window',
+    );
+    if (session.status === 'LIVE')
+      assertSeed(
+        !data.liveViewers.some((row) => row.sessionId === session.id),
+        'active seed live must not fabricate current viewers',
+      );
+  }
+
   data.tiers.forEach((tier, index) =>
     assertSeed(
       data.profiles.filter((profile) => profile.tierId === tier.id).length ===
@@ -68,6 +97,54 @@ export function validateDataset(data: SeedDataset): void {
     assertSeed(
       data.products.filter((row) => row.storeId === store.id).length === 2,
       'each shop needs two products',
+    );
+    const onboarding = jsonObject(store.onboardingData);
+    const warehouse = jsonObject(store.returnWarehouse);
+    assertSeed(
+      store.isVerified &&
+        store.onboardingStatus === 'VERIFIED' &&
+        store.logoUrl &&
+        store.policyReturn &&
+        store.policyWarranty &&
+        onboarding.businessType === 'ENTERPRISE' &&
+        onboarding.contactPhone &&
+        onboarding.warehouseAddress &&
+        onboarding.payoutBankAccountNumber &&
+        ['MB', 'Vietcombank'].includes(String(onboarding.payoutBankName)) &&
+        warehouse.address &&
+        warehouse.provinceName &&
+        warehouse.districtName &&
+        warehouse.wardName,
+      'shop legal/warehouse/policy/bank fixture incomplete',
+    );
+  }
+  for (const profile of data.profiles) {
+    const channels = data.socialChannels.filter(
+      (row) => row.collaboratorId === profile.userId,
+    );
+    assertSeed(
+      users.get(profile.userId)?.role === 'COLLABORATOR' &&
+        profile.avatarUrl &&
+        profile.kycStatus === 'VERIFIED' &&
+        profile.bankAccountNumber &&
+        channels.length >= 1 &&
+        channels.length <= 2 &&
+        channels.filter((row) => row.isPrimary).length === 1 &&
+        channels.every(
+          (row) =>
+            (row.followerCount ?? 0) >= 15_000 &&
+            (row.followerCount ?? 0) <= 450_000,
+        ),
+      'creator profile/channel/bank fixture incomplete',
+    );
+  }
+  for (const customer of data.users.filter((row) => row.role === 'CUSTOMER')) {
+    const purchases = data.orders.filter(
+      (row) => row.customerId === customer.id,
+    );
+    assertSeed(
+      purchases.length >= 1 && purchases.length <= 2,
+      'customer order distribution mismatch',
     );
   }
   for (const user of data.users.filter((row) =>
@@ -203,6 +280,13 @@ export function validateDataset(data: SeedDataset): void {
       date(review.createdAt) >= date(order.completedAt),
       'review predates completed purchase',
     );
+    assertSeed(
+      review.rating === 5 &&
+        Boolean(review.comment?.trim()) &&
+        Array.isArray(review.images) &&
+        review.images.length > 0,
+      'review must include five stars, text and feedback image',
+    );
   }
   for (const commission of data.commissions) {
     const order = orders.get(commission.orderId)!;
@@ -301,7 +385,26 @@ export function validateDataset(data: SeedDataset): void {
         message.senderId === conversation.collaboratorId,
       'chat sender outside conversation',
     );
+    const notification = data.notifications.find(
+      (row) => row.id === message.id && row.type === 'CHAT_MESSAGE',
+    );
+    const recipientId =
+      message.senderId === ownerId
+        ? conversation.customerId || conversation.collaboratorId
+        : ownerId;
+    const payload = jsonObject(notification?.data);
+    assertSeed(
+      notification?.userId === recipientId &&
+        notification?.isRead === (message.isRead ?? false) &&
+        payload.messageId === message.id &&
+        payload.conversationId === conversation.id &&
+        payload.senderId === message.senderId &&
+        payload.storeId === conversation.storeId,
+      'chat notification identity/recipient/read-state mismatch',
+    );
   }
+  for (const notification of data.notifications)
+    assertSeed(users.has(notification.userId), 'notification user missing');
   for (const link of data.referralLinks)
     assertSeed(
       products.get(link.productId)?.storeId === link.storeId &&
