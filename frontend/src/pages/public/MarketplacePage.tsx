@@ -19,7 +19,6 @@ import {
   Sparkles,
   SlidersHorizontal,
   Phone,
-  Radio,
   BadgeCheck,
   Heart,
   Settings,
@@ -28,9 +27,6 @@ import {
   Camera,
   Loader2,
   Zap,
-  Eye,
-  Play,
-  Gift,
 } from 'lucide-react';
 import api from '../../services/api';
 import { authService, type UserProfile } from '../../services/auth.service';
@@ -47,26 +43,13 @@ import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/prod
 import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 import { NotificationDropdown } from '../../components/layout/NotificationDropdown';
 import { HeaderAccountButton } from '../../components/layout/HeaderAccountButton';
+import { LiveNowSection } from '../../components/marketplace/LiveNowSection';
 import { CategoryQuickNav } from '../../components/marketplace/CategoryQuickNav';
 import { SponsoredStores } from '../../components/marketplace/SponsoredStores';
 import { FeaturedStores } from '../../components/marketplace/FeaturedStores';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
 import { MarketplaceHero } from '../../components/marketplace/MarketplaceHero';
 
-
-type PublicLiveSession = {
-  id: string;
-  title: string;
-  status: string;
-  platform?: string;
-  liveUrl?: string;
-  coverImageUrl?: string;
-  viewerCount?: number;
-  creator?: { fullName?: string; avatarUrl?: string };
-  store?: { name?: string };
-  coupon?: { displayCode?: string; discountValue?: number; discountType?: string };
-  products?: Array<{ product?: { title?: string; name?: string; imageUrl?: string; price?: number } }>;
-};
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
@@ -131,19 +114,6 @@ export default function MarketplacePage() {
       return Array.isArray(payload) ? payload : [];
     },
     staleTime: 1000 * 60 * 10,
-  });
-
-  const { data: publicLiveSessions = [], isLoading: liveSessionsLoading } = useQuery<PublicLiveSession[]>({
-    queryKey: ['marketplace-live-sessions'],
-    queryFn: async () => {
-      const res: any = await api.get('/live-sessions/public/list');
-      const payload = res?.data?.data ?? res?.data ?? res ?? [];
-      return Array.isArray(payload)
-        ? payload.filter((session: PublicLiveSession) => session.status === 'LIVE')
-        : [];
-    },
-    refetchInterval: 30_000,
-    staleTime: 15_000,
   });
 
   const marketplaceStores = featuredStores;
@@ -381,14 +351,6 @@ export default function MarketplacePage() {
 
   const handleBuyNow = (product: Product) => {
     buyNow(createCartPayload(product));
-  };
-
-  const openLiveSession = (session: PublicLiveSession) => {
-    if (session.platform === 'SCANMS' || !session.liveUrl || session.liveUrl.includes('/live/')) {
-      navigate(`/live/${session.id}`);
-      return;
-    }
-    window.open(session.liveUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleTrackOrder = (e: React.FormEvent) => {
@@ -899,47 +861,7 @@ export default function MarketplacePage() {
 
       <SponsoredStores />
 
-      {/* Live KOC sessions currently happening across merchants. */}
-      <section id="live" aria-labelledby="live-now-title" className="border-y border-[#EAE4D7] bg-white py-7 text-left scroll-mt-32">
-        <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
-          <div className="mb-4 flex items-end justify-between gap-3">
-            <div>
-              <div className="mb-1 flex items-center gap-2"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#DC2626] opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#DC2626]" /></span><span className="text-[10px] font-black uppercase tracking-[0.16em] text-[#DC2626]">Đang phát trực tiếp</span></div>
-              <h2 id="live-now-title" className="m-0 text-lg font-black tracking-[-0.02em] text-[#1A1612] sm:text-xl">Phiên Live KOC đang diễn ra</h2>
-            </div>
-            <button type="button" onClick={() => setIsLiveModalOpen(true)} className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:text-[#1A1612]">Xem tất cả <ChevronRight className="h-4 w-4" /></button>
-          </div>
-
-          {liveSessionsLoading ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[...Array(3)].map((_, index) => <div key={index} className="h-56 animate-pulse rounded-2xl bg-[#F3EFE6]" />)}</div>
-          ) : publicLiveSessions.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {publicLiveSessions.slice(0, 3).map((session) => {
-                const pinnedProduct = session.products?.[0]?.product;
-                return (
-                  <button key={session.id} type="button" onClick={() => openLiveSession(session)} className="group overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-left shadow-[0_8px_24px_rgba(75,57,34,0.07)] transition hover:-translate-y-0.5 hover:border-[#C59B58]">
-                    <div className="relative aspect-[16/8] overflow-hidden bg-[#F3EFE6]">
-                      {session.coverImageUrl || pinnedProduct?.imageUrl ? <img src={session.coverImageUrl || pinnedProduct?.imageUrl} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top_right,#EEDFC6,#F3EFE6_55%,#FAF8F5)]"><Radio className="h-12 w-12 text-[#B88E4F]" /></div>}
-                      <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-[#DC2626] px-2 py-1 text-[10px] font-black text-white"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> LIVE</span>
-                      <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-[#231D15]/75 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm"><Eye className="h-3 w-3" /> {Number(session.viewerCount || 0).toLocaleString('vi-VN')}</span>
-                      <span className="absolute bottom-3 left-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[#DC2626] shadow-md"><Play className="ml-0.5 h-4 w-4 fill-current" /></span>
-                    </div>
-                    <div className="p-4">
-                      <p className="mb-1 text-[10px] font-bold text-[#B88E4F]">{session.creator?.fullName || 'KOC SCANMS'} · {session.store?.name || 'Gian hàng đối tác'}</p>
-                      <h3 className="line-clamp-2 min-h-10 text-sm font-black leading-5 text-[#1A1612]">{session.title}</h3>
-                      <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-[10px] text-[#7D715E]"><Gift className="h-4 w-4 shrink-0 text-[#B88E4F]" /><span className="truncate"><strong className="text-[#1A1612]">Deal đang ghim:</strong> {pinnedProduct?.title || pinnedProduct?.name || session.coupon?.displayCode || 'Ưu đãi độc quyền phiên Live'}</span></div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <button type="button" onClick={() => setIsLiveModalOpen(true)} className="flex w-full items-center justify-between gap-4 rounded-2xl border border-dashed border-[#EEDFC6] bg-[#FBF5EB] p-5 text-left transition hover:border-[#C59B58]">
-              <span><strong className="block text-sm text-[#1A1612]">Chưa có phiên đang phát ngay lúc này</strong><span className="mt-1 block text-xs text-[#7D715E]">Xem lịch Live sắp tới và đặt lời nhắc để không bỏ lỡ deal KOC.</span></span><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C59B58] text-white"><Radio className="h-5 w-5" /></span>
-            </button>
-          )}
-        </div>
-      </section>
+      <LiveNowSection onOpenHub={() => setIsLiveModalOpen(true)} />
 
       {/* Dense commerce catalog with SCANMS affiliate information */}
       <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-4 bg-[#F3EFE6] py-7 text-left lg:py-9">
