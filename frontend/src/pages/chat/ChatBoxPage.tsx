@@ -1126,7 +1126,7 @@ export default function ChatBoxPage({
     };
 
     api
-      .get('/chat/conversations')
+      .get('/chat/conversations', { headers: { 'x-skip-cache': '1' } })
       .then((res: any) => {
         if (!isMounted) return;
         const all: Conversation[] = Array.isArray(res) ? res : res?.data || [];
@@ -1178,7 +1178,7 @@ export default function ChatBoxPage({
           chatSessionCache.messagesByConvId.set(msg.conversationId, updated);
           return updated;
         });
-        if (msg.senderId !== currentUser?.id) {
+        if (msg.senderId !== currentUser?.id && document.visibilityState === 'visible') {
           api.patch(`/chat/conversations/${msg.conversationId}/read`).catch(() => undefined);
         }
         setTimeout(() => scrollToBottom(true), 50);
@@ -1223,6 +1223,13 @@ export default function ChatBoxPage({
         setMessages(prev => prev.map(msg => msg.senderId === currentUser?.id ? { ...msg, isRead: true } : msg));
       }
     };
+    const onVisible = () => {
+      const conversationId = activeConvIdRef.current;
+      if (document.visibilityState === 'visible' && conversationId && UUID_REGEX.test(conversationId)) {
+        void api.patch(`/chat/conversations/${conversationId}/read`).catch(() => undefined);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('new_message', onNewMessage);
@@ -1248,6 +1255,7 @@ export default function ChatBoxPage({
       socket.off('disconnect', onDisconnect);
       socket.off('new_message', onNewMessage);
       socket.off('messages_read', onRead);
+      document.removeEventListener('visibilitychange', onVisible);
       socket.off('user_typing', onTyping);
       socket.off('error', onError);
     };
@@ -1281,13 +1289,13 @@ export default function ChatBoxPage({
 
     if (UUID_REGEX.test(conv.id)) {
       try {
-        const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`);
+        const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`, { headers: { 'x-skip-cache': '1' } });
         const msgs: ChatMessage[] = Array.isArray(res) ? res : res?.data || [];
         setMessages(msgs);
         chatSessionCache.messagesByConvId.set(conv.id, msgs);
         setHasMore(msgs.length === 50);
         setOldestMsgId(msgs[0]?.id);
-        await api.patch(`/chat/conversations/${conv.id}/read`);
+        if (document.visibilityState === 'visible') await api.patch(`/chat/conversations/${conv.id}/read`);
         setConversations(prev => {
           const updated = prev.map(item => item.id === conv.id
             ? { ...item, _count: { chatMessages: 0 }, chatMessages: item.chatMessages?.[0] ? [{ ...item.chatMessages[0], isRead: true }] : [] } : item);

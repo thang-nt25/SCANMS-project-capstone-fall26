@@ -13,7 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as argon2 from 'argon2';
 import { OAuth2Client } from 'google-auth-library';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -26,6 +26,21 @@ import {
 } from './dto/forgot-password.dto';
 import { MailService } from './mail.service';
 import { randomBytes, randomInt } from 'node:crypto';
+import {
+  loginPhoneVariants,
+  parseLoginIdentifier,
+  resolveLoginIdentifier,
+  type LoginIdentifier,
+} from './login-identifier';
+
+const loginUserInclude = {
+  stores: { where: { isDeleted: false } },
+  collaboratorProfile: { include: { tier: true } },
+  wallet: true,
+} satisfies Prisma.UserInclude;
+
+const INVALID_LOGIN =
+  'Email, số điện thoại hoặc mật khẩu không chính xác. Bạn có thể thử đăng nhập bằng email.';
 
 interface StoredOtp {
   code: string;
@@ -270,11 +285,36 @@ export class AuthService {
   /**
    * Helper validate user bằng email/password
    */
-  async validateUser(email: string, pass: string): Promise<any> {
-    const normalizedEmail = email.toLowerCase().trim();
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
+  private async findLoginUser(identifier: LoginIdentifier) {
+    if (identifier.kind === 'email') {
+      return this.prisma.user.findUnique({
+        where: { email: identifier.value },
+        include: loginUserInclude,
+      });
+    }
+
+    // Existing phone_number is nullable/non-unique and may contain separators.
+    // Parameterized SQL supports legacy formatting without rewriting group data.
+    // LIMIT 2 is deliberate: never pick the first account, role or matching
+    // password when multiple non-deleted accounts share a normalized number.
+    const matches = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM users
+      WHERE is_deleted = false
+        AND regexp_replace(phone_number, '[[:space:]().-]', '', 'g')
+          IN (${Prisma.join(loginPhoneVariants(identifier.value))})
+      LIMIT 2
+    `;
+    if (matches.length !== 1) return null;
+    return this.prisma.user.findUnique({
+      where: { id: matches[0].id },
+      include: loginUserInclude,
     });
+  }
+
+  async validateUser(login: string, pass: string): Promise<any> {
+    const identifier = parseLoginIdentifier(login);
+    if (!identifier) return null;
+    const user = await this.findLoginUser(identifier);
 
     if (!user) {
       return null;
@@ -309,28 +349,19 @@ export class AuthService {
   }
 
   /**
-   * 3. Đăng nhập (Email + Password trực tiếp, TỰ ĐỘNG GỬI EMAIL BẢO MẬT)
+   * 3. Đăng nhập bằng email/số điện thoại và mật khẩu hiện tại.
    */
   async login(
     dto: LoginDto,
     meta?: { ipAddress?: string; userAgent?: string },
   ) {
-    const normalizedEmail = dto.email.toLowerCase().trim();
-
+    const identifier = resolveLoginIdentifier(dto);
+    if (!identifier) throw new UnauthorizedException(INVALID_LOGIN);
     // Authentication never provisions accounts. Demo accounts belong in the seeder.
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      include: {
-        stores: { where: { isDeleted: false } },
-        collaboratorProfile: {
-          include: { tier: true },
-        },
-        wallet: true,
-      },
-    });
+    const user = await this.findLoginUser(identifier);
 
     if (!user || user.isDeleted) {
-      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
+      throw new UnauthorizedException(INVALID_LOGIN);
     }
 
     if (!user.isActive) {
@@ -341,7 +372,7 @@ export class AuthService {
 
     const isMatch = await this.verifyPassword(dto.password, user.passwordHash);
     if (!isMatch) {
-      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
+      throw new UnauthorizedException(INVALID_LOGIN);
     }
 
     // Tự động nâng cấp sang Argon2id nếu user đang dùng bcrypt cũ
