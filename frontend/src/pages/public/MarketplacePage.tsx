@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -29,6 +29,16 @@ import {
   Camera,
   Loader2,
   Zap,
+  Star,
+  Eye,
+  Play,
+  Gift,
+  Crown,
+  Droplets,
+  Palette,
+  Bath,
+  HeartPulse,
+  Tag,
 } from 'lucide-react';
 import api from '../../services/api';
 import { authService, type UserProfile } from '../../services/auth.service';
@@ -81,6 +91,49 @@ const MARKETPLACE_BANNERS = [
     action: 'live' as const,
   },
 ] as const;
+
+type MarketplaceStore = {
+  id: string;
+  name: string;
+  slug?: string;
+  logoUrl?: string;
+  description?: string;
+  totalProducts?: number;
+  rating?: number;
+  category?: string;
+  defaultCommissionRate?: number | string;
+};
+
+type PublicLiveSession = {
+  id: string;
+  title: string;
+  status: string;
+  platform?: string;
+  liveUrl?: string;
+  coverImageUrl?: string;
+  viewerCount?: number;
+  creator?: { fullName?: string; avatarUrl?: string };
+  store?: { name?: string };
+  coupon?: { displayCode?: string; discountValue?: number; discountType?: string };
+  products?: Array<{ product?: { title?: string; name?: string; imageUrl?: string; price?: number } }>;
+};
+
+const CATEGORY_QUICK_NAV = [
+  { label: 'Chăm sóc da', query: 'Chăm sóc da', icon: Droplets, rawQuery: false },
+  { label: 'Trang điểm', query: 'Trang điểm', icon: Palette, rawQuery: false },
+  { label: 'Chăm sóc cơ thể', query: 'Chăm sóc cơ thể', icon: Bath, rawQuery: false },
+  { label: 'Thực phẩm sức khỏe', query: 'Thực phẩm sức khỏe', icon: HeartPulse, rawQuery: false },
+  { label: 'Deal KOC độc quyền', query: 'commission=true', icon: Sparkles, rawQuery: true },
+  { label: 'Ưu đãi hôm nay', query: 'sort=sales&inStock=true', icon: Tag, rawQuery: true },
+] as const;
+
+const storeInitials = (name: string) => name
+  .split(/\s+/)
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((word) => word[0])
+  .join('')
+  .toUpperCase();
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
@@ -137,8 +190,47 @@ export default function MarketplacePage() {
   });
   const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals(items.map((product) => product.id));
 
+  const { data: featuredStores = [], isLoading: storesLoading } = useQuery<MarketplaceStore[]>({
+    queryKey: ['marketplace-featured-stores'],
+    queryFn: async () => {
+      const res: any = await api.get('/stores/marketplace');
+      const payload = res?.data?.data ?? res?.data ?? res ?? [];
+      return Array.isArray(payload) ? payload : [];
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: publicLiveSessions = [], isLoading: liveSessionsLoading } = useQuery<PublicLiveSession[]>({
+    queryKey: ['marketplace-live-sessions'],
+    queryFn: async () => {
+      const res: any = await api.get('/live-sessions/public/list');
+      const payload = res?.data?.data ?? res?.data ?? res ?? [];
+      return Array.isArray(payload)
+        ? payload.filter((session: PublicLiveSession) => session.status === 'LIVE')
+        : [];
+    },
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+
+  const marketplaceStores = useMemo<MarketplaceStore[]>(() => {
+    if (featuredStores.length > 0) return featuredStores;
+    const stores = new Map<string, MarketplaceStore>();
+    for (const product of items) {
+      if (!product.storeId || stores.has(product.storeId)) continue;
+      stores.set(product.storeId, {
+        id: product.storeId,
+        name: product.brand || 'Gian hàng đối tác',
+        totalProducts: items.filter((item) => item.storeId === product.storeId).length,
+        rating: product.rating || 4.9,
+        category: product.categoryLabel || product.category,
+      });
+    }
+    return Array.from(stores.values());
+  }, [featuredStores, items]);
+
   // Cart & Gateways
-  const { totalCount: totalCartCount, openCart } = useCart();
+  const { totalCount: totalCartCount, openCart, addItem, buyNow } = useCart();
 
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -186,6 +278,7 @@ export default function MarketplacePage() {
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<HTMLElement>(null);
   const trackingRef = useRef<HTMLElement>(null);
+  const storesCarouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (location.hash !== '#catalog-section') return;
@@ -347,6 +440,46 @@ export default function MarketplacePage() {
     }
   };
 
+  const createCartPayload = (product: Product) => ({
+    product: {
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      price: product.price,
+      origPrice: product.origPrice,
+      image: product.image,
+      stockQuantity: product.stockQuantity,
+      variants: product.variants,
+    },
+    store: {
+      id: product.storeId || `store-${product.brand}`,
+      name: product.brand || 'Gian hàng đối tác',
+    },
+    quantity: 1,
+  });
+
+  const handleAddToCart = (product: Product) => {
+    const payload = createCartPayload(product);
+    if (!authService.getCurrentUser()) {
+      buyNow(payload);
+      toast.info('Sản phẩm đã được giữ trong giỏ. Đăng nhập ngay tại đây để tiếp tục.');
+      return;
+    }
+    addItem(payload);
+  };
+
+  const handleBuyNow = (product: Product) => {
+    buyNow(createCartPayload(product));
+  };
+
+  const openLiveSession = (session: PublicLiveSession) => {
+    if (session.platform === 'SCANMS' || !session.liveUrl || session.liveUrl.includes('/live/')) {
+      navigate(`/live/${session.id}`);
+      return;
+    }
+    window.open(session.liveUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const handleTrackOrder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!trackQuery.trim()) {
@@ -378,8 +511,8 @@ export default function MarketplacePage() {
             customerName: 'Nguyễn Văn Khách',
             phone: trackQuery.match(/^[0-9]+$/) ? trackQuery : '0918 *** 888',
             address: '142 Nguyễn Thị Minh Khai, Phường 6, Quận 3, TP. Hồ Chí Minh',
-            storeName: 'Sora Skin Official Store',
-            productName: 'Serum Phục Hồi & Làm Dịu Da B5 Centella Sora Skin (x1)',
+            storeName: 'Gian hàng đối tác SCANMS',
+            productName: 'Sản phẩm chính hãng từ đối tác (x1)',
             totalAmount: 413100,
             status: 'ĐANG VẬN CHUYỂN',
             timeline: [
@@ -397,8 +530,8 @@ export default function MarketplacePage() {
           customerName: 'Nguyễn Văn Khách',
           phone: trackQuery.match(/^[0-9]+$/) ? trackQuery : '0918 *** 888',
           address: '142 Nguyễn Thị Minh Khai, Phường 6, Quận 3, TP. Hồ Chí Minh',
-          storeName: 'Sora Skin Official Store',
-          productName: 'Serum Phục Hồi & Làm Dịu Da B5 Centella Sora Skin (x1)',
+          storeName: 'Gian hàng đối tác SCANMS',
+          productName: 'Sản phẩm chính hãng từ đối tác (x1)',
           totalAmount: 413100,
           status: 'ĐANG VẬN CHUYỂN',
           timeline: [
@@ -868,8 +1001,22 @@ export default function MarketplacePage() {
                   <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,245,.98)_0%,rgba(250,248,245,.96)_30%,rgba(250,248,245,.80)_44%,rgba(250,248,245,.18)_66%,rgba(250,248,245,0)_100%)]" />
                   <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,245,.98)_0%,rgba(250,248,245,.94)_56%,rgba(250,248,245,.50)_82%,rgba(250,248,245,.08)_100%)] sm:hidden" />
                 </div>
+                {slide.action === 'live' ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsLiveModalOpen(true)}
+                    className="absolute inset-0 z-[1] cursor-pointer"
+                    aria-label={`Mở chương trình: ${slide.title}`}
+                  />
+                ) : (
+                  <Link
+                    to={slide.href}
+                    className="absolute inset-0 z-[1]"
+                    aria-label={`Mở chương trình: ${slide.title}`}
+                  />
+                )}
                 <div aria-hidden="true" className="pointer-events-none absolute -left-[35%] top-[-32%] hidden h-[164%] w-[94%] rounded-[50%] border-r-2 border-[#EBD08C]/80 sm:block" />
-                <div className="relative z-10 flex min-h-[450px] w-full flex-col justify-center px-6 pb-[82px] pt-8 sm:min-h-[430px] sm:w-[60%] sm:px-10 sm:pb-[88px] lg:px-14">
+                <div className="pointer-events-none relative z-10 flex min-h-[450px] w-full flex-col justify-center px-6 pb-[82px] pt-8 sm:min-h-[430px] sm:w-[60%] sm:px-10 sm:pb-[88px] lg:px-14">
                   <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-[#EAE4D7] bg-white/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#B88E4F] sm:bg-white/80 sm:backdrop-blur-sm">
                     {slide.action === 'live' ? <Radio className="h-3.5 w-3.5 text-[#E11D48]" /> : <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" />}
                     {index === 0 ? 'SCANMS • SÀN ĐA GIAN HÀNG' : slide.eyebrow}
@@ -880,7 +1027,7 @@ export default function MarketplacePage() {
                   <p className="mb-6 mt-4 max-w-[500px] text-xs leading-6 text-[#5F5548] sm:text-sm">
                     {index === 0 ? 'Nhiều gian hàng đối tác, sản phẩm đa ngành và trải nghiệm KOC & Live.' : slide.description}
                   </p>
-                  <div className="flex flex-wrap gap-2.5">
+                  <div className="pointer-events-auto flex flex-wrap gap-2.5">
                     {slide.action === 'live' ? (
                       <button
                         type="button"
@@ -958,6 +1105,137 @@ export default function MarketplacePage() {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* Fast category discovery for a true multi-merchant marketplace. */}
+      <section aria-labelledby="category-quick-nav-title" className="border-b border-[#EAE4D7] bg-white py-6 text-left">
+        <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">Khám phá nhanh</p>
+              <h2 id="category-quick-nav-title" className="m-0 text-lg font-black tracking-[-0.02em] text-[#1A1612] sm:text-xl">Mua sắm theo ngành hàng</h2>
+            </div>
+            <Link to="/search" className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:text-[#1A1612]">Tất cả danh mục <ChevronRight className="h-4 w-4" /></Link>
+          </div>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {CATEGORY_QUICK_NAV.map(({ label, query, icon: Icon, rawQuery }) => (
+              <Link
+                key={label}
+                to={rawQuery ? `/search?${query}` : `/search?category=${encodeURIComponent(query)}`}
+                className="group flex min-w-0 flex-col items-center gap-2.5 rounded-2xl border border-transparent px-2 py-3 text-center transition hover:border-[#EEDFC6] hover:bg-[#FBF5EB]"
+              >
+                <span className="flex h-14 w-14 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] shadow-[0_6px_18px_rgba(197,155,88,0.12)] transition group-hover:-translate-y-1 group-hover:bg-[#C59B58] group-hover:text-white sm:h-16 sm:w-16">
+                  <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
+                </span>
+                <span className="line-clamp-2 text-[11px] font-bold leading-4 text-[#1A1612] sm:text-xs">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured verified stores. */}
+      <section aria-labelledby="featured-stores-title" className="bg-[#FAF8F5] py-7 text-left">
+        <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]"><BadgeCheck className="h-4 w-4" /> Đối tác đã xác minh</div>
+              <h2 id="featured-stores-title" className="m-0 text-lg font-black tracking-[-0.02em] text-[#1A1612] sm:text-xl">Gian hàng đối tác tiêu biểu</h2>
+              <p className="mt-1 text-xs text-[#7D715E]">Khám phá nhiều thương hiệu chính hãng trên cùng một sàn SCANMS.</p>
+            </div>
+            <div className="hidden gap-2 sm:flex">
+              <button type="button" onClick={() => storesCarouselRef.current?.scrollBy({ left: -360, behavior: 'smooth' })} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#EAE4D7] bg-white text-[#1A1612] transition hover:border-[#C59B58]" aria-label="Xem gian hàng trước"><ArrowLeft className="h-4 w-4" /></button>
+              <button type="button" onClick={() => storesCarouselRef.current?.scrollBy({ left: 360, behavior: 'smooth' })} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#EAE4D7] bg-white text-[#1A1612] transition hover:border-[#C59B58]" aria-label="Xem gian hàng tiếp theo"><ArrowRight className="h-4 w-4" /></button>
+            </div>
+          </div>
+
+          <div ref={storesCarouselRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {storesLoading
+              ? [...Array(4)].map((_, index) => <div key={index} className="h-[188px] min-w-[270px] animate-pulse rounded-2xl border border-[#EAE4D7] bg-white sm:min-w-[300px]" />)
+              : marketplaceStores.slice(0, 10).map((store) => (
+                <article key={store.id} className="min-w-[270px] snap-start rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_8px_24px_rgba(75,57,34,0.06)] transition hover:-translate-y-0.5 hover:border-[#C59B58] sm:min-w-[300px]">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-sm font-black text-[#B88E4F]">
+                      {store.logoUrl ? <img src={store.logoUrl} alt={`Logo ${store.name}`} className="h-full w-full object-cover" /> : storeInitials(store.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1"><h3 className="truncate text-sm font-black text-[#1A1612]">{store.name}</h3><BadgeCheck className="h-4 w-4 shrink-0 text-[#B88E4F]" /></div>
+                      <p className="mt-1 truncate text-[10px] font-semibold text-[#7D715E]">{store.category || 'Gian hàng chính hãng'}</p>
+                      <div className="mt-2 flex items-center gap-3 text-[10px] text-[#7D715E]">
+                        <span className="inline-flex items-center gap-1 font-bold text-[#1A1612]"><Star className="h-3.5 w-3.5 fill-[#C59B58] text-[#C59B58]" /> {Number(store.rating || 4.9).toFixed(1)}</span>
+                        <span>{store.totalProducts || 0} sản phẩm</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mt-3 line-clamp-2 h-9 text-[11px] leading-[18px] text-[#7D715E]">{store.description || 'Đối tác chính hãng đã hoàn tất xác minh trên hệ thống SCANMS.'}</p>
+                  <Link to={`/shops/${store.id}`} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#C59B58] bg-[#FBF5EB] px-3 py-2 text-xs font-black text-[#8C6226] transition hover:bg-[#C59B58] hover:text-white">Ghé thăm gian hàng <ArrowRight className="h-3.5 w-3.5" /></Link>
+                </article>
+              ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Clearly disclosed sponsored placement. */}
+      {marketplaceStores[0] && (
+        <section aria-labelledby="sponsored-store-title" className="bg-[#FAF8F5] pb-7 text-left">
+          <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+            <article className="relative overflow-hidden rounded-[22px] border border-[#EEDFC6] bg-[#231D15] px-5 py-6 text-white shadow-[0_14px_36px_rgba(35,29,21,0.16)] sm:px-8 sm:py-7">
+              <div className="absolute -right-12 -top-20 h-52 w-52 rounded-full border-[34px] border-[#C59B58]/15" aria-hidden="true" />
+              <div className="relative z-10 grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#C59B58] px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white"><Crown className="h-3.5 w-3.5" /> Được tài trợ</span>
+                  <p className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[#EEDFC6]">Gian hàng nổi bật tuần này</p>
+                  <h2 id="sponsored-store-title" className="m-0 text-2xl font-black tracking-[-0.03em] sm:text-3xl">{marketplaceStores[0].name}</h2>
+                  <p className="mt-2 max-w-2xl text-xs leading-5 text-[#D8CCBA]">{marketplaceStores[0].description || `Khám phá bộ sưu tập chính hãng và ưu đãi mới nhất từ ${marketplaceStores[0].name} trên SCANMS.`}</p>
+                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-[#F3EFE6]"><span className="inline-flex items-center gap-1"><BadgeCheck className="h-4 w-4 text-[#C59B58]" /> Đã xác minh</span><span className="inline-flex items-center gap-1"><Package className="h-4 w-4 text-[#C59B58]" /> {marketplaceStores[0].totalProducts || 0} sản phẩm</span><span className="inline-flex items-center gap-1"><Star className="h-4 w-4 fill-[#C59B58] text-[#C59B58]" /> {Number(marketplaceStores[0].rating || 4.9).toFixed(1)} đánh giá</span></div>
+                </div>
+                <Link to={`/shops/${marketplaceStores[0].id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#C59B58] px-5 text-xs font-black text-white transition hover:bg-[#B88E4F]">Khám phá ưu đãi <ArrowRight className="h-4 w-4" /></Link>
+              </div>
+            </article>
+          </div>
+        </section>
+      )}
+
+      {/* Live KOC sessions currently happening across merchants. */}
+      <section id="live" aria-labelledby="live-now-title" className="border-y border-[#EAE4D7] bg-white py-7 text-left scroll-mt-32">
+        <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <div className="mb-1 flex items-center gap-2"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#DC2626] opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#DC2626]" /></span><span className="text-[10px] font-black uppercase tracking-[0.16em] text-[#DC2626]">Đang phát trực tiếp</span></div>
+              <h2 id="live-now-title" className="m-0 text-lg font-black tracking-[-0.02em] text-[#1A1612] sm:text-xl">Phiên Live KOC đang diễn ra</h2>
+            </div>
+            <button type="button" onClick={() => setIsLiveModalOpen(true)} className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:text-[#1A1612]">Xem tất cả <ChevronRight className="h-4 w-4" /></button>
+          </div>
+
+          {liveSessionsLoading ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[...Array(3)].map((_, index) => <div key={index} className="h-56 animate-pulse rounded-2xl bg-[#F3EFE6]" />)}</div>
+          ) : publicLiveSessions.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {publicLiveSessions.slice(0, 3).map((session) => {
+                const pinnedProduct = session.products?.[0]?.product;
+                return (
+                  <button key={session.id} type="button" onClick={() => openLiveSession(session)} className="group overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-left shadow-[0_8px_24px_rgba(75,57,34,0.07)] transition hover:-translate-y-0.5 hover:border-[#C59B58]">
+                    <div className="relative aspect-[16/8] overflow-hidden bg-[#F3EFE6]">
+                      {session.coverImageUrl || pinnedProduct?.imageUrl ? <img src={session.coverImageUrl || pinnedProduct?.imageUrl} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top_right,#EEDFC6,#F3EFE6_55%,#FAF8F5)]"><Radio className="h-12 w-12 text-[#B88E4F]" /></div>}
+                      <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-[#DC2626] px-2 py-1 text-[10px] font-black text-white"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> LIVE</span>
+                      <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-[#231D15]/75 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm"><Eye className="h-3 w-3" /> {Number(session.viewerCount || 0).toLocaleString('vi-VN')}</span>
+                      <span className="absolute bottom-3 left-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[#DC2626] shadow-md"><Play className="ml-0.5 h-4 w-4 fill-current" /></span>
+                    </div>
+                    <div className="p-4">
+                      <p className="mb-1 text-[10px] font-bold text-[#B88E4F]">{session.creator?.fullName || 'KOC SCANMS'} · {session.store?.name || 'Gian hàng đối tác'}</p>
+                      <h3 className="line-clamp-2 min-h-10 text-sm font-black leading-5 text-[#1A1612]">{session.title}</h3>
+                      <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-[10px] text-[#7D715E]"><Gift className="h-4 w-4 shrink-0 text-[#B88E4F]" /><span className="truncate"><strong className="text-[#1A1612]">Deal đang ghim:</strong> {pinnedProduct?.title || pinnedProduct?.name || session.coupon?.displayCode || 'Ưu đãi độc quyền phiên Live'}</span></div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <button type="button" onClick={() => setIsLiveModalOpen(true)} className="flex w-full items-center justify-between gap-4 rounded-2xl border border-dashed border-[#EEDFC6] bg-[#FBF5EB] p-5 text-left transition hover:border-[#C59B58]">
+              <span><strong className="block text-sm text-[#1A1612]">Chưa có phiên đang phát ngay lúc này</strong><span className="mt-1 block text-xs text-[#7D715E]">Xem lịch Live sắp tới và đặt lời nhắc để không bỏ lỡ deal KOC.</span></span><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C59B58] text-white"><Radio className="h-5 w-5" /></span>
+            </button>
+          )}
         </div>
       </section>
 
@@ -1129,6 +1407,34 @@ export default function MarketplacePage() {
                             {formatMoney(p.origPrice)}
                           </del>
                         )}
+                      </div>
+                      <div className="mt-2 grid grid-cols-[36px_1fr] gap-1.5">
+                        <button
+                          type="button"
+                          disabled={(p.stockQuantity ?? 0) <= 0}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleAddToCart(p);
+                          }}
+                          className="flex h-9 items-center justify-center rounded-lg border border-[#C59B58] bg-white text-[#B88E4F] transition hover:bg-[#FBF5EB] disabled:cursor-not-allowed disabled:border-[#EAE4D7] disabled:text-[#B9AD9A]"
+                          aria-label={`Thêm ${p.name} vào giỏ hàng`}
+                          title="Thêm vào giỏ"
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={(p.stockQuantity ?? 0) <= 0}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleBuyNow(p);
+                          }}
+                          className="h-9 rounded-lg bg-[#C59B58] px-2 text-[10px] font-black text-white transition hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:bg-[#D8CCBA] sm:text-[11px]"
+                        >
+                          {(p.stockQuantity ?? 0) > 0 ? 'Mua ngay' : 'Hết hàng'}
+                        </button>
                       </div>
                     </div>
                   </div>
