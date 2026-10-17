@@ -3,14 +3,18 @@ import './AnimatedPasswordField.css';
 
 export type PasswordAuthState = 'idle' | 'checking' | 'success' | 'error';
 
-export function AnimatedPasswordField({ value, onChange, state }: {
+export function AnimatedPasswordField({ value, onChange, state, autoComplete = 'current-password', name = 'password', readOnlyUntilFocus = false }: {
   value: string;
   onChange: (value: string) => void;
   state: PasswordAuthState;
+  autoComplete?: string;
+  name?: string;
+  readOnlyUntilFocus?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const artworkId = useId().replace(/:/g, '');
   const [focused, setFocused] = useState(false);
+  const [editable, setEditable] = useState(!readOnlyUntilFocus);
   const [touched, setTouched] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [blink, setBlink] = useState(0);
@@ -29,10 +33,10 @@ export function AnimatedPasswordField({ value, onChange, state }: {
           y: Math.max(-1.2, Math.min(1.2, (event.clientY - bounds.top - bounds.height / 2) / 15)) });
       }}
       onPointerLeave={() => setGaze({ x: 0, y: 0 })}>
-      <input ref={input} id="login-password" name="password" autoComplete="current-password"
+      <input ref={input} id="login-password" name={name} autoComplete={autoComplete} readOnly={!editable}
         type={revealed ? 'text' : 'password'} value={value} required placeholder="Mật khẩu"
         onChange={event => { setTouched(true); onChange(event.target.value); }}
-        onFocus={() => { setFocused(true); setTouched(true); setBlink(n => n + 1); }}
+        onFocus={() => { setEditable(true); setFocused(true); setTouched(true); setBlink(n => n + 1); }}
         onBlur={() => { setFocused(false); setGaze({ x: 0, y: 0 }); }}
         onSelect={event => setGaze({ x: Math.min((event.currentTarget.selectionEnd ?? 0) / 12, 1) * 3 - 1.5, y: 0.4 })}
         className="w-full h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-11 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]" />
