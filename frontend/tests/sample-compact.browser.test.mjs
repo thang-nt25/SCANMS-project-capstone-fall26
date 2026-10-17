@@ -100,8 +100,8 @@ test('compact sample shipment shows status while collapsed and preserves deliver
       assert.equal(await page.$$eval(receiptSection + ' ol', els => els.length), 0);
       assert.ok(await page.$eval(section, el => el.getBoundingClientRect().height < 240));
       const charges = '[aria-label="Phí vận chuyển hàng mẫu"]';
-      assert.match(await page.$eval(charges, el => el.innerText), /Shop chịu 100% phí ship: 49.000 đ/);
-      assert.match(await page.$eval(charges, el => el.innerText), /Thu hộ COD từ KOL: 0 đ/);
+      assert.match(await page.$eval(charges, el => el.innerText), /Shop chịu 100% phí ship\s+49.000 đ/);
+      assert.match(await page.$eval(charges, el => el.innerText), /Thu hộ COD từ KOL\s+0 đ/);
       assert.match(await page.$eval(charges, el => el.innerText), /không trừ ví hoặc thanh toán thật/);
       await clickText(page, 'Thanh toán cước thử');
       await page.waitForFunction(sel => document.querySelector(sel).innerText.includes('Chưa lưu được thanh toán thử'), {}, charges);
@@ -160,7 +160,7 @@ test('compact sample shipment shows status while collapsed and preserves deliver
       const kol = await open('/collaborator/collaboration?shop=' + storeId + '&tab=samples', 'COLLABORATOR');
       await kol.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Nộp video'));
       await kol.waitForSelector('button[aria-label="Theo dõi hành trình bưu kiện"]');
-      assert.match(await kol.$eval(charges, el => el.innerText), /Thu hộ COD từ KOL: 0 đ/);
+      assert.match(await kol.$eval(charges, el => el.innerText), /Thu hộ COD từ KOL\s+0 đ/);
       assert.match(await kol.$eval(charges, el => el.innerText), /Bạn nhận mẫu miễn phí/);
       assert.match(await kol.$eval(charges, el => el.innerText), /Shop đã thanh toán cước mô phỏng/);
       assert.equal(await kol.$$eval(charges + ' button', els => els.length), 0);
