@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Pause, Play, Store, ShieldCheck, Radio } from 'l
 interface BannerStore {
   id: string;
   name: string;
-  activeCampaign?: { name: string } | null;
+  activeCampaign?: { name: string; endsAt: string } | null;
 }
 
 export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[]; onOpenLive: () => void }) {
@@ -13,7 +13,7 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
   const [paused, setPaused] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const partner = stores.find((store) => store.activeCampaign);
+  const partner = stores.find((store) => store.activeCampaign && Date.parse(store.activeCampaign.endsAt) > Date.now());
   const slides = [
     {
       image: '/assets/marketplace/scanms-marketplace-banner-v3.png',
@@ -83,7 +83,7 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
               ) : (
                 <button type="button" onClick={onOpenLive} aria-label={slide.label} className="absolute inset-0 cursor-pointer focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-[#C59B58]" />
               )}
-              <div className="pointer-events-none relative max-w-[660px] px-6 pb-24 pt-10 sm:px-12 sm:pb-28 sm:pt-14">
+              <div className="pointer-events-none relative flex min-h-[430px] max-w-[660px] flex-col items-start justify-center px-6 pb-24 pt-10 sm:min-h-[440px] sm:px-12 sm:pb-28 sm:pt-14">
                 <span className="inline-flex items-center rounded-full border border-[#EEDFC6] bg-white/90 px-3 py-1.5 text-[10px] font-black tracking-[0.12em] text-[#B88E4F]">{slide.eyebrow}</span>
                 {index === 0 ? <h1 className="mb-4 mt-5 text-3xl font-black leading-[1.12] tracking-tight sm:text-[44px]">{slide.title}</h1> : <h2 className="mb-4 mt-5 text-3xl font-black leading-[1.12] tracking-tight sm:text-[44px]">{slide.title}</h2>}
                 <p className="max-w-[470px] text-sm leading-6 text-[#7D715E]">{slide.description}</p>
