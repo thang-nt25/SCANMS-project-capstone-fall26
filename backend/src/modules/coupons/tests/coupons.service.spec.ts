@@ -702,7 +702,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         id: couponId,
         collaboratorId,
         codeNormalized: 'THANGVIP10',
-        status: CouponStatus.ACTIVE,
+        status: CouponStatus.PENDING_APPROVAL,
       });
       mockPrisma.coupon.update.mockResolvedValue({
         id: couponId,
@@ -716,7 +716,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
       expect(result.coupon.status).toBe(CouponStatus.DELETED);
       expect(mockPrisma.coupon.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: couponId },
+          where: expect.objectContaining({ id: couponId, status: CouponStatus.PENDING_APPROVAL }),
           data: expect.objectContaining({
             status: CouponStatus.DELETED,
             deletedBy: collaboratorId,

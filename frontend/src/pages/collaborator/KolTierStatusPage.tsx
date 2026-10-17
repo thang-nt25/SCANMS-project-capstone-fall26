@@ -48,7 +48,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
   }, [view, loadRevision]);
 
   const currentTier = tierStatus?.currentTier;
-  const currentRevenue = Number(tierStatus?.currentRevenue || 0);
+const currentRevenue = Number(tierStatus?.currentRevenue || 0);
   const totalOrders = Number(tierStatus?.totalOrders || 0);
   const nextTier = tierStatus?.nextTier;
   const targetSales = Number(nextTier?.minRevenueThreshold || 0);

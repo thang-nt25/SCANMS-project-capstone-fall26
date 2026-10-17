@@ -223,7 +223,7 @@ function mapServerConversation(raw: any): ChatConversationItem {
     lastTime: last?.createdAt
       ? new Date(last.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       : '',
-    unreadCount: 0,
+    unreadCount: Number(raw._count?.chatMessages) || 0,
     messages: [],
   };
 }
@@ -255,12 +255,18 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
   const [activeProduct, setActiveProduct] = useState<ChatProductInfo | null>(null);
   const socketRef = useRef<ReturnType<typeof getChatSocket> | null>(null);
   const authScopeRef = useRef(getChatStorageScope());
+  const visibleChatRef = useRef({ isOpen: false, conversationId: activeConversationId });
+  visibleChatRef.current = { isOpen: isOpen && !isMinimized, conversationId: activeConversationId };
 
   const ensureSocket = () => {
     const socket = getChatSocket();
     if (socketRef.current !== socket) {
       socket.on('new_message', (raw: any) => {
         const message = mapServerMessage(raw);
+        if (message.sender !== 'user' && visibleChatRef.current.isOpen &&
+            visibleChatRef.current.conversationId === raw.conversationId && document.visibilityState === 'visible') {
+          void api.patch(`/chat/conversations/${raw.conversationId}/read`).catch(() => undefined);
+        }
         setConversations((prev) => prev.map((conv) => {
           if (conv.id !== raw.conversationId || conv.messages.some((item) => item.id === message.id)) return conv;
           return {
@@ -273,6 +279,11 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
       });
       socket.on('error', (error: { message?: string }) => {
         if (error?.message) toast.error(error.message);
+      });
+      socket.on('messages_read', (event: { readerId: string; conversationId: string }) => {
+        if (event.readerId === getCurrentUserId()) {
+          setConversations((prev) => prev.map((conv) => conv.id === event.conversationId ? { ...conv, unreadCount: 0 } : conv));
+        }
       });
       socketRef.current = socket;
     }
@@ -319,19 +330,27 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
         .catch(() => {});
     };
     reloadConversations();
+    const readVisibleChat = () => {
+      const current = visibleChatRef.current;
+      if (current.isOpen && document.visibilityState === 'visible' && UUID_REGEX.test(current.conversationId) && localStorage.getItem('token')) {
+        void api.patch(`/chat/conversations/${current.conversationId}/read`).catch(() => undefined);
+      }
+    };
     window.addEventListener('auth-user-updated', reloadConversations);
+    document.addEventListener('visibilitychange', readVisibleChat);
     return () => {
       cancelled = true;
       window.removeEventListener('auth-user-updated', reloadConversations);
+      document.removeEventListener('visibilitychange', readVisibleChat);
     };
   }, []);
 
   useEffect(() => {
-    if (!isOpen || !UUID_REGEX.test(activeConversationId) || !localStorage.getItem('token')) return;
+    if (!isOpen || isMinimized || !UUID_REGEX.test(activeConversationId) || !localStorage.getItem('token')) return;
     let cancelled = false;
     const socket = ensureSocket();
     socket.emit('join_conversation', { conversationId: activeConversationId });
-    api.get(`/chat/conversations/${activeConversationId}/messages?take=50`)
+    api.get(`/chat/conversations/${activeConversationId}/messages?take=50`, { headers: { 'x-skip-cache': '1' } })
       .then((result: any) => {
         const rows = Array.isArray(result) ? result : result?.data || [];
         if (cancelled || !Array.isArray(rows)) return;
@@ -342,13 +361,16 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
           const justArrived = conv.messages.filter((message) => !fetchedIds.has(message.id));
           return { ...conv, messages: [...fetched, ...justArrived] };
         }));
+        if (document.visibilityState === 'visible') {
+          void api.patch(`/chat/conversations/${activeConversationId}/read`).catch(() => undefined);
+        }
       })
       .catch((error: any) => toast.error(error?.message || 'Không tải được lịch sử chat.'));
     return () => {
       cancelled = true;
       socket.emit('leave_conversation', { conversationId: activeConversationId });
     };
-  }, [activeConversationId, isOpen]);
+  }, [activeConversationId, isOpen, isMinimized]);
 
   useEffect(() => {
     try {

@@ -65,6 +65,21 @@ describe('CommissionsService', () => {
     };
   }
 
+  it('excludes shipping discounts from goods GMV when calculating an unsnapshotted order', async () => {
+    const { service, tx, getOrderItemUpdateInput } = createService();
+    tx.order.findUnique.mockResolvedValue({ id: orderId, attributedCollaboratorId: collaboratorId,
+      status: OrderStatus.DELIVERED, updatedAt: new Date('2026-10-01'),
+      couponDiscountAmount: new Prisma.Decimal(20000), discountAmount: new Prisma.Decimal(45000),
+      store: { defaultCommissionRate: new Prisma.Decimal(10) },
+      attributedCollaborator: { id: collaboratorId, role: UserRole.COLLABORATOR, isActive: true, isDeleted: false,
+        collaboratorProfile: { tier: { name: 'Gold', extraBonusPercentage: new Prisma.Decimal(2) } } },
+      orderItems: [{ id: 'line', quantity: 1, unitPrice: new Prisma.Decimal(250000), product: { customCommissionRate: new Prisma.Decimal(10) } }],
+      commissions: [],
+    });
+    await expect(service.createPendingCommission(orderId, new Date('2026-10-02'))).resolves.toBe(true);
+    expect(Number((getOrderItemUpdateInput() as any).data.calculatedCommissionAmount)).toBe(27600);
+  });
+
   it('creates one pending commission and credits the pending wallet atomically', async () => {
     const {
       service,
@@ -111,8 +126,8 @@ describe('CommissionsService', () => {
         calculatedCommissionAmount: Prisma.Decimal;
       };
     };
-    expect(itemUpdate.data.appliedCommissionRate.toString()).toBe('17');
-    expect(itemUpdate.data.calculatedCommissionAmount.toString()).toBe('34000');
+    expect(itemUpdate.data.appliedCommissionRate.toString()).toBe('12');
+    expect(itemUpdate.data.calculatedCommissionAmount.toString()).toBe('24000');
     const create = getCommissionCreateInput() as {
       data: {
         orderId: string;
@@ -130,7 +145,7 @@ describe('CommissionsService', () => {
       eligibleAt,
       availableAt: new Date('2026-01-15T00:00:00.000Z'),
     });
-    expect(create.data.commissionAmount.toString()).toBe('34000');
+    expect(create.data.commissionAmount.toString()).toBe('24000');
     expect(wallets.creditPendingBalance).toHaveBeenCalledTimes(1);
   });
 

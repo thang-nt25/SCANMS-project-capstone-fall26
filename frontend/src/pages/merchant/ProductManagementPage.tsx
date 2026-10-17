@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useLayoutEffect, type FormEvent, type TextareaHTMLAttributes } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   PlusCircle,
@@ -24,6 +24,7 @@ import {
   ExternalLink,
   MessageSquareText,
   Clock3,
+  ChevronDown,
   ShieldCheck,
   EyeOff,
   Ban,
@@ -298,6 +299,10 @@ const getDefaultSpecsForCategory = (cat: string): ProductSpecificationItem[] => 
 
 export default function ProductManagementPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [returnToDashboard, setReturnToDashboard] = useState(
+    () => searchParams.get('returnTo') === 'dashboard',
+  );
   const currentUser = authService.getCurrentUser();
   const isKol = !currentUser?.role || currentUser?.role === 'COLLABORATOR';
   const isAdminOrManager =
@@ -387,6 +392,9 @@ export default function ProductManagementPage() {
 
   const [selectedVideoProduct, setSelectedVideoProduct] = useState<Product | null>(null);
   const [productVideos, setProductVideos] = useState<any[]>([]);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  useEffect(() => { setActiveVideoId(null); }, [selectedVideoProduct?.id]);
+  const activeReviewVideo = productVideos.find(video => video.id === activeVideoId) || productVideos[0];
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [reviewingMediaId, setReviewingMediaId] = useState<string | null>(null);
   const [rejectionModalMedia, setRejectionModalMedia] = useState<any | null>(null);
@@ -603,6 +611,7 @@ export default function ProductManagementPage() {
   const [formCategory, setFormCategory] = useState('');
   const [formCustomCategory, setFormCustomCategory] = useState('');
   const [formDescription, setFormDescription] = useState('');
+  const originalPackage = useRef({ weight: 250, length: 15, width: 10, height: 5 });
   const [formIngredients, setFormIngredients] = useState('');
   const [formOrigin, setFormOrigin] = useState('');
   const [formLabelInfo, setFormLabelInfo] = useState('');
@@ -973,6 +982,28 @@ export default function ProductManagementPage() {
     setShowModal(true);
   };
 
+  const closeProductModal = () => {
+    setShowModal(false);
+    if (returnToDashboard) {
+      setReturnToDashboard(false);
+      navigate('/merchant/dashboard', { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    const shouldReturnToDashboard = searchParams.get('returnTo') === 'dashboard';
+    const shouldOpenCreate = searchParams.get('create') === '1' && !isKol;
+    if (shouldReturnToDashboard) setReturnToDashboard(true);
+    if (shouldOpenCreate) openCreateModal();
+    if (!searchParams.has('create') && !searchParams.has('returnTo')) return;
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete('create');
+      next.delete('returnTo');
+      return next;
+    }, { replace: true });
+  }, [searchParams, isKol, setSearchParams]);
+
   const openEditModal = (p: any) => {
     setSaveError(null);
     setEditingProduct(p);
@@ -1007,6 +1038,12 @@ export default function ProductManagementPage() {
     setFormPackageLength(p.packageLength || p.length || 15);
     setFormPackageWidth(p.packageWidth || p.width || 10);
     setFormPackageHeight(p.packageHeight || p.height || 5);
+    originalPackage.current = {
+      weight: Number(p.packageWeight || p.weight || 250),
+      length: Number(p.packageLength || p.length || 15),
+      width: Number(p.packageWidth || p.width || 10),
+      height: Number(p.packageHeight || p.height || 5),
+    };
     setFormSampleEnabled(p.sampleEnabled === true);
     setFormSampleQuota(Number(p.sampleQuota) || 0);
     setVariantSamplePolicies(Object.fromEntries(
@@ -1403,7 +1440,15 @@ export default function ProductManagementPage() {
       validSpecs.push({ id: 'pkg-dim', key: 'Kích thước kiện hàng (DxRxC)', value: `${formPackageLength} x ${formPackageWidth} x ${formPackageHeight} cm` });
     }
     let combinedDescription = formDescription.trim();
-    if (validSpecs.length > 0 && !combinedDescription.includes('📌 THÔNG SỐ KỸ THUẬT:')) {
+    const descriptionInputsChanged = !editingProduct ||
+      combinedDescription !== (editingProduct.description || '').trim() ||
+      formSpecifications.some(spec => spec.key.trim() && spec.value.trim()) ||
+      Number(formPackageWeight) !== originalPackage.current.weight ||
+      Number(formPackageLength) !== originalPackage.current.length ||
+      Number(formPackageWidth) !== originalPackage.current.width ||
+      Number(formPackageHeight) !== originalPackage.current.height;
+    // Changing sample policy must not silently rewrite approved product content.
+    if (descriptionInputsChanged && validSpecs.length > 0 && !/📌 THÔNG SỐ KỸ THUẬT(?: SẢN PHẨM)?:/.test(combinedDescription)) {
       const specsBlock = `📌 THÔNG SỐ KỸ THUẬT SẢN PHẨM:\n` +
         validSpecs.map((s) => `• ${s.key.trim()}: ${s.value.trim()}`).join('\n') +
         `\n\n`;
@@ -1473,7 +1518,7 @@ export default function ProductManagementPage() {
         showToast('Đã thêm sản phẩm mới vào danh mục gian hàng!');
       }
       setSaveError(null);
-      setShowModal(false);
+      closeProductModal();
       loadProducts();
     } catch (err: any) {
       const message = err?.response?.data?.message || err?.message || 'Lỗi khi lưu sản phẩm.';
@@ -1497,7 +1542,7 @@ export default function ProductManagementPage() {
             title: 'Serum Vitamin C 15% Dưỡng Sáng Đều Màu Da',
             category: 'Chăm sóc da',
             price: 459000,
-            commissionRate: 8,
+            commissionRate: 10,
             stockQuantity: 120,
             status: 'active',
             images: ['/assets/products/real/vitamin-c-15-serum.jpg'],
@@ -1519,7 +1564,7 @@ export default function ProductManagementPage() {
             title: 'Gel Rửa Mặt Tràm Trà Trị Mụn Dịu Nhẹ',
             category: 'Làm sạch',
             price: 219000,
-            commissionRate: 12,
+            commissionRate: 10,
             stockQuantity: 0,
             status: 'out_of_stock',
             images: ['/assets/products/real/tea-tree-cleanser.jpg'],
@@ -1530,7 +1575,7 @@ export default function ProductManagementPage() {
             title: 'Toner BHA 2% Thu Nhỏ Lỗ Chân Lông & Tẩy Tế Bào Chết',
             category: 'Toner & Nước hoa hồng',
             price: 349000,
-            commissionRate: 7,
+            commissionRate: 10,
             stockQuantity: 45,
             status: 'active',
             images: ['/assets/products/real/bha-toner-2pct.png'],
@@ -1541,7 +1586,7 @@ export default function ProductManagementPage() {
             title: 'Mặt Nạ Cấp Ẩm Chuyên Sâu Hyaluronic Acid 5X',
             category: 'Mặt nạ',
             price: 199000,
-            commissionRate: 15,
+            commissionRate: 10,
             stockQuantity: 15,
             status: 'paused',
             images: ['/assets/products/real/centella-sheet-mask.jpg'],
@@ -1780,7 +1825,7 @@ export default function ProductManagementPage() {
               </TableHead>
               <TableHead>Sản phẩm</TableHead>
               <TableHead>Giá bán</TableHead>
-              <TableHead>Hoa hồng</TableHead>
+              <TableHead>Hoa hồng nền</TableHead>
               <TableHead>Tồn kho</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
@@ -1791,7 +1836,7 @@ export default function ProductManagementPage() {
               const title = p.title || p.name;
               const sku = p.sku || 'SKU';
               const price = p.price || 0;
-              const rate = p.customCommissionRate ?? p.commissionRate ?? 10;
+              const rate = 10;
               const stock = p.stockQuantity ?? p.stock ?? 0;
               const img = getSafeProductImageUrl(p.imageUrl || p.images?.[0] || p.image, title, p.categoryName);
               const status =
@@ -2004,17 +2049,16 @@ export default function ProductManagementPage() {
 
       <Modal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={closeProductModal}
         icon={<Package className="h-4 w-4" />}
         title={editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
-        subtitle="Hoàn thiện thông tin và gửi kiểm duyệt."
         maxWidth="full"
         stickyHeader
-        className="!max-w-[min(96vw,1440px)] !w-[min(96vw,1440px)] max-h-[min(92dvh,920px)] rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+        className="!max-w-[min(92vw,1200px)] !w-[min(92vw,1200px)] max-h-[min(88dvh,820px)] rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
         footer={(<div className="product-editor-actions flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => setShowModal(false)}
+              onClick={closeProductModal}
               className="px-4 py-2 rounded-xl text-xs font-bold text-[#7D715E] bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
             >
               Hủy bỏ
@@ -3273,7 +3317,18 @@ export default function ProductManagementPage() {
                   </p>
                 </div>
               ) : (
-                productVideos.map((v: any) => {
+                <div className="kol-video-workspace">
+                  <nav className="kol-video-picker" aria-label="Danh sách video cần xem">
+                    <p className="kol-video-picker-count"><span>Danh sách video</span><strong>{productVideos.length}</strong></p>
+                    {productVideos.map((video: any, index: number) => (
+                      <button key={video.id} type="button" className="kol-video-picker-item" data-status={video.status} aria-pressed={activeReviewVideo?.id === video.id} onClick={() => setActiveVideoId(video.id)}>
+                        <span className="kol-video-picker-thumb">{video.posterUrl ? <img src={video.posterUrl} alt="" /> : <Video size={18} />}<span>{index + 1}</span></span>
+                        <span className="kol-video-picker-text"><strong>{video.title || 'Video review sản phẩm'}</strong><span>{video.collaborator?.fullName || 'Nhà sáng tạo'}</span><small>{({ PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối', HIDDEN: 'Đã ẩn' } as Record<string, string>)[video.status] || video.status}{video.isFeatured ? ' · Đã ghim' : ''}</small></span>
+                      </button>
+                    ))}
+                  </nav>
+                  <div className="kol-video-selected">
+                {[activeReviewVideo].filter(Boolean).map((v: any) => {
                   const isPending = v.status === 'PENDING';
                   const isApproved = v.status === 'APPROVED';
                   const isRejected = v.status === 'REJECTED';
@@ -3316,6 +3371,7 @@ export default function ProductManagementPage() {
                           )}
                         </div>
 
+                        <details className="kol-video-details"><summary>Thông tin video & sản phẩm</summary>
                         <div className="kol-video-metadata text-[11px] text-[#7D715E]">
                           <p>KOL: <strong>{v.collaborator?.fullName || 'Nhà sáng tạo'}</strong></p>
                           <p>
@@ -3340,6 +3396,7 @@ export default function ProductManagementPage() {
                             {v.caption}
                           </p>
                         )}
+                        </details>
 
                         {v.rejectionReason && (
                           <p className="text-[11px] text-rose-600 font-semibold m-0">
@@ -3417,7 +3474,9 @@ export default function ProductManagementPage() {
                       </div>
                     </article>
                   );
-                })
+                })}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -3590,20 +3649,17 @@ export default function ProductManagementPage() {
                   return filtered.map((review) => {
                     const currentStatus = getReviewStatus(review);
                     return (
-                      <article
+                      <details
                         key={review.id}
-                        className="customer-review-card grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_112px] gap-5 p-3.5 min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-none"
+className="customer-review-card grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_112px] gap-5 p-3.5 min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-none"
                       >
-                        <div className="min-w-0 flex-1">
+                        <summary className="customer-review-row">
+                          <span className="customer-review-avatar" aria-hidden="true">{(review.customerName || 'Khách hàng').trim().split(/\s+/).filter(Boolean).slice(-2).map((part: string) => part[0]).join('').toUpperCase()}</span>
                           <div className="customer-review-card-heading flex flex-wrap items-center gap-x-2.5 gap-y-2">
                             <strong className="min-w-0 text-sm font-semibold leading-snug text-[#1A1612]">
                               {review.product?.title || 'Sản phẩm'}
                             </strong>
-                            {review.product?.sku && (
-                              <span className="rounded-md bg-[#FAF8F5] px-1.5 py-0.5 text-[11px] text-[#7D715E] font-mono">
-                                ({review.product.sku})
-                              </span>
-                            )}
+                            <span className="customer-review-row-meta"><span>{review.customerName || 'Khách hàng ẩn danh'}</span>{review.product?.sku && <span className="customer-review-row-sku">{review.product.sku}</span>}</span>
                             <span className="customer-review-rating" aria-label={`${review.rating || 5} trên 5 sao`}>
                               {Array.from({length: Math.max(1, Math.min(5, review.rating || 5))}, (_, index) => <Star key={index} className="h-3 w-3 fill-current" aria-hidden="true" />)}
                             </span>
@@ -3612,7 +3668,9 @@ export default function ProductManagementPage() {
                             {currentStatus === 'HIDDEN' && <Badge variant="neutral" className="customer-review-status">Đã ẩn</Badge>}
                             {currentStatus === 'PENDING' && <Badge variant="neutral" className="customer-review-status"><Clock3 className="h-3 w-3 text-[#B88E4F]" />Chờ duyệt</Badge>}
                           </div>
-
+                          <ChevronDown className="customer-review-chevron" size={15} aria-hidden="true" />
+                        </summary>
+                        <div className="customer-review-expanded-body">
                           <p className="customer-review-comment">
                             {review.comment || 'Khách không để lại nội dung bình luận.'}
                           </p>
@@ -3721,7 +3779,7 @@ export default function ProductManagementPage() {
                             </Button>
                           )}
                         </div>
-                      </article>
+                      </details>
                     );
                   });
                 })()

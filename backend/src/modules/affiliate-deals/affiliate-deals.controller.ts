@@ -19,6 +19,7 @@ import { AffiliateDealsService } from './affiliate-deals.service';
 import { CreateExclusiveDealDto } from './dto/create-exclusive-deal.dto';
 import { RejectExclusiveDealDto } from './dto/reject-exclusive-deal.dto';
 import { TerminateExclusiveDealDto } from './dto/terminate-exclusive-deal.dto';
+import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
 
 @ApiTags('Affiliate Offers & Exclusive Deals')
 @ApiBearerAuth('JWT-auth')
@@ -76,8 +77,9 @@ export class AffiliateDealsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: UserRole,
+    @Body() dto: ApproveExclusiveDealDto,
   ) {
-    return this.service.approveProposal(id, userId, role);
+    return this.service.approveProposal(id, userId, role, dto);
   }
 
   @Patch(':id/reject')

@@ -2,24 +2,26 @@ export type Theme = 'light' | 'dark';
 export const THEME_STORAGE_KEY = 'scanms-theme';
 
 export function getSavedTheme(): Theme {
+  return 'light';
+}
+
+export function applyTheme(_theme: Theme) {
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.classList.remove('dark');
+  document.documentElement.style.colorScheme = 'light';
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#FAF8F5');
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', 'light');
   try {
-    return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
   } catch {
-    return 'light';
+    // The interface remains light for this session when storage is unavailable.
   }
 }
 
-export function applyTheme(theme: Theme) {
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.classList.toggle('dark', theme === 'dark');
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#181511' : '#FAF8F5');
-  document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme);
-}
-
-export function saveTheme(theme: Theme) {
-  applyTheme(theme);
+export function saveTheme(_theme: Theme) {
+  applyTheme('light');
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
   } catch {
     // Switching still works when the browser disallows persistent storage.
   }

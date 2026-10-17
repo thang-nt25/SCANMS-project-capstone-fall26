@@ -106,10 +106,10 @@ export const analyticsService = {
     storeId?: string;
     channel?: string;
     campaignId?: string;
-  }) => {
+  }, fresh = false) => {
     const res = await api.get<{ data?: DashboardOverviewResponse } | DashboardOverviewResponse>(
       '/dashboard/realtime/overview',
-      { params },
+      { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined },
     );
     return (res.data as any)?.data || res.data;
   },
@@ -121,10 +121,10 @@ export const analyticsService = {
     endDate?: string;
     interval?: string;
     storeId?: string;
-  }) => {
+  }, fresh = false) => {
     const res = await api.get<{ data?: TimeSeriesPoint[] } | TimeSeriesPoint[]>(
       '/dashboard/realtime/timeseries',
-      { params },
+      { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined },
     );
     return (res.data as any)?.data || res.data;
   },

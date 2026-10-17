@@ -736,17 +736,17 @@ export const KolCouponsPage: React.FC = () => {
                         </button>
                       )}
 
-                      {coupon.status === 'PAUSED' && (
+                      {coupon.status === 'PAUSED' && coupon.approvedBy && coupon.approvedAt && (
                         <button
                           onClick={() => handleTogglePause(coupon)}
-                          className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-[#B88E4F] hover:bg-[#FBF5EB] transition-colors cursor-pointer"
                           title="Kích hoạt lại"
                         >
                           <Play className="w-3.5 h-3.5" />
                         </button>
                       )}
 
-                      {coupon.status !== 'DELETED' && (
+                      {(coupon.status === 'PENDING_APPROVAL' || coupon.status === 'REJECTED') && (
                         <button
                           onClick={() => setDeleteTarget(coupon)}
                           className="p-1.5 rounded-lg text-[#7D715E] hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"

@@ -1,995 +1,129 @@
 import 'dotenv/config';
-import {
-  PrismaClient,
-  UserRole,
-  KycStatus,
-  SocialPlatform,
-  AssetType,
-  OrderStatus,
-  CommissionStatus,
-  TransactionType,
-  PayoutStatus,
-  AttributionMethod,
-} from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcryptjs';
+import { buildDataset } from './seeds/build-dataset';
+import { readSeedOptions } from './seeds/seed.config';
+import {
+  applyDataset,
+  assertDatabaseSchema,
+  datasetCounts,
+  MANIFEST_ID,
+  verifyPersistedCounts,
+  assertManifestVersion,
+} from './seeds/seed.database';
+import { DATASET_VERSION } from './seeds/seed.helpers';
+import { resetDatabase } from './seeds/reset-database';
+import { auditSeedDatabase, PENDING_HANDOVERS } from './seeds/seed.audit';
+import { buildMarketplaceDemoPlan } from './seeds/marketplace.seed';
 
-const connectionString = process.env.DATABASE_URL;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
-
-async function main() {
-  console.log('🌱 Bắt đầu gieo mầm dữ liệu (Database Seeding)...');
-
-  // Mật khẩu chung cho tất cả tài khoản test: Password@123
-  const defaultPasswordHash = bcrypt.hashSync('Password@123', 10);
-
-  // ==========================================
-  // 1. TẠO TÀI KHOẢN NGƯỜI DÙNG (USERS)
-  // ==========================================
-  console.log('👤 Đang tạo tài khoản mẫu...');
-
-  // 1.1 Super Admin
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@scanms.vn' },
-    update: { passwordHash: defaultPasswordHash },
-    create: {
-      email: 'admin@scanms.vn',
-      passwordHash: defaultPasswordHash,
-      role: UserRole.SYSTEM_ADMIN,
-      fullName: 'Nguyễn Quản Trị (Super Admin)',
-      phoneNumber: '0901000001',
-    },
-  });
-
-  // 1.2 Chủ Cửa hàng (Shop Manager)
-  const shopOwner = await prisma.user.upsert({
-    where: { email: 'shop@scanms.vn' },
-    update: { passwordHash: defaultPasswordHash },
-    create: {
-      email: 'shop@scanms.vn',
-      passwordHash: defaultPasswordHash,
-      role: UserRole.SHOP_MANAGER,
-      fullName: 'Trần Văn Chủ Shop',
-      phoneNumber: '0902000002',
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: 'shop@techstore.vn' },
-    update: { passwordHash: defaultPasswordHash },
-    create: {
-      email: 'shop@techstore.vn',
-      passwordHash: defaultPasswordHash,
-      role: UserRole.SHOP_MANAGER,
-      fullName: 'Trần Văn Chủ Shop (TechStore)',
-      phoneNumber: '0902000003',
-    },
-  });
-
-  // 1.3 KOL 1: Nguyễn Thành Thắng (Tier Vàng) - demo@scanms.vn & kol1@scanms.vn
-  const kol1 = await prisma.user.upsert({
-    where: { email: 'demo@scanms.vn' },
-    update: { passwordHash: defaultPasswordHash },
-    create: {
-      email: 'demo@scanms.vn',
-      passwordHash: defaultPasswordHash,
-      role: UserRole.COLLABORATOR,
-      fullName: 'Nguyễn Thành Thắng (Top KOL)',
-      phoneNumber: '0987654321',
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: 'kol1@scanms.vn' },
-    update: { passwordHash: defaultPasswordHash },
-    create: {
-      email: 'kol1@scanms.vn',
-      passwordHash: defaultPasswordHash,
-      role: UserRole.COLLABORATOR,
-      fullName: 'Nguyễn Thành Thắng (Top KOL)',
-      phoneNumber: '0987654322',
-    },
-  });
-
-  // 1.4 KOL 2: Lê Thu Hà (Tier Bạc)
-  const kol2 = await prisma.user.upsert({
-    where: { email: 'kol2@scanms.vn' },
-    update: { passwordHash: defaultPasswordHash },
-    create: {
-      email: 'kol2@scanms.vn',
-      passwordHash: defaultPasswordHash,
-      role: UserRole.COLLABORATOR,
-      fullName: 'Lê Thu Hà (KOL Lifestyle)',
-      phoneNumber: '0912345678',
-    },
-  });
-
-  // ==========================================
-  // 2. CẤP BẬC KOL (COLLABORATOR TIERS) - Idempotent
-  // ==========================================
-  console.log('🎖️ Đang kiểm tra & tạo bảng cấp bậc KOL (Tiers)...');
-
-  let bronzeTier = await prisma.collaboratorTier.findFirst({ where: { name: 'Đồng (Bronze)' } });
-  if (!bronzeTier) {
-    bronzeTier = await prisma.collaboratorTier.create({
-      data: {
-        name: 'Đồng (Bronze)',
-        minRevenueThreshold: 0,
-        extraBonusPercentage: 0.0,
+async function main(): Promise<void> {
+  const options = readSeedOptions(process.argv.slice(2), process.env);
+  const passwordHash =
+    options.mode === 'apply'
+      ? await bcrypt.hash(options.password!, 12)
+      : 'plan-only-no-password';
+  const context = {
+    referenceDate: options.referenceDate,
+    frontendUrl: options.frontendUrl,
+    passwordHash,
+    shipping: options.shipping,
+  };
+  const data = buildDataset(context);
+  console.log(
+    JSON.stringify(
+      {
+        dataset: DATASET_VERSION,
+        mode: options.mode,
+        target: options.target?.label ?? '(not configured)',
+        reset: options.reset,
+        resetConfirmation: options.target?.confirmation,
+        referenceDate: options.referenceDate.toISOString(),
+        counts: datasetCounts(data),
+        dependencies: PENDING_HANDOVERS,
+        marketplaceDemo:
+          options.mode === 'plan'
+            ? buildMarketplaceDemoPlan(data, context)
+            : undefined,
+        provenance: options.shipping.length
+          ? `${options.shipping.length} GHN sandbox exports; remaining fixtures are synthetic`
+          : 'Synthetic demo data; no real shipment or payment is created',
       },
-    });
-  }
+      null,
+      2,
+    ),
+  );
+  if (options.mode === 'plan') return;
 
-  let silverTier = await prisma.collaboratorTier.findFirst({ where: { name: 'Bạc (Silver)' } });
-  if (!silverTier) {
-    silverTier = await prisma.collaboratorTier.create({
-      data: {
-        name: 'Bạc (Silver)',
-        minRevenueThreshold: 20000000,
-        extraBonusPercentage: 1.0,
-      },
-    });
-  }
-
-  let goldTier = await prisma.collaboratorTier.findFirst({ where: { name: 'Vàng (Gold)' } });
-  if (!goldTier) {
-    goldTier = await prisma.collaboratorTier.create({
-      data: {
-        name: 'Vàng (Gold)',
-        minRevenueThreshold: 50000000,
-        extraBonusPercentage: 3.0,
-      },
-    });
-  }
-
-  let diamondTier = await prisma.collaboratorTier.findFirst({ where: { name: 'Kim Cương (Diamond)' } });
-  if (!diamondTier) {
-    diamondTier = await prisma.collaboratorTier.create({
-      data: {
-        name: 'Kim Cương (Diamond)',
-        minRevenueThreshold: 100000000,
-        extraBonusPercentage: 5.0,
-      },
-    });
-  }
-
-  // ==========================================
-  // 3. HỒ SƠ KYC & KÊNH MẠNG XÃ HỘI CỦA KOL - Idempotent
-  // ==========================================
-  console.log('📝 Đang tạo hồ sơ KYC & kênh MXH...');
-
-  await prisma.collaboratorProfile.upsert({
-    where: { userId: kol1.id },
-    update: {
-      kycStatus: KycStatus.VERIFIED,
-    },
-    create: {
-      userId: kol1.id,
-      tierId: goldTier.id,
-      bio: 'Chuyên gia review đồ công nghệ & setup góc làm việc',
-      idCardNumber: '001201012345',
-      taxCode: '8012345678',
-      bankName: 'MBBank (Ngân hàng Quân Đội)',
-      bankAccountNumber: '0987654321',
-      bankAccountName: 'NGUYEN THANH THANG',
-      kycStatus: KycStatus.VERIFIED,
-      totalFollowers: 150000,
-      totalOrdersReferred: 142,
-      totalEarnedCommission: 28500000,
-    },
+  const target = options.target!;
+  if (options.reset)
+    await resetDatabase(
+      target,
+      process.env.SCANMS_SEED_RESET_CONFIRM,
+      process.env.NODE_ENV,
+      process.env.SCANMS_SEED_BACKUP_FILE,
+    );
+  const pool = new Pool({
+    connectionString: target.connectionString,
+    max: 2,
+    connectionTimeoutMillis: 15_000,
   });
-
-  await prisma.collaboratorProfile.upsert({
-    where: { userId: kol2.id },
-    update: {},
-    create: {
-      userId: kol2.id,
-      tierId: silverTier.id,
-      bio: 'Reviewer phong cách sống, tai nghe và phụ kiện thời trang',
-      idCardNumber: '001202056789',
-      taxCode: '8098765432',
-      bankName: 'Vietcombank',
-      bankAccountNumber: '1019283746',
-      bankAccountName: 'LE THU HA',
-      kycStatus: KycStatus.VERIFIED,
-      totalFollowers: 75000,
-      totalOrdersReferred: 45,
-      totalEarnedCommission: 8200000,
-    },
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg(pool, { schema: target.schema }),
   });
-
-  // Kênh MXH (Kiểm tra tránh trùng lặp)
-  const existingChannels = await prisma.collaboratorSocialChannel.findMany({
-    where: { collaboratorId: { in: [kol1.id, kol2.id] } },
-  });
-  if (existingChannels.length === 0) {
-    await prisma.collaboratorSocialChannel.createMany({
-      data: [
-        {
-          collaboratorId: kol1.id,
-          platformName: SocialPlatform.TIKTOK,
-          channelName: '@thangtechreview',
-          channelUrl: 'https://tiktok.com/@thangtechreview',
-          followerCount: 120000,
-          isPrimary: true,
-        },
-        {
-          collaboratorId: kol1.id,
-          platformName: SocialPlatform.YOUTUBE,
-          channelName: 'Thắng Tech Setup',
-          channelUrl: 'https://youtube.com/@thangtechsetup',
-          followerCount: 30000,
-          isPrimary: false,
-        },
-        {
-          collaboratorId: kol2.id,
-          platformName: SocialPlatform.TIKTOK,
-          channelName: '@hakatabeauty',
-          channelUrl: 'https://tiktok.com/@hakatabeauty',
-          followerCount: 60000,
-          isPrimary: true,
-        },
-        {
-          collaboratorId: kol2.id,
-          platformName: SocialPlatform.INSTAGRAM,
-          channelName: '@haka.lifestyle',
-          channelUrl: 'https://instagram.com/haka.lifestyle',
-          followerCount: 15000,
-          isPrimary: false,
-        },
-      ],
-    });
-  }
-
-  // ==========================================
-  // 4. GIAN HÀNG & CẤU HÌNH (STORES) - Idempotent
-  // ==========================================
-  console.log('🏪 Đang tạo Gian hàng & Cấu hình...');
-
-  const store = await prisma.store.upsert({
-    where: { slug: 'techstore-flagship' },
-    update: {
-      logoUrl: '/assets/shops/shop-techstore.png',
-    },
-    create: {
-      ownerId: shopOwner.id,
-      name: 'TechStore Flagship Store',
-      slug: 'techstore-flagship',
-      logoUrl: '/assets/shops/shop-techstore.png',
-      description: 'Cửa hàng chính hãng chuyên phụ kiện âm thanh và thiết bị công nghệ cao cấp.',
-      websiteUrl: 'https://techstore.vn',
-      defaultCommissionRate: 10.0,
-      attributionWindowDays: 30,
-      isActive: true,
-      isVerified: true,
-      onboardingStatus: 'VERIFIED',
-    },
-  });
-
-  // Mốc thưởng doanh số của Shop (Kiểm tra tránh trùng ngưỡng theo partial unique index)
-  const existingRule = await prisma.commissionRule.findFirst({
-    where: {
-      storeId: store.id,
-      minMonthlyRevenue: 50000000,
-      isDeleted: false,
-    },
-  });
-  if (!existingRule) {
-    await prisma.commissionRule.create({
-      data: {
-        storeId: store.id,
-        name: 'Thưởng Doanh Số Vàng (> 50 Triệu)',
-        minMonthlyRevenue: 50000000,
-        bonusPercentage: 2.0,
-      },
-    });
-  }
-
-  // 4.1 Gian hàng Sora Skin Official (Khớp ID nguyên mẫu UI/UX)
-  const soraStoreId = '8ca136c3-9202-4254-bd4c-3704a840fa7b';
-  const soraStore = await prisma.store.upsert({
-    where: { id: soraStoreId },
-    update: {
-      ownerId: shopOwner.id,
-      websiteUrl: '',
-      isActive: true,
-      isVerified: true,
-      onboardingStatus: 'VERIFIED',
-      logoUrl: '/assets/shops/shop-sora-skin.png',
-    },
-    create: {
-      id: soraStoreId,
-      ownerId: shopOwner.id,
-      name: 'Sora Skin Official',
-      slug: 'sora-skin-official',
-      logoUrl: '/assets/shops/shop-sora-skin.png',
-      description: 'Gian hàng phân phối chính hãng dòng sản phẩm chăm sóc da chuyên sâu Sora Skin Flagship.',
-      websiteUrl: '',
-      defaultCommissionRate: 10.0,
-      attributionWindowDays: 30,
-      isActive: true,
-      isVerified: true,
-      onboardingStatus: 'VERIFIED',
-    },
-  });
-
-  const soraExistingRule1 = await prisma.commissionRule.findFirst({
-    where: { storeId: soraStoreId, minMonthlyRevenue: 50000000, isDeleted: false },
-  });
-  if (!soraExistingRule1) {
-    await prisma.commissionRule.create({
-      data: {
-        storeId: soraStoreId,
-        name: 'Thưởng Doanh Số Sora Skin Vàng (> 50 Triệu)',
-        minMonthlyRevenue: 50000000,
-        bonusPercentage: 2.5,
-        achievementBonus: 1000000,
-      },
-    });
-  }
-  const soraExistingRule2 = await prisma.commissionRule.findFirst({
-    where: { storeId: soraStoreId, minMonthlyRevenue: 100000000, isDeleted: false },
-  });
-  if (!soraExistingRule2) {
-    await prisma.commissionRule.create({
-      data: {
-        storeId: soraStoreId,
-        name: 'Thưởng Doanh Số Sora Skin Kim Cương (> 100 Triệu)',
-        minMonthlyRevenue: 100000000,
-        bonusPercentage: 4.0,
-        achievementBonus: 3000000,
-      },
-    });
-  }
-
-  // ==========================================
-  // 5. SẢN PHẨM & KHO MEDIA MARKETING - Idempotent
-  // ==========================================
-  console.log('🎧 Đang tạo Danh mục Sản phẩm & Media Assets...');
-
-  let product1 = await prisma.product.findFirst({
-    where: { storeId: store.id, sku: 'TECH-ANC-001' },
-  });
-  if (!product1) {
-    product1 = await prisma.product.create({
-      data: {
-        storeId: store.id,
-        sku: 'TECH-ANC-001',
-        title: 'Tai nghe Bluetooth True Wireless Chống Ồn ANC Pro X',
-        categoryName: 'Phụ kiện Âm thanh',
-        description: 'Chống ồn chủ động 42dB, pin 36 tiếng, màng loa titan âm trầm uy lực.',
-        imageUrl: '/assets/products/real/wireless-earbuds.jpg',
-        originalPrice: 1590000,
-        price: 1290000,
-        customCommissionRate: 12.0,
-        stockQuantity: 150,
-        isActive: true,
-        moderationStatus: 'APPROVED',
-      },
-    });
-  }
-
-  let product2 = await prisma.product.findFirst({
-    where: { storeId: store.id, sku: 'TECH-KB-002' },
-  });
-  if (!product2) {
-    product2 = await prisma.product.create({
-      data: {
-        storeId: store.id,
-        sku: 'TECH-KB-002',
-        title: 'Bàn phím cơ Không dây 3 Modes Hotswap RGB Custom',
-        categoryName: 'Phụ kiện Máy tính',
-        description: 'Switch Gateron Pro êm ái, kết nối Bluetooth/2.4G/Type-C, pin 4000mAh.',
-        imageUrl: '/assets/products/real/keyboard-tri-mode.webp',
-        originalPrice: 2200000,
-        price: 1850000,
-        customCommissionRate: 15.0,
-        stockQuantity: 80,
-        isActive: true,
-        moderationStatus: 'APPROVED',
-      },
-    });
-  }
-
-  // Kho Media Marketing
-  const existingMedia = await prisma.mediaAsset.findFirst({
-    where: { storeId: store.id, title: 'Banner Quảng Cáo HD 1200x628 - Tai Nghe ANC Pro X' },
-  });
-  if (!existingMedia) {
-    await prisma.mediaAsset.createMany({
-      data: [
-        {
-          storeId: store.id,
-          productId: product1.id,
-          title: 'Banner Quảng Cáo HD 1200x628 - Tai Nghe ANC Pro X',
-          assetType: AssetType.IMAGE,
-          urlOrContent: '/assets/products/real/wireless-earbuds.jpg',
-        },
-        {
-          storeId: store.id,
-          productId: product1.id,
-          title: 'Kịch bản Video Review TikTok 60s Chốt Sale',
-          assetType: AssetType.COPYWRITE_TEXT,
-          urlOrContent:
-            'Mở đầu: "Bỏ ngay 4 triệu mua tai nghe Táo, chiếc tai nghe 1 triệu này chống ồn ngang ngửa mà bass đập rung màng nhĩ..."',
-        },
-      ],
-    });
-  }
-
-  // ==========================================
-  // 6. CÔNG CỤ TIẾP THỊ CỦA KOL (LINKS, QR, COUPON) - Idempotent
-  // ==========================================
-  console.log('🔗 Đang tạo Link tiếp thị, QR Code & Coupon...');
-
-  let refLink1 = await prisma.referralLink.findFirst({
-    where: { shortCode: 'anc-pro-thang' },
-  });
-  if (!refLink1) {
-    refLink1 = await prisma.referralLink.create({
-      data: {
-        collaboratorId: kol1.id,
-        storeId: store.id,
-        productId: product1.id,
-        shortCode: 'anc-pro-thang',
-        customCouponCode: 'THANGVIP10',
-        qrCodeUrl: '/api/referral-links/anc-pro-thang/qr',
-        totalClicks: 1450,
-        totalOrders: 32,
-      },
-    });
-  }
-
-  // Log lượt click mẫu
-  const existingClick = await prisma.clickTrafficLog.findFirst({
-    where: { referralLinkId: refLink1.id },
-  });
-  if (!existingClick) {
-    await prisma.clickTrafficLog.create({
-      data: {
-        referralLinkId: refLink1.id,
-        ipAddress: '113.161.45.89',
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
-        deviceFingerprint: 'fp_ios_safari_a9f82d1b',
-      },
-    });
-  }
-
-  // ==========================================
-  // 7. VÍ TIỀN & SỔ CÁI TÀI CHÍNH - Idempotent
-  // ==========================================
-  console.log('💰 Đang tạo Ví tiền & Sổ cái tài chính...');
-
-  const wallet1 = await prisma.wallet.upsert({
-    where: { collaboratorId: kol1.id },
-    update: {},
-    create: {
-      collaboratorId: kol1.id,
-      availableBalance: 3500000,
-      pendingBalance: 1250000,
-      version: 1,
-    },
-  });
-
-  await prisma.wallet.upsert({
-    where: { collaboratorId: kol2.id },
-    update: {},
-    create: {
-      collaboratorId: kol2.id,
-      availableBalance: 800000,
-      pendingBalance: 450000,
-      version: 1,
-    },
-  });
-
-  // Sổ cái tài chính
-  const existingLedger = await prisma.financialLedger.findFirst({
-    where: { walletId: wallet1.id, transactionType: TransactionType.COMMISSION_APPROVED },
-  });
-  if (!existingLedger) {
-    await prisma.financialLedger.create({
-      data: {
-        walletId: wallet1.id,
-        transactionType: TransactionType.COMMISSION_APPROVED,
-        amount: 154800,
-        balanceBefore: 3345200,
-        balanceAfter: 3500000,
-      },
-    });
-  }
-
-  // ==========================================
-  // 8. ĐƠN HÀNG MẪU & HOA HỒNG - Idempotent
-  // ==========================================
-  console.log('📦 Đang tạo Đơn hàng mẫu & Tính hoa hồng...');
-
-  let sampleOrder = await prisma.order.findFirst({
-    where: { storeId: store.id, externalOrderSn: 'ORD-20260909-001' },
-  });
-  if (!sampleOrder) {
-    sampleOrder = await prisma.order.create({
-      data: {
-        storeId: store.id,
-        externalOrderSn: 'ORD-20260909-001',
-        attributedCollaboratorId: kol1.id,
-        attributionMethod: AttributionMethod.COUPON,
-        customerName: 'Hoàng Minh Tuấn',
-        customerPhone: '0933888999',
-        shippingAddress: 'Tòa Landmark 81, Phường 22, Quận Bình Thạnh, TP.HCM',
-        subtotalAmount: 1290000,
-        discountAmount: 129000,
-        shippingFee: 0,
-        finalAmount: 1161000,
-        status: OrderStatus.COMPLETED,
-        completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      },
-    });
-  }
-
-  const existingOrderItem = await prisma.orderItem.findFirst({
-    where: { orderId: sampleOrder.id, productId: product1.id },
-  });
-  if (!existingOrderItem) {
-    await prisma.orderItem.create({
-      data: {
-        orderId: sampleOrder.id,
-        productId: product1.id,
-        quantity: 1,
-        unitPrice: 1290000,
-        appliedCommissionRate: 15.0,
-        calculatedCommissionAmount: 193500,
-      },
-    });
-  }
-
-  await prisma.commission.upsert({
-    where: {
-      orderId_collaboratorId: {
-        orderId: sampleOrder.id,
-        collaboratorId: kol1.id,
-      },
-    },
-    update: {},
-    create: {
-      orderId: sampleOrder.id,
-      collaboratorId: kol1.id,
-      commissionAmount: 193500,
-      status: CommissionStatus.APPROVED,
-      eligibleAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-      availableAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      approvedAt: new Date(),
-    },
-  });
-
-  // Lệnh rút tiền mẫu
-  const existingPayout = await prisma.payoutRequest.findFirst({
-    where: { collaboratorId: kol1.id, storeId: store.id, amount: 2500000 },
-  });
-  if (!existingPayout) {
-    await prisma.payoutRequest.create({
-      data: {
-        collaboratorId: kol1.id,
-        storeId: store.id,
-        amount: 2500000,
-        taxAmount: 250000,
-        netAmount: 2250000,
-        status: PayoutStatus.PENDING,
-        bankName: 'MBBank',
-        bankAccountNumber: '0987654321',
-        bankAccountName: 'NGUYEN THANH THANG',
-      },
-    });
-  }
-
-  // Đánh giá review mẫu
-  const existingReview = await prisma.productReview.findFirst({
-    where: { productId: product1.id, customerName: 'Hoàng Minh Tuấn' },
-  });
-  if (!existingReview) {
-    await prisma.productReview.create({
-      data: {
-        productId: product1.id,
-        orderId: sampleOrder.id,
-        customerName: 'Hoàng Minh Tuấn',
-        rating: 5,
-        comment: 'Tai nghe chống ồn siêu đỉnh, nghe nhạc EDM bass sâu lắng, giao hàng nhanh 1 ngày là có!',
-        isApproved: true,
-      },
-    });
-  }
-
-  // ==========================================
-  // 8.1 ĐỒNG BỘ ĐƠN PROTOTYPE UI: IN23931 & IN23712
-  // ==========================================
-  let productBinh = await prisma.product.findFirst({
-    where: { storeId: store.id, sku: 'P05' },
-  });
-  if (!productBinh) {
-    productBinh = await prisma.product.create({
-      data: {
-        storeId: store.id,
-        sku: 'P05',
-        title: 'Bình giữ nhiệt phong cách Bắc Âu 500ml',
-        categoryName: 'Gia dụng thông minh',
-        description: 'Bình giữ nhiệt inox 316 cao cấp giữ nhiệt 24h tiện lợi.',
-        imageUrl: '/assets/products/real/thermos-500ml.jpg',
-        originalPrice: 350000,
-        price: 280000,
-        customCommissionRate: 15.0,
-        stockQuantity: 200,
-        isActive: true,
-        moderationStatus: 'APPROVED',
-      },
-    });
-  }
-
-  // Đơn IN23931
-  let protoOrder1 = await prisma.order.findFirst({
-    where: { storeId: store.id, externalOrderSn: 'IN23931' },
-  });
-  if (!protoOrder1) {
-    protoOrder1 = await prisma.order.create({
-      data: {
-        storeId: store.id,
-        externalOrderSn: 'IN23931',
-        attributedCollaboratorId: kol1.id,
-        attributionMethod: AttributionMethod.COUPON,
-        customerName: 'Nguyễn Hải Yến',
-        customerPhone: '0903218456',
-        shippingAddress: 'Số 48 Đường số 7, KDC Cityland, Phường 7, Quận Gò Vấp, TP. Hồ Chí Minh',
-        subtotalAmount: 560000,
-        discountAmount: 0,
-        shippingFee: 0,
-        finalAmount: 560000,
-        status: OrderStatus.COMPLETED,
-        completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      },
-    });
-  }
-
-  const existingProtoItem1 = await prisma.orderItem.findFirst({
-    where: { orderId: protoOrder1.id, productId: productBinh.id },
-  });
-  if (!existingProtoItem1) {
-    await prisma.orderItem.create({
-      data: {
-        orderId: protoOrder1.id,
-        productId: productBinh.id,
-        quantity: 2,
-        unitPrice: 280000,
-        appliedCommissionRate: 15.0,
-        calculatedCommissionAmount: 84000,
-      },
-    });
-  }
-
-  // Đơn IN23712
-  let protoOrder2 = await prisma.order.findFirst({
-    where: { storeId: store.id, externalOrderSn: 'IN23712' },
-  });
-  if (!protoOrder2) {
-    protoOrder2 = await prisma.order.create({
-      data: {
-        storeId: store.id,
-        externalOrderSn: 'IN23712',
-        attributedCollaboratorId: kol1.id,
-        attributionMethod: AttributionMethod.COUPON,
-        customerName: 'Nguyễn Hải Yến',
-        customerPhone: '0903218456',
-        shippingAddress: 'Số 48 Đường số 7, KDC Cityland, Phường 7, Quận Gò Vấp, TP. Hồ Chí Minh',
-        subtotalAmount: 560000,
-        discountAmount: 30000,
-        shippingFee: 25000,
-        finalAmount: 555000,
-        status: OrderStatus.COMPLETED,
-        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      },
-    });
-  }
-
-  const existingProtoItem2 = await prisma.orderItem.findFirst({
-    where: { orderId: protoOrder2.id, productId: productBinh.id },
-  });
-  if (!existingProtoItem2) {
-    await prisma.orderItem.create({
-      data: {
-        orderId: protoOrder2.id,
-        productId: productBinh.id,
-        quantity: 2,
-        unitPrice: 280000,
-        appliedCommissionRate: 15.0,
-        calculatedCommissionAmount: 84000,
-      },
-    });
-  }
-
-  // ==========================================
-  // 9. CHAT REALTIME & HÀNG MẪU - Idempotent
-  // ==========================================
-  console.log('💬 Đang tạo Hội thoại Chat & Yêu cầu Hàng mẫu...');
-
-  let conversation = await prisma.conversation.findFirst({
-    where: { storeId: store.id, collaboratorId: kol1.id },
-  });
-  if (!conversation) {
-    conversation = await prisma.conversation.create({
-      data: {
-        storeId: store.id,
-        collaboratorId: kol1.id,
-        lastMessageAt: new Date(),
-      },
-    });
-  }
-
-  const existingMsg = await prisma.chatMessage.findFirst({
-    where: { conversationId: conversation.id },
-  });
-  if (!existingMsg) {
-    await prisma.chatMessage.createMany({
-      data: [
-        {
-          conversationId: conversation.id,
-          senderId: shopOwner.id,
-          messageText:
-            'Chào bạn Thắng! Shop rất thích các video review setup của bạn, bên mình mới gửi tặng bạn 1 chiếc tai nghe ANC Pro X để trải nghiệm nhé!',
-          isRead: true,
-        },
-        {
-          conversationId: conversation.id,
-          senderId: kol1.id,
-          messageText:
-            'Dạ chào Shop! Mình đã nhận được mã vận đơn GHTK rồi ạ, sản phẩm rất đẹp, cuối tuần này mình sẽ lên clip TikTok luôn nhé!',
-          isRead: true,
-        },
-      ],
-    });
-  }
-
-  // Yêu cầu hàng mẫu
-  const existingSample = await prisma.sampleProductRequest.findFirst({
-    where: { collaboratorId: kol1.id, productId: product1.id },
-  });
-  if (!existingSample) {
-    await prisma.sampleProductRequest.create({
-      data: {
-        collaboratorId: kol1.id,
-        productId: product1.id,
-        shippingAddress: 'Phòng 402, Chung cư Sunrise City, Quận 7, TP.HCM',
-        trackingNumber: 'GHTK-SCANMS-889922',
-        status: 'SHIPPED',
-      },
-    });
-  }
-
-  // ==========================================
-  // 10. DỮ LIỆU REALTIME ANALYTICS DASHBOARD (FR-28)
-  // ==========================================
-  console.log('📊 Đang tạo Dữ liệu Realtime Analytics Dashboard (FR-28)...');
-
-  // 10.1 Chiến dịch VIP
-  let vipCampaign = await prisma.campaign.findFirst({
-    where: { storeId: store.id, name: 'Siêu Sale Thu Đông - Gala VIP 2026' },
-  });
-  if (!vipCampaign) {
-    vipCampaign = await prisma.campaign.create({
-      data: {
-        storeId: store.id,
-        name: 'Siêu Sale Thu Đông - Gala VIP 2026',
-        bonusCommissionRate: 7.5,
-        startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-        endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-        isActive: true,
-      },
-    });
-  }
-
-  await prisma.campaignParticipant.upsert({
-    where: {
-      campaignId_collaboratorId: {
-        campaignId: vipCampaign.id,
-        collaboratorId: kol1.id,
-      },
-    },
-    update: { status: 'ACCEPTED' },
-    create: {
-      campaignId: vipCampaign.id,
-      collaboratorId: kol1.id,
-      status: 'ACCEPTED',
-    },
-  });
-
-  // 10.2 Referral Links
-  let rtRefLink1 = await prisma.referralLink.findFirst({
-    where: { collaboratorId: kol1.id, shortCode: 'kolthang-anc' },
-  });
-  if (!rtRefLink1) {
-    rtRefLink1 = await prisma.referralLink.create({
-      data: {
-        collaboratorId: kol1.id,
-        storeId: store.id,
-        productId: product1.id,
-        campaignId: vipCampaign.id,
-        shortCode: 'kolthang-anc',
-        channel: SocialPlatform.TIKTOK,
-        status: 'ACTIVE',
-      },
-    });
-  }
-
-  let rtRefLink2 = await prisma.referralLink.findFirst({
-    where: { collaboratorId: kol1.id, shortCode: 'kolthang-binh' },
-  });
-  if (!rtRefLink2) {
-    rtRefLink2 = await prisma.referralLink.create({
-      data: {
-        collaboratorId: kol1.id,
-        storeId: store.id,
-        productId: productBinh.id,
-        campaignId: vipCampaign.id,
-        shortCode: 'kolthang-binh',
-        channel: SocialPlatform.FACEBOOK,
-        status: 'ACTIVE',
-      },
-    });
-  }
-
-  // 10.3 Click Traffic Logs phân bố theo các ngày và giờ hôm nay
-  const clickCount = await prisma.clickTrafficLog.count({
-    where: { referralLinkId: { in: [rtRefLink1.id, rtRefLink2.id] } },
-  });
-
-  if (clickCount < 10) {
-    for (let i = 0; i < 35; i++) {
-      const daysAgo = i % 7;
-      const hoursAgo = (i * 2) % 24;
-      const clickTime = new Date(Date.now() - (daysAgo * 24 + hoursAgo) * 3600 * 1000);
-      const chosenLink = i % 2 === 0 ? rtRefLink1 : rtRefLink2;
-      await prisma.clickTrafficLog.create({
-        data: {
-          referralLinkId: chosenLink.id,
-          storeId: store.id,
-          collaboratorId: kol1.id,
-          productId: chosenLink.productId,
-          campaignId: vipCampaign.id,
-          ipAddress: `192.168.10.${10 + i}`,
-          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
-          isValid: true,
-          createdAt: clickTime,
-        },
+  try {
+    if (options.mode === 'audit') {
+      await assertDatabaseSchema(prisma, target);
+      const report = await auditSeedDatabase(prisma, target, data);
+      console.log(JSON.stringify(report, null, 2));
+      // Exit 2 means inspection completed but the installed snapshot/history is not ready.
+      if (!report.datasetReady || !report.schemaHistoryReady)
+        process.exitCode = 2;
+    } else if (options.mode === 'check') {
+      await assertDatabaseSchema(prisma, target);
+      const manifest = await prisma.auditLog.findUnique({
+        where: { id: MANIFEST_ID },
       });
+      if (!manifest)
+        throw new Error(
+          'Schema is compatible, but the Capstone dataset has not been seeded in this database.',
+        );
+      assertManifestVersion(manifest.details);
+      await prisma.$transaction(
+        (tx) => verifyPersistedCounts(tx, target, data),
+        { timeout: 30_000 },
+      );
+      console.log(
+        'Fixture IDs and counts verified. Existing demo progress was preserved.',
+      );
+    } else {
+      const result = await applyDataset(prisma, target, data);
+      console.log(
+        result === 'created'
+          ? 'Seed committed successfully.'
+          : 'Dataset already exists; no accounts or demo progress were overwritten.',
+      );
+      console.log(
+        'Accounts: admin@seed.scanms.test; shop01..15@seed.scanms.test; kol01..20@seed.scanms.test; customer01..30@seed.scanms.test. Password: SCANMS_SEED_PASSWORD from your environment.',
+      );
     }
-  }
-
-  // 10.4 Thêm các đơn hàng phát sinh hôm nay và 7 ngày qua
-  const todayOrders = [
-    {
-      sn: 'ORD-RT-001',
-      customer: 'Trần Thị Thu Trang',
-      phone: '0981112233',
-      product: product1,
-      qty: 1,
-      price: 1290000,
-      comm: 193500,
-      hoursAgo: 2,
-      link: rtRefLink1,
-    },
-    {
-      sn: 'ORD-RT-002',
-      customer: 'Phạm Hồng Quân',
-      phone: '0972223344',
-      product: productBinh,
-      qty: 3,
-      price: 280000,
-      comm: 126000,
-      hoursAgo: 5,
-      link: rtRefLink2,
-    },
-    {
-      sn: 'ORD-RT-003',
-      customer: 'Lê Thùy Dương',
-      phone: '0963334455',
-      product: product1,
-      qty: 2,
-      price: 1290000,
-      comm: 387000,
-      hoursAgo: 12,
-      link: rtRefLink1,
-    },
-    {
-      sn: 'ORD-RT-004',
-      customer: 'Đỗ Quốc Bảo',
-      phone: '0914445566',
-      product: productBinh,
-      qty: 1,
-      price: 280000,
-      comm: 42000,
-      hoursAgo: 28,
-      link: rtRefLink2,
-    },
-    {
-      sn: 'ORD-RT-005',
-      customer: 'Vũ Mai Anh',
-      phone: '0935556677',
-      product: product1,
-      qty: 1,
-      price: 1290000,
-      comm: 193500,
-      hoursAgo: 48,
-      link: rtRefLink1,
-    },
-  ];
-
-  for (const o of todayOrders) {
-    let ord = await prisma.order.findFirst({
-      where: { storeId: store.id, externalOrderSn: o.sn },
-    });
-    const ordDate = new Date(Date.now() - o.hoursAgo * 3600 * 1000);
-    const totalAmt = o.qty * o.price;
-    if (!ord) {
-      ord = await prisma.order.create({
-        data: {
-          storeId: store.id,
-          externalOrderSn: o.sn,
-          attributedCollaboratorId: kol1.id,
-          referralLinkId: o.link.id,
-          customerName: o.customer,
-          customerPhone: o.phone,
-          shippingAddress: 'Quận Cầu Giấy, Hà Nội',
-          subtotalAmount: totalAmt,
-          finalAmount: totalAmt,
-          status: OrderStatus.COMPLETED,
-          completedAt: ordDate,
-          createdAt: ordDate,
-        },
-      });
-
-      await prisma.orderItem.create({
-        data: {
-          orderId: ord.id,
-          productId: o.product.id,
-          referralLinkId: o.link.id,
-          quantity: o.qty,
-          unitPrice: o.price,
-          appliedCommissionRate: 15.0,
-          calculatedCommissionAmount: o.comm,
-          createdAt: ordDate,
-        },
-      });
-
-      await prisma.commission.create({
-        data: {
-          orderId: ord.id,
-          collaboratorId: kol1.id,
-          commissionAmount: o.comm,
-          status: CommissionStatus.APPROVED,
-          eligibleAt: ordDate,
-          availableAt: ordDate,
-          approvedAt: ordDate,
-          createdAt: ordDate,
-        },
-      });
-    }
-  }
-
-  console.log('✅ Hoàn tất Gieo mầm CSDL thành công!');
-  console.log('----------------------------------------------------');
-  console.log('🔑 TÀI KHOẢN ĐĂNG NHẬP MẪU (Mật khẩu: Password@123)');
-  console.log('1. Super Admin   : admin@scanms.vn');
-  console.log('2. Shop Manager  : shop@techstore.vn');
-  console.log('3. Top KOL (Vàng): kol1@scanms.vn');
-  console.log('4. KOL (Bạc)     : kol2@scanms.vn');
-  console.log('----------------------------------------------------');
-}
-
-main()
-  .catch((e) => {
-    console.error('❌ Lỗi khi gieo mầm dữ liệu:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
+  } finally {
     await prisma.$disconnect();
     await pool.end();
-  });
+  }
+}
+
+main().catch((error: unknown) => {
+  // Avoid dumping connection strings or the demo password in CLI errors.
+  const message = error instanceof Error ? error.message : 'Unknown seed error';
+  const safeMessage = [
+    process.env.DATABASE_URL,
+    process.env.DIRECT_URL,
+    process.env.SCANMS_SEED_PASSWORD,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .reduce((text, value) => text.split(value).join('[redacted]'), message);
+  console.error(`Seed failed: ${safeMessage}`);
+  process.exitCode = 1;
+});

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Package,
   Clock,
@@ -19,6 +19,9 @@ import {
   Plus,
 } from 'lucide-react';
 import api from '../../services/api';
+import SampleDeadlineExtension from '../../components/affiliate/SampleDeadlineExtension';
+import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
+import { SampleGhnEnvironmentPicker, SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
 import { toast } from '../../utils/toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -36,9 +39,11 @@ export interface SampleRequestItem {
   note?: string;
   carrier?: string;
   trackingCode?: string;
+  shippingCharges?: Array<{ amount: string | number | null; trackingNumber: string; status: string; payer: string; codAmount: number; environment?: string }>;
   reviewVideoUrl?: string;
   videoTitle?: string;
   videoSubmittedAt?: string;
+  sampleRequestsBlockedAt?: string | null;
   deadlineAt?: string;
   revisionDeadlineAt?: string;
   expectedVideoAt?: string;
@@ -139,6 +144,7 @@ export default function ShopSampleManagementTab() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [samples, setSamples] = useState<SampleRequestItem[]>([]);
+  const sampleLoadSequence = useRef(0);
   const [storeTab, setStoreTab] = useState<'SAMPLES_QUEUE' | 'LEADERBOARD' | 'DEALS'>('SAMPLES_QUEUE');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'OVERDUE' | 'COMPLETED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,16 +153,22 @@ export default function ShopSampleManagementTab() {
 
   // Tracking modal state
   const [trackingModalItem, setTrackingModalItem] = useState<SampleRequestItem | null>(null);
+  const [sampleShippingError, setSampleShippingError] = useState('');
+  const [sampleGhnEnvironment, setSampleGhnEnvironment] = useState<'LIVE' | 'TEST'>('LIVE');
+  useEffect(() => { setSampleShippingError(''); }, [trackingModalItem?.id]);
   const [carrierInput, setCarrierInput] = useState('GHN');
   const [trackingCodeInput, setTrackingCodeInput] = useState('');
   const [isSubmittingTracking, setIsSubmittingTracking] = useState(false);
 
   // Load data from Backend
   const loadData = useCallback(async () => {
+    const sequence = ++sampleLoadSequence.current;
     setLoading(true);
     try {
-      const res: any = await api.get('/sample-requests/shop');
+      const res: any = await api.get('/sample-requests/shop', { headers: { 'x-skip-cache': 'true' } });
       const data = res?.data || res;
+      if (sequence !== sampleLoadSequence.current) return;
+      if (!Array.isArray(data)) throw new Error('Không đọc được danh sách hàng mẫu.');
       if (Array.isArray(data)) {
         const transformed: SampleRequestItem[] = data.map((item: any) => {
           const kolId = item.collaboratorId || item.collaborator?.id || 'kol-unknown';
@@ -175,9 +187,11 @@ export default function ShopSampleManagementTab() {
             note: item.contentType,
             carrier: item.carrier,
             trackingCode: item.trackingNumber,
+            shippingCharges: item.shippingCharges || [],
             reviewVideoUrl: item.videoUrl,
             videoTitle: item.videoTitle,
             videoSubmittedAt: item.videoSubmittedAt,
+            sampleRequestsBlockedAt: item.collaborator?.collaboratorProfile?.sampleRequestsBlockedAt,
             deadlineAt: item.deadlineAt,
             revisionDeadlineAt: item.revisionDeadlineAt,
             expectedVideoAt: item.expectedVideoAt,
@@ -218,15 +232,29 @@ export default function ShopSampleManagementTab() {
         setSamples(transformed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }
     } catch (err: any) {
-      console.warn('Cannot load sample requests from API, keeping current state:', err);
+      if (sequence !== sampleLoadSequence.current) return;
+      setSamples([]);
+      setTrackingModalItem(null);
+      toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
-      setLoading(false);
+      if (sequence === sampleLoadSequence.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
+    const refresh = () => { if (!document.hidden) void loadData(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [loadData]);
+
+  useEffect(() => {
+    setTrackingModalItem(current => current ? samples.find(item => item.id === current.id) || null : null);
+  }, [samples]);
 
   // Aggregate Stats
   const storeStats = useMemo(() => {
@@ -238,12 +266,10 @@ export default function ShopSampleManagementTab() {
     const now = Date.now();
     samples.forEach((s) => {
       if (s.status === 'PENDING') pending++;
-      if (s.status === 'APPROVED') readyToShip++;
-      if (s.status === 'RECEIVED' || s.status === 'SHIPPED') {
+      if (sampleDisplayStatus(s) === 'APPROVED') readyToShip++;
+      if (s.status === 'RECEIVED') {
         videoPending++;
-        const receivedTime = s.receivedAt ? new Date(s.receivedAt).getTime() : (s.shippedAt ? new Date(s.shippedAt).getTime() : new Date(s.createdAt).getTime());
-        const daysElapsed = (now - receivedTime) / 86400000;
-        if (daysElapsed > 14) overdue++;
+        if (s.deadlineAt && new Date(s.deadlineAt).getTime() <= now) overdue++;
       }
       if (s.status === 'OVERDUE') overdue++;
     });
@@ -261,15 +287,14 @@ export default function ShopSampleManagementTab() {
   const filteredSamples = useMemo(() => {
     return samples.filter((s) => {
       if (statusFilter === 'PENDING' && s.status !== 'PENDING') return false;
-      if (statusFilter === 'APPROVED' && s.status !== 'APPROVED') return false;
-      if (statusFilter === 'SHIPPED' && s.status !== 'SHIPPED') return false;
+      if (statusFilter === 'APPROVED' && sampleDisplayStatus(s) !== 'APPROVED') return false;
+      if (statusFilter === 'SHIPPED' && sampleDisplayStatus(s) !== 'SHIPPED') return false;
       if (statusFilter === 'RECEIVED' && s.status !== 'RECEIVED') return false;
       if (statusFilter === 'VIDEO_SUBMITTED' && s.status !== 'VIDEO_SUBMITTED') return false;
       if (statusFilter === 'COMPLETED' && s.status !== 'COMPLETED') return false;
       if (statusFilter === 'OVERDUE') {
-        const receivedTime = s.receivedAt ? new Date(s.receivedAt).getTime() : (s.shippedAt ? new Date(s.shippedAt).getTime() : new Date(s.createdAt).getTime());
-        const daysElapsed = (Date.now() - receivedTime) / 86400000;
-        if (s.status !== 'OVERDUE' && daysElapsed <= 14) return false;
+        const pastDeadline = s.status === 'RECEIVED' && Boolean(s.deadlineAt && new Date(s.deadlineAt).getTime() <= Date.now());
+        if (s.status !== 'OVERDUE' && !pastDeadline) return false;
       }
 
       if (searchQuery.trim()) {
@@ -371,38 +396,49 @@ export default function ShopSampleManagementTab() {
 
   const handleSubmitTracking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trackingModalItem || !trackingCodeInput.trim()) return;
+    if (!trackingModalItem || (carrierInput !== 'GHN' && !trackingCodeInput.trim())) return;
     setIsSubmittingTracking(true);
+    setSampleShippingError('');
+    let reusedSandbox = false;
     try {
-      await api.patch(`/sample-requests/${trackingModalItem.id}/ship`, {
-        trackingNumber: trackingCodeInput.trim(),
-        carrier: carrierInput,
-      });
-      toast.success('Đã phát hành mã vận đơn GHN cho kiện hàng mẫu!');
-      setSamples((prev) =>
-        prev.map((s) =>
-          s.id === trackingModalItem.id
-            ? { ...s, status: 'SHIPPED', trackingCode: trackingCodeInput.trim(), carrier: carrierInput }
-            : s
-        )
-      );
+      if (carrierInput === 'GHN') {
+        const response: any = await api.post(`/shipping/ghn/create-sample/${trackingModalItem.id}`, { environment: sampleGhnEnvironment });
+        const result = response?.data?.data || response?.data || response;
+        reusedSandbox = Boolean(result.reused);
+      } else {
+        await api.patch(`/sample-requests/${trackingModalItem.id}/ship`, {
+          trackingNumber: trackingCodeInput.trim(), carrier: carrierInput,
+        });
+      }
+      toast.success(carrierInput === 'GHN' ? sampleGhnEnvironment === 'TEST' ? reusedSandbox ? 'Dùng lại mã sandbox hiện có, không tạo thêm vận đơn.' : 'Đã tạo mã sandbox. Giữ nguyên đơn thật và hạn video.' : 'Đã phát hành vận đơn mẫu. Shop chịu phí ship, KOL nhận hàng với COD 0 đ.' : 'Đã lưu mã vận đơn hàng mẫu.');
+      await loadData();
       setTrackingModalItem(null);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Không thể tạo vận đơn hàng mẫu.');
+      setSampleShippingError(String(err?.response?.data?.message || err?.message || 'Không thể tạo vận đơn hàng mẫu.'));
     } finally {
       setIsSubmittingTracking(false);
     }
   };
 
   const openTrackingModal = (s: SampleRequestItem) => {
+    setSampleGhnEnvironment(s.status === 'SHIPPED' || isSandboxShipment(s) ? 'TEST' : 'LIVE');
     setTrackingModalItem(s);
-    setCarrierInput(s.carrier || 'GHN');
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    setTrackingCodeInput(s.trackingCode || `GHN-SMP-${randomSuffix}`);
+    setCarrierInput('GHN');
+    setTrackingCodeInput(s.trackingCode || '');
   };
 
   return (
     <div className="w-full flex flex-col space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EEDFC6] bg-white p-4">
+        <div>
+          <div className="font-bold text-[#1A1612]">Phí vận chuyển hàng mẫu · Shop chi trả 100%</div>
+          <p className="mt-1 text-xs text-[#7D715E]">KOL nhận mẫu với COD 0 đ. Cước bên dưới do GHN báo khi tạo vận đơn, chưa phải xác nhận thanh toán.</p>
+        </div>
+        <div className="text-right">
+          <div className="font-bold text-[#B88E4F]">{samples.flatMap(s => s.shippingCharges || []).reduce((sum, c) => sum + (c.environment === 'TEST' || c.amount === null ? 0 : Number(c.amount)), 0).toLocaleString('vi-VN')} đ đã ghi nhận</div>
+          <div className="mt-1 text-xs text-[#7D715E]">{samples.flatMap(s => s.shippingCharges || []).filter(c => c.environment !== 'TEST' && c.amount === null).length} vận đơn chưa xác nhận cước</div>
+        </div>
+      </div>
       {/* 4 THẺ SỐ LIỆU NHANH (STAT BADGES) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Stat 1: Chờ duyệt */}
@@ -630,18 +666,11 @@ export default function ShopSampleManagementTab() {
                   ) : (
                     filteredSamples.map((s) => {
                       const now = Date.now();
-                      const receivedTime = s.receivedAt
-                        ? new Date(s.receivedAt).getTime()
-                        : s.shippedAt
-                          ? new Date(s.shippedAt).getTime()
-                          : new Date(s.createdAt).getTime();
-                      const deadlineTime = s.deadlineAt
-                        ? new Date(s.deadlineAt).getTime()
-                        : receivedTime + 14 * 86400000;
+                      const deadlineTime = s.deadlineAt ? new Date(s.deadlineAt).getTime() : Number.POSITIVE_INFINITY;
                       const msLeft = deadlineTime - now;
                       const daysLeft = Math.floor(msLeft / 86400000);
                       const hoursLeft = Math.floor((msLeft % 86400000) / 3600000);
-                      const isOverdue = s.status === 'OVERDUE' || ((s.status === 'RECEIVED' || s.status === 'SHIPPED') && msLeft <= 0);
+                      const isOverdue = s.status === 'OVERDUE' || (s.status === 'RECEIVED' && msLeft <= 0);
 
                       return (
                         <tr key={s.id} className="hover:bg-[#FAF8F5]/60 transition">
@@ -684,6 +713,15 @@ export default function ShopSampleManagementTab() {
                                 <p className="text-[11px] text-[#7D715E] mt-0.5">
                                   {s.productVariantName ? `Biến thể: ${s.productVariantName}` : 'Bản tiêu chuẩn'}
                                 </p>
+                                <details className="mt-2 text-[11px] text-[#7D715E]">
+                                  <summary className="cursor-pointer font-semibold text-[#8C6226]">Thông tin nhận hàng</summary>
+                                  <div className="mt-1 space-y-1 whitespace-normal break-words">
+                                    <p>Người nhận: <strong className="text-[#1A1612]">{s.recipientName || 'Chưa cập nhật'}</strong></p>
+                                    <p>SĐT: {s.recipientPhone || 'Chưa cập nhật'}</p>
+                                    <p>Địa chỉ: {s.shippingAddress || 'Chưa cập nhật'}</p>
+                                  </div>
+                                </details>
+                                <SampleSandboxWaybills charges={s.shippingCharges} primary={isSandboxShipment(s)} role="shop" />
                               </div>
                             </div>
                           </td>
@@ -696,14 +734,14 @@ export default function ShopSampleManagementTab() {
                                   <Clock className="w-3 h-3 text-amber-600" /> Chờ Shop duyệt
                                 </span>
                               )}
-                              {s.status === 'APPROVED' && (
+                              {s.status === 'APPROVED' && !isSandboxShipment(s) && (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-bold">
                                   <Package className="w-3 h-3 text-blue-600" /> Chờ tạo vận đơn
                                 </span>
                               )}
-                              {s.status === 'SHIPPED' && (
+                              {(s.status === 'SHIPPED' || isSandboxShipment(s)) && (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-bold">
-                                  <Truck className="w-3 h-3 text-indigo-600" /> Đang vận chuyển
+                                  <Truck className="w-3 h-3 text-indigo-600" /> {isSandboxShipment(s) ? <SampleSandboxStatus charges={s.shippingCharges} /> : 'Đang vận chuyển'}
                                 </span>
                               )}
                               {s.status === 'RECEIVED' && (
@@ -733,7 +771,7 @@ export default function ShopSampleManagementTab() {
                               )}
 
                               {/* Đếm ngược 14 ngày */}
-                              {(s.status === 'RECEIVED' || s.status === 'SHIPPED') && (
+                              {s.status === 'RECEIVED' && s.deadlineAt && (
                                 <div className="text-[11px] mt-1 font-semibold">
                                   {isOverdue ? (
                                     <span className="text-[#DC2626]">⚠️ Đã quá thời hạn 14 ngày</span>
@@ -770,11 +808,21 @@ export default function ShopSampleManagementTab() {
                             ) : (
                               <span className="text-[#7D715E] italic">Chưa phát hành</span>
                             )}
+                            {s.trackingCode && (
+                              <div className="mt-2 text-[11px] text-[#7D715E]">
+                                Shop chịu phí · COD 0 đ<br />
+                                {s.shippingCharges?.length
+                                  ? `${s.shippingCharges.reduce((sum, charge) => sum + (charge.environment === 'TEST' || charge.amount === null ? 0 : Number(charge.amount)), 0).toLocaleString('vi-VN')} đ đã ghi nhận${s.shippingCharges.some(charge => charge.environment !== 'TEST' && charge.amount === null) ? ' · còn cước chưa xác nhận' : ''}`
+                                  : 'Chưa có dữ liệu cước'}
+                              </div>
+                            )}
                           </td>
 
                           {/* Column 5: Thao tác */}
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              <SampleDeadlineExtension request={s} onSuccess={() => void loadData()} />
+                              <SampleViolationAction request={s} blocked={Boolean(s.sampleRequestsBlockedAt)} onSuccess={() => void loadData()} />
                               {/* Chờ duyệt */}
                               {s.status === 'PENDING' && (
                                 <>
@@ -796,19 +844,19 @@ export default function ShopSampleManagementTab() {
                               )}
 
                               {/* Chờ gửi -> Tạo vận đơn GHN */}
-                              {s.status === 'APPROVED' && (
+                              {['APPROVED', 'DELIVERY_ISSUE', 'SHIPPED'].includes(s.status) && (
                                 <button
                                   type="button"
                                   onClick={() => openTrackingModal(s)}
                                   className="px-2.5 py-1.5 rounded-lg bg-[#231D15] hover:bg-[#1A1612] text-white font-bold text-[11px] flex items-center gap-1 transition cursor-pointer"
                                 >
                                   <Truck className="w-3 h-3 text-[#C59B58]" />
-                                  <span>Tạo vận đơn GHN</span>
+                                  <span>{isSandboxShipment(s) ? 'Đổi môi trường GHN' : s.status === 'SHIPPED' ? 'Tạo mã GHN sandbox' : 'Tạo vận đơn GHN'}</span>
                                 </button>
                               )}
 
-                              {/* Đang giao / Đã nhận -> Nhắc nộp video */}
-                              {(s.status === 'RECEIVED' || s.status === 'SHIPPED') && (
+                              {/* Chỉ nhắc nộp video sau khi đã nhận hàng */}
+                              {s.status === 'RECEIVED' && s.deadlineAt && (
                                 <button
                                   type="button"
                                   onClick={() => handleRemindVideo(s.id)}
@@ -1061,7 +1109,7 @@ export default function ShopSampleManagementTab() {
           onClick={() => setTrackingModalItem(null)}
         >
           <div
-            className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 text-left"
+            className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] shadow-2xl overflow-y-auto overscroll-contain animate-in zoom-in-95 text-left"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -1083,7 +1131,8 @@ export default function ShopSampleManagementTab() {
             </div>
 
             <div className="p-4 mx-6 mt-4 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs space-y-1">
-              <div className="font-bold text-[#1A1612]">{trackingModalItem.collaboratorInfo?.fullName}</div>
+              <div className="font-bold text-[#1A1612]">Người nhận: {trackingModalItem.recipientName || 'Chưa cập nhật'}</div>
+              <div className="text-[#7D715E]">SĐT: {trackingModalItem.recipientPhone || 'Chưa cập nhật'}</div>
               <div className="text-[#7D715E]">{trackingModalItem.product.title}</div>
               <div className="text-[11px] text-[#7D715E] pt-1 border-t border-[#EAE4D7]">
                 📍 {trackingModalItem.shippingAddress}
@@ -1091,6 +1140,10 @@ export default function ShopSampleManagementTab() {
             </div>
 
             <form onSubmit={handleSubmitTracking} className="p-6 space-y-4">
+              <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+                <strong className="text-[#1A1612]">Shop thanh toán 100% phí vận chuyển · KOL COD 0 đ.</strong>
+                <p className="mt-1">Khi tạo vận đơn GHN thành công, cước hãng trả về được lưu vào yêu cầu mẫu để Shop theo dõi.</p>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1.5">
                   Đơn vị vận chuyển
@@ -1101,18 +1154,17 @@ export default function ShopSampleManagementTab() {
                   className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] outline-none focus:border-[#C59B58]"
                 >
                   <option value="GHN">Giao Hàng Nhanh (GHN Express)</option>
-                  <option value="GHTK">Giao Hàng Tiết Kiệm (GHTK)</option>
-                  <option value="VIETTELPOST">Viettel Post</option>
                 </select>
               </div>
 
-              <div>
+              {carrierInput === 'GHN' && <SampleGhnEnvironmentPicker value={sampleGhnEnvironment} onChange={setSampleGhnEnvironment} allowLive={trackingModalItem.status !== 'SHIPPED'} disabled={isSubmittingTracking} />}
+              {carrierInput !== 'GHN' ? <div>
                 <label className="block text-xs font-bold text-[#1A1612] mb-1.5">
                   Mã vận đơn bưu cục
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: GHN-SMP-839201"
+                  placeholder="Nhập mã vận đơn do bưu cục cấp"
                   value={trackingCodeInput}
                   onChange={(e) => setTrackingCodeInput(e.target.value)}
                   className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs font-mono text-[#1A1612] outline-none focus:border-[#C59B58]"
@@ -1121,8 +1173,14 @@ export default function ShopSampleManagementTab() {
                 <p className="text-[11px] text-[#7D715E] mt-1">
                   Mã vận đơn phục vụ đối soát giao nhận với đối tác bưu tá.
                 </p>
-              </div>
+              </div> : <p className="text-xs text-[#7D715E]">GHN sẽ cấp mã vận đơn sau khi tạo thành công. Hạn nộp video chỉ bắt đầu sau khi GHN xác nhận giao hàng.</p>}
 
+              {sampleShippingError && (
+                <div role="alert" className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-3.5 text-left">
+                  <p className="m-0 text-xs font-bold text-[#991B1B]">Chưa tạo được vận đơn gửi mẫu</p>
+                  <p className="mb-0 mt-1.5 whitespace-normal break-words text-xs leading-relaxed text-[#7F1D1D]">{sampleShippingError}</p>
+                </div>
+              )}
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#EAE4D7]">
                 <button
                   type="button"
@@ -1133,7 +1191,7 @@ export default function ShopSampleManagementTab() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmittingTracking || !trackingCodeInput.trim()}
+                  disabled={isSubmittingTracking || (carrierInput !== 'GHN' && !trackingCodeInput.trim())}
                   className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
                 >
                   {isSubmittingTracking ? 'Đang phát hành…' : 'Xác nhận tạo vận đơn'}

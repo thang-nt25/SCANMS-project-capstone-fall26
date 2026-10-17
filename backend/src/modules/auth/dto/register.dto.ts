@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -36,8 +37,7 @@ export class RegisterDto {
 
   @ApiProperty({
     example: '123456',
-    description:
-      'Mã OTP 6 chữ số nhận từ Email (hoặc 123456 ở môi trường test)',
+    description: 'Mã OTP 6 chữ số đã được cấp và gửi qua Email',
   })
   @IsString({ message: 'Mã xác thực OTP là bắt buộc khi đăng ký' })
   @Length(6, 6, { message: 'Mã OTP phải bao gồm đúng 6 chữ số' })
@@ -58,6 +58,9 @@ export class RegisterDto {
   })
   @IsOptional()
   @IsEnum(UserRole, { message: 'Vai trò không hợp lệ' })
+  @IsIn([UserRole.CUSTOMER, UserRole.COLLABORATOR, UserRole.SHOP_MANAGER], {
+    message: 'Không thể đăng ký tài khoản quản trị qua API công khai',
+  })
   role?: UserRole = UserRole.COLLABORATOR;
 
   @ApiPropertyOptional({

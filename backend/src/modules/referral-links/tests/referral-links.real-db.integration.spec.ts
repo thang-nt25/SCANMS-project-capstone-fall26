@@ -326,7 +326,7 @@ describe('ReferralLinks Real PostgreSQL Integration Tests (FR-10)', () => {
     });
     expect(products.length).toBeGreaterThan(0);
     expect(products[0].id).toBe(testProductId);
-    expect(products[0].estimatedCommissionRate).toBe(15);
+    expect(products[0].estimatedCommissionRate).toBe(10);
 
     // Thử với KOL khác chưa được duyệt -> trả về rỗng
     const strangerKolId = '88888888-8888-8888-8888-888888888888';

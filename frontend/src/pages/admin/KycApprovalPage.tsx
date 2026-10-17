@@ -16,6 +16,7 @@ import {
   Sparkles,
   MapPin,
   BadgeCheck,
+  FileText,
 } from 'lucide-react';
 import { kycService } from '../../services/kyc.service';
 import { Button } from '../../components/ui/Button';
@@ -269,16 +270,18 @@ export default function KycApprovalPage() {
       name: s.name,
       slug: s.slug,
       ownerName: legalDocs.representativeName || s.owner?.fullName || 'Chủ gian hàng',
-      ownerEmail: s.owner?.email || 'shop@scanms.vn',
-      ownerPhone: s.owner?.phoneNumber || legalDocs.contactPhone || 'Chưa cập nhật',
-      warehouseAddress: legalDocs.warehouseAddress || s.policyShipping || 'Chưa cung cấp địa chỉ kho',
-      businessType: legalDocs.businessType || 'DOANH NGHIỆP',
+      ownerEmail: s.owner?.email || 'Chưa cung cấp',
+      ownerPhone: s.owner?.phoneNumber || 'Chưa cập nhật',
+      contactEmail: legalDocs.contactEmail || 'Chưa cung cấp',
+      contactPhone: legalDocs.contactPhone || 'Chưa cung cấp',
+      warehouseAddress: legalDocs.warehouseAddress || 'Chưa cung cấp địa chỉ kho',
+      businessType: ({ INDIVIDUAL: 'Cá nhân', HOUSEHOLD: 'Hộ kinh doanh', ENTERPRISE: 'Doanh nghiệp' } as Record<string, string>)[legalDocs.businessType] || legalDocs.businessType || 'Chưa cung cấp',
       taxCode: legalDocs.taxCode || 'Chưa nộp',
       businessLicenseUrl: legalDocs.businessLicenseUrl || null,
       brandAuthorizationUrl: legalDocs.brandAuthorizationUrl || null,
       bankName: legalDocs.bankName || 'Chưa cung cấp',
       accountNumber: legalDocs.bankAccountNumber || 'Chưa cung cấp',
-      accountHolder: legalDocs.bankAccountName || s.owner?.fullName || 'Chưa cung cấp',
+      accountHolder: legalDocs.bankAccountName || 'Chưa cung cấp',
       idCardNumber: legalDocs.idCardNumber || null,
       frontCardUrl: legalDocs.frontCardUrl || null,
       backCardUrl: legalDocs.backCardUrl || null,
@@ -288,7 +291,22 @@ export default function KycApprovalPage() {
       reviewerName: s.onboardingReviewer?.fullName || null,
       reviewedAt: s.onboardingReviewedAt ? new Date(s.onboardingReviewedAt).toLocaleString('vi-VN') : null,
       statusLabel: statusLabels[onboardingStatus] || 'Chờ duyệt hồ sơ',
-      createdAt: new Date(s.onboardingSubmittedAt || s.createdAt || Date.now()).toLocaleDateString('vi-VN'),
+      createdAt: s.onboardingSubmittedAt || legalDocs.submittedAt ? new Date(s.onboardingSubmittedAt || legalDocs.submittedAt).toLocaleDateString('vi-VN') : 'Chưa ghi nhận ngày nộp',
+      missingRequiredFields: [
+        !s.name?.trim() && 'Tên gian hàng',
+        !legalDocs.businessType?.trim() && 'Loại hình kinh doanh',
+        !legalDocs.taxCode?.trim() && 'Mã số thuế',
+        !legalDocs.idCardNumber?.trim() && 'Số CCCD',
+        !legalDocs.frontCardUrl && 'CCCD mặt trước',
+        !legalDocs.backCardUrl && 'CCCD mặt sau',
+        !legalDocs.businessLicenseUrl && 'Giấy phép kinh doanh',
+        !legalDocs.warehouseAddress?.trim() && 'Địa chỉ kho',
+        !legalDocs.contactPhone?.trim() && 'Điện thoại liên hệ',
+        !legalDocs.contactEmail?.trim() && 'Email đối soát',
+        !legalDocs.bankName?.trim() && 'Ngân hàng',
+        !legalDocs.bankAccountNumber?.trim() && 'Số tài khoản',
+        !legalDocs.bankAccountName?.trim() && 'Tên chủ tài khoản',
+      ].filter(Boolean),
     };
   });
 
@@ -446,7 +464,10 @@ export default function KycApprovalPage() {
         <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-none">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3.5 sm:px-5">
             <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Sparkles className="h-4 w-4" /></span><div><h2 className="m-0 text-sm font-bold text-[#1A1612]">Danh sách đối tác KOL</h2><p className="mb-0 mt-0.5 text-[11px] text-[#7D715E]">Hồ sơ, kênh mạng xã hội và trạng thái xác minh</p></div></div>
-            <span className="rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1 text-[11px] font-semibold text-[#7D715E]">{filteredKols.length} / {displayKols.length} hồ sơ</span>
+            <div className="kyc-list-counts">
+              <span className="kyc-pending-count">{pendingKolCount} chờ duyệt</span>
+              <span className="rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1 text-[11px] font-semibold text-[#7D715E]">{filteredKols.length} / {displayKols.length} hồ sơ</span>
+            </div>
           </div>
           <div className="max-w-full overflow-x-auto" role="region" aria-label="Danh sách hồ sơ KOL" tabIndex={0}>
             <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-xs">
@@ -492,7 +513,7 @@ export default function KycApprovalPage() {
                       </td>
 
                       <td className="px-4 py-3 align-middle">
-                        <div className="break-all text-[11px] leading-4 text-[#7D715E]">{u.email}</div>
+                        <div className="kyc-contact-email text-[11px] leading-4 text-[#7D715E]" title={u.email}>{u.email}</div>
                         <div className="mt-0.5 text-[11px] font-medium text-[#1A1612]">{u.phone}</div>
                       </td>
 
@@ -556,7 +577,10 @@ export default function KycApprovalPage() {
         <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-none">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3.5 sm:px-5">
             <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#8F7B5E]"><Store className="h-4 w-4" /></span><div><h2 className="m-0 text-sm font-bold text-[#1A1612]">Danh sách gian hàng</h2><p className="mb-0 mt-0.5 text-[11px] text-[#7D715E]">Thông tin chủ sở hữu, thuế và địa chỉ kho</p></div></div>
-            <span className="rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1 text-[11px] font-semibold text-[#7D715E]">{filteredShops.length} / {displayShops.length} hồ sơ</span>
+            <div className="kyc-list-counts">
+              <span className="kyc-pending-count">{pendingShopCount} chờ duyệt</span>
+              <span className="rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1 text-[11px] font-semibold text-[#7D715E]">{filteredShops.length} / {displayShops.length} hồ sơ</span>
+            </div>
           </div>
           <div className="max-w-full overflow-x-auto" role="region" aria-label="Danh sách hồ sơ gian hàng" tabIndex={0}>
             <table className="w-full min-w-[1120px] table-fixed border-collapse text-left text-xs">
@@ -653,9 +677,9 @@ export default function KycApprovalPage() {
           maxWidth="3xl"
           className="h-[min(92dvh,900px)] max-h-[calc(100dvh-1rem)] gap-0 overflow-hidden rounded-3xl border-[#EAE4D7] bg-[#FAF8F5] p-4 shadow-[0_24px_80px_rgba(35,29,21,0.18)] sm:p-5"
         >
-          <div className="flex min-h-0 flex-1 flex-col gap-3 text-left text-xs">
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
-              <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.03)]">
+          <div className="kyc-kol-content flex min-h-0 flex-1 flex-col gap-3 text-left text-xs">
+            <div className="kyc-kol-scroll min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
+              <div className="kyc-kol-person flex flex-wrap items-center gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.03)]">
                 <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-[#EEDFC6] bg-[#FBF5EB] font-bold text-[#8F682E]">
                   {inspectProfile.avatarUrl ? <img src={inspectProfile.avatarUrl} alt={inspectProfile.fullName} className="h-full w-full object-cover" /> : inspectProfile.avatar}
                 </div>
@@ -680,13 +704,14 @@ export default function KycApprovalPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <div className="kyc-kol-columns grid grid-cols-1 gap-3 lg:grid-cols-2">
                 <div className="space-y-3">
-                  <section className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.03)]">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                  <details className="kyc-kol-section space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.03)] kyc-kol-disclosure">
+                    <summary className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="kyc-kol-group-icon" aria-hidden="true"><Sparkles size={15} /></span>
                       <div><span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#B88E4F]">01 · Kênh sáng tạo</span><h4 className="m-0 text-sm font-bold text-[#1A1612]">Thông tin truyền thông</h4></div>
                       {inspectProfile.channelPlatform && <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[10px] font-semibold text-[#8F682E]">{inspectProfile.channelPlatform}</span>}
-                    </div>
+                    </summary><div className="kyc-kol-disclosure-body">
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="rounded-xl bg-[#FAF8F5] p-2.5"><span className="block text-[10px] text-[#7D715E]">Tên kênh / Profile</span><strong className="mt-0.5 block break-words text-sm text-[#1A1612]">{inspectProfile.channelName || 'Chưa cung cấp'}</strong></div>
@@ -714,20 +739,21 @@ export default function KycApprovalPage() {
                         </div>
                       </div>
                     )}
-                  </section>
+                  </div></details>
 
-                  <section className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5">
-                    <div className="flex items-center gap-2"><div className="grid h-8 w-8 place-items-center rounded-lg bg-white text-[#8F682E]"><CreditCard className="h-4 w-4" /></div><div><span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#B88E4F]">02 · Đối soát</span><h4 className="m-0 text-sm font-bold text-[#1A1612]">Tài khoản ngân hàng</h4></div></div>
+                  <details className="kyc-kol-section kyc-kol-bank space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 kyc-kol-disclosure">
+                    <summary className="flex items-center gap-2"><span className="kyc-kol-group-icon" aria-hidden="true"><CreditCard size={15} /></span><div><span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#B88E4F]">02 · Đối soát</span><h4 className="m-0 text-sm font-bold text-[#1A1612]">Tài khoản ngân hàng</h4></div></summary><div className="kyc-kol-disclosure-body">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5"><span className="block text-[10px] text-[#7D715E]">Ngân hàng</span><strong className="mt-0.5 block break-words text-xs text-[#1A1612]">{inspectProfile.bankName}</strong></div>
                       <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5"><span className="block text-[10px] text-[#7D715E]">Số tài khoản</span><strong className="mt-0.5 block break-all font-mono text-xs text-[#1A1612]">{inspectProfile.accountNumber}</strong></div>
                       <div className="col-span-2 rounded-xl border border-[#EAE4D7] bg-white p-2.5"><span className="block text-[10px] text-[#7D715E]">Tên chủ tài khoản</span><strong className="mt-0.5 block break-words text-xs uppercase text-[#1A1612]">{inspectProfile.accountHolder}</strong></div>
                     </div>
-                  </section>
+                  </div></details>
                 </div>
 
-                <section className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-[0_2px_10px_rgba(35,29,21,0.03)]">
-                  <div><span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#B88E4F]">03 · Định danh</span><h4 className="m-0 text-sm font-bold text-[#1A1612]">Giấy tờ cá nhân &amp; thuế</h4></div>
+                <details className="kyc-kol-section kyc-kol-disclosure">
+                  <summary><span className="kyc-kol-group-icon" aria-hidden="true"><FileText size={15} /></span><div><span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#B88E4F]">03 · Định danh</span><h4 className="m-0 text-sm font-bold text-[#1A1612]">Giấy tờ cá nhân &amp; thuế</h4></div></summary>
+                  <div className="kyc-kol-disclosure-body">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-xl bg-[#FAF8F5] p-2.5"><span className="block text-[10px] text-[#7D715E]">Số CCCD</span><strong className="mt-0.5 block break-all font-mono text-xs text-[#1A1612]">{inspectProfile.idCardNumber}</strong></div>
                     <div className="rounded-xl bg-[#FAF8F5] p-2.5"><span className="block text-[10px] text-[#7D715E]">Mã số thuế</span><strong className="mt-0.5 block break-all font-mono text-xs text-[#1A1612]">{inspectProfile.taxCode}</strong></div>
@@ -742,17 +768,18 @@ export default function KycApprovalPage() {
                       <div key={document.label} className="min-w-0 space-y-1.5">
                         <span className="block text-[10px] font-semibold text-[#7D715E]">{document.label}</span>
                         {document.url ? (
-                          <button type="button" onClick={() => setPreviewImage(document.url)} title="Nhấn để phóng to" className="group relative h-32 w-full cursor-zoom-in overflow-hidden rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] sm:h-36">
+                          <button type="button" onClick={() => setPreviewImage(document.url)} title="Nhấn để phóng to" className="kyc-document-image group relative h-32 w-full cursor-zoom-in overflow-hidden rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] sm:h-36">
                             <img src={document.url} alt={document.label} loading="lazy" className="h-full w-full object-contain transition-transform group-hover:scale-[1.03]" />
                             <span className="absolute inset-x-0 bottom-0 bg-[#231D15]/65 px-2 py-1.5 text-center text-[10px] font-semibold text-white">Xem ảnh lớn</span>
                           </button>
                         ) : (
-                          <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-[#EAE4D7] bg-[#FAF8F5] px-2 text-center text-[10px] text-[#7D715E] sm:h-36">Chưa tải ảnh lên</div>
+                          <div className="kyc-document-empty flex h-32 items-center justify-center rounded-xl border border-dashed border-[#EAE4D7] bg-[#FAF8F5] px-2 text-center text-[10px] text-[#7D715E] sm:h-36">Chưa tải ảnh lên</div>
                         )}
                       </div>
                     ))}
                   </div>
-                </section>
+                  </div>
+                </details>
               </div>
 
               {showRejectInput && (
@@ -763,7 +790,7 @@ export default function KycApprovalPage() {
               )}
             </div>
 
-            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#EAE4D7] pt-3 sm:flex-row sm:justify-end">
+            <div className="kyc-kol-footer flex shrink-0 flex-col-reverse gap-2 border-t border-[#EAE4D7] pt-3 sm:flex-row sm:justify-end">
               <Button
                 variant="outline"
                 size="md"
@@ -795,11 +822,13 @@ export default function KycApprovalPage() {
           onClose={() => setInspectStore(null)}
           title="Thẩm định hồ sơ gian hàng"
           subtitle={inspectStore.name}
-          maxWidth="lg"
-          className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain"
+          icon={<Store className="h-4 w-4" />}
+          maxWidth="2xl"
+          className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-3xl border-[#EAE4D7] bg-[#FAF8F5] p-4 shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
         >
-          <div className="space-y-5 text-left text-xs">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="kyc-shop-content">
+            <div className="kyc-shop-scroll">
+            <div className="kyc-shop-status flex flex-wrap items-center gap-2">
               <Badge variant={inspectStore.onboardingStatus === 'VERIFIED' ? 'amber' : inspectStore.onboardingStatus === 'REJECTED' ? 'danger' : 'warning'}>
                 {inspectStore.statusLabel}
               </Badge>
@@ -811,13 +840,16 @@ export default function KycApprovalPage() {
                 {inspectStore.reviewNote}
               </div>
             )}
+            {inspectStore.missingRequiredFields.length > 0 && (
+              <div className="kyc-shop-missing" role="alert"><AlertCircle size={16} /><div><strong>Hồ sơ còn thiếu thông tin</strong><p>{inspectStore.missingRequiredFields.join(' · ')}</p></div></div>
+            )}
             {inspectStore.reviewedAt && (
               <div className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-xs text-[#7D715E]">
                 Quyết định gần nhất bởi <strong className="text-[#1A1612]">{inspectStore.reviewerName || 'Quản trị viên'}</strong> · {inspectStore.reviewedAt}
               </div>
             )}
             {/* 1. Pháp nhân & Kho hàng (Nghị định 85) */}
-            <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-3">
+            <div className="kyc-shop-section kyc-shop-legal p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-3">
               <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
                 1. Thông tin pháp nhân và kho hàng
               </strong>
@@ -855,10 +887,14 @@ export default function KycApprovalPage() {
                   <span className="font-bold text-[#1A1612]">{inspectStore.warehouseAddress}</span>
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><span className="text-[#7D715E] block">Điện thoại liên hệ:</span><strong className="block text-[#1A1612]">{inspectStore.contactPhone}</strong></div>
+                <div><span className="text-[#7D715E] block">Email nhận đối soát:</span><strong className="block break-all text-[#1A1612]">{inspectStore.contactEmail}</strong></div>
+              </div>
             </div>
 
             {/* 2. Tài liệu chứng từ pháp lý & Định danh */}
-            <div className="p-3.5 bg-white border border-[#EAE4D7] rounded-2xl space-y-3">
+            <div className="kyc-shop-section kyc-shop-documents p-3.5 bg-white border border-[#EAE4D7] rounded-2xl space-y-3">
               <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
                 2. Đối chiếu CCCD người đại diện &amp; giấy phép kinh doanh
               </strong>
@@ -897,7 +933,7 @@ export default function KycApprovalPage() {
             </div>
 
             {/* 3. Tài khoản ngân hàng nhận tiền doanh thu */}
-            <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-2">
+            <div className="kyc-shop-section kyc-shop-bank p-3.5 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl space-y-2">
               <strong className="text-xs font-black text-[#B88E4F] uppercase tracking-wider block">
                 3. Ngân hàng nhận doanh thu
               </strong>
@@ -933,9 +969,10 @@ export default function KycApprovalPage() {
               </div>
             )}
 
+            </div>
             {/* Actions */}
             {['PENDING_APPROVAL', 'NEEDS_INFO'].includes(inspectStore.onboardingStatus) ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#EAE4D7]">
+              <div className="kyc-shop-footer grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#EAE4D7]">
                 <Button
                   variant="outline"
                   size="md"
@@ -962,7 +999,7 @@ export default function KycApprovalPage() {
                 </Button>
               </div>
             ) : (
-              <div className="border-t border-[#EAE4D7] pt-3 text-xs text-[#7D715E]">
+              <div className="kyc-shop-footer kyc-shop-completed border-t border-[#EAE4D7] pt-3 text-xs text-[#7D715E]">
                 Hồ sơ đã xử lý. Trạng thái hiện tại: <strong className="text-[#1A1612]">{inspectStore.statusLabel}</strong>.
               </div>
             )}

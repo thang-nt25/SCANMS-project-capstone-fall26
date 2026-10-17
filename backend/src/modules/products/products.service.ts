@@ -1099,7 +1099,7 @@ export class ProductsService {
           imageUrl: dto.imageUrl?.trim() || null,
           price: dto.price,
           originalPrice: dto.originalPrice || null,
-          customCommissionRate: dto.customCommissionRate || null,
+          customCommissionRate: 10,
           stockQuantity: preparedVariants.length
             ? preparedVariants.reduce(
                 (sum, variant) => sum + variant.stockQuantity,
@@ -1331,9 +1331,7 @@ export class ProductsService {
         ...(dto.originalPrice !== undefined && {
           originalPrice: dto.originalPrice,
         }),
-        ...(dto.customCommissionRate !== undefined && {
-          customCommissionRate: dto.customCommissionRate,
-        }),
+        customCommissionRate: 10,
         ...(dto.stockQuantity !== undefined && {
           stockQuantity: dto.stockQuantity,
         }),
@@ -1764,6 +1762,9 @@ export class ProductsService {
     productIds: string[],
     commissionRate: number,
   ) {
+    if (commissionRate !== 10) {
+      throw new BadRequestException('Hoa hồng nền cố định 10% theo chuẩn sàn SCANMS.');
+    }
     const isSystemAdminOrManager =
       userRole === UserRole.SYSTEM_ADMIN ||
       userRole === UserRole.SYSTEM_MANAGER;

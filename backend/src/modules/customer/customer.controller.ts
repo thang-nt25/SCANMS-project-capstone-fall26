@@ -314,7 +314,7 @@ export class CustomerController {
   // ==========================================
   @Get('identity')
   @ApiOperation({
-    summary: 'Lấy thông tin xác minh CCCD của khách hàng (Chuẩn Shopee)',
+    summary: 'Lấy thông tin định danh do khách hàng tự khai báo',
   })
   async getIdentity(@CurrentUser('id') userId: string) {
     return this.customerService.getCustomerIdentity(userId);
@@ -322,7 +322,7 @@ export class CustomerController {
 
   @Post('identity')
   @ApiOperation({
-    summary: 'Xác minh và lưu thông tin CCCD cá nhân (Chuẩn Shopee)',
+    summary: 'Lưu thông tin định danh khách hàng (không thay thế duyệt KYC)',
   })
   async verifyIdentity(
     @CurrentUser('id') userId: string,

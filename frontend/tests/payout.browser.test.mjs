@@ -344,7 +344,7 @@ test(
       assert.equal(exportCount, 1);
       assert.ok(
         (await page.$eval("tbody", (el) => el.textContent)).includes(
-          "Đang thanh toán theo lô",
+          "Chờ chuyển khoản",
         ),
       );
       assert.equal(

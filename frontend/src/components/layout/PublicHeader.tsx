@@ -175,7 +175,7 @@ export function PublicHeader({
 
   return (
     <header className="scanms-site-header sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
-      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6">
+      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
@@ -265,7 +265,7 @@ export function PublicHeader({
             /* Logged in User Profile & Workspace Link */
             <div className="flex items-center gap-2">
               {/* Shared account trigger for every role */}
-              <div className="relative" ref={userMenuRef}>
+              <div className="relative z-50" ref={userMenuRef}>
                 <HeaderAccountButton
                   user={currentUser}
                   role={currentUser.role}
@@ -523,7 +523,7 @@ export function PublicHeader({
       </div>
 
       {/* Search row for mobile and tablet */}
-      <div className="lg:hidden px-4 pb-3 pt-1 border-t border-[#F3EFE6] bg-[#FFFEFC]">
+      <div className="lg:hidden px-4 pb-3 pt-1 border-t border-[#F3EFE6] bg-[#FFFEFC] relative z-10">
         <form
           onSubmit={handleSearch}
           className="flex min-w-0 items-center rounded-[3px] border border-[#EAE4D7] bg-white p-[2px] shadow-2xs focus-within:border-[#C59B58]"

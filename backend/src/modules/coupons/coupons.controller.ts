@@ -29,6 +29,9 @@ import { UserRole } from '@prisma/client';
 import { CouponsService } from './coupons.service';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { CreateStoreCouponDto } from './dto/create-store-coupon.dto';
+import { CreatePlatformCouponDto } from './dto/create-platform-coupon.dto';
+import { PreviewStackedVoucherDto } from './dto/preview-stacked-voucher.dto';
+import { RecordPlatformReimbursementDto } from './dto/record-platform-reimbursement.dto';
 import { ApproveCouponDto } from './dto/approve-coupon.dto';
 import { RejectCouponDto } from './dto/reject-coupon.dto';
 import { BlockCouponDto } from './dto/block-coupon.dto';
@@ -44,6 +47,46 @@ import { QueryCouponsDto } from './dto/query-coupons.dto';
 @Controller('coupons')
 export class PublicCouponsController {
   constructor(private readonly service: CouponsService) {}
+
+  @Post('preview-stacked')
+  @HttpCode(HttpStatus.OK)
+  previewStacked(@Body() dto: PreviewStackedVoucherDto) {
+    return this.service.previewStackedVoucher(dto);
+  }
+
+  @Get('available')
+  @ApiOperation({ summary: 'Danh sách voucher đang khả dụng trên SCANMS' })
+  getAvailableCoupons() {
+    return this.service.getPublicAvailableCoupons();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @Get('saved')
+  getSavedCouponIds(@CurrentUser('id') userId: string) {
+    return this.service.getSavedCouponIds(userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @Get('saved/details')
+  getSavedAvailableCoupons(@CurrentUser('id') userId: string) {
+    return this.service.getSavedAvailableCoupons(userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @Post('saved/:couponId')
+  saveCoupon(@CurrentUser('id') userId: string, @Param('couponId', ParseUUIDPipe) couponId: string) {
+    return this.service.saveCoupon(userId, couponId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @Delete('saved/:couponId')
+  removeSavedCoupon(@CurrentUser('id') userId: string, @Param('couponId', ParseUUIDPipe) couponId: string) {
+    return this.service.removeSavedCoupon(userId, couponId);
+  }
 
   @Get('stores/:storeId/available')
   @ApiOperation({
@@ -275,7 +318,14 @@ export class CollaboratorCouponsController {
 export class StoreCouponsController {
   constructor(private readonly service: CouponsService) {}
 
+  @Get('subsidies')
+  @ApiOperation({ summary: 'Shop xem khoản voucher sàn tài trợ và chuyển hoàn theo từng đơn' })
+  getPlatformSubsidiesForStore(@Param('storeId', ParseUUIDPipe) storeId: string, @CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole) {
+    return this.service.getStorePlatformSubsidies(storeId, userId, role);
+  }
+
   @Post()
+  @Roles(UserRole.SHOP_MANAGER)
   @ApiOperation({
     summary:
       'Gian hàng chủ động phát hành mã giảm giá (Voucher) riêng để kích cầu',
@@ -334,6 +384,7 @@ export class StoreCouponsController {
   }
 
   @Patch(':id/approve')
+  @Roles(UserRole.SHOP_MANAGER)
   @ApiOperation({
     summary:
       'Chủ shop phê duyệt và cấu hình chính sách ưu đãi cho coupon (Section 6 & 7)',
@@ -487,6 +538,22 @@ export class StoreCouponsController {
 export class AdminCouponsController {
   constructor(private readonly service: CouponsService) {}
 
+  @Get('subsidies')
+  @ApiOperation({ summary: 'Đối soát tổng giá trị voucher do sàn tài trợ theo từng Shop' })
+  getPlatformSubsidies() { return this.service.getPlatformSubsidies(); }
+
+  @Post('subsidies/:orderId/reimbursements')
+  @ApiOperation({ summary: 'Ghi nhận khoản sàn đã chuyển hoàn cho Shop theo đơn hàng' })
+  recordPlatformReimbursement(@CurrentUser('id') adminId: string, @Param('orderId', ParseUUIDPipe) orderId: string, @Body() dto: RecordPlatformReimbursementDto) {
+    return this.service.recordPlatformReimbursement(adminId, orderId, dto);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Admin phát hành voucher tiền hàng hoặc vận chuyển do sàn tài trợ' })
+  createPlatformCoupon(@CurrentUser('id') adminId: string, @Body() dto: CreatePlatformCouponDto) {
+    return this.service.createPlatformCoupon(adminId, dto);
+  }
+
   @Get()
   @ApiOperation({
     summary:
@@ -531,7 +598,7 @@ export class AdminCouponsController {
   @ApiParam({ name: 'id', description: 'ID coupon' })
   @ApiResponse({
     status: 200,
-    description: 'Mở khóa coupon thành công và khôi phục trạng thái ACTIVE',
+    description: 'Mở khóa và khôi phục trạng thái trước khi khóa; mã chưa duyệt trở lại chờ Shop duyệt',
   })
   @ApiResponse({
     status: 400,

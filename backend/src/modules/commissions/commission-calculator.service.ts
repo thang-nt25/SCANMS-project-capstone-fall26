@@ -26,7 +26,7 @@ export interface CalculatedOrderCommission {
 export class CommissionCalculatorService {
   calculateOrderCommission(
     orderItems: CommissionItemInput[],
-    defaultCommissionRate: Prisma.Decimal,
+    _defaultCommissionRate: Prisma.Decimal,
     tierBonusRate: Prisma.Decimal,
     discountAmount = new Prisma.Decimal(0),
   ): CalculatedOrderCommission {
@@ -52,11 +52,11 @@ export class CommissionCalculatorService {
             item.calculatedCommissionAmount ?? new Prisma.Decimal(0),
         };
       }
-      const baseRate = item.customCommissionRate ?? defaultCommissionRate;
-      const uncappedRate = baseRate.plus(tierBonusRate);
-      const appliedCommissionRate = uncappedRate.greaterThan(100)
-        ? new Prisma.Decimal(100)
-        : uncappedRate;
+      // New calculations always use the platform base, even for legacy/imported
+      // products. The snapshot branch above preserves already agreed orders.
+      const baseRate = new Prisma.Decimal(10);
+      const tierBonus = Prisma.Decimal.min(3, Prisma.Decimal.max(0, tierBonusRate));
+      const appliedCommissionRate = Prisma.Decimal.min(25, baseRate.plus(tierBonus));
       const itemSubtotal = item.unitPrice.times(item.quantity);
       const calculatedCommissionAmount = itemSubtotal
         .times(netRatio)

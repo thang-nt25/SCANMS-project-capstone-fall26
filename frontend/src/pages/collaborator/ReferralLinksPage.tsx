@@ -767,11 +767,8 @@ export default function ReferralLinksPage() {
     const currentDeal = dealProposals.find(
       (deal) => deal.productId === product.id && deal.isCurrentDeal,
     );
-    const minimumRate = Math.max(
-      Number(product.estimatedCommissionRate),
-      Number(currentDeal?.approvedCommissionRate ?? 0),
-    );
-    setDealProposalRate(String(Math.min(100, minimumRate + 5)));
+    const minimumRate = Math.max(10, Number(currentDeal?.approvedCommissionRate ?? 0));
+    setDealProposalRate(String(Math.min(13, minimumRate + 1)));
     setDealVideoCount(4);
     setDealLiveCount(2);
     setDealTargetOrders(80);
@@ -835,18 +832,6 @@ export default function ReferralLinksPage() {
     }
   };
 
-  const normalizeDealProposalRate = (value: string) => {
-    const normalized = value.replace(/,/g, '.').replace(/[^\d.]/g, '');
-    const decimalIndex = normalized.indexOf('.');
-    const integerPart = (decimalIndex === -1 ? normalized : normalized.slice(0, decimalIndex))
-      .replace(/^0+(?=\d)/, '');
-
-    if (decimalIndex === -1) return integerPart;
-
-    const decimalPart = normalized.slice(decimalIndex + 1).replace(/\./g, '').slice(0, 2);
-    return `${integerPart || '0'}.${decimalPart}`;
-  };
-
   const handleSubmitExclusiveDeal = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!dealProposalProduct || submittingDealProposal) return;
@@ -860,14 +845,14 @@ export default function ReferralLinksPage() {
       toast.error('Vui lòng tích xác nhận cam kết tuân thủ Quy chế Chế tài 4 Cấp độ của SCANMS.');
       return;
     }
-    const openRate = Number(dealProposalProduct.estimatedCommissionRate);
+    const openRate = 10;
     const currentDeal = dealProposals.find(
       (deal) => deal.productId === dealProposalProduct.id && deal.isCurrentDeal,
     );
     const minimumRate = Math.max(openRate, Number(currentDeal?.approvedCommissionRate ?? 0));
     const proposedRate = Number(dealProposalRate);
-    if (!dealProposalRate.trim() || !Number.isFinite(proposedRate) || proposedRate <= minimumRate || proposedRate > 100) {
-      toast.error(`Mức đề xuất phải cao hơn mức đang áp dụng (${minimumRate}%) và không quá 100%.`);
+    if (![11, 12, 13].includes(proposedRate) || proposedRate <= minimumRate) {
+      toast.error(`Chọn nấc +1%, +2% hoặc +3% cao hơn deal đang áp dụng (${minimumRate}%).`);
       return;
     }
     if (dealSalesCommitment.trim().length < 5) {
@@ -878,6 +863,7 @@ export default function ReferralLinksPage() {
     setSubmittingDealProposal(true);
     try {
       const proposal = await referralLinksService.createExclusiveDeal({
+        videoReviewCommitment: dealAgreedSanctions && dealVideoCount >= 1,
         productId: dealProposalProduct.id,
         proposedCommissionRate: proposedRate,
         salesCommitment: dealSalesCommitment.trim(),
@@ -1087,7 +1073,7 @@ export default function ReferralLinksPage() {
     ? dealProposals.find((deal) => deal.productId === dealProposalProduct.id && deal.isCurrentDeal)
     : undefined;
   const dealProposalMinimumRate = Math.max(
-    Number(dealProposalProduct?.estimatedCommissionRate ?? 0),
+    10,
     Number(dealProposalCurrentDeal?.approvedCommissionRate ?? 0),
   );
 
@@ -1129,12 +1115,12 @@ export default function ReferralLinksPage() {
       </div>
 
       <section
-        className="kol-exclusive-deals"
+        className="kol-exclusive-deals w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 sm:px-5 sm:py-4 shadow-xs"
         aria-labelledby="exclusive-deals-heading"
       >
-        <div className="kol-deals-heading flex flex-wrap items-center justify-between gap-3">
+        <div className="kol-deals-heading flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
               <Sparkles className="w-4.5 h-4.5 text-[#B88E4F]" />
             </div>
             <div className="min-w-0">
@@ -1143,34 +1129,31 @@ export default function ReferralLinksPage() {
                   Deal độc quyền
                 </h2>
                 {dealStats.total > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                  <span className="inline-flex h-7 items-center px-2.5 rounded-full text-[11px] font-semibold bg-[#FBF5EB] text-[#8D6936] border border-[#EEDFC6]">
                     {dealStats.total} đề xuất
                   </span>
                 )}
                 {dealStats.approved > 0 && (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EFE6] text-[#1A1612] border border-[#EAE4D7]">
+                  <span className="inline-flex h-7 items-center gap-1.5 px-2.5 rounded-full text-[11px] font-semibold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
                     <span>{dealStats.approved} đang áp dụng</span>
                   </span>
                 )}
                 {dealStats.pending > 0 && (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF9E6] text-[#D97706] border border-[#FFE082]">
+                  <span className="inline-flex h-7 items-center gap-1.5 px-2.5 rounded-full text-[11px] font-semibold bg-[#FBF5EB] text-[#8D6936] border border-[#EEDFC6]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />
                     <span>{dealStats.pending} chờ duyệt</span>
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 text-xs text-[#7D715E]">
-                Thỏa thuận hoa hồng với Shop. Liên kết được kích hoạt sau khi duyệt.
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="grid grid-cols-2 items-center gap-2 shrink-0 lg:min-w-[230px]">
             <button
               type="button"
               onClick={toggleExclusiveDealsCollapse}
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:text-[#A47B3E] transition cursor-pointer select-none active:scale-95"
+              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#795A2D] hover:bg-[#F3EFE6] transition-colors cursor-pointer select-none"
               title={isExclusiveDealsCollapsed ? 'Mở rộng danh sách đề xuất Exclusive Deal' : 'Thu gọn danh sách đề xuất'}
               aria-expanded={!isExclusiveDealsCollapsed}
               aria-controls="kol-deal-list"
@@ -1186,7 +1169,7 @@ export default function ReferralLinksPage() {
             <button
               type="button"
               onClick={() => navigate('/chat')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer select-none"
+              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition-colors cursor-pointer select-none"
               title="Mở hộp chat trao đổi với Shop"
             >
               <ExternalLink className="h-3.5 w-3.5 text-[#B88E4F]" />
@@ -1197,7 +1180,7 @@ export default function ReferralLinksPage() {
 
         {/* Nội dung danh sách deal (Có thể thu gọn / mở rộng) */}
         {!isExclusiveDealsCollapsed && (
-          <div id="kol-deal-list" className="kol-deal-content">
+          <div id="kol-deal-list" className="kol-deal-content mt-4 border-t border-[#EAE4D7] pt-4">
             {loadingDealProposals ? (
               <div className="py-4 flex items-center justify-center gap-2 text-sm text-[#7D715E]">
                 <Loader2 className="h-4 w-4 animate-spin text-[#B88E4F]" />
@@ -3137,31 +3120,31 @@ export default function ReferralLinksPage() {
                   Mức hoa hồng độc quyền đề xuất (%) <span className="text-[#DC2626]">*</span>
                 </label>
                 <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="decimal"
+                  <select
                     value={dealProposalRate}
-                    onChange={(event) => setDealProposalRate(normalizeDealProposalRate(event.target.value))}
-                    onFocus={(event) => event.currentTarget.select()}
-                    aria-label="Mức hoa hồng độc quyền đề xuất theo phần trăm"
-                    className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-sm font-bold text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-3 focus:ring-[#C59B58]/12"
+                    onChange={(event) => setDealProposalRate(event.target.value)}
+                    aria-label="Nấc thưởng Deal độc quyền"
+                    className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-sm font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
                     required
-                  />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#7D715E]">%</span>
+                  >
+                    {[1, 2, 3].map((bonus) => <option key={bonus} value={10 + bonus} disabled={10 + bonus <= dealProposalMinimumRate}>
+                      +{bonus}% (tổng {10 + bonus}%)
+                    </option>)}
+                  </select>
                 </div>
                 <span className={`mt-1.5 block text-xs font-medium ${
-                  dealProposalMinimumRate >= 100 ||
-                  Number(dealProposalRate) > 100 ||
+                  dealProposalMinimumRate >= 13 ||
+                  Number(dealProposalRate) > 13 ||
                   (dealProposalRate.trim() && Number(dealProposalRate) <= dealProposalMinimumRate)
                     ? 'text-[#DC2626]'
                     : 'text-[#7D715E]'
                 }`}>
-                  {dealProposalMinimumRate >= 100
-                    ? 'Mức deal hiện tại đã là 100%, không thể đề xuất cao hơn trong giới hạn cho phép.'
-                    : Number(dealProposalRate) > 100
-                      ? 'Mức đề xuất không được vượt quá 100%.'
+                  {dealProposalMinimumRate >= 13
+                    ? 'Deal hiện tại đã ở nấc +3%, không thể đề xuất cao hơn.'
+                    : Number(dealProposalRate) > 13
+                      ? 'Mức đề xuất không được vượt quá nấc +3%.'
                       : dealProposalRate.trim() && Number(dealProposalRate) <= dealProposalMinimumRate
-                        ? `Mức đề xuất phải cao hơn ${dealProposalMinimumRate}%. Ví dụ: ${Math.min(100, dealProposalMinimumRate + 1)}%.`
+                        ? `Mức đề xuất phải cao hơn ${dealProposalMinimumRate}%.`
                         : `Mức cao nhất hiện tại là ${dealProposalMinimumRate}%; hãy nhập mức cao hơn.`}
                 </span>
               </div>
@@ -3380,7 +3363,7 @@ export default function ReferralLinksPage() {
                     className="mt-0.5 h-4 w-4 rounded-md border-[#C59B58] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
                   />
                   <span className="text-xs font-bold text-[#1A1612]">
-                    Tôi đã đọc, hiểu rõ và cam kết tuân thủ <span className="text-[#B88E4F]">Quy chế chế tài 4 cấp độ</span> của sàn SCANMS khi nhận mức hoa hồng độc quyền.
+                    Tôi cam kết thực hiện ít nhất 1 video review cho sản phẩm và tuân thủ <span className="text-[#B88E4F]">Quy chế chế tài 4 cấp độ</span> của sàn SCANMS. Thưởng Deal cần Shop duyệt trước khi áp dụng.
                   </span>
                 </label>
               </div>
@@ -3402,7 +3385,7 @@ export default function ReferralLinksPage() {
                   {dealProposalStep === 1 ? 'Hủy' : 'Quay lại'}
                 </button>
                 {dealProposalStep < 3 ? <button type="submit" className="kol-deal-proposal-next"
-                  disabled={submittingDealProposal || Boolean(kolDealStatus?.isBlocked) || (dealProposalStep === 1 ? !dealProposalRate.trim() || !Number.isFinite(Number(dealProposalRate)) || Number(dealProposalRate) <= dealProposalMinimumRate || Number(dealProposalRate) > 100 : dealSalesCommitment.trim().length < 5)}>
+                  disabled={submittingDealProposal || Boolean(kolDealStatus?.isBlocked) || (dealProposalStep === 1 ? !dealProposalRate.trim() || ![11, 12, 13].includes(Number(dealProposalRate)) || Number(dealProposalRate) <= dealProposalMinimumRate : dealSalesCommitment.trim().length < 5)}>
                   {dealProposalStep === 1 ? 'Tiếp tục' : 'Xem lại đề xuất'} <ChevronRight className="h-4 w-4" />
                 </button> : <button
                   type="submit"

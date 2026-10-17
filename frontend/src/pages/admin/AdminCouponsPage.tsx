@@ -19,6 +19,7 @@ import {
   type CouponStatus,
 } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
+import api from '../../services/api';
 
 const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: string; border: string }> = {
   ACTIVE: {
@@ -67,9 +68,47 @@ const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: str
 
 export const AdminCouponsPage: React.FC = () => {
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
+  const [platformSubsidies, setPlatformSubsidies] = useState<Awaited<ReturnType<typeof couponService.getPlatformSubsidies>>>([]);
+  const [reimbursementOrderId, setReimbursementOrderId] = useState('');
+  const [bankReference, setBankReference] = useState('');
+  const [recordingReimbursement, setRecordingReimbursement] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [issuing, setIssuing] = useState(false);
+  const [issueForm, setIssueForm] = useState({ storeId: '', code: '', benefitType: 'GOODS' as 'GOODS' | 'SHIPPING', discountType: 'FIXED_AMOUNT' as 'FIXED_AMOUNT' | 'PERCENTAGE', discountValue: 30000, minimumOrderAmount: 0, budgetTotal: 3000000, usageLimitTotal: 100, maximumDiscountAmount: 30000 });
+  const [issueStores, setIssueStores] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => { api.get('/stores/marketplace').then((res: any) => {
+    const data = res?.data?.data || res?.data || res;
+    setIssueStores(Array.isArray(data) ? data : data?.items || []);
+  }).catch(() => setIssueStores([])); }, []);
+
+  const issueVoucher = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      setIssuing(true);
+      await couponService.createPlatformCoupon(issueForm);
+      toast.success('Đã phát hành voucher sàn.');
+      setIssueForm((value) => ({ ...value, code: '' }));
+      await fetchCoupons();
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Không phát hành được voucher.'); }
+    finally { setIssuing(false); }
+  };
+
+  const recordReimbursement = async (event: React.FormEvent, orderId: string, amount: number) => {
+    event.preventDefault();
+    if (!bankReference.trim() || amount <= 0) return;
+    try {
+      setRecordingReimbursement(true);
+      await couponService.recordPlatformReimbursement(orderId, amount, bankReference.trim());
+      toast.success('Đã ghi nhận khoản chuyển hoàn cho Shop.');
+      setReimbursementOrderId('');
+      setBankReference('');
+      await fetchCoupons();
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Không ghi nhận được giao dịch.'); }
+    finally { setRecordingReimbursement(false); }
+  };
 
 
   const [detailCoupon, setDetailCoupon] = useState<CouponItem | null>(null);
@@ -131,6 +170,7 @@ export const AdminCouponsPage: React.FC = () => {
       setLoading(true);
       const res = await couponService.getAdminCoupons();
       setCoupons(res.data || []);
+      setPlatformSubsidies(await couponService.getPlatformSubsidies());
     } catch (err) {
       console.error('Lỗi khi tải danh sách coupon toàn sàn:', err);
     } finally {
@@ -164,8 +204,8 @@ export const AdminCouponsPage: React.FC = () => {
     if (!window.confirm(`Xác nhận mở khóa cho mã "${coupon.displayCode}"?`)) return;
     try {
       setUnblockLoading(true);
-      await couponService.adminUnblockCoupon(coupon.id);
-      toast.success('Đã mở khóa mã giảm giá thành công');
+      const result = await couponService.adminUnblockCoupon(coupon.id);
+      toast.success(result?.message || 'Đã mở khóa và khôi phục trạng thái voucher.');
       await fetchCoupons();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Không thể mở khóa coupon');
@@ -194,6 +234,34 @@ export const AdminCouponsPage: React.FC = () => {
   return (
     <div className="w-full min-w-0 text-[#1A1612]">
       <div className="grid gap-4 min-w-0">
+
+        <div className="bg-white border border-[#EAE4D7] rounded-xl p-4 mb-5 text-sm">
+          <h2 className="font-bold text-[#1A1612] mb-2">Đối soát voucher sàn theo gian hàng</h2>
+          {platformSubsidies.length === 0 ? <p className="text-[#7D715E]">Chưa có đơn hoàn tất sử dụng ngân sách voucher sàn.</p> : <div className="space-y-3">{platformSubsidies.map((item) => <div key={item.storeId} className="border-b border-[#EAE4D7] pb-3">
+            <div className="flex flex-wrap justify-between gap-2"><span className="font-semibold">{item.storeName} · {item.orderCount} đơn</span><span>Phải hoàn: <strong>{item.amount.toLocaleString('vi-VN')}₫</strong> · Đã ghi nhận: <strong>{item.paidAmount.toLocaleString('vi-VN')}₫</strong> · Còn lại: <strong className="text-[#B88E4F]">{item.outstandingAmount.toLocaleString('vi-VN')}₫</strong></span></div>
+            {!item.reimbursementReady && <p className="mt-1 text-[#DC2626]">Cần áp dụng migration đối soát voucher trước khi ghi nhận chuyển hoàn.</p>}
+            <div className="mt-2 space-y-2">{item.orders.map((order) => <div key={order.orderId} className="rounded-lg bg-[#FAF8F5] p-2 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2"><span>Đơn {order.orderCode}: {order.amount.toLocaleString('vi-VN')}₫ · đã ghi nhận {order.paidAmount.toLocaleString('vi-VN')}₫</span>{item.reimbursementReady && order.outstandingAmount > 0 && <button type="button" onClick={() => { setReimbursementOrderId(order.orderId); setBankReference(''); }} className="rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 font-semibold text-[#1A1612]">Ghi nhận đã chuyển {order.outstandingAmount.toLocaleString('vi-VN')}₫</button>}</div>
+              {order.paidAmount > order.amount && <p className="mt-1 text-[#DC2626]">Đã hoàn vượt {Math.round(order.paidAmount - order.amount).toLocaleString('vi-VN')}₫ sau điều chỉnh/hoàn đơn; cần đối soát lại với Shop.</p>}
+              {order.payments.map((payment, index) => <p key={`${payment.bankReference}-${index}`} className="mt-1 text-[#7D715E]">Giao dịch {payment.bankReference} · {payment.amount.toLocaleString('vi-VN')}₫ · {new Date(payment.paidAt).toLocaleDateString('vi-VN')}</p>)}
+              {reimbursementOrderId === order.orderId && <form onSubmit={(event) => void recordReimbursement(event, order.orderId, order.outstandingAmount)} className="mt-2 flex flex-wrap items-center gap-2"><label className="text-[#7D715E]">Mã giao dịch ngân hàng <input required minLength={3} maxLength={100} value={bankReference} onChange={(event) => setBankReference(event.target.value)} className="ml-1 rounded border border-[#EAE4D7] bg-white px-2 py-1 text-[#1A1612]" /></label><button disabled={recordingReimbursement} className="rounded bg-[#C59B58] px-2 py-1 font-bold text-[#1A1612] disabled:opacity-50">Xác nhận đã chuyển ngoài hệ thống</button><button type="button" onClick={() => setReimbursementOrderId('')} className="px-2 py-1">Hủy</button></form>}
+            </div>)}</div>
+          </div>)}</div>}
+        </div>
+
+        <form onSubmit={issueVoucher} className="bg-white border border-[#EAE4D7] rounded-xl p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+          <h2 className="font-bold text-[#1A1612] col-span-full">Phát hành voucher do sàn tài trợ</h2>
+          <select required value={issueForm.storeId} onChange={(e) => setIssueForm({ ...issueForm, storeId: e.target.value })} className="border border-[#EAE4D7] rounded-lg p-2 bg-white"><option value="">Chọn gian hàng</option>{issueStores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+          <input required placeholder="Mã voucher" value={issueForm.code} onChange={(e) => setIssueForm({ ...issueForm, code: e.target.value.toUpperCase() })} className="border border-[#EAE4D7] rounded-lg p-2" />
+          <select value={issueForm.benefitType} onChange={(e) => setIssueForm({ ...issueForm, benefitType: e.target.value as 'GOODS' | 'SHIPPING' })} className="border border-[#EAE4D7] rounded-lg p-2"><option value="GOODS">Giảm tiền hàng</option><option value="SHIPPING">Giảm cước GHN</option></select>
+          <select value={issueForm.discountType} onChange={(e) => setIssueForm({ ...issueForm, discountType: e.target.value as 'FIXED_AMOUNT' | 'PERCENTAGE' })} className="border border-[#EAE4D7] rounded-lg p-2"><option value="FIXED_AMOUNT">Số tiền</option><option value="PERCENTAGE">Phần trăm</option></select>
+          <label>Mức giảm<input required type="number" min="1" value={issueForm.discountValue} onChange={(e) => setIssueForm({ ...issueForm, discountValue: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
+          <label>Giảm tối đa<input type="number" min="1" value={issueForm.maximumDiscountAmount} onChange={(e) => setIssueForm({ ...issueForm, maximumDiscountAmount: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
+          <label>Đơn tối thiểu<input type="number" min="0" value={issueForm.minimumOrderAmount} onChange={(e) => setIssueForm({ ...issueForm, minimumOrderAmount: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
+          <label>Ngân sách<input required type="number" min="1" value={issueForm.budgetTotal} onChange={(e) => setIssueForm({ ...issueForm, budgetTotal: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
+          <label>Lượt dùng tối đa<input required type="number" min="1" value={issueForm.usageLimitTotal} onChange={(e) => setIssueForm({ ...issueForm, usageLimitTotal: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
+          <button disabled={issuing} className="bg-[#C59B58] text-[#1A1612] font-bold rounded-lg p-2 disabled:opacity-50">{issuing ? 'Đang phát hành…' : 'Phát hành'}</button>
+        </form>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs min-w-0">

@@ -16,7 +16,7 @@ const tiers: Record<string, string> = { GOLD: 'Vàng', SILVER: 'Bạc', BRONZE: 
 
 export function VipCommissionModal({ creator, rate, saving, onRateChange, onClose, onSubmit }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const currentRate = creator.commissionRate ?? 18;
+  const currentRate = creator.commissionRate ?? 10;
   const difference = (rate - currentRate) * 5000;
 
   useEffect(() => {
@@ -80,18 +80,18 @@ export function VipCommissionModal({ creator, rate, saving, onRateChange, onClos
               <input
                 id="vip-commission-rate"
                 type="range"
-                min={10}
-                max={45}
+                min={11}
+                max={13}
                 step={1}
                 value={rate}
                 disabled={saving}
                 onChange={event => onRateChange(Number(event.target.value))}
                 className="block w-full h-[5px] my-4 border-0 rounded-lg appearance-none cursor-pointer accent-[#C59B58]"
-                style={{ background: `linear-gradient(to right, #C59B58 ${Math.max(0, Math.min(100, (rate - 10) / 35 * 100))}%, #EAE4D7 0)` }}
+                style={{ background: `linear-gradient(to right, #C59B58 ${Math.max(0, Math.min(100, (rate - 11) / 2 * 100))}%, #EAE4D7 0)` }}
               />
-              <div className="flex justify-between text-[#7D715E] text-[10px]"><span>Tối thiểu 10%</span><span>Tối đa 45%</span></div>
-              <div className="grid grid-cols-4 gap-1 mt-3 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Chọn nhanh tỷ lệ hoa hồng">
-                {[18, 22, 28, 35].map(value => (
+              <div className="flex justify-between text-[#7D715E] text-[10px]"><span>10% cơ bản + 1% VIP</span><span>10% cơ bản + 3% VIP</span></div>
+              <div className="grid grid-cols-3 gap-1 mt-3 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Chọn nhanh tỷ lệ hoa hồng">
+                {[11, 12, 13].map(value => (
                   <button
                     key={value}
                     type="button"
