@@ -465,23 +465,6 @@ export class MediaService {
               revisionShopReminderSentAt: null,
             },
           });
-          if (isApproved) {
-            const otherOverdue = await tx.sampleProductRequest.count({
-              where: {
-                collaboratorId: sampleRequest.collaboratorId,
-                status: 'OVERDUE',
-              },
-            });
-            if (otherOverdue === 0) {
-              await tx.collaboratorProfile.updateMany({
-                where: { userId: sampleRequest.collaboratorId },
-                data: {
-                  sampleRequestsBlockedAt: null,
-                  sampleRequestsBlockReason: null,
-                },
-              });
-            }
-          }
           await tx.sampleRequestEvent.create({
             data: {
               sampleRequestId: sampleRequest.id,
@@ -546,41 +529,6 @@ export class MediaService {
 
       return updatedAsset;
     });
-
-    if (
-      asset.sampleRequestId &&
-      dto.status === ReviewActionStatus.APPROVED &&
-      asset.collaboratorId
-    ) {
-      const unresolvedOverdueCount =
-        await this.prisma.sampleProductRequest.count({
-          where: {
-            collaboratorId: asset.collaboratorId,
-            overdueAt: { not: null },
-            status: { not: 'COMPLETED' },
-          },
-        });
-      if (unresolvedOverdueCount === 0) {
-        await this.prisma.collaboratorProfile.updateMany({
-          where: { userId: asset.collaboratorId },
-          data: {
-            sampleRequestsBlockedAt: null,
-            sampleRequestsBlockReason: null,
-          },
-        });
-        await this.prisma.notification
-          .create({
-            data: {
-              userId: asset.collaboratorId,
-              title: 'Đã mở lại quyền xin sản phẩm mẫu',
-              message:
-                'Shop đã nghiệm thu các video mẫu quá hạn của bạn. Bạn có thể gửi yêu cầu xin mẫu mới.',
-              type: 'SAMPLE_REQUESTS_UNBLOCKED',
-            },
-          })
-          .catch(() => undefined);
-      }
-    }
 
     // 4. Giải phóng cache landing page cho sản phẩm liên quan
     if (asset.productId) {

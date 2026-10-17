@@ -1,0 +1,13 @@
+const fs=require('fs');
+const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('\n','&#xa;');
+module.exports=class Drawing {
+ constructor(){this.cells=[];this.id=2;}
+ box(v,x,y,w,h,s=''){const cid='c'+this.id++;this.cells.push(`<mxCell id="${cid}" value="${esc(v)}" style="html=0;fontFamily=Arial;fontColor=#000000;fontSize=16;${s}" vertex="1" parent="1"><mxGeometry x="${x}" y="${y}" width="${w}" height="${h}" as="geometry"/></mxCell>`);return cid;}
+ text(v,x,y,w,h=26,s=''){return this.box(v,x,y,w,h,'text;fillColor=none;strokeColor=none;align=left;whiteSpace=wrap;verticalAlign=middle;'+s);}
+ line(p,q,s='',pts=[],terminal=''){this.cells.push(`<mxCell id="c${this.id++}" value="" style="html=0;strokeColor=#000000;rounded=0;${s}" edge="1" parent="1" ${terminal}><mxGeometry relative="1" as="geometry"><mxPoint x="${p[0]}" y="${p[1]}" as="sourcePoint"/><mxPoint x="${q[0]}" y="${q[1]}" as="targetPoint"/>${pts.length?'<Array as="points">'+pts.map(t=>`<mxPoint x="${t[0]}" y="${t[1]}"/>`).join('')+'</Array>':''}</mxGeometry></mxCell>`);}
+ cls(name,attrs,ops,x,y,w=440){const head=54,ah=attrs.length?attrs.length*26+18:0,oh=ops.length?ops.length*26+18:0,h=head+ah+oh;const cid=this.box('',x,y,w,h,'fillColor=#FFFFFF;strokeColor=#000000;');this.text(name,x+8,y+4,w-16,head-8,'fontStyle=1;align=center;');if(ah){this.line([x,y+head],[x+w,y+head],'endArrow=none;');this.text(attrs.join('\n'),x+12,y+head+6,w-24,ah-12);}if(oh){this.line([x,y+head+ah],[x+w,y+head+ah],'endArrow=none;');this.text(ops.join('\n'),x+12,y+head+ah+6,w-24,oh-12);}return {cid,x,y,w,h};}
+ edge(a,b,p,q,label,pts=[],dep=true){const s=[(p[0]-a.x)/a.w,(p[1]-a.y)/a.h],t=[(q[0]-b.x)/b.w,(q[1]-b.y)/b.h];for(const v of [s,t])if(v.some(n=>n<0||n>1)||!v.some(n=>n===0||n===1))throw new Error('Connector must end on class boundary: '+JSON.stringify({p,q,s,t}));this.line(p,q,`endArrow=${dep?'open':'none'};${dep?'dashed=1;':''}exitX=${s[0]};exitY=${s[1]};entryX=${t[0]};entryY=${t[1]};exitPerimeter=0;entryPerimeter=0;`,pts,`source="${a.cid}" target="${b.cid}"`);if(label)this.text(label[0],label[1],label[2],label[3]||150,24,'fontSize=14;align=center;');}
+ note(v,x,y,w,h=40){this.box(v,x,y,w,h,'fillColor=#FFFFFF;strokeColor=#000000;align=center;whiteSpace=wrap;fontSize=14;');}
+ page(name,w,h,page=0){return `<diagram id="${esc(name)}" name="${esc(name)}"><mxGraphModel grid="0" page="${page}" pageBreaks="0" pageWidth="${w}" pageHeight="${h}" background="#FFFFFF"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${this.cells.join('\n')}</root></mxGraphModel></diagram>`;}
+ static save(file,pages){fs.writeFileSync(file,`<mxfile host="app.diagrams.net">${pages.join('\n')}</mxfile>`);}
+};

@@ -249,6 +249,11 @@ enum CouponFundingSource {
   PLATFORM_FUNDED
 }
 
+enum CouponBenefitType {
+  GOODS
+  SHIPPING
+}
+
 enum CouponRedemptionStatus {
   RESERVED
   USED
@@ -330,6 +335,8 @@ model User {
   customerAddresses         CustomerAddress[]
   customerIdentity          CustomerIdentity?
   customerWishlists         CustomerWishlist[]
+  savedCoupons              CustomerSavedCoupon[]
+  markedPlatformVoucherReimbursements PlatformVoucherReimbursement[]
   customerOrders            Order[]                     @relation("CustomerOrders")
   customerCartItems         CustomerCartItem[]
   customerReturnRequests    ReturnRequest[]             @relation("CustomerReturnRequests")
@@ -397,6 +404,8 @@ model Store {
   commissionRules     CommissionRule[]
   campaigns           Campaign[]
   orders              Order[]
+  platformVoucherReimbursements PlatformVoucherReimbursement[]
+  sampleShippingCharges SampleShippingCharge[]
   conversations       Conversation[]
   follows             StoreFollow[]
   payoutRequests      PayoutRequest[]
@@ -524,7 +533,7 @@ model Product {
   imageUrl             String?   @map("image_url")
   originalPrice        Decimal?  @map("original_price") @db.Decimal(15, 2)
   price                Decimal   @db.Decimal(15, 2)
-  customCommissionRate Decimal?  @map("custom_commission_rate") @db.Decimal(5, 2)
+  customCommissionRate Decimal?  @default(10.00) @map("custom_commission_rate") @db.Decimal(5, 2)
   stockQuantity        Int       @default(0) @map("stock_quantity")
   isActive             Boolean   @default(true) @map("is_active")
   moderationStatus     ProductModerationStatus @default(DRAFT) @map("moderation_status")
@@ -722,6 +731,9 @@ model SampleProductRequest {
   recipientName              String?             @map("recipient_name") @db.VarChar(150)
   recipientPhone             String?             @map("recipient_phone") @db.VarChar(30)
   shippingAddress            String              @map("shipping_address")
+  ghnProvinceId              Int?                @map("ghn_province_id")
+  ghnDistrictId              Int?                @map("ghn_district_id")
+  ghnWardCode                String?             @map("ghn_ward_code") @db.VarChar(20)
   socialPlatformSnapshot     String?             @map("social_platform_snapshot") @db.VarChar(50)
   socialChannelNameSnapshot  String?             @map("social_channel_name_snapshot") @db.VarChar(150)
   socialChannelUrlSnapshot   String?             @map("social_channel_url_snapshot") @db.VarChar(1000)
@@ -757,6 +769,7 @@ model SampleProductRequest {
   socialChannel  CollaboratorSocialChannel? @relation(fields: [socialChannelId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   videoAssets    MediaAsset[]
   events         SampleRequestEvent[]
+  shippingCharges SampleShippingCharge[]
 
   @@index([collaboratorId], map: "idx_fk_sample_req_collab")
   @@index([productId], map: "idx_fk_sample_req_product")
@@ -764,6 +777,42 @@ model SampleProductRequest {
   @@index([socialChannelId], map: "idx_sample_req_social_channel")
   @@index([productVariantId], map: "idx_sample_req_product_variant")
   @@map("sample_product_requests")
+}
+
+model GhnTrackingRecord {
+  id                   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  environment          String @db.VarChar(10)
+  orderCode            String @map("order_code") @db.VarChar(100)
+  status               String @db.VarChar(40)
+  events               Json @default("[]")
+  shipperName          String? @map("shipper_name") @db.VarChar(150)
+  shipperPhone         String? @map("shipper_phone") @db.VarChar(30)
+  contactUpdatedAt     DateTime? @map("contact_updated_at") @db.Timestamptz(6)
+  statusUpdatedAt      DateTime? @map("status_updated_at") @db.Timestamptz(6)
+  observedAt           DateTime @default(now()) @map("observed_at") @db.Timestamptz(6)
+
+  @@unique([environment, orderCode])
+  @@map("ghn_tracking_records")
+}
+
+model SampleShippingCharge {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sampleRequestId String   @map("sample_request_id") @db.Uuid
+  storeId         String   @map("store_id") @db.Uuid
+  carrier         String   @default("GHN") @db.VarChar(30)
+  environment     String   @default("LIVE") @db.VarChar(10)
+  trackingNumber  String   @map("tracking_number") @db.VarChar(100)
+  amount          Decimal? @db.Decimal(15, 2)
+  payer           String   @default("SHOP") @db.VarChar(10)
+  codAmount       Int      @default(0) @map("cod_amount")
+  status          String   @db.VarChar(30)
+  recordedAt      DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  sampleRequest   SampleProductRequest @relation(fields: [sampleRequestId], references: [id], onDelete: Cascade)
+  store           Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([carrier, environment, trackingNumber])
+  @@index([storeId, recordedAt])
+  @@map("sample_shipping_charges")
 }
 
 model SampleRequestEvent {
@@ -906,7 +955,9 @@ model Campaign {
   id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   storeId             String   @map("store_id") @db.Uuid
   name                String   @db.VarChar(200)
-  bonusCommissionRate Decimal  @default(5.00) @map("bonus_commission_rate") @db.Decimal(5, 2)
+  bonusCommissionRate Decimal  @default(1.00) @map("bonus_commission_rate") @db.Decimal(5, 2)
+  bonusBudgetTotal    Decimal? @map("bonus_budget_total") @db.Decimal(15, 2)
+  bonusBudgetUsed     Decimal  @default(0) @map("bonus_budget_used") @db.Decimal(15, 2)
   startDate           DateTime @map("start_date") @db.Timestamptz(6)
   endDate             DateTime @map("end_date") @db.Timestamptz(6)
   isActive            Boolean  @default(true) @map("is_active")
@@ -1013,15 +1064,17 @@ model Coupon {
   expiresAt                    DateTime?           @map("expires_at") @db.Timestamptz(6)
   scopeType                    CouponScope         @default(STORE_WIDE) @map("scope_type")
   fundingSource                CouponFundingSource @default(SHOP_FUNDED) @map("funding_source")
+  benefitType                  CouponBenefitType    @default(GOODS) @map("benefit_type")
   shopFundingRate              Decimal             @default(100.00) @map("shop_funding_rate") @db.Decimal(5, 2)
   platformFundingRate          Decimal             @default(0.00) @map("platform_funding_rate") @db.Decimal(5, 2)
   stackableWithProductDiscount Boolean             @default(false) @map("stackable_with_product_discount")
   stackableWithShopVoucher     Boolean             @default(false) @map("stackable_with_shop_voucher")
-  stackableWithPlatformVoucher Boolean             @default(false) @map("stackable_with_platform_voucher")
+  stackableWithPlatformVoucher Boolean             @default(true) @map("stackable_with_platform_voucher")
   approvedBy                   String?             @map("approved_by") @db.Uuid
   approvedAt                   DateTime?           @map("approved_at") @db.Timestamptz(6)
   rejectedReason               String?             @map("rejected_reason") @db.VarChar(255)
   blockedReason                String?             @map("blocked_reason") @db.VarChar(255)
+  statusBeforeBlock            CouponStatus?       @map("status_before_block")
   deletedBy                    String?             @map("deleted_by") @db.Uuid
   deleteReason                 String?             @map("delete_reason") @db.VarChar(255)
   deletedAt                    DateTime?           @map("deleted_at") @db.Timestamptz(6)
@@ -1037,6 +1090,8 @@ model Coupon {
   couponProducts   CouponProduct[]
   couponCategories CouponCategory[]
   redemptions      CouponRedemption[]
+  stackedRedemptions StackedVoucherRedemption[]
+  savedBy          CustomerSavedCoupon[]
   orders           Order[]
 
   @@index([collaboratorId], map: "idx_fk_coupons_collaborator")
@@ -1155,6 +1210,19 @@ model CouponCategory {
   @@map("coupon_categories")
 }
 
+model CustomerSavedCoupon {
+  userId    String   @map("user_id") @db.Uuid
+  couponId  String   @map("coupon_id") @db.Uuid
+  savedAt   DateTime @default(now()) @map("saved_at") @db.Timestamptz(6)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@id([userId, couponId])
+  @@index([couponId])
+  @@map("customer_saved_coupons")
+}
+
 model CouponRedemption {
   id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   couponId              String                 @map("coupon_id") @db.Uuid
@@ -1183,6 +1251,26 @@ model CouponRedemption {
   @@index([storeId], map: "idx_fk_redemptions_store")
   @@index([customerPhone], map: "idx_redemptions_phone")
   @@map("coupon_redemptions")
+}
+
+model StackedVoucherRedemption {
+  orderId              String                 @map("order_id") @db.Uuid
+  couponId             String                 @map("coupon_id") @db.Uuid
+  customerPhone        String?                @map("customer_phone") @db.VarChar(20)
+  benefitType          CouponBenefitType      @map("benefit_type")
+  status               CouponRedemptionStatus @default(USED)
+  discountAmount       Decimal                @map("discount_amount") @db.Decimal(15, 2)
+  shopFundedAmount     Decimal                @map("shop_funded_amount") @db.Decimal(15, 2)
+  platformFundedAmount Decimal                @map("platform_funded_amount") @db.Decimal(15, 2)
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Restrict)
+
+  @@id([orderId, couponId])
+  @@index([couponId])
+  @@index([couponId, customerPhone])
+  @@map("stacked_voucher_redemptions")
 }
 
 // ==========================================
@@ -1238,6 +1326,8 @@ model Order {
   referralLink           ReferralLink?           @relation(fields: [referralLinkId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   coupon                 Coupon?                 @relation(fields: [couponId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   couponRedemption       CouponRedemption?
+  stackedVoucherRedemptions StackedVoucherRedemption[]
+  platformVoucherReimbursements PlatformVoucherReimbursement[]
   orderItems             OrderItem[]
   commissions            Commission[]
   productReviews         ProductReview[]
@@ -1255,6 +1345,23 @@ model Order {
   @@index([status, completedAt], map: "idx_orders_status_completed")
   @@index([status, createdAt], map: "idx_orders_status_created")
   @@map("orders")
+}
+
+model PlatformVoucherReimbursement {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId       String   @map("order_id") @db.Uuid
+  storeId       String   @map("store_id") @db.Uuid
+  amount        Decimal  @db.Decimal(15, 2)
+  bankReference String   @map("bank_reference") @db.VarChar(100)
+  markedBy      String   @map("marked_by") @db.Uuid
+  paidAt        DateTime @default(now()) @map("paid_at") @db.Timestamptz(6)
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  reviewer      User     @relation(fields: [markedBy], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([orderId, bankReference], map: "uq_platform_voucher_reimburse_order_ref")
+  @@index([storeId, paidAt], map: "idx_platform_voucher_reimburse_store_date")
+  @@map("platform_voucher_reimbursements")
 }
 
 model OrderRefund {

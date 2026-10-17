@@ -24,9 +24,12 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { SamplesService } from './samples.service';
 import {
   AdminResolveSampleRequestDto,
+  ExtendSampleDeadlineDto,
   CreateSampleRequestDto,
+  UpdateSampleRequestDto,
   RejectSampleRequestDto,
   ReportSampleDeliveryIssueDto,
+  ReportSampleViolationDto,
   ShipSampleRequestDto,
   SubmitSampleVideoDto,
 } from './dto/sample-request.dto';
@@ -72,18 +75,6 @@ export class SamplesController {
     return this.samplesService.cancelRequest(id, req.user?.id || req.user?.sub);
   }
 
-  @Patch(':id/receive')
-  @Roles('COLLABORATOR')
-  @ApiOperation({
-    summary: '[KOL] Xác nhận đã nhận mẫu và bắt đầu hạn nộp video 14 ngày',
-  })
-  confirmReceived(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
-    return this.samplesService.confirmReceived(
-      id,
-      req.user?.id || req.user?.sub,
-    );
-  }
-
   @Post(':id/video')
   @Roles('COLLABORATOR')
   @ApiOperation({ summary: '[KOL] Nộp link video gắn với yêu cầu mẫu này' })
@@ -114,7 +105,28 @@ export class SamplesController {
     );
   }
 
+  @Patch(':id/receive')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Xác nhận đã nhận được kiện mẫu' })
+  confirmReceived(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: any,
+  ) {
+    return this.samplesService.confirmReceived(id, req.user?.id || req.user?.sub);
+  }
+
   // ---- Shop endpoints ----
+  @Patch(':id/details')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Sửa thông tin yêu cầu chỉ khi đang chờ Shop duyệt' })
+  updateDetails(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateSampleRequestDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.updatePendingRequest(id, req.user?.id || req.user?.sub, dto);
+  }
+
 
   @Get('shop')
   @Roles('SHOP_MANAGER')
@@ -160,6 +172,17 @@ export class SamplesController {
   ) {
     const userId = req.user?.id || req.user?.sub;
     return this.samplesService.rejectRequest(id, userId, dto.rejectedReason);
+  }
+
+  @Patch(':id/extend-deadline')
+  @Roles('SHOP_MANAGER')
+  @ApiOperation({ summary: '[Shop] Gia hạn nộp hoặc sửa video mẫu có ghi lý do' })
+  extendDeadline(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ExtendSampleDeadlineDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.extendDeadlineByShop(id, req.user?.id || req.user?.sub, dto);
   }
 
   @Get('admin')
@@ -226,6 +249,24 @@ export class SamplesController {
   }
 
   // ---- Shared ----
+
+  @Post(':id/report-violation')
+  @Roles('SHOP_MANAGER')
+  @ApiOperation({
+    summary:
+      '[Shop] Báo cáo quá hạn và đề nghị Admin xem xét khóa quyền nhận mẫu',
+  })
+  reportViolation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReportSampleViolationDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.reportViolation(
+      id,
+      req.user?.id || req.user?.sub,
+      dto.reason,
+    );
+  }
 
   @Get(':id')
   @Roles('COLLABORATOR', 'SHOP_MANAGER', 'SYSTEM_MANAGER', 'SYSTEM_ADMIN')

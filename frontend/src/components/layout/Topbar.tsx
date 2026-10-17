@@ -1,25 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, Store, LogOut, Settings, Camera, Loader2, ShoppingBag } from 'lucide-react';
+import { Store, LogOut, Settings, Camera, Loader2, ShoppingBag } from 'lucide-react';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { NotificationDropdown } from './NotificationDropdown';
 import { ScanMSLogo } from '../common/ScanMSLogo';
 import { HeaderAccountButton } from './HeaderAccountButton';
-import { WorkspaceSwitcher } from '../common/WorkspaceSwitcher';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
-  theme?: 'light' | 'dark';
-  onToggleTheme?: () => void;
   onLogout?: () => void;
 }
 
 export function Topbar({
   currentUser,
-  theme: propTheme,
-  onToggleTheme: propToggleTheme,
   onLogout,
 }: TopbarProps) {
   const headerRef = useRef<HTMLElement>(null);
@@ -32,17 +27,6 @@ export function Topbar({
     observer.observe(header);
     return () => observer.disconnect();
   }, []);
-  const [internalTheme, setInternalTheme] = useState<'light' | 'dark'>('light');
-  const theme = propTheme || internalTheme;
-  const onToggleTheme = propToggleTheme || (() => {
-    const nextTheme = theme === 'light' ? 'dark' : 'light';
-    setInternalTheme(nextTheme);
-    if (nextTheme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-  });
   const location = useLocation();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -144,7 +128,7 @@ export function Topbar({
 
   return (
     <header ref={headerRef} className="scanms-site-header sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
-      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6">
+      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Link to="/marketplace" className="flex items-center gap-2 group shrink-0" title="Về trang chủ Sàn SCANMS">
@@ -153,10 +137,8 @@ export function Topbar({
 
         </div>
 
-        {/* Right: Actions, Switcher, Notifications & User Card */}
+        {/* Right: Actions, Notifications & User Card */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <WorkspaceSwitcher variant="header" />
-
           <div className="hidden lg:inline-flex items-center gap-[7px] h-8 p-[5px_10px_5px_6px] border border-[#EAE4D7] rounded-[10px] bg-white whitespace-nowrap" title="Hệ thống trực tuyến">
             <span className="grid place-items-center w-5 h-5 rounded-[6px] bg-[#FBF5EB]" aria-hidden="true">
               <span className="w-[5px] h-[5px] rounded-full bg-[#059669]" />
@@ -166,20 +148,9 @@ export function Topbar({
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            aria-label={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
-            title={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
-            aria-pressed={theme === 'dark'}
-            className="w-8.5 h-8.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6] flex items-center justify-center transition cursor-pointer shadow-2xs"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-[#B88E4F]" /> : <Moon className="w-4 h-4 text-[#7D715E]" />}
-          </button>
-
           <NotificationDropdown />
 
-          <div className="relative" ref={menuRef}>
+          <div className="relative z-50" ref={menuRef}>
             <HeaderAccountButton
               user={currentUser}
               role={role}

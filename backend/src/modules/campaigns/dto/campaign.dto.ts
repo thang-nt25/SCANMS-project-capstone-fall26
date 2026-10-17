@@ -19,11 +19,16 @@ export class CreateCampaignDto {
   @IsNotEmpty({ message: 'Tên chiến dịch không được để trống' })
   name: string;
 
-  @ApiProperty({ description: 'Mức hoa hồng thưởng thêm (%)', example: 5.0 })
+  @ApiProperty({ description: 'Mức hoa hồng thưởng thêm (%)', example: 2 })
   @IsNumber()
-  @Min(0, { message: 'Hoa hồng thưởng thêm tối thiểu 0%' })
-  @Max(100, { message: 'Hoa hồng thưởng thêm tối đa 100%' })
+  @Min(1, { message: 'Hoa hồng thưởng thêm tối thiểu 1%' })
+  @Max(2, { message: 'Hoa hồng thưởng thêm tối đa 2%' })
   bonusCommissionRate: number;
+
+  @ApiProperty({ description: 'Ngân sách tối đa cho phần hoa hồng thưởng thêm (VNĐ)' })
+  @IsNumber()
+  @Min(1)
+  bonusBudgetTotal: number;
 
   @ApiProperty({
     description: 'Thời điểm bắt đầu chiến dịch (ISO 8601)',

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   ArrowLeft,
+  ArrowRight,
   Plus,
   Trash2,
   Edit2,
@@ -65,6 +66,9 @@ import {
 } from '../../services/notifications.service';
 import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal';
 import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
+import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
+import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
+import { getGhnTrackingCode } from '../../utils/ghn-tracking';
 import {
   AddressLocationPicker,
   type AddressLocationResult,
@@ -183,6 +187,7 @@ export default function CustomerPortalPage() {
   const [ordersError, setOrdersError] = useState(false);
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderFilterStatus>('ALL');
   const [orderSearch, setOrderSearch] = useState('');
+  const [appliedOrderSearch, setAppliedOrderSearch] = useState('');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<CustomerOrder | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -665,6 +670,7 @@ export default function CustomerPortalPage() {
   };
 
   const fetchOrders = async (searchOverride?: string) => {
+    const search = (searchOverride ?? orderSearch).trim();
     setOrdersLoading(true);
     setOrdersError(false);
     try {
@@ -672,10 +678,11 @@ export default function CustomerPortalPage() {
 
       const res = await customerService.getOrders({
         status: statusParam,
-        search: (searchOverride ?? orderSearch).trim() || undefined,
+        search: search || undefined,
       });
       const loadedOrders = res.orders || [];
       setOrders(loadedOrders);
+      setAppliedOrderSearch(search);
 
       const targetOrderId = searchParams.get('orderId');
       if (targetOrderId && loadedOrders.length > 0) {
@@ -1040,25 +1047,13 @@ export default function CustomerPortalPage() {
             {/* TAB 1: ĐƠN MUA CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'orders' && (
-              <section className="@container/orders grid gap-[14px] w-full max-w-[1120px] min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-labelledby="customer-orders-title">
-                <header className="flex items-center flex-wrap gap-[10px_12px] pt-[4px] pb-[14px] border-b border-[#EAE4D7] @max-[499px]:grid @max-[499px]:grid-cols-[40px_minmax(0,1fr)]">
-                  <span className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true"><ShoppingBag size={21} /></span>
-                  <div className="flex-1 min-w-[200px] @max-[499px]:min-w-0">
-                    <h1 id="customer-orders-title" className="m-0 text-[20px] @max-[499px]:text-[19px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Đơn mua của tôi</h1>
-                    <p className="mt-[3px] mb-0 text-[#7D715E] text-[12px] @max-[499px]:text-[11px] leading-[1.5]">Theo dõi đơn hàng và quản lý các lần mua sắm.</p>
-                  </div>
-                  <Link to="/marketplace" className="inline-flex items-center justify-center shrink-0 gap-[6px] min-h-[36px] px-[12px] py-[7px] border border-[#EAE4D7] rounded-[9px] bg-[#FBF5EB] text-[#1A1612] text-[11px] font-[600] leading-[1.4] no-underline whitespace-nowrap hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors @max-[499px]:col-start-2 @max-[499px]:justify-self-start @max-[499px]:self-end">
-                    <span>Tiếp tục mua sắm</span>
-                    <ArrowLeft size={14} className="rotate-180 text-[#B88E4F]" aria-hidden="true" />
-                  </Link>
-                </header>
-
+              <section className="@container/orders grid gap-3.5 w-full max-w-[1120px] min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
                 {/* 1. Status Filter Tabs & Search Controls */}
-                <div className="grid gap-[10px] min-w-0 bg-white border border-[#EAE4D7] rounded-[12px] overflow-hidden @max-[499px]:p-0">
-                  <div className="flex gap-[4px] min-w-0 p-[4px] overflow-x-auto border-b border-[#EAE4D7] bg-[#F3EFE6] [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
+                <div className="grid gap-2.5 min-w-0 bg-white border border-[#EAE4D7] rounded-xl overflow-hidden shadow-2xs @max-[499px]:p-0">
+                  <div className="flex gap-[4px] min-w-0 p-[4px] overflow-x-auto border-b border-[#EAE4D7] bg-white [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
                     {[
                       { key: 'ALL', label: 'Tất cả' },
-                      { key: 'PENDING', label: 'Chờ xác nhận' },
+                      { key: 'PENDING', label: 'Chờ Shop xác nhận' },
                       { key: 'SHIPPING', label: 'Vận chuyển' },
                       { key: 'DELIVERED', label: 'Chờ nhận hàng' },
                       { key: 'COMPLETED', label: 'Hoàn thành' },
@@ -1072,10 +1067,10 @@ export default function CustomerPortalPage() {
                           type="button"
                           onClick={() => setOrderStatusFilter(tab.key as OrderFilterStatus)}
                           aria-pressed={orderStatusFilter === tab.key}
-                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-[38px] @max-[499px]:min-h-[34px] py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] transition-colors cursor-pointer text-center whitespace-nowrap ${
+                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-[38px] @max-[499px]:min-h-[34px] py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] border transition-colors cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
                             isActive
-                              ? 'bg-white text-[#1A1612] font-[600] shadow-[0_1px_3px_rgba(26,22,18,0.06)]'
-                              : 'text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] font-[500]'
+                              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] font-[600]'
+                              : 'border-transparent bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] font-[500]'
                           }`}
                         >
                           <span>{tab.label}</span>
@@ -1084,44 +1079,56 @@ export default function CustomerPortalPage() {
                     })}
                   </div>
 
-                  {/* 2. Order Search Bar */}
-                  <div className="p-[10px_12px] @max-[499px]:p-[8px_10px]">
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        fetchOrders();
-                      }}
-                      className="relative flex items-center border border-[#EAE4D7] rounded-[8px] bg-white px-[10px] py-[6px] focus-within:border-[#C59B58] focus-within:shadow-[0_0_0_2px_rgba(197,155,88,0.15)] transition group"
-                    >
-                      <Search className="w-[16px] h-[16px] text-[#7D715E] group-focus-within:text-[#B88E4F] shrink-0 mr-[10px] transition-colors" />
-                      <input
-                        type="text"
-                        value={orderSearch}
-                        onChange={(e) => setOrderSearch(e.target.value)}
-                        aria-label="Tìm đơn mua"
-                        placeholder="Tìm mã đơn, sản phẩm hoặc gian hàng…"
-                        className="min-w-0 flex-1 bg-transparent text-[13px] @max-[499px]:text-[12px] text-[#1A1612] placeholder-[#7D715E]/85 outline-none font-normal"
-                      />
-                      {orderSearch && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOrderSearch('');
-                            void fetchOrders('');
-                          }}
-                          className="p-[4px] text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] rounded-[6px] transition mr-[4px] cursor-pointer shrink-0"
-                          title="Xóa tìm kiếm"
-                        >
-                          <X className="w-[16px] h-[16px]" />
-                        </button>
-                      )}
-                      <button
-                        type="submit"
-                        className="px-[14px] @max-[499px]:px-[10px] py-[6px] rounded-[6px] bg-[#C59B58] hover:bg-[#B88E4F] text-white font-[600] text-[12px] @max-[499px]:text-[11px] transition cursor-pointer active:scale-95 shrink-0 whitespace-nowrap"
+                  {/* 2. Order Search Bar & Tiếp tục mua sắm */}
+                  <div className="p-2.5 sm:p-3 bg-white">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+                      {/* Thanh tìm kiếm nhỏ gọn, cân xứng, đẹp mắt */}
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          fetchOrders();
+                        }}
+                        className="relative flex items-center flex-1 max-w-full sm:max-w-[460px] md:max-w-[500px] border border-[#EAE4D7] rounded-xl bg-white px-3 py-1.5 focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/15 transition group shadow-2xs"
                       >
-                        Tìm kiếm
-                      </button>
-                    </form>
+                        <Search className="w-4 h-4 text-[#7D715E] group-focus-within:text-[#B88E4F] shrink-0 mr-2.5 transition-colors" />
+                        <input
+                          type="text"
+                          value={orderSearch}
+                          onChange={(e) => setOrderSearch(e.target.value)}
+                          aria-label="Tìm đơn mua"
+                          placeholder="Tìm mã đơn, SĐT người nhận, sản phẩm hoặc gian hàng…"
+                          className="min-w-0 flex-1 bg-transparent text-[13px] @max-[499px]:text-[12px] text-[#1A1612] placeholder-[#7D715E]/85 outline-none font-normal"
+                        />
+                        {orderSearch && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOrderSearch('');
+                              void fetchOrders('');
+                            }}
+                            className="p-1 text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] rounded-md transition mr-1 cursor-pointer shrink-0"
+                            title="Xóa tìm kiếm"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          type="submit"
+                          className="px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white font-semibold text-xs transition cursor-pointer active:scale-95 shrink-0 whitespace-nowrap shadow-xs"
+                        >
+                          Tìm kiếm
+                        </button>
+                      </form>
+
+                      {/* Nút Tiếp tục mua sắm đưa từ header xuống */}
+                      <Link
+                        to="/marketplace"
+                        className="inline-flex items-center justify-center shrink-0 gap-2 h-9 px-3.5 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold leading-none no-underline whitespace-nowrap transition shadow-2xs group"
+                      >
+                        <span>Tiếp tục mua sắm</span>
+                        <ArrowRight size={14} className="text-[#B88E4F] group-hover:translate-x-0.5 transition-transform" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
@@ -1164,10 +1171,12 @@ export default function CustomerPortalPage() {
                     </div>
                     <div>
                       <strong className="text-[14px] font-[600] text-[#1A1612] block">
-                        Chưa có đơn hàng nào
+                        {appliedOrderSearch || orderStatusFilter !== 'ALL' ? 'Không tìm thấy đơn hàng phù hợp' : 'Chưa có đơn hàng nào'}
                       </strong>
                       <p className="text-[12px] text-[#7D715E] mt-[3px] max-w-sm m-0">
-                        {orderStatusFilter === 'ALL'
+                        {appliedOrderSearch
+                          ? `Không có đơn mua nào của bạn khớp với “${appliedOrderSearch}” trong bộ lọc hiện tại. Hãy kiểm tra số điện thoại người nhận đã lưu trên đơn hoặc chọn mục Tất cả.`
+                          : orderStatusFilter === 'ALL'
                           ? 'Bạn chưa có đơn mua nào trên SCANMS. Hãy khám phá ngay các sản phẩm chính hãng với nhiều ưu đãi nhé!'
                           : `Không tìm thấy đơn hàng nào ở mục "${orderStatusFilter}".`}
                       </p>
@@ -1202,7 +1211,7 @@ export default function CustomerPortalPage() {
                           : order.returnRequest?.status === 'REFUNDED' ? 'Đã hoàn tiền'
                           : 'Đang xử lý trả hàng'
                         : isCancelled ? 'Đã hủy đơn' : isCompleted ? 'Hoàn thành' : isDelivered ? 'Đã giao hàng'
-                        : isShipping ? 'Đang vận chuyển' : isPending ? 'Chờ xác nhận' : 'Đang xử lý';
+                        : isShipping ? 'Đang vận chuyển' : isPending ? 'Chờ Shop xác nhận' : 'Đang xử lý';
                       const StatusIcon = hasReturnRequest ? RotateCcw : isCancelled ? XCircle : isCompleted || isDelivered ? CheckCircle2 : isShipping ? Truck : Clock;
 
                       return (
@@ -1230,6 +1239,10 @@ export default function CustomerPortalPage() {
                               <span className="flex flex-wrap gap-[3px_10px] text-[#7D715E] text-[11px] @max-[499px]:text-[10px] leading-[1.5] break-words [&>span+span]:border-l [&>span+span]:border-[#EAE4D7] [&>span+span]:pl-[10px]">
                                 <span>#{order.externalOrderSn}</span>
                                 <span>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
+                              </span>
+                              <span className="flex flex-wrap gap-x-[10px] gap-y-[2px] text-[11px] @max-[499px]:text-[10px] leading-[1.5] text-[#7D715E]">
+                                <span className="min-w-0 break-words">Người nhận: <span className="text-[#1A1612]">{order.customerName?.trim() || 'Chưa có thông tin'}</span></span>
+                                <span>SĐT: <span className="text-[#1A1612] tabular-nums">{order.customerPhone?.trim() || 'Chưa có thông tin'}</span></span>
                               </span>
                             </span>
                             <span data-status={order.status} className={`inline-flex items-center gap-[5px] px-[9px] py-[5px] border rounded-[7px] text-[11px] font-[500] leading-[1.5] justify-self-end @max-[849px]:col-start-2 @max-[849px]:row-start-2 @max-[849px]:justify-self-start @max-[499px]:col-start-2 @max-[499px]:row-start-3 @max-[499px]:max-w-full ${isCancelled ? 'bg-white border-[#FECACA] text-[#DC2626]' : isCompleted || isDelivered ? 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E]' : 'bg-[#FBF5EB] border-[#EEDFC6] text-[#B88E4F]'}`}>
@@ -1395,15 +1408,15 @@ export default function CustomerPortalPage() {
 
                               {/* Action Buttons Row */}
                               <div className="flex items-center justify-end flex-wrap gap-[7px] ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
-                                {/* Primary Button: Mua lại */}
-                                <button
+                                {/* Chỉ mua lại khi đơn đã kết thúc */}
+                                {(isCompleted || isCancelled) && <button
                                   type="button"
                                   onClick={() => handleReorder(order)}
                                   className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                 >
                                   <RotateCcw className="w-[14px] h-[14px]" />
                                   <span>Mua lại</span>
-                                </button>
+                                </button>}
 
                                 {/* Secondary Button: Xem chi tiết */}
                                 <button
@@ -1411,7 +1424,7 @@ export default function CustomerPortalPage() {
                                   onClick={() => setSelectedOrderDetails(order)}
                                   className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                 >
-                                  {isCancelled ? 'Chi tiết hủy đơn' : isReturned ? 'Chi tiết đổi trả' : 'Chi tiết đơn'}
+                                  {isCancelled ? 'Xem chi tiết hủy đơn' : isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
                                 </button>
 
                                 {/* Cancel Button if Pending */}
@@ -2131,6 +2144,25 @@ export default function CustomerPortalPage() {
               </div>
             </div>
 
+            {getGhnTrackingCode(selectedOrderDetails.rawPayload) && (
+              isGeneratedGhnTestTrackingCode(getGhnTrackingCode(selectedOrderDetails.rawPayload)) ? (
+                <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#4A3E2D]" role="status">
+                  <strong className="block text-[#1A1612]">Shop chưa có mã vận đơn GHN thật</strong>
+                  <p className="m-0 mt-1 text-xs leading-relaxed text-[#7D715E]">
+                    Mã hiện tại chỉ là mã thử nội bộ. Shop cần tạo vận đơn trên GHN hoặc cập nhật mã do GHN cấp để xem hành trình.
+                  </p>
+                </div>
+              ) : (
+                <GhnTrackingTimeline
+                  orderCode={getGhnTrackingCode(selectedOrderDetails.rawPayload)!}
+                  orderStatus={selectedOrderDetails.status}
+                  environment={selectedOrderDetails.rawPayload?.ghnEnvironment === 'TEST' || selectedOrderDetails.rawPayload?.ghnEnvironment === 'LIVE'
+                    ? selectedOrderDetails.rawPayload.ghnEnvironment
+                    : undefined}
+                />
+              )
+            )}
+
             {/* Dispute / Return Banner if Returned */}
             {selectedOrderDetails.status === 'RETURNED' && (
               <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-900 flex flex-col gap-2">
@@ -2194,10 +2226,9 @@ export default function CustomerPortalPage() {
                 <MapPin className="w-4 h-4 text-[#C59B58]" />
                 <span>Địa chỉ nhận hàng:</span>
               </strong>
-              <span className="text-[#1A1612] font-bold">
-                {selectedOrderDetails.customerName} • {selectedOrderDetails.customerPhone}
-              </span>
-              <span className="text-[#7D715E] leading-relaxed">{selectedOrderDetails.shippingAddress}</span>
+              <span className="text-[#7D715E] break-words">Người nhận: <span className="text-[#1A1612] font-semibold">{selectedOrderDetails.customerName?.trim() || 'Chưa có thông tin'}</span></span>
+              <span className="text-[#7D715E]">Số điện thoại: <span className="text-[#1A1612] font-semibold tabular-nums">{selectedOrderDetails.customerPhone?.trim() || 'Chưa có thông tin'}</span></span>
+              <span className="text-[#7D715E] leading-relaxed break-words">{selectedOrderDetails.shippingAddress || 'Chưa có địa chỉ nhận hàng'}</span>
             </div>
 
             {/* Product List */}
@@ -2324,7 +2355,7 @@ export default function CustomerPortalPage() {
                 <span>Xác nhận hủy đơn hàng</span>
               </strong>
               <p className="text-xs text-[#7D715E] mt-1 m-0">
-                Đơn hàng đang ở trạng thái Chờ xác nhận. Bạn có thể hủy ngay mà không mất phí.
+                Đơn hàng đang chờ Shop xác nhận. Bạn có thể hủy ngay mà không mất phí.
               </p>
             </div>
 

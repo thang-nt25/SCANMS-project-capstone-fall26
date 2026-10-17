@@ -3,9 +3,10 @@ import {
   IsNumber,
   IsString,
   IsUUID,
-  Max,
+  IsIn,
+  IsBoolean,
+  Equals,
   MaxLength,
-  Min,
   MinLength,
 } from 'class-validator';
 
@@ -15,9 +16,12 @@ export class CreateExclusiveDealDto {
 
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Max(100)
+  @IsIn([11, 12, 13], { message: 'Chỉ chọn thưởng Deal +1%, +2% hoặc +3% trên nền 10%.' })
   proposedCommissionRate: number;
+
+  @IsBoolean()
+  @Equals(true, { message: 'KOL phải cam kết thực hiện video review cho sản phẩm.' })
+  videoReviewCommitment: boolean;
 
   @IsString()
   @MinLength(5)

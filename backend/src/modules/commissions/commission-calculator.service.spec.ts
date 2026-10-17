@@ -4,7 +4,7 @@ import { CommissionCalculatorService } from './commission-calculator.service';
 describe('CommissionCalculatorService', () => {
   const service = new CommissionCalculatorService();
 
-  it('calculates and rounds commission for every order item', () => {
+  it('uses fixed base 10 despite legacy product overrides and rounds every item', () => {
     const result = service.calculateOrderCommission(
       [
         {
@@ -24,14 +24,14 @@ describe('CommissionCalculatorService', () => {
       new Prisma.Decimal('2.5'),
     );
 
-    expect(result.items[0].appliedCommissionRate.toString()).toBe('15');
-    expect(result.items[0].calculatedCommissionAmount.toFixed(2)).toBe('45.00');
+    expect(result.items[0].appliedCommissionRate.toString()).toBe('12.5');
+    expect(result.items[0].calculatedCommissionAmount.toFixed(2)).toBe('37.50');
     expect(result.items[1].appliedCommissionRate.toString()).toBe('12.5');
     expect(result.items[1].calculatedCommissionAmount.toFixed(2)).toBe('50.00');
-    expect(result.totalCommissionAmount.toFixed(2)).toBe('95.00');
+    expect(result.totalCommissionAmount.toFixed(2)).toBe('87.50');
   });
 
-  it('caps the final commission rate at 100 percent', () => {
+  it('ignores legacy 99 percent product rate and caps the tier bonus at 3', () => {
     const result = service.calculateOrderCommission(
       [
         {
@@ -45,8 +45,8 @@ describe('CommissionCalculatorService', () => {
       new Prisma.Decimal('5'),
     );
 
-    expect(result.items[0].appliedCommissionRate.toString()).toBe('100');
-    expect(result.totalCommissionAmount.toFixed(2)).toBe('250000.00');
+    expect(result.items[0].appliedCommissionRate.toString()).toBe('13');
+    expect(result.totalCommissionAmount.toFixed(2)).toBe('32500.00');
   });
 
   it('allocates order discount before calculating unsnapshotted commission', () => {
@@ -74,7 +74,7 @@ describe('CommissionCalculatorService', () => {
           quantity: 1,
           unitPrice: new Prisma.Decimal(1000000),
           customCommissionRate: new Prisma.Decimal(50),
-          appliedCommissionRate: new Prisma.Decimal(10),
+          appliedCommissionRate: new Prisma.Decimal(15),
           calculatedCommissionAmount: new Prisma.Decimal(50000),
           commissionSnapshotAt: new Date(),
         },
@@ -83,7 +83,7 @@ describe('CommissionCalculatorService', () => {
       new Prisma.Decimal(5),
       new Prisma.Decimal(500000),
     );
-    expect(result.items[0].appliedCommissionRate.toString()).toBe('10');
+    expect(result.items[0].appliedCommissionRate.toString()).toBe('15');
     expect(result.totalCommissionAmount.toFixed(2)).toBe('50000.00');
   });
 

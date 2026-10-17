@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../../core/database/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { CommissionCalculatorService } from './commission-calculator.service';
+import { tierBonusByName } from './commission-policy';
 import {
   COMMISSION_ELIGIBLE_ORDER_STATUSES,
   COMMISSION_HOLD_DAYS,
@@ -126,7 +127,7 @@ export class CommissionsService {
                 isDeleted: true,
                 collaboratorProfile: {
                   select: {
-                    tier: { select: { extraBonusPercentage: true } },
+                    tier: { select: { name: true, extraBonusPercentage: true } },
                   },
                 },
               },
@@ -154,9 +155,9 @@ export class CommissionsService {
           return false;
         }
 
-        const tierBonusRate =
-          collaborator.collaboratorProfile?.tier?.extraBonusPercentage ??
-          new Prisma.Decimal(0);
+        const tier = collaborator.collaboratorProfile?.tier;
+        const tierBonusRate = new Prisma.Decimal(tier?.name
+          ? tierBonusByName(tier.name) : Math.min(3, Math.max(0, Number(tier?.extraBonusPercentage || 0))));
         const calculation = this.calculator.calculateOrderCommission(
           order.orderItems.map((item) => ({
             id: item.id,
@@ -169,7 +170,7 @@ export class CommissionsService {
           })),
           order.store.defaultCommissionRate,
           tierBonusRate,
-          (order.discountAmount ?? new Prisma.Decimal(0)).plus(
+          new Prisma.Decimal(order.couponDiscountAmount ?? order.discountAmount ?? 0).plus(
             order.refundedAmount ?? 0,
           ),
         );

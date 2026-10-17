@@ -15,6 +15,10 @@ import {
 import { DiscountType, CouponScope, CouponFundingSource } from '@prisma/client';
 
 export class ApproveCouponDto {
+  @ApiPropertyOptional({ description: 'Chiến dịch thuộc gian hàng khi áp dụng voucher Campaign' })
+  @IsOptional() @IsString()
+  campaignId?: string;
+
   @ApiProperty({
     enum: DiscountType,
     description: 'Loại giảm giá (PERCENTAGE hoặc FIXED_AMOUNT)',

@@ -1,0 +1,3 @@
+ALTER TABLE "campaigns"
+  ADD COLUMN IF NOT EXISTS "bonus_budget_total" DECIMAL(15,2),
+  ADD COLUMN IF NOT EXISTS "bonus_budget_used" DECIMAL(15,2) NOT NULL DEFAULT 0;

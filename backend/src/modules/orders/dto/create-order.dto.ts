@@ -132,6 +132,15 @@ export class CreateOrderDto {
   @IsString()
   couponCode?: string;
 
+  @ApiPropertyOptional({ description: 'Voucher tiền hàng do SCANMS tài trợ, cộng với tối đa một voucher Shop' })
+  @IsOptional() @IsString() platformCouponCode?: string;
+
+  @ApiPropertyOptional({ description: 'Voucher chỉ giảm phí vận chuyển GHN' })
+  @IsOptional() @IsString() shippingCouponCode?: string;
+
+  @IsOptional() platformCouponsByStore?: Record<string, string>;
+  @IsOptional() shippingCouponsByStore?: Record<string, string>;
+
   @ApiPropertyOptional({
     description:
       'Bản đồ coupon theo từng gian hàng trong đơn đa Shop { [storeId]: couponCode }',

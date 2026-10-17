@@ -76,7 +76,7 @@ export function generateTrackingCode(carrier: string): string {
   const prefix = CARRIER_PREFIX[carrier] ?? "SCX";
   const ts  = Date.now().toString(36).toUpperCase().slice(-4);
   const rnd = Math.random().toString(36).toUpperCase().slice(2, 7);
-  return `${prefix}-${ts}${rnd}`;
+  return `${carrier === "GHN" ? "TEST-GHN" : prefix}-${ts}${rnd}`;
 }
 
 // --------------- ShippingLabel React preview component ---------------

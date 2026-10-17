@@ -20,11 +20,8 @@ import {
   StopCircle,
   Package,
   Crown,
-  AlertTriangle,
-  ShieldAlert,
   Sparkles,
   MessageSquare,
-  ShieldCheck,
   RefreshCw,
 } from 'lucide-react';
 import api from '../../services/api';
@@ -70,6 +67,7 @@ type Creator = {
   campaignBonusRate?: number;
   baseRate?: number;
   currentEffectiveRate?: number;
+  tierBonusRate?: number;
 };
 
 type LiveSessionItem = {
@@ -229,7 +227,7 @@ export default function LiveSessionsPage({
     description: '',
     coverImageUrl: '',
     customMessage: '',
-    liveBoost: 0,
+    liveBoost: 2,
     acceptedHighRisk: false,
   });
 
@@ -427,7 +425,7 @@ export default function LiveSessionsPage({
   // Phân rã hoa hồng 3 tầng (Layered Breakdown)
   const creatorBaseRate = useMemo(() => {
     if (!selectedCreator) return Number(catalog.defaultCommissionRate || 10);
-    return Number(selectedCreator.exclusiveDealRate ?? selectedCreator.baseRate ?? catalog.defaultCommissionRate ?? 10);
+    return Number(selectedCreator.baseRate ?? 10);
   }, [selectedCreator, catalog.defaultCommissionRate]);
 
   const creatorCampaignBonus = useMemo(() => {
@@ -439,19 +437,18 @@ export default function LiveSessionsPage({
   }, [creatorBaseRate, creatorCampaignBonus]);
 
   const liveBoostRate = useMemo(() => {
-    return Number(form.liveBoost || 0);
+    return Number(form.liveBoost || 2);
   }, [form.liveBoost]);
 
   const totalCommissionRate = useMemo(() => {
-    return preLiveRate + liveBoostRate;
+    return Math.min(25, preLiveRate + liveBoostRate);
   }, [preLiveRate, liveBoostRate]);
 
   const financialAlertTier = useMemo<'SAFE' | 'WARNING' | 'DANGER' | 'EXCEEDED'>(() => {
-    if (totalCommissionRate > 40) return 'EXCEEDED';
-    if (totalCommissionRate > 30) return 'DANGER';
+    if (preLiveRate + liveBoostRate > 25) return 'EXCEEDED';
     if (totalCommissionRate >= 20) return 'WARNING';
     return 'SAFE';
-  }, [totalCommissionRate]);
+  }, [preLiveRate, liveBoostRate, totalCommissionRate]);
 
   // Đồng bộ form.commissionRate khi thay đổi KOL hoặc Boost
   useEffect(() => {
@@ -503,17 +500,9 @@ export default function LiveSessionsPage({
       toast.error('Nhập mức giảm, tổng lượt dùng và lượt dùng mỗi khách.');
       return;
     }
-    const finalRate = Number(form.commissionRate);
-    if (isNaN(finalRate) || finalRate < 0) {
-      toast.error('Nhập hoa hồng phiên live hợp lệ.');
-      return;
-    }
-    if (finalRate > 40) {
-      toast.error('Hoa hồng vượt trần bảo vệ tối đa 40%. Vui lòng điều chỉnh lại.');
-      return;
-    }
-    if (finalRate > 30 && !form.acceptedHighRisk) {
-      toast.error('Vui lòng xác nhận bạn hiểu rủi ro biên độ lợi nhuận khi đặt hoa hồng trên 30%.');
+    const finalRate = Number(form.liveBoost);
+    if (![2, 3].includes(finalRate)) {
+      toast.error('Thưởng Live chỉ được chọn +2% hoặc +3%.');
       return;
     }
     const externalChannels =
@@ -579,7 +568,7 @@ export default function LiveSessionsPage({
         usageLimitTotal: '',
         usageLimitPerCustomer: '1',
         customMessage: '',
-        liveBoost: 0,
+        liveBoost: 2,
         acceptedHighRisk: false,
         externalChannels: [{ channelUrl: '', followerCount: '' }],
       }));
@@ -1589,7 +1578,7 @@ export default function LiveSessionsPage({
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-center">
                 <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5 shadow-2xs">
                   <span className="text-[10px] font-semibold text-[#7D715E] block">
-                    {selectedCreator?.isExclusiveVip ? '👑 Deal độc quyền' : 'Hoa hồng cơ sở'}
+                    Nền + cấp bậc + Deal
                   </span>
                   <span className="text-base font-extrabold text-[#1A1612]">{creatorBaseRate}%</span>
                 </div>
@@ -1622,7 +1611,7 @@ export default function LiveSessionsPage({
                     : 'border-red-400 bg-red-100 text-red-900'
                 }`}>
                   <span className="text-[10px] font-extrabold block uppercase tracking-wide">
-                    = TỔNG ÁP DỤNG LIVE
+                    = ƯỚC TÍNH TỐI ĐA
                   </span>
                   <span className="text-lg font-black">{totalCommissionRate}%</span>
                 </div>
@@ -1633,10 +1622,8 @@ export default function LiveSessionsPage({
                 <span className="text-xs font-bold text-[#5F5547]">Chọn nhanh mức thưởng thêm phiên Live:</span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
-                    { label: 'Giữ nguyên (+0%)', boost: 0 },
                     { label: '+2%', boost: 2 },
                     { label: '+3% (Khuyến nghị)', boost: 3 },
-                    { label: '+5%', boost: 5 },
                   ].map((chip) => {
                     const isSelected = form.liveBoost === chip.boost;
                     return (
@@ -1664,63 +1651,9 @@ export default function LiveSessionsPage({
               </div>
             </div>
 
-            {/* 3-Tier Financial Guardrails Alert Box */}
-            {financialAlertTier === 'SAFE' && (
-              <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-800">
-                <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
-                <div>
-                  <p className="font-bold">🟢 Mức hoa hồng an toàn ({totalCommissionRate}%)</p>
-                  <p className="text-[11px] text-emerald-700">Biên độ lợi nhuận tối ưu cho gian hàng. Khuyến khích kết hợp voucher để KOL bùng nổ doanh số.</p>
-                </div>
-              </div>
-            )}
-
-            {financialAlertTier === 'WARNING' && (
-              <div className="flex items-center gap-2.5 rounded-2xl border border-amber-300 bg-amber-50/90 p-3 text-xs text-amber-900">
-                <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
-                <div>
-                  <p className="font-bold">🟡 Cảnh báo: Tỷ lệ hoa hồng cộng dồn đang ở mức cao ({totalCommissionRate}%)</p>
-                  <p className="text-[11px] text-amber-800">
-                    Hoa hồng gồm {creatorBaseRate}% gốc + {creatorCampaignBonus > 0 ? `${creatorCampaignBonus}% chiến dịch + ` : ''}{liveBoostRate}% Live Boost. Hãy kiểm tra giá vốn sản phẩm trước khi tạo phiên.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {financialAlertTier === 'DANGER' && (
-              <div className="space-y-2 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3.5 text-xs text-rose-900">
-                <div className="flex items-start gap-2.5">
-                  <ShieldAlert className="h-5 w-5 shrink-0 text-rose-600 mt-0.5" />
-                  <div>
-                    <p className="font-extrabold text-rose-800">🚨 Cảnh báo rủi ro cao: Hoa hồng {totalCommissionRate}% vượt ngưỡng 30%</p>
-                    <p className="text-[11px] text-rose-700">
-                      Nguy cơ âm giá vốn nếu áp dụng đồng thời với Voucher giảm sâu hoặc miễn phí vận chuyển. Yêu cầu Chủ shop xác nhận rủi ro:
-                    </p>
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 rounded-xl border border-rose-200 bg-white/80 p-2 cursor-pointer font-bold text-rose-900">
-                  <input
-                    type="checkbox"
-                    checked={form.acceptedHighRisk}
-                    onChange={(e) => setForm((p) => ({ ...p, acceptedHighRisk: e.target.checked }))}
-                    className="h-4 w-4 accent-rose-600 cursor-pointer shrink-0"
-                  />
-                  <span>Tôi hiểu và xác nhận chấp nhận rủi ro biên độ lợi nhuận khi thiết lập hoa hồng {totalCommissionRate}% cho phiên này.</span>
-                </label>
-              </div>
-            )}
-
-            {financialAlertTier === 'EXCEEDED' && (
-              <div className="flex items-center gap-2.5 rounded-2xl border-2 border-red-500 bg-red-50 p-3.5 text-xs text-red-900">
-                <ShieldAlert className="h-5 w-5 shrink-0 text-red-600" />
-                <div>
-                  <p className="font-extrabold text-red-800">⛔ Vượt trần an toàn sàn SCANMS (Tối đa 40%)</p>
-                  <p className="text-[11px] text-red-700">
-                    Tổng tỷ lệ hoa hồng cộng dồn hiện tại là {totalCommissionRate}%, vượt quá mức trần 40% được bảo vệ. Vui lòng giảm bớt mức Live Boost.
-                  </p>
-                </div>
-              </div>
-            )}
+            <p className="text-xs leading-relaxed text-[#7D715E]">
+              Nền 10% + cấp bậc (0–3%) + Deal (1–3%) + chiến dịch (1–2%) + Live (2–3%). Trần an toàn 25%.
+            </p>
           </section>
 
           {/* Block 6: Lời nhắn riêng gửi KOL qua Chat */}
@@ -1740,7 +1673,7 @@ export default function LiveSessionsPage({
                   maxLength={1000}
                   value={form.customMessage}
                   onChange={(e) => setField('customMessage', e.target.value)}
-                  placeholder="Ví dụ: Chào bạn, đợt này Shop đẩy mạnh sản phẩm Serum mới, hoa hồng ưu đãi 23% cùng voucher độc quyền 15%, mong bạn hỗ trợ phát sóng nhiệt tình nhé!"
+                  placeholder="Ví dụ: Shop muốn hợp tác giới thiệu sản phẩm mới trong phiên Live, thưởng thêm +3% khi phiên đang phát sóng."
                   className="w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs outline-none transition focus:border-[#C59B58] focus:bg-white resize-none"
                 />
                 <div className="absolute right-3 bottom-3 flex items-center gap-1 text-[10px] text-[#7D715E]">

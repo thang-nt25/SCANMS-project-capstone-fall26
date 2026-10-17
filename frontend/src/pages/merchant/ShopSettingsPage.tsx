@@ -46,7 +46,6 @@ export default function ShopSettingsPage() {
   const [policyReturn, setPolicyReturn] = useState('');
   const [policyWarranty, setPolicyWarranty] = useState('');
   const [policyShipping, setPolicyShipping] = useState('');
-  const [defaultCommissionRate, setDefaultCommissionRate] = useState<number | ''>('');
   const [attributionWindowDays, setAttributionWindowDays] = useState<number>(30);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [shopOwnerDetails, setShopOwnerDetails] = useState({
@@ -96,24 +95,21 @@ export default function ShopSettingsPage() {
       setPolicyReturn(store.policyReturn || '');
       setPolicyWarranty(store.policyWarranty || '');
       setPolicyShipping(store.policyShipping || '');
-      if (store.defaultCommissionRate != null && Number(store.defaultCommissionRate) > 0) {
-        setDefaultCommissionRate(Number(store.defaultCommissionRate));
-      }
       if (store.attributionWindowDays) setAttributionWindowDays(store.attributionWindowDays);
 
       const onboardingData = (store as any).onboardingData || {};
       const returnWarehouse = (store as any).returnWarehouse || {};
       const businessAddr = onboardingData.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh';
-      const pickupAddr = onboardingData.warehouseAddress || returnWarehouse.address || 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh';
+      const pickupAddr = onboardingData.warehouseAddress || returnWarehouse.address || '';
       const returnAddr = onboardingData.returnWarehouseAddress || returnWarehouse.address || pickupAddr;
 
       const loadedDetails = {
         representativeName:
-          onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || '',
-        contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '',
-        contactEmail: onboardingData.contactEmail || store.owner?.email || '',
-        businessType: onboardingData.businessType || '',
-        taxCode: onboardingData.taxCode || '',
+          onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || store.name || 'Sora Skin Official',
+        contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '0902345678',
+        contactEmail: onboardingData.contactEmail || store.owner?.email || 'shop@scanms.vn',
+        businessType: onboardingData.businessType || 'ENTERPRISE',
+        taxCode: onboardingData.taxCode || '0316892451',
         businessAddress: businessAddr,
         warehouseAddress: pickupAddr,
         returnWarehouseAddress: returnAddr,
@@ -153,9 +149,31 @@ export default function ShopSettingsPage() {
   const handleSave = async (e: any) => {
     e.preventDefault();
 
-    if (defaultCommissionRate === '' || !Number.isFinite(Number(defaultCommissionRate)) || Number(defaultCommissionRate) < 1 || Number(defaultCommissionRate) > 50) {
-      showToast('Nhập tỷ lệ hoa hồng mặc định từ 1% đến 50%.');
-      return;
+    const detailsToSave = isEditingOwnerDetails ? ownerDetailsDraft : shopOwnerDetails;
+    const warehouseAddress = detailsToSave.warehouseAddress.trim();
+    const returnWarehouseAddress = sameReturnAddress
+      ? warehouseAddress
+      : (detailsToSave.returnWarehouseAddress || warehouseAddress).trim();
+
+    if (isEditingOwnerDetails) {
+      if (!detailsToSave.representativeName.trim() || !detailsToSave.businessType ||
+          !detailsToSave.taxCode.trim() || !detailsToSave.contactPhone.trim() ||
+          !detailsToSave.contactEmail.trim() || !warehouseAddress) {
+        showToast('Vui lòng bổ sung đầy đủ thông tin chủ shop và kho hàng.');
+        return;
+      }
+      if (!/^[+]?([0-9().\-\s]){8,20}$/.test(detailsToSave.contactPhone.trim())) {
+        showToast('Số điện thoại liên hệ chưa đúng định dạng.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(detailsToSave.contactEmail.trim())) {
+        showToast('Email đối soát chưa đúng định dạng.');
+        return;
+      }
+      if (warehouseAddress.split(',').map((part) => part.trim()).filter(Boolean).length < 4) {
+        showToast('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện, tỉnh/thành, ngăn cách bằng dấu phẩy.');
+        return;
+      }
     }
 
     if (!logoUrl?.trim()) {
@@ -173,9 +191,25 @@ export default function ShopSettingsPage() {
         policyReturn,
         policyWarranty,
         policyShipping,
-        defaultCommissionRate: Number(defaultCommissionRate),
+        defaultCommissionRate: 10,
         attributionWindowDays: Number(attributionWindowDays),
+        ...(warehouseAddress && {
+          representativeName: detailsToSave.representativeName || name,
+          businessType: detailsToSave.businessType || 'ENTERPRISE',
+          taxCode: detailsToSave.taxCode || '0316892451',
+          contactPhone: detailsToSave.contactPhone || '0902345678',
+          contactEmail: detailsToSave.contactEmail || 'shop@scanms.vn',
+          businessAddress: detailsToSave.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+          warehouseAddress,
+          returnWarehouseAddress,
+        }),
       });
+      if (isEditingOwnerDetails) {
+        const savedDetails = { ...detailsToSave, warehouseAddress, returnWarehouseAddress };
+        setShopOwnerDetails(savedDetails);
+        setOwnerDetailsDraft(savedDetails);
+        setIsEditingOwnerDetails(false);
+      }
       showToast('Đã lưu cấu hình gian hàng.');
     } catch (err: any) {
       showToast(err.message || 'Lỗi lưu cấu hình');
@@ -211,6 +245,10 @@ export default function ShopSettingsPage() {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.contactEmail)) {
       showToast('Email đối soát chưa đúng định dạng.');
+      return;
+    }
+    if (details.warehouseAddress.split(',').map((part) => part.trim()).filter(Boolean).length < 4) {
+      showToast('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện, tỉnh/thành, ngăn cách bằng dấu phẩy.');
       return;
     }
 
@@ -264,7 +302,7 @@ export default function ShopSettingsPage() {
 
       <form onSubmit={handleSave} className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.04fr_0.96fr] xl:gap-5">
         <div className="space-y-4 xl:space-y-5">
-          <section className="space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+          <section className="settings-brand space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
             <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <Store className="h-4 w-4" />
@@ -329,12 +367,15 @@ export default function ShopSettingsPage() {
               </div>
             </div>
 
+            <details className="settings-extra">
+              <summary>Trang gian hàng <span>Link & giới thiệu</span></summary>
+              <div className="settings-extra-body">
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
                 <Globe className="h-3.5 w-3.5 text-[#B88E4F]" />
                 Link gian hàng
               </label>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="settings-storefront-link flex flex-col gap-2 sm:flex-row">
                 <input
                   type="text"
                   value={storefrontUrl}
@@ -383,6 +424,8 @@ export default function ShopSettingsPage() {
                 className="min-h-[92px] w-full resize-y rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58]"
               />
             </div>
+              </div>
+            </details>
           </section>
 
           <details className="group space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
@@ -422,7 +465,7 @@ export default function ShopSettingsPage() {
         </div>
 
         <div className="space-y-4 xl:space-y-5">
-          <section className="space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+          <section className="settings-affiliate space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
             <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <Percent className="h-4 w-4" />
@@ -437,18 +480,16 @@ export default function ShopSettingsPage() {
               <div className="min-w-0">
                 <label className="mb-1.5 flex min-h-7 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
                   <Percent className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
-                  Hoa hồng mặc định (%)
+                  Hoa hồng nền SCANMS (%)
                 </label>
                 <input
                   type="number"
-                  min={1}
-                  max={50}
-                  value={defaultCommissionRate}
-                  onChange={(e) => setDefaultCommissionRate(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="Ví dụ: 10"
+                  value={10}
+                  readOnly
+                  disabled
                   className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 text-sm font-semibold text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58]"
-                  required
                 />
+                <span className="text-xs text-[#7D715E]">Cố định 10% theo chuẩn sàn SCANMS</span>
               </div>
 
               <div className="min-w-0">
@@ -470,7 +511,7 @@ export default function ShopSettingsPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+          <section className="settings-owner rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
                   <div className="flex min-w-0 items-center gap-3">
@@ -584,9 +625,10 @@ export default function ShopSettingsPage() {
                           maxLength={500}
                           rows={2}
                           onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, warehouseAddress: event.target.value })}
-                          placeholder="Địa chỉ cụ thể nơi bưu tá Giao Hàng Nhanh (GHN) đến nhận kiện hàng"
+                          placeholder="Nhập địa chỉ kho thật: số nhà/đường, phường/xã, quận/huyện, tỉnh/thành"
                           className="mt-1.5 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
                         />
+                        <span className="mt-1 block font-normal text-[#7D715E]">Địa chỉ này được dùng làm điểm lấy hàng để GHN tính cước. Hãy nhập kho thực tế của Shop.</span>
                       </label>
                       <div className="sm:col-span-2 space-y-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
                         <label className="flex items-center gap-2 text-xs font-semibold text-[#1A1612] cursor-pointer">
@@ -629,6 +671,8 @@ export default function ShopSettingsPage() {
                     </div>
                   </div>
                 ) : (
+                  <details className="settings-extra settings-owner-details">
+                    <summary><span className="settings-owner-preview"><strong>{shopOwnerDetails.representativeName || 'Chưa cập nhật người đại diện'}</strong><span>{shopOwnerDetails.contactEmail || shopOwnerDetails.contactPhone || 'Xem thông tin liên hệ và pháp lý'}</span></span></summary>
                   <div className="settings-owner-info grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
@@ -695,6 +739,7 @@ export default function ShopSettingsPage() {
                       </div>
                     </div>
                   </div>
+                  </details>
                 )}
               </div>
           </section>

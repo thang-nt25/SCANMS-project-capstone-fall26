@@ -73,7 +73,7 @@ export class CreateLiveSessionDto {
   @Min(1)
   @Max(100)
   usageLimitPerCustomer?: number;
-  @Type(() => Number) @IsNumber() @Min(0) @Max(100) commissionRate: number;
+  @Type(() => Number) @IsNumber() @IsIn([2, 3]) commissionRate: number;
 }
 
 export class RespondLiveSessionDto {

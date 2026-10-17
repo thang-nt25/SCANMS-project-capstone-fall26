@@ -1,0 +1,169 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="fr09" name="FR-09 Class Diagram">
+    <mxGraphModel dx="1828" dy="817" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1550" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=0;fontSize=25;fontStyle=1;fontColor=#231D15;align=left;" value="SCANMS | FR-09 - Monthly Revenue Bonus Configuration" vertex="1">
+          <mxGeometry height="50" width="1600" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;React Component&gt;&gt;&#xa;CommissionRulesPage" vertex="1">
+          <mxGeometry height="52" width="390" x="40" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="uia" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="- storeId: string&#xa;- rules: CommissionRule[]&#xa;- formData: object" vertex="1">
+          <mxGeometry height="88" width="390" x="40" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="uim" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ loadRules()&#xa;+ handleCreate(event)&#xa;+ handleUpdate(event)&#xa;+ handleToggleStatus(rule)&#xa;+ handleDelete()&#xa;+ runSimulation(revenue)" vertex="1">
+          <mxGeometry height="160" width="390" x="40" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="uibox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="300" width="390" x="40" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="api" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;API Client Object&gt;&gt;&#xa;commissionRulesService" vertex="1">
+          <mxGeometry height="52" width="440" x="510" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="apia" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="" vertex="1">
+          <mxGeometry height="30" width="440" x="510" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="apim" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ getRules(storeId)&#xa;+ createRule(storeId, data)&#xa;+ updateRule(storeId, ruleId, data)&#xa;+ updateStatus(storeId, ruleId, isActive)&#xa;+ deleteRule(storeId, ruleId)&#xa;+ previewBonus(storeId, monthlyRevenue)" vertex="1">
+          <mxGeometry height="160" width="440" x="510" y="202" as="geometry" />
+        </mxCell>
+        <mxCell id="apibox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="242" width="440" x="510" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="controller" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;Controller&gt;&gt;&#xa;CommissionRulesController" vertex="1">
+          <mxGeometry height="52" width="600" x="1050" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="controllera" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="- commissionRulesService: CommissionRulesService" vertex="1">
+          <mxGeometry height="40" width="600" x="1050" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="controllerm" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ findAll(storeId)&#xa;+ findOne(storeId, ruleId)&#xa;+ create(storeId, dto, req)&#xa;+ update(storeId, ruleId, dto, req)&#xa;+ updateStatus(storeId, ruleId, dto, req)&#xa;+ remove(storeId, ruleId, req)&#xa;+ restore(storeId, ruleId, req)&#xa;+ previewBonus(storeId, dto)" vertex="1">
+          <mxGeometry height="208" width="600" x="1050" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="controllerbox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="300" width="600" x="1050" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="guard" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;Guard&gt;&gt;&#xa;StoreOwnerGuard" vertex="1">
+          <mxGeometry height="52" width="390" x="40" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="guarda" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="- prisma: PrismaService&#xa;- jwtService: JwtService" vertex="1">
+          <mxGeometry height="64" width="390" x="40" y="612" as="geometry" />
+        </mxCell>
+        <mxCell id="guardm" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ canActivate(context): Promise&lt;boolean&gt;" vertex="1">
+          <mxGeometry height="40" width="390" x="40" y="676" as="geometry" />
+        </mxCell>
+        <mxCell id="guardbox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="156" width="390" x="40" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="prisma" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;Database Service&gt;&gt;&#xa;PrismaService" vertex="1">
+          <mxGeometry height="52" width="440" x="510" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="prismaa" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="" vertex="1">
+          <mxGeometry height="30" width="440" x="510" y="692" as="geometry" />
+        </mxCell>
+        <mxCell id="prismam" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ $transaction(callback)" vertex="1">
+          <mxGeometry height="40" width="440" x="510" y="722" as="geometry" />
+        </mxCell>
+        <mxCell id="prismabox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="122" width="440" x="510" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="service" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;Service&gt;&gt;&#xa;CommissionRulesService" vertex="1">
+          <mxGeometry height="52" width="600" x="1050" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="servicea" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="- prisma: PrismaService" vertex="1">
+          <mxGeometry height="40" width="600" x="1050" y="612" as="geometry" />
+        </mxCell>
+        <mxCell id="servicem" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="- verifyStoreExists(storeId)&#xa;+ findAll(storeId)&#xa;+ findOne(storeId, ruleId)&#xa;+ create(storeId, dto, userId, ipAddress)&#xa;+ update(storeId, ruleId, dto, userId, ipAddress)&#xa;+ updateStatus(storeId, ruleId, statusInput, userId, ipAddress)&#xa;+ remove(storeId, ruleId, userId, ipAddress)&#xa;+ restore(storeId, ruleId, userId, ipAddress)&#xa;+ previewBonus(storeId, revenueInput, referenceDate)&#xa;+ calculateProgressiveBonus(rules, revenue, referenceDate, startDate)" vertex="1">
+          <mxGeometry height="256" width="600" x="1050" y="652" as="geometry" />
+        </mxCell>
+        <mxCell id="servicebox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="348" width="600" x="1050" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;Prisma Model&gt;&gt;&#xa;User" vertex="1">
+          <mxGeometry height="52" width="390" x="40" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="usera" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ id: UUID&#xa;+ role: UserRole&#xa;+ isActive: boolean&#xa;+ isDeleted: boolean" vertex="1">
+          <mxGeometry height="112" width="390" x="40" y="902" as="geometry" />
+        </mxCell>
+        <mxCell id="userm" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="" vertex="1">
+          <mxGeometry height="30" width="390" x="40" y="1014" as="geometry" />
+        </mxCell>
+        <mxCell id="userbox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="194" width="390" x="40" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="store" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;Prisma Model&gt;&gt;&#xa;Store" vertex="1">
+          <mxGeometry height="52" width="390" x="40" y="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="storea" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ id: UUID&#xa;+ ownerId: UUID&#xa;+ isDeleted: boolean" vertex="1">
+          <mxGeometry height="88" width="390" x="40" y="1202" as="geometry" />
+        </mxCell>
+        <mxCell id="storem" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="" vertex="1">
+          <mxGeometry height="30" width="390" x="40" y="1290" as="geometry" />
+        </mxCell>
+        <mxCell id="storebox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="170" width="390" x="40" y="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="rule" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;Prisma Model&gt;&gt;&#xa;CommissionRule" vertex="1">
+          <mxGeometry height="52" width="440" x="510" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="rulea" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ id: UUID&#xa;+ storeId: UUID&#xa;+ name: string&#xa;+ description: string?&#xa;+ minMonthlyRevenue: Decimal&#xa;+ achievementBonus: Decimal&#xa;+ bonusPercentage: Decimal&#xa;+ isActive: boolean&#xa;+ version: int&#xa;+ effectiveFrom: DateTime?&#xa;+ effectiveTo: DateTime?&#xa;+ isDeleted: boolean&#xa;+ deletedAt: DateTime?&#xa;+ createdBy: UUID?&#xa;+ updatedBy: UUID?&#xa;+ createdAt: DateTime&#xa;+ updatedAt: DateTime" vertex="1">
+          <mxGeometry height="424" width="440" x="510" y="942" as="geometry" />
+        </mxCell>
+        <mxCell id="rulem" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="" vertex="1">
+          <mxGeometry height="30" width="440" x="510" y="1366" as="geometry" />
+        </mxCell>
+        <mxCell id="rulebox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="506" width="440" x="510" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="audit" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#F3EFE6;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=16;fontStyle=1;" value="&lt;&lt;Prisma Model&gt;&gt;&#xa;AuditLog" vertex="1">
+          <mxGeometry height="52" width="600" x="1050" y="1090" as="geometry" />
+        </mxCell>
+        <mxCell id="audita" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="+ id: UUID&#xa;+ userId: UUID?&#xa;+ action: string&#xa;+ details: Json?&#xa;+ ipAddress: string?&#xa;+ createdAt: DateTime" vertex="1">
+          <mxGeometry height="160" width="600" x="1050" y="1142" as="geometry" />
+        </mxCell>
+        <mxCell id="auditm" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#B88E4F;fontColor=#1A1612;fontSize=13;align=left;spacingLeft=10;" value="" vertex="1">
+          <mxGeometry height="30" width="600" x="1050" y="1302" as="geometry" />
+        </mxCell>
+        <mxCell id="auditbox" parent="1" style="fillColor=none;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="242" width="600" x="1050" y="1090" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="uibox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=1;exitY=0.4;entryX=0;entryY=0.5;" target="apibox" value="calls">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="apibox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.4;" target="controllerbox" value="HTTP requests">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="controllerbox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=0.8;exitY=1;entryX=0.8;entryY=0;" target="servicebox" value="delegates to">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="controllerbox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=0;exitY=0.95;entryX=0.5;entryY=0;" target="guardbox" value="protected by">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="guardbox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=1;exitY=0.65;entryX=0;entryY=0.4;" target="prismabox" value="verifies user / store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="servicebox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=0;exitY=0.4;entryX=1;entryY=0.5;" target="prismabox" value="uses">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="prismabox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="rulebox" value="reads / writes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="servicebox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=0.8;exitY=1;entryX=0.8;entryY=0;" target="auditbox" value="writes via Prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="userbox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="storebox" value="1 owns 0..*">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="storebox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=none;exitX=1;exitY=0.5;entryX=0;entryY=0.65;" target="rulebox" value="1 defines 0..*">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="rulebox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;fontSize=13;strokeColor=#7D715E;labelBackgroundColor=#FAF8F5;endArrow=open;dashed=1;exitX=1;exitY=0.65;entryX=0;entryY=0.8;" target="auditbox" value="ruleId in details JSON (no FK)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="shape=note;whiteSpace=wrap;html=0;fillColor=#FBF5EB;strokeColor=#EEDFC6;fontColor=#1A1612;fontSize=14;align=left;spacing=12;" value="Scope: milestone configuration and bonus preview.&#xa;Selected members from the existing implementation.&#xa;Solid line: association. Dashed arrow: dependency.&#xa;Bonus = highest reached KPI bonus + progressive excess-revenue bonuses." vertex="1">
+          <mxGeometry height="110" width="600" x="1050" y="1390" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

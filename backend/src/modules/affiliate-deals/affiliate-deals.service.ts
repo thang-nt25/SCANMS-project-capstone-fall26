@@ -4,15 +4,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ExclusiveDealStatus, Prisma, UserRole } from '@prisma/client';
+import { CouponStatus, ExclusiveDealStatus, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ReferralLinksService } from '../referral-links/referral-links.service';
 import { CreateExclusiveDealDto } from './dto/create-exclusive-deal.dto';
 import { TerminateExclusiveDealDto } from './dto/terminate-exclusive-deal.dto';
+import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
 
 @Injectable()
 export class AffiliateDealsService {
+  private vipVoucherCode(proposalId: string, kolName: string, discountPercent: number) {
+    const brand = kolName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 8) || 'KOL';
+    return `${brand}${discountPercent}${proposalId.replace(/-/g, '').slice(0, 10).toUpperCase()}`.slice(0, 20);
+  }
   constructor(
     private readonly prisma: PrismaService,
     private readonly chatGateway: ChatGateway,
@@ -75,6 +80,7 @@ export class AffiliateDealsService {
     const proposals = await this.prisma.exclusiveDealProposal.findMany({
       where: { collaboratorId },
       include: {
+        collaborator: { select: { fullName: true } },
         product: {
           select: {
             id: true,
@@ -92,7 +98,7 @@ export class AffiliateDealsService {
             defaultCommissionRate: true,
           },
         },
-        referralLink: { select: { id: true, shortCode: true, status: true } },
+        referralLink: { select: { id: true, shortCode: true, status: true, customCouponCode: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -105,15 +111,13 @@ export class AffiliateDealsService {
     );
     return proposals.map((proposal) => ({
       ...proposal,
+      vipVoucherCode: proposal.referralLink?.customCouponCode || null,
       proposedCommissionRate: Number(proposal.proposedCommissionRate),
       approvedCommissionRate:
         proposal.approvedCommissionRate === null
           ? null
           : Number(proposal.approvedCommissionRate),
-      publicCommissionRate:
-        proposal.product.customCommissionRate === null
-          ? Number(proposal.store.defaultCommissionRate)
-          : Number(proposal.product.customCommissionRate),
+      publicCommissionRate: 10,
       shortUrl: proposal.referralLink
         ? `${process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/r/${proposal.referralLink.shortCode}`
         : null,
@@ -158,7 +162,7 @@ export class AffiliateDealsService {
         store: {
           select: { id: true, name: true, defaultCommissionRate: true },
         },
-        referralLink: { select: { id: true, shortCode: true, status: true } },
+        referralLink: { select: { id: true, shortCode: true, status: true, customCouponCode: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
@@ -171,15 +175,13 @@ export class AffiliateDealsService {
     );
     return proposals.map((proposal) => ({
       ...proposal,
+      vipVoucherCode: proposal.referralLink?.customCouponCode || null,
       proposedCommissionRate: Number(proposal.proposedCommissionRate),
       approvedCommissionRate:
         proposal.approvedCommissionRate === null
           ? null
           : Number(proposal.approvedCommissionRate),
-      publicCommissionRate:
-        proposal.product.customCommissionRate === null
-          ? Number(proposal.store.defaultCommissionRate)
-          : Number(proposal.product.customCommissionRate),
+      publicCommissionRate: 10,
       isCurrentDeal:
         proposal.status === ExclusiveDealStatus.APPROVED &&
         currentDeals.get(`${proposal.collaboratorId}:${proposal.productId}`)
@@ -197,6 +199,9 @@ export class AffiliateDealsService {
   }
 
   async createProposal(collaboratorId: string, dto: CreateExclusiveDealDto) {
+    if (dto.videoReviewCommitment !== true) {
+      throw new BadRequestException('KOL phải cam kết thực hiện video review cho sản phẩm.');
+    }
     const collaborator = await this.prisma.user.findUnique({
       where: { id: collaboratorId },
       include: { collaboratorProfile: true },
@@ -235,25 +240,23 @@ export class AffiliateDealsService {
       );
     }
 
-    const publicRate =
-      product.customCommissionRate === null
-        ? Number(product.store.defaultCommissionRate)
-        : Number(product.customCommissionRate);
+    const publicRate = 10;
     const proposedRate = Number(dto.proposedCommissionRate);
     if (
       !Number.isFinite(proposedRate) ||
       proposedRate <= 0 ||
-      proposedRate > 100
+      proposedRate > publicRate + 3
     ) {
       throw new BadRequestException(
         'M\u1ee9c hoa h\u1ed3ng \u0111\u1ec1 xu\u1ea5t ph\u1ea3i l\u1edbn h\u01a1n 0% v\u00e0 kh\u00f4ng v\u01b0\u1ee3t qu\u00e1 100%.',
       );
     }
 
-    const salesCommitment = dto.salesCommitment.trim();
-    if (salesCommitment.length < 5) {
+    const contentPlan = dto.salesCommitment.trim();
+    if (contentPlan.length < 5) {
       throw new BadRequestException('Hãy mô tả cam kết doanh số rõ hơn.');
     }
+    const salesCommitment = `Cam kết thực hiện video review cho sản phẩm. ${contentPlan}`;
 
     const dealStatus = await this.getMyDealStatus(collaboratorId);
     if (dealStatus.isBlocked) {
@@ -292,6 +295,9 @@ export class AffiliateDealsService {
         ? null
         : Number(currentDeal.approvedCommissionRate);
     const minimumExistingRate = Math.max(publicRate, currentRate ?? 0);
+    if (proposedRate < publicRate + 1 || proposedRate > publicRate + 3 || !Number.isInteger(proposedRate)) {
+      throw new BadRequestException('Deal chỉ được chọn nấc cộng thêm +1%, +2% hoặc +3% so với nền 10%.');
+    }
     if (proposedRate <= minimumExistingRate) {
       throw new BadRequestException(
         currentRate === null
@@ -390,7 +396,7 @@ export class AffiliateDealsService {
     };
   }
 
-  async approveProposal(proposalId: string, userId: string, role: UserRole) {
+  async approveProposal(proposalId: string, userId: string, role: UserRole, dto: ApproveExclusiveDealDto = new ApproveExclusiveDealDto()) {
     const proposal = await this.prisma.exclusiveDealProposal.findUnique({
       where: { id: proposalId },
       include: {
@@ -405,7 +411,8 @@ export class AffiliateDealsService {
         product: {
           select: { id: true, title: true, customCommissionRate: true },
         },
-        referralLink: { select: { id: true, shortCode: true } },
+        collaborator: { select: { fullName: true } },
+        referralLink: { select: { id: true, shortCode: true, customCouponCode: true } },
       },
     });
     if (!proposal) throw new NotFoundException('Không tìm thấy đề xuất deal.');
@@ -423,10 +430,10 @@ export class AffiliateDealsService {
       throw new BadRequestException('Đề xuất này đã được xử lý trước đó.');
     }
 
-    const currentPublicRate =
-      proposal.product.customCommissionRate === null
-        ? Number(proposal.store.defaultCommissionRate)
-        : Number(proposal.product.customCommissionRate);
+    const currentPublicRate = 10;
+    if (![11, 12, 13].includes(Number(proposal.proposedCommissionRate))) {
+      throw new BadRequestException('Deal VIP chỉ được cộng 1%, 2% hoặc 3% trên hoa hồng gốc 10%.');
+    }
     const currentDeal = await this.prisma.exclusiveDealProposal.findFirst({
       where: {
         collaboratorId: proposal.collaboratorId,
@@ -494,6 +501,32 @@ export class AffiliateDealsService {
       throw error;
     }
 
+    const vipCode = this.vipVoucherCode(proposal.id, proposal.collaborator.fullName, dto.discountPercent);
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const coupon = await tx.coupon.create({ data: {
+          storeId: proposal.storeId, collaboratorId: proposal.collaboratorId,
+          codeNormalized: vipCode, displayCode: vipCode, status: CouponStatus.ACTIVE,
+          discountType: 'PERCENTAGE', discountValue: dto.discountPercent,
+          minimumOrderAmount: dto.minimumOrderAmount, maximumDiscountAmount: dto.maximumDiscountAmount,
+          usageLimitTotal: dto.usageLimitTotal, usageLimitPerCustomer: 1,
+          budgetTotal: dto.budgetTotal, budgetUsed: 0,
+          startsAt: new Date(), expiresAt: new Date(Date.now() + dto.validDays * 86400000),
+          scopeType: 'PRODUCTS', fundingSource: 'SHOP_FUNDED',
+          shopFundingRate: 100, platformFundingRate: 0,
+          stackableWithProductDiscount: true, stackableWithShopVoucher: false,
+          stackableWithPlatformVoucher: true,
+          approvedBy: userId, approvedAt: new Date(),
+        } });
+        await tx.couponProduct.create({ data: { couponId: coupon.id, productId: proposal.productId } });
+        await tx.referralLink.update({ where: { id: link.id }, data: { customCouponCode: vipCode } });
+      });
+    } catch (error) {
+      await this.prisma.referralLink.updateMany({ where: { id: link.id }, data: { exclusiveDealId: null, status: 'BLOCKED', disabledReason: 'Không thể cấp voucher VIP', disabledBy: userId, disabledAt: new Date() } });
+      await this.prisma.exclusiveDealProposal.updateMany({ where: { id: proposalId, status: ExclusiveDealStatus.APPROVED }, data: { status: ExclusiveDealStatus.PENDING, approvedCommissionRate: null, reviewerId: null, reviewedAt: null } });
+      throw error;
+    }
+
     const card = {
       type: 'EXCLUSIVE_DEAL_DECISION',
       proposalId,
@@ -511,6 +544,7 @@ export class AffiliateDealsService {
             '% cho \u0111\u01a1n h\u00e0ng m\u1edbi. Hoa h\u1ed3ng c\u1ee7a \u0111\u01a1n \u0111\u00e3 t\u1ea1o tr\u01b0\u1edbc \u0111\u00f3 \u0111\u01b0\u1ee3c gi\u1eef nguy\u00ean.',
       shortUrl: link.shortUrl,
       shortCode: link.shortCode,
+      vipVoucherCode: vipCode,
       decidedAt: new Date().toISOString(),
     };
     await this.appendDecisionMessage(
@@ -521,6 +555,7 @@ export class AffiliateDealsService {
     );
     return {
       ...link,
+      vipVoucherCode: vipCode,
       approvedCommissionRate: Number(proposal.proposedCommissionRate),
     };
   }
@@ -628,7 +663,7 @@ export class AffiliateDealsService {
       include: {
         store: { select: { id: true, ownerId: true, name: true } },
         product: { select: { id: true, title: true } },
-        referralLink: { select: { id: true, shortCode: true } },
+        referralLink: { select: { id: true, shortCode: true, customCouponCode: true } },
       },
     });
     if (!proposal)
@@ -654,6 +689,8 @@ export class AffiliateDealsService {
       });
     }
 
+    if (proposal.referralLink?.customCouponCode) await this.prisma.coupon.updateMany({ where: { codeNormalized: proposal.referralLink.customCouponCode, storeId: proposal.storeId, status: CouponStatus.ACTIVE }, data: { status: CouponStatus.PAUSED } });
+
     // Update proposal record
     await this.prisma.exclusiveDealProposal.update({
       where: { id: proposalId },
@@ -665,7 +702,7 @@ export class AffiliateDealsService {
     // Update collaborator penalty level according to SCANMS 4-level sanction policy
     const profile = await this.prisma.collaboratorProfile.findUnique({
       where: { userId: proposal.collaboratorId },
-      select: { id: true, socialLinksJson: true },
+      select: { id: true, socialLinksJson: true, sampleRequestsBlockedAt: true },
     });
 
     const meta = (profile?.socialLinksJson as any) || {};
@@ -689,11 +726,7 @@ export class AffiliateDealsService {
       socialLinksJson: meta,
     };
 
-    // Level 3 (4th violation) or Level 4 dispute escalation locks sample requests quota to 0
-    if (newCount >= 4 || dto.escalateDispute) {
-      updateData.sampleRequestsBlockedAt = new Date();
-      updateData.sampleRequestsBlockReason = `Vi phạm cam kết deal riêng lần ${newCount} (Khóa ${cooldownWeeks} tuần & hạn ngạch mẫu = 0)`;
-    }
+    // Sample privileges are managed separately by an explicit Admin decision.
 
     if (profile?.id) {
       await this.prisma.collaboratorProfile.update({
@@ -712,9 +745,9 @@ export class AffiliateDealsService {
       violationsCount: newCount,
       cooldownWeeks,
       cooldownUntil: cooldownUntil.toLocaleDateString('vi-VN'),
-      sampleRequestsBlocked: newCount >= 4 || Boolean(dto.escalateDispute),
+      sampleRequestsBlocked: Boolean(profile?.sampleRequestsBlockedAt),
       escalatedDispute: Boolean(dto.escalateDispute),
-      message: `Chủ Shop đã đóng deal độc quyền do không đạt cam kết (${dto.reason}). Hoa hồng các đơn hàng mới quay về mức tiêu chuẩn. Hệ thống áp dụng chế tài: Tạm khóa quyền xin deal ${cooldownWeeks} tuần${newCount >= 4 ? ' và khóa hạn ngạch nhận mẫu thử' : ''}.`,
+      message: `Chủ Shop đã đóng deal độc quyền do không đạt cam kết (${dto.reason}). Hoa hồng các đơn hàng mới quay về mức tiêu chuẩn. Hệ thống áp dụng chế tài: Tạm khóa quyền xin deal ${cooldownWeeks} tuần. Vi phạm hàng mẫu cần được báo cáo riêng để Admin xét duyệt.`,
       decidedAt: new Date().toISOString(),
     };
 
@@ -731,7 +764,7 @@ export class AffiliateDealsService {
       violationsCount: newCount,
       cooldownWeeks,
       cooldownUntil: cooldownUntil.toISOString(),
-      sampleRequestsBlocked: newCount >= 4 || Boolean(dto.escalateDispute),
+      sampleRequestsBlocked: Boolean(profile?.sampleRequestsBlockedAt),
     };
   }
 

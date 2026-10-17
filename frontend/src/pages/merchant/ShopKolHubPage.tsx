@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { SampleGhnEnvironmentPicker, SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
 import { useSearchParams } from 'react-router-dom';
 import {
   Users,
@@ -31,6 +32,7 @@ import {
   Crown,
   ArrowUpRight,
   PackageCheck,
+  RefreshCw,
   FileText,
   Handshake,
 } from 'lucide-react';
@@ -39,6 +41,16 @@ import ChatBoxPage from '../chat/ChatBoxPage';
 import KolRecommendationPage from './KolRecommendationPage';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
+import { ExclusiveDealInbox } from '../../components/affiliate/ExclusiveDealInbox';
+import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
+import SampleDeadlineExtension from '../../components/affiliate/SampleDeadlineExtension';
+
+function sampleVideoStatusLabel(status: string) {
+  if (status === 'APPROVED') return 'Đã duyệt';
+  if (status === 'REJECTED') return 'Cần chỉnh sửa';
+  if (status === 'PENDING') return 'Chờ duyệt';
+  return 'Đã nộp';
+}
 
 export interface PartnerKol {
   id: string;
@@ -185,6 +197,7 @@ function KolAvatar({
 }
 
 export interface SampleRequestItem {
+  sampleRequestsBlockedAt?: string | null;
   id: string;
   status: string;
   createdAt: string;
@@ -198,6 +211,7 @@ export interface SampleRequestItem {
   note?: string;
   carrier?: string;
   trackingCode?: string;
+  shippingCharges?: Array<{ amount: string | number | null; trackingNumber: string; status: string; payer: string; codAmount: number; environment?: string }>;
   reviewVideoUrl?: string;
   videoTitle?: string;
   videoSubmittedAt?: string;
@@ -260,11 +274,15 @@ export default function ShopKolHubPage() {
 
   // Samples management
   const [samplesMap, setSamplesMap] = useState<Record<string, SampleRequestItem[]>>({});
+  const sampleLoadSequence = useRef(0);
   const [loadingBackendData, setLoadingBackendData] = useState(true);
   const [sampleFilter, setSampleFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'REVISION_REQUIRED' | 'OVERDUE' | 'DELIVERY_ISSUE' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'>('ALL');
   const [sampleProgramStats, setSampleProgramStats] = useState<any>(null);
   const [trackingModalItem, setTrackingModalItem] = useState<SampleRequestItem | null>(null);
-  const [carrierInput, setCarrierInput] = useState('GHTK');
+  const [sampleShippingError, setSampleShippingError] = useState('');
+  const [sampleGhnEnvironment, setSampleGhnEnvironment] = useState<'LIVE' | 'TEST'>('LIVE');
+  useEffect(() => { setSampleShippingError(''); setSampleGhnEnvironment(trackingModalItem && (trackingModalItem.status === 'SHIPPED' || isSandboxShipment(trackingModalItem)) ? 'TEST' : 'LIVE'); }, [trackingModalItem?.id]);
+  const [carrierInput] = useState('GHN');
   const [trackingCodeInput, setTrackingCodeInput] = useState('');
   const [updatingSample, setUpdatingSample] = useState(false);
 
@@ -327,15 +345,18 @@ export default function ShopKolHubPage() {
 
   // Load real data from backend
   const loadBackendData = useCallback(async () => {
+    const sequence = ++sampleLoadSequence.current;
     setLoadingBackendData(true);
     try {
       // 1. Load sample requests from shop
       const [sampleRes, statsRes]: [any, any] = await Promise.all([
-        api.get('/sample-requests/shop'),
-        api.get('/sample-requests/shop/stats').catch(() => null),
+        api.get('/sample-requests/shop', { headers: { 'x-skip-cache': 'true' } }),
+        api.get('/sample-requests/shop/stats', { headers: { 'x-skip-cache': 'true' } }).catch(() => null),
       ]);
       setSampleProgramStats(statsRes?.data || statsRes || null);
       const sampleData = sampleRes?.data || sampleRes;
+      if (sequence !== sampleLoadSequence.current) return;
+      if (!Array.isArray(sampleData)) throw new Error('Không đọc được danh sách hàng mẫu.');
       const sampleStatsByKol: Record<string, { total: number; pending: number; completed: number }> = {};
       if (Array.isArray(sampleData)) {
         const grouped: Record<string, SampleRequestItem[]> = {};
@@ -356,9 +377,11 @@ export default function ShopKolHubPage() {
             note: item.contentType,
             carrier: item.carrier,
             trackingCode: item.trackingNumber,
+            shippingCharges: item.shippingCharges || [],
             reviewVideoUrl: item.videoUrl,
             videoTitle: item.videoTitle,
             videoSubmittedAt: item.videoSubmittedAt,
+            sampleRequestsBlockedAt: item.collaborator?.collaboratorProfile?.sampleRequestsBlockedAt,
             deadlineAt: item.deadlineAt,
             revisionDeadlineAt: item.revisionDeadlineAt,
             expectedVideoAt: item.expectedVideoAt,
@@ -554,15 +577,29 @@ export default function ShopKolHubPage() {
         });
       }
     } catch {
-      // Keep rich fallback
+      if (sequence !== sampleLoadSequence.current) return;
+      setSamplesMap({});
+      setTrackingModalItem(null);
+      toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
-      setLoadingBackendData(false);
+      if (sequence === sampleLoadSequence.current) setLoadingBackendData(false);
     }
   }, []);
 
   useEffect(() => {
     loadBackendData();
+    const refresh = () => { if (!document.hidden) void loadBackendData(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [loadBackendData]);
+
+  useEffect(() => {
+    setTrackingModalItem(current => current ? Object.values(samplesMap).flat().find(item => item.id === current.id) || null : null);
+  }, [samplesMap]);
 
   // Selected Kol Object
   const selectedKol = useMemo(() => {
@@ -646,7 +683,7 @@ return true;
   const currentKolSamples = useMemo(() => {
     const list = samplesMap[selectedKol?.id] || [];
     if (sampleFilter === 'ALL') return list;
-    return list.filter((s) => s.status === sampleFilter);
+    return list.filter((s) => sampleDisplayStatus(s) === sampleFilter);
   }, [samplesMap, selectedKol, sampleFilter]);
 
   // Handler: Select KOL
@@ -755,17 +792,31 @@ return true;
   // Handler: Submit Shipping Tracking
   const handleSaveTracking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trackingModalItem || !trackingCodeInput.trim()) return;
+    if (!trackingModalItem || (carrierInput !== 'GHN' && !trackingCodeInput.trim())) return;
 
     setUpdatingSample(true);
+    setSampleShippingError('');
+    let savedTrackingCode = trackingCodeInput.trim();
     try {
-      await api.patch(`/sample-requests/${trackingModalItem.id}/ship`, {
-        carrier: carrierInput,
-        trackingNumber: trackingCodeInput.trim(),
-      });
+      if (carrierInput === 'GHN') {
+        const response: any = await api.post(`/shipping/ghn/create-sample/${trackingModalItem.id}`, { environment: sampleGhnEnvironment });
+        const result = response?.data?.data || response?.data || response;
+        savedTrackingCode = result.trackingNumber;
+        if (sampleGhnEnvironment === 'TEST') {
+          toast.success(`${result.reused ? 'Dùng lại mã' : 'Đã tạo mã'} GHN sandbox: ${savedTrackingCode}.`);
+          setTrackingModalItem(null);
+          await loadBackendData();
+          return;
+        }
+      } else {
+        await api.patch(`/sample-requests/${trackingModalItem.id}/ship`, {
+          carrier: carrierInput,
+          trackingNumber: savedTrackingCode,
+        });
+      }
       toast.success('Đã cập nhật mã vận đơn và chuyển sang trạng thái Đang giao hàng!');
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Không thể cập nhật mã vận đơn.');
+      setSampleShippingError(String(err?.response?.data?.message || err?.message || 'Không thể cập nhật mã vận đơn.'));
       setUpdatingSample(false);
       return;
     } finally {
@@ -781,7 +832,7 @@ return true;
                 ...item,
                 status: 'SHIPPED',
                 carrier: carrierInput,
-                trackingCode: trackingCodeInput.trim(),
+                trackingCode: savedTrackingCode,
               }
             : item
         );
@@ -790,6 +841,7 @@ return true;
     });
     setTrackingModalItem(null);
     setTrackingCodeInput('');
+    await loadBackendData();
   };
 
   // Handler: Send Kol Invitation
@@ -1236,12 +1288,12 @@ return true;
         </div>
       ) : (
         /* KHÔNG GIAN 1-1 (CREATOR CRM VIEW) */
-        <div className="shop-kol-shell bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-row h-[calc(100dvh-110px)] min-h-[520px] max-h-[960px]">
+        <div className="shop-kol-shell bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col sm:flex-row h-[calc(100dvh-110px)] min-h-[520px] max-h-[960px]">
           {/* LEFT COLUMN: KOL List & Filters */}
           <div
             className={`shop-kol-sidebar ${
               isSidebarCollapsed ? 'w-[72px]' : 'w-full sm:w-[285px] lg:w-[305px] xl:w-[325px]'
-            } flex-shrink-0 border-r border-[#EAE4D7] bg-[#FAF8F5] flex flex-col h-full transition-all duration-300 ease-in-out`}
+            } flex-shrink-0 overflow-hidden border-r border-[#EAE4D7] bg-[#FAF8F5] flex flex-col h-48 sm:h-full transition-all duration-300 ease-in-out`}
           >
             {isSidebarCollapsed ? (
               /* COLLAPSED VIEW: Only Avatars & Expand Toggle */
@@ -1694,7 +1746,7 @@ return true;
                   </span>
                 </div>
 
-                <div className="kol-profile-copy min-w-0 flex flex-col justify-center gap-1.5">
+                <div className="kol-profile-copy min-w-0 flex flex-1 flex-col justify-center gap-1.5">
                   {/* Row 1: Full Name + Badges */}
                   <div className="kol-profile-name-row flex flex-wrap items-center gap-2 min-w-0">
                     <h2
@@ -1720,7 +1772,7 @@ return true;
                   </div>
 
                   {/* Row 2: Multi-channel Social Stack (TikTok, YouTube, Facebook, Instagram with official brand logos) */}
-                  <div className="kol-profile-channel flex flex-wrap items-center gap-2 pt-1">
+                  <div className="kol-profile-channel grid w-full items-stretch gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${Math.max(allChannels.length, 1)}, minmax(0, 1fr))` }}>
                     {allChannels.length > 0 ? (
                       allChannels.map((channel, cIdx) => (
                         <a
@@ -1728,15 +1780,15 @@ return true;
                           href={channel.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[11px] font-semibold text-[#1A1612] transition shadow-2xs group cursor-pointer"
+                          className="group flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 text-[11px] font-semibold text-[#1A1612] shadow-2xs transition hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]"
                           title={`Xem kênh ${channel.platform} (${channel.handle})`}
                         >
                           <SocialBrandIcon platform={channel.platform} className="w-3.5 h-3.5 shrink-0" />
-                          <span>{channel.handle}</span>
-                          <span className="text-[#7D715E] font-normal text-[10px]">
+                          <span className="min-w-0 flex-1 truncate">{channel.handle}</span>
+                          <span className="shrink-0 whitespace-nowrap text-[#7D715E] font-normal text-[10px]">
                             · {channel.followers >= 1000 ? `${(channel.followers / 1000).toLocaleString('vi-VN')}K` : channel.followers} flw
                           </span>
-                          <ArrowUpRight className="w-3 h-3 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" />
+                          <ArrowUpRight className="h-3 w-3 shrink-0 text-[#7D715E] transition-colors group-hover:text-[#B88E4F]" />
                         </a>
                       ))
                     ) : (
@@ -1746,86 +1798,20 @@ return true;
                 </div>
               </div>
 
-              {/* Right: Quick Action Buttons */}
-              <div className="relative shrink-0" ref={kolActionsDropdownRef}>
-                <button
-                  type="button"
-                  id="btn-kol-actions-menu"
-                  aria-label="Thao tác với nhà sáng tạo"
-                  aria-expanded={showKolActionsMenu}
-                  onClick={() => setShowKolActionsMenu(prev => !prev)}
-                  className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold cursor-pointer transition select-none ${
-                    showKolActionsMenu
-                      ? 'bg-[#FBF5EB] border-[#B88E4F] text-[#B88E4F] shadow-xs'
-                      : 'bg-white border-[#EAE4D7] text-[#7D715E] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] hover:text-[#1A1612]'
-                  }`}
-                >
-                  <span>Thao tác</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showKolActionsMenu ? 'rotate-180 text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                </button>
-
-                {showKolActionsMenu && (
-                  <div
-                    className="absolute right-0 top-[calc(100%+6px)] z-40 w-52 p-1.5 rounded-xl bg-white border border-[#EAE4D7] shadow-[0_12px_28px_rgba(26,22,18,0.12)] animate-in fade-in slide-in-from-top-1 duration-150"
-                    onClick={() => setShowKolActionsMenu(false)}
-                  >
-                    <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase text-[#7D715E]">
-                      Tác vụ với đối tác
-                    </div>
-                    <button
-                      type="button"
-                      id="btn-quick-samples-tab"
-                      onClick={() => {
-                        setActiveTab('samples');
-                        setSearchParams({ kol: selectedKol.id, tab: 'samples' }, { replace: true });
-                      }}
-                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
-                    >
-                      <PackageCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                      <span>Cấp hàng mẫu trải nghiệm</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      id="btn-quick-perf-tab"
-                      onClick={() => {
-                        setActiveTab('performance');
-                        setSearchParams({ kol: selectedKol.id, tab: 'performance' }, { replace: true });
-                      }}
-                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
-                    >
-                      <BarChart3 className="w-3.5 h-3.5 text-[#B88E4F]" />
-                      <span>Xem hiệu suất tiếp thị</span>
-                    </button>
-
-                    <div className="my-1 border-t border-[#EAE4D7]" />
-
-                    <button
-                      type="button"
-                      id="btn-quick-view-profile"
-                      onClick={() => openKolProfile(selectedKol.id)}
-                      className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-[#7D715E]" />
-                      <span>Xem hồ sơ & liên hệ</span>
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
-            <div className="shop-kol-tabs px-3 py-2 bg-white border-b border-[#EAE4D7] flex items-center justify-between gap-3 overflow-x-auto no-scrollbar shrink-0">
-              <div className="flex items-center h-full gap-1 sm:gap-2">
+            <div className="shop-kol-tabs shrink-0 overflow-x-auto border-b border-[#EAE4D7] bg-white px-3 py-1.5 no-scrollbar">
+              <div className="grid w-full min-w-[460px] grid-cols-4 items-stretch gap-1.5">
                 <button
                   type="button"
                   id="tab-btn-messages"
                   aria-pressed={activeTab === 'messages'}
                   onClick={() => handleTabChange('messages')}
-                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] ${
                     activeTab === 'messages'
-                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
-                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                      ? 'border-[#C59B58] text-[#1A1612] font-bold bg-[#FBF5EB]'
+                      : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
                   <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
@@ -1837,10 +1823,10 @@ return true;
                   id="tab-btn-samples"
                   aria-pressed={activeTab === 'samples'}
                   onClick={() => handleTabChange('samples')}
-                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] ${
                     activeTab === 'samples'
-                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
-                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                      ? 'border-[#C59B58] text-[#1A1612] font-bold bg-[#FBF5EB]'
+                      : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
                   <Package className={`w-3.5 h-3.5 ${activeTab === 'samples' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
@@ -1857,10 +1843,10 @@ return true;
                   id="tab-btn-performance"
                   aria-pressed={activeTab === 'performance'}
                   onClick={() => handleTabChange('performance')}
-                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] ${
                     activeTab === 'performance'
-                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
-                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                      ? 'border-[#C59B58] text-[#1A1612] font-bold bg-[#FBF5EB]'
+                      : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
                   <BarChart3 className={`w-3.5 h-3.5 ${activeTab === 'performance' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
@@ -1872,10 +1858,10 @@ return true;
                   id="tab-btn-profile"
                   aria-pressed={activeTab === 'profile'}
                   onClick={() => handleTabChange('profile')}
-                  className={`h-full px-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] ${
                     activeTab === 'profile'
-                      ? 'border-[#C59B58] text-[#1A1612] font-black bg-white/60'
-                      : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                      ? 'border-[#C59B58] text-[#1A1612] font-bold bg-[#FBF5EB]'
+                      : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
                   <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
@@ -1913,7 +1899,7 @@ return true;
                   {activeTab === 'samples' && (
                     <div className="animate-in fade-in-50 duration-200 space-y-4">
                   {sampleProgramStats && (
-                    <div className="space-y-2"><p className="text-xs font-medium text-[#7D715E]">Tổng quan hàng mẫu của gian hàng</p><div className="grid grid-cols-2 xl:grid-cols-5 gap-2">
+                    <div className="space-y-2"><div className="grid grid-cols-2 xl:grid-cols-5 gap-2">
                       <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2.5">
                         <span className="text-[10px] text-[#7D715E] block">Giá trị mẫu đã cấp</span>
                         <strong className="text-sm text-[#1A1612]">{Number(sampleProgramStats.issuedValue || 0).toLocaleString('vi-VN')} ₫</strong>
@@ -1936,33 +1922,105 @@ return true;
                       </div>
                     </div></div>
                   )}
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-white p-2.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="grid grid-cols-2 items-stretch gap-2 rounded-xl sm:grid-cols-3 xl:grid-cols-6 border border-[#EAE4D7] bg-white p-2.5">
+                    <div className="contents">
                       {([{value:'ALL',label:'Tất cả'}, {value:'PENDING',label:'Chờ duyệt mẫu'}, {value:'VIDEO_SUBMITTED',label:'Chờ duyệt video'}] as const).map((filter) => (
                         <button key={filter.value} type="button" onClick={() => setSampleFilter(filter.value)} aria-pressed={sampleFilter === filter.value} className={
-                          'rounded-lg px-3 py-2 text-xs font-semibold transition ' + (sampleFilter === filter.value ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]')
+                          'flex h-11 min-w-0 items-center justify-center rounded-lg px-2 text-xs font-semibold transition ' + (sampleFilter === filter.value ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]')
                         }>{filter.label}<span className="ml-1.5 text-[11px]">{(samplesMap[selectedKol.id] || []).filter((sample) => filter.value === 'ALL' || sample.status === filter.value).length}</span></button>
                       ))}
                     </div>
-                    <Select
-                      value={sampleFilter}
-                      onChange={(event) => setSampleFilter(event.target.value as typeof sampleFilter)}
-                      aria-label="Lọc lịch sử yêu cầu mẫu"
-                      className="w-44 text-xs font-medium"
-                    >
-                      <option value="ALL">Tất cả trạng thái</option>
-                      <option value="PENDING">Chờ Shop duyệt</option>
-                      <option value="APPROVED">Đã duyệt</option>
-                      <option value="SHIPPED">Đang giao</option>
-                      <option value="RECEIVED">Đã nhận mẫu</option>
-                      <option value="VIDEO_SUBMITTED">Chờ nghiệm thu</option>
-                      <option value="REVISION_REQUIRED">Cần sửa video</option>
-                      <option value="OVERDUE">Quá hạn</option>
-                      <option value="DELIVERY_ISSUE">Sự cố giao hàng</option>
-                      <option value="COMPLETED">Hoàn tất</option>
-                      <option value="REJECTED">Bị từ chối</option>
-                      <option value="CANCELLED">Đã hủy</option>
-                    </Select>
+                    <div className="contents">
+                      <Select
+                        value={sampleFilter}
+                        onChange={(event) => setSampleFilter(event.target.value as typeof sampleFilter)}
+                        aria-label="Lọc lịch sử yêu cầu mẫu"
+                        className="h-11 w-full min-w-0 text-xs font-medium [&_button]:h-11 [&_button]:min-h-11 [&_button]:px-2 [&_button]:text-xs"
+                      >
+                        <option value="ALL">Tất cả trạng thái</option>
+                        <option value="PENDING">Chờ Shop duyệt</option>
+                        <option value="APPROVED">Đã duyệt</option>
+                        <option value="SHIPPED">Đang giao</option>
+                        <option value="RECEIVED">Đã nhận mẫu</option>
+                        <option value="VIDEO_SUBMITTED">Chờ nghiệm thu</option>
+                        <option value="REVISION_REQUIRED">Cần sửa video</option>
+                        <option value="OVERDUE">Quá hạn</option>
+                        <option value="DELIVERY_ISSUE">Sự cố giao hàng</option>
+                        <option value="COMPLETED">Hoàn tất</option>
+                        <option value="REJECTED">Bị từ chối</option>
+                        <option value="CANCELLED">Đã hủy</option>
+                      </Select>
+                      <button type="button" title="Làm mới thông tin nhận hàng" disabled={loadingBackendData} onClick={() => void loadBackendData()} className="inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-3 text-xs font-semibold text-[#795A2D] transition-colors hover:bg-[#FBF5EB] disabled:opacity-50">
+                        <RefreshCw size={14} className={loadingBackendData ? 'animate-spin' : ''} aria-hidden="true" />
+                        Làm mới
+                      </button>
+                      {/* Partner actions */}
+                      <div className="relative min-w-0" ref={kolActionsDropdownRef}>
+                        <button
+                          type="button"
+                          id="btn-kol-actions-menu"
+                          aria-label="Thao tác với nhà sáng tạo"
+                          aria-expanded={showKolActionsMenu}
+                          onClick={() => setShowKolActionsMenu(prev => !prev)}
+                          className={`flex h-11 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] ${
+                            showKolActionsMenu
+                              ? 'bg-[#FBF5EB] border-[#B88E4F] text-[#B88E4F] shadow-xs'
+                              : 'bg-white border-[#EAE4D7] text-[#7D715E] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] hover:text-[#1A1612]'
+                          }`}
+                        >
+        <span>Thao tác</span>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showKolActionsMenu ? 'rotate-180 text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                        </button>
+
+                        {showKolActionsMenu && (
+                          <div
+                            className="absolute right-0 top-[calc(100%+6px)] z-40 w-52 p-1.5 rounded-xl bg-white border border-[#EAE4D7] shadow-[0_12px_28px_rgba(26,22,18,0.12)] animate-in fade-in slide-in-from-top-1 duration-150"
+                            onClick={() => setShowKolActionsMenu(false)}
+                          >
+                            <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase text-[#7D715E]">
+                              Tác vụ với đối tác
+                            </div>
+                            <button
+                              type="button"
+                              id="btn-quick-samples-tab"
+                              onClick={() => {
+                                setActiveTab('samples');
+                                setSearchParams({ kol: selectedKol.id, tab: 'samples' }, { replace: true });
+                              }}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                            >
+                              <PackageCheck className="w-3.5 h-3.5 text-[#B88E4F]" />
+                              <span>Cấp hàng mẫu trải nghiệm</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              id="btn-quick-perf-tab"
+                              onClick={() => {
+                                setActiveTab('performance');
+                                setSearchParams({ kol: selectedKol.id, tab: 'performance' }, { replace: true });
+                              }}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5 text-[#B88E4F]" />
+                              <span>Xem hiệu suất tiếp thị</span>
+                            </button>
+
+                            <div className="my-1 border-t border-[#EAE4D7]" />
+
+                            <button
+                              type="button"
+                              id="btn-quick-view-profile"
+                              onClick={() => openKolProfile(selectedKol.id)}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition text-left cursor-pointer border-0"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-[#7D715E]" />
+                              <span>Xem hồ sơ & liên hệ</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Samples list */}
@@ -1979,36 +2037,34 @@ return true;
                       {currentKolSamples.map((item) => (
                         <div
                           key={item.id}
-                          className="bg-white border border-[#EAE4D7] rounded-xl p-3.5 sm:p-4 shadow-[0_1px_4px_rgba(35,29,21,0.025)] hover:border-[#B88E4F]/60 transition"
+                          className="group rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-[0_3px_14px_rgba(35,29,21,0.035)] transition-all hover:border-[#D8BD91] hover:shadow-[0_6px_20px_rgba(35,29,21,0.06)] sm:p-4"
                         >
-                          <div className="flex flex-col xl:flex-row items-start justify-between gap-3">
+                          <div className="flex flex-col items-stretch justify-between gap-3">
                             {/* Product Info */}
-                            <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <div className="flex w-full min-w-0 flex-1 items-start gap-3">
                               <img
                                 src={
                                   item.product.thumbnail ||
                                   'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=150&auto=format&fit=crop&q=80'
                                 }
                                 alt={item.product.title}
-                                className="w-12 h-12 rounded-xl object-cover border border-[#EAE4D7] flex-shrink-0"
+                                className="h-12 w-12 shrink-0 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] object-cover shadow-[0_1px_3px_rgba(35,29,21,0.06)]"
                               />
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                                   <span
-                                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
                                       item.status === 'PENDING'
-                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                        : item.status === 'APPROVED'
-                                        ? 'bg-[#FBF5EB] text-[#8C6226] border-[#EEDFC6]'
-                                        : item.status === 'SHIPPED'
-                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                        ? 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'
+                                        : ['APPROVED', 'SHIPPED'].includes(item.status)
+                                        ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#795A2D]'
                                         : ['COMPLETED', 'VIDEO_SUBMITTED'].includes(item.status)
-                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                        ? 'border-[#EEDFC6] bg-[#F3EFE6] text-[#795A2D]'
                                         : 'bg-rose-50 text-rose-700 border-rose-200'
                                     }`}
                                   >
                                     {item.status === 'PENDING' && 'Chờ duyệt mẫu'}
-                                    {item.status === 'APPROVED' && 'Đã duyệt · Chờ gửi'}
+                                    {item.status === 'APPROVED' && (isSandboxShipment(item) ? <SampleSandboxStatus charges={item.shippingCharges} /> : 'Đã duyệt · Chờ gửi')}
                                     {item.status === 'SHIPPED' && 'Đang giao'}
                                     {item.status === 'RECEIVED' && 'Đã nhận · Chờ video'}
                                     {item.status === 'VIDEO_SUBMITTED' && 'Chờ duyệt video'}
@@ -2024,11 +2080,11 @@ return true;
                                   </span>
                                 </div>
 
-                                <h4 className="text-sm font-extrabold text-[#1A1612]">
+                                <h4 className="text-base font-bold leading-snug tracking-tight text-[#1A1612]">
                                   {item.product.title}
                                 </h4>
 
-                                <div className="text-xs text-[#7D715E] mt-1 space-y-0.5">
+                                <div className="mt-2 space-y-1.5 text-xs leading-relaxed text-[#7D715E]">
                                   <div>
                                     Giá mẫu:{' '}
                                     <strong className="text-[#1A1612]">
@@ -2036,10 +2092,10 @@ return true;
                                     </strong>{' '}
                                     · Hoa hồng: <strong>{item.product.commissionRate != null ? (item.product.commissionRate + "%") : "—"}</strong>
                                   </div>
-                                  {item.expectedVideoAt && (
+                                  {item.expectedVideoAt && !['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'].includes(item.status) && (
                                     <div>Ngày KOL dự kiến đăng: {new Date(item.expectedVideoAt).toLocaleDateString('vi-VN')}</div>
                                   )}
-                                  {item.deadlineAt && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(item.status) && (
+                                  {item.deadlineAt && !['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERY_ISSUE', 'COMPLETED', 'REJECTED', 'CANCELLED'].includes(item.status) && (
                                     <div className={item.status === 'OVERDUE' ? 'font-bold text-rose-700' : 'font-semibold text-[#8C6226]'}>
                                       Hạn nộp video: {new Date(item.deadlineAt).toLocaleString('vi-VN')}
                                     </div>
@@ -2053,48 +2109,82 @@ return true;
                                   {item.rejectedReason && (
                                     <div className="text-rose-700">Ghi chú xử lý: {item.rejectedReason}</div>
                                   )}
-                                  {(item.events?.length || item.videoAssets?.length) ? (
-                                    <details className="mt-1 text-[11px] text-[#7D715E]">
-                                      <summary className="cursor-pointer font-semibold text-[#8C6226]">Lịch sử xử lý và video</summary>
-                                      <ul className="mt-1 space-y-1 pl-4">
-                                        {(item.events || []).map((event) => <li key={event.id}>{new Date(event.createdAt).toLocaleString('vi-VN')} · {event.action}</li>)}
-                                        {(item.videoAssets || []).map((asset) => <li key={asset.id}><a href={asset.urlOrContent} target="_blank" rel="noreferrer" className="underline">{asset.title || 'Video đã gửi'}</a> · {asset.status}{asset.rejectionReason ? ` · ${asset.rejectionReason}` : ''}</li>)}
+                                  {Boolean(item.videoAssets?.length) && (
+                                    <details className="group mt-2 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white text-[11px] text-[#7D715E]">
+                                      <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 transition hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] [&::-webkit-details-marker]:hidden">
+                                        <span className="flex min-w-0 items-center gap-2 font-semibold text-[#4B4031]">
+                                          <Video size={14} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
+                                          Video Review đã nộp
+                                          <span className="rounded-full bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-semibold text-[#8A6B3D]">{item.videoAssets?.length}</span>
+                                        </span>
+                                        <ChevronDown size={15} className="shrink-0 text-[#8A7C68] transition-transform group-open:rotate-180" aria-hidden="true" />
+                                      </summary>
+                                      <ul className="mx-3 mb-3 space-y-2">
+                                        {(item.videoAssets || []).map((asset) => <li key={asset.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                          <a href={asset.urlOrContent} target="_blank" rel="noreferrer" className="font-semibold text-[#795A2D] underline underline-offset-2">{asset.title || 'Mở video đã nộp'}</a>
+                                          <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-semibold text-[#795A2D]">{sampleVideoStatusLabel(asset.status)}</span>
+                                          {asset.rejectionReason && <span className="text-rose-700">{asset.rejectionReason}</span>}
+                                        </li>)}
                                       </ul>
                                     </details>
-                                  ) : null}
+                                  )}
+                                  <SampleSandboxWaybills charges={item.shippingCharges} primary={isSandboxShipment(item)} role="shop" />
                                   {item.trackingCode && (
                                     <div className="font-medium text-[#7D715E]">
                                       Vận chuyển: {item.carrier} — Mã vận đơn: {item.trackingCode}
                                     </div>
                                   )}
-                                  <details className="mt-2 text-xs">
-                                    <summary className="w-fit cursor-pointer font-medium text-[#8C6226] hover:underline">Thông tin nhận hàng & cam kết</summary>
-                                    <div className="mt-2 space-y-1.5 rounded-lg bg-[#FAF8F5] p-3 leading-relaxed text-[#7D715E]">
-                                  <div>📍 Địa chỉ nhận: {item.shippingAddress}</div>
-                                  {item.recipientName && (
-                                    <div>Người nhận: <strong>{item.recipientName}</strong> · {item.recipientPhone || '—'}</div>
-                                  )}
-                                  {(item.socialPlatformSnapshot || item.socialChannel) && (
-                                    <div>
-                                      Kênh đã cam kết: <strong>{item.socialPlatformSnapshot || item.socialChannel?.platformName}</strong>
-                                      {item.socialChannelNameSnapshot || item.socialChannel?.channelName ? ` · ${item.socialChannelNameSnapshot || item.socialChannel?.channelName}` : ''}
-                                      {' · '}{Number(item.socialFollowerSnapshot ?? item.socialChannel?.followerCount ?? 0).toLocaleString('vi-VN')} followers
+                                  {item.trackingCode && (
+                                    <div className="mt-1 text-xs text-[#7D715E]">
+                                      Shop chịu 100% phí ship · KOL COD 0 đ · {item.shippingCharges?.length
+                                        ? `${item.shippingCharges.reduce((sum, c) => sum + (c.environment === 'TEST' || c.amount === null ? 0 : Number(c.amount)), 0).toLocaleString('vi-VN')} đ cước đã ghi nhận${item.shippingCharges.some(c => c.environment !== 'TEST' && c.amount === null) ? ' (còn cước chưa xác nhận)' : ''}`
+                                        : 'Chưa có dữ liệu cước'}
                                     </div>
                                   )}
-                                  {item.note && (
-                                    <div className="italic text-[#B88E4F]">
-                                      KOL cam kết: "{item.note}"
-                                    </div>
-                                  )}
-                                  {item.collaboratorMetrics && (
-                                    <div>
-                                      Hồ sơ KOL: {item.collaboratorMetrics.tierName || 'Chưa xếp hạng'}
-                                      {' · '}{Number(item.collaboratorMetrics.totalFollowers || 0).toLocaleString('vi-VN')} followers toàn kênh
-                                      {' · '}{Number(item.collaboratorMetrics.totalOrdersReferred || 0).toLocaleString('vi-VN')} đơn giới thiệu
-                                      {' · KYC '}{item.collaboratorMetrics.kycStatus === 'VERIFIED' ? 'đã xác minh' : 'chưa xác minh'}
-                                    </div>
-                                  )}
-
+                                  <details className="group mt-2.5 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white text-[11px] text-[#7D715E]">
+                                    <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 transition hover:bg-[#FBF5EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] [&::-webkit-details-marker]:hidden">
+                                      <span className="flex min-w-0 items-center gap-2 font-semibold text-[#4B4031]">
+                                        <Package size={14} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
+                                        Thông tin nhận mẫu và cam kết nội dung
+                                      </span>
+                                      <ChevronDown size={15} className="shrink-0 text-[#8A7C68] transition-transform group-open:rotate-180" aria-hidden="true" />
+                                    </summary>
+                                    <div className="grid grid-cols-1 gap-2 border-t border-[#EAE4D7] bg-[#FFFCF7] p-3 sm:grid-cols-2">
+                                      <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5 sm:col-span-2">
+                                        <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Địa chỉ nhận mẫu</p>
+                                        <p className="mt-1 break-words text-xs leading-relaxed text-[#4B4031]">{item.shippingAddress}</p>
+                                      </div>
+                                      {item.recipientName && (
+                                        <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5">
+                                          <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Người nhận</p>
+                                          <p className="mt-1 text-xs font-semibold text-[#4B4031]">{item.recipientName}</p>
+                                          <p className="mt-0.5 text-[11px] text-[#7D715E]">{item.recipientPhone || 'Chưa có số điện thoại'}</p>
+                                        </div>
+                                      )}
+                                      {(item.socialPlatformSnapshot || item.socialChannel) && (
+                                        <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5">
+                                          <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Kênh đã cam kết</p>
+                                          <p className="mt-1 text-xs font-semibold text-[#4B4031]">{item.socialPlatformSnapshot || item.socialChannel?.platformName}</p>
+                                          <p className="mt-0.5 break-words text-[11px] text-[#7D715E]">{item.socialChannelNameSnapshot || item.socialChannel?.channelName || 'Kênh nội dung'} · {Number(item.socialFollowerSnapshot ?? item.socialChannel?.followerCount ?? 0).toLocaleString('vi-VN')} người theo dõi</p>
+                                        </div>
+                                      )}
+                                      {item.note && (
+                                        <div className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-2.5 sm:col-span-2">
+                                          <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Nội dung KOL cam kết</p>
+                                          <p className="mt-1 text-xs italic leading-relaxed text-[#795A2D]">“{item.note}”</p>
+                                        </div>
+                                      )}
+                                      {item.collaboratorMetrics && (
+                                        <div className="rounded-lg border border-[#EAE4D7] bg-white p-2.5 sm:col-span-2">
+                                          <p className="m-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3937C]">Hồ sơ nhà sáng tạo</p>
+                                          <p className="mt-1 text-[11px] leading-relaxed text-[#4B4031]">
+                                            {item.collaboratorMetrics.tierName || 'Chưa xếp hạng'}
+                                            {' · '}{Number(item.collaboratorMetrics.totalFollowers || 0).toLocaleString('vi-VN')} người theo dõi toàn kênh
+                                            {' · '}{Number(item.collaboratorMetrics.totalOrdersReferred || 0).toLocaleString('vi-VN')} đơn giới thiệu
+                                            {' · KYC '}{item.collaboratorMetrics.kycStatus === 'VERIFIED' ? 'đã xác minh' : 'chưa xác minh'}
+                                          </p>
+                                        </div>
+                                      )}
                                     </div>
                                   </details>
                                 </div>
@@ -2102,7 +2192,9 @@ return true;
                             </div>
 
                             {/* Actions by status */}
-                            <div className="flex shrink-0 flex-wrap items-center gap-2 w-full xl:w-auto xl:max-w-[260px] justify-end border-t xl:border-t-0 pt-3 xl:pt-0 border-[#EAE4D7]">
+                            <div className="flex w-full flex-wrap items-center justify-end gap-2 border-t border-[#EAE4D7] pt-2.5">
+                              <SampleDeadlineExtension request={item} onSuccess={() => void loadBackendData()} />
+                              <SampleViolationAction request={item} blocked={Boolean(item.sampleRequestsBlockedAt)} onSuccess={() => void loadBackendData()} />
                               {item.status === 'PENDING' && (
                                 <>
                                   <button
@@ -2122,17 +2214,17 @@ return true;
                                 </>
                               )}
 
-                              {(item.status === 'APPROVED' || item.status === 'DELIVERY_ISSUE') && (
+                              {(item.status === 'APPROVED' || item.status === 'DELIVERY_ISSUE' || item.status === 'SHIPPED') && (
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setTrackingModalItem(item);
                                     setTrackingCodeInput('');
                                   }}
-                                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#231D15] bg-[#C59B58] hover:bg-[#B88E4F] transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-[11px] font-semibold text-[#795A2D] transition hover:bg-[#F3EFE6]"
                                 >
                                   <Truck className="w-3.5 h-3.5" />
-                                  {item.status === 'DELIVERY_ISSUE' ? 'Cập nhật vận đơn' : 'Nhập vận đơn'}
+                                  {isSandboxShipment(item) ? 'Đổi môi trường GHN' : item.status === 'SHIPPED' ? 'Tạo mã GHN sandbox' : item.status === 'DELIVERY_ISSUE' ? 'Tạo lại vận đơn GHN' : 'Tạo vận đơn GHN'}
                                 </button>
                               )}
 
@@ -2178,7 +2270,7 @@ return true;
 
               {/* TAB 3: PERFORMANCE & AFFILIATE ORDERS (Tone Sáng, Sang Trọng, Chuẩn SCANMS) */}
               {activeTab === 'performance' && (() => {
-                const effectiveCommissionRate = selectedKol.commissionRate || 10;
+const effectiveCommissionRate = selectedKol.commissionRate || 10;
                 const rawRevenue = selectedKol.stats?.totalRevenue || 0;
                 const rawOrders = selectedKol.stats?.totalOrders || 0;
                 const hasOrders = rawOrders > 0;
@@ -2193,6 +2285,7 @@ return true;
 
                 return (
                   <div className="kol-performance animate-in fade-in-50 duration-200 space-y-4">
+                    <ExclusiveDealInbox />
                     {/* 1. Header Policy & Strategic Overview Bar */}
                     <div className="kol-performance-heading rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FAF8F5] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -2217,14 +2310,14 @@ return true;
                       <div className="flex items-center gap-2 flex-wrap">
                         <button
                           type="button"
-                          onClick={() => {
+onClick={() => {
                             setActiveTab('messages');
                             setSearchParams({ kol: selectedKol.id, tab: 'messages' }, { replace: true });
                           }}
                           className="flex items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2 text-xs font-bold text-[#8F682E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer shadow-xs"
                           title="Thương lượng tỷ lệ hoa hồng độc quyền hoặc tạo Deal riêng cho nhà sáng tạo này"
                         >
-                          <Handshake className="h-3.5 w-3.5 text-[#B88E4F]" />
+<Handshake className="h-3.5 w-3.5 text-[#B88E4F]" />
                           <span>Thỏa thuận Deal độc quyền</span>
                         </button>
                         <button
@@ -2432,12 +2525,12 @@ return true;
                             <button
                               type="button"
                               onClick={() => {
-                                setActiveTab('messages');
+setActiveTab('messages');
                                 setSearchParams({ kol: selectedKol.id, tab: 'messages' }, { replace: true });
                               }}
                               className="rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] px-4 py-2 text-xs font-bold text-[#1A1612] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                             >
-                              <MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
+<MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
                               <span>Gửi tin nhắn thương lượng deal</span>
                             </button>
 
@@ -2628,13 +2721,13 @@ return true;
           onClick={() => setTrackingModalItem(null)}
         >
           <div
-            className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-md max-h-[calc(100dvh-2rem)] shadow-2xl overflow-y-auto overscroll-contain animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-[#EAE4D7] flex items-center justify-between bg-[#FAF8F5]">
               <div className="flex items-center gap-2">
                 <Truck className="w-5 h-5 text-[#B88E4F]" />
-                <h3 className="text-base font-extrabold text-[#1A1612]">Nhập Mã Vận Đơn Gửi Mẫu</h3>
+                <h3 className="text-base font-extrabold text-[#1A1612]">Tạo vận đơn gửi mẫu</h3>
               </div>
               <button
                 type="button"
@@ -2647,7 +2740,8 @@ return true;
 
             <form onSubmit={handleSaveTracking} className="p-6 space-y-4">
               <div className="p-3.5 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-xs space-y-1">
-                <div className="font-extrabold text-[#1A1612]">{trackingModalItem.collaboratorInfo?.fullName || trackingModalItem.recipientName || selectedKol?.fullName || 'Nhà Sáng Tạo'}</div>
+                <div className="font-extrabold text-[#1A1612]">Người nhận: {trackingModalItem.recipientName || 'Chưa cập nhật'}</div>
+                <div className="text-[#7D715E]">SĐT: {trackingModalItem.recipientPhone || 'Chưa cập nhật'}</div>
                 <div className="text-[#7D715E]">{trackingModalItem.product.title}</div>
                 <div className="text-[11px] text-[#7D715E] pt-1 border-t border-[#EAE4D7]/60">
                   📍 {trackingModalItem.shippingAddress}
@@ -2656,20 +2750,15 @@ return true;
 
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1">Đơn vị vận chuyển</label>
-                <Select
-                  value={carrierInput}
-                  onChange={(e) => setCarrierInput(e.target.value)}
-                  className="w-full text-xs"
-                >
-                  <option value="GHTK">GHTK — Giao Hàng Tiết Kiệm</option>
-                  <option value="GHN">GHN — Giao Hàng Nhanh</option>
-                  <option value="VIETTELPOST">Viettel Post</option>
-                  <option value="VNPOST">VNPost</option>
-                  <option value="OTHER">Đơn vị khác</option>
-                </Select>
+                <SampleGhnEnvironmentPicker value={sampleGhnEnvironment} onChange={setSampleGhnEnvironment} allowLive={trackingModalItem.status !== 'SHIPPED'} disabled={updatingSample} />
               </div>
 
-              <div>
+              {carrierInput === 'GHN' ? (
+                <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+                  <strong className="text-[#1A1612]">Shop thanh toán 100% phí ship · KOL COD 0 đ.</strong>
+                  <p className="mt-1">{sampleGhnEnvironment === 'TEST' ? 'Cước GHN sandbox chỉ hiển thị trong đơn mẫu, không tính vào phí vận chuyển.' : 'Tạo vận đơn GHN thật và lưu cước hãng trả về để Shop theo dõi. Cước ghi nhận chưa phải xác nhận thanh toán.'}</p>
+                </div>
+              ) : <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1">Mã vận đơn (Tracking code)</label>
                 <input
                   type="text"
@@ -2679,8 +2768,14 @@ return true;
                   onChange={(e) => setTrackingCodeInput(e.target.value)}
                   className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3.5 py-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
                 />
-              </div>
+              </div>}
 
+              {sampleShippingError && (
+                <div role="alert" className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-3.5 text-left">
+                  <p className="m-0 text-xs font-bold text-[#991B1B]">Chưa tạo được vận đơn gửi mẫu</p>
+                  <p className="mb-0 mt-1.5 whitespace-normal break-words text-xs leading-relaxed text-[#7F1D1D]">{sampleShippingError}</p>
+                </div>
+              )}
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
@@ -2694,7 +2789,7 @@ return true;
                   disabled={updatingSample}
                   className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#EBD08C] text-white hover:bg-[#DEC07A] transition disabled:opacity-50 cursor-pointer shadow-xs"
                 >
-                  {updatingSample ? 'Đang lưu...' : 'Xác Nhận Đã Gửi Hàng'}
+                  {updatingSample ? 'Đang xử lý...' : carrierInput === 'GHN' ? sampleGhnEnvironment === 'TEST' ? 'Tạo vận đơn GHN sandbox' : 'Tạo vận đơn GHN thật' : 'Xác Nhận Đã Gửi Hàng'}
                 </button>
               </div>
             </form>

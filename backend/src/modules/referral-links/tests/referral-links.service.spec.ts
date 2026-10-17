@@ -144,7 +144,7 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       const query = mockPrismaService.product.findMany.mock.calls[0][0];
       expect(query.where.AND).toHaveLength(2);
       expect(products).toHaveLength(1);
-      expect(products[0].estimatedCommissionRate).toBe(15);
+      expect(products[0].estimatedCommissionRate).toBe(10);
     });
   });
 
@@ -752,7 +752,7 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       expect(res.collaboratorId).toBe('collab-1');
     });
 
-    it('Link Exclusive Deal áp dụng mức VIP đã duyệt thay cho Open Offer và campaign bonus', async () => {
+    it('caps legacy VIP entitlement to +3 and does not pay an invalid legacy campaign', async () => {
       prisma.referralLink.findUnique.mockResolvedValue({
         id: 'vip-link-1',
         shortCode: 'vip12345',
@@ -784,8 +784,8 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       });
 
       expect(result.isValid).toBe(true);
-      expect(result.appliedCommissionRate).toBe(25);
-      expect(result.calculatedCommissionAmount).toBe(25000);
+      expect(result.appliedCommissionRate).toBe(13);
+      expect(result.calculatedCommissionAmount).toBe(13000);
     });
 
     it('a renewed deal rate is returned for new orders through an older VIP link', async () => {
@@ -821,8 +821,8 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         productId: 'prod-1',
       });
 
-      expect(result.appliedCommissionRate).toBe(30);
-      expect(result.calculatedCommissionAmount).toBe(30000);
+      expect(result.appliedCommissionRate).toBe(13);
+      expect(result.calculatedCommissionAmount).toBe(13000);
     });
 
     it('Sản phẩm hoặc Cửa hàng không khớp -> Từ chối attribution', async () => {

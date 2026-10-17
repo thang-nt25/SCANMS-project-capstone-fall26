@@ -41,6 +41,14 @@ describe('FR-15 / FR-08: Media Submission & Moderation Flow (Unit Tests)', () =>
     auditLog: {
       create: jest.fn(),
     },
+    sampleProductRequest: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
+    },
+    sampleRequestEvent: { create: jest.fn() },
+    collaboratorProfile: { updateMany: jest.fn() },
+    notification: { create: jest.fn().mockResolvedValue({}) },
   };
 
   beforeEach(async () => {
@@ -280,6 +288,46 @@ describe('FR-15 / FR-08: Media Submission & Moderation Flow (Unit Tests)', () =>
         }),
       });
     });
+  });
+
+  it('Shop nghiệm thu video mẫu không được tự mở khóa quyết định của Admin', async () => {
+    mockPrisma.mediaAsset.findUnique.mockResolvedValue({
+      id: 'media-1',
+      productId: 'prod-1',
+      storeId: 'store-1',
+      sampleRequestId: 'sample-1',
+      collaboratorId: 'kol-1',
+      assetType: 'VIDEO',
+      isDeleted: false,
+      store: { ownerId: 'shop-owner-1' },
+      status: 'PENDING',
+    });
+    mockPrisma.mediaAsset.update.mockResolvedValue({
+      id: 'media-1',
+      status: 'APPROVED',
+    });
+    mockPrisma.sampleProductRequest.findUnique.mockResolvedValue({
+      id: 'sample-1',
+      collaboratorId: 'kol-1',
+      product: { title: 'Sản phẩm mẫu' },
+      status: 'VIDEO_SUBMITTED',
+      deadlineAt: new Date(),
+      videoSubmittedAt: new Date(),
+    });
+    await service.reviewMedia('shop-owner-1', 'SHOP_MANAGER', 'media-1', {
+      status: ReviewActionStatus.APPROVED,
+    });
+    expect(mockPrisma.sampleProductRequest.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'COMPLETED' }),
+      }),
+    );
+    expect(mockPrisma.collaboratorProfile.updateMany).not.toHaveBeenCalled();
+    expect(
+      mockPrisma.notification.create.mock.calls.some(
+        ([args]) => args.data.type === 'SAMPLE_REQUESTS_UNBLOCKED',
+      ),
+    ).toBe(false);
   });
 
   describe('SubmitKolVideoDto Validation', () => {

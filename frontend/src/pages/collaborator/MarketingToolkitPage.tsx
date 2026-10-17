@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
 import { Link2, Images, Tag, Video, Plus } from 'lucide-react';
-import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
-import { PageHeader } from '../../components/ui/PageHeader';
+import { type HubTabItem } from '../../components/common/HubTabs';
 import ReferralLinksPage from './ReferralLinksPage';
 import MediaHubBrowserPage from './MediaHubBrowserPage';
 import KolCouponsPage from './KolCouponsPage';
+import './MarketingToolkitPage.css';
 export default function MarketingToolkitPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'links';
@@ -35,11 +35,11 @@ export default function MarketingToolkitPage() {
   ];
 
   const actions = (
-    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+    <div className="grid min-w-0 grid-cols-2 gap-2 xl:col-span-2">
       <button
         type="button"
         onClick={() => setIsSubmitVideoOpen(true)}
-        className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 py-2 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs font-bold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors whitespace-nowrap shrink-0 shadow-none focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-2 cursor-pointer"
+        className="inline-flex w-full items-center justify-center gap-2 min-h-[44px] px-2 py-2 border border-[#EAE4D7] rounded-xl bg-white text-[#1A1612] text-xs font-bold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors shadow-none focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-2 cursor-pointer"
         title="Nộp video review sản phẩm"
       >
         <Video className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -56,7 +56,7 @@ export default function MarketingToolkitPage() {
             window.dispatchEvent(new CustomEvent('scanms_open_create_link'));
           }
         }}
-        className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-2 border border-[#C59B58] rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition-colors whitespace-nowrap shrink-0 shadow-xs cursor-pointer active:scale-95"
+        className="inline-flex w-full items-center justify-center gap-2 min-h-[44px] px-2 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#795A2D] text-xs font-bold transition-colors shadow-none cursor-pointer"
         title="Tạo link tiếp thị mới"
       >
         <Plus className="w-3.5 h-3.5" />
@@ -67,22 +67,23 @@ export default function MarketingToolkitPage() {
 
   return (
     <div id="marketing-toolkit-hub" data-active-tab={activeTab} role="region" aria-label="Công cụ tiếp thị" className="flex flex-col gap-4 w-full min-w-0 text-[#1A1612] pb-16 md:pb-0">
-      {/* 1. Page Header Chuẩn Hóa */}
-      <PageHeader
-        title="Trung tâm Tiếp thị & Sáng tạo"
-        description="Tạo link tiếp thị, truy cập kho tài nguyên số của nhãn hàng và kích hoạt mã giảm giá độc quyền"
-        icon={<Link2 className="w-5 h-5" />}
-      />
-
-      <HubTabs
-        tabs={tabs}
-        activeTab={activeTab}
-        onChange={handleTabChange}
-        actions={actions}
-        variant="pills"
-        compact
-        className="mb-1 bg-white border border-[#EAE4D7] rounded-2xl p-1.5 shadow-none"
-      />
+      <div className="mb-1 grid w-full min-w-0 grid-cols-1 gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 xl:grid-cols-5">
+        <div role="tablist" aria-label="Công cụ tiếp thị" className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3 xl:col-span-3">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const selected = activeTab === tab.id;
+            return <button key={tab.id} id={`hub-tab-${tab.id}`} type="button" role="tab"
+              aria-selected={selected} onClick={() => handleTabChange(tab.id)}
+              className={`inline-flex min-h-[44px] min-w-0 items-center justify-center gap-2 rounded-xl border px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${selected
+                ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612]'
+                : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#EEDFC6] hover:bg-[#FAF8F5]'}`}>
+              <Icon className="h-4 w-4 shrink-0 text-[#B88E4F]" />
+              <span>{tab.label}</span>
+            </button>;
+          })}
+        </div>
+        {actions}
+      </div>
 
       <div className="w-full min-w-0 min-h-[500px]">
         {activeTab === 'links' && (

@@ -168,6 +168,10 @@ export class StoresService {
     if (dto.logoUrl !== undefined && !dto.logoUrl?.trim()) {
       throw new BadRequestException('Logo gian hàng không được để trống');
     }
+    if (dto.warehouseAddress !== undefined &&
+        dto.warehouseAddress.split(',').map((part) => part.trim()).filter(Boolean).length < 4) {
+      throw new BadRequestException('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành, ngăn cách bằng dấu phẩy.');
+    }
 
     const ownerProfileUpdates = {
       ...(dto.representativeName !== undefined && {
@@ -233,9 +237,7 @@ export class StoresService {
         ...(dto.policyShipping !== undefined && {
           policyShipping: dto.policyShipping?.trim() || null,
         }),
-        ...(dto.defaultCommissionRate !== undefined && {
-          defaultCommissionRate: dto.defaultCommissionRate,
-        }),
+        defaultCommissionRate: 10,
         ...(dto.attributionWindowDays !== undefined && {
           attributionWindowDays: dto.attributionWindowDays,
         }),
@@ -489,10 +491,15 @@ export class StoresService {
         ...store,
         totalProducts: products.length,
         categories,
-        category: categories.slice(0, 2).join(' · ') || 'Đối tác SCANMS',
-        commissionRange: `${Number(store.defaultCommissionRate)}%`,
-        rating: reviewCount ? Math.round(ratingSum / reviewCount * 10) / 10 : null,
+        category: categories.slice(0, 2).join(' · ') || (store.name.toLowerCase().includes('tech')
+          ? 'Công nghệ & Phụ kiện'
+          : store.name.toLowerCase().includes('green')
+            ? 'Thực phẩm & Sức khỏe'
+            : 'Mỹ phẩm & Chăm sóc da'),
+        commissionRange: `${Number(store.defaultCommissionRate)}% cơ bản + thưởng theo bậc/Deal/chiến dịch/Live (tối đa 25%)`,
+        rating: reviewCount ? Math.round(ratingSum / reviewCount * 10) / 10 : 4.9,
         reviewCount,
+        location: 'TP.HCM & Hà Nội',
         activeCampaign: campaigns[0] ? {
           id: campaigns[0].id, name: campaigns[0].name, endsAt: campaigns[0].endDate,
         } : null,

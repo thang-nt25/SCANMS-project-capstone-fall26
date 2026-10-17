@@ -28,6 +28,7 @@ export const NotificationDropdown: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM'>('ALL');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -294,6 +295,13 @@ export const NotificationDropdown: React.FC = () => {
     const returnId = notif.data?.returnId || notif.data?.returnRequestId;
     const payoutId = notif.data?.payoutId;
 
+    if (notif.type.startsWith('SAMPLE_')) {
+      if (userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM_MANAGER') navigate('/admin/sample-requests');
+      else if (userRole === 'SHOP_MANAGER') navigate('/merchant/kol-hub?tab=samples');
+      else if (userRole === 'COLLABORATOR') navigate('/collaborator/collaboration?tab=samples');
+      return;
+    }
+
     if (
       notif.type.startsWith('ORDER_') ||
       notif.type.startsWith('DISPUTE_') ||
@@ -353,7 +361,7 @@ export const NotificationDropdown: React.FC = () => {
       return <ShoppingBag className="w-4 h-4 text-[#C59B58]" />;
     }
     if (type.startsWith('COMMISSION_') || type.startsWith('PAYOUT_')) {
-      return <DollarSign className="w-4 h-4 text-[#059669]" />;
+      return <DollarSign className="w-4 h-4 text-[#B88E4F]" />;
     }
     if (type.startsWith('DISPUTE_')) {
       return <ShieldAlert className="w-4 h-4 text-[#DC2626]" />;
@@ -488,35 +496,55 @@ export const NotificationDropdown: React.FC = () => {
             ) : (
               notifications.map(n => {
                 const isLive = n.type.startsWith('LIVE_') || n.type.includes('LIVE');
+                const expanded = expandedMessages.has(n.id);
                 return (
-                  <button
-                    type="button"
-                    key={n.id}
-                    onClick={() => void handleNotificationClick(n)}
-                    className="relative flex items-start gap-[10px] w-full p-[13px_14px] border-b border-[#EAE4D7] last:border-b-0 bg-white hover:bg-[#FAF8F5] text-left transition-colors cursor-pointer"
-                  >
-                    <span className="grid place-items-center shrink-0 w-[28px] h-[28px] mt-[1px] border border-[#EEDFC6] rounded-[8px] bg-white text-[#B88E4F]">
-                      {getNotificationIcon(n.type)}
-                    </span>
-                    <span className="block flex-1 min-w-0">
-                      <span className="flex items-start gap-[8px]">
-                        <strong title={n.title} className={`line-clamp-2 flex-1 text-[#1A1612] text-[12px] leading-[1.5] ${!n.isRead ? 'font-[600]' : 'font-[500]'}`}>
-                          {n.title}
-                        </strong>
-                        {!n.isRead && <span className="shrink-0 w-[5px] h-[5px] mt-[6px] rounded-full bg-[#C59B58]" aria-label="Chưa đọc" />}
+                  <div key={n.id} className={`relative flex flex-col w-full p-[13px_14px] border-b border-[#EAE4D7] last:border-b-0 ${!n.isRead ? 'bg-[#FBF5EB]/40' : 'bg-white'} hover:bg-[#FAF8F5] transition-colors`}>
+                    <button
+                      type="button"
+                      onClick={() => void handleNotificationClick(n)}
+                      className="flex items-start gap-[10px] w-full text-left cursor-pointer border-0 bg-transparent p-0"
+                    >
+                      <span className="grid place-items-center shrink-0 w-[28px] h-[28px] mt-[1px] border border-[#EEDFC6] rounded-[8px] bg-white text-[#B88E4F]">
+                        {getNotificationIcon(n.type)}
                       </span>
-                      <span className="line-clamp-2 mt-[4px] text-[#7D715E] text-[11px] leading-[1.6] block">
-                        {n.message}
+                      <span className="block flex-1 min-w-0">
+                        <span className="flex items-start gap-[8px]">
+                          <strong title={n.title} className={`line-clamp-2 flex-1 text-[#1A1612] text-[12px] leading-[1.5] ${!n.isRead ? 'font-[600]' : 'font-[500]'}`}>
+                            {n.title}
+                          </strong>
+                          {!n.isRead && <span className="shrink-0 w-[5px] h-[5px] mt-[6px] rounded-full bg-[#C59B58]" aria-label="Chưa đọc" />}
+                        </span>
+                        <span className={`mt-[4px] text-[#7D715E] text-[11px] leading-[1.6] block ${expanded ? '' : 'line-clamp-2'}`}>
+                          {n.message}
+                        </span>
+                        <span className="flex items-center justify-between flex-wrap gap-[5px] mt-[7px]">
+                          <time dateTime={n.createdAt} className="inline-flex items-center gap-[4px] text-[#9A8E7C] text-[9px] leading-[1.5]">
+                            <Clock size={11} />
+                            {formatTimeAgo(n.createdAt)}
+                          </time>
+                          {isLive && <span className="text-[#B88E4F] text-[9px] font-[500] hover:underline">Xem phiên live →</span>}
+                        </span>
                       </span>
-                      <span className="flex items-center justify-between flex-wrap gap-[5px] mt-[7px]">
-                        <time dateTime={n.createdAt} className="inline-flex items-center gap-[4px] text-[#9A8E7C] text-[9px] leading-[1.5]">
-                          <Clock size={11} />
-                          {formatTimeAgo(n.createdAt)}
-                        </time>
-                        {isLive && <span className="text-[#B88E4F] text-[9px] font-[500] hover:underline">Xem phiên live →</span>}
-                      </span>
-                    </span>
-                  </button>
+                    </button>
+                    {n.message.length > 100 && (
+                      <button
+                        type="button"
+                        className="self-end mt-1 text-[10px] text-[#B88E4F] hover:underline bg-transparent border-0 cursor-pointer p-0"
+                        aria-expanded={expanded}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedMessages(prev => {
+                            const next = new Set(prev);
+                            if (next.has(n.id)) next.delete(n.id);
+                            else next.add(n.id);
+                            return next;
+                          });
+                        }}
+                      >
+                        {expanded ? 'Thu gọn' : 'Xem đầy đủ'}
+                      </button>
+                    )}
+                  </div>
                 );
               })
             )}

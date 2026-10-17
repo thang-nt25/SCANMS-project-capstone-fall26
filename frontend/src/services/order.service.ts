@@ -118,6 +118,7 @@ export interface StoreOrderRecord {
   paymentMethod: string;
   paymentStatus: string;
   trackingNumber: string | null;
+  ghnEnvironment?: 'LIVE' | 'TEST' | null;
   carrierName: string | null;
   store?: { id: string; name: string; slug: string; logoUrl?: string };
   attributedCollaborator?: { id: string; fullName: string; email: string } | null;
@@ -144,9 +145,10 @@ export const orderService = {
     page?: number;
     limit?: number;
     storeId?: string;
-  }): Promise<StoreOrdersResponse> {
+  }, fresh = false): Promise<StoreOrdersResponse> {
     const response = (await api.get("/orders/my-store", {
       params,
+      headers: fresh ? { 'x-skip-cache': 'true' } : undefined,
     })) as unknown as ApiEnvelope<StoreOrdersResponse>;
     return response.data;
   },
