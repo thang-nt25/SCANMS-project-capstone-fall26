@@ -49,6 +49,16 @@ export class LiveSessionsController {
     return this.service.getPublicLiveList();
   }
 
+  @Post(':id/pinned-product')
+  @UseGuards(JwtAuthGuard)
+  pinProduct(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('productId', ParseUUIDPipe) productId: string,
+  ) {
+    return this.service.pinProduct(userId, id, productId);
+  }
+
   @Get('public/detail/:identifier')
   getPublicSessionByIdentifier(@Param('identifier') identifier: string) {
     return this.service.getPublicSessionByIdentifier(identifier);
