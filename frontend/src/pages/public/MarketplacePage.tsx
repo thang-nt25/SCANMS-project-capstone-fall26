@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   Truck,
   ArrowRight,
-  ArrowLeft,
   X,
   ShoppingBag,
   ShoppingCart,
@@ -55,20 +54,10 @@ import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/prod
 import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 import { NotificationDropdown } from '../../components/layout/NotificationDropdown';
 import { HeaderAccountButton } from '../../components/layout/HeaderAccountButton';
+import { FeaturedStores } from '../../components/marketplace/FeaturedStores';
+import type { MarketplaceStore } from '@/types/marketplace-home.types';
 import { MarketplaceHero } from '../../components/marketplace/MarketplaceHero';
 
-
-type MarketplaceStore = {
-  id: string;
-  name: string;
-  slug?: string;
-  logoUrl?: string;
-  description?: string;
-  totalProducts?: number;
-  rating?: number;
-  category?: string;
-  defaultCommissionRate?: number | string;
-};
 
 type PublicLiveSession = {
   id: string;
@@ -92,14 +81,6 @@ const CATEGORY_QUICK_NAV = [
   { label: 'Deal KOC độc quyền', query: 'commission=true', icon: Sparkles, rawQuery: true },
   { label: 'Ưu đãi hôm nay', query: 'sort=sales&inStock=true', icon: Tag, rawQuery: true },
 ] as const;
-
-const storeInitials = (name: string) => name
-  .split(/\s+/)
-  .filter(Boolean)
-  .slice(0, 2)
-  .map((word) => word[0])
-  .join('')
-  .toUpperCase();
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
@@ -156,7 +137,7 @@ export default function MarketplacePage() {
   });
   const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals(items.map((product) => product.id));
 
-  const { data: featuredStores = [], isLoading: storesLoading } = useQuery<MarketplaceStore[]>({
+  const { data: featuredStores = [], isLoading: storesLoading, isError: storesFailed, refetch: retryStores } = useQuery<MarketplaceStore[]>({
     queryKey: ['marketplace-featured-stores'],
     queryFn: async () => {
       const res: any = await api.get('/stores/marketplace');
@@ -179,21 +160,7 @@ export default function MarketplacePage() {
     staleTime: 15_000,
   });
 
-  const marketplaceStores = useMemo<MarketplaceStore[]>(() => {
-    if (featuredStores.length > 0) return featuredStores;
-    const stores = new Map<string, MarketplaceStore>();
-    for (const product of items) {
-      if (!product.storeId || stores.has(product.storeId)) continue;
-      stores.set(product.storeId, {
-        id: product.storeId,
-        name: product.brand || 'Gian hàng đối tác',
-        totalProducts: items.filter((item) => item.storeId === product.storeId).length,
-        rating: product.rating || 4.9,
-        category: product.categoryLabel || product.category,
-      });
-    }
-    return Array.from(stores.values());
-  }, [featuredStores, items]);
+  const marketplaceStores = featuredStores;
 
   // Cart & Gateways
   const { totalCount: totalCartCount, openCart, addItem, buyNow } = useCart();
@@ -243,7 +210,6 @@ export default function MarketplacePage() {
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<HTMLElement>(null);
   const trackingRef = useRef<HTMLElement>(null);
-  const storesCarouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (location.hash !== '#catalog-section') return;
@@ -968,46 +934,7 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      {/* Featured verified stores. */}
-      <section id="featured-stores" aria-labelledby="featured-stores-title" className="scroll-mt-36 bg-[#FAF8F5] py-7 text-left">
-        <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
-          <div className="mb-4 flex items-end justify-between gap-3">
-            <div>
-              <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]"><BadgeCheck className="h-4 w-4" /> Đối tác đã xác minh</div>
-              <h2 id="featured-stores-title" className="m-0 text-lg font-black tracking-[-0.02em] text-[#1A1612] sm:text-xl">Gian hàng đối tác tiêu biểu</h2>
-              <p className="mt-1 text-xs text-[#7D715E]">Khám phá nhiều thương hiệu chính hãng trên cùng một sàn SCANMS.</p>
-            </div>
-            <div className="hidden gap-2 sm:flex">
-              <button type="button" onClick={() => storesCarouselRef.current?.scrollBy({ left: -360, behavior: 'smooth' })} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#EAE4D7] bg-white text-[#1A1612] transition hover:border-[#C59B58]" aria-label="Xem gian hàng trước"><ArrowLeft className="h-4 w-4" /></button>
-              <button type="button" onClick={() => storesCarouselRef.current?.scrollBy({ left: 360, behavior: 'smooth' })} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#EAE4D7] bg-white text-[#1A1612] transition hover:border-[#C59B58]" aria-label="Xem gian hàng tiếp theo"><ArrowRight className="h-4 w-4" /></button>
-            </div>
-          </div>
-
-          <div ref={storesCarouselRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {storesLoading
-              ? [...Array(4)].map((_, index) => <div key={index} className="h-[188px] min-w-[270px] animate-pulse rounded-2xl border border-[#EAE4D7] bg-white sm:min-w-[300px]" />)
-              : marketplaceStores.slice(0, 10).map((store) => (
-                <article key={store.id} className="min-w-[270px] snap-start rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_8px_24px_rgba(75,57,34,0.06)] transition hover:-translate-y-0.5 hover:border-[#C59B58] sm:min-w-[300px]">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-sm font-black text-[#B88E4F]">
-                      {store.logoUrl ? <img src={store.logoUrl} alt={`Logo ${store.name}`} className="h-full w-full object-cover" /> : storeInitials(store.name)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1"><h3 className="truncate text-sm font-black text-[#1A1612]">{store.name}</h3><BadgeCheck className="h-4 w-4 shrink-0 text-[#B88E4F]" /></div>
-                      <p className="mt-1 truncate text-[10px] font-semibold text-[#7D715E]">{store.category || 'Gian hàng chính hãng'}</p>
-                      <div className="mt-2 flex items-center gap-3 text-[10px] text-[#7D715E]">
-                        <span className="inline-flex items-center gap-1 font-bold text-[#1A1612]"><Star className="h-3.5 w-3.5 fill-[#C59B58] text-[#C59B58]" /> {Number(store.rating || 4.9).toFixed(1)}</span>
-                        <span>{store.totalProducts || 0} sản phẩm</span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="mt-3 line-clamp-2 h-9 text-[11px] leading-[18px] text-[#7D715E]">{store.description || 'Đối tác chính hãng đã hoàn tất xác minh trên hệ thống SCANMS.'}</p>
-                  <Link to={`/shops/${store.id}`} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#C59B58] bg-[#FBF5EB] px-3 py-2 text-xs font-black text-[#8C6226] transition hover:bg-[#C59B58] hover:text-white">Ghé thăm gian hàng <ArrowRight className="h-3.5 w-3.5" /></Link>
-                </article>
-              ))}
-          </div>
-        </div>
-      </section>
+      <FeaturedStores stores={marketplaceStores} loading={storesLoading} failed={storesFailed} onRetry={() => void retryStores()} />
 
       {/* Clearly disclosed sponsored placement. */}
       {marketplaceStores[0] && (
