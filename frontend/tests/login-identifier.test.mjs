@@ -51,3 +51,10 @@ test('login input permits phone entry and password-manager username autofill', a
   assert.match(page, /placeholder="Email hoặc số điện thoại đã đăng ký"/);
   assert.doesNotMatch(page, /setPassword\('Password@123'\)/);
 });
+
+test('inline marketplace login preserves phone support while OTP registration still requires email', async () => {
+  const page = await readFile(new URL('../src/components/marketplace/QuickCustomerAuth.tsx', import.meta.url), 'utf8');
+  assert.match(page, /type=\{mode === 'login' \? 'text' : 'email'\}/);
+  assert.match(page, /autoComplete=\{mode === 'login' \? 'username' : 'email'\}/);
+  assert.match(page, /authService\.login\(mode === 'login' \? identifier\.trim\(\) : normalizedEmail, password\)/);
+});

@@ -3,6 +3,13 @@ import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 import type { DatabaseTarget } from './seed.config';
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import {
+  assertResetMigrationHistory,
+  inspectMigrationHistory,
+} from './seed.audit';
 
 const execute = promisify(execFile);
 
@@ -30,6 +37,29 @@ export async function resetDatabase(
     throw new Error(
       'Set SCANMS_SEED_BACKUP_FILE to an existing pg_dump backup before resetting a shared database.',
     );
+  }
+  // Refuse to erase a database whose applied SQL cannot be reproduced from Git.
+  // This check is read-only and releases all connections before invoking Prisma reset.
+  const pool = new Pool({
+    connectionString: target.connectionString,
+    max: 1,
+    connectionTimeoutMillis: 15_000,
+  });
+  const inspector = new PrismaClient({
+    adapter: new PrismaPg(pool, { schema: target.schema }),
+  });
+  try {
+    const history = await inspector.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+        return inspectMigrationHistory(tx, target);
+      },
+      { timeout: 30_000 },
+    );
+    assertResetMigrationHistory(history);
+  } finally {
+    await inspector.$disconnect();
+    await pool.end();
   }
   try {
     await execute(

@@ -5,6 +5,7 @@ import { validateDataset } from '../validate-dataset';
 import { amount, DAY_MS, demoEan13, seedId } from '../seed.helpers';
 import type { SeedContext } from '../seed.types';
 import { inventoryBaseline } from '../inventory.seed';
+import { jsonObject } from '../seed.helpers';
 
 const context: SeedContext = {
   referenceDate: new Date('2026-10-16T05:00:00Z'),
@@ -14,6 +15,81 @@ const context: SeedContext = {
 };
 
 describe('Capstone dataset business integrity', () => {
+  it('seeds the same durable notification identity and read state as the live chat service', () => {
+    const data = buildDataset(context);
+    const notifications = data.notifications.filter(
+      (row) => row.type === 'CHAT_MESSAGE',
+    );
+    expect(notifications).toHaveLength(100);
+    expect(notifications.filter((row) => !row.isRead)).toHaveLength(22);
+    for (const message of data.messages) {
+      const notification = notifications.find((row) => row.id === message.id)!;
+      expect(notification.isRead).toBe(message.isRead);
+      expect(jsonObject(notification.data)).toMatchObject({
+        messageId: message.id,
+        conversationId: message.conversationId,
+      });
+      expect(notification.userId).not.toBe(message.senderId);
+    }
+  });
+
+  it('rejects missing, cross-account or stale-read chat notifications before database writes', () => {
+    for (const change of [
+      (data: ReturnType<typeof buildDataset>) => {
+        data.notifications = data.notifications.filter(
+          (row) => row.id !== data.messages[0].id,
+        );
+      },
+      (data: ReturnType<typeof buildDataset>) => {
+        data.notifications.find(
+          (row) => row.id === data.messages[0].id,
+        )!.userId = data.messages[0].senderId;
+      },
+      (data: ReturnType<typeof buildDataset>) => {
+        data.notifications.find(
+          (row) => row.id === data.messages[0].id,
+        )!.isRead = !data.messages[0].isRead;
+      },
+    ]) {
+      const data = buildDataset(context);
+      change(data);
+      expect(() => validateDataset(data)).toThrow(
+        'chat notification identity/recipient/read-state mismatch',
+      );
+    }
+  });
+
+  it('rejects incomplete merchant bank, warehouse and policy fixtures', () => {
+    const data = buildDataset(context);
+    data.stores[0].onboardingData = {
+      ...jsonObject(data.stores[0].onboardingData),
+      payoutBankAccountNumber: '',
+    };
+    expect(() => validateDataset(data)).toThrow(
+      'shop legal/warehouse/policy/bank fixture incomplete',
+    );
+  });
+
+  it('rejects unsupported follower ranges and reviews without feedback images', () => {
+    const data = buildDataset(context);
+    data.socialChannels[0].followerCount = 450001;
+    expect(() => validateDataset(data)).toThrow(
+      'creator profile/channel/bank fixture incomplete',
+    );
+    const reviews = buildDataset(context);
+    reviews.reviews[0].images = [];
+    expect(() => validateDataset(reviews)).toThrow(
+      'review must include five stars, text and feedback image',
+    );
+  });
+
+  it('rejects uneven customer order distribution even if the total remains 60', () => {
+    const data = buildDataset(context);
+    data.orders[0].customerId = data.orders[2].customerId;
+    expect(() => validateDataset(data)).toThrow(
+      'customer order distribution mismatch',
+    );
+  });
   it('builds the complete linked dataset deterministically', () => {
     const data = buildDataset(context);
     expect(buildDataset(context)).toEqual(data);

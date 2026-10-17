@@ -222,6 +222,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       governance: {
         seedSource: 'SYNTHETIC_CAPSTONE',
         intendedBonusPercentage: 2,
+        pinnedProductId: seedId(`product:${index * 2}`),
       },
       createdAt: daysFrom(context, -10),
     });
@@ -318,21 +319,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
         storeId: product.storeId,
         createdAt,
       });
-      if (index % 2 === 1)
-        data.notifications.push({
-          id: seedId(`chat-notification:${index}`),
-          userId: customer.id!,
-          title: 'Shop đã trả lời',
-          message: `${SHOPS[storeIndex].name} vừa gửi tin nhắn cho bạn.`,
-          type: 'CHAT_MESSAGE',
-          data: {
-            conversationId,
-            shopId: product.storeId,
-            actionUrl: `/chat?asCustomer=1&conversationId=${conversationId}`,
-          },
-          createdAt: sentAt,
-        });
     });
 
-  // No fake sponsored-placement records: dev has no schema/API contract for that feature.
+  // Sponsored placements use Quy's deployment configuration, not invented Prisma columns.
 }

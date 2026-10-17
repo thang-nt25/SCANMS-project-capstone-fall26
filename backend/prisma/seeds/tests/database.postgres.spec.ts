@@ -13,6 +13,9 @@ import {
 } from '../seed.database';
 import { parseDatabaseTarget } from '../seed.config';
 import { seedId } from '../seed.helpers';
+import { auditSeedDatabase } from '../seed.audit';
+import { ChatService } from '../../../src/modules/chat/chat.service';
+import { DATASET_VERSION } from '../seed.helpers';
 
 const connectionString = process.env.SEED_TEST_DATABASE_URL;
 const integration = connectionString ? describe : describe.skip;
@@ -202,4 +205,103 @@ integration('Prisma seeder on isolated PostgreSQL', () => {
     ).rejects.toThrow('append-only');
     expect(await prisma.user.count()).toBe(67);
   }, 120_000);
+
+  it('reconciles the installed snapshot and lets the real chat service clear seeded message notifications', async () => {
+    await applyDataset(prisma, target, data);
+    const before = await auditSeedDatabase(prisma, target, data);
+    expect(before.datasetReady).toBe(true);
+    expect(before.schemaHistoryReady).toBe(true);
+    expect(before.fullUpgradeReady).toBe(false);
+    const message = data.messages.find(
+      (row) => row.id === seedId('shop-reply:1'),
+    )!;
+    expect(message.isRead).toBe(false);
+    const chat = new ChatService(prisma as never, {} as never);
+    await chat.markRead(message.conversationId, seedId('customer:1'));
+    expect(
+      (
+        await prisma.notification.findUniqueOrThrow({
+          where: { id: message.id },
+        })
+      ).isRead,
+    ).toBe(true);
+    expect((await auditSeedDatabase(prisma, target, data)).datasetReady).toBe(
+      true,
+    );
+  }, 120_000);
+
+  it('refuses applying a new revision over an existing v1 dataset without changing accounts or financial data', async () => {
+    await applyDataset(prisma, target, data);
+    await prisma.auditLog.update({
+      where: { id: MANIFEST_ID },
+      data: { details: { dataset: 'scanms-capstone-2026-v1' } },
+    });
+    await expect(applyDataset(prisma, target, data)).rejects.toThrow(
+      'older/different seed revision',
+    );
+    expect(await prisma.user.count()).toBe(66);
+    expect(await prisma.financialLedger.count()).toBe(data.ledgers.length);
+    expect((await auditSeedDatabase(prisma, target, data)).datasetReady).toBe(
+      false,
+    );
+  }, 120_000);
+
+  it('detects persisted balance drift and missing fixtures without writing or repairing them', async () => {
+    await applyDataset(prisma, target, data);
+    await prisma.wallet.update({
+      where: { id: data.wallets[0].id },
+      data: { availableBalance: { increment: 1 } },
+    });
+    await prisma.notification.delete({ where: { id: data.messages[0].id } });
+    const audit = await auditSeedDatabase(prisma, target, data);
+    expect(audit.datasetReady).toBe(false);
+    expect(audit.reconciliation.walletMismatches).toBe(1);
+    expect(audit.reconciliation.unreadChatMismatches).toBe(1);
+    expect(audit.fixtureDifferences).toEqual([
+      expect.objectContaining({ table: 'notifications' }),
+    ]);
+    expect(
+      await prisma.notification.findUnique({
+        where: { id: data.messages[0].id },
+      }),
+    ).toBeNull();
+  }, 120_000);
+
+  it('runs the real Prisma CLI seed → check → seed again → read-only audit on a fresh database schema', async () => {
+    const execute = promisify(execFile);
+    const cwd = resolve(__dirname, '../../..');
+    const env = {
+      ...process.env,
+      DATABASE_URL: target.connectionString,
+      DIRECT_URL: target.connectionString,
+      NODE_ENV: 'test',
+      SCANMS_SEED_PASSWORD: randomUUID(),
+      SCANMS_SEED_REFERENCE_DATE: '2026-10-16T05:00:00Z',
+    };
+    await execute(
+      process.execPath,
+      [require.resolve('prisma/build/index.js'), 'db', 'seed'],
+      { cwd, env, windowsHide: true, timeout: 60000 },
+    );
+    for (const args of [['--check'], [], ['--audit']]) {
+      await execute(
+        process.execPath,
+        [
+          resolve(cwd, 'node_modules/ts-node/dist/bin.js'),
+          '--project',
+          'prisma/tsconfig.seed.json',
+          'prisma/seed.ts',
+          ...args,
+        ],
+        { cwd, env, windowsHide: true, timeout: 60000 },
+      );
+    }
+    expect(await prisma.user.count()).toBe(66);
+    expect(await prisma.notification.count()).toBe(160);
+    expect(await prisma.auditLog.count({ where: { id: MANIFEST_ID } })).toBe(1);
+    const manifest = await prisma.auditLog.findUniqueOrThrow({
+      where: { id: MANIFEST_ID },
+    });
+    expect(manifest.details).toMatchObject({ dataset: DATASET_VERSION });
+  }, 180_000);
 });

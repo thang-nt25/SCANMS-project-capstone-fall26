@@ -2,7 +2,10 @@ import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { SeedContext } from './seed.types';
 
-export const DATASET_VERSION = 'scanms-capstone-2026-v1';
+export const DATASET_VERSION = 'scanms-capstone-2026-v2';
+// Keep identity stable between revisions. Do not create duplicate accounts or
+// bypass unique email/slug constraints by silently changing every fixture ID.
+const ID_NAMESPACE_VERSION = 'scanms-capstone-2026-v1';
 export const DAY_MS = 86_400_000;
 const UUID_NAMESPACE = Buffer.from('cfc50f4069435a3587de6d76b77e1d74', 'hex');
 
@@ -10,7 +13,7 @@ const UUID_NAMESPACE = Buffer.from('cfc50f4069435a3587de6d76b77e1d74', 'hex');
 export function seedId(key: string): string {
   const bytes = createHash('sha1')
     .update(UUID_NAMESPACE)
-    .update(`${DATASET_VERSION}:${key}`)
+    .update(`${ID_NAMESPACE_VERSION}:${key}`)
     .digest()
     .subarray(0, 16);
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
