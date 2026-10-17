@@ -48,12 +48,18 @@ export class ChatController {
     @CurrentUser() user: any,
   ) {
     const result = await this.chatService.markRead(conversationId, user.id);
-    if (result.count)
+    if (result.count) {
       this.chatGateway.broadcastToConversation(
         conversationId,
         'messages_read',
         { conversationId, readerId: user.id },
       );
+      // Header/other tabs are in the user room, not necessarily the chat room.
+      this.chatGateway.emitToUser(user.id, 'messages_read', {
+        conversationId,
+        readerId: user.id,
+      });
+    }
     return result;
   }
 

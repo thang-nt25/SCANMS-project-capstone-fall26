@@ -149,6 +149,11 @@ describe('AuthService', () => {
   });
 
   it('registers a customer without issuing a login token', async () => {
+    Object.assign(authService, {
+      otpCache: new Map([
+        ['new@example.com', { code: '123456', expiresAt: Date.now() + 60000 }],
+      ]),
+    });
     mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
     mockPrismaService.user.create.mockResolvedValueOnce({
       id: 'new-customer',
@@ -171,6 +176,14 @@ describe('AuthService', () => {
   });
 
   it('keeps a new Shop applicant as a customer until KYC approval', async () => {
+    Object.assign(authService, {
+      otpCache: new Map([
+        [
+          'new-shop@example.vn',
+          { code: '123456', expiresAt: Date.now() + 60000 },
+        ],
+      ]),
+    });
     mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
     mockPrismaService.user.create.mockResolvedValueOnce({
       id: 'new-shop-owner',
@@ -231,6 +244,29 @@ describe('AuthService', () => {
       }),
     ).rejects.toThrow(UnauthorizedException);
   });
+
+  it.each(['customer@scanms.vn', 'manager@scanms.vn'])(
+    'never creates the missing demo account %s during login',
+    async (email) => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      await expect(
+        authService.login({ email, password: 'irrelevant' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+      expect(mockJwtService.sign).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['customer@scanms.vn', 'manager@scanms.vn'])(
+    'never creates the missing demo account %s during Passport validation',
+    async (email) => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      await expect(
+        authService.validateUser(email, 'irrelevant'),
+      ).resolves.toBeNull();
+      expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('should throw ForbiddenException for deactivated user', async () => {
     mockPrismaService.user.findUnique.mockResolvedValueOnce({

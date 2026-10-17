@@ -1,0 +1,36 @@
+import type { SponsoredPlacementConfig } from '../../src/modules/stores/sponsored-placement.config';
+import { assertSeed, daysFrom, seedId } from './seed.helpers';
+import type { SeedContext, SeedDataset } from './seed.types';
+
+/** Configuration fixture, NOT a database row or proof of an actual paid booking. */
+export function buildMarketplaceDemoPlan(
+  data: SeedDataset,
+  context: SeedContext,
+) {
+  const placements: SponsoredPlacementConfig[] = [0, 1].map((index) => {
+    const store = data.stores.find(
+      (row) => row.id === seedId(`store:${index}`),
+    );
+    assertSeed(
+      store?.isActive &&
+        store.isVerified &&
+        store.onboardingStatus === 'VERIFIED',
+      'demo sponsored store must be an active verified seed shop',
+    );
+    return {
+      storeId: store.id!,
+      startsAt: daysFrom(context, -1).toISOString(),
+      endsAt: daysFrom(context, 14).toISOString(),
+      headline: `[DEMO] Khám phá bộ sưu tập ${store.name}`.slice(0, 160),
+      paymentStatus: 'CONFIRMED',
+    };
+  });
+  return {
+    source: 'SYNTHETIC_CAPSTONE',
+    warning:
+      'DEMO ONLY. CONFIRMED is a test fixture, not evidence of real payment. Never publish as a real paid booking.',
+    environmentVariable: 'MARKETPLACE_SPONSORED_PLACEMENTS',
+    autoApplied: false,
+    placements,
+  } as const;
+}

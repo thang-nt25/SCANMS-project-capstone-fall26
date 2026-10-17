@@ -9,7 +9,7 @@ import {
   ChevronDown,
   Check,
   ArrowLeft,
-  Mail,
+  UserRound,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
@@ -54,8 +54,8 @@ export default function LoginPage() {
 
   const [role, setRole] = useState<RoleType>('customer');
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const [email, setEmail] = useState(registeredEmail || 'customer@scanms.vn');
-  const [password, setPassword] = useState(registeredEmail ? '' : 'Password@123');
+  const [identifier, setIdentifier] = useState(registeredEmail || '');
+  const [password, setPassword] = useState('');
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -64,7 +64,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (registeredProvider === 'email' && registeredEmail) {
-      setEmail(registeredEmail);
+      setIdentifier(registeredEmail);
       setPassword('');
       toast.success(`Đăng ký tài khoản ${registeredEmail} thành công! Vui lòng nhập mật khẩu để đăng nhập.`);
     }
@@ -76,11 +76,7 @@ export default function LoginPage() {
   const handleRoleSelect = (selectedRole: RoleType) => {
     setPasswordAuthState('idle');
     setRole(selectedRole);
-    const r = ROLES.find((x) => x.id === selectedRole);
-    if (r) {
-      setEmail(r.email);
-      setPassword('Password@123');
-    }
+    // Switching workspaces must not replace the entered email/phone or password.
     setError(null);
     setIsRoleDropdownOpen(false);
   };
@@ -111,7 +107,7 @@ export default function LoginPage() {
     setPasswordAuthState('checking');
 
     try {
-      const res: any = await authService.login(email, password);
+      const res: any = await authService.login(identifier, password);
       const user = res?.data?.user || res?.user;
       setPasswordAuthState('success');
       toast.success(`Đăng nhập thành công! Chào mừng ${user?.fullName || user?.email}`);
@@ -125,7 +121,7 @@ export default function LoginPage() {
         err?.response?.data?.message ||
         (err?.code === 'ERR_NETWORK' || err?.message?.includes('Network Error')
           ? 'Không thể kết nối đến máy chủ Backend.'
-          : err?.message || 'Email hoặc mật khẩu không chính xác.');
+          : err?.message || 'Email, số điện thoại hoặc mật khẩu không chính xác.');
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -286,7 +282,7 @@ export default function LoginPage() {
             <div className="relative flex items-center justify-center my-0.5">
               <div className="border-t border-[#EAE4D7] w-full" />
               <span className="bg-white px-3 text-[11px] font-medium text-[#7D715E] uppercase tracking-wider absolute">
-                hoặc email
+                hoặc email / số điện thoại
               </span>
             </div>
 
@@ -298,25 +294,32 @@ export default function LoginPage() {
 
             {/* Form inputs */}
             <form onSubmit={handleSubmit} className="space-y-3">
-              <label className="sr-only" htmlFor="login-email">Địa chỉ email</label>
               <div className="relative flex items-center">
+                <label htmlFor="login-identifier" className="sr-only">Email hoặc số điện thoại đã đăng ký</label>
                 <input
-                  id="login-email"
-                  name="email"
+                  id="login-identifier"
+                  name="username"
+                  type="text"
                   autoComplete="username"
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setPasswordAuthState('idle'); }}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={254}
+                  value={identifier}
+                  onChange={(e) => { setIdentifier(e.target.value); setPasswordAuthState('idle'); }}
                   required
-                  placeholder="Email tài khoản"
+                  placeholder="Email hoặc số điện thoại đã đăng ký"
                   className="w-full h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#A69986]"
                 />
-                <Mail className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
+                <UserRound className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
 
               <label className="sr-only" htmlFor="login-password">Mật khẩu</label>
-              <AnimatedPasswordField value={password} state={passwordAuthState}
-                onChange={value => { setPassword(value); setPasswordAuthState('idle'); }} />
+              <AnimatedPasswordField
+                value={password}
+                state={passwordAuthState}
+                onChange={(value) => { setPassword(value); setPasswordAuthState('idle'); }}
+              />
 
               <div className="flex items-center justify-between text-xs pt-0.5">
                 <label className="flex items-center gap-2 cursor-pointer text-[#7D715E] hover:text-[#1A1612]">

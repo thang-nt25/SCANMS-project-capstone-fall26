@@ -103,6 +103,11 @@ test('compact sample shipment shows status while collapsed and preserves deliver
       assert.match(await page.$eval(charges, el => el.innerText), /Shop chịu 100% phí ship\s+49.000 đ/);
       assert.match(await page.$eval(charges, el => el.innerText), /Thu hộ COD từ KOL\s+0 đ/);
       assert.match(await page.$eval(charges, el => el.innerText), /không trừ ví hoặc thanh toán thật/);
+      await (await page.$(charges)).screenshot({ path: join(tmpdir(), 'scanms-sample-payment-desktop.png') });
+      await page.setViewport({ width:390, height:844 });
+      assert.equal(await page.$eval(charges, el => el.scrollWidth <= el.clientWidth + 1), true);
+      await (await page.$(charges)).screenshot({ path: join(tmpdir(), 'scanms-sample-payment-mobile.png') });
+      await page.setViewport({ width:1440, height:1000 });
       await clickText(page, 'Thanh toán cước thử');
       await page.waitForFunction(sel => document.querySelector(sel).innerText.includes('Chưa lưu được thanh toán thử'), {}, charges);
       assert.doesNotMatch(await page.$eval(charges, el => el.innerText), /Shop đã thanh toán/);

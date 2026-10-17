@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -12,11 +12,15 @@ import {
   Loader2,
   Radio,
   X,
+  MessageSquare,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { notificationsService, type AppNotification } from '../../services/notifications.service';
 import { authService } from '../../services/auth.service';
 import { liveBroadcastService } from '@/services/live-broadcast.service';
 import { getNotificationSection } from '../../utils/notification-categories.utils';
+import { useChatNotifications } from '../../hooks/useChatNotifications';
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,6 +35,7 @@ export const NotificationDropdown: React.FC = () => {
   const panelRef = useRef<HTMLDivElement>(null);
   const [panelTop, setPanelTop] = useState(72);
   const [panelRight, setPanelRight] = useState(12);
+  const listRequest = useRef(0);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -49,27 +54,7 @@ export const NotificationDropdown: React.FC = () => {
     return () => { window.removeEventListener("resize", position); document.removeEventListener("keydown", dismiss); };
   }, [isOpen]);
 
-  // Phát âm thanh chime nhẹ khi có thông báo mới (Web Audio API)
-  const playNotificationChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
-    } catch {}
-  };
-
-  const getLiveNotifications = (): AppNotification[] => {
+  const getLiveNotifications = useCallback((): AppNotification[] => {
     const broadcasts = liveBroadcastService.getAllBroadcasts();
     return broadcasts.map((b) => ({
       id: b.id,
@@ -81,27 +66,24 @@ export const NotificationDropdown: React.FC = () => {
       isRead: !!b.isRead,
       createdAt: b.createdAt,
     }));
-  };
+  }, []);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     const unreadBroadcasts = liveBroadcastService.getUnreadBroadcasts().length;
     const user = authService.getCurrentUser();
     let backendUnread = 0;
     if (user) {
       const unreadCount = await notificationsService.getUnreadCount();
+      if (user.id !== authService.getCurrentUser()?.id) return;
       if (unreadCount === null) return;
       backendUnread = unreadCount;
     }
     const totalCount = backendUnread + unreadBroadcasts;
-    setUnreadCount((prev) => {
-      if (totalCount > prev && prev > 0) {
-        playNotificationChime();
-      }
-      return totalCount;
-    });
-  };
+    setUnreadCount(totalCount);
+  }, []);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
+    const requestId = ++listRequest.current;
     setLoading(true);
     try {
       const user = authService.getCurrentUser();
@@ -117,6 +99,7 @@ export const NotificationDropdown: React.FC = () => {
           backendItems = [];
         }
       }
+      if (user?.id !== authService.getCurrentUser()?.id || requestId !== listRequest.current) return;
 
       // Merge broadcast notifications for ALL and PROMOTION tabs
       const liveItems = getLiveNotifications();
@@ -170,14 +153,19 @@ export const NotificationDropdown: React.FC = () => {
         );
       }
 
-      setNotifications(combined);
+      setNotifications(combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       const unreadBroadcasts = liveBroadcastService.getUnreadBroadcasts().length;
       setUnreadCount(backendUnread + unreadBroadcasts);
     } catch {
     } finally {
-      setLoading(false);
+      if (requestId === listRequest.current) setLoading(false);
     }
-  };
+  }, [activeTab, getLiveNotifications]);
+
+  const { soundOn, soundBlocked, toggleSound, unlockSound, playChime } = useChatNotifications(() => {
+    void fetchUnreadCount();
+    if (isOpen) void fetchNotifications();
+  });
 
   useEffect(() => {
     fetchUnreadCount();
@@ -186,7 +174,7 @@ export const NotificationDropdown: React.FC = () => {
 
     // Lắng nghe sự kiện livestream phát sóng thời gian thực cho mọi Role
     const handleNewLive = () => {
-      playNotificationChime();
+      playChime();
       void fetchNotifications();
       void fetchUnreadCount();
     };
@@ -195,22 +183,25 @@ export const NotificationDropdown: React.FC = () => {
       void fetchNotifications();
       void fetchUnreadCount();
     };
+    const handleFocus = () => { void fetchUnreadCount(); };
 
     window.addEventListener('scanms-new-live-broadcast', handleNewLive);
     window.addEventListener('scanms-live-broadcast-read', handleLiveRead);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('scanms-new-live-broadcast', handleNewLive);
       window.removeEventListener('scanms-live-broadcast-read', handleLiveRead);
+      window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [fetchUnreadCount, fetchNotifications, playChime]);
 
   useEffect(() => {
     if (isOpen) {
       void fetchNotifications();
     }
-  }, [isOpen, activeTab]);
+  }, [isOpen, fetchNotifications]);
 
   // Click outside listener
   useEffect(() => {
@@ -353,6 +344,7 @@ export const NotificationDropdown: React.FC = () => {
   };
 
   const getNotificationIcon = (type: string) => {
+    if (type === 'CHAT_MESSAGE') return <MessageSquare className="h-4 w-4 text-[#B88E4F]" />;
     if (type === 'LIVE_GOVERNANCE') return <ShieldAlert className="h-4 w-4 text-[#B88E4F]" />;
     if (type.startsWith('ORDER_') || type.startsWith('LIVE_ORDER_')) {
       return <ShoppingBag className="w-4 h-4 text-[#C59B58]" />;
@@ -427,6 +419,15 @@ export const NotificationDropdown: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-[4px]">
+              <button
+                type="button"
+                onClick={toggleSound}
+                aria-label={soundOn ? 'Tắt âm báo tin nhắn' : 'Bật âm báo tin nhắn'}
+                title={soundOn ? 'Tắt âm báo tin nhắn' : 'Bật âm báo tin nhắn'}
+                className="grid place-items-center w-[28px] h-[28px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#B88E4F]"
+              >
+                {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}
+              </button>
               {unreadCount > 0 && (
                 <button
                   type="button"
@@ -447,6 +448,12 @@ export const NotificationDropdown: React.FC = () => {
               </button>
             </div>
           </header>
+
+          {soundOn && soundBlocked && (
+            <button type="button" onClick={() => void unlockSound()} className="mx-3 mb-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-left text-[11px] text-[#B88E4F]">
+              Trình duyệt chưa cho phát âm báo. Bấm để bật âm thanh.
+            </button>
+          )}
 
           <div className="grid grid-cols-4 gap-[4px] p-[0_12px_11px] shrink-0 border-b border-[#EAE4D7]" role="group" aria-label="Loại thông báo">
             {([

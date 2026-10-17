@@ -13,6 +13,8 @@ import {
   validateChatAttachment,
 } from './chat-attachment.utils';
 import { CouponStatus, Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import { chatNotificationPreview } from './chat-notification';
 
 function isExclusiveDealMessage(messageText?: string): boolean {
   if (!messageText) return false;
@@ -545,9 +547,23 @@ export class ChatService {
 
   async markRead(conversationId: string, userId: string) {
     await this.getConversationById(conversationId, userId);
-    return this.prisma.chatMessage.updateMany({
-      where: { conversationId, isRead: false, senderId: { not: userId } },
-      data: { isRead: true },
+    return this.prisma.$transaction(async (tx) => {
+      // Snapshot IDs so a concurrently arriving message is not marked read unseen.
+      const unread = await tx.chatMessage.findMany({
+        where: { conversationId, isRead: false, senderId: { not: userId } },
+        select: { id: true },
+      });
+      const ids = unread.map((message) => message.id);
+      if (!ids.length) return { count: 0 };
+      const result = await tx.chatMessage.updateMany({
+        where: { id: { in: ids }, conversationId, senderId: { not: userId } },
+        data: { isRead: true },
+      });
+      await tx.notification.updateMany({
+        where: { id: { in: ids }, userId, type: 'CHAT_MESSAGE', isRead: false },
+        data: { isRead: true },
+      });
+      return result;
     });
   }
 
@@ -591,6 +607,18 @@ export class ChatService {
     mediaName?: string,
     messageId?: string,
   ) {
+    // Derive the recipient from the authorized conversation, never from the FE.
+    const conversation = await this.getConversationById(
+      conversationId,
+      senderId,
+    );
+    const fromShop = conversation.store.ownerId === senderId;
+    const recipientId = fromShop
+      ? conversation.customerId || conversation.collaboratorId
+      : conversation.store.ownerId;
+    if (!recipientId || recipientId === senderId) {
+      throw new BadRequestException('Không xác định được người nhận tin nhắn');
+    }
     if (messageId) {
       const existing = await this.prisma.chatMessage.findUnique({
         where: { id: messageId },
@@ -616,12 +644,13 @@ export class ChatService {
         return existing;
       }
     }
+    const savedId = messageId || randomUUID();
     let message;
     try {
       [message] = await this.prisma.$transaction([
         this.prisma.chatMessage.create({
           data: {
-            ...(messageId ? { id: messageId } : {}),
+            id: savedId,
             conversationId,
             senderId,
             messageText,
@@ -653,6 +682,30 @@ export class ChatService {
         this.prisma.conversation.update({
           where: { id: conversationId },
           data: { lastMessageAt: new Date() },
+        }),
+        // The shared UUID makes message retries idempotent for notifications too.
+        // All three writes commit together, before the socket event is emitted.
+        this.prisma.notification.create({
+          data: {
+            id: savedId,
+            userId: recipientId,
+            type: 'CHAT_MESSAGE',
+            title: fromShop
+              ? `${conversation.store.name}: Tin nhắn mới`.slice(0, 255)
+              : 'Bạn có tin nhắn mới',
+            message: chatNotificationPreview(messageText, mediaType),
+            data: {
+              conversationId,
+              storeId: conversation.storeId,
+              senderId,
+              messageId: savedId,
+              actionUrl: fromShop
+                ? `/chat?conversationId=${conversationId}`
+                : conversation.customerId
+                  ? `/merchant/customer-messages?conversationId=${conversationId}`
+                  : `/merchant/kol-hub?tab=messages&conversationId=${conversationId}`,
+            },
+          },
         }),
       ]);
     } catch (error: any) {

@@ -2867,9 +2867,15 @@ export default function LiveStreamRoomPage() {
 
                         <button
                           type="button"
-                          onClick={() => {
-                            setPinnedIndex(idx);
-                            toast.success(`Đã ghim "${p.title}" lên luồng live!`);
+                          onClick={async () => {
+                            try {
+                              if (!sessionData?.id) throw new Error('Chưa tải được phiên Live.');
+                              await api.post(`/live-sessions/${sessionData.id}/pinned-product`, { productId: p.id });
+                              setPinnedIndex(idx);
+                              toast.success(`Đã ghim "${p.title}" lên luồng live!`);
+                            } catch {
+                              toast.error('Chưa thể ghim sản phẩm. Vui lòng kiểm tra quyền chủ phiên và thử lại.');
+                            }
                           }}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
                             isCurrentPinned

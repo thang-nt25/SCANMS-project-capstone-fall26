@@ -1,0 +1,343 @@
+import type { OrderStatus, Prisma } from '@prisma/client';
+import type { SeedContext, SeedDataset } from './seed.types';
+import {
+  ADMIN_ID,
+  amount,
+  assertSeed,
+  commissionAmount,
+  DATASET_VERSION,
+  daysFrom,
+  seedId,
+} from './seed.helpers';
+import { addressFor, fullAddress } from './data/addresses.data';
+import { RETURN_POLICY, SHOPS, WARRANTY_POLICY } from './data/catalog.data';
+
+const SECONDARY_STATUSES: readonly OrderStatus[] = [
+  'PENDING',
+  'SHIPPING',
+  'DELIVERED',
+  'COMPLETED',
+  'RETURN_REQUESTED',
+];
+
+export function buildOrders(data: SeedDataset, context: SeedContext): void {
+  const customers = data.users.filter((user) => user.role === 'CUSTOMER');
+  customers.forEach((customer, customerIndex) => {
+    for (let purchase = 0; purchase < 2; purchase++) {
+      const key = `customer-${customerIndex + 1}-order-${purchase + 1}`;
+      const id = seedId(`order:${key}`);
+      const storeIndex =
+        purchase === 0
+          ? Math.floor(customerIndex / 2)
+          : (customerIndex + 3) % SHOPS.length;
+      const storeId = seedId(`store:${storeIndex}`);
+      const collaboratorId = seedId(`creator:${storeIndex}`);
+      const status =
+        purchase === 0
+          ? 'COMPLETED'
+          : SECONDARY_STATUSES[customerIndex % SECONDARY_STATUSES.length];
+      const completed = status === 'COMPLETED';
+      const delivered =
+        completed || status === 'DELIVERED' || status === 'RETURN_REQUESTED';
+      const createdAt = daysFrom(
+        context,
+        purchase === 0 ? -43 : completed ? -23 : -4,
+      );
+      const deliveredAt = delivered
+        ? daysFrom(context, purchase === 0 ? -40 : completed ? -20 : -2)
+        : null;
+      const completedAt = completed
+        ? daysFrom(context, purchase === 0 ? -26 : -6)
+        : null;
+      const products =
+        purchase === 0
+          ? [data.products[storeIndex * 2], data.products[storeIndex * 2 + 1]]
+          : [data.products[storeIndex * 2 + (customerIndex % 2)]];
+      // Four bulk purchases fund two legitimate demo payouts of 2m VND with 10% PIT.
+      const quantity = purchase === 0 && customerIndex < 4 ? 30 : 1;
+      const subtotalAmount = products.reduce(
+        (total, product) => total + amount(product.price) * quantity,
+        0,
+      );
+      const coupon =
+        purchase === 1 && subtotalAmount >= 100_000
+          ? data.coupons.find(
+              (row) =>
+                row.id ===
+                seedId(
+                  `${customerIndex % 2 ? 'kol-coupon' : 'shop-coupon'}:${storeIndex}`,
+                ),
+            )
+          : undefined;
+      const discountAmount = coupon
+        ? coupon.discountType === 'PERCENTAGE'
+          ? Math.min(
+              (subtotalAmount * amount(coupon.discountValue)) / 100,
+              amount(coupon.maximumDiscountAmount),
+            )
+          : amount(coupon.discountValue)
+        : 0;
+      const shippingEvidence = context.shipping.find(
+        (row) => row.orderKey === key,
+      );
+      if (shippingEvidence)
+        assertSeed(
+          (shippingEvidence.status === 'transporting' &&
+            status === 'SHIPPING') ||
+            (shippingEvidence.status === 'delivered' && delivered),
+          `sandbox shipment status does not match order ${key}`,
+        );
+      // Match current dev's free-shipping policy. A sandbox export may supply an actual historical fee.
+      const shippingFee = shippingEvidence?.fee ?? 0;
+      const finalAmount = subtotalAmount - discountAmount + shippingFee;
+      const paid = status !== 'PENDING';
+      const trackingNumber =
+        status !== 'PENDING'
+          ? (shippingEvidence?.orderCode ??
+            `DEMO-GHN-${String(customerIndex + 1).padStart(2, '0')}-${purchase + 1}`)
+          : null;
+      const order: Prisma.OrderCreateManyInput = {
+        id,
+        storeId,
+        externalOrderSn: `SEED-DH-${String(customerIndex + 1).padStart(2, '0')}-${purchase + 1}`,
+        idempotencyKey: `${DATASET_VERSION}:${key}`,
+        customerId: customer.id!,
+        customerName: customer.fullName,
+        customerPhone: customer.phoneNumber,
+        customerEmail: customer.email,
+        shippingAddress: fullAddress(addressFor(customerIndex)),
+        subtotalAmount,
+        discountAmount,
+        shippingFee,
+        finalAmount,
+        status,
+        deliveredAt,
+        completedAt,
+        attributedCollaboratorId: collaboratorId,
+        attributionMethod: 'COOKIE',
+        attributedAt: createdAt,
+        referralLinkId: seedId(
+          `link:${storeIndex}:${data.products.indexOf(products[0])}`,
+        ),
+        couponId: coupon?.id,
+        couponCodeSnapshot: coupon?.displayCode,
+        couponDiscountAmount: discountAmount,
+        policyAcceptedAt: createdAt,
+        policySnapshot: {
+          storeId,
+          storeName: SHOPS[storeIndex].name,
+          accepted: true,
+          returnPolicy: RETURN_POLICY,
+          returnPolicySource: 'SHOP',
+          warrantyPolicy: WARRANTY_POLICY,
+          shippingPolicy: 'Phí hiển thị theo cấu hình tại thời điểm đặt hàng.',
+        },
+        rawPayload: {
+          paymentMethod: paid ? 'WALLET' : 'PAYOS',
+          paymentStatus: paid ? 'PAID' : 'WAITING_PAYMENT',
+          trackingNumber,
+          ghnOrderCode: trackingNumber,
+          carrier: 'GHN',
+          shippingCarrier: 'GHN',
+          ghnIsReal: Boolean(shippingEvidence),
+          ghnTotalFee: shippingFee,
+          ghnShippedAt: paid
+            ? new Date(createdAt.getTime() + 86_400_000).toISOString()
+            : null,
+          seed: {
+            dataset: DATASET_VERSION,
+            source: shippingEvidence ? 'GHN_SANDBOX_EXPORT' : 'SYNTHETIC',
+            orderKey: key,
+            shippingEvidence: shippingEvidence
+              ? {
+                  capturedAt: shippingEvidence.capturedAt,
+                  evidenceFile: shippingEvidence.evidenceFile,
+                }
+              : null,
+          },
+        },
+        createdAt,
+      };
+      data.orders.push(order);
+
+      let commissionTotal = 0;
+      products.forEach((product, itemIndex) => {
+        const productIndex = data.products.indexOf(product);
+        const itemId = seedId(`order-item:${key}:${itemIndex}`);
+        const unitPrice = amount(product.price);
+        const netItemSubtotal =
+          unitPrice * quantity * (1 - discountAmount / subtotalAmount);
+        const itemCommission = commissionAmount(netItemSubtotal, 10);
+        commissionTotal += itemCommission;
+        data.orderItems.push({
+          id: itemId,
+          orderId: id,
+          productId: product.id!,
+          variantId: seedId(`variant:${productIndex}:0`),
+          referralLinkId: seedId(`link:${storeIndex}:${productIndex}`),
+          quantity,
+          unitPrice,
+          appliedCommissionRate: 10,
+          calculatedCommissionAmount: itemCommission,
+          commissionSnapshotAt: createdAt,
+          createdAt,
+        });
+        if (completed)
+          data.reviews.push({
+            id: seedId(`review:${key}:${itemIndex}`),
+            productId: product.id!,
+            orderId: id,
+            customerName: customer.fullName,
+            rating: 5,
+            comment: [
+              'Đóng gói cẩn thận, mình đã nhận đúng phân loại đã đặt.',
+              'Sản phẩm được niêm phong, Shop tư vấn rõ ràng.',
+              'Giao đủ số lượng, thông tin sản phẩm dễ theo dõi.',
+            ][customerIndex % 3],
+            images: [product.imageUrl!],
+            reviewImageUrl: product.imageUrl,
+            status: 'APPROVED',
+            isApproved: true,
+            reviewedBy: ADMIN_ID,
+            reviewedAt: new Date(completedAt!.getTime() + 3_600_000),
+            createdAt: new Date(completedAt!.getTime() + 1_800_000),
+          });
+      });
+
+      if (paid)
+        data.commissions.push({
+          id: seedId(`commission:${key}`),
+          orderId: id,
+          collaboratorId,
+          commissionAmount: commissionTotal,
+          status: completed ? 'APPROVED' : 'PENDING',
+          eligibleAt: deliveredAt ?? createdAt,
+          availableAt: deliveredAt
+            ? new Date(deliveredAt.getTime() + 14 * 86_400_000)
+            : daysFrom(context, 30),
+          approvedAt: completedAt,
+          storeWalletTracked: true,
+          createdAt,
+        });
+
+      data.payments.push({
+        id: seedId(`payment:${key}`),
+        orderId: id,
+        transactionId: `DEMO-PAY-${customerIndex + 1}-${purchase + 1}`,
+        amount: finalAmount,
+        currency: 'VND',
+        paymentMethod: paid ? 'WALLET' : 'PAYOS',
+        status: paid ? 'SUCCESS' : 'PENDING',
+        createdAt,
+      });
+      if (coupon) {
+        data.redemptions.push({
+          id: seedId(`redemption:${key}`),
+          couponId: coupon.id!,
+          orderId: id,
+          collaboratorId: coupon.collaboratorId,
+          storeId,
+          customerId: customer.id,
+          customerPhone: customer.phoneNumber,
+          status: paid ? 'USED' : 'RESERVED',
+          discountAmount,
+          shopFundedAmount: discountAmount,
+          platformFundedAmount: 0,
+          eligibleSubtotal: subtotalAmount,
+          couponCodeSnapshot: coupon.displayCode,
+          discountTypeSnapshot: coupon.discountType!,
+          discountValueSnapshot: coupon.discountValue ?? 0,
+          createdAt,
+        });
+        coupon.usageCount = (coupon.usageCount ?? 0) + 1;
+        coupon.budgetUsed = amount(coupon.budgetUsed) + discountAmount;
+      }
+
+      if (status === 'RETURN_REQUESTED') {
+        const returnId = seedId(`return:${key}`);
+        const approved = customerIndex % 2 === 0;
+        const submittedAt = daysFrom(context, -1);
+        const address = fullAddress(addressFor(storeIndex));
+        data.returns.push({
+          id: returnId,
+          orderId: id,
+          customerId: customer.id!,
+          reason: 'DAMAGED',
+          details:
+            'Hộp sản phẩm bị móp khi nhận. Khách gửi ảnh và video mở hộp để Shop kiểm tra.',
+          imageUrls: [products[0].imageUrl!],
+          unboxingVideoUrl: new URL(
+            '/assets/sample-video.mp4',
+            context.frontendUrl,
+          ).toString(),
+          status: approved ? 'SHOP_APPROVED' : 'REQUESTED',
+          originalOrderStatus: 'DELIVERED',
+          deadlineAt: new Date(deliveredAt!.getTime() + 14 * 86_400_000),
+          shopResponse: approved
+            ? 'Shop đã tiếp nhận; vui lòng đặt lịch lấy hàng trên hồ sơ đổi trả.'
+            : null,
+          shopRespondedAt: approved ? daysFrom(context, -0.5) : null,
+          shipByAt: approved ? daysFrom(context, 7) : null,
+          returnAddress: approved ? address : null,
+          returnInstructions: approved
+            ? 'Giữ nguyên phụ kiện và đóng gói đầy đủ. Đặt lịch lấy hàng để gửi về kho của Shop.'
+            : null,
+          submittedAt,
+        });
+        data.returnItems.push({
+          id: seedId(`return-item:${key}`),
+          returnRequestId: returnId,
+          orderItemId: seedId(`order-item:${key}:0`),
+          quantity: 1,
+          unitPrice: products[0].price,
+        });
+        data.returnEvents.push({
+          id: seedId(`return-event:${key}`),
+          returnRequestId: returnId,
+          actorId: customer.id,
+          type: 'REQUESTED',
+          data: { source: 'SYNTHETIC_CAPSTONE' },
+          createdAt: submittedAt,
+        });
+        if (approved)
+          data.returnEvents.push({
+            id: seedId(`return-approved-event:${key}`),
+            returnRequestId: returnId,
+            actorId: seedId(`shop-owner:${storeIndex}`),
+            type: 'SHOP_APPROVED',
+            createdAt: daysFrom(context, -0.5),
+          });
+      }
+      data.notifications.push({
+        id: seedId(`order-notification:${key}`),
+        userId: customer.id!,
+        title: completed ? 'Đơn hàng đã hoàn tất' : 'Cập nhật đơn hàng',
+        message: `Đơn ${order.externalOrderSn} đã được cập nhật.`,
+        type: completed
+          ? 'ORDER_COMPLETED'
+          : status === 'SHIPPING'
+            ? 'ORDER_SHIPPED'
+            : status === 'DELIVERED'
+              ? 'ORDER_DELIVERED'
+              : status === 'RETURN_REQUESTED'
+                ? 'RETURN_REQUESTED'
+                : 'ORDER_CREATED',
+        data: {
+          orderId: id,
+          externalOrderSn: order.externalOrderSn,
+          status,
+          actionUrl:
+            status === 'RETURN_REQUESTED'
+              ? `/customer/returns/${seedId(`return:${key}`)}`
+              : `/customer/orders?orderId=${id}`,
+        },
+        createdAt: completedAt ?? daysFrom(context, -0.5),
+        isRead: completed,
+      });
+    }
+  });
+  for (const link of data.referralLinks)
+    link.totalOrders = data.orders.filter(
+      (item) => item.referralLinkId === link.id,
+    ).length;
+}
