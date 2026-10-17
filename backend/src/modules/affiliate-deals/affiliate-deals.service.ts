@@ -199,6 +199,9 @@ export class AffiliateDealsService {
   }
 
   async createProposal(collaboratorId: string, dto: CreateExclusiveDealDto) {
+    if (dto.videoReviewCommitment !== true) {
+      throw new BadRequestException('KOL phải cam kết thực hiện video review cho sản phẩm.');
+    }
     const collaborator = await this.prisma.user.findUnique({
       where: { id: collaboratorId },
       include: { collaboratorProfile: true },
@@ -249,10 +252,11 @@ export class AffiliateDealsService {
       );
     }
 
-    const salesCommitment = dto.salesCommitment.trim();
-    if (salesCommitment.length < 5) {
+    const contentPlan = dto.salesCommitment.trim();
+    if (contentPlan.length < 5) {
       throw new BadRequestException('Hãy mô tả cam kết doanh số rõ hơn.');
     }
+    const salesCommitment = `Cam kết thực hiện video review cho sản phẩm. ${contentPlan}`;
 
     const dealStatus = await this.getMyDealStatus(collaboratorId);
     if (dealStatus.isBlocked) {

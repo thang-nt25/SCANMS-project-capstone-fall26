@@ -1,5 +1,13 @@
 # Nghiệm thu phần TUẤN — 15/10/2026
 
+## Cập nhật kiểm tra 16/10/2026
+
+Frontend, Swagger và API sản phẩm (gồm lọc Shop từng lỗi) hiện trả HTTP 200. Chạy lại 116 kiểm thử: tất cả qua. Chưa xác nhận toàn bộ schema hoặc nghiệm thu luồng GHN thực tế.
+
+Phát hiện còn thiếu lối vào `ShopCampaignsPage`: route campaign chuyển sang tin nhắn, component chưa được mount. API `/api/tiers` trả Vàng +3/Kim Cương +5 trong khi Word và cách quy đổi khi tính đơn là +2/+3; cần đồng bộ danh mục.
+
+Hướng dẫn thao tác, đường dẫn và từng ca nghiệm thu nằm ở `../HUONG_DAN_TEST_TUAN.md`. Phần lỗi EACCES bên dưới là ghi nhận lịch sử tại ngày soạn, không phải kết quả endpoint hiện tại.
+
 ## Trạng thái
 
 Đã sửa cộng VIP theo deal APPROVED của đúng KOL/sản phẩm/Shop, độc lập loại link. Link chiến dịch vẫn giữ kiểm tra tham gia chiến dịch; VIP được cộng thêm khi chốt đơn. Không cần tạo link có đồng thời hai loại nguồn.

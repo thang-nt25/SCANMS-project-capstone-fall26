@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import type { CollaboratorTier } from '@prisma/client';
+import { Prisma, type CollaboratorTier } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
+import { tierBonusByName } from '../commissions/commission-policy';
+import { goodsDiscount } from '../coupons/voucher-pricing';
 
 @Injectable()
 export class TiersService {
@@ -19,11 +21,7 @@ export class TiersService {
   }
 
   private tierBonus(tier: CollaboratorTier) {
-    const name = tier.name.toLowerCase();
-    if (name.includes('diamond')) return 3;
-    if (name.includes('gold')) return 2;
-    if (name.includes('silver')) return 1;
-    return 0;
+    return tierBonusByName(tier.name);
   }
 
   /**
@@ -36,7 +34,7 @@ export class TiersService {
     // Older seed runs may have created identical policies with different IDs.
     // Collapse those policies for display without deleting or reassigning profiles.
     const seen = new Set<string>();
-    return tiers.filter((tier) => {
+    return tiers.map(tier => ({ ...tier, extraBonusPercentage: new Prisma.Decimal(this.tierBonus(tier)) })).filter((tier) => {
       const key = this.policyKey(tier);
       if (seen.has(key)) return false;
       seen.add(key);
@@ -45,7 +43,7 @@ export class TiersService {
   }
 
   private policyKey(tier: CollaboratorTier) {
-    return `${tier.name.trim().toLowerCase()}|${Number(tier.minRevenueThreshold)}|${Number(tier.extraBonusPercentage)}`;
+    return `${tier.name.trim().toLowerCase()}|${Number(tier.minRevenueThreshold)}|${this.tierBonus(tier)}`;
   }
 
   private async previousMonthSales(userId: string) {
@@ -59,13 +57,13 @@ export class TiersService {
           status: { in: ['COMPLETED', 'DELIVERED'] },
           createdAt: this.previousMonthWindow(),
         },
-        select: { id: true, subtotalAmount: true, couponDiscountAmount: true, finalAmount: true, refundedAmount: true },
+        select: { id: true, subtotalAmount: true, discountAmount: true, couponDiscountAmount: true, finalAmount: true, refundedAmount: true },
         orderBy: { id: 'asc' },
         take: 500,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });
       for (const order of orders) {
-        const netGoods = Math.max(0, Number(order.subtotalAmount) - Number(order.couponDiscountAmount || 0));
+        const netGoods = Math.max(0, Number(order.subtotalAmount) - goodsDiscount(order));
         const paid = Math.max(0, Number(order.finalAmount));
         const refunded = Math.min(paid, Math.max(0, Number(order.refundedAmount || 0)));
         // Refund records contain an amount for the whole order, without a goods/shipping split.

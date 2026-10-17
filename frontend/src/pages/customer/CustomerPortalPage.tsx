@@ -68,6 +68,7 @@ import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal
 import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
+import { getGhnTrackingCode } from '../../utils/ghn-tracking';
 import {
   AddressLocationPicker,
   type AddressLocationResult,
@@ -2143,8 +2144,8 @@ export default function CustomerPortalPage() {
               </div>
             </div>
 
-            {(selectedOrderDetails.rawPayload?.ghnOrderCode || selectedOrderDetails.rawPayload?.trackingNumber) && (
-              isGeneratedGhnTestTrackingCode(selectedOrderDetails.rawPayload.ghnOrderCode || selectedOrderDetails.rawPayload.trackingNumber) ? (
+            {getGhnTrackingCode(selectedOrderDetails.rawPayload) && (
+              isGeneratedGhnTestTrackingCode(getGhnTrackingCode(selectedOrderDetails.rawPayload)) ? (
                 <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#4A3E2D]" role="status">
                   <strong className="block text-[#1A1612]">Shop chưa có mã vận đơn GHN thật</strong>
                   <p className="m-0 mt-1 text-xs leading-relaxed text-[#7D715E]">
@@ -2152,7 +2153,13 @@ export default function CustomerPortalPage() {
                   </p>
                 </div>
               ) : (
-                <GhnTrackingTimeline orderCode={selectedOrderDetails.rawPayload.ghnOrderCode || selectedOrderDetails.rawPayload.trackingNumber} />
+                <GhnTrackingTimeline
+                  orderCode={getGhnTrackingCode(selectedOrderDetails.rawPayload)!}
+                  orderStatus={selectedOrderDetails.status}
+                  environment={selectedOrderDetails.rawPayload?.ghnEnvironment === 'TEST' || selectedOrderDetails.rawPayload?.ghnEnvironment === 'LIVE'
+                    ? selectedOrderDetails.rawPayload.ghnEnvironment
+                    : undefined}
+                />
               )
             )}
 

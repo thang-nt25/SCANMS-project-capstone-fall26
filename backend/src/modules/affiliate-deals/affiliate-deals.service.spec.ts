@@ -64,6 +64,12 @@ describe('AffiliateDealsService', () => {
     );
   });
 
+  it('requires explicit video review commitment before accepting a proposal', async () => {
+    await expect(service.createProposal(collaboratorId, { productId, proposedCommissionRate: 12,
+      salesCommitment: 'Review video', videoReviewCommitment: false })).rejects.toThrow('video review');
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
   it('blocks deal proposals until KOL KYC is verified', async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: collaboratorId,
@@ -74,7 +80,7 @@ describe('AffiliateDealsService', () => {
     });
 
     await expect(
-      service.createProposal(collaboratorId, {
+      service.createProposal(collaboratorId, { videoReviewCommitment: true,
         productId,
         proposedCommissionRate: 25,
         salesCommitment: 'Tạo 4 video, mục tiêu 80 đơn hàng.',
@@ -128,7 +134,7 @@ describe('AffiliateDealsService', () => {
       messageText: 'deal card',
     });
 
-    const result = await service.createProposal(collaboratorId, {
+    const result = await service.createProposal(collaboratorId, { videoReviewCommitment: true,
       productId,
       proposedCommissionRate: 12,
       salesCommitment: 'Tạo 4 video, mục tiêu 80 đơn hàng.',
@@ -268,7 +274,7 @@ describe('AffiliateDealsService', () => {
       messageText: data.messageText,
     }));
 
-    const result = await service.createProposal(collaboratorId, {
+    const result = await service.createProposal(collaboratorId, { videoReviewCommitment: true,
       productId,
       proposedCommissionRate: 13,
       salesCommitment: 'Tăng doanh số trong tháng này',

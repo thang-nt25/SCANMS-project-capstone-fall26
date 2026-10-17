@@ -5,6 +5,8 @@ export interface Campaign {
   storeId: string;
   name: string;
   bonusCommissionRate: number;
+  bonusBudgetTotal?: number | null;
+  bonusBudgetUsed?: number;
   startDate: string;
   endDate: string;
   isActive: boolean;

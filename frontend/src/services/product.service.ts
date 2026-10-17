@@ -66,8 +66,8 @@ export const productService = {
     category?: string;
     page?: number;
     limit?: number;
-  }) {
-    const res: any = await api.get('/products', { params });
+  }, fresh = false) {
+    const res: any = await api.get('/products', { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res.data;
   },
 

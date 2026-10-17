@@ -863,6 +863,7 @@ export default function ReferralLinksPage() {
     setSubmittingDealProposal(true);
     try {
       const proposal = await referralLinksService.createExclusiveDeal({
+        videoReviewCommitment: dealAgreedSanctions && dealVideoCount >= 1,
         productId: dealProposalProduct.id,
         proposedCommissionRate: proposedRate,
         salesCommitment: dealSalesCommitment.trim(),
@@ -1114,12 +1115,12 @@ export default function ReferralLinksPage() {
       </div>
 
       <section
-        className="kol-exclusive-deals"
+        className="kol-exclusive-deals w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 sm:px-5 sm:py-4 shadow-xs"
         aria-labelledby="exclusive-deals-heading"
       >
-        <div className="kol-deals-heading flex flex-wrap items-center justify-between gap-3">
+        <div className="kol-deals-heading flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
               <Sparkles className="w-4.5 h-4.5 text-[#B88E4F]" />
             </div>
             <div className="min-w-0">
@@ -1128,34 +1129,31 @@ export default function ReferralLinksPage() {
                   Deal độc quyền
                 </h2>
                 {dealStats.total > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                  <span className="inline-flex h-7 items-center px-2.5 rounded-full text-[11px] font-semibold bg-[#FBF5EB] text-[#8D6936] border border-[#EEDFC6]">
                     {dealStats.total} đề xuất
                   </span>
                 )}
                 {dealStats.approved > 0 && (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EFE6] text-[#1A1612] border border-[#EAE4D7]">
+                  <span className="inline-flex h-7 items-center gap-1.5 px-2.5 rounded-full text-[11px] font-semibold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
                     <span>{dealStats.approved} đang áp dụng</span>
                   </span>
                 )}
                 {dealStats.pending > 0 && (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF9E6] text-[#D97706] border border-[#FFE082]">
+                  <span className="inline-flex h-7 items-center gap-1.5 px-2.5 rounded-full text-[11px] font-semibold bg-[#FBF5EB] text-[#8D6936] border border-[#EEDFC6]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />
                     <span>{dealStats.pending} chờ duyệt</span>
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 text-xs text-[#7D715E]">
-                Thỏa thuận hoa hồng với Shop. Liên kết được kích hoạt sau khi duyệt.
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="grid grid-cols-2 items-center gap-2 shrink-0 lg:min-w-[230px]">
             <button
               type="button"
               onClick={toggleExclusiveDealsCollapse}
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:text-[#A47B3E] transition cursor-pointer select-none active:scale-95"
+              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#795A2D] hover:bg-[#F3EFE6] transition-colors cursor-pointer select-none"
               title={isExclusiveDealsCollapsed ? 'Mở rộng danh sách đề xuất Exclusive Deal' : 'Thu gọn danh sách đề xuất'}
               aria-expanded={!isExclusiveDealsCollapsed}
               aria-controls="kol-deal-list"
@@ -1171,7 +1169,7 @@ export default function ReferralLinksPage() {
             <button
               type="button"
               onClick={() => navigate('/chat')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer select-none"
+              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition-colors cursor-pointer select-none"
               title="Mở hộp chat trao đổi với Shop"
             >
               <ExternalLink className="h-3.5 w-3.5 text-[#B88E4F]" />
@@ -1182,7 +1180,7 @@ export default function ReferralLinksPage() {
 
         {/* Nội dung danh sách deal (Có thể thu gọn / mở rộng) */}
         {!isExclusiveDealsCollapsed && (
-          <div id="kol-deal-list" className="kol-deal-content">
+          <div id="kol-deal-list" className="kol-deal-content mt-4 border-t border-[#EAE4D7] pt-4">
             {loadingDealProposals ? (
               <div className="py-4 flex items-center justify-center gap-2 text-sm text-[#7D715E]">
                 <Loader2 className="h-4 w-4 animate-spin text-[#B88E4F]" />
@@ -3365,7 +3363,7 @@ export default function ReferralLinksPage() {
                     className="mt-0.5 h-4 w-4 rounded-md border-[#C59B58] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
                   />
                   <span className="text-xs font-bold text-[#1A1612]">
-                    Tôi đã đọc, hiểu rõ và cam kết tuân thủ <span className="text-[#B88E4F]">Quy chế chế tài 4 cấp độ</span> của sàn SCANMS khi nhận mức hoa hồng độc quyền.
+                    Tôi cam kết thực hiện ít nhất 1 video review cho sản phẩm và tuân thủ <span className="text-[#B88E4F]">Quy chế chế tài 4 cấp độ</span> của sàn SCANMS. Thưởng Deal cần Shop duyệt trước khi áp dụng.
                   </span>
                 </label>
               </div>

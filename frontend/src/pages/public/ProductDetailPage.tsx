@@ -1755,12 +1755,12 @@ export default function ProductDetailPage() {
                     {(!product.isActive || product.status === 'INACTIVE')
                       ? 'TẠM NGỪNG KINH DOANH'
                       : currentStock > 0
-                      ? 'Mua Với Voucher'
+                      ? 'Mua sản phẩm này'
                       : 'TẠM HẾT HÀNG'}
                   </span>
                   {currentStock > 0 && product.isActive && product.status !== 'INACTIVE' && (
-                    <span className="text-[11px] font-bold opacity-90 leading-tight">
-                      {finalTotal.toLocaleString('vi-VN')} ₫
+                    <span className="text-[10px] font-semibold opacity-90 leading-tight">
+                      Tạm tính: {finalTotal.toLocaleString('vi-VN')} ₫
                     </span>
                   )}
                 </button>
@@ -2187,7 +2187,7 @@ export default function ProductDetailPage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#EAE4D7] p-3 px-4 z-20 flex items-center justify-between shadow-lg">
         <div>
           <div className="text-[10px] text-[#7D715E] truncate max-w-[180px]">
-            {selectedVariant ? `Phân loại: ${selectedVariant.name}` : 'Giá thanh toán:'}
+            {selectedVariant ? `Phân loại: ${selectedVariant.name}` : 'Tạm tính tiền hàng:'}
           </div>
           <div className="text-lg font-extrabold text-[#B88E4F]">
             {finalTotal.toLocaleString('vi-VN')} ₫

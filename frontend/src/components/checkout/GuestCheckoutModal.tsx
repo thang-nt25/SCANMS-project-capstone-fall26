@@ -307,6 +307,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [shippingFee, setShippingFee] = useState<number | null>(null);
   const [shippingFeesByStore, setShippingFeesByStore] = useState<Record<string, number>>({});
   const [shippingFeeError, setShippingFeeError] = useState<string | null>(null);
+  const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
+  const [shippingQuoteRetry, setShippingQuoteRetry] = useState(0);
   const [provinceCode, setProvinceCode] = useState(() => {
     try {
       const cached = localStorage.getItem('scanms_cached_addresses');
@@ -749,6 +751,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const selectedProvince = shippingProvinces.find((p) => String(p.code) === String(provinceCode));
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(districtCode));
   const selectedWard = selectedDistrict?.wards.find((w) => String(w.code) === String(wardCode));
+  const shippingAddressHint = addressError || (addressLoading ? 'Đang tải danh mục địa chỉ…'
+    : !selectedProvince ? 'Chọn Tỉnh/Thành phố để tính phí ship.'
+    : !selectedDistrict ? 'Chọn Quận/Huyện để tính phí ship.'
+    : !selectedWard ? 'Chọn Phường/Xã để tính phí ship.'
+    : shippingAddress.trim().length < 5 ? 'Bổ sung địa chỉ chi tiết (ít nhất 5 ký tự) để tính phí ship.'
+    : null);
 
   useEffect(() => {
     if (!isOpen || !selectedProvince || !selectedDistrict || !selectedWard || shippingAddress.trim().length < 5 || !itemsGroupedByShop.length) {
@@ -756,6 +764,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       setShippingFeesByStore({});
       setAppliedShippingCoupon(null);
       setShippingFeeError(null);
+      setShippingFeeLoading(false);
       return;
     }
     let active = true;
@@ -764,21 +773,31 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setShippingFeesByStore({});
     setAppliedShippingCoupon(null);
     setShippingFeeError(null);
-    Promise.all(itemsGroupedByShop.map(async (group) => {
-      const response: any = await api.post('/shipping/ghn/quote-address', {
-        storeId: group.store.id,
-        address,
-        weight: Math.max(500, group.items.reduce((sum, item) => sum + item.quantity, 0) * 500),
-        insuranceValue: group.subtotal,
-      });
+    setShippingFeeLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => { void Promise.all(itemsGroupedByShop.map(async (group) => {
+      let response: any;
+      try {
+        response = await api.post('/shipping/ghn/quote-address', {
+          storeId: group.store.id,
+          address,
+          weight: Math.max(500, group.items.reduce((sum, item) => sum + item.quantity, 0) * 500),
+          insuranceValue: group.subtotal,
+        }, { signal: controller.signal, timeout: 20000 });
+      } catch (error: any) {
+        const detail = error?.response?.data?.message || error?.message;
+        const message = Array.isArray(detail) ? detail.join(' ') : detail;
+        throw new Error(`Chưa tính được phí giao hàng của ${group.store.name || 'gian hàng'}: ${message || 'Vui lòng thử lại sau.'}`);
+      }
       const quote = response?.data?.data || response?.data || response;
-      if (!Number.isFinite(Number(quote.totalFee))) throw new Error('Cước GHN không hợp lệ');
+      if (typeof quote.totalFee !== 'number' || !Number.isFinite(quote.totalFee) || quote.totalFee < 0) throw new Error('Cước GHN không hợp lệ. Vui lòng thử tính lại phí vận chuyển.');
       return { storeId: group.store.id, fee: Number(quote.totalFee) };
     }))
       .then((fees) => { if (active) { setShippingFeesByStore(Object.fromEntries(fees.map((item) => [item.storeId, item.fee]))); setShippingFee(fees.reduce((sum, item) => sum + item.fee, 0)); } })
-      .catch(() => { if (active) setShippingFeeError('Chưa lấy được cước GHN. Vui lòng kiểm tra địa chỉ hoặc thử lại.'); });
-    return () => { active = false; };
-  }, [isOpen, shippingAddress, selectedProvince?.name, selectedDistrict?.name, selectedWard?.name, itemsGroupedByShop]);
+      .catch((error: any) => { if (active) setShippingFeeError(error?.message || 'Chưa lấy được cước GHN. Vui lòng thử lại sau.'); })
+      .finally(() => { if (active) setShippingFeeLoading(false); }); }, 350);
+    return () => { active = false; clearTimeout(timer); controller.abort(); };
+  }, [isOpen, shippingAddress, selectedProvince?.name, selectedDistrict?.name, selectedWard?.name, itemsGroupedByShop, shippingQuoteRetry]);
 
   // Remove an address validation message as soon as its field is corrected.
   useEffect(() => {
@@ -1899,6 +1918,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         }}
                         className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#C59B58] transition resize-none"
                       />
+                      {shippingAddress.trim().length > 0 && shippingAddress.trim().length < 5 && <p role="status" className="mt-1.5 text-[11px] text-[#795A2D]">Vui lòng bổ sung địa chỉ chi tiết, ít nhất 5 ký tự, để tính phí giao hàng.</p>}
                     </div>
 
                     {/* Hộp tùy chọn Lưu địa chỉ mới vào Sổ địa chỉ */}
@@ -2277,13 +2297,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1A1612]">
                   <Tag className="w-4 h-4 text-[#B88E4F]" />
-                  <span>Voucher của SCANMS</span>
+                  <span>Voucher tiền hàng của Shop / KOL (chọn 1 mã)</span>
                 </div>
 
                 <div className="flex items-center gap-2 max-w-md w-full sm:w-auto">
                   <input
                     type="text"
-                    placeholder="Nhập mã ưu đãi (VD: SCANMS50K)"
+                    placeholder="Nhập mã Shop hoặc KOL (VD: MAIANH5)"
                     value={couponCode}
                     disabled={!!appliedCoupon}
                     onChange={(e) => {
@@ -2361,15 +2381,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
                 <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto">
                   <span>Phí vận chuyển GHN:</span>
-                  <span className="font-semibold text-[#1A1612] min-w-[130px] text-right">
-                    {shippingFeeError || (shippingFee === null ? 'Đang tính cước...' : formatMoney(shippingFee))}
+                  <span className="font-semibold text-[#1A1612] min-w-[130px] max-w-[280px] text-right" role="status">
+                    {shippingAddressHint || shippingFeeError || (shippingFeeLoading ? 'Đang tính cước…' : shippingFee === null ? 'Chưa có phí vận chuyển.' : formatMoney(shippingFee))}
+                    {shippingFeeError && !shippingAddressHint && <button type="button" onClick={() => setShippingQuoteRetry(value => value + 1)} className="ml-2 text-[#795A2D] underline underline-offset-2">Tính lại</button>}
                   </span>
                 </div>
 
                 <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto items-baseline pt-3 border-t border-gray-200">
                   <span className="text-sm font-medium text-gray-800">Tổng thanh toán:</span>
                   <strong className="text-2xl sm:text-3xl font-black text-[#B88E4F] min-w-[150px] text-right">
-                    {formatMoney(finalTotal)}
+                    {shippingFee === null || shippingFeeError || shippingAddressHint ? <span className="text-sm font-semibold">Chờ tính phí ship</span> : formatMoney(finalTotal)}
                   </strong>
                 </div>
               </div>

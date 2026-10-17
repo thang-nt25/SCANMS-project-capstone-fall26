@@ -113,4 +113,37 @@ describe('TiersService applied tier and previous-month progression', () => {
     expect(result.updatedCount).toBe(0);
     expect(prisma.collaboratorProfile.update).not.toHaveBeenCalled();
   });
+
+  it('normalizes legacy catalog percentages without exposing Gold 3 or Diamond 5', async () => {
+    prisma.collaboratorTier.findMany.mockResolvedValue([bronze, silver,
+      { ...gold, extraBonusPercentage: new Prisma.Decimal(3) },
+      { ...diamond, extraBonusPercentage: new Prisma.Decimal(5) }]);
+    const catalog = await service.getAllTiers();
+    expect(catalog.map(policy => Number(policy.extraBonusPercentage))).toEqual([0, 1, 2, 3]);
+  });
+
+  it('uses exact Vietnam prior-month boundaries and total goods discount', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-01T00:05:00+07:00'));
+    try {
+      prisma.order.findMany.mockResolvedValue([{ id: 'net', subtotalAmount: 1000000,
+        discountAmount: 150000, couponDiscountAmount: 50000, finalAmount: 850000, refundedAmount: 0 }]);
+      const status = await service.getMyTierStatus('creator');
+      expect(status.currentRevenue).toBe(950000);
+      expect(prisma.order.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+        createdAt: { gte: new Date('2026-08-31T17:00:00Z'), lt: new Date('2026-09-30T17:00:00Z') },
+      }) }));
+    } finally { jest.useRealTimers(); }
+  });
+
+  it('evaluates the prior-month GMV and can promote and demote automatically', async () => {
+    prisma.collaboratorProfile.findMany.mockResolvedValue([
+      { id: 'new-gold', userId: 'up', tier: bronze }, { id: 'new-bronze', userId: 'down', tier: diamond },
+    ]);
+    prisma.order.findMany.mockImplementation(async ({ where }: any) => where.attributedCollaboratorId === 'up'
+      ? [{ id: 'gmv', subtotalAmount: 50000000, finalAmount: 50000000, refundedAmount: 0 }]
+      : []);
+    await service.evaluateAllCollaborators();
+    expect(prisma.collaboratorProfile.update).toHaveBeenCalledWith({ where: { id: 'new-gold' }, data: { tierId: 'gold' } });
+    expect(prisma.collaboratorProfile.update).toHaveBeenCalledWith({ where: { id: 'new-bronze' }, data: { tierId: 'bronze' } });
+  });
 });

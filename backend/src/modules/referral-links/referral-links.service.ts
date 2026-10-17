@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
+import { additiveCommissionRate, campaignBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { ConfigService } from '@nestjs/config';
 import {
   ReferralLinkStatus,
@@ -2408,6 +2409,8 @@ export class ReferralLinksService {
     referralLinkId?: string;
     appliedCommissionRate?: number;
     calculatedCommissionAmount?: number;
+    campaignId?: string;
+    campaignBonus?: number;
     reason?: string;
   }> {
     const link = await this.prisma.referralLink.findUnique({
@@ -2417,6 +2420,7 @@ export class ReferralLinksService {
         store: true,
         campaign: true,
         exclusiveDeal: true,
+        collaborator: { include: { collaboratorProfile: { include: { tier: true } } } },
       },
     });
 
@@ -2460,8 +2464,7 @@ export class ReferralLinksService {
       };
     }
 
-    const currentDeal = link.exclusiveDealId
-      ? await this.prisma.exclusiveDealProposal.findFirst({
+    const currentDeal = await this.prisma.exclusiveDealProposal.findFirst({
           where: {
             collaboratorId: link.collaboratorId,
             productId: link.productId,
@@ -2470,28 +2473,16 @@ export class ReferralLinksService {
           orderBy: { createdAt: 'desc' },
           select: { status: true, approvedCommissionRate: true },
         })
-      : null;
+      ;
     const effectiveDeal = currentDeal ?? link.exclusiveDeal;
 
     // A renewed deal applies to new orders through every VIP link; existing
     // orders retain their immutable OrderItem commission snapshots.
-    let commissionRate =
-      effectiveDeal?.status === 'APPROVED' &&
-      effectiveDeal.approvedCommissionRate !== null
-        ? Number(effectiveDeal.approvedCommissionRate)
-        : link.product.customCommissionRate !== null
-          ? Number(link.product.customCommissionRate)
-          : Number(link.store.defaultCommissionRate);
-
-    // Cộng thưởng chiến dịch nếu chiến dịch còn hiệu lực
-    if (
-      !link.exclusiveDeal &&
-      link.campaign &&
-      link.campaign.isActive &&
-      new Date(link.campaign.endDate) >= new Date()
-    ) {
-      commissionRate += Number(link.campaign.bonusCommissionRate || 0);
-    }
+    const dealBonus = effectiveDeal?.status === 'APPROVED' && effectiveDeal.approvedCommissionRate != null
+      ? Math.min(3, Math.max(0, Number(effectiveDeal.approvedCommissionRate) - 10)) : 0;
+    const campaignBonus = campaignBonusRate(link.campaign, params.storeId);
+    const tierBonus = tierBonusByName(link.collaborator?.collaboratorProfile?.tier?.name);
+    const commissionRate = additiveCommissionRate(tierBonus, dealBonus, campaignBonus, 0);
 
     const price = Number(link.product.price);
     const calculatedCommissionAmount = (price * commissionRate) / 100;
@@ -2502,6 +2493,8 @@ export class ReferralLinksService {
       referralLinkId: link.id,
       appliedCommissionRate: commissionRate,
       calculatedCommissionAmount,
+      campaignId: campaignBonus ? link.campaign?.id : undefined,
+      campaignBonus,
     };
   }
 
@@ -2569,9 +2562,7 @@ export class ReferralLinksService {
       const rate =
         params.appliedCommissionRate !== undefined
           ? params.appliedCommissionRate
-          : link.product.customCommissionRate !== null
-            ? Number(link.product.customCommissionRate)
-            : 5;
+          : 10;
 
       const totalCommission =
         params.calculatedCommissionAmount !== undefined
@@ -2586,6 +2577,10 @@ export class ReferralLinksService {
       });
 
       for (const item of items) {
+        if (item.commissionSnapshotAt) {
+          await tx.orderItem.update({ where: { id: item.id }, data: { referralLinkId: params.referralLinkId } });
+          continue;
+        }
         const itemAmount =
           params.calculatedCommissionAmount !== undefined && items.length === 1
             ? params.calculatedCommissionAmount

@@ -130,6 +130,7 @@ export const referralLinksService = {
   },
 
   async createExclusiveDeal(payload: {
+    videoReviewCommitment: boolean;
     productId: string;
     proposedCommissionRate: number;
     salesCommitment: string;

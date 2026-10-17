@@ -157,6 +157,12 @@ async function main() {
   }
 
   // ==========================================
+  // Normalize older copies of the same policies without changing profile IDs.
+  for (const policy of [bronzeTier, silverTier, goldTier, diamondTier]) {
+    const rate = policy.name.includes('Diamond') ? 3 : policy.name.includes('Gold') ? 2 : policy.name.includes('Silver') ? 1 : 0;
+    await prisma.collaboratorTier.updateMany({ where: { name: policy.name }, data: { extraBonusPercentage: rate } });
+  }
+
   // 3. HỒ SƠ KYC & KÊNH MẠNG XÃ HỘI CỦA KOL - Idempotent
   // ==========================================
   console.log('📝 Đang tạo hồ sơ KYC & kênh MXH...');
@@ -394,7 +400,7 @@ async function main() {
         imageUrl: '/assets/products/real/wireless-earbuds.jpg',
         originalPrice: 1590000,
         price: 1290000,
-        customCommissionRate: 12.0,
+        customCommissionRate: 10.0,
         stockQuantity: 150,
         isActive: true,
         moderationStatus: 'APPROVED',
@@ -416,7 +422,7 @@ async function main() {
         imageUrl: '/assets/products/real/keyboard-tri-mode.webp',
         originalPrice: 2200000,
         price: 1850000,
-        customCommissionRate: 15.0,
+        customCommissionRate: 10.0,
         stockQuantity: 80,
         isActive: true,
         moderationStatus: 'APPROVED',
@@ -648,7 +654,7 @@ async function main() {
         imageUrl: '/assets/products/real/thermos-500ml.jpg',
         originalPrice: 350000,
         price: 280000,
-        customCommissionRate: 15.0,
+        customCommissionRate: 10.0,
         stockQuantity: 200,
         isActive: true,
         moderationStatus: 'APPROVED',
@@ -808,7 +814,8 @@ async function main() {
       data: {
         storeId: store.id,
         name: 'Siêu Sale Thu Đông - Gala VIP 2026',
-        bonusCommissionRate: 7.5,
+        bonusCommissionRate: 2,
+        bonusBudgetTotal: 1000000,
         startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
         endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
         isActive: true,

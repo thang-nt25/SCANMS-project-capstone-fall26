@@ -325,6 +325,7 @@ export class StoreCouponsController {
   }
 
   @Post()
+  @Roles(UserRole.SHOP_MANAGER)
   @ApiOperation({
     summary:
       'Gian hàng chủ động phát hành mã giảm giá (Voucher) riêng để kích cầu',
@@ -383,6 +384,7 @@ export class StoreCouponsController {
   }
 
   @Patch(':id/approve')
+  @Roles(UserRole.SHOP_MANAGER)
   @ApiOperation({
     summary:
       'Chủ shop phê duyệt và cấu hình chính sách ưu đãi cho coupon (Section 6 & 7)',
@@ -596,7 +598,7 @@ export class AdminCouponsController {
   @ApiParam({ name: 'id', description: 'ID coupon' })
   @ApiResponse({
     status: 200,
-    description: 'Mở khóa coupon thành công và khôi phục trạng thái ACTIVE',
+    description: 'Mở khóa và khôi phục trạng thái trước khi khóa; mã chưa duyệt trở lại chờ Shop duyệt',
   })
   @ApiResponse({
     status: 400,

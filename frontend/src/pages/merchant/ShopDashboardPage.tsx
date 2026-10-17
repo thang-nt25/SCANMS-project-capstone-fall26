@@ -11,7 +11,6 @@ import {
   Box,
   ChevronDown,
   ChevronUp,
-  Store,
 } from 'lucide-react';
 import { storeService } from '../../services/store.service';
 import {
@@ -21,7 +20,7 @@ import {
 } from '../../services/analytics.service';
 import { productService, type Product } from '../../services/product.service';
 import { orderService, type StoreOrderRecord } from '../../services/order.service';
-import { PageHeader } from '../../components/ui/PageHeader';
+
 import { StatCard } from '../../components/ui/StatCard';
 
 export default function ShopDashboardPage() {
@@ -31,17 +30,20 @@ export default function ShopDashboardPage() {
   const [recentOrders, setRecentOrders] = useState<StoreOrderRecord[]>([]);
   const [isOrdersExpanded, setIsOrdersExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError('');
     try {
-      const currentStore = await storeService.getMyStore().catch(() => null);
+      const currentStore = await storeService.getMyStore(true);
+      if (!currentStore?.id) throw new Error('Không xác định được gian hàng. Vui lòng thử lại.');
 
       const [overviewData, seriesData, productsData, ordersData] = await Promise.all([
-        analyticsService.getRealtimeOverview({ days: 30, storeId: currentStore?.id }).catch(() => null),
-        analyticsService.getTimeSeries({ days: 7, interval: 'daily', storeId: currentStore?.id }).catch(() => []),
-        productService.getProducts({ storeId: currentStore?.id, page: 1, limit: 5 }).catch(() => ({ items: [] })),
-        orderService.getMyStoreOrders({ storeId: currentStore?.id, page: 1, limit: 10 }).catch(() => ({ items: [] })),
+        analyticsService.getRealtimeOverview({ days: 30, storeId: currentStore.id }, true),
+        analyticsService.getTimeSeries({ days: 7, interval: 'daily', storeId: currentStore.id }, true),
+        productService.getProducts({ storeId: currentStore.id, page: 1, limit: 5 }, true),
+        orderService.getMyStoreOrders({ storeId: currentStore.id, page: 1, limit: 10 }, true),
       ]);
 
       if (overviewData) setOverview(overviewData);
@@ -49,6 +51,7 @@ export default function ShopDashboardPage() {
       if (productsData?.items) setTopProducts(productsData.items);
       if (ordersData?.items) setRecentOrders(ordersData.items);
     } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Chưa tải được dữ liệu gian hàng. Vui lòng thử lại.');
       console.error('Lỗi tải dữ liệu Dashboard Shop:', err);
     } finally {
       setLoading(false);
@@ -65,33 +68,7 @@ export default function ShopDashboardPage() {
 
   return (
     <div className="shop-overview flex flex-col gap-4 text-left pb-6">
-      {/* 1. Page Header Chuẩn Hóa */}
-      <PageHeader
-        title="Tổng quan Gian hàng"
-        description="Theo dõi doanh số tiếp thị, hoa hồng KOL và tiến độ vận hành đơn hàng thời gian thực"
-        icon={<Store className="w-5 h-5" />}
-        actions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void loadData()}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-              <span>Làm mới</span>
-            </button>
-            <Link
-              to="/merchant/products"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Thêm sản phẩm</span>
-            </Link>
-          </div>
-        }
-      />
-
+      {loadError && <p role="alert" className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#DC2626]">{loadError}</p>}
       {/* 2. Metric Cards Chuẩn Hóa */}
       <div className="shop-overview-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
@@ -241,42 +218,44 @@ export default function ShopDashboardPage() {
 
       {/* Sản phẩm của gian hàng (Dữ liệu thật) */}
       <div className="shop-overview-products bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 border-b border-[#EAE4D7]">
-          <div>
-            <h3 className="text-base font-extrabold text-[#1A1612] m-0">Sản phẩm của gian hàng</h3>
-            <p className="text-xs text-[#7D715E] mt-0.5 m-0">Quản lý giá bán, tồn kho và hoa hồng tiếp thị.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={loadData}
-              title="Tải lại dữ liệu gian hàng"
-              className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-              <span>Làm mới</span>
-            </button>
+        <div className="grid grid-cols-2 xl:grid-cols-4 items-stretch gap-2 p-3 sm:p-4 border-b border-[#EAE4D7]">
+          <div className="contents">
+            <Link to="/merchant/products?create=1&returnTo=dashboard"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors">
+              <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
+              <span>Thêm sản phẩm</span>
+            </Link>
             <Link
-              to="/merchant/promotions?tab=coupons"
-              title="Tạo chiến dịch khuyến mãi mới"
-              className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
+              to="/merchant/campaigns?create=1&returnTo=dashboard"
+              title="Tạo chiến dịch hoa hồng cho KOL"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
               <span>Tạo chiến dịch</span>
             </Link>
             <Link
-              to="/merchant/products"
-              className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#F3EFE6] text-[#1A1612] text-xs font-semibold hover:bg-[#FAF8F5] hover:border-[#C59B58] transition cursor-pointer"
+              to="/merchant/products?returnTo=dashboard"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 border border-[#EEDFC6] rounded-xl bg-[#F3EFE6] text-[#1A1612] text-xs font-semibold hover:bg-[#FAF8F5] hover:border-[#C59B58] transition cursor-pointer"
             >
-              <span>Quản lý danh mục</span>
+              <span>Quản lý sản phẩm</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#B88E4F]" />
             </Link>
+            <button
+              type="button"
+              onClick={loadData}
+              disabled={loading}
+              title="Tải lại dữ liệu gian hàng"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
           </div>
         </div>
 
         {topProducts.length === 0 ? (
           <div className="p-8 text-center text-xs text-[#7D715E]">
-            Gian hàng chưa đăng sản phẩm nào. Hãy bấm Quản lý danh mục để thêm sản phẩm đầu tiên!
+            Gian hàng chưa đăng sản phẩm nào. Hãy bấm Thêm sản phẩm để tạo sản phẩm đầu tiên!
           </div>
         ) : (
           <div className="overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#EAE4D7] hover:[&::-webkit-scrollbar-thumb]:bg-[#C59B58]/40">

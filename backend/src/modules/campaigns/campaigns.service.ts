@@ -28,8 +28,17 @@ export class CampaignsService {
     private readonly chatGateway?: ChatGateway,
   ) {}
 
+  private assertBonusPolicy(campaign: { bonusCommissionRate: unknown; bonusBudgetTotal: unknown }) {
+    const rate = Number(campaign.bonusCommissionRate);
+    const budget = Number(campaign.bonusBudgetTotal);
+    if (!Number.isFinite(rate) || rate < 1 || rate > 2 || !Number.isFinite(budget) || budget <= 0) {
+      throw new BadRequestException('Chiến dịch cần thưởng từ 1% đến 2% và ngân sách trần lớn hơn 0. Hãy tạo lại chiến dịch cũ chưa đúng chính sách.');
+    }
+  }
+
   // ─── Shop: Tạo chiến dịch mới ────────────────────────────────────────
   async createCampaign(userId: string, dto: CreateCampaignDto) {
+    this.assertBonusPolicy(dto);
     const store = await this.prisma.store.findFirst({
       where: { ownerId: userId, isDeleted: false },
     });
@@ -172,6 +181,7 @@ export class CampaignsService {
       );
     }
 
+    this.assertBonusPolicy(campaign);
     const now = new Date();
     if (campaign.endDate && new Date(campaign.endDate) < now) {
       throw new BadRequestException('Chiến dịch này đã hết thời hạn áp dụng.');
@@ -476,6 +486,10 @@ export class CampaignsService {
       throw new BadRequestException('Lời mời này đã bị từ chối.');
     }
 
+    this.assertBonusPolicy(participant.campaign);
+    if (!participant.campaign.isActive || participant.campaign.endDate <= new Date()) {
+      throw new BadRequestException('Chiến dịch đã tạm dừng hoặc kết thúc.');
+    }
     const updated = await this.prisma.campaignParticipant.update({
       where: { id: participantId },
       data: {

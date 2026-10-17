@@ -13,7 +13,9 @@ import {
   IsInt,
   Min,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { normalizeSamplePhone, SAMPLE_PHONE_PATTERN, SAMPLE_PHONE_ERROR } from '../sample-phone';
 
 export class CreateSampleRequestDto {
   @ApiProperty({
@@ -29,17 +31,18 @@ export class CreateSampleRequestDto {
   productVariantId?: string;
 
   @ApiProperty({ description: 'Họ tên người nhận hàng mẫu' })
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
   @IsString()
   @IsNotEmpty()
+  @MinLength(2)
   @MaxLength(150)
   recipientName: string;
 
   @ApiProperty({ description: 'Số điện thoại người nhận hàng mẫu' })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+?[0-9\s().-]{9,20}$/, {
-    message: 'Số điện thoại người nhận không hợp lệ.',
-  })
+  @Transform(({ value }) => normalizeSamplePhone(value))
+  @Matches(SAMPLE_PHONE_PATTERN, { message: SAMPLE_PHONE_ERROR })
   recipientPhone: string;
 
   @ApiProperty({ description: 'KOL xác nhận đây là số điện thoại thật của người nhận và GHN liên hệ được' })
@@ -50,8 +53,9 @@ export class CreateSampleRequestDto {
 
   @ApiProperty({
     description: 'Địa chỉ nhận hàng mẫu',
-    example: '123 Nguyễn Văn A, Q.1, TP.HCM',
+    example: '123 Nguyễn Văn A, Phường A, Quận B, Tỉnh C',
   })
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
   @IsString()
   @IsNotEmpty()
   @MinLength(10)
@@ -97,6 +101,10 @@ export class CreateSampleRequestDto {
   })
   termsAccepted: boolean;
 }
+
+export class UpdateSampleRequestDto extends OmitType(CreateSampleRequestDto, [
+  'productId', 'productVariantId', 'expectedVideoAt',
+] as const) {}
 
 export class ApproveRejectSampleDto {
   @ApiPropertyOptional({
@@ -201,6 +209,19 @@ export class AdminResolveSampleRequestDto {
   @IsOptional()
   @IsDateString()
   deadlineAt?: string;
+}
+
+export class ExtendSampleDeadlineDto {
+  @ApiProperty({ description: 'Hạn nộp hoặc sửa video mới, theo ISO 8601' })
+  @IsDateString()
+  deadlineAt: string;
+
+  @ApiProperty({ description: 'Lý do gia hạn của gian hàng' })
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason: string;
 }
 
 export class ReportSampleViolationDto {

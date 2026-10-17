@@ -19,6 +19,8 @@ import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
 import { PayosPaymentService } from '../orders/payos-payment.service';
 import { WalletsService } from '../wallets/wallets.service';
+import { campaignBonusRate, tierBonusByName } from '../commissions/commission-policy';
+import { priceVoucherLines } from '../coupons/voucher-pricing';
 import {
   ClaimLiveSessionDto,
   CreateLiveSessionDto,
@@ -103,7 +105,7 @@ export class LiveSessionsService {
               id: true,
               fullName: true,
               avatarUrl: true,
-              collaboratorProfile: { select: { totalFollowers: true, kycStatus: true } },
+              collaboratorProfile: { select: { totalFollowers: true, kycStatus: true, tier: { select: { name: true } } } },
               socialChannels: {
                 select: { platformName: true, channelName: true, channelUrl: true, followerCount: true },
               },
@@ -131,6 +133,12 @@ export class LiveSessionsService {
           id: true,
           name: true,
           bonusCommissionRate: true,
+          storeId: true,
+          isActive: true,
+          startDate: true,
+          endDate: true,
+          bonusBudgetTotal: true,
+          bonusBudgetUsed: true,
           participants: {
             where: { status: 'ACCEPTED' },
             select: { collaboratorId: true },
@@ -139,12 +147,12 @@ export class LiveSessionsService {
       }),
     ]);
 
-    const defaultCommissionRate = Number(store?.defaultCommissionRate ?? 10);
+    const defaultCommissionRate = 10;
 
     const dealRateMap = new Map<string, number>();
     for (const deal of approvedDeals) {
       if (deal.approvedCommissionRate !== null) {
-        const rate = Number(deal.approvedCommissionRate);
+        const rate = 10 + Math.min(3, Math.max(0, Number(deal.approvedCommissionRate) - 10));
         const current = dealRateMap.get(deal.collaboratorId) || 0;
         if (rate > current) dealRateMap.set(deal.collaboratorId, rate);
       }
@@ -152,7 +160,7 @@ export class LiveSessionsService {
 
     const campaignBonusMap = new Map<string, number>();
     for (const camp of activeCampaigns) {
-      const bonus = Number(camp.bonusCommissionRate);
+      const bonus = campaignBonusRate(camp, storeId);
       for (const p of camp.participants) {
         const current = campaignBonusMap.get(p.collaboratorId) || 0;
         if (bonus > current) campaignBonusMap.set(p.collaboratorId, bonus);
@@ -164,7 +172,8 @@ export class LiveSessionsService {
       const exclusiveDealRate = dealRateMap.get(c.id) ?? null;
       const campaignBonusRate = campaignBonusMap.get(c.id) ?? 0;
       const isExclusiveVip = exclusiveDealRate !== null;
-      const baseRate = exclusiveDealRate ?? defaultCommissionRate;
+      const tierBonusRate = tierBonusByName(c.collaboratorProfile?.tier?.name);
+      const baseRate = (exclusiveDealRate ?? defaultCommissionRate) + tierBonusRate;
       const currentEffectiveRate = baseRate + campaignBonusRate;
       return {
         ...c,
@@ -172,6 +181,7 @@ export class LiveSessionsService {
         exclusiveDealRate,
         campaignBonusRate,
         baseRate,
+        tierBonusRate,
         currentEffectiveRate,
       };
     });
@@ -213,6 +223,9 @@ export class LiveSessionsService {
   }
 
   async create(userId: string, dto: CreateLiveSessionDto) {
+    if (![2, 3].includes(Number(dto.commissionRate))) {
+      throw new BadRequestException('Thưởng Live chỉ được chọn +2% hoặc +3%.');
+    }
     const store = await this.assertStoreOwner(userId, dto.storeId);
     this.assertLiveAllowed(store);
     const creator = await this.prisma.storeCollaborator.findFirst({
@@ -344,6 +357,8 @@ export class LiveSessionsService {
           collaboratorId: dto.creatorId,
           storeId: dto.storeId,
           liveSessionId: sessionId,
+          approvedBy: userId,
+          approvedAt: new Date(),
           status: CouponStatus.ACTIVE,
           discountType: dto.discountType,
           discountValue: new Prisma.Decimal(dto.discountValue),
@@ -356,7 +371,7 @@ export class LiveSessionsService {
           scopeType: CouponScope.PRODUCTS,
           stackableWithProductDiscount: false,
           stackableWithShopVoucher: false,
-          stackableWithPlatformVoucher: false,
+          stackableWithPlatformVoucher: true,
           couponProducts: { create: productIds.map((productId) => ({ productId })) },
         },
       });
@@ -735,7 +750,7 @@ export class LiveSessionsService {
   async claim(sessionId: string, dto: ClaimLiveSessionDto, userId?: string) {
     const now = new Date();
     const session = await this.prisma.liveShoppingSession.findFirst({
-      where: { id: sessionId, status: { in: [LiveSessionStatus.SCHEDULED, LiveSessionStatus.LIVE] }, inviteStatus: LiveSessionInviteStatus.ACCEPTED, startsAt: { lte: now }, endsAt: { gt: now } },
+      where: { id: sessionId, status: LiveSessionStatus.LIVE, inviteStatus: LiveSessionInviteStatus.ACCEPTED, startsAt: { lte: now }, endsAt: { gt: now } },
       include: { coupon: true },
     });
     if (!session?.coupon || session.coupon.status !== CouponStatus.ACTIVE) {
@@ -1019,17 +1034,46 @@ export class LiveSessionsService {
           where: { id: candidate.id },
           include: {
             couponRedemption: true,
+            stackedVoucherRedemptions: true,
             orderItems: { include: { product: { select: { customCommissionRate: true } } } },
             commissions: true,
             attributedCollaborator: {
-              select: { collaboratorProfile: { select: { tier: { select: { extraBonusPercentage: true } } } } },
+              select: { collaboratorProfile: { select: { tier: { select: { name: true, extraBonusPercentage: true } } } } },
             },
             store: { select: { defaultCommissionRate: true } },
           },
         });
-        if (!order || order.status === 'CANCELLED' || Number(order.couponDiscountAmount || 0) <= 0) return false;
+        if (!order || order.status !== 'PENDING' || order.couponId !== session.coupon!.id || Number(order.couponDiscountAmount || 0) <= 0) return false;
         const currentRaw = (order.rawPayload || {}) as Record<string, any>;
         if (currentRaw.paymentStatus === 'PAID') return false;
+
+        // Retain the already reserved platform/shipping benefits. Only the Live
+        // goods voucher expires; never turn a shipping reduction into goods GMV.
+        const retainedVouchers = order.stackedVoucherRedemptions.filter(v => v.status === CouponRedemptionStatus.USED);
+        const retainedGoods = retainedVouchers.filter(v => v.benefitType === 'GOODS').reduce((sum, v) => sum + Number(v.discountAmount), 0);
+        const retainedShipping = retainedVouchers.filter(v => v.benefitType === 'SHIPPING').reduce((sum, v) => sum + Number(v.discountAmount), 0);
+        const repricedLines = priceVoucherLines(order.orderItems.map(item => Number(item.unitPrice) * item.quantity),
+          order.orderItems.map(() => false), 0, retainedGoods);
+        const oldNet = Number(order.subtotalAmount) - Number(order.couponDiscountAmount || 0);
+        const newNet = Number(order.subtotalAmount) - retainedGoods;
+        const reservations = { ...(currentRaw.campaignBonusReservations || {}) };
+        for (const [campaignId, reserved] of Object.entries(reservations)) {
+          const savedLines = Array.isArray(currentRaw.goodsPricing) ? currentRaw.goodsPricing : [];
+          const campaignLines = savedLines.filter(line => line.campaignId === campaignId);
+          if (!campaignLines.length && !(oldNet > 0)) {
+            throw new BadRequestException('Đơn cũ chưa có dữ liệu phân bổ thưởng Campaign để tính lại an toàn.');
+          }
+          const newReserved = campaignLines.length ? order.orderItems.reduce((sum, item, index) => {
+            const saved = campaignLines.find(line => line.productId === item.productId && (line.variantId || null) === (item.variantId || null));
+            return sum + (saved ? repricedLines[index].netGoods * Number(saved.campaignBonusRate) / 100 : 0);
+          }, 0) : Number(reserved) * newNet / oldNet;
+          const delta = Math.max(0, Math.round((newReserved - Number(reserved)) * 100) / 100);
+          if (!delta) continue;
+          const updated = await tx.$executeRaw`UPDATE campaigns SET bonus_budget_used = bonus_budget_used + ${delta}
+            WHERE id = ${campaignId}::uuid AND bonus_budget_total IS NOT NULL AND bonus_budget_used + ${delta} <= bonus_budget_total`;
+          if (updated !== 1) throw new BadRequestException('Không đủ ngân sách để tính lại thưởng Campaign của đơn Live.');
+          reservations[campaignId] = Number(reserved) + delta;
+        }
 
         const redemption = order.couponRedemption;
         if (redemption?.status === CouponRedemptionStatus.USED) {
@@ -1046,18 +1090,16 @@ export class LiveSessionsService {
           });
         }
 
-        const tierBonus = Number(order.attributedCollaborator?.collaboratorProfile?.tier?.extraBonusPercentage || 0);
+        const tierBonus = tierBonusByName(order.attributedCollaborator?.collaboratorProfile?.tier?.name);
         const regularItemAmounts: Prisma.Decimal[] = [];
-        for (const item of order.orderItems) {
+        for (const [lineIndex, item] of order.orderItems.entries()) {
           const savedRate = item.regularCommissionRate;
           const rate = savedRate !== null && savedRate !== undefined
             ? Number(savedRate)
             : Number(item.appliedCommissionRate) === Number(session.commissionRate)
-              ? Math.min(100, Number(item.product.customCommissionRate || order.store.defaultCommissionRate || 10) + tierBonus)
+              ? 10 + tierBonus
               : Number(item.appliedCommissionRate);
-          const amount = item.regularCommissionAmount !== null && item.regularCommissionAmount !== undefined
-            ? new Prisma.Decimal(item.regularCommissionAmount)
-            : new Prisma.Decimal(Number(item.unitPrice) * item.quantity * rate / 100).toDecimalPlaces(2);
+          const amount = new Prisma.Decimal(repricedLines[lineIndex].netGoods).times(rate).div(100).toDecimalPlaces(2);
           regularItemAmounts.push(amount);
           await tx.orderItem.update({
             where: { id: item.id },
@@ -1086,9 +1128,11 @@ export class LiveSessionsService {
           await tx.commission.update({ where: { id: commission.id }, data: { commissionAmount: regularCommission } });
         }
 
-        const finalAmount = new Prisma.Decimal(order.subtotalAmount).plus(order.shippingFee);
+        const finalAmount = new Prisma.Decimal(order.subtotalAmount).plus(order.shippingFee).minus(retainedGoods).minus(retainedShipping);
         const newRaw = {
           ...currentRaw,
+          campaignBonusReservations: reservations,
+          goodsPricing: order.orderItems.map((item, index) => ({ productId: item.productId, variantId: item.variantId, ...repricedLines[index] })),
           liveSessionPriceReset: {
             sessionId,
             sessionTitle: session.title,
@@ -1116,8 +1160,10 @@ export class LiveSessionsService {
           where: { id: order.id },
           data: {
             finalAmount,
-            discountAmount: new Prisma.Decimal(0),
-            couponDiscountAmount: new Prisma.Decimal(0),
+            couponId: null,
+            couponCodeSnapshot: null,
+            discountAmount: new Prisma.Decimal(retainedGoods + retainedShipping),
+            couponDiscountAmount: new Prisma.Decimal(retainedGoods),
             rawPayload: newRaw,
           },
         });
@@ -1139,7 +1185,7 @@ export class LiveSessionsService {
             data: {
               userId: order.customerId,
               title: 'Giá đơn hàng đã được cập nhật',
-              message: `Phiên livestream “${session.title}” ${session.status === LiveSessionStatus.CANCELLED ? 'đã bị hủy' : 'đã kết thúc'}. Đơn ${order.externalOrderSn} được cập nhật về giá gốc ${Number(finalAmount).toLocaleString('vi-VN')} đ; vui lòng tạo lại thanh toán nếu bạn đã mở liên kết cũ.`,
+              message: `Voucher của phiên “${session.title}” đã kết thúc. Đơn ${order.externalOrderSn} được tính lại còn ${Number(finalAmount).toLocaleString('vi-VN')} đ, giữ nguyên voucher Sàn và vận chuyển đã áp dụng; vui lòng tạo lại thanh toán nếu bạn đã mở liên kết cũ.`,
               type: 'LIVE_ORDER_REPRICED',
               data: { orderId: order.id, sessionId, finalAmount: Number(finalAmount) },
             },

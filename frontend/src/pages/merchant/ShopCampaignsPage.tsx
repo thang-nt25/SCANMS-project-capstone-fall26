@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import api from '../../services/api';
 import type { Campaign } from '@/types/campaigns.types';
@@ -23,16 +24,22 @@ const isExpired = (endDate: string) => new Date(endDate) < new Date();
 
 
 function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [form, setForm] = useState({ name: '', bonusCommissionRate: 1, bonusBudgetTotal: 1000000, startDate: '', endDate: '' });
+  const [form, setForm] = useState({ name: '', bonusCommissionRate: '1', bonusBudgetTotal: 1000000, startDate: '', endDate: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const datePopoverRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const bonusCommissionRate = Number(form.bonusCommissionRate);
+    if (!Number.isFinite(bonusCommissionRate) || bonusCommissionRate < 1 || bonusCommissionRate > 2) {
+      setError('Hoa hồng thưởng thêm chỉ được nhập từ 1% đến 2%.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      await api.post('/campaigns', form);
+      await api.post('/campaigns', { ...form, bonusCommissionRate });
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -45,7 +52,7 @@ function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSu
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50" onClick={onClose}>
       <div
-        className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+        className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-lg max-h-[calc(100dvh-2rem)] shadow-2xl overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-[#EAE4D7] flex items-center justify-between">
@@ -73,20 +80,25 @@ function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSu
           </div>
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1.5">% Hoa hồng thưởng thêm</label>
-            <div className="flex items-center bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl overflow-hidden focus-within:border-[#B88E4F]">
-              <select
+            <div className="flex items-center bg-white border border-[#EAE4D7] rounded-xl overflow-hidden focus-within:border-[#B88E4F] focus-within:ring-2 focus-within:ring-[#B88E4F]/15">
+              <input
                 id="campaign-rate"
-                className="flex-1 bg-transparent px-3.5 py-2.5 text-xs text-[#1A1612] outline-none"
+                type="number"
+                min={1}
+                max={2}
+                step="0.01"
+                inputMode="decimal"
+                className="flex-1 min-w-0 bg-transparent px-3.5 py-2.5 text-xs text-[#1A1612] outline-none"
                 value={form.bonusCommissionRate}
-                onChange={(e) => setForm((f) => ({ ...f, bonusCommissionRate: +e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, bonusCommissionRate: e.target.value }))}
                 required
-              ><option value={1}>+1%</option><option value={2}>+2%</option></select>
+              />
               <span className="px-3.5 text-xs font-bold text-[#7D715E] bg-[#F3EFE6] py-2.5 border-l border-[#EAE4D7]">
                 %
               </span>
             </div>
             <small className="text-[11px] text-[#7D715E] mt-1 block">
-              Mức hoa hồng thưởng thêm ngoài % mặc định của cửa hàng
+              Nhập thủ công trong khoảng từ 1% đến 2%.
             </small>
           </div>
           <label className="block text-xs font-bold text-[#1A1612]">Ngân sách trần cho hoa hồng thưởng (VNĐ)
@@ -101,6 +113,7 @@ function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSu
                 value={form.startDate}
                 onChange={(val) => setForm((f) => ({ ...f, startDate: val }))}
                 placeholder="Chọn ngày bắt đầu"
+                inlinePopoverRef={datePopoverRef}
                 required
               />
             </div>
@@ -113,10 +126,12 @@ function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => void; onSu
                 minDateTime={form.startDate}
                 onChange={(val) => setForm((f) => ({ ...f, endDate: val }))}
                 placeholder="Chọn ngày kết thúc"
+                inlinePopoverRef={datePopoverRef}
                 required
               />
             </div>
           </div>
+          <div ref={datePopoverRef} />
           {error && <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">{error}</div>}
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
@@ -242,6 +257,9 @@ function InviteKolModal({
 
 function CampaignCard({ campaign, onInvite }: { campaign: Campaign; onInvite: (c: Campaign) => void }) {
   const expired = isExpired(campaign.endDate);
+  const paused = !campaign.isActive;
+  const scheduled = new Date(campaign.startDate) > new Date();
+  const needsPolicy = !(Number(campaign.bonusBudgetTotal) > 0) || Number(campaign.bonusCommissionRate) < 1 || Number(campaign.bonusCommissionRate) > 2;
   const accepted = campaign.participants?.filter((p) => p.status === 'ACCEPTED').length || 0;
   const invited = campaign.participants?.filter((p) => p.status === 'INVITED').length || 0;
 
@@ -270,10 +288,14 @@ function CampaignCard({ campaign, onInvite }: { campaign: Campaign; onInvite: (c
                 : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
             }`}
           >
-            {expired ? '🔴 Đã kết thúc' : '🟢 Đang chạy'}
+            {needsPolicy ? 'Cần tạo lại' : paused ? 'Tạm dừng' : expired ? 'Đã kết thúc' : scheduled ? 'Chưa bắt đầu' : 'Đang chạy'}
           </span>
         </div>
 
+        <p className="mb-3 text-xs leading-relaxed text-[#7D715E]">
+          {needsPolicy ? 'Chiến dịch cũ chưa có ngân sách hợp lệ. Tạo chiến dịch mới với thưởng 1–2% và ngân sách trần.'
+            : `Ngân sách thưởng: ${Number(campaign.bonusBudgetUsed || 0).toLocaleString('vi-VN')} / ${Number(campaign.bonusBudgetTotal).toLocaleString('vi-VN')} ₫`}
+        </p>
         <div className="my-3 p-3 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-center justify-between">
           <span className="text-xs font-semibold text-[#7D715E]">Hoa hồng thưởng thêm</span>
           <span className="text-xl font-black text-[#B88E4F]">+{campaign.bonusCommissionRate}%</span>
@@ -322,7 +344,7 @@ function CampaignCard({ campaign, onInvite }: { campaign: Campaign; onInvite: (c
           type="button"
           className="w-full py-2.5 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-extrabold transition shadow-xs cursor-pointer disabled:opacity-50"
           onClick={() => onInvite(campaign)}
-          disabled={expired}
+          disabled={expired || paused || needsPolicy}
         >
           💌 Mời KOL Tham Gia
         </button>
@@ -333,11 +355,36 @@ function CampaignCard({ campaign, onInvite }: { campaign: Campaign; onInvite: (c
 
 
 export default function ShopCampaignsPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [returnToDashboard, setReturnToDashboard] = useState(
+    () => searchParams.get('returnTo') === 'dashboard',
+  );
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [inviteTarget, setInviteTarget] = useState<Campaign | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('returnTo') === 'dashboard') setReturnToDashboard(true);
+    if (searchParams.get('create') === '1') setShowCreate(true);
+    if (!searchParams.has('create') && !searchParams.has('returnTo')) return;
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete('create');
+      next.delete('returnTo');
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const closeCreateModal = () => {
+    setShowCreate(false);
+    if (returnToDashboard) {
+      setReturnToDashboard(false);
+      navigate('/merchant/dashboard', { replace: true });
+    }
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -422,7 +469,7 @@ export default function ShopCampaignsPage() {
 
       {showCreate && (
         <CreateCampaignModal
-          onClose={() => setShowCreate(false)}
+          onClose={closeCreateModal}
           onSuccess={() => {
             load();
             showToast('✅ Đã tạo chiến dịch thành công!');

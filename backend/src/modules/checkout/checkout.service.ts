@@ -62,6 +62,8 @@ export class CheckoutService {
       appliedCommissionRate?: number;
       calculatedCommissionAmount?: number;
       attributedProductId?: string;
+      campaignId?: string;
+      campaignBonus?: number;
     } = { isValid: false };
 
     if (attributionCookie && attributionCookie.trim()) {
@@ -115,6 +117,8 @@ export class CheckoutService {
                 collaboratorId: verification.collaboratorId,
                 referralLinkId: verification.referralLinkId,
                 appliedCommissionRate: verification.appliedCommissionRate,
+                campaignId: verification.campaignId,
+                campaignBonus: verification.campaignBonus,
                 calculatedCommissionAmount:
                   verification.calculatedCommissionAmount,
                 attributedProductId: linkedProduct.productId,
@@ -151,6 +155,8 @@ export class CheckoutService {
                 collaboratorId: verification.collaboratorId,
                 referralLinkId: verification.referralLinkId,
                 appliedCommissionRate: verification.appliedCommissionRate,
+                campaignId: verification.campaignId,
+                campaignBonus: verification.campaignBonus,
                 calculatedCommissionAmount:
                   verification.calculatedCommissionAmount,
                 attributedProductId: matchingItem.productId,
@@ -185,6 +191,8 @@ export class CheckoutService {
                   collaboratorId: verification.collaboratorId,
                   referralLinkId: verification.referralLinkId,
                   appliedCommissionRate: verification.appliedCommissionRate,
+                campaignId: verification.campaignId,
+                campaignBonus: verification.campaignBonus,
                   calculatedCommissionAmount:
                     verification.calculatedCommissionAmount,
                   attributedProductId: matchingItem.productId,
@@ -206,6 +214,21 @@ export class CheckoutService {
 
     // 4. Tạo Order và các OrderItem trong Transaction
     const createdOrder = await this.prisma.$transaction(async (tx) => {
+      let campaignReservationAmount = 0;
+      if (attributionResult.campaignId && attributionResult.campaignBonus) {
+        const campaignId = attributionResult.campaignId;
+        const amount = dto.items.filter(item => item.productId === attributionResult.attributedProductId)
+          .reduce((sum, item) => sum + item.quantity * item.unitPrice * attributionResult.campaignBonus! / 100, 0);
+        const reserved = await tx.$executeRaw`
+          UPDATE campaigns SET bonus_budget_used = bonus_budget_used + ${amount}
+          WHERE id = ${campaignId}::uuid AND is_active = true
+            AND start_date <= NOW() AND end_date > NOW()
+            AND bonus_budget_total IS NOT NULL
+            AND bonus_budget_used + ${amount} <= bonus_budget_total
+        `;
+        if (reserved !== 1) throw new BadRequestException('Ngân sách thưởng chiến dịch đã hết.');
+        campaignReservationAmount = amount;
+      }
       const order = await tx.order.create({
         data: {
           storeId: dto.storeId,
@@ -216,6 +239,8 @@ export class CheckoutService {
           subtotalAmount: subtotal,
           finalAmount: subtotal,
           status: 'PENDING',
+          rawPayload: attributionResult.campaignId && campaignReservationAmount > 0
+            ? { campaignBonusReservations: { [attributionResult.campaignId]: campaignReservationAmount } } : {},
         },
       });
 
@@ -226,7 +251,7 @@ export class CheckoutService {
           item.productId === attributionResult.attributedProductId;
 
         const rate = isAttributed
-          ? (attributionResult.appliedCommissionRate ?? 5)
+          ? (attributionResult.appliedCommissionRate ?? 10)
           : 0;
         const amount = isAttributed
           ? (item.quantity * item.unitPrice * rate) / 100
@@ -243,6 +268,7 @@ export class CheckoutService {
               : null,
             appliedCommissionRate: rate,
             calculatedCommissionAmount: amount,
+            commissionSnapshotAt: new Date(),
           },
         });
       }

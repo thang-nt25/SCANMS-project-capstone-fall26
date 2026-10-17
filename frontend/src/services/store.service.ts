@@ -50,8 +50,8 @@ export interface StoreSettings {
 }
 
 export const storeService = {
-  async getMyStore(): Promise<StoreSettings> {
-    const res: any = await api.get('/stores/my-store');
+  async getMyStore(fresh = false): Promise<StoreSettings> {
+    const res: any = await api.get('/stores/my-store', { headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res?.data || res;
   },
 

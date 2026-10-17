@@ -204,8 +204,8 @@ export const AdminCouponsPage: React.FC = () => {
     if (!window.confirm(`Xác nhận mở khóa cho mã "${coupon.displayCode}"?`)) return;
     try {
       setUnblockLoading(true);
-      await couponService.adminUnblockCoupon(coupon.id);
-      toast.success('Đã mở khóa mã giảm giá thành công');
+      const result = await couponService.adminUnblockCoupon(coupon.id);
+      toast.success(result?.message || 'Đã mở khóa và khôi phục trạng thái voucher.');
       await fetchCoupons();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Không thể mở khóa coupon');

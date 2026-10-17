@@ -423,12 +423,12 @@ export default function MarketplacePage() {
       <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300">
         {/* Main marketplace header */}
         <header
-          className={`scanms-site-header bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] transition-all duration-300 ease-in-out ${
+          className={`scanms-site-header relative z-[60] bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] transition-all duration-300 ease-in-out ${
             isScrolled ? 'shadow-md shadow-[#1A1612]/5' : 'shadow-xs'
           }`}
         >
           <div
-            className={`max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-[auto_1fr] lg:grid-cols-[auto_1fr_auto] items-center gap-3 sm:gap-6 transition-all duration-300 ease-in-out ${
+            className={`max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-[auto_1fr] lg:grid-cols-[auto_1fr_auto] items-center gap-3 sm:gap-6 transition-all duration-300 ease-in-out relative z-30 ${
               isScrolled ? 'py-1.5 sm:py-2' : 'py-3'
             }`}
           >
@@ -513,7 +513,7 @@ export default function MarketplacePage() {
               {/* Customer / Partner Gateways Dropdown */}
               {currentUser ? (
                 <div className="flex items-center gap-2">
-                  <div className="relative" ref={roleDropdownRef}>
+                  <div className="relative z-50" ref={roleDropdownRef}>
                     <HeaderAccountButton
                       user={currentUser}
                       role={currentUser.role}
@@ -670,7 +670,7 @@ export default function MarketplacePage() {
                   </div>
                 </div>
               ) : (
-                <div className="relative" ref={roleDropdownRef}>
+                <div className="relative z-50" ref={roleDropdownRef}>
                   <button
                     type="button"
                     onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
@@ -782,7 +782,7 @@ export default function MarketplacePage() {
 
           {/* Balanced marketplace shortcuts - Collapses smoothly when scrolling */}
           <nav
-            className={`border-t border-[#F3EFE6] bg-[#FFFEFC] transition-all duration-300 ease-in-out overflow-hidden ${
+            className={`relative z-10 border-t border-[#F3EFE6] bg-[#FFFEFC] transition-all duration-300 ease-in-out overflow-hidden ${
               isScrolled ? 'max-h-0 opacity-0 border-transparent py-0 pointer-events-none' : 'max-h-12 opacity-100'
             }`}
             aria-label="Điều hướng nhanh Marketplace"

@@ -16,6 +16,9 @@
 .sample-violation-dialog label span { color:#DC2626; }
 .sample-violation-dialog textarea { width:100%; border:1px solid #EAE4D7; border-radius:10px; padding:12px; background:#FFFFFF; color:#1A1612; font-size:13px; line-height:1.6; resize:vertical; outline:none; }
 .sample-violation-dialog textarea:focus { border-color:#C59B58; }
+.sample-deadline-input { width:100%; padding:11px; margin-bottom:16px; border:1px solid #EAE4D7; border-radius:10px; color:#1A1612; background:#FFFFFF; color-scheme:light; }
+.sample-deadline-input:focus { outline:2px solid #EEDFC6; border-color:#C59B58; }
+.sample-deadline-error { color:#DC2626; font-size:12px; margin-bottom:12px; }
 .sample-violation-dialog small { display:block; margin-top:4px; text-align:right; font-size:10px; color:#7D715E; }
 .sample-violation-dialog footer { display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #EAE4D7; padding-top:15px; margin-top:16px; }
 .sample-violation-dialog footer button { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:36px; padding:8px 13px; border:1px solid #EAE4D7; border-radius:9px; background:#FFFFFF; color:#7D715E; font-size:12px; cursor:pointer; }

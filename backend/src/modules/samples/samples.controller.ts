@@ -24,7 +24,9 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { SamplesService } from './samples.service';
 import {
   AdminResolveSampleRequestDto,
+  ExtendSampleDeadlineDto,
   CreateSampleRequestDto,
+  UpdateSampleRequestDto,
   RejectSampleRequestDto,
   ReportSampleDeliveryIssueDto,
   ReportSampleViolationDto,
@@ -114,6 +116,17 @@ export class SamplesController {
   }
 
   // ---- Shop endpoints ----
+  @Patch(':id/details')
+  @Roles('COLLABORATOR')
+  @ApiOperation({ summary: '[KOL] Sửa thông tin yêu cầu chỉ khi đang chờ Shop duyệt' })
+  updateDetails(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateSampleRequestDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.updatePendingRequest(id, req.user?.id || req.user?.sub, dto);
+  }
+
 
   @Get('shop')
   @Roles('SHOP_MANAGER')
@@ -159,6 +172,17 @@ export class SamplesController {
   ) {
     const userId = req.user?.id || req.user?.sub;
     return this.samplesService.rejectRequest(id, userId, dto.rejectedReason);
+  }
+
+  @Patch(':id/extend-deadline')
+  @Roles('SHOP_MANAGER')
+  @ApiOperation({ summary: '[Shop] Gia hạn nộp hoặc sửa video mẫu có ghi lý do' })
+  extendDeadline(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ExtendSampleDeadlineDto,
+    @Request() req: any,
+  ) {
+    return this.samplesService.extendDeadlineByShop(id, req.user?.id || req.user?.sub, dto);
   }
 
   @Get('admin')

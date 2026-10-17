@@ -25,6 +25,8 @@ import { PublicHeader } from "../../components/layout/PublicHeader";
 import { Card } from "../../components/ui/Card";
 import { getSafeProductImageUrl } from "@/utils/marketplace.utils";
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
+import { getGhnTrackingCode } from '../../utils/ghn-tracking';
+import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
 
 interface OrderItem {
   id: string;
@@ -50,6 +52,8 @@ interface OrderReview {
 
 interface OrderData {
   trackingNumber?: string | null;
+  carrierName?: string | null;
+  ghnEnvironment?: 'LIVE' | 'TEST' | null;
   reviewToken?: string;
   id: string;
   externalOrderSn: string;
@@ -127,7 +131,7 @@ export default function OrderTrackingPage() {
 
 
   useEffect(() => {
-    if (initialPhone || initialSn) {
+    if (initialPhone && initialSn) {
       handleSearchRef.current(initialPhone, initialSn);
     }
   }, [initialPhone, initialSn]);
@@ -135,9 +139,9 @@ export default function OrderTrackingPage() {
   const handleSearch = async (phoneValue?: string, orderSnValue?: string) => {
     const phone = (phoneValue !== undefined ? phoneValue : phoneInput).trim();
     const orderSn = (orderSnValue !== undefined ? orderSnValue : orderSnInput).trim();
-    if (!phone && !orderSn) {
+    if (!phone || !orderSn) {
       setErrorMessage(
-        "Vui lòng nhập số điện thoại hoặc mã đơn hàng để tra cứu.",
+        "Vui lòng nhập đầy đủ số điện thoại đặt hàng và mã đơn hàng để tra cứu.",
       );
       return;
     }
@@ -298,7 +302,7 @@ export default function OrderTrackingPage() {
           <p className="text-xs sm:text-sm text-[#7D715E] max-w-xl m-0 leading-relaxed">
             Nhập{" "}
             <strong className="text-[#1A1612]">Số điện thoại đặt hàng</strong>{" "}
-            hoặc <strong className="text-[#1A1612]">Mã đơn hàng</strong> để kiểm
+            và <strong className="text-[#1A1612]">Mã đơn hàng</strong> để kiểm
             tra tiến trình đóng gói, giao hàng và gửi đánh giá nhận quà ưu đãi.
           </p>
 
@@ -353,7 +357,7 @@ export default function OrderTrackingPage() {
 
           {initialSn && (
             <p className="text-[11px] font-semibold text-[#B88E4F] bg-[#FBF5EB] border border-[#EAE4D7] px-3 py-1.5 rounded-xl m-0">
-              Mã đơn gần nhất đã được tự động điền và tra cứu. Bạn không cần nhớ hoặc nhập lại.
+              Mã đơn gần nhất đã được điền sẵn. Nhập số điện thoại đặt hàng để xác minh và tra cứu.
             </p>
           )}
         </div>
@@ -378,7 +382,7 @@ export default function OrderTrackingPage() {
               Sẵn sàng tra cứu đơn hàng
             </strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              Vui lòng nhập số điện thoại hoặc mã đơn hàng ở thanh tìm kiếm phía
+              Vui lòng nhập số điện thoại và mã đơn hàng ở thanh tìm kiếm phía
               trên để hiển thị trạng thái vận chuyển chi tiết.
             </p>
           </div>
@@ -394,8 +398,8 @@ export default function OrderTrackingPage() {
               Không tìm thấy đơn hàng
             </strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              Không tìm thấy đơn hàng khớp với số điện thoại hoặc mã đơn đã nhập. Vui lòng
-              kiểm tra lại số điện thoại hoặc mã đơn.
+              Không tìm thấy đơn hàng khớp với số điện thoại và mã đơn đã nhập. Vui lòng
+              kiểm tra lại cả hai thông tin.
             </p>
           </div>
         )}
@@ -471,7 +475,9 @@ export default function OrderTrackingPage() {
                     </div>
                   ))}
                 </div>
-                {order.trackingNumber && <div className="mt-6"><GhnTrackingTimeline orderCode={order.trackingNumber} /></div>}
+                {getGhnTrackingCode(order) && <div className="mt-6">{isGeneratedGhnTestTrackingCode(getGhnTrackingCode(order))
+                  ? <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-xs text-[#7D715E]">Shop chưa có mã vận đơn GHN thật. Mã thử nội bộ không tra cứu được trên GHN.</p>
+                  : <GhnTrackingTimeline orderCode={getGhnTrackingCode(order)!} orderStatus={order.status} environment={order.ghnEnvironment || undefined} />}</div>}
               </div>
 
 

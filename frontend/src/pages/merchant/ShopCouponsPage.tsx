@@ -150,7 +150,7 @@ export const ShopCouponsPage: React.FC = () => {
   // Store Products for Scope Picker
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; price: number; imageUrl?: string }>>([]);
   const [platformSubsidy, setPlatformSubsidy] = useState<PlatformSubsidySummary | null>(null);
-  const [_storeCampaigns, setStoreCampaigns] = useState<Array<{ id: string; name?: string; title?: string; storeId: string; isActive: boolean; endDate: string }>>([]);
+  const [storeCampaigns, setStoreCampaigns] = useState<Array<{ id: string; name?: string; title?: string; storeId: string; isActive: boolean; startDate: string; endDate: string }>>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [voucherProductSearch, setVoucherProductSearch] = useState('');
   const normalizeProductSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
@@ -200,7 +200,7 @@ export const ShopCouponsPage: React.FC = () => {
     fundingSource: 'SHOP_FUNDED',
     stackableWithProductDiscount: false,
     stackableWithShopVoucher: false,
-    stackableWithPlatformVoucher: false,
+    stackableWithPlatformVoucher: true,
   });
   const [isSubmittingApprove, setIsSubmittingApprove] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
@@ -342,6 +342,12 @@ export const ShopCouponsPage: React.FC = () => {
       setSearchParams({ storeId: selected.id }, { replace: true });
       fetchStoreCoupons(selected.id);
       fetchStoreProducts(selected.id);
+      setStoreCampaigns([]);
+      setCreateForm(form => ({ ...form, campaignId: undefined, scopeType: 'STORE_WIDE' }));
+      api.get('/campaigns/shop').then((res: any) => {
+        const payload = res?.data?.data || res?.data || res;
+        setStoreCampaigns((Array.isArray(payload) ? payload : []).filter((campaign: any) => campaign.storeId === selected.id && campaign.isActive && new Date(campaign.endDate) > new Date()));
+      }).catch(() => setStoreCampaigns([]));
       couponService.getStorePlatformSubsidies(selected.id).then((rows) => setPlatformSubsidy(rows[0] || null)).catch(() => setPlatformSubsidy(null));
     }
   };
@@ -443,7 +449,13 @@ export const ShopCouponsPage: React.FC = () => {
     try {
       setIsSubmittingCreate(true);
       setCreateError(null);
-      await couponService.createStoreCoupon(storeId, createForm);
+      if (createForm.scopeType === 'CAMPAIGN' && !storeCampaigns.some(campaign => campaign.id === createForm.campaignId)) {
+        setCreateError('Vui lòng chọn một chiến dịch còn hiệu lực của gian hàng.');
+        return;
+      }
+      await couponService.createStoreCoupon(storeId, { ...createForm,
+        campaignId: createForm.scopeType === 'CAMPAIGN' ? createForm.campaignId : undefined,
+        stackableWithShopVoucher: false, stackableWithPlatformVoucher: true });
       toast.success(`Phát hành voucher "${createForm.code.toUpperCase()}" thành công!`);
       setIsCreateModalOpen(false);
       await fetchStoreCoupons(storeId);
@@ -491,10 +503,12 @@ export const ShopCouponsPage: React.FC = () => {
       usageLimitTotal: coupon.usageLimitTotal || 100,
       usageLimitPerCustomer: coupon.usageLimitPerCustomer || 1,
       scopeType: coupon.scopeType || 'STORE_WIDE',
-      fundingSource: coupon.fundingSource || 'SHOP_FUNDED',
+      fundingSource: 'SHOP_FUNDED',
+      shopFundingRate: 100,
+      platformFundingRate: 0,
       stackableWithProductDiscount: !!coupon.stackableWithProductDiscount,
-      stackableWithShopVoucher: !!coupon.stackableWithShopVoucher,
-      stackableWithPlatformVoucher: !!coupon.stackableWithPlatformVoucher,
+      stackableWithShopVoucher: false,
+      stackableWithPlatformVoucher: true,
     });
     setApproveError(null);
     setIsApproveModalOpen(true);
@@ -1185,6 +1199,21 @@ export const ShopCouponsPage: React.FC = () => {
                 </div>
 
                 <form id="store-voucher-form" onSubmit={handleCreateSubmit} className="space-y-4">
+                  {createForm.scopeType === 'CAMPAIGN' && (
+                    <div className="p-3.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]">
+                      <label className="block text-xs font-bold text-[#1A1612] mb-2" htmlFor="voucher-campaign">Chiến dịch áp dụng *</label>
+                      <select id="voucher-campaign" required value={createForm.campaignId || ''}
+                        onChange={event => {
+                          const campaign = storeCampaigns.find(row => row.id === event.target.value);
+                          setCreateForm(form => ({ ...form, campaignId: campaign?.id,
+                            startsAt: campaign?.startDate || form.startsAt, expiresAt: campaign?.endDate || form.expiresAt }));
+                        }} className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2.5 text-sm">
+                        <option value="">Chọn chiến dịch của gian hàng</option>
+                        {storeCampaigns.map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name || campaign.title}</option>)}
+                      </select>
+                      <p className="mt-2 text-xs text-[#7D715E]">Voucher chỉ dùng trong thời gian chiến dịch hoạt động. {storeCampaigns.length === 0 && 'Tạo chiến dịch trong mục Khuyến mãi & Hoa hồng trước.'}</p>
+                    </div>
+                  )}
                   {createError && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1330,7 +1359,7 @@ export const ShopCouponsPage: React.FC = () => {
                       </label>
                       <input
                         type="date"
-                        value={createForm.startsAt || ''}
+                        value={createForm.startsAt?.slice(0, 10) || ''}
                         onChange={(e) =>
                           setCreateForm({
                             ...createForm,
@@ -1346,7 +1375,7 @@ export const ShopCouponsPage: React.FC = () => {
                       </label>
                       <input
                         type="date"
-                        value={createForm.expiresAt || ''}
+                        value={createForm.expiresAt?.slice(0, 10) || ''}
                         onChange={(e) =>
                           setCreateForm({
                             ...createForm,
@@ -1521,11 +1550,11 @@ export const ShopCouponsPage: React.FC = () => {
                     <label className="flex items-center gap-2 text-xs text-[#7D715E] cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={createForm.stackableWithPlatformVoucher}
-                        onChange={(e) => setCreateForm({ ...createForm, stackableWithPlatformVoucher: e.target.checked })}
+                        checked={true}
+                        disabled
                         className="accent-[#C59B58]"
                       />
-                      <span>Cho phép dùng chung với Voucher toàn sàn SCANMS</span>
+                      <span>Dùng cùng 1 voucher Sàn và 1 voucher vận chuyển; không chồng voucher tiền hàng của Shop</span>
                     </label>
                   </div>
                 </form>
@@ -1630,7 +1659,7 @@ export const ShopCouponsPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-3.5 h-3.5 text-[#059669] shrink-0" />
-                      <span>{createForm.stackableWithPlatformVoucher ? 'Được dùng chung với Voucher toàn sàn' : 'Không dùng chung voucher sàn'}</span>
+                      <span>1 voucher Shop/KOL + 1 voucher Sàn + 1 Freeship</span>
                     </div>
                     {createForm.budgetTotal && (
                       <div className="flex items-center gap-2">
@@ -1694,6 +1723,7 @@ export const ShopCouponsPage: React.FC = () => {
                 <p className="text-xs text-[#7D715E]">
                   Đề xuất bởi KOL: <strong>{selectedCouponToApprove.collaborator?.fullName}</strong>
                 </p>
+                <p className="mt-1 text-xs text-[#B88E4F]">Shop chi trả 100% ngân sách giảm giá. Chỉ sau khi Shop duyệt, mã mới được kích hoạt.</p>
               </div>
               <button
                 type="button"

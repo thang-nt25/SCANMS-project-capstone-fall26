@@ -90,8 +90,96 @@ describe('SamplesService', () => {
       {
         validateAllowedUrl: jest.fn(),
       } as unknown as MediaService,
-      { getDistricts: jest.fn().mockResolvedValue([{ DistrictID: 2, ProvinceID: 1 }]), getWards: jest.fn().mockResolvedValue([{ WardCode: '0003', DistrictID: 2 }]) } as any,
+      {
+        getProvinces: jest.fn().mockResolvedValue([{ ProvinceID: 1, ProvinceName: 'Tỉnh C' }]),
+        getDistricts: jest.fn().mockResolvedValue([{ DistrictID: 2, ProvinceID: 1, DistrictName: 'Quận B' }]),
+        getWards: jest.fn().mockResolvedValue([{ WardCode: '0003', DistrictID: 2, WardName: 'Phường A' }]),
+      } as any,
     );
+  });
+
+  const editDetails = {
+    recipientName: 'Người nhận mới', recipientPhone: '0912345678', recipientPhoneConfirmed: true,
+    shippingAddress: '12 đường mới, Phường A, Quận B, Tỉnh C',
+    ghnProvinceId: 1, ghnDistrictId: 2, ghnWardCode: '0003',
+    socialChannelId: channel.id, contentType: 'Review mới', termsAccepted: true,
+  };
+
+  it.each([
+    { recipientName: '   ' },
+    { shippingAddress: ' '.repeat(20) },
+    { shippingAddress: '12 đường mới' },
+    { shippingAddress: '12 đường mới, Phường Khác, Quận B, Tỉnh C' },
+    { shippingAddress: '12 đường mới, Phường A, Quận Khác, Tỉnh C' },
+    { shippingAddress: '12 đường mới, Phường A, Quận B, Tỉnh Khác' },
+    { shippingAddress: '., Phường A, Quận B, Tỉnh C' },
+  ])('rejects incomplete or inconsistent recipient snapshots on create and edit: %j', async overrides => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, status: 'PENDING' });
+    const invalid = { ...editDetails, ...overrides };
+    await expect(service.createRequest('kol-1', { ...invalid, productId: product.id })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.updatePendingRequest(request.id, 'kol-1', invalid)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.sampleProductRequest.create).not.toHaveBeenCalled();
+    expect(prisma.sampleProductRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('keeps apartment, floor and street text exactly as submitted instead of the collaborator profile', async () => {
+    const shippingAddress = '12 đường mới, Tầng 3, Căn A.05, Phường A, Quận B, Tỉnh C';
+    await service.createRequest('kol-1', { ...editDetails, productId: product.id, shippingAddress });
+    expect(prisma.sampleProductRequest.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      recipientName: editDetails.recipientName, recipientPhone: editDetails.recipientPhone, shippingAddress,
+      ghnProvinceId: 1, ghnDistrictId: 2, ghnWardCode: '0003',
+    }) }));
+  });
+
+  it('rejects an invalid recipient phone before creating or editing any data', async () => {
+    await expect(service.updatePendingRequest(request.id, 'kol-1', { ...editDetails, recipientPhone: '1234567891' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.createRequest('kol-1', { ...editDetails, productId: product.id, recipientPhone: '1234567891' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.sampleProductRequest.create).not.toHaveBeenCalled();
+    expect(prisma.sampleProductRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('updates the same pending request and notifies its Shop without creating another request', async () => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, status: 'PENDING' });
+    await service.updatePendingRequest(request.id, 'kol-1', editDetails);
+    expect(prisma.sampleProductRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: request.id, collaboratorId: 'kol-1', status: 'PENDING' },
+      data: expect.objectContaining({ recipientName: editDetails.recipientName, shippingAddress: editDetails.shippingAddress }),
+    });
+    const saved = prisma.sampleProductRequest.updateMany.mock.calls[0][0].data;
+    expect(saved).not.toHaveProperty('productId');
+    expect(saved).not.toHaveProperty('status');
+    expect(saved).not.toHaveProperty('deadlineAt');
+    expect(prisma.sampleProductRequest.create).not.toHaveBeenCalled();
+    expect(prisma.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'shop-1', type: 'SAMPLE_REQUEST_UPDATED' }) });
+    expect(prisma.sampleRequestEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ sampleRequestId: request.id, action: 'SAMPLE_REQUEST_UPDATED' }) });
+  });
+
+  it.each(['APPROVED', 'SHIPPED', 'RECEIVED', 'COMPLETED', 'CANCELLED', 'REJECTED'])('rejects editing after status changes to %s', async (status) => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, status });
+    await expect(service.updatePendingRequest(request.id, 'kol-1', editDetails)).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.sampleProductRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects another creator and a foreign social channel', async () => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, status: 'PENDING' });
+    await expect(service.updatePendingRequest(request.id, 'kol-2', editDetails)).rejects.toBeInstanceOf(ForbiddenException);
+    prisma.collaboratorSocialChannel.findFirst.mockResolvedValue(null);
+    await expect(service.updatePendingRequest(request.id, 'kol-1', editDetails)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.sampleProductRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid GHN hierarchy before writing', async () => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, status: 'PENDING' });
+    await expect(service.updatePendingRequest(request.id, 'kol-1', { ...editDetails, ghnDistrictId: 99 })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.sampleProductRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects an approval racing the edit without emitting an update event', async () => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, status: 'PENDING' });
+    prisma.sampleProductRequest.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.updatePendingRequest(request.id, 'kol-1', editDetails)).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+    expect(prisma.sampleRequestEvent.create).not.toHaveBeenCalled();
   });
 
   it('lưu kênh và cam kết, chỉ đặt ngày video sau khi giao mẫu', async () => {
@@ -101,7 +189,7 @@ describe('SamplesService', () => {
       recipientName: 'KOL thử nghiệm',
       recipientPhone: '0912345678',
       recipientPhoneConfirmed: true,
-      shippingAddress: '123 Nguyễn Văn A, Quận 1, TP.HCM',
+      shippingAddress: '123 Nguyễn Văn A, Phường A, Quận B, Tỉnh C',
       ghnProvinceId: 1,
       ghnDistrictId: 2,
       ghnWardCode: '0003',
@@ -165,15 +253,19 @@ describe('SamplesService', () => {
     expect(prisma.sampleProductRequest.create).not.toHaveBeenCalled();
   });
 
-  it('bắt đầu hạn đúng 14 ngày khi KOL xác nhận nhận mẫu', async () => {
-    await service.confirmReceived(request.id, 'kol-1');
+  it.each(['GHN', 'GHTK', null])('không cho KOL tự xác nhận nhận mẫu qua %s', async (carrier) => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, carrier });
+    await expect(service.confirmReceived(request.id, 'kol-1')).rejects.toThrow(BadRequestException);
+    expect(prisma.sampleProductRequest.update).not.toHaveBeenCalled();
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
 
-    const update = prisma.sampleProductRequest.update.mock.calls[0][0];
-    expect(update.data.status).toBe(SampleRequestStatus.RECEIVED);
-    expect(
-      update.data.deadlineAt.getTime() - update.data.receivedAt.getTime(),
-    ).toBe(14 * 86400000);
-    expect(prisma.notification.create).toHaveBeenCalledTimes(2);
+  it.each(['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'])('không cho nộp video khi chưa nhận mẫu: %s', async (status) => {
+    prisma.sampleProductRequest.findUnique.mockResolvedValue({ ...request, status });
+    await expect(service.submitVideo(request.id, 'kol-1', {
+      title: 'Review', videoUrl: 'https://www.tiktok.com/@test/video/123',
+    })).rejects.toThrow(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('đánh dấu quá hạn và cảnh báo, không tự khóa quyền nhận mẫu', async () => {

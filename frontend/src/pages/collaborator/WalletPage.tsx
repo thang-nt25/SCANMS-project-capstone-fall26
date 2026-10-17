@@ -36,7 +36,8 @@ import { toast } from "../../utils/toast";
 import { cn } from "../../utils/cn";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
-import { PageHeader } from "../../components/ui/PageHeader";
+import './WalletPage.css';
+
 import { Select } from "../../components/ui/Select";
 import api from "../../services/api";
 import { type VietQrBank, findBankByQuery, VIETNAM_BANKS } from "@/config/banks.config";
@@ -372,35 +373,17 @@ export default function WalletPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 w-full min-w-0 pb-12 text-[#1A1612] text-left">
-      {/* 1. Page Header Chuẩn Hóa */}
-      <PageHeader
-        title="Ví & Tài chính Tiếp thị"
-        description="Quản lý số dư hoa hồng, theo dõi lịch sử biến động sổ cái và gửi yêu cầu rút tiền"
-        icon={<Wallet className="w-5 h-5" />}
-        actions={
-          <button
-            type="button"
-            onClick={() => void loadWallet()}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới ví</span>
-          </button>
-        }
-      />
-
+    <div id="kol-wallet-page" data-active-tab={activeTab} className="flex flex-col gap-4 w-full min-w-0 pb-12 text-[#1A1612] text-left">
       {/* Top Unified Hub Navigation Bar */}
       <div className="p-1.5 sm:p-2 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
-        <nav className="flex flex-wrap items-center gap-2 sm:gap-4 w-full" aria-label="Ví và hồ sơ">
+        <nav className="grid grid-cols-2 lg:grid-cols-4 items-stretch gap-2 w-full" aria-label="Ví và hồ sơ">
             <button
               type="button"
               onClick={() => setSearchParams({ tab: 'wallet' })}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap select-none ${
+              className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'wallet'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
-                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-transparent'
+                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
               id="tab-btn-wallet"
               aria-pressed={activeTab === 'wallet'}
@@ -412,10 +395,10 @@ export default function WalletPage() {
             <button
               type="button"
               onClick={() => setSearchParams({ tab: 'kyc' })}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap select-none ${
+              className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'kyc'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
-                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-transparent'
+                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
               id="tab-btn-kyc"
               aria-pressed={activeTab === 'kyc'}
@@ -427,10 +410,10 @@ export default function WalletPage() {
             <button
               type="button"
               onClick={() => setSearchParams({ tab: 'social' })}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap select-none ${
+              className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'social'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
-                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-transparent'
+                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
               id="tab-btn-social"
               aria-pressed={activeTab === 'social'}
@@ -438,6 +421,13 @@ export default function WalletPage() {
               <Share2 className="w-3.5 h-3.5 text-[#B88E4F]" />
               <span>Kênh xã hội</span>
             </button>
+            {activeTab === 'wallet' && (
+              <button type="button" onClick={() => void loadWallet()} disabled={loading}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#795A2D] hover:bg-[#F3EFE6] transition-colors cursor-pointer disabled:opacity-60">
+                <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+                <span>Làm mới ví</span>
+              </button>
+            )}
             {activeTab !== 'wallet' && (
               <button
                 type="button"
@@ -445,7 +435,7 @@ export default function WalletPage() {
                 aria-busy={isReloading}
                 onClick={() => void handleReload()}
                 disabled={isReloading || submitting}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer disabled:opacity-50 shrink-0 ml-auto select-none"
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer disabled:opacity-50 select-none"
                 title={activeTab === 'kyc' ? 'Tải lại hồ sơ KYC' : 'Tải lại các kênh xã hội'}
               >
                 <RefreshCw size={13} className={`text-[#B88E4F] ${isReloading ? 'animate-spin' : ''}`} />

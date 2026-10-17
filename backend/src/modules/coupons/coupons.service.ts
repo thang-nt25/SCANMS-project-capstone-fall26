@@ -33,6 +33,7 @@ import { SoftDeleteCouponDto } from './dto/soft-delete-coupon.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { QueryCouponsDto } from './dto/query-coupons.dto';
 import { CacheService } from '../../core/cache/cache.service';
+import { liveVoucherActive } from './voucher-pricing';
 
 // Banned words list as per Section 10
 const BANNED_CODE_WORDS = [
@@ -60,6 +61,44 @@ export class CouponsService {
     private readonly cacheService: CacheService,
   ) {}
 
+  private async updateCurrentCoupon(
+    coupon: { id: string; status: CouponStatus; updatedAt?: Date; fundingSource?: CouponFundingSource },
+    data: Prisma.CouponUpdateArgs['data'],
+    client: Pick<Prisma.TransactionClient, 'coupon'> = this.prisma,
+  ) {
+    try {
+      return await client.coupon.update({
+        // PostgreSQL stores microseconds; JS Dates retain only milliseconds.
+        where: { id: coupon.id, status: coupon.status, fundingSource: coupon.fundingSource,
+          updatedAt: coupon.updatedAt ? { gte: coupon.updatedAt, lt: new Date(coupon.updatedAt.getTime() + 1) } : undefined },
+        data,
+      });
+    } catch (error: any) {
+      if (error?.code === 'P2025') throw new ConflictException('Voucher vừa được thay đổi hoặc khóa ở nơi khác. Vui lòng tải lại.');
+      throw error;
+    }
+  }
+
+  private assertShopFundedPolicy(coupon: { fundingSource?: CouponFundingSource; platformFundingRate?: unknown }, role: UserRole) {
+    if (role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER) return;
+    if ((coupon.fundingSource && coupon.fundingSource !== CouponFundingSource.SHOP_FUNDED) || Number(coupon.platformFundingRate || 0) > 0) {
+      throw new ForbiddenException('Chỉ quản trị viên được sửa voucher do Sàn tài trợ hoặc đồng tài trợ.');
+    }
+  }
+
+  private blockCurrentCoupon(coupon: { id: string; status: CouponStatus; updatedAt?: Date; fundingSource?: CouponFundingSource }, reason: string) {
+    if (coupon.status === CouponStatus.BLOCKED) throw new BadRequestException('Voucher đã bị khóa.');
+    return this.updateCurrentCoupon(coupon, {
+      status: CouponStatus.BLOCKED, statusBeforeBlock: coupon.status, blockedReason: reason,
+    });
+  }
+
+  private async assertVoucherCampaign(storeId: string, campaignId?: string | null) {
+    if (!campaignId) throw new BadRequestException('Cần chọn chiến dịch cho voucher.');
+    const campaign = await this.prisma.campaign.findFirst({ where: { id: campaignId, storeId }, select: { isActive: true, startDate: true, endDate: true } });
+    if (!campaign || !campaign.isActive || campaign.endDate <= new Date()) throw new BadRequestException('Chiến dịch không còn hiệu lực.');
+  }
+
   async previewStackedVoucher(dto: PreviewStackedVoucherDto) {
     const voucher = await this.prisma.coupon.findUnique({ where: { codeNormalized: dto.code.trim().toUpperCase() } });
     const now = new Date();
@@ -67,15 +106,10 @@ export class CouponsService {
         voucher.scopeType !== CouponScope.STORE_WIDE || voucher.status !== CouponStatus.ACTIVE || voucher.deletedAt ||
         (voucher.startsAt && now < voucher.startsAt) || (voucher.expiresAt && now >= voucher.expiresAt) ||
         (dto.benefitType === 'GOODS' && voucher.fundingSource !== CouponFundingSource.PLATFORM_FUNDED) ||
-        (dto.benefitType === 'GOODS' && dto.shopDiscount > 0 && !voucher.stackableWithShopVoucher) ||
         (voucher.usageLimitTotal !== null && voucher.usageCount >= voucher.usageLimitTotal)) {
       throw new BadRequestException('Voucher không áp dụng được cho đơn này.');
     }
     if (voucher.minimumOrderAmount && dto.goodsSubtotal < Number(voucher.minimumOrderAmount)) throw new BadRequestException('Chưa đạt giá trị đơn tối thiểu.');
-    if (dto.benefitType === 'GOODS' && dto.shopCouponCode?.trim()) {
-      const shopCoupon = await this.prisma.coupon.findUnique({ where: { codeNormalized: dto.shopCouponCode.trim().toUpperCase() }, select: { stackableWithPlatformVoucher: true } });
-      if (!shopCoupon?.stackableWithPlatformVoucher) throw new BadRequestException('Voucher Shop không cho phép cộng voucher sàn.');
-    }
     const base = dto.benefitType === 'SHIPPING' ? dto.shippingFee : Math.max(0, dto.goodsSubtotal - dto.shopDiscount);
     if (base <= 0) throw new BadRequestException('Không có giá trị áp dụng voucher.');
     const raw = voucher.discountType === DiscountType.PERCENTAGE ? Math.round(base * Number(voucher.discountValue) / 100) : Number(voucher.discountValue);
@@ -110,11 +144,11 @@ export class CouponsService {
           { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
         ],
       },
-      select: { id: true, usageLimitTotal: true, usageCount: true, liveSession: { select: { status: true, inviteStatus: true } } },
+      select: { id: true, usageLimitTotal: true, usageCount: true, liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true } } },
     });
     if (!coupon ||
       (coupon.usageLimitTotal !== null && coupon.usageCount >= coupon.usageLimitTotal) ||
-      (coupon.liveSession && (coupon.liveSession.status !== 'LIVE' || coupon.liveSession.inviteStatus !== 'ACCEPTED'))) {
+      !liveVoucherActive(coupon.liveSession)) {
       throw new NotFoundException('Voucher không còn khả dụng.');
     }
     await this.prisma.customerSavedCoupon.upsert({
@@ -149,7 +183,7 @@ export class CouponsService {
         budgetTotal: true, budgetUsed: true,
         scopeType: true, fundingSource: true, benefitType: true,
         campaign: { select: { isActive: true, startDate: true, endDate: true } },
-        liveSession: { select: { status: true, inviteStatus: true } },
+        liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true } },
         store: { select: { id: true, name: true, slug: true } },
       },
       orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }],
@@ -158,7 +192,7 @@ export class CouponsService {
     return coupons.filter((coupon) =>
       (coupon.usageLimitTotal === null || coupon.usageCount < coupon.usageLimitTotal) &&
       (coupon.budgetTotal === null || Number(coupon.budgetUsed) < Number(coupon.budgetTotal)) &&
-      (!coupon.liveSession || (coupon.liveSession.status === 'LIVE' && coupon.liveSession.inviteStatus === 'ACCEPTED')) &&
+      liveVoucherActive(coupon.liveSession, now) &&
       (coupon.scopeType !== CouponScope.CAMPAIGN || (coupon.campaign?.isActive && coupon.campaign.startDate <= now && coupon.campaign.endDate > now)))
       .map((coupon) => ({
         id: coupon.id,
@@ -208,7 +242,7 @@ export class CouponsService {
         fundingSource: true,
         benefitType: true,
         campaign: { select: { isActive: true, startDate: true, endDate: true } },
-        liveSession: { select: { status: true, inviteStatus: true } },
+        liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true } },
         couponProducts: {
           where: { product: { isDeleted: false, isActive: true } },
           select: { product: { select: { id: true, title: true } } },
@@ -224,7 +258,7 @@ export class CouponsService {
         (coupon) =>
           (coupon.usageLimitTotal === null ||
           coupon.usageCount < coupon.usageLimitTotal) &&
-          (!coupon.liveSession || (coupon.liveSession.status === 'LIVE' && coupon.liveSession.inviteStatus === 'ACCEPTED')) &&
+          liveVoucherActive(coupon.liveSession, now) &&
           (coupon.scopeType !== CouponScope.CAMPAIGN || (coupon.campaign?.isActive && coupon.campaign.startDate <= now && coupon.campaign.endDate > now)),
       )
       .map((coupon) => ({
@@ -586,6 +620,8 @@ export class CouponsService {
         storeId: dto.storeId,
         campaignId: dto.campaignId || null,
         status: CouponStatus.PENDING_APPROVAL,
+        stackableWithShopVoucher: false,
+        stackableWithPlatformVoucher: true,
       },
       include: {
         store: {
@@ -844,6 +880,13 @@ export class CouponsService {
         ? CouponStatus.PAUSED
         : CouponStatus.ACTIVE;
 
+    if (nextStatus === CouponStatus.ACTIVE && (!coupon.approvedBy || !coupon.approvedAt)) {
+      throw new ForbiddenException('Voucher chưa được chủ Shop duyệt nên không thể kích hoạt.');
+    }
+    if (nextStatus === CouponStatus.ACTIVE && coupon.expiresAt && coupon.expiresAt <= new Date()) {
+      throw new BadRequestException('Voucher đã hết hạn, không thể kích hoạt lại.');
+    }
+
     let inFlightOrdersCount = 0;
     if (nextStatus === CouponStatus.PAUSED) {
       inFlightOrdersCount = await this.prisma.order.count({
@@ -854,10 +897,7 @@ export class CouponsService {
       });
     }
 
-    const updated = await this.prisma.coupon.update({
-      where: { id },
-      data: { status: nextStatus },
-    });
+    const updated = await this.updateCurrentCoupon(coupon, { status: nextStatus });
 
     await this.prisma.auditLog.create({
       data: {
@@ -906,15 +946,16 @@ export class CouponsService {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
 
-    const updated = await this.prisma.coupon.update({
-      where: { id },
-      data: {
+    if (coupon.status !== CouponStatus.PENDING_APPROVAL && coupon.status !== CouponStatus.REJECTED) {
+      throw new BadRequestException('Chỉ xóa đề xuất đang chờ duyệt hoặc đã bị từ chối.');
+    }
+
+    const updated = await this.updateCurrentCoupon(coupon, {
         status: CouponStatus.DELETED,
         deletedAt: new Date(),
         deletedBy: collaboratorId,
         deleteReason: dto.reason || 'KOL chủ động xóa mã giảm giá',
-      },
-    });
+      });
 
     await this.prisma.auditLog.create({
       data: {
@@ -956,10 +997,7 @@ export class CouponsService {
     if (!store) {
       throw new NotFoundException('Gian hàng không tồn tại');
     }
-    const isDemoShopManager =
-      userId === '6e9eb89c-f544-4f87-b724-1fe7aace2edc' || // shop@scanms.vn (Sora Skin)
-      userId === 'df25d2c6-706a-4ff1-973e-17b222626764'; // shop@techstore.vn (TechStore)
-    if (store.ownerId !== userId && !isDemoShopManager) {
+    if (role !== UserRole.SHOP_MANAGER || store.ownerId !== userId) {
       throw new ForbiddenException('Bạn không có quyền quản lý gian hàng này');
     }
   }
@@ -1057,6 +1095,7 @@ export class CouponsService {
     dto: CreateStoreCouponDto,
     ipAddress?: string,
   ) {
+    if (role !== UserRole.SHOP_MANAGER) throw new ForbiddenException('Chỉ chủ Shop được phát hành voucher từ ngân sách Shop.');
     await this.verifyStoreAccess(storeId, userId, role);
 
     // Rate limit: 10 requests / minute
@@ -1087,9 +1126,7 @@ export class CouponsService {
       throw new BadRequestException('Voucher vận chuyển chỉ áp dụng toàn gian hàng.');
     }
     if (dto.scopeType === CouponScope.CAMPAIGN) {
-      if (!dto.campaignId) throw new BadRequestException('Cần chọn chiến dịch cho voucher.');
-      const campaign = await this.prisma.campaign.findFirst({ where: { id: dto.campaignId, storeId }, select: { isActive: true, startDate: true, endDate: true } });
-      if (!campaign || !campaign.isActive || campaign.endDate <= new Date()) throw new BadRequestException('Chiến dịch không còn hiệu lực.');
+      await this.assertVoucherCampaign(storeId, dto.campaignId);
     }
 
     // Validate dates
@@ -1138,9 +1175,8 @@ export class CouponsService {
           platformFundingRate: new Prisma.Decimal(0),
           stackableWithProductDiscount:
             dto.stackableWithProductDiscount ?? true,
-          stackableWithShopVoucher: dto.stackableWithShopVoucher ?? false,
-          stackableWithPlatformVoucher:
-            dto.stackableWithPlatformVoucher ?? true,
+          stackableWithShopVoucher: false,
+          stackableWithPlatformVoucher: true,
           approvedBy: userId,
           approvedAt: new Date(),
         },
@@ -1201,6 +1237,7 @@ export class CouponsService {
     dto: ApproveCouponDto,
     ipAddress?: string,
   ) {
+    if (role !== UserRole.SHOP_MANAGER) throw new ForbiddenException('Đề xuất KOL chỉ được kích hoạt khi chủ Shop duyệt.');
     await this.verifyStoreAccess(storeId, userId, role);
 
     const coupon = await this.prisma.coupon.findFirst({
@@ -1211,11 +1248,15 @@ export class CouponsService {
       throw new NotFoundException('Không tìm thấy yêu cầu mã giảm giá');
     }
 
+    this.assertShopFundedPolicy(coupon, role);
+
     if (coupon.status !== CouponStatus.PENDING_APPROVAL) {
       throw new BadRequestException(
         `Chỉ có thể phê duyệt coupon ở trạng thái Chờ duyệt (hiện tại: ${coupon.status})`,
       );
     }
+
+    if (dto.scopeType === CouponScope.CAMPAIGN) await this.assertVoucherCampaign(storeId, dto.campaignId ?? coupon.campaignId);
 
     // Validate percentage
     if (
@@ -1240,57 +1281,20 @@ export class CouponsService {
       );
     }
 
-    // Financial authorization check (Issue 6)
-    const isAdmin =
-      role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER;
-
-    if (!isAdmin) {
-      if (
-        dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED ||
-        dto.fundingSource === CouponFundingSource.CO_FUNDED ||
-        (dto.platformFundingRate !== undefined &&
-          Number(dto.platformFundingRate) > 0)
-      ) {
-        throw new ForbiddenException(
-          'Gian hàng không có quyền chỉ định nền tảng SCANMS đồng tài trợ ngân sách. Chỉ Quản trị viên (Admin) mới có thẩm quyền phê duyệt tài trợ sàn.',
-        );
-      }
+    // Only the Shop owner approves a proposal and accepts its entire cost.
+    if (dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED || dto.fundingSource === CouponFundingSource.CO_FUNDED
+      || (dto.shopFundingRate !== undefined && Number(dto.shopFundingRate) !== 100)
+      || Number(dto.platformFundingRate || 0) > 0) {
+      throw new ForbiddenException('Voucher Shop phải do Shop tài trợ 100%. Voucher Sàn được phát hành riêng bởi quản trị viên.');
     }
-
-    // Co-funding rate validation (Issue 7 & Issue 6)
-    let shopFundingRate = 100;
-    let platformFundingRate = 0;
-    let fundingSource = dto.fundingSource || CouponFundingSource.SHOP_FUNDED;
-
-    if (!isAdmin) {
-      fundingSource = CouponFundingSource.SHOP_FUNDED;
-      shopFundingRate = 100;
-      platformFundingRate = 0;
-    } else {
-      if (fundingSource === CouponFundingSource.CO_FUNDED) {
-        shopFundingRate =
-          dto.shopFundingRate !== undefined ? Number(dto.shopFundingRate) : 50;
-        platformFundingRate =
-          dto.platformFundingRate !== undefined
-            ? Number(dto.platformFundingRate)
-            : 50;
-        if (shopFundingRate + platformFundingRate !== 100) {
-          throw new BadRequestException(
-            'Tổng tỷ lệ đồng tài trợ giữa Shop và Sàn phải bằng 100%',
-          );
-        }
-      } else if (fundingSource === CouponFundingSource.PLATFORM_FUNDED) {
-        shopFundingRate = 0;
-        platformFundingRate = 100;
-      }
-    }
+    const shopFundingRate = 100;
+    const platformFundingRate = 0;
+    const fundingSource = CouponFundingSource.SHOP_FUNDED;
 
     // Execute approval inside transaction
     const approvedCoupon = await this.prisma.$transaction(async (tx) => {
       // 1. Update coupon details
-      const updated = await tx.coupon.update({
-        where: { id: couponId },
-        data: {
+      const updated = await this.updateCurrentCoupon(coupon, {
           status: CouponStatus.ACTIVE,
           discountType: dto.discountType,
           discountValue: new Prisma.Decimal(dto.discountValue),
@@ -1309,15 +1313,15 @@ export class CouponsService {
           expiresAt,
           scopeType: dto.scopeType || CouponScope.STORE_WIDE,
           fundingSource,
+          campaignId: dto.scopeType === CouponScope.CAMPAIGN ? dto.campaignId ?? coupon.campaignId : null,
           shopFundingRate: new Prisma.Decimal(shopFundingRate),
           platformFundingRate: new Prisma.Decimal(platformFundingRate),
           stackableWithProductDiscount: !!dto.stackableWithProductDiscount,
-          stackableWithShopVoucher: !!dto.stackableWithShopVoucher,
-          stackableWithPlatformVoucher: !!dto.stackableWithPlatformVoucher,
+          stackableWithShopVoucher: false,
+          stackableWithPlatformVoucher: true,
           approvedBy: userId,
           approvedAt: new Date(),
-        },
-      });
+        }, tx);
 
       // 2. Handle Scope products
       if (
@@ -1411,13 +1415,7 @@ export class CouponsService {
       );
     }
 
-    const updated = await this.prisma.coupon.update({
-      where: { id: couponId },
-      data: {
-        status: CouponStatus.REJECTED,
-        rejectedReason: dto.reason,
-      },
-    });
+    const updated = await this.updateCurrentCoupon(coupon, { status: CouponStatus.REJECTED, rejectedReason: dto.reason });
 
     await this.prisma.auditLog.create({
       data: {
@@ -1469,13 +1467,7 @@ export class CouponsService {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
 
-    const updated = await this.prisma.coupon.update({
-      where: { id: couponId },
-      data: {
-        status: CouponStatus.BLOCKED,
-        blockedReason: dto.reason,
-      },
-    });
+    const updated = await this.blockCurrentCoupon(coupon, dto.reason);
 
     await this.prisma.auditLog.create({
       data: {
@@ -1518,7 +1510,19 @@ export class CouponsService {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
 
+    this.assertShopFundedPolicy(coupon, role);
+    if (role === UserRole.SHOP_MANAGER && coupon.status !== CouponStatus.ACTIVE && coupon.status !== CouponStatus.PAUSED) {
+      throw new BadRequestException('Chỉ sửa chính sách voucher đang hoạt động hoặc tạm dừng; đề xuất mới cần được Shop duyệt.');
+    }
+
     const data: Prisma.CouponUpdateInput = {};
+
+    if ((dto.scopeType ?? coupon.scopeType) === CouponScope.CAMPAIGN) {
+      await this.assertVoucherCampaign(storeId, dto.campaignId ?? coupon.campaignId);
+      data.campaign = { connect: { id: (dto.campaignId ?? coupon.campaignId)! } };
+    } else if (dto.scopeType !== undefined && coupon.campaignId) {
+      data.campaign = { disconnect: true };
+    }
 
     if (dto.discountType) data.discountType = dto.discountType;
     if (dto.discountValue !== undefined)
@@ -1550,6 +1554,7 @@ export class CouponsService {
       if (
         dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED ||
         dto.fundingSource === CouponFundingSource.CO_FUNDED ||
+        (dto.shopFundingRate !== undefined && Number(dto.shopFundingRate) !== 100) ||
         (dto.platformFundingRate !== undefined &&
           Number(dto.platformFundingRate) > 0)
       ) {
@@ -1567,18 +1572,17 @@ export class CouponsService {
         data.shopFundingRate = new Prisma.Decimal(dto.shopFundingRate);
       if (dto.platformFundingRate !== undefined)
         data.platformFundingRate = new Prisma.Decimal(dto.platformFundingRate);
+    } else {
+      data.fundingSource = CouponFundingSource.SHOP_FUNDED;
+      data.shopFundingRate = new Prisma.Decimal(100);
+      data.platformFundingRate = new Prisma.Decimal(0);
     }
     if (dto.stackableWithProductDiscount !== undefined)
       data.stackableWithProductDiscount = dto.stackableWithProductDiscount;
-    if (dto.stackableWithShopVoucher !== undefined)
-      data.stackableWithShopVoucher = dto.stackableWithShopVoucher;
-    if (dto.stackableWithPlatformVoucher !== undefined)
-      data.stackableWithPlatformVoucher = dto.stackableWithPlatformVoucher;
+    data.stackableWithShopVoucher = (data.fundingSource ?? coupon.fundingSource) === CouponFundingSource.PLATFORM_FUNDED && coupon.benefitType !== 'SHIPPING';
+    data.stackableWithPlatformVoucher = true;
 
-    const updated = await this.prisma.coupon.update({
-      where: { id: couponId },
-      data,
-    });
+    const updated = await this.updateCurrentCoupon(coupon, data);
 
     await this.prisma.auditLog.create({
       data: {
@@ -1708,7 +1712,7 @@ export class CouponsService {
         budgetTotal: dto.budgetTotal, budgetUsed: 0, startsAt, expiresAt,
         scopeType: CouponScope.STORE_WIDE, fundingSource: CouponFundingSource.PLATFORM_FUNDED,
         shopFundingRate: 0, platformFundingRate: 100,
-        stackableWithProductDiscount: true, stackableWithShopVoucher: true,
+        stackableWithProductDiscount: true, stackableWithShopVoucher: dto.benefitType === 'GOODS',
         stackableWithPlatformVoucher: true, approvedBy: adminId, approvedAt: new Date(),
       } });
       await tx.auditLog.create({ data: { userId: adminId, action: 'ADMIN_PLATFORM_COUPON_CREATED', details: { couponId: coupon.id, storeId: dto.storeId, benefitType: dto.benefitType, budgetTotal: dto.budgetTotal } } });
@@ -1770,13 +1774,7 @@ export class CouponsService {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
 
-    const updated = await this.prisma.coupon.update({
-      where: { id: couponId },
-      data: {
-        status: CouponStatus.BLOCKED,
-        blockedReason: dto.reason,
-      },
-    });
+    const updated = await this.blockCurrentCoupon(coupon, dto.reason);
 
     await this.prisma.auditLog.create({
       data: {
@@ -1803,24 +1801,32 @@ export class CouponsService {
       throw new NotFoundException('Không tìm thấy mã giảm giá');
     }
 
-    const updated = await this.prisma.coupon.update({
-      where: { id: couponId },
-      data: {
-        status: CouponStatus.ACTIVE,
-        blockedReason: null,
-      },
-    });
+    if (coupon.status !== CouponStatus.BLOCKED) throw new BadRequestException('Chỉ mở khóa voucher đang bị khóa.');
+    const wasApproved = Boolean(coupon.approvedBy && coupon.approvedAt);
+    const previous = coupon.statusBeforeBlock;
+    let restoredStatus: CouponStatus = CouponStatus.PENDING_APPROVAL;
+    if (previous === CouponStatus.REJECTED || previous === CouponStatus.EXPIRED) restoredStatus = previous;
+    else if (wasApproved) {
+      restoredStatus = previous === CouponStatus.ACTIVE ? CouponStatus.ACTIVE : CouponStatus.PAUSED;
+      if (previous === CouponStatus.PENDING_APPROVAL) restoredStatus = CouponStatus.PENDING_APPROVAL;
+    }
+    if (restoredStatus === CouponStatus.ACTIVE && coupon.expiresAt && coupon.expiresAt <= new Date()) restoredStatus = CouponStatus.EXPIRED;
+
+    const updated = await this.updateCurrentCoupon(coupon, { status: restoredStatus, statusBeforeBlock: null, blockedReason: null });
 
     await this.prisma.auditLog.create({
       data: {
         userId: adminId,
         action: 'ADMIN_COUPON_UNBLOCKED',
-        details: { couponId },
+        details: { couponId, restoredStatus, statusBeforeBlock: previous, wasApproved },
         ipAddress: ipAddress || null,
       },
     });
 
-    return { message: 'Đã mở khóa mã giảm giá', coupon: updated };
+    const labels: Partial<Record<CouponStatus, string>> = {
+      PENDING_APPROVAL: 'Chờ chủ Shop duyệt', ACTIVE: 'Đang hoạt động', PAUSED: 'Tạm dừng', REJECTED: 'Đã từ chối', EXPIRED: 'Đã hết hạn',
+    };
+    return { message: `Đã mở khóa voucher. Trạng thái: ${labels[restoredStatus]}.`, coupon: updated };
   }
 
   // =========================================================================
@@ -1870,6 +1876,8 @@ export class CouponsService {
             status: true,
             inviteStatus: true,
             commissionRate: true,
+            startsAt: true,
+            endsAt: true,
             products: { select: { productId: true, variantId: true } },
           },
         },
@@ -1935,9 +1943,7 @@ export class CouponsService {
       });
     }
     if (
-      coupon.liveSession &&
-      (coupon.liveSession.inviteStatus !== 'ACCEPTED' ||
-        coupon.liveSession.status !== 'LIVE')
+      !liveVoucherActive(coupon.liveSession, now)
     ) {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
@@ -2054,7 +2060,8 @@ export class CouponsService {
     );
 
     let campaignProductIds = new Set<string>();
-    if (coupon.scopeType === CouponScope.CAMPAIGN && coupon.campaignId) {
+    if (coupon.scopeType === CouponScope.CAMPAIGN) {
+      if (!coupon.campaignId) throw new BadRequestException('Voucher chưa được gắn với chiến dịch hợp lệ.');
       const campaign = await this.prisma.campaign.findUnique({ where: { id: coupon.campaignId }, select: { isActive: true, startDate: true, endDate: true, storeId: true } });
       if (!campaign || !campaign.isActive || campaign.storeId !== coupon.storeId || campaign.startDate > new Date() || campaign.endDate <= new Date()) {
         throw new BadRequestException('Chiến dịch của voucher không còn hiệu lực.');
@@ -2123,7 +2130,7 @@ export class CouponsService {
       });
     }
 
-    if (dto.hasShopVoucher && !coupon.stackableWithShopVoucher) {
+    if (dto.hasShopVoucher) {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
         errorCode: 'COUPON_NOT_STACKABLE',
@@ -2131,14 +2138,6 @@ export class CouponsService {
       });
     }
 
-    if (dto.hasPlatformVoucher && !coupon.stackableWithPlatformVoucher) {
-      await this.recordValidationFailure(rateLimitKey);
-      throw new BadRequestException({
-        errorCode: 'COUPON_NOT_STACKABLE',
-        message:
-          'Mã giảm giá này không thể kết hợp với voucher toàn sàn SCANMS.',
-      });
-    }
 
     // 7. Check Minimum Order Amount
     if (coupon.minimumOrderAmount !== null) {

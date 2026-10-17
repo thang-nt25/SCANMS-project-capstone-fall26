@@ -100,7 +100,7 @@ export default function ShopSettingsPage() {
       const onboardingData = (store as any).onboardingData || {};
       const returnWarehouse = (store as any).returnWarehouse || {};
       const businessAddr = onboardingData.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh';
-      const pickupAddr = onboardingData.warehouseAddress || returnWarehouse.address || 'Kho hàng SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh';
+      const pickupAddr = onboardingData.warehouseAddress || returnWarehouse.address || '';
       const returnAddr = onboardingData.returnWarehouseAddress || returnWarehouse.address || pickupAddr;
 
       const loadedDetails = {
@@ -149,6 +149,33 @@ export default function ShopSettingsPage() {
   const handleSave = async (e: any) => {
     e.preventDefault();
 
+    const detailsToSave = isEditingOwnerDetails ? ownerDetailsDraft : shopOwnerDetails;
+    const warehouseAddress = detailsToSave.warehouseAddress.trim();
+    const returnWarehouseAddress = sameReturnAddress
+      ? warehouseAddress
+      : (detailsToSave.returnWarehouseAddress || warehouseAddress).trim();
+
+    if (isEditingOwnerDetails) {
+      if (!detailsToSave.representativeName.trim() || !detailsToSave.businessType ||
+          !detailsToSave.taxCode.trim() || !detailsToSave.contactPhone.trim() ||
+          !detailsToSave.contactEmail.trim() || !warehouseAddress) {
+        showToast('Vui lòng bổ sung đầy đủ thông tin chủ shop và kho hàng.');
+        return;
+      }
+      if (!/^[+]?([0-9().\-\s]){8,20}$/.test(detailsToSave.contactPhone.trim())) {
+        showToast('Số điện thoại liên hệ chưa đúng định dạng.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(detailsToSave.contactEmail.trim())) {
+        showToast('Email đối soát chưa đúng định dạng.');
+        return;
+      }
+      if (warehouseAddress.split(',').map((part) => part.trim()).filter(Boolean).length < 4) {
+        showToast('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện, tỉnh/thành, ngăn cách bằng dấu phẩy.');
+        return;
+      }
+    }
+
     if (!logoUrl?.trim()) {
       showToast('Logo gian hàng không được để trống (Bắt buộc)');
       return;
@@ -166,17 +193,23 @@ export default function ShopSettingsPage() {
         policyShipping,
         defaultCommissionRate: 10,
         attributionWindowDays: Number(attributionWindowDays),
-        ...(shopOwnerDetails.warehouseAddress && {
-          representativeName: shopOwnerDetails.representativeName || name,
-          businessType: shopOwnerDetails.businessType || 'ENTERPRISE',
-          taxCode: shopOwnerDetails.taxCode || '0316892451',
-          contactPhone: shopOwnerDetails.contactPhone || '0902345678',
-          contactEmail: shopOwnerDetails.contactEmail || 'shop@scanms.vn',
-          businessAddress: shopOwnerDetails.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
-          warehouseAddress: shopOwnerDetails.warehouseAddress,
-          returnWarehouseAddress: shopOwnerDetails.returnWarehouseAddress || shopOwnerDetails.warehouseAddress,
+        ...(warehouseAddress && {
+          representativeName: detailsToSave.representativeName || name,
+          businessType: detailsToSave.businessType || 'ENTERPRISE',
+          taxCode: detailsToSave.taxCode || '0316892451',
+          contactPhone: detailsToSave.contactPhone || '0902345678',
+          contactEmail: detailsToSave.contactEmail || 'shop@scanms.vn',
+          businessAddress: detailsToSave.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+          warehouseAddress,
+          returnWarehouseAddress,
         }),
       });
+      if (isEditingOwnerDetails) {
+        const savedDetails = { ...detailsToSave, warehouseAddress, returnWarehouseAddress };
+        setShopOwnerDetails(savedDetails);
+        setOwnerDetailsDraft(savedDetails);
+        setIsEditingOwnerDetails(false);
+      }
       showToast('Đã lưu cấu hình gian hàng.');
     } catch (err: any) {
       showToast(err.message || 'Lỗi lưu cấu hình');
@@ -592,9 +625,10 @@ export default function ShopSettingsPage() {
                           maxLength={500}
                           rows={2}
                           onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, warehouseAddress: event.target.value })}
-placeholder="Địa chỉ cụ thể nơi bưu tá Giao Hàng Nhanh (GHN) đến nhận kiện hàng"
+                          placeholder="Nhập địa chỉ kho thật: số nhà/đường, phường/xã, quận/huyện, tỉnh/thành"
                           className="mt-1.5 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white px-3 py-2.5 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
                         />
+                        <span className="mt-1 block font-normal text-[#7D715E]">Địa chỉ này được dùng làm điểm lấy hàng để GHN tính cước. Hãy nhập kho thực tế của Shop.</span>
                       </label>
                       <div className="sm:col-span-2 space-y-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
                         <label className="flex items-center gap-2 text-xs font-semibold text-[#1A1612] cursor-pointer">

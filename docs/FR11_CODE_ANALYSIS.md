@@ -2,6 +2,8 @@
 
 Đối chiếu mã nguồn hiện tại ngày 2026-10-16. Đã tạo hai file draw.io riêng: class diagram có bố cục rộng; sequence diagram thể hiện xem trước trên trình duyệt và tải file từ máy chủ. Cả hai dùng trắng đen. Chỉ chọn các thành phần/thuộc tính liên quan FR-11, không sao chép toàn bộ module tracking.
 
+Đã đọc lại và cập nhật theo mẫu các FR mới: sequence **một trang**, nhãn trong suốt, không có khung ngang ref/break/opt. Class được lưu trước sequence. Mỗi file `.drawio` đầy đủ có thể nhập bằng File → Import From → Device. Generator còn tạo `diagrams/FR11_Class_Paste.xml` và `diagrams/FR11_Sequence_Paste.xml`: sao chép toàn bộ nội dung một file, thay nội dung Extras → Edit Diagram trong Draw.io để dùng cách dán XML. Không chỉ sao chép một phần selection đang dừng giữa thẻ mxCell.
+
 ## 1. Hai đường sinh QR khác nhau trên web
 
 `ReferralLinksPage` dùng `useQrDataUrl` để tự dựng preview bằng thư viện `qrcode` trên trình duyệt, không gọi API QR. Target là `shortUrl` thêm `?via=qr` hoặc `&via=qr` nếu đã có query. Hook gọi `QRCode.toDataURL`, width 512, margin 4, errorCorrectionLevel M, màu #1A1612 trên trắng. Hook cung cấp dataUrl, qrLoading, qrError và retry. Hai nơi dùng hook: màn hình tạo link thành công và modal QR của link đã có.
@@ -38,6 +40,8 @@ Khóa cache `qr_render:{link.id}:{format}:{size}`, TTL 86400 giây. CacheService
 
 Chỉ sau khi có ảnh hợp lệ từ render/cache, download=true mới tăng `qrDownloadCount` trong ReferralLink. Nếu Redis client có sẵn, service còn gọi incr `qr_dl_count:{link.id}` và expire 30 ngày; lỗi incr/expire và lỗi cập nhật DB được bỏ qua/log, không ngăn trả ảnh. Các thao tác này không nằm trong một transaction chung; tải QR không phải thao tác hoàn toàn không thay đổi trạng thái.
 
+`CacheService.getRedis()` trả redisClient trực tiếp, không kiểm tra ready giống getRedisClient; nhánh counter tự bắt lỗi. Bộ đếm UI tăng sau khi lời gọi downloadQrCode thành công, không chứng minh file đã được lưu trên đĩa hoặc ảnh đã được quét. Quét QR mới là click QR của FR-13; tải ảnh QR không được tính thành một lượt click tiếp thị trong đường này.
+
 Kết quả service là object inline: buffer (Buffer|string), contentType, filename, shortCode, shortUrl. Controller trả ảnh trực tiếp qua Express Response với Content-Type, Content-Disposition attachment/inline, X-Content-Type-Options nosniff và Cache-Control private,max-age=86400. Tên file `SCANMS-QR-{shortCode}.{format}`.
 
 ## 5. Ý nghĩa QR động và quan hệ dữ liệu
@@ -57,3 +61,5 @@ ReferralLink liên kết User (collaborator), Store, Product; Store có ownerId 
 - `backend/prisma/schema.prisma`: ReferralLink, Store, Product, User, AuditLog.
 
 Tái tạo sơ đồ: `node docs/diagrams/build-fr11-diagrams.cjs`.
+
+Sequence renderer mới: `diagrams/fr11-single-page-sequence.cjs`. Đã đọc test hiện có `backend/src/modules/referral-links/tests/referral-links-qr.spec.ts` về QR payload/decode, PNG/SVG, ownership, cache, rate limit và bộ đếm; không chạy thao tác tải/sinh QR qua web thật vì thay đổi chỉ là tài liệu. Kiểm tra bằng parse XML, một diagram mỗi file, ID không trùng và xem PNG render. PNG là preview từ geometry, không phải export trực tiếp diagrams.net. Không thay đổi code nghiệp vụ hay .env.

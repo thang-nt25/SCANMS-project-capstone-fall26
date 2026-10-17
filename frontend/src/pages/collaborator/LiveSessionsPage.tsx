@@ -189,10 +189,10 @@ export default function CollaboratorLiveSessionsPage() {
         type="button"
         onClick={() => setStatusFilter(key)}
         aria-pressed={isActive}
-        className={`inline-flex items-center justify-center gap-1.5 flex-1 min-w-0 min-h-[32px] px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+        className={`inline-flex items-center justify-center gap-2 min-w-0 min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
           isActive
-            ? 'bg-white border border-[#EEDFC6] text-[#1A1612] shadow-xs'
-            : 'text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] border border-transparent'
+            ? 'bg-[#FBF5EB] border border-[#C59B58] text-[#1A1612]'
+            : 'bg-white text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-[#EAE4D7]'
         }`}
       >
         {key === 'LIVE' && <span className="w-1.5 h-1.5 rounded-full bg-red-600 shrink-0 animate-pulse" aria-hidden="true" />}
@@ -211,19 +211,10 @@ export default function CollaboratorLiveSessionsPage() {
   return (
     <div className="flex flex-col gap-3 w-full min-w-0 pb-12 text-[#1A1612] text-left">
       <section
-        className="grid grid-cols-1 md:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.8fr)_auto] items-center gap-3.5 p-3 rounded-xl border border-[#EAE4D7] bg-white shadow-xs"
+        className={`grid grid-cols-2 items-stretch gap-2 p-2.5 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs ${counts.live > 0 ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}
         aria-label="Quản lý livestream và voucher"
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="grid place-items-center shrink-0 w-9 h-9 rounded-lg border border-[#EAE4D7] bg-[#FBF5EB] text-[#B88E4F]">
-            <Radio className="w-4.5 h-4.5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-semibold leading-snug tracking-tight text-[#1A1612] m-0">Livestream & voucher</h1>
-            <p className="text-[11px] leading-relaxed text-[#7D715E] mt-0.5 m-0">Theo dõi lịch phát, ưu đãi và hoa hồng của từng phiên.</p>
-          </div>
-        </div>
-        <nav className="flex flex-wrap sm:flex-nowrap items-stretch gap-1 min-w-0 p-1 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5]" aria-label="Lọc phiên livestream">
+        <nav className="contents" aria-label="Lọc phiên livestream">
           {renderTab('ALL', 'Tất cả', counts.all)}
           {counts.live > 0 && renderTab('LIVE', 'Đang live', counts.live)}
           {renderTab('UPCOMING', 'Sắp diễn ra', counts.upcoming)}
@@ -234,12 +225,12 @@ export default function CollaboratorLiveSessionsPage() {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-medium hover:bg-[#FBF5EB] hover:border-[#C59B58] transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 min-h-[44px] px-3 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title="Làm mới danh sách phiên"
           aria-label="Làm mới danh sách phiên"
         >
           <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-          <span className="hidden sm:inline">Làm mới</span>
+          <span>Làm mới</span>
         </button>
       </section>
 
