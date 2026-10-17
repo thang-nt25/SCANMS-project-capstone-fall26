@@ -2,7 +2,7 @@
 
 Entry point vẫn là `backend/prisma/seed.ts`, được gọi bằng `npx prisma db seed` theo `prisma.config.ts`. Các module trong thư mục này chỉ xây dựng fixture và ghi dữ liệu qua Prisma; không thay thế controller/service của ứng dụng.
 
-Phiên bản hiện tại là **`scanms-capstone-2026-v2`**. UUID tài khoản/sản phẩm được giữ ổn định theo namespace v1, không sinh tài khoản trùng khi nâng phiên bản. Nếu DB đã có manifest v1, lệnh apply/check dừng rõ ràng; không tự cập nhật manifest hoặc ghi đè tiến độ test. Dùng `seed:audit` để đối chiếu trước khi nhóm quyết định dựng lại DB.
+Phiên bản hiện tại là **`scanms-capstone-2026-v3`**. UUID tài khoản/sản phẩm được giữ ổn định theo namespace v1, không sinh tài khoản trùng khi nâng phiên bản. Nếu DB đã có manifest v1/v2, lệnh apply/check dừng rõ ràng; không tự cập nhật manifest hoặc ghi đè tiến độ test. Dùng `seed:audit` để đối chiếu trước khi nhóm quyết định dựng lại DB. Không chạy reset DB nhóm khi lịch sử migration chưa được đối soát và chưa được phê duyệt.
 
 `prisma/seed-runner.cjs` nạp ts-node của chính dự án và `tsconfig.seed.json`, giúp lệnh Prisma chạy được cả khi terminal/CI không có `node_modules/.bin` trên PATH. Nếu PowerShell chặn các shim `.ps1`, dùng `npm.cmd` và `npx.cmd` cho các câu lệnh bên dưới.
 
@@ -21,7 +21,9 @@ Phiên bản hiện tại là **`scanms-capstone-2026-v2`**. UUID tài khoản/s
 | Live                 |        5 | Hai phòng LIVE, ba phòng ENDED; có sản phẩm, voucher và governance.pinnedProductId hợp lệ     |
 | Hội thoại / tin nhắn | 50 / 100 | Khách–Shop và KOL–Shop; có thẻ sản phẩm, thẻ đề xuất deal                                       |
 | Thông báo            |      160 | 60 thông báo đơn hàng và 100 thông báo chat; ID/read-state khớp tin nhắn để đọc chat hạ chuông |
-| Voucher              |       40 | 15 mã Shop, 20 mã KOL, 5 mã Live; counter và ngân sách đối soát với redemption                  |
+| Voucher              |       70 | 15 Shop, 20 KOL, 5 Live, 15 tiền hàng sàn, 15 phí ship; counter/budget đối soát cả hai bảng redemption |
+| Mã đã lưu            |       30 | Mỗi Customer lưu một voucher sàn; khóa kép user/coupon                                        |
+| Cước gửi mẫu         |       15 | TEST, Shop chịu phí, COD 0; amount NULL/PENDING_CONFIRMATION vì chưa có chứng từ GHN thật      |
 | Đổi trả              |        6 | Có ảnh/video, hồ sơ chờ duyệt hoặc được duyệt để tiếp tục test lấy hàng                         |
 | Ví / bút toán        | 66 / 212 | Tách AVAILABLE/PENDING; số dư tính từ lịch sử, không tự gán tiền không có nguồn                 |
 | Payout               |        2 | Gross 2.000.000đ, thuế 200.000đ, net 1.800.000đ; dùng PayoutTaxService hiện tại                 |
@@ -145,16 +147,19 @@ Có thể nhập bằng chứng GHN sandbox qua `SCANMS_SEED_GHN_FIXTURES`, tr�
 - Khi nhóm quyết định chạy demo, người vận hành kiểm tra target/referenceDate và cấu hình JSON hai placement trong **môi trường demo đã được duyệt**, sau đó restart backend. Không đưa thông tin thanh toán/credential vào Git. `seed:audit` báo riêng thiếu cấu hình triển khai, không tự sửa.
 - Popup đăng nhập nhanh mới của Quý được giữ tương thích email/SĐT khi đăng nhập; đăng ký và nhận OTP vẫn dùng email. Giỏ hàng không được reset khi đổi luồng xác thực.
 
-## Phụ thuộc còn lại của Tuấn
+## Đồng bộ contract Tuấn trên dev ngày 18/10/2026
 
-| Mục kế hoạch chưa có hợp đồng trên dev          | Xử lý hiện tại                                                                                                       |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Hoa hồng cộng dồn Deal + Campaign + Live + Tier | Giữ snapshot đơn Open Offer 10%; deal và live dùng tổng 12% theo contract hiện tại. Chưa tuyên bố engine đã cộng dồn |
-| Phí GHN động                                    | Seed phí theo policy miễn ship đang có hoặc theo export GHN sandbox được cung cấp                                    |
-| Voucher freeship / voucher sàn tách riêng       | Không giả lập field mà backend chưa hỗ trợ; một voucher tiền hàng trên mỗi order                                     |
-| Barcode, cân nặng, kích thước có cột riêng      | Tạm dùng nhãn văn bản; chuyển sang field chính thức khi danh mục của Tuấn bàn giao                                   |
+Nhánh `thinh` đã fast-forward tới `origin/dev` tại `da44661` (PR #95/#97); chưa push thay đổi v3.
 
-Chỉ dữ liệu đã có chức năng thật được ghi vào schema. Các mục trên là phần nghiệm thu phụ thuộc bàn giao, cần kiểm lại trước khi báo hoàn tất toàn bộ kế hoạch.
+- Hoa hồng dùng `commission-policy.ts` và `exclusive-deal-bonus.ts` của checkout: nền 10 + Tier + VIP + Campaign + Live, chặn trần 25%, tính trên Net GMV. VIP vẫn lưu 12 trong proposal để thể hiện +2; Live lưu 2, không lưu 12. Đơn lịch sử dùng thời điểm mua để kiểm tra hiệu lực. Chỉ tái dựng trạng thái LIVE của phiên ENDED trong đúng cửa sổ lịch sử, không phục hồi Live bị hủy/tạm dừng.
+- Campaign có ngân sách, participant ACCEPTED, link chiến dịch, snapshot phần thưởng và `bonusBudgetUsed` khớp phần đã giữ. Lịch sử sáu đơn chứa Live đã kết thúc; đơn thứ hai phân bổ thêm năm Creator, bao gồm Kim Cương.
+- Dùng `priceVoucherLines` của checkout để phân bổ giảm tiền hàng. Voucher Shop/KOL, voucher sàn GOODS và voucher SHIPPING được lưu riêng; chỉ một mã mỗi nhóm trên một đơn. `couponDiscountAmount` chỉ chứa giảm tiền hàng; `discountAmount` chứa cả giảm ship. Hoa hồng không bị giảm bởi freeship.
+- Cước đơn mua lấy từ export sandbox nếu có, kể cả cước 0 thật. Khi chưa có export, dùng số tiền lịch sử **mô phỏng** 24–33 nghìn đồng và `shippingFeeSource=SYNTHETIC_DEMO`, `ghnIsReal=false`, `ghnTotalFee=null`. Đây không phải thuật toán báo giá GHN và không được dùng cho checkout thật. Seed không gọi GHN hoặc tạo vận đơn.
+- Đơn mẫu có `ghnProvinceId`, `ghnDistrictId`, `ghnWardCode` khớp sổ địa chỉ. Mười lăm khoản cước mẫu TEST chỉ thể hiện trách nhiệm Shop; chưa có số tiền/chứng từ, không ghi thành đã thanh toán và không trừ ví.
+- Thêm writer, kiểm tra ID khóa kép, kiểm tra ngân sách/funding/ownership trong transaction seed cho `StackedVoucherRedemption`, `CustomerSavedCoupon`, `SampleShippingCharge`.
+- Còn thiếu cột barcode/trọng lượng/kích thước sản phẩm. Bốn migration địa chỉ/voucher/campaign đã có trên dev; SQL của năm tên gốc còn thiếu đã tìm thấy dưới tên timestamp khác và khớp checksum DB. Không tự chép trùng/đổi tên vì có CREATE TYPE không idempotent. Bốn file SQL khác nội dung và bảy migration chưa ghi nhận áp dụng vẫn cần đối soát. Đã đọc metadata DB nhóm, không ghi DB; xem `docs/THINH_DATABASE_HANDOFF.md` ở gốc repo.
+
+Chỉ dữ liệu đã có chức năng thật được ghi vào schema. `fullUpgradeReady=false` vẫn giữ cho tới khi hoàn tất schema, lịch sử migration và nghiệm thu vận hành. Gói Shop tài trợ vẫn cần người vận hành duyệt cấu hình như mục Marketplace; không tự bật quảng cáo demo.
 
 ## Integration test PostgreSQL
 

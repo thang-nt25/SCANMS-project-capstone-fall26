@@ -103,6 +103,30 @@ integration('Prisma seeder on isolated PostgreSQL', () => {
     expect(await applyDataset(prisma, target, data)).toBe('created');
     await prisma.$transaction((tx) => verifyPersistedCounts(tx, target, data));
     expect(await prisma.productReview.count()).toBe(66);
+    expect(await prisma.coupon.count()).toBe(70);
+    expect(await prisma.customerSavedCoupon.count()).toBe(30);
+    expect(await prisma.stackedVoucherRedemption.count()).toBe(
+      data.stackedRedemptions.length,
+    );
+    expect(
+      await prisma.sampleShippingCharge.count({
+        where: {
+          environment: 'TEST',
+          amount: null,
+          payer: 'SHOP',
+          codAmount: 0,
+          status: 'PENDING_CONFIRMATION',
+        },
+      }),
+    ).toBe(15);
+    const campaigns = await prisma.campaign.findMany();
+    expect(
+      campaigns.every(
+        (row) =>
+          row.bonusBudgetUsed.greaterThan(0) &&
+          row.bonusBudgetUsed.lessThanOrEqualTo(row.bonusBudgetTotal!),
+      ),
+    ).toBe(true);
     const wallets = await prisma.wallet.findMany({
       include: { financialLedgers: true },
     });
@@ -230,15 +254,20 @@ integration('Prisma seeder on isolated PostgreSQL', () => {
     );
   }, 120_000);
 
-  it('refuses applying a new revision over an existing v1 dataset without changing accounts or financial data', async () => {
+  it('refuses applying a new revision over v1/v2 without changing accounts or financial data', async () => {
     await applyDataset(prisma, target, data);
-    await prisma.auditLog.update({
-      where: { id: MANIFEST_ID },
-      data: { details: { dataset: 'scanms-capstone-2026-v1' } },
-    });
-    await expect(applyDataset(prisma, target, data)).rejects.toThrow(
-      'older/different seed revision',
-    );
+    for (const revision of [
+      'scanms-capstone-2026-v1',
+      'scanms-capstone-2026-v2',
+    ]) {
+      await prisma.auditLog.update({
+        where: { id: MANIFEST_ID },
+        data: { details: { dataset: revision } },
+      });
+      await expect(applyDataset(prisma, target, data)).rejects.toThrow(
+        'older/different seed revision',
+      );
+    }
     expect(await prisma.user.count()).toBe(66);
     expect(await prisma.financialLedger.count()).toBe(data.ledgers.length);
     expect((await auditSeedDatabase(prisma, target, data)).datasetReady).toBe(

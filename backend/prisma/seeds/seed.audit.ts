@@ -12,24 +12,8 @@ import { activeSponsoredPlacements } from '../../src/modules/stores/sponsored-pl
 import type { DatabaseTarget } from './seed.config';
 import type { SeedDataset, SeedTable } from './seed.types';
 
-/** These are unimplemented contracts, not fields the seeder is allowed to invent. */
+/** Remaining missing schema contract; shipping evidence is reported separately. */
 export const PENDING_HANDOVERS = [
-  {
-    id: 'ADDITIVE_COMMISSION',
-    owner: 'Tuấn',
-    requirement:
-      'Base + Tier + Deal + Campaign + Live, capped at 25%, on Net GMV',
-  },
-  {
-    id: 'DYNAMIC_SHIPPING',
-    owner: 'Tuấn',
-    requirement: 'Checkout/order shipping fee matches GHN quote',
-  },
-  {
-    id: 'SHIPPING_PLATFORM_VOUCHERS',
-    owner: 'Tuấn',
-    requirement: 'Separate merchandise/platform/shipping voucher contracts',
-  },
   {
     id: 'PRODUCT_PACKAGE_FIELDS',
     owner: 'Tuấn',

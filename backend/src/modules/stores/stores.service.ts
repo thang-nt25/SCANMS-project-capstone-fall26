@@ -497,7 +497,7 @@ export class StoresService {
             ? 'Thực phẩm & Sức khỏe'
             : 'Mỹ phẩm & Chăm sóc da'),
         commissionRange: `${Number(store.defaultCommissionRate)}% cơ bản + thưởng theo bậc/Deal/chiến dịch/Live (tối đa 25%)`,
-        rating: reviewCount ? Math.round(ratingSum / reviewCount * 10) / 10 : 4.9,
+        rating: reviewCount ? Math.round(ratingSum / reviewCount * 10) / 10 : null,
         reviewCount,
         location: 'TP.HCM & Hà Nội',
         activeCampaign: campaigns[0] ? {

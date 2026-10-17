@@ -84,7 +84,10 @@ describe('Seed acceptance and migration inspection', () => {
     expect(() => assertManifestVersion(null)).toThrow(
       'older/different seed revision',
     );
-    expect(PENDING_HANDOVERS).toHaveLength(4);
+    expect(() =>
+      assertManifestVersion({ dataset: 'scanms-capstone-2026-v2' }),
+    ).toThrow('older/different seed revision');
+    expect(PENDING_HANDOVERS).toHaveLength(1);
     expect(
       PENDING_HANDOVERS.some(
         (row) => (row.id as string) === 'SPONSORED_PLACEMENT',

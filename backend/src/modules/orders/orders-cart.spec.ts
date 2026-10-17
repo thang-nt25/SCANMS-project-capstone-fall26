@@ -8,6 +8,7 @@ import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
 import { PaymentMethod } from './dto/create-order.dto';
+import { GhnService } from '../shipping/ghn.service';
 
 describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
   let service: OrdersService;
@@ -41,6 +42,9 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         { provide: WalletsService, useValue: {} },
         { provide: CouponsService, useValue: { validateCoupon: jest.fn() } },
         { provide: OrderWebhookNormalizerService, useValue: {} },
+        { provide: GhnService, useValue: {
+          quoteAddress: jest.fn().mockResolvedValue({ totalFee: 25000, districtId: 1484, wardCode: '1A0114' }),
+        } },
       ],
     }).compile();
 
@@ -252,7 +256,8 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     // Subtotal: (220,000 * 1) + (250,000 * 2) = 720,000
     expect(Number(savedOrderData.subtotalAmount)).toBe(720000);
-    expect(Number(savedOrderData.finalAmount)).toBe(720000);
+    expect(Number(savedOrderData.shippingFee)).toBe(25000);
+    expect(Number(savedOrderData.finalAmount)).toBe(745000);
     expect(savedOrderData.orderItems.create[0].unitPrice).toBe(220000);
     expect(savedOrderData.orderItems.create[1].unitPrice).toBe(250000);
   });

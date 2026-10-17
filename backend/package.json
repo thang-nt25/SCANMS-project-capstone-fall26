@@ -19,7 +19,7 @@
     "seed:audit": "ts-node --project prisma/tsconfig.seed.json prisma/seed.ts --audit",
     "seed:typecheck": "tsc --project prisma/tsconfig.seed.json",
     "test:seed": "jest --config prisma/seeds/jest.config.cjs --runInBand",
-    "test": "jest --runInBand",
+    "test": "jest --config test/jest-unit.config.cjs --runInBand",
     "test:db": "jest src/modules/commission-rules/tests/commission-rules.real-db.integration.spec.ts --runInBand",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

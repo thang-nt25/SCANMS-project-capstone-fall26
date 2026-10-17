@@ -72,6 +72,9 @@ describe('customer purchase GHN simulation', () => {
     const service = new GhnService({ $transaction: (callback: any) => callback(tx), order: { findFirst: jest.fn(async () => ({ rawPayload: saved })) } } as any, {} as any);
     const first = await service.startCustomerSimulation('order', 'store');
     const second = await service.startCustomerSimulation('order', 'store');
+    // Narrow the tracking union by its actual simulation payload, not an unsafe cast.
+    expect(first).toMatchObject({ isSimulation: true });
+    if (!('simulationStartedAt' in first)) throw new Error('Expected a saved customer simulation');
     expect(tx.order.update).toHaveBeenCalledTimes(1);
     expect(saved.paymentMethod).toBe('COD');
     expect(second).toMatchObject({ simulationStartedAt: first.simulationStartedAt, status: 'ready_to_pick' });
