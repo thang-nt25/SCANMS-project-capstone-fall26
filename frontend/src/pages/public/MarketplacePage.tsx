@@ -55,42 +55,8 @@ import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/prod
 import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
 import { NotificationDropdown } from '../../components/layout/NotificationDropdown';
 import { HeaderAccountButton } from '../../components/layout/HeaderAccountButton';
+import { MarketplaceHero } from '../../components/marketplace/MarketplaceHero';
 
-const MARKETPLACE_BANNERS = [
-  {
-    image: '/assets/marketplace/scanms-marketplace-banner-v3.png',
-    eyebrow: 'Sàn đa gian hàng SCANMS',
-    title: 'Một điểm đến, nhiều gian hàng chính hãng',
-    description: 'Khám phá sản phẩm đa ngành từ các đối tác đã xác minh KYC trên cùng một nền tảng.',
-    primaryLabel: 'Mua sắm ngay',
-    secondaryLabel: 'Xem tất cả danh mục',
-    href: '/search',
-    secondaryHref: '/search',
-    action: 'link' as const,
-  },
-  {
-    image: '/assets/marketplace/scanms-affiliate-banner-v2.png',
-    eyebrow: 'Affiliate Marketplace',
-    title: 'Chọn sản phẩm hợp tệp người xem của bạn',
-    description: 'So sánh sản phẩm, mức hoa hồng và gian hàng trước khi bắt đầu tạo nội dung.',
-    primaryLabel: 'Khám phá kho affiliate',
-    secondaryLabel: 'Đăng ký làm KOC',
-    href: '/search?commission=true',
-    secondaryHref: '/register',
-    action: 'link' as const,
-  },
-  {
-    image: '/assets/marketplace/scanms-live-banner-v2.png',
-    eyebrow: 'SCANMS Live Commerce',
-    title: 'Biến mỗi phiên Live thành một cửa hàng trực tiếp',
-    description: 'Kết nối Creator, sản phẩm và người mua trong trải nghiệm mua sắm giàu tương tác.',
-    primaryLabel: 'Khám phá KOC Live',
-    secondaryLabel: 'Xem sản phẩm nổi bật',
-    href: '#live',
-    secondaryHref: '/search',
-    action: 'live' as const,
-  },
-] as const;
 
 type MarketplaceStore = {
   id: string;
@@ -235,7 +201,6 @@ export default function MarketplacePage() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
-  const [activeBanner, setActiveBanner] = useState(0);
 
   // Sticky compact header state on scroll
   const [isScrolled, setIsScrolled] = useState(false);
@@ -422,12 +387,6 @@ export default function MarketplacePage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isGuideOpen, isRoleDropdownOpen]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActiveBanner((current) => (current + 1) % MARKETPLACE_BANNERS.length);
-    }, 5000);
-    return () => window.clearInterval(timer);
-  }, []);
 
 
 
@@ -980,133 +939,7 @@ export default function MarketplacePage() {
       {/* Spacer to prevent layout shift beneath fixed top header */}
       <div style={{ height: headerHeight }} className="shrink-0 transition-all duration-150" aria-hidden="true" />
 
-      {/* SCANMS Creator Commerce stage, built from real marketplace data */}
-      <section className="border-b border-[#EAE4D7] bg-[#F3EFE6] py-5 text-left sm:py-6">
-        <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
-          <div
-            className="group relative isolate min-h-[450px] overflow-hidden rounded-[24px] border border-[#EAE4D7] bg-[#FAF8F5] shadow-[0_16px_44px_rgba(93,70,35,0.10)] sm:min-h-[430px]"
-            aria-roledescription="carousel"
-            aria-label="Chương trình nổi bật SCANMS"
-          >
-            {MARKETPLACE_BANNERS.map((slide, index) => (
-              <div
-                key={slide.image}
-                className={`absolute inset-0 transition-[opacity,transform] duration-700 ease-out ${
-                  index === activeBanner ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-4 opacity-0'
-                }`}
-                aria-hidden={index !== activeBanner}
-              >
-                <div className="absolute inset-0">
-                  <img src={slide.image} alt="" className="absolute inset-0 h-full w-full object-cover object-[67%_center]" />
-                  <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,245,.98)_0%,rgba(250,248,245,.96)_30%,rgba(250,248,245,.80)_44%,rgba(250,248,245,.18)_66%,rgba(250,248,245,0)_100%)]" />
-                  <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,245,.98)_0%,rgba(250,248,245,.94)_56%,rgba(250,248,245,.50)_82%,rgba(250,248,245,.08)_100%)] sm:hidden" />
-                </div>
-                {slide.action === 'live' ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsLiveModalOpen(true)}
-                    className="absolute inset-0 z-[1] cursor-pointer"
-                    aria-label={`Mở chương trình: ${slide.title}`}
-                  />
-                ) : (
-                  <Link
-                    to={slide.href}
-                    className="absolute inset-0 z-[1]"
-                    aria-label={`Mở chương trình: ${slide.title}`}
-                  />
-                )}
-                <div aria-hidden="true" className="pointer-events-none absolute -left-[35%] top-[-32%] hidden h-[164%] w-[94%] rounded-[50%] border-r-2 border-[#EBD08C]/80 sm:block" />
-                <div className="pointer-events-none relative z-10 flex min-h-[450px] w-full flex-col justify-center px-6 pb-[82px] pt-8 sm:min-h-[430px] sm:w-[60%] sm:px-10 sm:pb-[88px] lg:px-14">
-                  <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-[#EAE4D7] bg-white/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#B88E4F] sm:bg-white/80 sm:backdrop-blur-sm">
-                    {slide.action === 'live' ? <Radio className="h-3.5 w-3.5 text-[#E11D48]" /> : <Sparkles className="h-3.5 w-3.5 text-[#B88E4F]" />}
-                    {index === 0 ? 'SCANMS • SÀN ĐA GIAN HÀNG' : slide.eyebrow}
-                  </div>
-                  <h1 className="m-0 max-w-[620px] text-3xl font-black leading-[1.08] tracking-[-0.035em] text-[#1A1612] sm:text-4xl lg:text-[46px]">
-                    {index === 0 ? <>Khám phá sản phẩm,<br className="hidden sm:block" />mua sắm theo cách bạn thích</> : slide.title}
-                  </h1>
-                  <p className="mb-6 mt-4 max-w-[500px] text-xs leading-6 text-[#5F5548] sm:text-sm">
-                    {index === 0 ? 'Nhiều gian hàng đối tác, sản phẩm đa ngành và trải nghiệm KOC & Live.' : slide.description}
-                  </p>
-                  <div className="pointer-events-auto flex flex-wrap gap-2.5">
-                    {slide.action === 'live' ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsLiveModalOpen(true)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#D8AC55] px-5 py-3 text-xs font-black text-[#1A1612] transition hover:bg-[#CB9B40] active:scale-[0.98] cursor-pointer"
-                      >
-                        {index === 0 ? 'Mua sắm ngay' : slide.primaryLabel}<ArrowRight className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <Link
-                        to={slide.href}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#D8AC55] px-5 py-3 text-xs font-black text-[#1A1612] transition hover:bg-[#CB9B40] active:scale-[0.98]"
-                      >
-                        {index === 0 ? 'Mua sắm ngay' : slide.primaryLabel}<ArrowRight className="h-4 w-4" />
-                      </Link>
-                    )}
-                    <Link
-                      to={index === 0 ? '#live' : slide.secondaryHref}
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#DCCBAE] bg-white/85 px-5 py-3 text-xs font-bold text-[#1A1612] backdrop-blur-sm transition hover:border-[#C59B58] hover:bg-white active:scale-[0.98]"
-                    >
-                      {index === 0 ? 'Khám phá KOC & Live' : slide.secondaryLabel}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={() => setActiveBanner((current) => (current - 1 + MARKETPLACE_BANNERS.length) % MARKETPLACE_BANNERS.length)}
-              className="absolute left-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#EAE4D7] bg-white/90 text-[#1A1612] opacity-0 shadow-md backdrop-blur-sm transition hover:bg-white group-hover:opacity-100 sm:flex cursor-pointer"
-              aria-label="Banner trước"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveBanner((current) => (current + 1) % MARKETPLACE_BANNERS.length)}
-              className="absolute right-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#EAE4D7] bg-white/90 text-[#1A1612] opacity-0 shadow-md backdrop-blur-sm transition hover:bg-white group-hover:opacity-100 sm:flex cursor-pointer"
-              aria-label="Banner tiếp theo"
-            >
-              <ArrowRight className="h-4 w-4" />
-            </button>
-
-            <div className="absolute bottom-[72px] right-4 z-20 flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 shadow-sm backdrop-blur-md sm:bottom-4 sm:right-5">
-              {MARKETPLACE_BANNERS.map((slide, index) => (
-                <button
-                  key={slide.image}
-                  type="button"
-                  onClick={() => setActiveBanner(index)}
-                  className={`h-1.5 rounded-full transition-all cursor-pointer ${index === activeBanner ? 'w-7 bg-[#EBD08C]' : 'w-1.5 bg-[#B9AD9A] hover:bg-[#8C7D6B]'}`}
-                  aria-label={`Mở banner ${index + 1}`}
-                  aria-current={index === activeBanner ? 'true' : undefined}
-                />
-              ))}
-            </div>
-
-            <div className="absolute inset-x-0 bottom-0 z-[15] flex min-h-[58px] items-center border-t border-white/70 bg-white/75 px-3 backdrop-blur-md sm:right-auto sm:w-[52%] sm:rounded-tr-[42px] sm:px-8">
-              <div className="mx-0 flex w-full items-center justify-between gap-2 text-[9px] font-semibold text-[#5F5548] sm:text-xs">
-                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]"><Store className="h-3.5 w-3.5" /></span>
-                  <span className="truncate">Nhiều gian hàng</span>
-                </div>
-                <span className="h-6 w-px shrink-0 bg-[#EAE4D7]" />
-                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]"><Package className="h-3.5 w-3.5" /></span>
-                  <span className="truncate">Sản phẩm đa ngành</span>
-                </div>
-                <span className="h-6 w-px shrink-0 bg-[#EAE4D7]" />
-                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FBF5EB] text-[#B88E4F]"><Radio className="h-3.5 w-3.5" /></span>
-                  <span className="truncate">Affiliate &amp; Live</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
+      <MarketplaceHero stores={marketplaceStores} onOpenLive={() => setIsLiveModalOpen(true)} />
 
       {/* Fast category discovery for a true multi-merchant marketplace. */}
       <section aria-labelledby="category-quick-nav-title" className="border-b border-[#EAE4D7] bg-white py-6 text-left">
@@ -1136,7 +969,7 @@ export default function MarketplacePage() {
       </section>
 
       {/* Featured verified stores. */}
-      <section aria-labelledby="featured-stores-title" className="bg-[#FAF8F5] py-7 text-left">
+      <section id="featured-stores" aria-labelledby="featured-stores-title" className="scroll-mt-36 bg-[#FAF8F5] py-7 text-left">
         <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
           <div className="mb-4 flex items-end justify-between gap-3">
             <div>
