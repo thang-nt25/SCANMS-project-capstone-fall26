@@ -11,9 +11,12 @@ import {
   datasetCounts,
   MANIFEST_ID,
   verifyPersistedCounts,
+  assertManifestVersion,
 } from './seeds/seed.database';
 import { DATASET_VERSION } from './seeds/seed.helpers';
 import { resetDatabase } from './seeds/reset-database';
+import { auditSeedDatabase, PENDING_HANDOVERS } from './seeds/seed.audit';
+import { buildMarketplaceDemoPlan } from './seeds/marketplace.seed';
 
 async function main(): Promise<void> {
   const options = readSeedOptions(process.argv.slice(2), process.env);
@@ -21,12 +24,13 @@ async function main(): Promise<void> {
     options.mode === 'apply'
       ? await bcrypt.hash(options.password!, 12)
       : 'plan-only-no-password';
-  const data = buildDataset({
+  const context = {
     referenceDate: options.referenceDate,
     frontendUrl: options.frontendUrl,
     passwordHash,
     shipping: options.shipping,
-  });
+  };
+  const data = buildDataset(context);
   console.log(
     JSON.stringify(
       {
@@ -37,10 +41,11 @@ async function main(): Promise<void> {
         resetConfirmation: options.target?.confirmation,
         referenceDate: options.referenceDate.toISOString(),
         counts: datasetCounts(data),
-        dependencies: [
-          'Tuấn: dynamic shipping fee/additive commissions/shipping vouchers',
-          'Quý: sponsored shop placement/banner contract',
-        ],
+        dependencies: PENDING_HANDOVERS,
+        marketplaceDemo:
+          options.mode === 'plan'
+            ? buildMarketplaceDemoPlan(data, context)
+            : undefined,
         provenance: options.shipping.length
           ? `${options.shipping.length} GHN sandbox exports; remaining fixtures are synthetic`
           : 'Synthetic demo data; no real shipment or payment is created',
@@ -68,7 +73,14 @@ async function main(): Promise<void> {
     adapter: new PrismaPg(pool, { schema: target.schema }),
   });
   try {
-    if (options.mode === 'check') {
+    if (options.mode === 'audit') {
+      await assertDatabaseSchema(prisma, target);
+      const report = await auditSeedDatabase(prisma, target, data);
+      console.log(JSON.stringify(report, null, 2));
+      // Exit 2 means inspection completed but the installed snapshot/history is not ready.
+      if (!report.datasetReady || !report.schemaHistoryReady)
+        process.exitCode = 2;
+    } else if (options.mode === 'check') {
       await assertDatabaseSchema(prisma, target);
       const manifest = await prisma.auditLog.findUnique({
         where: { id: MANIFEST_ID },
@@ -77,6 +89,7 @@ async function main(): Promise<void> {
         throw new Error(
           'Schema is compatible, but the Capstone dataset has not been seeded in this database.',
         );
+      assertManifestVersion(manifest.details);
       await prisma.$transaction(
         (tx) => verifyPersistedCounts(tx, target, data),
         { timeout: 30_000 },

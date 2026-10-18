@@ -19,6 +19,8 @@ import {
 } from '../../services/ai-recommendation.service';
 import api from '../../services/api';
 import { Select } from '../../components/ui/Select';
+import { WorkspaceHero } from '@/components/ui/FeatureWorkspace';
+import { KolComparisonPanel } from '@/components/ai/KolComparisonPanel';
 
 const CATEGORIES = [
   'Tất cả danh mục',
@@ -49,16 +51,25 @@ const TIERS = [
   { label: 'Kim Cương (Diamond)', value: 'DIAMOND' },
 ];
 
+function matchingPreferencesKey() {
+  return `scanms-kol-matching:v2:${window.location.pathname}:${localStorage.getItem('current_store_id') || 'platform'}`;
+}
+
+function readMatchingPreferences(): { productId?: string; autoScan?: boolean } {
+  try { return JSON.parse(sessionStorage.getItem(matchingPreferencesKey()) || '{}') || {}; }
+  catch { return {}; }
+}
+
 export default function KolRecommendationPage({ onReturn }: { onReturn?: () => void } = {}) {
   const [products, setProducts] = useState<any[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState<string>(() => readMatchingPreferences().productId || '');
   const [targetProduct, setTargetProduct] = useState<TargetProductSummary | null>(null);
   const [kols, setKols] = useState<KolMatchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [analyzingKol, setAnalyzingKol] = useState<KolMatchResult | null>(null);
 
   const [productsReady, setProductsReady] = useState(false);
-  const [autoScan, setAutoScan] = useState(false);
+  const [autoScan, setAutoScan] = useState(() => readMatchingPreferences().autoScan === true);
   const [calculatedAt, setCalculatedAt] = useState('');
   const [scanError, setScanError] = useState('');
   const scanVersion = useRef(0);
@@ -69,10 +80,18 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('ALL');
   const [selectedMinTier, setSelectedMinTier] = useState<string>('');
   const [minConversionRate, setMinConversionRate] = useState<number>(0);
-  const [limit, setLimit] = useState<number>(10);
+  const [limit, setLimit] = useState<number>(5);
+  const [totalScanned, setTotalScanned] = useState(0);
+  const invitationLock = useRef(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!productsReady) return;
+    try { sessionStorage.setItem(matchingPreferencesKey(), JSON.stringify({ productId: selectedProductId, autoScan })); }
+    catch { /* Storage can be unavailable in restricted browser sessions. */ }
+  }, [productsReady, selectedProductId, autoScan]);
 
   // VIP Invitation Modal State
   const [invitingKol, setInvitingKol] = useState<KolMatchResult | null>(null);
@@ -99,7 +118,9 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
         const list = (Array.isArray(body) ? body : body?.items || []).filter((p: any) => p.moderationStatus === 'APPROVED' && p.isActive !== false && !p.isDeleted);
         if (Array.isArray(list) && list.length > 0) {
           setProducts(list);
-          setSelectedProductId(list[0].id);
+          setSelectedProductId(previous => list.some((product: any) => product.id === previous) ? previous : '');
+        } else {
+          setSelectedProductId('');
         }
       } catch {
         toast.error('Không tải được sản phẩm của shop. Bạn vẫn có thể quét hồ sơ KOL chung.');
@@ -143,6 +164,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
       if (version !== scanVersion.current) return;
       if (selectedProductId && res.targetProduct?.productId !== selectedProductId) throw new Error('Kết quả chưa đúng sản phẩm đang chọn. Vui lòng quét lại.');
       setCalculatedAt(res.calculatedAt || '');
+      setTotalScanned(res.totalKolsScanned || 0);
       setKols(res.recommendedKols || []);
       setTargetProduct(res.targetProduct || null);
     } catch (err: any) {
@@ -194,7 +216,8 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
 
   // Handle VIP Invitation Submission
   const handleSendVipInvite = async () => {
-    if (!invitingKol) return;
+    if (!invitingKol || invitationLock.current) return;
+    invitationLock.current = true;
     setIsSendingInvite(true);
     try {
       const result: any = await api.post('/store-collaborators/invite', { email: invitingKol.email, note: inviteMessage.trim() || undefined });
@@ -205,6 +228,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
     } catch (err: any) {
       toast.error('Gửi lời mời thất bại: ' + (err.message || 'Lỗi'));
     } finally {
+      invitationLock.current = false;
       setIsSendingInvite(false);
     }
   };
@@ -221,6 +245,9 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
 
   return (
     <div className="kol-recommendation-page">
+      <WorkspaceHero eyebrow="SCANMS / AI Smart Matching" title="Tìm đúng KOL cho sản phẩm" description="Gợi ý mặc định 5 KOL dựa trên độ phù hợp ngành hàng, chuyển đổi, cấp bậc/kênh và khoảng giá. Mỗi đề xuất có bằng chứng để Shop chủ động đánh giá." />
+      {!loading && !scanError && <p className="my-3 text-xs text-[#7D715E]">Đã phân tích {totalScanned.toLocaleString('vi-VN')} hồ sơ · {kols.length} kết quả phù hợp bộ lọc · Điểm tối đa 100, không phải tỷ lệ chuyển đổi dự báo.</p>}
+      {!loading && !scanError && <KolComparisonPanel key={`${selectedProductId}:${selectedCategory}:${selectedPriceRange}:${selectedMinTier}:${minConversionRate}:${limit}`} candidates={kols} />}
 
       {scanError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-[#DC2626]">{scanError}<button type="button" onClick={() => void fetchRecommendations()} className="font-medium text-[#B88E4F] underline">Thử quét lại</button></div>}
       {/* 2. Target Product Selector & Profile Summary */}
@@ -459,6 +486,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
                     </div>
                   </div>
 
+
                   <div className="mt-2" aria-label={`Điểm đối sánh ${kol.matchScore} trên 100`}>
                     <div className="flex items-baseline gap-1">
                       <strong className="text-lg font-bold text-[#B88E4F] tabular-nums">{kol.matchScore}</strong>
@@ -467,6 +495,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
                     <div className="mt-1 h-1 w-full rounded-full bg-[#F3EFE6]" aria-hidden="true">
                       <div className="h-full rounded-full bg-[#C59B58]" style={{ width: `${Math.max(0, Math.min(100, kol.matchScore))}%` }} />
                     </div>
+
                   </div>
 
                   <dl className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-[#FAF8F5] px-3 py-2.5">

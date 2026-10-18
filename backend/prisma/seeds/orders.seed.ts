@@ -11,6 +11,9 @@ import {
 } from './seed.helpers';
 import { addressFor, fullAddress } from './data/addresses.data';
 import { RETURN_POLICY, SHOPS, WARRANTY_POLICY } from './data/catalog.data';
+import { priceVoucherLines } from '../../src/modules/coupons/voucher-pricing';
+import { requireShippingFee } from '../../src/modules/shipping/shipping-fee';
+import { seedCommissionBreakdown } from './commission.seed';
 
 const SECONDARY_STATUSES: readonly OrderStatus[] = [
   'PENDING',
@@ -31,7 +34,10 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           ? Math.floor(customerIndex / 2)
           : (customerIndex + 3) % SHOPS.length;
       const storeId = seedId(`store:${storeIndex}`);
-      const collaboratorId = seedId(`creator:${storeIndex}`);
+      // Secondary purchases exercise the five additional creators, including Diamond tier.
+      const creatorIndex =
+        purchase === 1 && storeIndex < 5 ? storeIndex + 15 : storeIndex;
+      const collaboratorId = seedId(`creator:${creatorIndex}`);
       const status =
         purchase === 0
           ? 'COMPLETED'
@@ -39,15 +45,22 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
       const completed = status === 'COMPLETED';
       const delivered =
         completed || status === 'DELIVERED' || status === 'RETURN_REQUESTED';
-      const createdAt = daysFrom(
-        context,
-        purchase === 0 ? -43 : completed ? -23 : -4,
-      );
+      const historicalLive =
+        purchase === 0
+          ? data.liveSessions.find(
+              (row) => row.storeId === storeId && row.status === 'ENDED',
+            )
+          : undefined;
+      const createdAt = historicalLive
+        ? new Date(new Date(historicalLive.startsAt).getTime() + 15 * 60_000)
+        : daysFrom(context, purchase === 0 ? -43 : completed ? -23 : -4);
       const deliveredAt = delivered
-        ? daysFrom(context, purchase === 0 ? -40 : completed ? -20 : -2)
+        ? historicalLive
+          ? new Date(createdAt.getTime() + 2 * 86_400_000)
+          : daysFrom(context, purchase === 0 ? -40 : completed ? -20 : -2)
         : null;
       const completedAt = completed
-        ? daysFrom(context, purchase === 0 ? -26 : -6)
+        ? new Date(deliveredAt!.getTime() + 14 * 86_400_000)
         : null;
       const products =
         purchase === 0
@@ -65,11 +78,11 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
               (row) =>
                 row.id ===
                 seedId(
-                  `${customerIndex % 2 ? 'kol-coupon' : 'shop-coupon'}:${storeIndex}`,
+                  `${customerIndex % 2 ? 'kol-coupon' : 'shop-coupon'}:${customerIndex % 2 ? creatorIndex : storeIndex}`,
                 ),
             )
           : undefined;
-      const discountAmount = coupon
+      const shopDiscount = coupon
         ? coupon.discountType === 'PERCENTAGE'
           ? Math.min(
               (subtotalAmount * amount(coupon.discountValue)) / 100,
@@ -87,8 +100,41 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
             (shippingEvidence.status === 'delivered' && delivered),
           `sandbox shipment status does not match order ${key}`,
         );
-      // Match current dev's free-shipping policy. A sandbox export may supply an actual historical fee.
-      const shippingFee = shippingEvidence?.fee ?? 0;
+      // Synthetic historical freight is explicitly marked, never a quote from GHN.
+      // Missing evidence is NOT interpreted as free shipping. Actual zero evidence remains valid.
+      const shippingFee = requireShippingFee(
+        shippingEvidence?.fee ?? 24_000 + (storeIndex % 4) * 3_000,
+      );
+      const stacked =
+        purchase === 1 && subtotalAmount >= 100_000
+          ? (['GOODS', 'SHIPPING'] as const)
+              .map((benefit) => {
+                const voucher = data.coupons.find(
+                  (row) =>
+                    row.id === seedId(`platform-${benefit}:${storeIndex}`),
+                )!;
+                const discount = Math.min(
+                  amount(voucher.discountValue),
+                  benefit === 'GOODS'
+                    ? subtotalAmount - shopDiscount
+                    : shippingFee,
+                );
+                return { voucher, benefitType: benefit, discount };
+              })
+              .filter((row) => row.discount > 0)
+          : [];
+      const platformGoods = stacked
+        .filter((row) => row.benefitType === 'GOODS')
+        .reduce((sum, row) => sum + row.discount, 0);
+      const discountAmount =
+        shopDiscount + stacked.reduce((sum, row) => sum + row.discount, 0);
+      const linePricing = priceVoucherLines(
+        products.map((row) => amount(row.price) * quantity),
+        products.map(() => true),
+        shopDiscount,
+        platformGoods,
+      );
+      const referralLinkId = seedId(`campaign-link:${creatorIndex}`);
       const finalAmount = subtotalAmount - discountAmount + shippingFee;
       const paid = status !== 'PENDING';
       const trackingNumber =
@@ -116,12 +162,10 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
         attributedCollaboratorId: collaboratorId,
         attributionMethod: 'COOKIE',
         attributedAt: createdAt,
-        referralLinkId: seedId(
-          `link:${storeIndex}:${data.products.indexOf(products[0])}`,
-        ),
+        referralLinkId,
         couponId: coupon?.id,
         couponCodeSnapshot: coupon?.displayCode,
-        couponDiscountAmount: discountAmount,
+        couponDiscountAmount: shopDiscount + platformGoods,
         policyAcceptedAt: createdAt,
         policySnapshot: {
           storeId,
@@ -140,7 +184,22 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           carrier: 'GHN',
           shippingCarrier: 'GHN',
           ghnIsReal: Boolean(shippingEvidence),
-          ghnTotalFee: shippingFee,
+          ghnTotalFee: shippingEvidence ? shippingFee : null,
+          shippingFeeSource: shippingEvidence
+            ? 'GHN_SANDBOX_EXPORT'
+            : 'SYNTHETIC_DEMO',
+          ghnEnvironment: 'TEST',
+          campaignBonusReservations: {},
+          commissionBreakdown: [],
+          stackedVouchers: stacked.map(
+            ({ voucher, benefitType, discount }) => ({
+              code: voucher.displayCode,
+              benefitType,
+              discount,
+              shopFunded: 0,
+              platformFunded: discount,
+            }),
+          ),
           ghnShippedAt: paid
             ? new Date(createdAt.getTime() + 86_400_000).toISOString()
             : null,
@@ -161,23 +220,55 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
       data.orders.push(order);
 
       let commissionTotal = 0;
+      const commissionBreakdown: Prisma.InputJsonObject[] = [];
+      const campaignBonusReservations: Record<string, number> = {};
       products.forEach((product, itemIndex) => {
         const productIndex = data.products.indexOf(product);
         const itemId = seedId(`order-item:${key}:${itemIndex}`);
         const unitPrice = amount(product.price);
-        const netItemSubtotal =
-          unitPrice * quantity * (1 - discountAmount / subtotalAmount);
-        const itemCommission = commissionAmount(netItemSubtotal, 10);
+        const netItemSubtotal = linePricing[itemIndex].netGoods;
+        const breakdown = seedCommissionBreakdown(data, {
+          collaboratorId,
+          productId: product.id!,
+          storeId,
+          referralLinkId,
+          liveSessionId: historicalLive?.id,
+          at: createdAt,
+        });
+        const itemCommission = commissionAmount(
+          netItemSubtotal,
+          breakdown.rate,
+        );
+        commissionBreakdown.push({
+          productId: product.id!,
+          netGoods: netItemSubtotal,
+          ...breakdown,
+          liveSessionId: historicalLive?.id ?? null,
+        });
+        if (breakdown.campaignId) {
+          const reserved = commissionAmount(
+            netItemSubtotal,
+            breakdown.campaign,
+          );
+          campaignBonusReservations[breakdown.campaignId] =
+            (campaignBonusReservations[breakdown.campaignId] ?? 0) + reserved;
+        }
         commissionTotal += itemCommission;
         data.orderItems.push({
           id: itemId,
           orderId: id,
           productId: product.id!,
           variantId: seedId(`variant:${productIndex}:0`),
-          referralLinkId: seedId(`link:${storeIndex}:${productIndex}`),
+          referralLinkId,
           quantity,
           unitPrice,
-          appliedCommissionRate: 10,
+          appliedCommissionRate: breakdown.rate,
+          regularCommissionRate: breakdown.live
+            ? breakdown.rate - breakdown.live
+            : null,
+          regularCommissionAmount: breakdown.live
+            ? commissionAmount(netItemSubtotal, breakdown.rate - breakdown.live)
+            : null,
           calculatedCommissionAmount: itemCommission,
           commissionSnapshotAt: createdAt,
           createdAt,
@@ -203,6 +294,42 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
             createdAt: new Date(completedAt!.getTime() + 1_800_000),
           });
       });
+      order.rawPayload = {
+        ...(order.rawPayload as Prisma.InputJsonObject),
+        commissionBreakdown,
+        campaignBonusReservations,
+      };
+      for (const [campaignId, reserved] of Object.entries(
+        campaignBonusReservations,
+      )) {
+        const campaign = data.campaigns.find((row) => row.id === campaignId)!;
+        campaign.bonusBudgetUsed = amount(campaign.bonusBudgetUsed) + reserved;
+        assertSeed(
+          amount(campaign.bonusBudgetUsed) <= amount(campaign.bonusBudgetTotal),
+          'campaign bonus budget exceeded',
+        );
+      }
+      for (const { voucher, benefitType, discount } of stacked) {
+        data.stackedRedemptions.push({
+          orderId: id,
+          couponId: voucher.id!,
+          customerPhone: customer.phoneNumber,
+          benefitType,
+          status: paid ? 'USED' : 'RESERVED',
+          discountAmount: discount,
+          shopFundedAmount: 0,
+          platformFundedAmount: discount,
+          createdAt,
+        });
+        voucher.usageCount = (voucher.usageCount ?? 0) + 1;
+        voucher.budgetUsed = amount(voucher.budgetUsed) + discount;
+      }
+      if (purchase === 1)
+        data.savedCoupons.push({
+          userId: customer.id!,
+          couponId: seedId(`platform-GOODS:${storeIndex}`),
+          savedAt: createdAt,
+        });
 
       if (paid)
         data.commissions.push({
@@ -240,8 +367,8 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           customerId: customer.id,
           customerPhone: customer.phoneNumber,
           status: paid ? 'USED' : 'RESERVED',
-          discountAmount,
-          shopFundedAmount: discountAmount,
+          discountAmount: shopDiscount,
+          shopFundedAmount: shopDiscount,
           platformFundedAmount: 0,
           eligibleSubtotal: subtotalAmount,
           couponCodeSnapshot: coupon.displayCode,
@@ -250,7 +377,7 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           createdAt,
         });
         coupon.usageCount = (coupon.usageCount ?? 0) + 1;
-        coupon.budgetUsed = amount(coupon.budgetUsed) + discountAmount;
+        coupon.budgetUsed = amount(coupon.budgetUsed) + shopDiscount;
       }
 
       if (status === 'RETURN_REQUESTED') {

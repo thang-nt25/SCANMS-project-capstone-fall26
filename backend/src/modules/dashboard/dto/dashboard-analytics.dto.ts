@@ -107,6 +107,9 @@ export class DashboardAnalyticsQueryDto {
 }
 
 export class TopBreakdownQueryDto {
+  @IsOptional()
+  @IsUUID()
+  storeId?: string;
   @ApiPropertyOptional({
     description:
       'Số lượng phần tử lấy trong bảng xếp hạng Top (Mặc định 5, tối đa 50)',

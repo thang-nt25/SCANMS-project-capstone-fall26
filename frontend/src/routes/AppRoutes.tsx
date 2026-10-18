@@ -36,6 +36,7 @@ const LiveStreamRoomPage = lazyRetry(() => import('../pages/public/LiveStreamRoo
 
 const ProductManagementPage = lazyRetry(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazyRetry(() => import('../pages/merchant/ShopDashboardPage'));
+const ShopCampaignsPage = lazyRetry(() => import('../pages/merchant/ShopCampaignsPage'));
 const ShopSettingsPage = lazyRetry(() => import('../pages/merchant/ShopSettingsPage'));
 const KycApprovalPage = lazyRetry(() => import('../pages/admin/KycApprovalPage'));
 const OrdersManagementPage = lazyRetry(() => import('../pages/merchant/OrdersManagementPage'));
@@ -47,6 +48,7 @@ const CustomerPortalPage = lazyRetry(() => import('../pages/customer/CustomerPor
 const ReturnDetailPage = lazyRetry(() => import('../pages/returns/ReturnDetailPage'));
 const AdminReturnDisputesPage = lazyRetry(() => import('../pages/admin/AdminReturnDisputesPage'));
 const ChatBoxPage = lazyRetry(() => import('../pages/chat/ChatBoxPage'));
+const SampleRequestsPage = lazyRetry(() => import('../pages/collaborator/SampleRequestsPage'));
 const RealtimeAnalyticsPage = lazyRetry(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPage'));
 
@@ -215,7 +217,7 @@ function AppRoutes() {
               <Route path="stores/:storeId/coupons" element={<Navigate to="/merchant/promotions?tab=coupons" replace />} />
               <Route path="merchant/collaborators" element={<Navigate to="/merchant/kol-hub?tab=collaborators" replace />} />
               <Route path="merchant/sample-requests" element={<Navigate to="/merchant/kol-hub?tab=samples" replace />} />
-              <Route path="merchant/campaigns" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
+              <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
               <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?mode=ai-matching" replace />} />
               <Route path="merchant/messages" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
               <Route path="merchant/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
@@ -247,8 +249,8 @@ function AppRoutes() {
               <Route path="collaborator/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="kol/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
-              <Route path="collaborator/samples" element={<Navigate to="/collaborator/collaboration?tab=samples" replace />} />
-              <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/collaboration?tab=samples" replace />} />
+              <Route path="collaborator/samples" element={<SampleRequestsPage />} />
+              <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
               <Route path="collaborator/campaigns" element={<Navigate to="/collaborator/collaboration?tab=invites" replace />} />
               <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />

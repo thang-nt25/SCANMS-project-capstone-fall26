@@ -390,6 +390,59 @@ select option:focus {
   color: var(--theme-ink, #1A1612) !important;
 }
 
+/* Render dropdowns in the page palette instead of the Windows gray selection popup.
+   Progressive enhancement keeps native keyboard/form behavior and a light fallback. */
+@supports (appearance: base-select) {
+  select:not([multiple]):not([size]),
+  select:not([multiple]):not([size])::picker(select) {
+    appearance: base-select !important;
+    color-scheme: light !important;
+  }
+
+  select:not([multiple]):not([size]) {
+    background-image: none !important;
+  }
+
+  select::picker(select) {
+    background: #FFFFFF !important;
+    color: #1A1612 !important;
+    border: 1px solid #EAE4D7;
+    border-radius: 12px;
+    padding: 4px;
+    margin-block: 4px;
+    max-height: min(320px, 60vh);
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgb(35 29 21 / 10%);
+  }
+
+  select::picker-icon {
+    color: #7D715E;
+    margin-inline-start: auto;
+  }
+
+  select option {
+    border-radius: 8px;
+    padding: 8px 12px !important;
+    background: #FFFFFF !important;
+    color: #1A1612 !important;
+  }
+
+  select option:is(:checked, :focus, :hover) {
+    background: #FBF5EB !important;
+    color: #795A2D !important;
+  }
+
+  select option:disabled {
+    background: #FAF8F5 !important;
+    color: #7D715E !important;
+  }
+
+  select option::checkmark {
+    color: #B88E4F;
+    margin-inline-end: 8px;
+  }
+}
+
 ::selection {
   background-color: #EEDFC6 !important;
   color: var(--theme-ink, #1A1612) !important;

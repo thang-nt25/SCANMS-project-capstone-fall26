@@ -14,6 +14,7 @@ import { CheckoutMetricsService } from './checkout-metrics.service';
 
 import { AuthModule } from '../auth/auth.module';
 import { PayosPaymentService } from './payos-payment.service';
+import { ShippingModule } from '../shipping/shipping.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { PayosPaymentService } from './payos-payment.service';
     WalletsModule,
     CloudinaryModule,
     AuthModule,
+    ShippingModule,
   ],
   controllers: [OrdersController],
   providers: [

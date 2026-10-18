@@ -8,6 +8,7 @@ import {
   UseGuards,
   Res,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -38,7 +39,7 @@ export class AuditController {
    * GET /api/audit-logs
    */
   @Get()
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary: 'Tra cứu danh sách nhật ký kiểm toán hệ thống (FR-32)',
     description:
@@ -60,7 +61,7 @@ export class AuditController {
    * GET /api/audit-logs/stats
    */
   @Get('stats')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary: 'Lấy số liệu thống kê tổng quan Audit Logs',
     description:
@@ -82,7 +83,7 @@ export class AuditController {
    * GET /api/audit-logs/actions
    */
   @Get('actions')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary: 'Lấy danh mục mã hành động kiểm toán (Action Codes)',
     description:
@@ -97,7 +98,7 @@ export class AuditController {
    * GET /api/audit-logs/export
    */
   @Get('export')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary: 'Xuất dữ liệu kiểm toán ra file CSV',
     description:
@@ -121,14 +122,14 @@ export class AuditController {
    * GET /api/audit-logs/:id
    */
   @Get(':id')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER, UserRole.SHOP_MANAGER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary: 'Xem chi tiết 1 bản ghi kiểm toán theo ID',
     description:
       'Bóc tách dữ liệu chi tiết JSON Before/After và đối tượng tác động.',
   })
   @ApiParam({ name: 'id', description: 'UUID của bản ghi AuditLog' })
-  async getAuditLogById(@Param('id') id: string) {
+  async getAuditLogById(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.auditService.getAuditLogById(id);
   }
 }

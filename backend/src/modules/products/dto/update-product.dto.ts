@@ -11,8 +11,9 @@ import {
   Min,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductPackageDto } from './product-package.dto';
 
-export class UpdateProductDto {
+export class UpdateProductDto extends ProductPackageDto {
   @ApiPropertyOptional({
     example: 'TECH-ANC-01',
     description: 'Mã SKU duy nhất của sản phẩm',
@@ -174,8 +175,8 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @IsNumber({}, { message: 'Tỷ lệ hoa hồng riêng (%) phải là số' })
-  @Min(0, { message: 'Hoa hồng tối thiểu là 0%' })
-  @Max(100, { message: 'Hoa hồng tối đa là 100%' })
+  @Min(10, { message: 'Hoa hồng nền cố định 10%' })
+  @Max(10, { message: 'Hoa hồng nền cố định 10%' })
   customCommissionRate?: number;
 
   @ApiPropertyOptional({ example: 100, description: 'Số lượng tồn kho' })

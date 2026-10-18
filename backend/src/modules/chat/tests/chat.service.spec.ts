@@ -62,7 +62,7 @@ describe('ChatService (FR-25)', () => {
       product: { findFirst: jest.fn() },
       conversation: {
         findFirst: jest.fn(),
-        findUnique: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue(mockConversation),
         findMany: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
@@ -75,6 +75,7 @@ describe('ChatService (FR-25)', () => {
         count: jest.fn(),
       },
       coupon: { findFirst: jest.fn() },
+      notification: { create: jest.fn() },
       $transaction: jest.fn(),
     };
 

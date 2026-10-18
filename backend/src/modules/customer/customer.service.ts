@@ -316,10 +316,23 @@ export class CustomerService {
 
     if (query.search?.trim()) {
       const q = query.search.trim();
+      const phoneTerms = new Set([q]);
+      if (/^\+?[\d\s().-]+$/.test(q)) {
+        const digits = q.replace(/\D/g, '');
+        if (digits) phoneTerms.add(digits);
+        if (digits.startsWith('84') && digits.length === 11) {
+          phoneTerms.add(`0${digits.slice(2)}`);
+          phoneTerms.add(`+${digits}`);
+        } else if (digits.startsWith('0') && digits.length === 10) {
+          phoneTerms.add(`84${digits.slice(1)}`);
+          phoneTerms.add(`+84${digits.slice(1)}`);
+        }
+      }
       where.AND = [
         {
           OR: [
             { externalOrderSn: { contains: q, mode: 'insensitive' } },
+            ...[...phoneTerms].map(phone => ({ customerPhone: { contains: phone } })),
             { store: { name: { contains: q, mode: 'insensitive' } } },
             {
               orderItems: {

@@ -1,10 +1,28 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import type { CollaboratorTier } from '@prisma/client';
+import { Prisma, type CollaboratorTier } from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
+import { tierBonusByName } from '../commissions/commission-policy';
+import { goodsDiscount } from '../coupons/voucher-pricing';
 
 @Injectable()
 export class TiersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private previousMonthWindow(now = new Date()) {
+    // Tháng doanh số được tính theo múi giờ Việt Nam (UTC+7).
+    const vietnamTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const year = vietnamTime.getUTCFullYear();
+    const month = vietnamTime.getUTCMonth();
+    return {
+      gte: new Date(Date.UTC(year, month - 1, 1) - 7 * 60 * 60 * 1000),
+      lt: new Date(Date.UTC(year, month, 1) - 7 * 60 * 60 * 1000),
+    };
+  }
+
+  private tierBonus(tier: CollaboratorTier) {
+    return tierBonusByName(tier.name);
+  }
 
   /**
    * Lấy danh mục tất cả cấp bậc KOL
@@ -16,7 +34,7 @@ export class TiersService {
     // Older seed runs may have created identical policies with different IDs.
     // Collapse those policies for display without deleting or reassigning profiles.
     const seen = new Set<string>();
-    return tiers.filter((tier) => {
+    return tiers.map(tier => ({ ...tier, extraBonusPercentage: new Prisma.Decimal(this.tierBonus(tier)) })).filter((tier) => {
       const key = this.policyKey(tier);
       if (seen.has(key)) return false;
       seen.add(key);
@@ -25,7 +43,39 @@ export class TiersService {
   }
 
   private policyKey(tier: CollaboratorTier) {
-    return `${tier.name.trim().toLowerCase()}|${Number(tier.minRevenueThreshold)}|${Number(tier.extraBonusPercentage)}`;
+    return `${tier.name.trim().toLowerCase()}|${Number(tier.minRevenueThreshold)}|${this.tierBonus(tier)}`;
+  }
+
+  private async previousMonthSales(userId: string) {
+    let revenue = 0;
+    let orderCount = 0;
+    let cursor: string | undefined;
+    while (true) {
+      const orders = await this.prisma.order.findMany({
+        where: {
+          attributedCollaboratorId: userId,
+          status: { in: ['COMPLETED', 'DELIVERED'] },
+          createdAt: this.previousMonthWindow(),
+        },
+        select: { id: true, subtotalAmount: true, discountAmount: true, couponDiscountAmount: true, finalAmount: true, refundedAmount: true },
+        orderBy: { id: 'asc' },
+        take: 500,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      for (const order of orders) {
+        const netGoods = Math.max(0, Number(order.subtotalAmount) - goodsDiscount(order));
+        const paid = Math.max(0, Number(order.finalAmount));
+        const refunded = Math.min(paid, Math.max(0, Number(order.refundedAmount || 0)));
+        // Refund records contain an amount for the whole order, without a goods/shipping split.
+        // Allocate a partial refund proportionally, as the commission refund flow does.
+        const netRevenue = paid > 0 ? netGoods * (paid - refunded) / paid : 0;
+        revenue += netRevenue;
+        if (netRevenue > 0) orderCount++;
+      }
+      if (orders.length < 500) break;
+      cursor = orders[orders.length - 1].id;
+    }
+    return { revenue: Math.max(0, revenue), orderCount };
   }
 
   /**
@@ -47,17 +97,9 @@ export class TiersService {
     }
 
     // Tính tổng doanh thu từ các đơn hàng thành công mà KOL này mang lại
-    const salesAggregate = await this.prisma.order.aggregate({
-      where: {
-        attributedCollaboratorId: userId,
-        status: { in: ['COMPLETED', 'DELIVERED'] },
-      },
-      _sum: { finalAmount: true },
-      _count: { id: true },
-    });
-
-    const currentRevenue = Number(salesAggregate._sum.finalAmount || 0);
-    const totalOrders = salesAggregate._count.id || 0;
+    const sales = await this.previousMonthSales(userId);
+    const currentRevenue = sales.revenue;
+    const totalOrders = sales.orderCount;
 
     // Commissions and the leaderboard use the profile's assigned tier. Reading
     // this page must not silently replace it with a different calculated tier.
@@ -88,16 +130,16 @@ export class TiersService {
       currentTier: {
         id: currentTier.id,
         name: currentTier.name,
-        extraBonusPercentage: Number(currentTier.extraBonusPercentage),
+        extraBonusPercentage: this.tierBonus(currentTier),
         minRevenueThreshold: Number(currentTier.minRevenueThreshold),
       },
       currentRevenue,
       totalOrders,
-      revenueBasis: 'LIFETIME',
+      revenueBasis: 'PREVIOUS_MONTH_VIETNAM',
       qualifiedTier: {
         id: qualifiedTier.id,
         name: qualifiedTier.name,
-        extraBonusPercentage: Number(qualifiedTier.extraBonusPercentage),
+        extraBonusPercentage: this.tierBonus(qualifiedTier),
         minRevenueThreshold: Number(qualifiedTier.minRevenueThreshold),
       },
       nextTier: nextTier
@@ -105,7 +147,7 @@ export class TiersService {
             id: nextTier.id,
             name: nextTier.name,
             minRevenueThreshold: Number(nextTier.minRevenueThreshold),
-            extraBonusPercentage: Number(nextTier.extraBonusPercentage),
+            extraBonusPercentage: this.tierBonus(nextTier),
           }
         : null,
       progressPercentage,
@@ -116,6 +158,7 @@ export class TiersService {
   /**
    * Động cơ đánh giá và tự động thăng hạng KOL dựa trên doanh số tích lũy
    */
+  @Cron('15 0 1 * *', { timeZone: 'Asia/Ho_Chi_Minh' })
   async evaluateAllCollaborators() {
     const tiers = (await this.getAllTiers()).reverse();
     if (!tiers.length) {
@@ -130,15 +173,7 @@ export class TiersService {
     const details: any[] = [];
 
     for (const p of profiles) {
-      const salesAggregate = await this.prisma.order.aggregate({
-        where: {
-          attributedCollaboratorId: p.userId,
-          status: { in: ['COMPLETED', 'DELIVERED'] },
-        },
-        _sum: { finalAmount: true },
-      });
-
-      const totalRevenue = Number(salesAggregate._sum.finalAmount || 0);
+      const totalRevenue = (await this.previousMonthSales(p.userId)).revenue;
 
       // Tìm tier cao nhất mà doanh thu thỏa mãn
       const matchedTier =

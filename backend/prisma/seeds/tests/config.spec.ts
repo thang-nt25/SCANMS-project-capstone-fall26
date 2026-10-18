@@ -33,6 +33,19 @@ describe('Seed CLI target protection', () => {
     expect(options.target).toBeUndefined();
   });
 
+  it('allows a read-only audit without a demo password but not combined with reset or other read modes', () => {
+    const options = readSeedOptions(['--audit'], {
+      DATABASE_URL: env.DATABASE_URL,
+    });
+    expect(options.mode).toBe('audit');
+    expect(() => readSeedOptions(['--audit', '--reset'], env)).toThrow(
+      'only valid when applying',
+    );
+    expect(() => readSeedOptions(['--audit', '--check'], env)).toThrow(
+      'Choose one read mode',
+    );
+  });
+
   it('uses DIRECT_URL consistently with prisma.config.ts and never includes secrets in target labels', () => {
     const options = readSeedOptions(['--plan'], {
       ...env,

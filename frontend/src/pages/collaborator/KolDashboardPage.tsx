@@ -23,7 +23,6 @@ import {
   type TimeSeriesPoint,
 } from '@/services/analytics.service';
 import { Select } from '@/components/ui/Select';
-import { PageHeader } from '@/components/ui/PageHeader';
 
 function DashboardMetric({ label, value, note, growth, icon: Icon }: {
   label: string;
@@ -129,15 +128,10 @@ export default function KolDashboardPage() {
 
   return (
     <section className="flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] text-left pb-12" aria-label="Tổng quan hiệu quả KOL">
-      {/* 1. Page Header Chuẩn Hóa */}
-      <PageHeader
-        title="Tổng quan Hiệu quả KOL"
-        description="Theo dõi doanh số tiếp thị, hoa hồng thực nhận và tiến trình thăng hạng đối tác"
-        icon={<TrendingUp className="w-5 h-5" />}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="w-[160px]">
+      <section className="grid w-full grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-start gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-4 shadow-xs" aria-label="Bộ lọc và thao tác tổng quan KOL">
+            <div className="w-full">
               <Select
+                className="w-full min-h-[44px]"
                 id="kol-dashboard-period"
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
@@ -150,7 +144,7 @@ export default function KolDashboardPage() {
             </div>
             <button
               type="button"
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#FBF5EB] transition-colors disabled:opacity-60 cursor-pointer"
+              className="order-last inline-flex w-full min-h-[44px] items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#FBF5EB] transition-colors disabled:opacity-60 cursor-pointer"
               onClick={() => void loadData()}
               disabled={loading}
             >
@@ -159,18 +153,32 @@ export default function KolDashboardPage() {
             </button>
             <button
               type="button"
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              className="inline-flex w-full min-h-[44px] items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition-colors cursor-pointer shadow-xs"
               onClick={() => navigate('/collaborator/marketing?tab=links')}
             >
               <PlusCircle size={14} />
               <span>Tạo link tiếp thị</span>
             </button>
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              className="inline-flex w-full flex-col items-center justify-center gap-0.5 min-h-[44px] px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors cursor-pointer"
+              onClick={() => navigate('/collaborator/wallet')}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5 leading-4">
+                Quản lý ví
+                <ArrowUpRight size={14} className="text-[#B88E4F]" aria-hidden="true" />
+              </span>
+            <span className="inline-flex items-center justify-center gap-1 text-[10px] font-normal leading-3 text-[#7D715E]">
+              <ShieldCheck size={13} className={wallet?.kycStatus === 'VERIFIED' ? 'text-[#059669]' : 'text-[#B88E4F]'} aria-hidden="true" />
+              <span>{wallet?.kycStatus === 'VERIFIED' ? 'KYC đã xác thực' : 'Chưa xác thực KYC'}</span>
+            </span>
+            </button>
           </div>
-        }
-      />
+      </section>
 
       <div className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
-        <section className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2.5 p-3.5" aria-label="Số dư ví KOL" aria-busy={loading}>
+        <section className="grid grid-cols-1 md:grid-cols-2 items-center gap-2.5 p-3.5" aria-label="Số dư ví KOL" aria-busy={loading}>
           <div className="grid gap-1.5 min-w-0 p-3 sm:p-4 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]">
             <span className="inline-flex items-center gap-1.5 text-xs text-[#7D715E] leading-relaxed">
               <Wallet size={15} className="text-[#B88E4F]" aria-hidden="true" />
@@ -188,20 +196,6 @@ export default function KolDashboardPage() {
             <strong className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight tabular-nums text-[#1A1612]">
               {pendingBal.toLocaleString('vi-VN')} ₫
             </strong>
-          </div>
-          <div className="grid justify-items-center gap-2 px-2">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors cursor-pointer"
-              onClick={() => navigate('/collaborator/wallet')}
-            >
-              <span>Quản lý ví</span>
-              <ArrowUpRight size={14} className="text-[#B88E4F]" aria-hidden="true" />
-            </button>
-            <span className="inline-flex items-center gap-1 text-[10px] text-[#7D715E]">
-              <ShieldCheck size={13} className={wallet?.kycStatus === 'VERIFIED' ? 'text-[#059669]' : 'text-[#B88E4F]'} aria-hidden="true" />
-              <span>{wallet?.kycStatus === 'VERIFIED' ? 'KYC đã xác thực' : 'Chưa xác thực KYC'}</span>
-            </span>
           </div>
         </section>
 

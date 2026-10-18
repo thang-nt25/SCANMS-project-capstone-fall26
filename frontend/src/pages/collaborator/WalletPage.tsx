@@ -36,7 +36,8 @@ import { toast } from "../../utils/toast";
 import { cn } from "../../utils/cn";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
-import { PageHeader } from "../../components/ui/PageHeader";
+import './WalletPage.css';
+
 import { Select } from "../../components/ui/Select";
 import api from "../../services/api";
 import { type VietQrBank, findBankByQuery, VIETNAM_BANKS } from "@/config/banks.config";
@@ -50,7 +51,7 @@ import type {
 
 const STATUS_LABELS: Record<PayoutStatus, string> = {
   PENDING: "Chờ xử lý",
-  PROCESSING: "Đang thanh toán theo lô",
+  PROCESSING: "Chờ chuyển khoản",
   APPROVED: "Đã duyệt",
   REJECTED: "Đã từ chối",
 };
@@ -260,8 +261,9 @@ export default function WalletPage() {
   }, [activeTab, loadWallet]);
 
   useEffect(() => {
+    const sequenceRef = loadSequence;
     void loadCurrentTab();
-    return () => { loadSequence.current++; };
+    return () => { sequenceRef.current++; };
   }, [loadCurrentTab]);
 
   const isReloading = loading;
@@ -352,6 +354,8 @@ export default function WalletPage() {
         selectedStore.storeId,
       );
       setSuccess(`${result.message}. Mã yêu cầu: ${result.request.id}`);
+      setIsWithdrawHistoryCollapsed(false);
+      setIsLedgerCollapsed(false);
       setAmount("");
       setWallet((current) =>
         current
@@ -372,35 +376,17 @@ export default function WalletPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 w-full min-w-0 pb-12 text-[#1A1612] text-left">
-      {/* 1. Page Header Chuẩn Hóa */}
-      <PageHeader
-        title="Ví & Tài chính Tiếp thị"
-        description="Quản lý số dư hoa hồng, theo dõi lịch sử biến động sổ cái và gửi yêu cầu rút tiền"
-        icon={<Wallet className="w-5 h-5" />}
-        actions={
-          <button
-            type="button"
-            onClick={() => void loadWallet()}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới ví</span>
-          </button>
-        }
-      />
-
+    <div id="kol-wallet-page" data-active-tab={activeTab} className="flex flex-col gap-4 w-full min-w-0 pb-12 text-[#1A1612] text-left">
       {/* Top Unified Hub Navigation Bar */}
       <div className="p-1.5 sm:p-2 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
-        <nav className="flex flex-wrap items-center gap-2 sm:gap-4 w-full" aria-label="Ví và hồ sơ">
+        <nav className="grid grid-cols-2 lg:grid-cols-4 items-stretch gap-2 w-full" aria-label="Ví và hồ sơ">
             <button
               type="button"
               onClick={() => setSearchParams({ tab: 'wallet' })}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap select-none ${
+              className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'wallet'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
-                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-transparent'
+                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
               id="tab-btn-wallet"
               aria-pressed={activeTab === 'wallet'}
@@ -412,10 +398,10 @@ export default function WalletPage() {
             <button
               type="button"
               onClick={() => setSearchParams({ tab: 'kyc' })}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap select-none ${
+              className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'kyc'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
-                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-transparent'
+                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
               id="tab-btn-kyc"
               aria-pressed={activeTab === 'kyc'}
@@ -427,10 +413,10 @@ export default function WalletPage() {
             <button
               type="button"
               onClick={() => setSearchParams({ tab: 'social' })}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap select-none ${
+              className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'social'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
-                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-transparent'
+                  : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-[#EAE4D7]'
               }`}
               id="tab-btn-social"
               aria-pressed={activeTab === 'social'}
@@ -438,6 +424,13 @@ export default function WalletPage() {
               <Share2 className="w-3.5 h-3.5 text-[#B88E4F]" />
               <span>Kênh xã hội</span>
             </button>
+            {activeTab === 'wallet' && (
+              <button type="button" onClick={() => void loadWallet()} disabled={loading}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-semibold text-[#795A2D] hover:bg-[#F3EFE6] transition-colors cursor-pointer disabled:opacity-60">
+                <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+                <span>Làm mới ví</span>
+              </button>
+            )}
             {activeTab !== 'wallet' && (
               <button
                 type="button"
@@ -445,7 +438,7 @@ export default function WalletPage() {
                 aria-busy={isReloading}
                 onClick={() => void handleReload()}
                 disabled={isReloading || submitting}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer disabled:opacity-50 shrink-0 ml-auto select-none"
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer disabled:opacity-50 select-none"
                 title={activeTab === 'kyc' ? 'Tải lại hồ sơ KYC' : 'Tải lại các kênh xã hội'}
               >
                 <RefreshCw size={13} className={`text-[#B88E4F] ${isReloading ? 'animate-spin' : ''}`} />
@@ -486,7 +479,7 @@ export default function WalletPage() {
         </div>
       )}
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-0 border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shadow-xs" aria-label="Tổng quan số dư" aria-busy={loading}>
+      <section className="kol-wallet-balances grid grid-cols-1 sm:grid-cols-2 gap-0 border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shadow-xs" aria-label="Tổng quan số dư" aria-busy={loading}>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2.5 p-3.5 sm:p-4">
           <div className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E]"><Wallet size={15} className="text-[#B88E4F]" /> Số dư khả dụng</div>
           <strong className="col-span-full text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612] tabular-nums mt-1">{wallet ? formatMoney(wallet.availableBalance) : "—"}</strong>
@@ -777,8 +770,9 @@ export default function WalletPage() {
 
         {/* Cột 2: Form Tạo yêu cầu rút tiền (Shopee / TikTok Creator Studio Standard) */}
         <form
+          aria-label="Yêu cầu rút tiền"
           onSubmit={(event) => void handleWithdrawal(event)}
-          className="rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between"
+          className="kol-wallet-transfer rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between"
         >
           <div className="space-y-3">
             {/* Header: Tiêu đề + Giới hạn rút tối thiểu */}
@@ -930,7 +924,7 @@ export default function WalletPage() {
             <button
               type="submit"
               disabled={submitting || loading || !selectedStoreCanWithdraw}
-              className="w-full h-10 sm:h-11 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none"
+              className="scanms-brand-action w-full h-10 sm:h-11 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none"
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -940,7 +934,8 @@ export default function WalletPage() {
               <span>{submitting ? "Đang gửi yêu cầu..." : "Gửi yêu cầu rút tiền"}</span>
             </button>
             {wallet && !selectedStoreCanWithdraw && (
-              <div className="mt-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-1">
+              <div className="kol-wallet-notice mt-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-1">
+                <p className="font-semibold">Bạn chưa thể rút tiền khi chưa đủ các điều kiện sau:</p>
                 {!wallet.bankAccount && (
                   <p className="m-0 text-[#D97706] font-semibold flex items-center gap-1">
                     <span>⚠️</span>
@@ -994,6 +989,7 @@ export default function WalletPage() {
             <button
               type="button"
               onClick={() => void loadWallet()}
+              aria-label="Tải lại ví"
               disabled={loading}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition shadow-2xs cursor-pointer select-none"
             >

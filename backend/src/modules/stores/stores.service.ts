@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../core/database/prisma.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { Prisma } from '@prisma/client';
+import { activeSponsoredPlacements } from './sponsored-placement.config';
 
 @Injectable()
 export class StoresService {
@@ -167,6 +168,10 @@ export class StoresService {
     if (dto.logoUrl !== undefined && !dto.logoUrl?.trim()) {
       throw new BadRequestException('Logo gian hàng không được để trống');
     }
+    if (dto.warehouseAddress !== undefined &&
+        dto.warehouseAddress.split(',').map((part) => part.trim()).filter(Boolean).length < 4) {
+      throw new BadRequestException('Địa chỉ kho cần đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành, ngăn cách bằng dấu phẩy.');
+    }
 
     const ownerProfileUpdates = {
       ...(dto.representativeName !== undefined && {
@@ -232,9 +237,7 @@ export class StoresService {
         ...(dto.policyShipping !== undefined && {
           policyShipping: dto.policyShipping?.trim() || null,
         }),
-        ...(dto.defaultCommissionRate !== undefined && {
-          defaultCommissionRate: dto.defaultCommissionRate,
-        }),
+        defaultCommissionRate: 10,
         ...(dto.attributionWindowDays !== undefined && {
           attributionWindowDays: dto.attributionWindowDays,
         }),
@@ -424,56 +427,95 @@ export class StoresService {
   /**
    * Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối
    */
-  async getMarketplaceStores() {
+  async getSponsoredPlacements() {
+    const now = new Date();
+    const booked = await this.prisma.sponsoredPlacement.findMany({
+      where: { status: 'APPROVED', startsAt: { lte: now }, endsAt: { gt: now },
+        store: { isDeleted: false, isActive: true, isVerified: true, onboardingStatus: 'VERIFIED', owner: { isActive: true } },
+      },
+      select: { storeId: true, headline: true, endsAt: true },
+      orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+    });
+    // Explicit legacy bookings remain compatible; no store is promoted automatically.
+    const placements = [
+      ...booked.map((row) => ({ ...row, endsAt: row.endsAt.toISOString() })),
+      ...activeSponsoredPlacements(process.env.MARKETPLACE_SPONSORED_PLACEMENTS),
+    ].filter((row, index, all) => all.findIndex((item) => item.storeId === row.storeId) === index).slice(0, 6);
+    if (!placements.length) return [];
     const stores = await this.prisma.store.findMany({
       where: {
-        isDeleted: false,
-        isActive: true,
-        isVerified: true,
-        onboardingStatus: 'VERIFIED',
-        owner: { isActive: true },
+        id: { in: placements.map((placement) => placement.storeId) },
+        isDeleted: false, isActive: true, isVerified: true,
+        onboardingStatus: 'VERIFIED', owner: { isActive: true },
+      },
+      select: { id: true, name: true, logoUrl: true, description: true, isVerified: true },
+    });
+    return placements.flatMap((placement) => {
+      const store = stores.find((candidate) => candidate.id === placement.storeId);
+      return store ? [{ store, headline: placement.headline.trim(), endsAt: placement.endsAt }] : [];
+    });
+  }
+
+  async getMarketplaceStores() {
+    const now = new Date();
+    const stores = await this.prisma.store.findMany({
+      where: {
+        isDeleted: false, isActive: true, isVerified: true,
+        onboardingStatus: 'VERIFIED', owner: { isActive: true },
       },
       select: {
-        id: true,
-        name: true,
-        slug: true,
-        logoUrl: true,
-        description: true,
-        websiteUrl: true,
-        defaultCommissionRate: true,
-        isVerified: true,
-        policyShipping: true,
-        policyReturn: true,
-        createdAt: true,
-        _count: {
-          select: {
-            products: {
-              where: {
-                isDeleted: false,
-                isActive: true,
-                moderationStatus: 'APPROVED',
-              },
-            },
-          },
+        id: true, name: true, slug: true, logoUrl: true, description: true,
+        websiteUrl: true, defaultCommissionRate: true, isVerified: true,
+        policyShipping: true, policyReturn: true, createdAt: true,
+        products: {
+          where: { isDeleted: false, isActive: true, moderationStatus: 'APPROVED' },
+          select: { id: true, categoryName: true },
+        },
+        campaigns: {
+          where: { isActive: true, startDate: { lte: now }, endDate: { gt: now } },
+          select: { id: true, name: true, endDate: true },
+          orderBy: { endDate: 'asc' }, take: 1,
         },
       },
       orderBy: { createdAt: 'desc' },
     });
+    const reviews = stores.length ? await this.prisma.productReview.groupBy({
+      by: ['productId'],
+      where: {
+        isApproved: true,
+        productId: { in: stores.flatMap((store) => store.products.map((product) => product.id)) },
+      },
+      _avg: { rating: true }, _count: { rating: true },
+    }) : [];
+    const reviewByProduct = new Map(reviews.map((review) => [review.productId, review]));
 
-    return stores.map((st) => ({
-      ...st,
-      totalProducts: st._count.products,
-      category: st.name.toLowerCase().includes('tech')
-        ? 'Công nghệ & Phụ kiện'
-        : st.name.toLowerCase().includes('green')
-          ? 'Thực phẩm & Sức khỏe'
-          : 'Mỹ phẩm & Chăm sóc da',
-      commissionRange: `${Number(st.defaultCommissionRate)}% - ${Math.min(
-        35,
-        Number(st.defaultCommissionRate) + 5,
-      )}%`,
-      rating: 4.9,
-      location: 'TP.HCM & Hà Nội',
-    }));
+    return stores.map(({ products, campaigns, ...store }) => {
+      let reviewCount = 0;
+      let ratingSum = 0;
+      for (const product of products) {
+        const review = reviewByProduct.get(product.id);
+        if (!review) continue;
+        reviewCount += review._count.rating;
+        ratingSum += (review._avg.rating ?? 0) * review._count.rating;
+      }
+      const categories = [...new Set(products.map((product) => product.categoryName).filter(Boolean))];
+      return {
+        ...store,
+        totalProducts: products.length,
+        categories,
+        category: categories.slice(0, 2).join(' · ') || (store.name.toLowerCase().includes('tech')
+          ? 'Công nghệ & Phụ kiện'
+          : store.name.toLowerCase().includes('green')
+            ? 'Thực phẩm & Sức khỏe'
+            : 'Mỹ phẩm & Chăm sóc da'),
+        commissionRange: `${Number(store.defaultCommissionRate)}% cơ bản + thưởng theo bậc/Deal/chiến dịch/Live (tối đa 25%)`,
+        rating: reviewCount ? Math.round(ratingSum / reviewCount * 10) / 10 : null,
+        reviewCount,
+        location: 'TP.HCM & Hà Nội',
+        activeCampaign: campaigns[0] ? {
+          id: campaigns[0].id, name: campaigns[0].name, endsAt: campaigns[0].endDate,
+        } : null,
+      };
+    });
   }
 }

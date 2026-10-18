@@ -12,7 +12,7 @@ export interface DatabaseTarget {
 }
 
 export interface SeedOptions {
-  mode: 'apply' | 'plan' | 'check';
+  mode: 'apply' | 'plan' | 'check' | 'audit';
   reset: boolean;
   referenceDate: Date;
   frontendUrl: string;
@@ -64,16 +64,23 @@ export function readSeedOptions(
   args: string[],
   env: NodeJS.ProcessEnv,
 ): SeedOptions {
-  const supported = new Set(['--plan', '--check', '--reset']);
+  const supported = new Set(['--plan', '--check', '--audit', '--reset']);
   if (args.some((arg) => !supported.has(arg)))
-    throw new Error('Supported seed options: --plan, --check, --reset.');
-  if (args.includes('--plan') && args.includes('--check'))
-    throw new Error('Choose either --plan or --check.');
+    throw new Error(
+      'Supported seed options: --plan, --check, --audit, --reset.',
+    );
+  if (
+    ['--plan', '--check', '--audit'].filter((flag) => args.includes(flag))
+      .length > 1
+  )
+    throw new Error('Choose one read mode: --plan, --check or --audit.');
   const mode = args.includes('--plan')
     ? 'plan'
     : args.includes('--check')
       ? 'check'
-      : 'apply';
+      : args.includes('--audit')
+        ? 'audit'
+        : 'apply';
   const reset = args.includes('--reset');
   if (reset && mode !== 'apply')
     throw new Error('--reset is only valid when applying the dataset.');

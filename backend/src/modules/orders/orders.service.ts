@@ -11,8 +11,13 @@ import {
   Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { exclusiveDealBonus } from './exclusive-deal-bonus';
+import { additiveCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { PrismaService } from '../../core/database/prisma.service';
 import { publicReturnPolicy } from '../stores/store-policy.util';
+import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
+import { requireShippingFee } from '../shipping/shipping-fee';
+import { buildShippingPackage, type ShippingPackage } from '../shipping/shipping-package';
 import { CacheService } from '../../core/cache/cache.service';
 import { CreateOrderDto, PaymentMethod } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
@@ -59,6 +64,7 @@ import { notifyCustomerOrderEvent } from './customer-order-notifications';
 import { ConfigService } from '@nestjs/config';
 import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
+import { liveVoucherActive, priceVoucherLines } from '../coupons/voucher-pricing';
 import {
   normalizeCustomerPhone,
   validateOrderMoney,
@@ -90,6 +96,7 @@ const WEBHOOK_PLATFORM_MAP: Record<ExternalOrderPlatform, OrderSourcePlatform> =
   };
 
 import { MailService } from '../auth/mail.service';
+import { GhnService } from '../shipping/ghn.service';
 
 @Injectable()
 export class OrdersService {
@@ -104,7 +111,14 @@ export class OrdersService {
     private readonly walletsService: WalletsService,
     private readonly checkoutMetrics: CheckoutMetricsService,
     @Optional() private readonly mailService?: MailService,
+    @Optional() private readonly ghnService?: GhnService,
   ) {}
+
+  private async quoteCheckoutShipping(address: string, items: Array<{ productId: string; quantity: number }>, products: Map<string, any>, subtotal: number, storeId: string) {
+    if (!this.ghnService) throw new InternalServerErrorException('Dịch vụ tính cước GHN chưa sẵn sàng. Vui lòng thử lại sau.');
+    const parcel = buildShippingPackage(items.map((item) => ({ product: products.get(item.productId), quantity: item.quantity })));
+    return { ...await this.ghnService.quoteAddress(address, parcel.weight, subtotal, storeId, parcel), shippingPackage: parcel };
+  }
 
   /**
    * FR-19: Tiếp nhận đơn từ sàn ngoài theo cơ chế idempotent.
@@ -684,7 +698,7 @@ export class OrdersService {
         subtotalAmount: Number(existingOrder.subtotalAmount),
         discountAmount: Number(existingOrder.discountAmount),
         shippingFee: Number(existingOrder.shippingFee),
-        shippingFeePolicy: 'NATIONWIDE_FREE_SHIPPING',
+        shippingFeePolicy: 'GHN_QUOTED',
         finalAmount: Number(existingOrder.finalAmount),
         paymentMethod: rawPayload.paymentMethod || 'COD',
         paymentStatus: rawPayload.paymentStatus || 'UNPAID',
@@ -856,6 +870,14 @@ export class OrdersService {
       );
     }
 
+    const shippingQuote = await this.quoteCheckoutShipping(
+      shippingAddress,
+      dto.items,
+      productMap,
+      rawSubtotalAmount,
+      store.id,
+    );
+
     // 4. THỰC THI GIAO DỊCH ĐƠN HÀNG ĐƠN GIAN HÀNG
     const { order, rawCancellationToken, vietqrData } =
       await this.prisma.$transaction(
@@ -872,6 +894,7 @@ export class OrdersService {
             customerPhone,
             customerEmail,
             shippingAddress,
+            shippingQuote,
             orderNotes,
             cleanIdempotencyKey,
             currentPayloadHash,
@@ -914,7 +937,7 @@ export class OrdersService {
       subtotalAmount: Number(order.subtotalAmount),
       discountAmount: Number(order.discountAmount),
       shippingFee: Number(order.shippingFee),
-      shippingFeePolicy: 'NATIONWIDE_FREE_SHIPPING',
+      shippingFeePolicy: 'GHN_QUOTED',
       finalAmount: Number(order.finalAmount),
       paymentMethod: raw.paymentMethod || 'COD',
       paymentStatus: raw.paymentStatus || 'UNPAID',
@@ -965,6 +988,7 @@ export class OrdersService {
       customerPhone: string;
       customerEmail: string | null;
       shippingAddress: string;
+      shippingQuote?: { totalFee: number; districtId: number; wardCode: string; shippingPackage?: ShippingPackage } | null;
       orderNotes?: string | null;
       cleanIdempotencyKey: string;
       currentPayloadHash: string;
@@ -989,6 +1013,7 @@ export class OrdersService {
       customerPhone,
       customerEmail,
       shippingAddress,
+      shippingQuote,
       orderNotes,
       cleanIdempotencyKey,
       currentPayloadHash,
@@ -996,6 +1021,7 @@ export class OrdersService {
       clientContext,
     } = params;
 
+    const confirmedShippingFee = requireShippingFee(shippingQuote?.totalFee);
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
     let shopFundedAmount = 0;
     const requestedLiveIds = [...new Set(dto.items.map((item) => item.liveSessionId).filter((id): id is string => Boolean(id)))];
@@ -1005,8 +1031,8 @@ export class OrdersService {
       await tx.$queryRaw`SELECT id FROM live_shopping_sessions WHERE id = ${liveId}::uuid AND store_id = ${store.id}::uuid FOR UPDATE`;
     }
     const liveSources = requestedLiveIds.length ? await tx.liveShoppingSession.findMany({
-      where: { id: { in: requestedLiveIds }, storeId: store.id, platform: 'SCANMS', inviteStatus: 'ACCEPTED', status: { in: ['LIVE', 'SCHEDULED'] }, startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
-      select: { id: true, commissionRate: true, products: { select: { productId: true, variantId: true } } },
+      where: { id: { in: requestedLiveIds }, storeId: store.id, platform: 'SCANMS', inviteStatus: 'ACCEPTED', status: 'LIVE', startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
+      select: { id: true, status: true, startsAt: true, endsAt: true, commissionRate: true, products: { select: { productId: true, variantId: true } } },
     }) : [];
     const liveSessionIds = liveSources.filter((session) => dto.items.some((item) =>
       item.liveSessionId === session.id && session.products.some((product) =>
@@ -1015,6 +1041,8 @@ export class OrdersService {
     )).map((session) => session.id);
     let platformFundedAmount = 0;
     let appliedDiscountAmount = 0;
+    const couponEligibleLines = dto.items.map(() => false);
+    const stackedVouchers: Array<{ couponId: string; benefitType: 'GOODS' | 'SHIPPING'; code: string; discount: number; shopFunded: number; platformFunded: number }> = [];
 
     // 4.1 Khóa và kiểm tra trạng thái gian hàng trong Transaction
     const lockedStore = await tx.store.findUnique({
@@ -1029,6 +1057,22 @@ export class OrdersService {
       throw new BadRequestException(
         `Gian hàng "${lockedStore?.name || store.name}" không tồn tại, đã tạm ngưng hoạt động hoặc đã ngừng kinh doanh.`,
       );
+    }
+
+    if (shippingQuote?.shippingPackage) {
+      // Prevent a concurrent package edit from invalidating the carrier quote at checkout.
+      const ids = [...new Set(dto.items.map((item) => item.productId))].sort();
+      const current = await tx.$queryRaw<Array<{ id: string; packageWeight: number | null; packageLength: number | null; packageWidth: number | null; packageHeight: number | null }>>(Prisma.sql`
+        SELECT id, package_weight AS "packageWeight", package_length AS "packageLength",
+          package_width AS "packageWidth", package_height AS "packageHeight"
+        FROM products WHERE id IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))})
+        ORDER BY id FOR UPDATE
+      `);
+      const packages = new Map(current.map((product) => [product.id, product]));
+      const locked = buildShippingPackage(dto.items.map((item) => ({ product: packages.get(item.productId)!, quantity: item.quantity })));
+      if (['weight', 'length', 'width', 'height'].some((key: keyof ShippingPackage) => locked[key] !== shippingQuote.shippingPackage![key])) {
+        throw new ConflictException('Thông số đóng gói vừa thay đổi. Vui lòng tải lại báo giá vận chuyển.');
+      }
     }
 
     // 4.2 Trừ kho an toàn: hỗ trợ tồn kho variant hoặc sản phẩm
@@ -1092,6 +1136,8 @@ export class OrdersService {
             select: {
               status: true,
               inviteStatus: true,
+              startsAt: true,
+              endsAt: true,
               products: { select: { productId: true, variantId: true } },
             },
           },
@@ -1100,6 +1146,9 @@ export class OrdersService {
 
       if (!lockedCoupon) {
         throw new ConflictException('Mã giảm giá không tồn tại');
+      }
+      if (lockedCoupon.storeId !== store.id || lockedCoupon.benefitType === 'SHIPPING' || lockedCoupon.fundingSource === 'PLATFORM_FUNDED' || lockedCoupon.deletedAt) {
+        throw new ConflictException('Voucher không thuộc ô tiền hàng của Shop này.');
       }
 
       if (lockedCoupon.status !== CouponStatus.ACTIVE) {
@@ -1116,9 +1165,7 @@ export class OrdersService {
         throw new ConflictException('Mã giảm giá đã hết hạn sử dụng');
       }
       if (
-        lockedCoupon.liveSession &&
-        (lockedCoupon.liveSession.inviteStatus !== 'ACCEPTED' ||
-          !['SCHEDULED', 'LIVE'].includes(lockedCoupon.liveSession.status))
+        !liveVoucherActive(lockedCoupon.liveSession, now)
       ) {
         throw new ConflictException(
           'Voucher livestream chưa được mở hoặc đã tạm dừng/kết thúc',
@@ -1135,7 +1182,12 @@ export class OrdersService {
       }
 
       let campaignProductIds = new Set<string>();
-      if (lockedCoupon.scopeType === 'CAMPAIGN' && lockedCoupon.campaignId) {
+      if (lockedCoupon.scopeType === 'CAMPAIGN') {
+        if (!lockedCoupon.campaignId) throw new ConflictException('Voucher chưa được gắn với chiến dịch hợp lệ.');
+        const campaign = await tx.campaign.findUnique({ where: { id: lockedCoupon.campaignId }, select: { isActive: true, startDate: true, endDate: true, storeId: true } });
+        if (!campaign || !campaign.isActive || campaign.storeId !== store.id || campaign.startDate > now || campaign.endDate <= now) {
+          throw new ConflictException('Chiến dịch của voucher đã kết thúc.');
+        }
         const campProds = await tx.campaignProduct.findMany({
           where: { campaignId: lockedCoupon.campaignId },
           select: { productId: true },
@@ -1144,7 +1196,7 @@ export class OrdersService {
       }
 
       let eligibleSubtotalInTx = 0;
-      for (const item of dto.items) {
+      for (const [lineIndex, item] of dto.items.entries()) {
         const prod = productMap.get(item.productId)!;
         let unitPrice = Number(prod.price);
         if (item.variantId) {
@@ -1183,6 +1235,7 @@ export class OrdersService {
         }
 
         if (isItemEligible) {
+          couponEligibleLines[lineIndex] = true;
           eligibleSubtotalInTx += unitPrice * item.quantity;
         }
       }
@@ -1221,7 +1274,7 @@ export class OrdersService {
           Number(lockedCoupon.discountValue),
         );
       }
-      txDiscount = Math.max(0, txDiscount);
+      txDiscount = Math.max(0, Math.min(eligibleSubtotalInTx, txDiscount));
 
       if (
         lockedCoupon.usageLimitTotal !== null &&
@@ -1269,11 +1322,50 @@ export class OrdersService {
         },
       });
 
-      const shopRate = Number(lockedCoupon.shopFundingRate || 100) / 100;
+      const shopRate = Number(lockedCoupon.shopFundingRate ?? 100) / 100;
       shopFundedAmount = Math.round(txDiscount * shopRate);
       platformFundedAmount = txDiscount - shopFundedAmount;
 
       appliedDiscountAmount = txDiscount;
+    }
+
+    // Each benefit has its own slot. The row lock keeps quota and budget checks atomic.
+    for (const [code, benefitType] of [
+      [dto.platformCouponCode, 'GOODS'],
+      [dto.shippingCouponCode, 'SHIPPING'],
+    ] as const) {
+      if (!code?.trim()) continue;
+      const normalized = code.trim().toUpperCase();
+      if (normalized === dto.couponCode?.trim().toUpperCase() || stackedVouchers.some((v) => v.code === normalized)) {
+        throw new BadRequestException('Mỗi voucher chỉ được dùng một lần trong đơn hàng.');
+      }
+      const found = await tx.coupon.findUnique({ where: { codeNormalized: normalized } });
+      if (!found) throw new ConflictException(`Voucher ${normalized} không tồn tại.`);
+      await tx.$queryRaw`SELECT id FROM coupons WHERE id = ${found.id}::uuid FOR UPDATE`;
+      const voucher = await tx.coupon.findUnique({ where: { id: found.id } });
+      const now = new Date();
+      if (!voucher || voucher.storeId !== store.id || voucher.status !== CouponStatus.ACTIVE || voucher.deletedAt ||
+          (voucher.startsAt && now < voucher.startsAt) || (voucher.expiresAt && now >= voucher.expiresAt) ||
+          voucher.benefitType !== benefitType || voucher.scopeType !== 'STORE_WIDE' ||
+          (benefitType === 'GOODS' && voucher.fundingSource !== 'PLATFORM_FUNDED')) {
+        throw new ConflictException(`Voucher ${normalized} không áp dụng được cho đơn hàng này.`);
+      }
+      if (voucher.minimumOrderAmount && rawSubtotalAmount < Number(voucher.minimumOrderAmount)) {
+        throw new ConflictException('Đơn hàng chưa đạt giá trị tối thiểu của voucher sàn.');
+      }
+      const base = benefitType === 'SHIPPING' ? confirmedShippingFee : Math.max(0, rawSubtotalAmount - appliedDiscountAmount);
+      if (base <= 0) throw new ConflictException('Không có giá trị đủ điều kiện để áp dụng voucher.');
+      let discount = voucher.discountType === 'PERCENTAGE'
+        ? Math.round(base * Number(voucher.discountValue) / 100)
+        : Number(voucher.discountValue);
+      discount = Math.max(0, Math.min(base, discount, voucher.maximumDiscountAmount === null ? Infinity : Number(voucher.maximumDiscountAmount)));
+      if (voucher.usageLimitTotal !== null && voucher.usageCount >= voucher.usageLimitTotal) throw new ConflictException('Voucher đã hết lượt dùng.');
+      if (voucher.budgetTotal !== null && Number(voucher.budgetUsed) + discount > Number(voucher.budgetTotal)) throw new ConflictException('Voucher đã hết ngân sách.');
+      const usedByCustomer = await tx.stackedVoucherRedemption.count({ where: { couponId: voucher.id, customerPhone, status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.PARTIALLY_REFUNDED] } } });
+      if (usedByCustomer >= voucher.usageLimitPerCustomer) throw new ConflictException('Khách hàng đã dùng hết lượt voucher.');
+      await tx.coupon.update({ where: { id: voucher.id }, data: { usageCount: { increment: 1 }, budgetUsed: { increment: discount } } });
+      const shopFunded = Math.round(discount * Number(voucher.shopFundingRate) / 100);
+      stackedVouchers.push({ couponId: voucher.id, benefitType, code: voucher.displayCode, discount, shopFunded, platformFunded: discount - shopFunded });
     }
 
     // 4.2 Nhận diện ứng viên Attribution TRONG TRANSACTION
@@ -1540,16 +1632,16 @@ export class OrdersService {
         where: { userId: attributedCollaboratorId },
         include: { tier: true },
       });
-      if (collabProfile?.tier?.extraBonusPercentage) {
-        extraTierRate = Number(collabProfile.tier.extraBonusPercentage);
-      }
+      extraTierRate = tierBonusByName(collabProfile?.tier?.name);
     }
 
     const subtotalAmount = rawSubtotalAmount;
-    const txDiscountRatio =
-      subtotalAmount > 0
-        ? (subtotalAmount - appliedDiscountAmount) / subtotalAmount
-        : 1;
+    const linePricing = priceVoucherLines(dto.items.map(item => {
+      const product = productMap.get(item.productId)!;
+      const variant = item.variantId ? variantMap.get(item.variantId) : null;
+      return Number(variant?.price ?? product.price) * item.quantity;
+    }), couponEligibleLines, appliedDiscountAmount,
+      stackedVouchers.filter(v => v.benefitType === 'GOODS').reduce((sum, v) => sum + v.discount, 0));
 
     const finalOrderItemsToSave: Array<{
       productId: string;
@@ -1570,14 +1662,9 @@ export class OrdersService {
             storeId: lockedStore.id,
             deletedAt: null,
           },
-          include: { exclusiveDeal: true },
+          include: { exclusiveDeal: true, campaign: true },
         })
       : null;
-    const isOpenOfferLink = Boolean(
-      attributedReferralLink &&
-      !attributedReferralLink.campaignId &&
-      !attributedReferralLink.exclusiveDealId,
-    );
     const approvedExclusiveDeals = attributedCollaboratorId
       ? await tx.exclusiveDealProposal.findMany({
           where: {
@@ -1607,7 +1694,9 @@ export class OrdersService {
       }
     }
 
-    for (const item of dto.items) {
+    const campaignBonusReservations = new Map<string, number>();
+    const campaignLineBonuses = dto.items.map(() => ({ campaignId: null as string | null, campaignBonusRate: 0 }));
+    for (const [lineIndex, item] of dto.items.entries()) {
       const prod = productMap.get(item.productId)!;
       let unitPrice = Number(prod.price);
       if (item.variantId) {
@@ -1617,58 +1706,28 @@ export class OrdersService {
         }
       }
       const quantity = item.quantity;
-      const baseCommissionRate = prod.customCommissionRate
-        ? Number(prod.customCommissionRate)
-        : Number(lockedStore.defaultCommissionRate || 10);
       const approvedExclusiveDeal = currentDealByProduct.get(prod.id);
 
-      let finalCommissionRate = baseCommissionRate + extraTierRate;
-      if (isOpenOfferLink) {
-        // Open Offer dùng đúng mức công khai; tier bonus không làm thay đổi rate offer.
-        finalCommissionRate = baseCommissionRate;
-      }
-      if (
-        attributedReferralLink?.exclusiveDealId &&
-        approvedExclusiveDeal &&
-        approvedExclusiveDeal.productId === prod.id &&
-        attributedReferralLink?.productId === prod.id &&
-        approvedExclusiveDeal.collaboratorId === attributedCollaboratorId &&
-        approvedExclusiveDeal.storeId === lockedStore.id &&
-        approvedExclusiveDeal.approvedCommissionRate !== null
-      ) {
-        // VIP là tỷ lệ cuối cùng đã thỏa thuận, thay thế mức Open Offer.
-        finalCommissionRate = Number(
-          approvedExclusiveDeal.approvedCommissionRate,
-        );
-      }
-      const regularCommissionRate = finalCommissionRate;
-      const matchedLiveSource = item.liveSessionId
-        ? liveSources.find(
-            (session) =>
-              session.id === item.liveSessionId &&
-              session.products.some(
-                (p) =>
-                  p.productId === prod.id &&
-                  (!p.variantId || p.variantId === item.variantId),
-              ),
-          )
+      const tierBonus = Math.min(3, Math.max(0, extraTierRate));
+      const dealBonus = exclusiveDealBonus(
+        approvedExclusiveDeal, prod.id, attributedCollaboratorId, lockedStore.id,
+      );
+      const campaign = attributedReferralLink?.campaign;
+      const campaignBonus = campaignBonusRate(campaign, lockedStore.id);
+      campaignLineBonuses[lineIndex] = { campaignId: campaignBonus && campaign ? campaign.id : null, campaignBonusRate: campaignBonus };
+      const liveSession = item.liveSessionId && liveSessionIds.includes(item.liveSessionId)
+        ? liveSources.find((session) => session.id === item.liveSessionId &&
+            session.products.some((product) => product.productId === prod.id &&
+              (!product.variantId || product.variantId === item.variantId)))
         : null;
-
-      const effectiveLiveSessionRate =
-        couponValidationResult?.sessionCommissionRate !== null &&
-        couponValidationResult?.sessionCommissionRate !== undefined &&
-        couponValidationResult.eligibleProductIds.includes(prod.id)
-          ? Number(couponValidationResult.sessionCommissionRate)
-          : matchedLiveSource?.commissionRate !== null &&
-            matchedLiveSource?.commissionRate !== undefined
-          ? Number(matchedLiveSource.commissionRate)
-          : null;
-
-      if (effectiveLiveSessionRate !== null) {
-        finalCommissionRate = effectiveLiveSessionRate;
+      const liveBonus = liveBonusRate(liveSession);
+      const finalCommissionRate = additiveCommissionRate(tierBonus, dealBonus, campaignBonus, liveBonus);
+      const regularCommissionRate = finalCommissionRate - liveBonus;
+      const netItemSubtotal = linePricing[lineIndex].netGoods;
+      if (campaignBonus && campaign) {
+        campaignBonusReservations.set(campaign.id,
+          (campaignBonusReservations.get(campaign.id) || 0) + netItemSubtotal * campaignBonus / 100);
       }
-      const itemSubtotal = unitPrice * quantity;
-      const netItemSubtotal = itemSubtotal * txDiscountRatio;
       const calculatedCommission =
         netItemSubtotal * (finalCommissionRate / 100);
 
@@ -1679,19 +1738,28 @@ export class OrdersService {
         unitPrice,
         appliedCommissionRate: finalCommissionRate,
         calculatedCommissionAmount: calculatedCommission,
-        regularCommissionRate:
-          effectiveLiveSessionRate !== null ? regularCommissionRate : null,
-        regularCommissionAmount:
-          effectiveLiveSessionRate !== null
-            ? itemSubtotal * (regularCommissionRate / 100)
-            : null,
+        regularCommissionRate: liveBonus ? regularCommissionRate : null,
+        regularCommissionAmount: liveBonus
+          ? netItemSubtotal * (regularCommissionRate / 100)
+          : null,
       });
     }
 
-    const shippingFee = 0;
+    for (const [campaignId, amount] of campaignBonusReservations) {
+      const reserved = await tx.$executeRaw`
+        UPDATE campaigns SET bonus_budget_used = bonus_budget_used + ${amount}
+        WHERE id = ${campaignId}::uuid AND is_active = true
+          AND start_date <= NOW() AND end_date > NOW()
+          AND bonus_budget_total IS NOT NULL
+          AND bonus_budget_used + ${amount} <= bonus_budget_total
+      `;
+      if (reserved !== 1) throw new ConflictException('Ngân sách hoa hồng thưởng của chiến dịch đã hết.');
+    }
+
+    const shippingFee = confirmedShippingFee;
     const orderFinalAmount = Math.max(
       0,
-      subtotalAmount - appliedDiscountAmount + shippingFee,
+      subtotalAmount - appliedDiscountAmount + shippingFee - stackedVouchers.reduce((sum, v) => sum + v.discount, 0),
     );
 
     const rawCancellationToken = randomUUID();
@@ -1765,6 +1833,9 @@ export class OrdersService {
         finalAmount: new Prisma.Decimal(orderFinalAmount),
         rawPayload: {
           liveSessionIds,
+          campaignBonusReservations: Object.fromEntries(campaignBonusReservations),
+          stackedVouchers: stackedVouchers.map(({ code, benefitType, discount, shopFunded, platformFunded }) => ({ code, benefitType, discount, shopFunded, platformFunded })),
+          goodsPricing: dto.items.map((item, index) => ({ productId: item.productId, variantId: item.variantId || null, ...linePricing[index], ...campaignLineBonuses[index] })),
           orderNotes: orderNotes || null,
           paymentMethod,
           paymentStatus: isWallet
@@ -1774,6 +1845,10 @@ export class OrdersService {
               : 'UNPAID',
           vietqr: vietqrData,
           requestHash: currentPayloadHash,
+          ghnDistrictId: shippingQuote?.districtId || null,
+          ghnWardCode: shippingQuote?.wardCode || null,
+          shippingPackage: shippingQuote?.shippingPackage ? { ...shippingQuote.shippingPackage } : null,
+          shippingPackageVersion: shippingQuote?.shippingPackage ? 1 : 0,
         },
         policyAcceptedAt: new Date(),
         policySnapshot: {
@@ -1800,7 +1875,7 @@ export class OrdersService {
         clickedAt: clickedAt || null,
         couponId: couponValidationResult?.couponId || null,
         couponCodeSnapshot: couponValidationResult?.code || null,
-        couponDiscountAmount: appliedDiscountAmount,
+        couponDiscountAmount: appliedDiscountAmount + stackedVouchers.filter((v) => v.benefitType === 'GOODS').reduce((sum, v) => sum + v.discount, 0),
         overrideReason,
         originalAttributionMethod,
         originalCollaboratorId,
@@ -1810,7 +1885,7 @@ export class OrdersService {
         customerId: dto.customerId || null,
         shippingAddress,
         subtotalAmount,
-        discountAmount: appliedDiscountAmount,
+        discountAmount: appliedDiscountAmount + stackedVouchers.reduce((sum, v) => sum + v.discount, 0),
         status: OrderStatus.PENDING,
         orderItems: {
           create: finalOrderItemsToSave.map((item) => ({
@@ -1886,6 +1961,15 @@ export class OrdersService {
           ),
         },
       });
+    }
+
+    for (const voucher of stackedVouchers) {
+      await tx.stackedVoucherRedemption.create({ data: {
+        orderId: order.id, couponId: voucher.couponId, customerPhone,
+        benefitType: voucher.benefitType, status: CouponRedemptionStatus.USED,
+        discountAmount: voucher.discount, shopFundedAmount: voucher.shopFunded,
+        platformFundedAmount: voucher.platformFunded,
+      } });
     }
 
     if (referralLinkId) {
@@ -2044,7 +2128,7 @@ export class OrdersService {
         subtotalAmount,
         discountAmount,
         shippingFee,
-        shippingFeePolicy: 'NATIONWIDE_FREE_SHIPPING',
+        shippingFeePolicy: 'GHN_QUOTED',
         finalAmount,
         paymentMethod: firstRaw.paymentMethod || 'COD',
         paymentStatus: firstRaw.paymentStatus || 'UNPAID',
@@ -2140,6 +2224,7 @@ export class OrdersService {
       subDto: CreateOrderDto;
       subIdempotencyKey: string;
       subPayloadHash: string;
+      shippingQuote: { totalFee: number; districtId: number; wardCode: string; shippingPackage?: ShippingPackage } | null;
     }> = [];
 
     const uuidPattern =
@@ -2232,6 +2317,8 @@ export class OrdersService {
         storeId,
         items: storeItems,
         couponCode: storeCoupon,
+        platformCouponCode: dto.platformCouponsByStore?.[storeId] || dto.platformCouponCode,
+        shippingCouponCode: dto.shippingCouponsByStore?.[storeId] || dto.shippingCouponCode,
         idempotencyKey: subIdempotencyKey,
       };
       const subPayloadHash = computeOrderPayloadHash(
@@ -2239,6 +2326,14 @@ export class OrdersService {
         customerName,
         customerPhone,
         normalizedPaymentMethod,
+      );
+
+      const shippingQuote = await this.quoteCheckoutShipping(
+        shippingAddress,
+        storeItems,
+        storeProdMap,
+        rawSubtotalAmount,
+        storeId,
       );
 
       storeContexts.push({
@@ -2253,6 +2348,7 @@ export class OrdersService {
         subDto,
         subIdempotencyKey,
         subPayloadHash,
+        shippingQuote,
       });
     }
 
@@ -2276,6 +2372,7 @@ export class OrdersService {
               customerPhone,
               customerEmail,
               shippingAddress,
+              shippingQuote: sCtx.shippingQuote,
               orderNotes,
               cleanIdempotencyKey: sCtx.subIdempotencyKey,
               currentPayloadHash: sCtx.subPayloadHash,
@@ -2326,7 +2423,7 @@ export class OrdersService {
       subtotalAmount: Number(res.order.subtotalAmount),
       discountAmount: Number(res.order.discountAmount),
       shippingFee: Number(res.order.shippingFee),
-      shippingFeePolicy: 'NATIONWIDE_FREE_SHIPPING',
+      shippingFeePolicy: 'GHN_QUOTED',
       finalAmount: Number(res.order.finalAmount),
       paymentMethod: normalizedPaymentMethod,
       paymentStatus:
@@ -2384,7 +2481,7 @@ export class OrdersService {
       subtotalAmount,
       discountAmount,
       shippingFee,
-      shippingFeePolicy: 'NATIONWIDE_FREE_SHIPPING',
+      shippingFeePolicy: 'GHN_QUOTED',
       finalAmount,
       paymentMethod: normalizedPaymentMethod,
       paymentStatus: 'UNPAID',
@@ -3050,6 +3147,25 @@ export class OrdersService {
         });
       }
 
+      const stackedRedemptions = await tx.stackedVoucherRedemption.findMany({ where: { orderId, status: CouponRedemptionStatus.USED } });
+      for (const stacked of stackedRedemptions) {
+        await tx.stackedVoucherRedemption.update({ where: { orderId_couponId: { orderId, couponId: stacked.couponId } }, data: { status: CouponRedemptionStatus.CANCELLED } });
+        await tx.coupon.update({ where: { id: stacked.couponId }, data: { usageCount: { decrement: 1 }, budgetUsed: { decrement: stacked.discountAmount } } });
+      }
+
+      const campaignReservations = (order.rawPayload as Record<string, any> | null)?.campaignBonusReservations;
+      if (campaignReservations && typeof campaignReservations === 'object') {
+        for (const [campaignId, rawAmount] of Object.entries(campaignReservations)) {
+          const amount = Number(rawAmount);
+          if (/^[0-9a-f-]{36}$/i.test(campaignId) && Number.isFinite(amount) && amount > 0) {
+            await tx.$executeRaw`
+              UPDATE campaigns SET bonus_budget_used = GREATEST(0, bonus_budget_used - ${amount})
+              WHERE id = ${campaignId}::uuid
+            `;
+          }
+        }
+      }
+
       // 4. Thu hồi hoa hồng (Clawback) của KOL
       if (order.attributedCollaboratorId) {
         for (const comm of order.commissions) {
@@ -3231,6 +3347,12 @@ export class OrdersService {
         subtotalAmount: Number(order.subtotalAmount),
         discountAmount: Number(order.discountAmount),
         finalAmount: Number(order.finalAmount),
+        trackingNumber: (order.rawPayload as Record<string, any> | null)?.ghnOrderCode || (order.rawPayload as Record<string, any> | null)?.trackingNumber || null,
+        carrierName: (order.rawPayload as Record<string, any> | null)?.ghnOrderCode ? 'GHN' :
+          (order.rawPayload as Record<string, any> | null)?.carrierName || (order.rawPayload as Record<string, any> | null)?.shippingCarrier || (order.rawPayload as Record<string, any> | null)?.carrier || null,
+        ghnEnvironment: ['LIVE', 'TEST'].includes((order.rawPayload as Record<string, any> | null)?.ghnEnvironment)
+          ? (order.rawPayload as Record<string, any>).ghnEnvironment
+          : null,
         status: order.status,
         statusLabel,
         statusColor,
@@ -3799,6 +3921,7 @@ export class OrdersService {
           paymentMethod: raw.paymentMethod || 'COD',
           paymentStatus: raw.paymentStatus || 'UNPAID',
           trackingNumber: raw.trackingNumber || raw.ghnOrderCode || null,
+          ghnEnvironment: ['LIVE', 'TEST'].includes(raw.ghnEnvironment) ? raw.ghnEnvironment : null,
           carrierName:
             raw.carrierName ||
             (raw.ghnOrderCode ? 'Giao Hàng Nhanh (GHN)' : null),
@@ -3992,6 +4115,15 @@ export class OrdersService {
 
     const trackingNumber = dto.trackingNumber?.trim();
     const carrierName = dto.carrierName?.trim();
+    if (
+      dto.status === OrderStatus.SHIPPING &&
+      carrierName?.toLowerCase().includes('ghn') &&
+      isGeneratedGhnTestTrackingCode(trackingNumber)
+    ) {
+      throw new BadRequestException(
+        'Mã thử nội bộ không phải vận đơn GHN. Hãy tạo vận đơn GHN thật hoặc nhập mã do GHN cấp.',
+      );
+    }
     if (dto.status === OrderStatus.SHIPPING && !trackingNumber) {
       throw new BadRequestException('Vui lòng nhập mã vận đơn bưu cục');
     }

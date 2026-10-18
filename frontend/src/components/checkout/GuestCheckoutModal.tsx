@@ -56,6 +56,7 @@ import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { CustomSelect } from '../ui/CustomSelect';
 import { resolveSavedShippingAddress } from '@/utils/checkout-address.utils';
 import { walletService, type WalletSummary } from '../../services/wallet.service';
+import { normalizeOrderVariantId } from '../../utils/order-variant.utils';
 
 const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
@@ -172,8 +173,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     return '';
   });
 
-  const [showEmailLogin, setShowEmailLogin] = useState(false);
-  const [loginEmail, setLoginEmail] = useState('');
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -211,16 +212,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
   };
 
-  const handleEmailLoginInCheckout = async (e: React.FormEvent) => {
+  const handlePasswordLoginInCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail.trim() || !loginPassword) {
-      setLoginError('Vui lòng nhập đầy đủ Email và Mật khẩu.');
+    if (!loginIdentifier.trim() || !loginPassword) {
+      setLoginError('Vui lòng nhập email hoặc số điện thoại và mật khẩu.');
       return;
     }
     setIsLoggingIn(true);
     setLoginError(null);
     try {
-      const res: any = await authService.login(loginEmail.trim(), loginPassword);
+      const res: any = await authService.login(loginIdentifier.trim(), loginPassword);
       const user = res?.user || authService.getCurrentUser();
       setCurrentUser(user);
       if (user) {
@@ -304,6 +305,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   });
 
   const [shippingProvinces, setShippingProvinces] = useState<ShippingProvince[]>([]);
+  const [shippingFee, setShippingFee] = useState<number | null>(null);
+  const [shippingFeesByStore, setShippingFeesByStore] = useState<Record<string, number>>({});
+  const [shippingFeeError, setShippingFeeError] = useState<string | null>(null);
+  const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
+  const [shippingQuoteRetry, setShippingQuoteRetry] = useState(0);
   const [provinceCode, setProvinceCode] = useState(() => {
     try {
       const cached = localStorage.getItem('scanms_cached_addresses');
@@ -397,6 +403,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   // Coupons
   const [couponCode, setCouponCode] = useState(initialCouponCode);
+  const [voucherTargetStoreId, setVoucherTargetStoreId] = useState('');
+  const [platformCouponCode, setPlatformCouponCode] = useState('');
+  const [shippingCouponCode, setShippingCouponCode] = useState('');
+  const [appliedPlatformCoupon, setAppliedPlatformCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
+  const [appliedShippingCoupon, setAppliedShippingCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
+  const [stackedCouponBusy, setStackedCouponBusy] = useState<'GOODS' | 'SHIPPING' | null>(null);
   const [autoCouponDismissed, setAutoCouponDismissed] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -544,6 +556,19 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     return Array.from(map.values());
   }, [activeItems]);
 
+  const targetVoucherStoreId = voucherTargetStoreId || itemsGroupedByShop[0]?.store.id || store?.id || '';
+  const targetVoucherSubtotal = itemsGroupedByShop.find((group) => group.store.id === targetVoucherStoreId)?.subtotal || 0;
+  const voucherBasisKey = activeItems.map((item) => `${item.store.id}:${item.productId}:${item.variantId || ''}:${item.quantity}:${item.price}`).join('|') + `:${customerPhone.trim()}`;
+  const previousVoucherBasis = useRef(voucherBasisKey);
+  useEffect(() => {
+    if (previousVoucherBasis.current !== voucherBasisKey) {
+      previousVoucherBasis.current = voucherBasisKey;
+      setAppliedCoupon(null);
+      setAppliedPlatformCoupon(null);
+      setAppliedShippingCoupon(null);
+    }
+  }, [voucherBasisKey]);
+
   const policyStoreIds = useMemo(
     () => Array.from(new Set(itemsGroupedByShop.map((g) => g.store.id).filter(Boolean))).sort().join(','),
     [itemsGroupedByShop],
@@ -577,7 +602,24 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const activeUnitCount = activeItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-  const finalTotal = Math.max(0, rawSubtotal - discountAmount);
+  const finalTotal = Math.max(0, rawSubtotal - discountAmount - (appliedPlatformCoupon?.discountAmount || 0)) + Math.max(0, (shippingFee || 0) - (appliedShippingCoupon?.discountAmount || 0));
+
+  const applyStackedCoupon = async (benefitType: 'GOODS' | 'SHIPPING') => {
+    const code = benefitType === 'GOODS' ? platformCouponCode : shippingCouponCode;
+    if (!code.trim()) return;
+    try {
+      setStackedCouponBusy(benefitType);
+      const response: any = await api.post('/coupons/preview-stacked', {
+        code: code.trim(), storeId: targetVoucherStoreId,
+        benefitType, goodsSubtotal: targetVoucherSubtotal, shippingFee: shippingFeesByStore[targetVoucherStoreId] || 0,
+        shopDiscount: discountAmount, shopCouponCode: appliedCoupon?.code || undefined, customerPhone: customerPhone.trim() || undefined,
+      });
+      const result = response?.data || response;
+      if (benefitType === 'GOODS') setAppliedPlatformCoupon(result);
+      else setAppliedShippingCoupon(result);
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Voucher không hợp lệ.'); }
+    finally { setStackedCouponBusy(null); }
+  };
 
   // Check PayOS Availability
   useEffect(() => {
@@ -710,6 +752,52 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const selectedProvince = shippingProvinces.find((p) => String(p.code) === String(provinceCode));
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(districtCode));
   const selectedWard = selectedDistrict?.wards.find((w) => String(w.code) === String(wardCode));
+  const shippingAddressHint = addressError || (addressLoading ? 'Đang tải danh mục địa chỉ…'
+    : !selectedProvince ? 'Chọn Tỉnh/Thành phố để tính phí ship.'
+    : !selectedDistrict ? 'Chọn Quận/Huyện để tính phí ship.'
+    : !selectedWard ? 'Chọn Phường/Xã để tính phí ship.'
+    : shippingAddress.trim().length < 5 ? 'Bổ sung địa chỉ chi tiết (ít nhất 5 ký tự) để tính phí ship.'
+    : null);
+
+  useEffect(() => {
+    if (!isOpen || !selectedProvince || !selectedDistrict || !selectedWard || shippingAddress.trim().length < 5 || !itemsGroupedByShop.length) {
+      setShippingFee(null);
+      setShippingFeesByStore({});
+      setAppliedShippingCoupon(null);
+      setShippingFeeError(null);
+      setShippingFeeLoading(false);
+      return;
+    }
+    let active = true;
+    const address = [shippingAddress.trim(), selectedWard.name, selectedDistrict.name, selectedProvince.name].join(', ');
+    setShippingFee(null);
+    setShippingFeesByStore({});
+    setAppliedShippingCoupon(null);
+    setShippingFeeError(null);
+    setShippingFeeLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => { void Promise.all(itemsGroupedByShop.map(async (group) => {
+      let response: any;
+      try {
+        response = await api.post('/shipping/ghn/quote-address', {
+          storeId: group.store.id,
+          address,
+          items: group.items.map((item) => ({ productId: item.productId, variantId: normalizeOrderVariantId(item.variantId), quantity: item.quantity })),
+        }, { signal: controller.signal, timeout: 20000 });
+      } catch (error: any) {
+        const detail = error?.response?.data?.message || error?.message;
+        const message = Array.isArray(detail) ? detail.join(' ') : detail;
+        throw new Error(`Chưa tính được phí giao hàng của ${group.store.name || 'gian hàng'}: ${message || 'Vui lòng thử lại sau.'}`);
+      }
+      const quote = response?.data?.data || response?.data || response;
+      if (typeof quote.totalFee !== 'number' || !Number.isFinite(quote.totalFee) || quote.totalFee < 0) throw new Error('Cước GHN không hợp lệ. Vui lòng thử tính lại phí vận chuyển.');
+      return { storeId: group.store.id, fee: Number(quote.totalFee) };
+    }))
+      .then((fees) => { if (active) { setShippingFeesByStore(Object.fromEntries(fees.map((item) => [item.storeId, item.fee]))); setShippingFee(fees.reduce((sum, item) => sum + item.fee, 0)); } })
+      .catch((error: any) => { if (active) setShippingFeeError(error?.message || 'Chưa lấy được cước GHN. Vui lòng thử lại sau.'); })
+      .finally(() => { if (active) setShippingFeeLoading(false); }); }, 350);
+    return () => { active = false; clearTimeout(timer); controller.abort(); };
+  }, [isOpen, shippingAddress, selectedProvince?.name, selectedDistrict?.name, selectedWard?.name, itemsGroupedByShop, shippingQuoteRetry]);
 
   // Remove an address validation message as soon as its field is corrected.
   useEffect(() => {
@@ -963,12 +1051,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setCouponLoading(true);
     setCouponMessage(null);
     try {
-      const targetStoreId = activeItems[0]?.store.id || store?.id || '';
+      const targetStoreId = targetVoucherStoreId;
       const res: any = await api.post('/coupons/validate', {
         code: couponCode.trim(),
         storeId: targetStoreId,
         customerPhone: customerPhone.trim() || undefined,
-        items: activeItems.map((item) => ({
+        items: activeItems.filter((item) => item.store.id === targetStoreId).map((item) => ({
           productId: item.productId,
           variantId: item.variantId,
           quantity: item.quantity,
@@ -976,7 +1064,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         })),
         hasProductDiscount: false,
         hasShopVoucher: false,
-        hasPlatformVoucher: false,
+        hasPlatformVoucher: Boolean(appliedPlatformCoupon),
       });
 
       const data = res?.data || res;
@@ -985,6 +1073,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         discountAmount: Number(data.discountAmount) || 0,
         discountType: data.discountType,
       });
+      setAppliedPlatformCoupon(null);
       setCouponMessage({
         type: 'success',
         text: `Áp dụng thành công! Tiết kiệm ${Number(data.discountAmount).toLocaleString('vi-VN')} ₫.`,
@@ -1004,6 +1093,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setAutoCouponDismissed(true);
     setCouponLoading(false);
     setAppliedCoupon(null);
+    setAppliedPlatformCoupon(null);
     setCouponCode('');
     setCouponMessage(null);
   };
@@ -1016,14 +1106,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     let active = true;
     setCouponLoading(true);
     setAppliedCoupon(null);
+    setAppliedPlatformCoupon(null);
     const timer = window.setTimeout(() => {
       setCouponCode(autoCouponCode);
       setCouponLoading(true);
       void api.post('/coupons/validate', {
         code: autoCouponCode,
-        storeId: activeItems[0]?.store.id || store?.id,
+        storeId: targetVoucherStoreId,
         customerPhone: customerPhone.trim() || undefined,
-        items: activeItems.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, unitPrice: item.price })),
+        items: activeItems.filter((item) => item.store.id === targetVoucherStoreId).map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, unitPrice: item.price })),
         hasProductDiscount: false, hasShopVoucher: false, hasPlatformVoucher: false,
       }).then((response: any) => {
         if (!active) return;
@@ -1105,6 +1196,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
+    if (shippingFee === null || shippingFeeError) {
+      setErrorMessage(shippingFeeError || 'Đang tính cước GHN. Vui lòng đợi trước khi đặt hàng.');
+      return;
+    }
+
     if (policyLoading) {
       setErrorMessage('Đang tải chính sách của gian hàng. Vui lòng chờ một chút rồi thử lại.');
       return;
@@ -1158,7 +1254,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         policyAccepted: true,
         orderNotes: orderNotes.trim() || undefined,
         paymentMethod,
-        couponCode: appliedCoupon?.code || undefined,
+        couponCode: itemsGroupedByShop.length === 1 ? appliedCoupon?.code || undefined : undefined,
+        couponsByStore: appliedCoupon ? { [targetVoucherStoreId]: appliedCoupon.code } : undefined,
+        platformCouponsByStore: appliedPlatformCoupon ? { [targetVoucherStoreId]: appliedPlatformCoupon.code } : undefined,
+        shippingCouponsByStore: appliedShippingCoupon ? { [targetVoucherStoreId]: appliedShippingCoupon.code } : undefined,
+        platformCouponCode: itemsGroupedByShop.length === 1 ? appliedPlatformCoupon?.code || undefined : undefined,
+        shippingCouponCode: itemsGroupedByShop.length === 1 ? appliedShippingCoupon?.code || undefined : undefined,
         idempotencyKey,
         items: normalizedItems,
       };
@@ -1477,23 +1578,26 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setShowEmailLogin(!showEmailLogin)}
+                          onClick={() => setShowPasswordLogin(!showPasswordLogin)}
                           className="px-3.5 py-2.5 bg-white border border-[#EAE4D7] hover:border-[#1A1612] text-[#1A1612] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                           <LogIn className="w-3.5 h-3.5 text-[#7D715E]" />
-                          <span>{showEmailLogin ? 'Đóng đăng nhập Email' : 'Đăng nhập Email'}</span>
+                          <span>{showPasswordLogin ? 'Đóng đăng nhập bằng mật khẩu' : 'Đăng nhập bằng mật khẩu'}</span>
                         </button>
                       </div>
                     </div>
 
-                    {showEmailLogin && (
+                    {showPasswordLogin && (
                       <div className="mt-3.5 p-3.5 bg-white rounded-xl border border-[#EAE4D7] space-y-2.5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <input
-                            type="email"
-                            placeholder="Email tài khoản"
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
+                            type="text"
+                            autoComplete="username"
+                            aria-label="Email hoặc số điện thoại đã đăng ký"
+                            placeholder="Email hoặc số điện thoại"
+                            maxLength={254}
+                            value={loginIdentifier}
+                            onChange={(e) => setLoginIdentifier(e.target.value)}
                             className="px-3 py-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-lg text-xs text-[#1A1612] focus:outline-hidden focus:border-[#C59B58]"
                           />
                           <input
@@ -1511,7 +1615,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           <button
                             type="button"
                             disabled={isLoggingIn}
-                            onClick={handleEmailLoginInCheckout}
+                            onClick={handlePasswordLoginInCheckout}
                             className="px-4 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
                           >
                             {isLoggingIn && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -1817,6 +1921,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         }}
                         className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#C59B58] transition resize-none"
                       />
+                      {shippingAddress.trim().length > 0 && shippingAddress.trim().length < 5 && <p role="status" className="mt-1.5 text-[11px] text-[#795A2D]">Vui lòng bổ sung địa chỉ chi tiết, ít nhất 5 ký tự, để tính phí giao hàng.</p>}
                     </div>
 
                     {/* Hộp tùy chọn Lưu địa chỉ mới vào Sổ địa chỉ */}
@@ -2006,8 +2111,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                             <Truck className="w-4 h-4 text-[#B88E4F]" />
                             Vận Chuyển Nhanh
                           </span>
-                          <span className="text-gray-500">(2-3 ngày)</span>
-                          <span className="font-bold text-[#B88E4F]">Miễn phí toàn quốc</span>
+                          <span className="text-gray-500">Cước GHN được tính theo địa chỉ nhận</span>
                         </div>
                       </div>
 
@@ -2190,16 +2294,19 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             {/* ========================================================================= */}
             <div className="bg-white rounded-lg p-5 sm:p-6 shadow-xs border border-gray-200 text-left space-y-4">
               {/* Voucher sàn SCANMS */}
+              {itemsGroupedByShop.length > 1 && <label className="block text-xs font-semibold text-[#1A1612]">Áp dụng voucher cho gian hàng
+                <select value={targetVoucherStoreId} onChange={(event) => { setVoucherTargetStoreId(event.target.value); setAppliedCoupon(null); setAppliedPlatformCoupon(null); setAppliedShippingCoupon(null); setCouponMessage(null); }} className="block w-full mt-2 border border-[#EAE4D7] rounded-lg p-2 bg-white">{itemsGroupedByShop.map((group) => <option key={group.store.id} value={group.store.id}>{group.store.name}</option>)}</select>
+              </label>}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1A1612]">
                   <Tag className="w-4 h-4 text-[#B88E4F]" />
-                  <span>Voucher của SCANMS</span>
+                  <span>Voucher tiền hàng của Shop / KOL (chọn 1 mã)</span>
                 </div>
 
                 <div className="flex items-center gap-2 max-w-md w-full sm:w-auto">
                   <input
                     type="text"
-                    placeholder="Nhập mã ưu đãi (VD: SCANMS50K)"
+                    placeholder="Nhập mã Shop hoặc KOL (VD: MAIANH5)"
                     value={couponCode}
                     disabled={!!appliedCoupon}
                     onChange={(e) => {
@@ -2248,7 +2355,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               )}
 
               {/* Bảng chi tiết tài chính */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-b border-[#EAE4D7] pb-4">
+                {(['GOODS', 'SHIPPING'] as const).map((kind) => {
+                  const applied = kind === 'GOODS' ? appliedPlatformCoupon : appliedShippingCoupon;
+                  const value = kind === 'GOODS' ? platformCouponCode : shippingCouponCode;
+                  const setValue = kind === 'GOODS' ? setPlatformCouponCode : setShippingCouponCode;
+                  const clear = kind === 'GOODS' ? setAppliedPlatformCoupon : setAppliedShippingCoupon;
+                  return <label key={kind} className="text-xs font-semibold text-[#1A1612]">{kind === 'GOODS' ? 'Voucher tiền hàng SCANMS' : 'Voucher vận chuyển GHN'}
+                    <span className="flex gap-2 mt-2"><input value={value} disabled={!!applied} onChange={(e) => { setValue(e.target.value.toUpperCase()); clear(null); }} placeholder="Nhập mã voucher" className="min-w-0 flex-1 border border-[#EAE4D7] rounded-lg px-3 py-2 uppercase" />
+                      <button type="button" disabled={stackedCouponBusy === kind || !value.trim()} onClick={() => applied ? (clear(null), setValue('')) : applyStackedCoupon(kind)} className="px-3 rounded-lg bg-[#C59B58] text-[#1A1612] disabled:opacity-50">{applied ? 'Bỏ mã' : 'Áp dụng'}</button></span>
+                  </label>;
+                })}
+              </div>
               <div className="flex flex-col items-end space-y-2.5 text-xs text-gray-600 pt-2">
+                {appliedPlatformCoupon && <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto text-[#B88E4F]"><span>Voucher sàn ({appliedPlatformCoupon.code}):</span><span className="font-bold min-w-[130px] text-right">-{formatMoney(appliedPlatformCoupon.discountAmount)}</span></div>}
+                {appliedShippingCoupon && <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto text-[#B88E4F]"><span>Voucher ship ({appliedShippingCoupon.code}):</span><span className="font-bold min-w-[130px] text-right">-{formatMoney(appliedShippingCoupon.discountAmount)}</span></div>}
                 <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto">
                   <span>Tổng tiền hàng ({activeUnitCount} món):</span>
                   <span className="font-semibold text-[#1A1612] min-w-[130px] text-right">{formatMoney(rawSubtotal)}</span>
@@ -2262,14 +2383,17 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 )}
 
                 <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto">
-                  <span>Tổng cộng Tiền phí vận chuyển:</span>
-                  <span className="font-semibold text-emerald-700 min-w-[130px] text-right">Miễn phí toàn quốc</span>
+                  <span>Phí vận chuyển GHN:</span>
+                  <span className="font-semibold text-[#1A1612] min-w-[130px] max-w-[280px] text-right" role="status">
+                    {shippingAddressHint || shippingFeeError || (shippingFeeLoading ? 'Đang tính cước…' : shippingFee === null ? 'Chưa có phí vận chuyển.' : formatMoney(shippingFee))}
+                    {shippingFeeError && !shippingAddressHint && <button type="button" onClick={() => setShippingQuoteRetry(value => value + 1)} className="ml-2 text-[#795A2D] underline underline-offset-2">Tính lại</button>}
+                  </span>
                 </div>
 
                 <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto items-baseline pt-3 border-t border-gray-200">
                   <span className="text-sm font-medium text-gray-800">Tổng thanh toán:</span>
                   <strong className="text-2xl sm:text-3xl font-black text-[#B88E4F] min-w-[150px] text-right">
-                    {formatMoney(finalTotal)}
+                    {shippingFee === null || shippingFeeError || shippingAddressHint ? <span className="text-sm font-semibold">Chờ tính phí ship</span> : formatMoney(finalTotal)}
                   </strong>
                 </div>
               </div>

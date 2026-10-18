@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { BookPickupInput, WarehouseInput } from './return.schemas';
+import { assertShippingPackage } from '../shipping/shipping-package';
 
 export interface PickupBooking {
   provider: 'MOCK' | 'GHN_STAGING';
@@ -17,7 +18,12 @@ export interface PickupBooking {
 export class PickupGateway {
   mode(): 'mock' | 'staging' | 'disabled' {
     if (process.env.RETURN_PICKUP_PROVIDER === 'staging') return 'staging';
-    if (process.env.NODE_ENV !== 'production') return 'mock';
+    // Development is not consent to create simulated bookings. Require opt-in.
+    if (
+      process.env.RETURN_PICKUP_PROVIDER === 'mock' &&
+      process.env.NODE_ENV !== 'production'
+    )
+      return 'mock';
     return 'disabled';
   }
 
@@ -42,8 +48,9 @@ export class PickupGateway {
       };
     }
 
-    const token = process.env.GHN_STAGING_TOKEN;
-    const shopId = process.env.GHN_STAGING_SHOP_ID;
+    // Share the team's GHN TEST configuration; never fall back to LIVE credentials.
+    const token = process.env.GHN_STAGING_TOKEN || process.env.GHN_TEST_API_TOKEN;
+    const shopId = process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID;
     if (!token || !shopId || !/^\d+$/.test(shopId)) {
       throw new ServiceUnavailableException(
         'Chưa cấu hình GHN Staging Token và ShopId ở backend',
@@ -51,6 +58,7 @@ export class PickupGateway {
     }
 
     const { pickup, warehouse } = input;
+    assertShippingPackage(pickup);
     const body = {
       client_order_code: input.clientOrderCode,
       from_name: pickup.name,
@@ -127,8 +135,8 @@ export class PickupGateway {
       throw new ServiceUnavailableException(
         'Chỉ đồng bộ được vận đơn GHN Staging',
       );
-    const token = process.env.GHN_STAGING_TOKEN;
-    const shopId = process.env.GHN_STAGING_SHOP_ID;
+    const token = process.env.GHN_STAGING_TOKEN || process.env.GHN_TEST_API_TOKEN;
+    const shopId = process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID;
     if (!token || !shopId)
       throw new ServiceUnavailableException('Chưa cấu hình GHN Staging');
     try {

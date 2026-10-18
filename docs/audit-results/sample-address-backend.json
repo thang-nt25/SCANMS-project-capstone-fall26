@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-16T17:03:34.219Z",
+  "fixtureOnly": true,
+  "results": [
+    {
+      "name": "Tạo mẫu lưu địa chỉ/tên/SĐT riêng của yêu cầu",
+      "passed": true,
+      "evidence": "Không thay bằng địa chỉ hay SĐT hồ sơ KOL; chuẩn hóa +84"
+    },
+    {
+      "name": "API Shop trả địa chỉ vừa sửa trên cùng yêu cầu",
+      "passed": true,
+      "evidence": "99 Địa Chỉ Vừa Sửa, Phường Một, Quận Một, Tỉnh Một"
+    },
+    {
+      "name": "Chặn ghnDistrictId không hợp lệ khi tạo và sửa",
+      "passed": true,
+      "evidence": "ghnDistrictId=22"
+    },
+    {
+      "name": "Chặn ghnWardCode không hợp lệ khi tạo và sửa",
+      "passed": true,
+      "evidence": "ghnWardCode=222"
+    },
+    {
+      "name": "Chặn recipientPhone không hợp lệ khi tạo và sửa",
+      "passed": true,
+      "evidence": "recipientPhone=1234567891"
+    },
+    {
+      "name": "Chặn recipientPhoneConfirmed không hợp lệ khi tạo và sửa",
+      "passed": true,
+      "evidence": "recipientPhoneConfirmed=false"
+    },
+    {
+      "name": "DTO bắt buộc đủ ba mã GHN",
+      "passed": true,
+      "evidence": "Không thể bỏ ba mã cấp địa chỉ"
+    },
+    {
+      "name": "API chặn tên/địa chỉ chỉ chứa khoảng trắng",
+      "passed": true,
+      "evidence": "Đã chặn trước khi lưu"
+    },
+    {
+      "name": "API bảo đảm địa chỉ hiển thị đủ ba tên cấp GHN",
+      "passed": true,
+      "evidence": "Chặn địa chỉ chỉ có đường dù mã GHN hợp lệ"
+    }
+  ]
+}

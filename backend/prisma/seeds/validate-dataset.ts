@@ -8,6 +8,8 @@ import {
   jsonObject,
 } from './seed.helpers';
 import type { SeedDataset, SeedTable } from './seed.types';
+import { priceVoucherLines } from '../../src/modules/coupons/voucher-pricing';
+import { seedCommissionBreakdown } from './commission.seed';
 
 const equalMoney = (left: number, right: number): boolean =>
   new Prisma.Decimal(left)
@@ -32,6 +34,19 @@ export function validateDataset(data: SeedDataset): void {
   );
   for (const key of Object.keys(data) as SeedTable[]) {
     if (key === 'liveViewers') continue;
+    if (key === 'savedCoupons' || key === 'stackedRedemptions') {
+      const identities =
+        key === 'savedCoupons'
+          ? data.savedCoupons.map((row) => `${row.userId}:${row.couponId}`)
+          : data.stackedRedemptions.map(
+              (row) => `${row.orderId}:${row.couponId}`,
+            );
+      assertSeed(
+        new Set(identities).size === identities.length,
+        `duplicate composite key in ${key}`,
+      );
+      continue;
+    }
     const rows = data[key] as { id?: string }[];
     assertSeed(
       rows.every((row) => typeof row.id === 'string') &&
@@ -41,6 +56,13 @@ export function validateDataset(data: SeedDataset): void {
   }
   const users = new Map(data.users.map((row) => [row.id, row]));
   const stores = new Map(data.stores.map((row) => [row.id, row]));
+  assertSeed(data.sponsoredPlacements.length === 2, 'expected two free sponsored test placements');
+  for (const placement of data.sponsoredPlacements) {
+    assertSeed(stores.has(placement.storeId) && placement.status === 'APPROVED' &&
+      placement.fundingType === 'PLATFORM_GRANT' && amount(placement.amount) === 0 &&
+      !placement.paymentReference && !placement.paymentProofUrl && placement.headline.startsWith('[TEST]'),
+    'sponsored fixtures must be free, explicitly labeled test grants');
+  }
   const products = new Map(data.products.map((row) => [row.id, row]));
   const variants = new Map(data.variants.map((row) => [row.id, row]));
   const orders = new Map(data.orders.map((row) => [row.id, row]));
@@ -48,6 +70,39 @@ export function validateDataset(data: SeedDataset): void {
   const sampleCounts = new Map<string, number>();
   const date = (value: Date | string | null | undefined): number =>
     value ? new Date(value).getTime() : NaN;
+
+  for (const session of data.liveSessions) {
+    const productsInSession = data.liveProducts.filter(
+      (row) => row.sessionId === session.id,
+    );
+    const pinnedId = jsonObject(session.governance).pinnedProductId;
+    assertSeed(
+      typeof pinnedId === 'string' &&
+        productsInSession.some((row) => row.productId === pinnedId),
+      'live pin must belong to its session',
+    );
+    assertSeed(
+      productsInSession.every(
+        (row) =>
+          products.get(row.productId)?.storeId === session.storeId &&
+          variants.get(row.variantId!)?.productId === row.productId,
+      ),
+      'live product/variant must belong to its shop',
+    );
+    assertSeed(
+      date(session.startsAt) < date(session.endsAt),
+      'invalid live time window',
+    );
+    assertSeed(
+      [2, 3].includes(amount(session.commissionRate)),
+      'live commission must store bonus 2 or 3, not total rate',
+    );
+    if (session.status === 'LIVE')
+      assertSeed(
+        !data.liveViewers.some((row) => row.sessionId === session.id),
+        'active seed live must not fabricate current viewers',
+      );
+  }
 
   data.tiers.forEach((tier, index) =>
     assertSeed(
@@ -68,6 +123,54 @@ export function validateDataset(data: SeedDataset): void {
     assertSeed(
       data.products.filter((row) => row.storeId === store.id).length === 2,
       'each shop needs two products',
+    );
+    const onboarding = jsonObject(store.onboardingData);
+    const warehouse = jsonObject(store.returnWarehouse);
+    assertSeed(
+      store.isVerified &&
+        store.onboardingStatus === 'VERIFIED' &&
+        store.logoUrl &&
+        store.policyReturn &&
+        store.policyWarranty &&
+        onboarding.businessType === 'ENTERPRISE' &&
+        onboarding.contactPhone &&
+        onboarding.warehouseAddress &&
+        onboarding.payoutBankAccountNumber &&
+        ['MB', 'Vietcombank'].includes(String(onboarding.payoutBankName)) &&
+        warehouse.address &&
+        warehouse.provinceName &&
+        warehouse.districtName &&
+        warehouse.wardName,
+      'shop legal/warehouse/policy/bank fixture incomplete',
+    );
+  }
+  for (const profile of data.profiles) {
+    const channels = data.socialChannels.filter(
+      (row) => row.collaboratorId === profile.userId,
+    );
+    assertSeed(
+      users.get(profile.userId)?.role === 'COLLABORATOR' &&
+        profile.avatarUrl &&
+        profile.kycStatus === 'VERIFIED' &&
+        profile.bankAccountNumber &&
+        channels.length >= 1 &&
+        channels.length <= 2 &&
+        channels.filter((row) => row.isPrimary).length === 1 &&
+        channels.every(
+          (row) =>
+            (row.followerCount ?? 0) >= 15_000 &&
+            (row.followerCount ?? 0) <= 450_000,
+        ),
+      'creator profile/channel/bank fixture incomplete',
+    );
+  }
+  for (const customer of data.users.filter((row) => row.role === 'CUSTOMER')) {
+    const purchases = data.orders.filter(
+      (row) => row.customerId === customer.id,
+    );
+    assertSeed(
+      purchases.length >= 1 && purchases.length <= 2,
+      'customer order distribution mismatch',
     );
   }
   for (const user of data.users.filter((row) =>
@@ -131,6 +234,47 @@ export function validateDataset(data: SeedDataset): void {
       'order ownership missing',
     );
     const items = data.orderItems.filter((row) => row.orderId === order.id);
+    const primary = data.redemptions.find((row) => row.orderId === order.id);
+    const stacked = data.stackedRedemptions.filter(
+      (row) => row.orderId === order.id,
+    );
+    assertSeed(
+      stacked.filter((row) => row.benefitType === 'GOODS').length <= 1 &&
+        stacked.filter((row) => row.benefitType === 'SHIPPING').length <= 1,
+      'only one platform goods and one shipping voucher per order',
+    );
+    const platformGoods = stacked
+      .filter((row) => row.benefitType === 'GOODS')
+      .reduce((sum, row) => sum + amount(row.discountAmount), 0);
+    const shippingDiscount = stacked
+      .filter((row) => row.benefitType === 'SHIPPING')
+      .reduce((sum, row) => sum + amount(row.discountAmount), 0);
+    const goodsDiscount = amount(primary?.discountAmount) + platformGoods;
+    assertSeed(
+      equalMoney(amount(order.couponDiscountAmount), goodsDiscount) &&
+        equalMoney(
+          amount(order.discountAmount),
+          goodsDiscount + shippingDiscount,
+        ) &&
+        shippingDiscount <= amount(order.shippingFee),
+      'goods/shipping voucher totals mismatch',
+    );
+    const payload = jsonObject(order.rawPayload);
+    assertSeed(
+      Number.isFinite(amount(order.shippingFee)) &&
+        amount(order.shippingFee) >= 0 &&
+        (payload.shippingFeeSource === 'GHN_SANDBOX_EXPORT' ||
+          (payload.shippingFeeSource === 'SYNTHETIC_DEMO' &&
+            payload.ghnIsReal === false &&
+            payload.ghnTotalFee === null)),
+      'shipping fee/source must not fabricate a GHN quote',
+    );
+    const pricing = priceVoucherLines(
+      items.map((row) => row.quantity * amount(row.unitPrice)),
+      items.map(() => true),
+      amount(primary?.discountAmount),
+      platformGoods,
+    );
     const subtotal = items.reduce(
       (sum, row) => sum + row.quantity * amount(row.unitPrice),
       0,
@@ -151,17 +295,38 @@ export function validateDataset(data: SeedDataset): void {
       ),
       'order total mismatch',
     );
-    for (const item of items) {
+    for (const [itemIndex, item] of items.entries()) {
       assertSeed(
         products.get(item.productId)?.storeId === order.storeId &&
           variants.get(item.variantId!)?.productId === item.productId,
         'cross-shop order item or stale variant',
       );
       const rate = amount(item.appliedCommissionRate);
-      const netSubtotal =
-        item.quantity *
-        amount(item.unitPrice) *
-        (1 - amount(order.discountAmount) / subtotal);
+      const netSubtotal = pricing[itemIndex].netGoods;
+      const snapshots = payload.commissionBreakdown as Record<
+        string,
+        unknown
+      >[];
+      const snapshot = snapshots?.find(
+        (row) => row.productId === item.productId,
+      );
+      const expected = seedCommissionBreakdown(data, {
+        productId: item.productId,
+        collaboratorId: order.attributedCollaboratorId!,
+        storeId: order.storeId,
+        referralLinkId: order.referralLinkId!,
+        liveSessionId:
+          typeof snapshot?.liveSessionId === 'string'
+            ? snapshot.liveSessionId
+            : undefined,
+        at: new Date(order.createdAt!),
+      });
+      assertSeed(
+        rate === expected.rate &&
+          snapshot?.rate === rate &&
+          equalMoney(Number(snapshot?.netGoods), netSubtotal),
+        'additive commission snapshot mismatch',
+      );
       assertSeed(
         rate >= 0 &&
           rate <= 25 &&
@@ -203,6 +368,13 @@ export function validateDataset(data: SeedDataset): void {
       date(review.createdAt) >= date(order.completedAt),
       'review predates completed purchase',
     );
+    assertSeed(
+      review.rating === 5 &&
+        Boolean(review.comment?.trim()) &&
+        Array.isArray(review.images) &&
+        review.images.length > 0,
+      'review must include five stars, text and feedback image',
+    );
   }
   for (const commission of data.commissions) {
     const order = orders.get(commission.orderId)!;
@@ -221,11 +393,14 @@ export function validateDataset(data: SeedDataset): void {
       );
   }
   for (const coupon of data.coupons) {
-    const redemptions = data.redemptions.filter(
-      (row) => row.couponId === coupon.id,
-    );
+    const redemptions = [
+      ...data.redemptions,
+      ...data.stackedRedemptions,
+    ].filter((row) => row.couponId === coupon.id);
     assertSeed(
-      !coupon.stackableWithShopVoucher,
+      !coupon.stackableWithShopVoucher ||
+        (coupon.fundingSource === 'PLATFORM_FUNDED' &&
+          coupon.benefitType === 'GOODS'),
       'two shop merchandise vouchers cannot stack',
     );
     assertSeed(
@@ -244,7 +419,56 @@ export function validateDataset(data: SeedDataset): void {
       'coupon overspends its budget',
     );
   }
+  for (const campaign of data.campaigns) {
+    const reserved = data.orders.reduce(
+      (sum, order) =>
+        sum +
+        Number(
+          jsonObject(jsonObject(order.rawPayload).campaignBonusReservations)[
+            campaign.id!
+          ] ?? 0,
+        ),
+      0,
+    );
+    assertSeed(
+      equalMoney(amount(campaign.bonusBudgetUsed), reserved) &&
+        amount(campaign.bonusBudgetUsed) <= amount(campaign.bonusBudgetTotal),
+      'campaign bonus budget mismatch',
+    );
+  }
+  for (const row of data.stackedRedemptions) {
+    const coupon = coupons.get(row.couponId);
+    const order = orders.get(row.orderId);
+    assertSeed(
+      coupon &&
+        order &&
+        coupon.storeId === order.storeId &&
+        coupon.benefitType === row.benefitType &&
+        coupon.fundingSource === 'PLATFORM_FUNDED' &&
+        amount(row.shopFundedAmount) === 0 &&
+        equalMoney(
+          amount(row.discountAmount),
+          amount(row.platformFundedAmount),
+        ) &&
+        row.status === (order.status === 'PENDING' ? 'RESERVED' : 'USED'),
+      'invalid stacked voucher ownership/funding/status',
+    );
+  }
+  for (const row of data.savedCoupons)
+    assertSeed(
+      users.get(row.userId)?.role === 'CUSTOMER' && coupons.has(row.couponId),
+      'invalid saved coupon ownership',
+    );
   for (const sample of data.samples) {
+    const address = data.addresses.find(
+      (row) => row.userId === sample.collaboratorId && row.isDefault,
+    );
+    assertSeed(
+      sample.ghnProvinceId === Number(address?.provinceCode) &&
+        sample.ghnDistrictId === Number(address?.districtCode) &&
+        sample.ghnWardCode === address?.wardCode,
+      'sample GHN address snapshot mismatch',
+    );
     assertSeed(
       variants.get(sample.productVariantId!)?.productId === sample.productId,
       'sample variant/product mismatch',
@@ -271,6 +495,28 @@ export function validateDataset(data: SeedDataset): void {
         (sampleCounts.get(sample.productId) ?? 0) + 1,
       );
   }
+  for (const charge of data.sampleShippingCharges) {
+    const sample = data.samples.find(
+      (row) => row.id === charge.sampleRequestId,
+    );
+    assertSeed(
+      sample &&
+        sample.status !== 'PENDING' &&
+        charge.trackingNumber === sample.trackingNumber &&
+        charge.storeId === products.get(sample.productId)?.storeId &&
+        charge.environment === 'TEST' &&
+        charge.payer === 'SHOP' &&
+        charge.codAmount === 0 &&
+        charge.amount == null &&
+        charge.status === 'PENDING_CONFIRMATION',
+      'sample freight must remain unconfirmed, shop-paid and test-only',
+    );
+  }
+  assertSeed(
+    data.sampleShippingCharges.length ===
+      data.samples.filter((row) => row.status !== 'PENDING').length,
+    'sample shipping charge count mismatch',
+  );
   for (const product of data.products)
     assertSeed(
       product.sampleGrantedCount === (sampleCounts.get(product.id!) ?? 0) &&
@@ -301,7 +547,26 @@ export function validateDataset(data: SeedDataset): void {
         message.senderId === conversation.collaboratorId,
       'chat sender outside conversation',
     );
+    const notification = data.notifications.find(
+      (row) => row.id === message.id && row.type === 'CHAT_MESSAGE',
+    );
+    const recipientId =
+      message.senderId === ownerId
+        ? conversation.customerId || conversation.collaboratorId
+        : ownerId;
+    const payload = jsonObject(notification?.data);
+    assertSeed(
+      notification?.userId === recipientId &&
+        notification?.isRead === (message.isRead ?? false) &&
+        payload.messageId === message.id &&
+        payload.conversationId === conversation.id &&
+        payload.senderId === message.senderId &&
+        payload.storeId === conversation.storeId,
+      'chat notification identity/recipient/read-state mismatch',
+    );
   }
+  for (const notification of data.notifications)
+    assertSeed(users.has(notification.userId), 'notification user missing');
   for (const link of data.referralLinks)
     assertSeed(
       products.get(link.productId)?.storeId === link.storeId &&

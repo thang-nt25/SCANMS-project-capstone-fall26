@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useLayoutEffect, type FormEvent, type TextareaHTMLAttributes } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   PlusCircle,
@@ -24,6 +24,7 @@ import {
   ExternalLink,
   MessageSquareText,
   Clock3,
+  ChevronDown,
   ShieldCheck,
   EyeOff,
   Ban,
@@ -33,6 +34,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
+import { productPackageInput } from '../../utils/product-package.utils';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -298,6 +300,10 @@ const getDefaultSpecsForCategory = (cat: string): ProductSpecificationItem[] => 
 
 export default function ProductManagementPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [returnToDashboard, setReturnToDashboard] = useState(
+    () => searchParams.get('returnTo') === 'dashboard',
+  );
   const currentUser = authService.getCurrentUser();
   const isKol = !currentUser?.role || currentUser?.role === 'COLLABORATOR';
   const isAdminOrManager =
@@ -387,6 +393,9 @@ export default function ProductManagementPage() {
 
   const [selectedVideoProduct, setSelectedVideoProduct] = useState<Product | null>(null);
   const [productVideos, setProductVideos] = useState<any[]>([]);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  useEffect(() => { setActiveVideoId(null); }, [selectedVideoProduct?.id]);
+  const activeReviewVideo = productVideos.find(video => video.id === activeVideoId) || productVideos[0];
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [reviewingMediaId, setReviewingMediaId] = useState<string | null>(null);
   const [rejectionModalMedia, setRejectionModalMedia] = useState<any | null>(null);
@@ -599,6 +608,7 @@ export default function ProductManagementPage() {
   ];
 
   const [formSku, setFormSku] = useState('');
+  const [formBarcode, setFormBarcode] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formCustomCategory, setFormCustomCategory] = useState('');
@@ -616,10 +626,10 @@ export default function ProductManagementPage() {
   const [formCommissionAmount, setFormCommissionAmount] = useState<number | ''>('');
   const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(false);
   const [formStock, setFormStock] = useState<number | ''>('');
-  const [formPackageWeight, setFormPackageWeight] = useState<number | ''>(250);
-  const [formPackageLength, setFormPackageLength] = useState<number | ''>(15);
-  const [formPackageWidth, setFormPackageWidth] = useState<number | ''>(10);
-  const [formPackageHeight, setFormPackageHeight] = useState<number | ''>(5);
+  const [formPackageWeight, setFormPackageWeight] = useState<number | ''>('');
+  const [formPackageLength, setFormPackageLength] = useState<number | ''>('');
+  const [formPackageWidth, setFormPackageWidth] = useState<number | ''>('');
+  const [formPackageHeight, setFormPackageHeight] = useState<number | ''>('');
   const [formSampleEnabled, setFormSampleEnabled] = useState(false);
   const [formSampleQuota, setFormSampleQuota] = useState<number | ''>('');
   const [formSpecifications, setFormSpecifications] = useState<ProductSpecificationItem[]>([
@@ -942,6 +952,7 @@ export default function ProductManagementPage() {
     setEditingProduct(null);
     setFormSku('PROD-' + Math.random().toString(36).substring(2, 7).toUpperCase());
     setFormTitle('');
+    setFormBarcode('');
     setFormCategory('');
     setFormCustomCategory('');
     setFormDescription('');
@@ -958,10 +969,10 @@ export default function ProductManagementPage() {
     setFormCommissionAmount('');
     setFormAffiliateEnabled(true);
     setFormStock('');
-    setFormPackageWeight(250);
-    setFormPackageLength(15);
-    setFormPackageWidth(10);
-    setFormPackageHeight(5);
+    setFormPackageWeight('');
+    setFormPackageLength('');
+    setFormPackageWidth('');
+    setFormPackageHeight('');
     setFormSampleEnabled(false);
     setFormSampleQuota('');
     setFormSpecifications(getDefaultSpecsForCategory(''));
@@ -973,10 +984,33 @@ export default function ProductManagementPage() {
     setShowModal(true);
   };
 
+  const closeProductModal = () => {
+    setShowModal(false);
+    if (returnToDashboard) {
+      setReturnToDashboard(false);
+      navigate('/merchant/dashboard', { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    const shouldReturnToDashboard = searchParams.get('returnTo') === 'dashboard';
+    const shouldOpenCreate = searchParams.get('create') === '1' && !isKol;
+    if (shouldReturnToDashboard) setReturnToDashboard(true);
+    if (shouldOpenCreate) openCreateModal();
+    if (!searchParams.has('create') && !searchParams.has('returnTo')) return;
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete('create');
+      next.delete('returnTo');
+      return next;
+    }, { replace: true });
+  }, [searchParams, isKol, setSearchParams]);
+
   const openEditModal = (p: any) => {
     setSaveError(null);
     setEditingProduct(p);
     setFormSku(p.sku || '');
+    setFormBarcode(p.barcode || '');
     setFormTitle(p.title || p.name);
     setVariantOptionLists({});
     const matchedCat = STANDARD_CATEGORIES.find((c) => c.name === (p.categoryName || p.category));
@@ -1003,10 +1037,10 @@ export default function ProductManagementPage() {
     setFormCommissionAmount(currentPrice > 0 ? Math.round((currentPrice * 10) / 100) : '');
     setFormAffiliateEnabled(p.isAffiliateEnabled !== false);
     setFormStock(p.stockQuantity ?? p.stock ?? 0);
-    setFormPackageWeight(p.packageWeight || p.weight || 250);
-    setFormPackageLength(p.packageLength || p.length || 15);
-    setFormPackageWidth(p.packageWidth || p.width || 10);
-    setFormPackageHeight(p.packageHeight || p.height || 5);
+    setFormPackageWeight(p.packageWeight ?? '');
+    setFormPackageLength(p.packageLength ?? '');
+    setFormPackageWidth(p.packageWidth ?? '');
+    setFormPackageHeight(p.packageHeight ?? '');
     setFormSampleEnabled(p.sampleEnabled === true);
     setFormSampleQuota(Number(p.sampleQuota) || 0);
     setVariantSamplePolicies(Object.fromEntries(
@@ -1242,6 +1276,15 @@ export default function ProductManagementPage() {
     if (savingProduct) return;
     setSaveError(null);
 
+    let packageData: ReturnType<typeof productPackageInput>;
+    try {
+      packageData = productPackageInput({ barcode: formBarcode, packageWeight: formPackageWeight,
+        packageLength: formPackageLength, packageWidth: formPackageWidth, packageHeight: formPackageHeight }, editingProduct);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Thông số đóng gói không hợp lệ.');
+      return;
+    }
+
     if (!editingProduct) {
       const issues: string[] = [];
       if (!formCategory.trim()) issues.push('Chọn danh mục sản phẩm.');
@@ -1396,14 +1439,12 @@ export default function ProductManagementPage() {
         : formCategory;
 
     const validSpecs = [...formSpecifications.filter((s) => s.key.trim() && s.value.trim())];
-    if (formPackageWeight && !validSpecs.some((s) => s.key.includes('Khối lượng'))) {
-      validSpecs.push({ id: 'pkg-weight', key: 'Khối lượng đóng gói', value: `${formPackageWeight} g` });
-    }
-    if (formPackageLength && formPackageWidth && formPackageHeight && !validSpecs.some((s) => s.key.includes('Kích thước'))) {
-      validSpecs.push({ id: 'pkg-dim', key: 'Kích thước kiện hàng (DxRxC)', value: `${formPackageLength} x ${formPackageWidth} x ${formPackageHeight} cm` });
-    }
     let combinedDescription = formDescription.trim();
-    if (validSpecs.length > 0 && !combinedDescription.includes('📌 THÔNG SỐ KỸ THUẬT:')) {
+    const descriptionInputsChanged = !editingProduct ||
+      combinedDescription !== (editingProduct.description || '').trim() ||
+      formSpecifications.some(spec => spec.key.trim() && spec.value.trim());
+    // Changing sample policy must not silently rewrite approved product content.
+    if (descriptionInputsChanged && validSpecs.length > 0 && !/📌 THÔNG SỐ KỸ THUẬT(?: SẢN PHẨM)?:/.test(combinedDescription)) {
       const specsBlock = `📌 THÔNG SỐ KỸ THUẬT SẢN PHẨM:\n` +
         validSpecs.map((s) => `• ${s.key.trim()}: ${s.value.trim()}`).join('\n') +
         `\n\n`;
@@ -1414,6 +1455,7 @@ export default function ProductManagementPage() {
     try {
       if (editingProduct) {
         const productUpdate = await productService.updateProduct(editingProduct.id, {
+          ...packageData,
           title: formTitle.trim(),
           categoryName: effectiveCategory,
           description: combinedDescription || undefined,
@@ -1446,6 +1488,7 @@ export default function ProductManagementPage() {
           : 'Cập nhật sản phẩm & hoa hồng thành công!');
       } else {
         const created = await productService.createProduct({
+          ...packageData,
           storeId: currentStoreId,
           sku: formSku.trim().toUpperCase(),
           title: formTitle.trim(),
@@ -1473,7 +1516,7 @@ export default function ProductManagementPage() {
         showToast('Đã thêm sản phẩm mới vào danh mục gian hàng!');
       }
       setSaveError(null);
-      setShowModal(false);
+      closeProductModal();
       loadProducts();
     } catch (err: any) {
       const message = err?.response?.data?.message || err?.message || 'Lỗi khi lưu sản phẩm.';
@@ -1497,7 +1540,7 @@ export default function ProductManagementPage() {
             title: 'Serum Vitamin C 15% Dưỡng Sáng Đều Màu Da',
             category: 'Chăm sóc da',
             price: 459000,
-            commissionRate: 8,
+            commissionRate: 10,
             stockQuantity: 120,
             status: 'active',
             images: ['/assets/products/real/vitamin-c-15-serum.jpg'],
@@ -1519,7 +1562,7 @@ export default function ProductManagementPage() {
             title: 'Gel Rửa Mặt Tràm Trà Trị Mụn Dịu Nhẹ',
             category: 'Làm sạch',
             price: 219000,
-            commissionRate: 12,
+            commissionRate: 10,
             stockQuantity: 0,
             status: 'out_of_stock',
             images: ['/assets/products/real/tea-tree-cleanser.jpg'],
@@ -1530,7 +1573,7 @@ export default function ProductManagementPage() {
             title: 'Toner BHA 2% Thu Nhỏ Lỗ Chân Lông & Tẩy Tế Bào Chết',
             category: 'Toner & Nước hoa hồng',
             price: 349000,
-            commissionRate: 7,
+            commissionRate: 10,
             stockQuantity: 45,
             status: 'active',
             images: ['/assets/products/real/bha-toner-2pct.png'],
@@ -1541,7 +1584,7 @@ export default function ProductManagementPage() {
             title: 'Mặt Nạ Cấp Ẩm Chuyên Sâu Hyaluronic Acid 5X',
             category: 'Mặt nạ',
             price: 199000,
-            commissionRate: 15,
+            commissionRate: 10,
             stockQuantity: 15,
             status: 'paused',
             images: ['/assets/products/real/centella-sheet-mask.jpg'],
@@ -1780,7 +1823,7 @@ export default function ProductManagementPage() {
               </TableHead>
               <TableHead>Sản phẩm</TableHead>
               <TableHead>Giá bán</TableHead>
-              <TableHead>Hoa hồng</TableHead>
+              <TableHead>Hoa hồng nền</TableHead>
               <TableHead>Tồn kho</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
@@ -1791,7 +1834,7 @@ export default function ProductManagementPage() {
               const title = p.title || p.name;
               const sku = p.sku || 'SKU';
               const price = p.price || 0;
-              const rate = p.customCommissionRate ?? p.commissionRate ?? 10;
+              const rate = 10;
               const stock = p.stockQuantity ?? p.stock ?? 0;
               const img = getSafeProductImageUrl(p.imageUrl || p.images?.[0] || p.image, title, p.categoryName);
               const status =
@@ -2004,17 +2047,16 @@ export default function ProductManagementPage() {
 
       <Modal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={closeProductModal}
         icon={<Package className="h-4 w-4" />}
         title={editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
-        subtitle="Hoàn thiện thông tin và gửi kiểm duyệt."
         maxWidth="full"
         stickyHeader
-        className="!max-w-[min(96vw,1440px)] !w-[min(96vw,1440px)] max-h-[min(92dvh,920px)] rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+        className="!max-w-[min(92vw,1200px)] !w-[min(92vw,1200px)] max-h-[min(88dvh,820px)] rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
         footer={(<div className="product-editor-actions flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => setShowModal(false)}
+              onClick={closeProductModal}
               className="px-4 py-2 rounded-xl text-xs font-bold text-[#7D715E] bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
             >
               Hủy bỏ
@@ -2480,6 +2522,14 @@ export default function ProductManagementPage() {
                   </div>
                 </div>
 
+                <div className="mt-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+                  <label htmlFor="product-ean13" className="mb-1.5 block text-xs font-semibold text-[#1A1612]">Barcode EAN-13 {!editingProduct && '*'}</label>
+                  <input id="product-ean13" value={formBarcode} inputMode="numeric" maxLength={13}
+                    onChange={(event) => setFormBarcode(event.target.value.replace(/\D/g, ''))}
+                    placeholder="13 chữ số trên bao bì" required={!editingProduct}
+                    className="h-10 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] outline-none focus:border-[#B88E4F]" />
+                  <p className="mt-1 text-xs text-[#7D715E]">Dữ liệu đóng gói bên dưới được lưu riêng và dùng để báo giá GHN. Không tự điền số đo mẫu.</p>
+                </div>
                 {/* 4 ô Đóng gói & Vận chuyển (GHN / GHTK) */}
                 <div id="product-section-shipping" className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 mb-3.5">
                   <div className="flex items-center border-b border-[#EAE4D7] pb-2 mb-2.5">
@@ -3273,7 +3323,18 @@ export default function ProductManagementPage() {
                   </p>
                 </div>
               ) : (
-                productVideos.map((v: any) => {
+                <div className="kol-video-workspace">
+                  <nav className="kol-video-picker" aria-label="Danh sách video cần xem">
+                    <p className="kol-video-picker-count"><span>Danh sách video</span><strong>{productVideos.length}</strong></p>
+                    {productVideos.map((video: any, index: number) => (
+                      <button key={video.id} type="button" className="kol-video-picker-item" data-status={video.status} aria-pressed={activeReviewVideo?.id === video.id} onClick={() => setActiveVideoId(video.id)}>
+                        <span className="kol-video-picker-thumb">{video.posterUrl ? <img src={video.posterUrl} alt="" /> : <Video size={18} />}<span>{index + 1}</span></span>
+                        <span className="kol-video-picker-text"><strong>{video.title || 'Video review sản phẩm'}</strong><span>{video.collaborator?.fullName || 'Nhà sáng tạo'}</span><small>{({ PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối', HIDDEN: 'Đã ẩn' } as Record<string, string>)[video.status] || video.status}{video.isFeatured ? ' · Đã ghim' : ''}</small></span>
+                      </button>
+                    ))}
+                  </nav>
+                  <div className="kol-video-selected">
+                {[activeReviewVideo].filter(Boolean).map((v: any) => {
                   const isPending = v.status === 'PENDING';
                   const isApproved = v.status === 'APPROVED';
                   const isRejected = v.status === 'REJECTED';
@@ -3316,6 +3377,7 @@ export default function ProductManagementPage() {
                           )}
                         </div>
 
+                        <details className="kol-video-details"><summary>Thông tin video & sản phẩm</summary>
                         <div className="kol-video-metadata text-[11px] text-[#7D715E]">
                           <p>KOL: <strong>{v.collaborator?.fullName || 'Nhà sáng tạo'}</strong></p>
                           <p>
@@ -3340,6 +3402,7 @@ export default function ProductManagementPage() {
                             {v.caption}
                           </p>
                         )}
+                        </details>
 
                         {v.rejectionReason && (
                           <p className="text-[11px] text-rose-600 font-semibold m-0">
@@ -3417,7 +3480,9 @@ export default function ProductManagementPage() {
                       </div>
                     </article>
                   );
-                })
+                })}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -3590,20 +3655,17 @@ export default function ProductManagementPage() {
                   return filtered.map((review) => {
                     const currentStatus = getReviewStatus(review);
                     return (
-                      <article
+                      <details
                         key={review.id}
-                        className="customer-review-card grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_112px] gap-5 p-3.5 min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-none"
+className="customer-review-card grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_112px] gap-5 p-3.5 min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-none"
                       >
-                        <div className="min-w-0 flex-1">
+                        <summary className="customer-review-row">
+                          <span className="customer-review-avatar" aria-hidden="true">{(review.customerName || 'Khách hàng').trim().split(/\s+/).filter(Boolean).slice(-2).map((part: string) => part[0]).join('').toUpperCase()}</span>
                           <div className="customer-review-card-heading flex flex-wrap items-center gap-x-2.5 gap-y-2">
                             <strong className="min-w-0 text-sm font-semibold leading-snug text-[#1A1612]">
                               {review.product?.title || 'Sản phẩm'}
                             </strong>
-                            {review.product?.sku && (
-                              <span className="rounded-md bg-[#FAF8F5] px-1.5 py-0.5 text-[11px] text-[#7D715E] font-mono">
-                                ({review.product.sku})
-                              </span>
-                            )}
+                            <span className="customer-review-row-meta"><span>{review.customerName || 'Khách hàng ẩn danh'}</span>{review.product?.sku && <span className="customer-review-row-sku">{review.product.sku}</span>}</span>
                             <span className="customer-review-rating" aria-label={`${review.rating || 5} trên 5 sao`}>
                               {Array.from({length: Math.max(1, Math.min(5, review.rating || 5))}, (_, index) => <Star key={index} className="h-3 w-3 fill-current" aria-hidden="true" />)}
                             </span>
@@ -3612,7 +3674,9 @@ export default function ProductManagementPage() {
                             {currentStatus === 'HIDDEN' && <Badge variant="neutral" className="customer-review-status">Đã ẩn</Badge>}
                             {currentStatus === 'PENDING' && <Badge variant="neutral" className="customer-review-status"><Clock3 className="h-3 w-3 text-[#B88E4F]" />Chờ duyệt</Badge>}
                           </div>
-
+                          <ChevronDown className="customer-review-chevron" size={15} aria-hidden="true" />
+                        </summary>
+                        <div className="customer-review-expanded-body">
                           <p className="customer-review-comment">
                             {review.comment || 'Khách không để lại nội dung bình luận.'}
                           </p>
@@ -3721,7 +3785,7 @@ export default function ProductManagementPage() {
                             </Button>
                           )}
                         </div>
-                      </article>
+                      </details>
                     );
                   });
                 })()

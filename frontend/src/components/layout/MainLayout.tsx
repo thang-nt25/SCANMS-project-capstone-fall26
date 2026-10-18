@@ -3,26 +3,15 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import { applyTheme, getSavedTheme, saveTheme, THEME_STORAGE_KEY, type Theme } from '../../utils/theme.utils';
+import { applyTheme } from '../../utils/theme.utils';
+import { SeedDataNotice } from '../common/SeedDataNotice';
 
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [theme, setTheme] = useState<Theme>(getSavedTheme);
-
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
-  useEffect(() => {
-    const syncTheme = (event: StorageEvent) => {
-      if (event.key === THEME_STORAGE_KEY || event.key === null) {
-        setTheme(getSavedTheme());
-      }
-    };
-    window.addEventListener('storage', syncTheme);
-    return () => window.removeEventListener('storage', syncTheme);
+    applyTheme('light');
   }, []);
 
   useEffect(() => {
@@ -55,12 +44,6 @@ export default function MainLayout() {
     return () => window.removeEventListener('auth-user-updated', handleUserUpdated);
   }, [location.pathname]);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === 'light' ? 'dark' : 'light';
-    saveTheme(nextTheme);
-    setTheme(nextTheme);
-  };
-
   const handleLogout = () => {
     authService.logout();
     setCurrentUser(null);
@@ -83,8 +66,6 @@ export default function MainLayout() {
       {/* 1. Topbar nằm full-width trên cùng (chuẩn vị trí Header như Customer) */}
       <Topbar
         currentUser={currentUser}
-        theme={theme}
-        onToggleTheme={toggleTheme}
         onLogout={handleLogout}
       />
 
@@ -98,6 +79,7 @@ export default function MainLayout() {
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
           <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+            <SeedDataNotice user={currentUser} />
             <Suspense
               fallback={
                 <div className="w-full py-20 flex flex-col items-center justify-center text-[#7D715E] gap-3 animate-in fade-in duration-200">

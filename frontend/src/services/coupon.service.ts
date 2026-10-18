@@ -13,7 +13,19 @@ export type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT';
 export type CouponScope = 'STORE_WIDE' | 'PRODUCTS' | 'CATEGORIES' | 'CAMPAIGN';
 export type CouponFundingSource = 'SHOP_FUNDED' | 'CO_FUNDED' | 'PLATFORM_FUNDED';
 
+export interface PlatformSubsidySummary {
+  storeId: string;
+  storeName: string;
+  amount: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  orderCount: number;
+  reimbursementReady: boolean;
+  orders: Array<{ orderId: string; orderCode: string; amount: number; paidAmount: number; outstandingAmount: number; payments: Array<{ amount: number; bankReference: string; paidAt: string }> }>;
+}
+
 export interface PublicStoreCoupon {
+  benefitType?: 'GOODS' | 'SHIPPING';
   id: string;
   code: string;
   discountType: DiscountType;
@@ -29,6 +41,7 @@ export interface PublicStoreCoupon {
 }
 
 export interface CouponItem {
+  benefitType?: 'GOODS' | 'SHIPPING';
   id: string;
   codeNormalized: string;
   displayCode: string;
@@ -126,6 +139,7 @@ export interface CreateCouponPayload {
 }
 
 export interface CreateStoreCouponPayload {
+  benefitType?: 'GOODS' | 'SHIPPING';
   code: string;
   discountType: DiscountType;
   discountValue: number;
@@ -137,6 +151,7 @@ export interface CreateStoreCouponPayload {
   startsAt?: string;
   expiresAt?: string;
   scopeType?: CouponScope;
+  campaignId?: string;
   productIds?: string[];
   categoryNames?: string[];
   stackableWithProductDiscount?: boolean;
@@ -282,6 +297,25 @@ export const couponService = {
   getAdminCoupons: async (params?: CouponFilterParams) => {
     const res = await api.get('/admin/coupons', { params });
     return res.data;
+  },
+
+  createPlatformCoupon: async (payload: { storeId: string; code: string; benefitType: 'GOODS' | 'SHIPPING'; discountType: DiscountType; discountValue: number; budgetTotal: number; usageLimitTotal: number; maximumDiscountAmount?: number; minimumOrderAmount?: number; expiresAt?: string }) => {
+    const res = await api.post('/admin/coupons', payload);
+    return res.data;
+  },
+  getPlatformSubsidies: async (): Promise<PlatformSubsidySummary[]> => {
+    const res = await api.get('/admin/coupons/subsidies');
+    return res?.data?.data || res?.data || res;
+  },
+
+  recordPlatformReimbursement: async (orderId: string, amount: number, bankReference: string) => {
+    const res = await api.post(`/admin/coupons/subsidies/${orderId}/reimbursements`, { amount, bankReference });
+    return res?.data?.data || res?.data || res;
+  },
+
+  getStorePlatformSubsidies: async (storeId: string): Promise<PlatformSubsidySummary[]> => {
+    const res = await api.get(`/stores/${storeId}/coupons/subsidies`);
+    return res?.data?.data || res?.data || res;
   },
 
   adminBlockCoupon: async (id: string, reason: string) => {

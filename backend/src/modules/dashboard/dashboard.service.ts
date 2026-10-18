@@ -1,6 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { UserRole } from '@prisma/client';
+import { DAY_MS, VIETNAM_OFFSET_MS, vietnamDayKey, vietnamDayStart, vietnamHour } from './analytics-time';
 import {
   DashboardAnalyticsQueryDto,
   AnalyticsQuickRange,
@@ -11,6 +12,17 @@ import {
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async resolveAnalyticsScope(userId: string, role: string, requestedStoreId?: string) {
+    if (role === UserRole.SHOP_MANAGER) {
+      const storeId = await this.getStoreId(userId);
+      if (!storeId || (requestedStoreId && requestedStoreId !== storeId)) throw new ForbiddenException('Không có quyền xem dữ liệu gian hàng này.');
+      return { storeId, isShop: true };
+    }
+    if (role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER) return { storeId: requestedStoreId || null, isShop: true };
+    if (role === UserRole.COLLABORATOR) return { storeId: null, isShop: false };
+    throw new ForbiddenException('Không có quyền xem báo cáo tiếp thị.');
+  }
 
   // ─── Lấy storeId từ userId (Shop) ────────────────────────────────────
   private async getStoreId(userId: string): Promise<string | null> {
@@ -34,117 +46,43 @@ export class DashboardService {
         ? AnalyticsQuickRange.CUSTOM
         : AnalyticsQuickRange.LAST_30_DAYS);
 
+    const dayStart = vietnamDayStart(now);
+    const local = new Date(now.getTime() + VIETNAM_OFFSET_MS);
+    const monthStart = (offset: number) => new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + offset, 1) - VIETNAM_OFFSET_MS);
     switch (range) {
-      case AnalyticsQuickRange.TODAY: {
-        startDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-          0,
-          0,
-          0,
-          0,
-        );
-        endDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-          23,
-          59,
-          59,
-          999,
-        );
-        interval = AnalyticsTimeInterval.HOURLY;
-        break;
-      }
-      case AnalyticsQuickRange.YESTERDAY: {
-        const y = new Date(now);
-        y.setDate(y.getDate() - 1);
-        startDate = new Date(
-          y.getFullYear(),
-          y.getMonth(),
-          y.getDate(),
-          0,
-          0,
-          0,
-          0,
-        );
-        endDate = new Date(
-          y.getFullYear(),
-          y.getMonth(),
-          y.getDate(),
-          23,
-          59,
-          59,
-          999,
-        );
-        interval = AnalyticsTimeInterval.HOURLY;
-        break;
-      }
-      case AnalyticsQuickRange.LAST_7_DAYS: {
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        endDate = now;
-        interval = AnalyticsTimeInterval.DAILY;
-        break;
-      }
-      case AnalyticsQuickRange.LAST_30_DAYS: {
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        endDate = now;
-        interval = AnalyticsTimeInterval.DAILY;
-        break;
-      }
-      case AnalyticsQuickRange.THIS_MONTH: {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-        endDate = now;
-        interval = AnalyticsTimeInterval.DAILY;
-        break;
-      }
-      case AnalyticsQuickRange.LAST_MONTH: {
-        startDate = new Date(
-          now.getFullYear(),
-          now.getMonth() - 1,
-          1,
-          0,
-          0,
-          0,
-          0,
-        );
-        endDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          0,
-          23,
-          59,
-          59,
-          999,
-        );
-        interval = AnalyticsTimeInterval.DAILY;
-        break;
-      }
-      case AnalyticsQuickRange.CUSTOM:
-      default: {
+      case AnalyticsQuickRange.TODAY:
+        startDate = dayStart; endDate = new Date(dayStart.getTime() + DAY_MS - 1);
+        interval = AnalyticsTimeInterval.HOURLY; break;
+      case AnalyticsQuickRange.YESTERDAY:
+        startDate = new Date(dayStart.getTime() - DAY_MS); endDate = new Date(dayStart.getTime() - 1);
+        interval = AnalyticsTimeInterval.HOURLY; break;
+      case AnalyticsQuickRange.LAST_7_DAYS:
+        startDate = new Date(now.getTime() - 7 * DAY_MS); endDate = now; break;
+      case AnalyticsQuickRange.LAST_30_DAYS:
+        startDate = new Date(now.getTime() - 30 * DAY_MS); endDate = now; break;
+      case AnalyticsQuickRange.THIS_MONTH:
+        startDate = monthStart(0); endDate = now; break;
+      case AnalyticsQuickRange.LAST_MONTH:
+        startDate = monthStart(-1); endDate = new Date(monthStart(0).getTime() - 1); break;
+      default:
         if (dto.startDate && dto.endDate) {
-          startDate = new Date(dto.startDate);
-          endDate = new Date(dto.endDate);
-          if (startDate > endDate) {
-            throw new BadRequestException(
-              'Ngày bắt đầu không thể sau ngày kết thúc.',
-            );
-          }
-        } else if (dto.days) {
-          startDate = new Date(now.getTime() - dto.days * 24 * 60 * 60 * 1000);
-          endDate = now;
+          startDate = new Date(dto.startDate); endDate = new Date(dto.endDate);
+        } else if (dto.startDate || dto.endDate || dto.range === AnalyticsQuickRange.CUSTOM) {
+          throw new BadRequestException('Khoảng tùy chọn cần đủ ngày bắt đầu và kết thúc.');
         } else {
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          endDate = now;
+          const days = dto.days || 30;
+          if (!Number.isInteger(days) || days < 1 || days > 366) throw new BadRequestException('Khoảng thời gian không hợp lệ.');
+          startDate = new Date(now.getTime() - days * DAY_MS); endDate = now;
         }
-        break;
-      }
     }
+    if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || startDate > endDate) {
+      throw new BadRequestException('Ngày bắt đầu hoặc kết thúc không hợp lệ.');
+    }
+    if (endDate.getTime() - startDate.getTime() > 366 * DAY_MS) throw new BadRequestException('Khoảng thời gian tối đa 366 ngày.');
 
     // Tính khoảng thời gian đối ứng kỳ trước để so sánh % tăng trưởng (Growth comparison)
     const durationMs = endDate.getTime() - startDate.getTime();
-    const prevEndDate = new Date(startDate.getTime());
+    const prevEndDate = new Date(startDate.getTime() - 1);
     const prevStartDate = new Date(prevEndDate.getTime() - durationMs);
 
     return {
@@ -165,16 +103,7 @@ export class DashboardService {
     const { startDate, endDate, prevStartDate, prevEndDate } =
       this.resolveDateRange(dto);
 
-    let storeId: string | null = null;
-    let isShop = false;
-
-    if (role === UserRole.SHOP_MANAGER) {
-      storeId = await this.getStoreId(userId);
-      isShop = true;
-    } else if (role === UserRole.SYSTEM_ADMIN && dto.storeId) {
-      storeId = dto.storeId;
-      isShop = true;
-    }
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     // Điều kiện lọc theo vai trò
     const currentOrderWhere: any = {
@@ -327,18 +256,10 @@ export class DashboardService {
     );
 
     // Số liên kết tiếp thị đang hoạt động
-    const activeLinksCount =
-      isShop && storeId
-        ? await this.prisma.referralLink.count({
-            where: { product: { storeId }, status: 'ACTIVE', deletedAt: null },
-          })
-        : await this.prisma.referralLink.count({
-            where: {
-              collaboratorId: userId,
-              status: 'ACTIVE',
-              deletedAt: null,
-            },
-          });
+    const activeLinksCount = await this.prisma.referralLink.count({ where: {
+      status: 'ACTIVE', deletedAt: null,
+      ...(storeId ? { storeId } : !isShop ? { collaboratorId: userId } : {}),
+    } });
 
     return {
       period: {
@@ -385,16 +306,7 @@ export class DashboardService {
   ) {
     const { startDate, endDate, interval } = this.resolveDateRange(dto);
 
-    let storeId: string | null = null;
-    let isShop = false;
-
-    if (role === UserRole.SHOP_MANAGER) {
-      storeId = await this.getStoreId(userId);
-      isShop = true;
-    } else if (role === UserRole.SYSTEM_ADMIN && dto.storeId) {
-      storeId = dto.storeId;
-      isShop = true;
-    }
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     if (interval === AnalyticsTimeInterval.HOURLY) {
       return this._getHourlyTimeSeries(
@@ -428,13 +340,7 @@ export class DashboardService {
     });
     const limit = dto.limit || 5;
 
-    let storeId: string | null = null;
-    const isShop =
-      role === UserRole.SHOP_MANAGER || role === UserRole.SYSTEM_ADMIN;
-
-    if (role === UserRole.SHOP_MANAGER) {
-      storeId = await this.getStoreId(userId);
-    }
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     const orderWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
@@ -524,12 +430,7 @@ export class DashboardService {
       endDate: dto.endDate,
     });
 
-    let storeId: string | null = null;
-    const isShop = role === UserRole.SHOP_MANAGER;
-
-    if (isShop) {
-      storeId = await this.getStoreId(userId);
-    }
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     const clickWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
@@ -634,9 +535,7 @@ export class DashboardService {
   ) {
     const { startDate, endDate } = this.resolveDateRange(dto);
 
-    let storeId: string | null = null;
-    const isShop = role === UserRole.SHOP_MANAGER;
-    if (isShop) storeId = await this.getStoreId(userId);
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     const clickWhere: any = { createdAt: { gte: startDate, lte: endDate } };
     const orderWhere: any = { createdAt: { gte: startDate, lte: endDate } };
@@ -704,12 +603,11 @@ export class DashboardService {
     const { startDate, endDate } = this.resolveDateRange(dto);
 
     let rawCampaigns: any[] = [];
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
-    if (role === UserRole.SHOP_MANAGER) {
-      const storeId = await this.getStoreId(userId);
-      if (storeId) {
+    if (isShop) {
         rawCampaigns = await this.prisma.campaign.findMany({
-          where: { storeId },
+          where: storeId ? { storeId } : {},
           include: {
             store: { select: { id: true, name: true } },
             participants: {
@@ -721,7 +619,6 @@ export class DashboardService {
             },
           },
         });
-      }
     } else {
       // KOL: Các chiến dịch đã tham gia
       const participants = await this.prisma.campaignParticipant.findMany({
@@ -832,7 +729,7 @@ export class DashboardService {
     });
 
     clicks.forEach((c) => {
-      const h = new Date(c.createdAt).getHours();
+      const h = vietnamHour(c.createdAt);
       if (hours[h]) hours[h].clicks += 1;
     });
 
@@ -850,7 +747,7 @@ export class DashboardService {
     });
 
     orders.forEach((o) => {
-      const h = new Date(o.createdAt).getHours();
+      const h = vietnamHour(o.createdAt);
       if (hours[h]) {
         hours[h].orders += 1;
         if (o.status === 'DELIVERED' || o.status === 'COMPLETED') {
@@ -858,6 +755,13 @@ export class DashboardService {
         }
       }
     });
+
+    const commissions = await this.prisma.commission.findMany({
+      where: { createdAt: { gte: startDate, lte: endDate }, status: { in: ['APPROVED', 'PAID'] },
+        ...(storeId ? { order: { storeId } } : !isShop ? { collaboratorId: userId } : {}),
+      }, select: { createdAt: true, commissionAmount: true },
+    });
+    for (const commission of commissions) hours[vietnamHour(commission.createdAt)].commission += Number(commission.commissionAmount || 0);
 
     return hours.map((item) => ({
       ...item,
@@ -887,10 +791,10 @@ export class DashboardService {
       }
     >();
 
-    const curr = new Date(startDate);
+    const curr = vietnamDayStart(startDate);
     while (curr <= endDate) {
-      const dateStr = curr.toISOString().slice(0, 10);
-      const label = `${curr.getDate()}/${curr.getMonth() + 1}`;
+      const dateStr = vietnamDayKey(curr);
+      const label = `${dateStr.slice(8, 10)}/${dateStr.slice(5, 7)}`;
       dayMap.set(dateStr, {
         date: dateStr,
         label,
@@ -899,7 +803,7 @@ export class DashboardService {
         revenue: 0,
         commission: 0,
       });
-      curr.setDate(curr.getDate() + 1);
+      curr.setTime(curr.getTime() + DAY_MS);
     }
 
     // Query clicks
@@ -916,7 +820,7 @@ export class DashboardService {
     });
 
     clicks.forEach((c) => {
-      const dateStr = new Date(c.createdAt).toISOString().slice(0, 10);
+      const dateStr = vietnamDayKey(c.createdAt);
       const point = dayMap.get(dateStr);
       if (point) point.clicks += 1;
     });
@@ -935,7 +839,7 @@ export class DashboardService {
     });
 
     orders.forEach((o) => {
-      const dateStr = new Date(o.createdAt).toISOString().slice(0, 10);
+      const dateStr = vietnamDayKey(o.createdAt);
       const point = dayMap.get(dateStr);
       if (point) {
         point.orders += 1;
@@ -948,6 +852,7 @@ export class DashboardService {
     // Query commissions
     const commissionWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
+      status: { in: ['APPROVED', 'PAID'] },
     };
     if (isShop && storeId) {
       commissionWhere.order = { storeId };
@@ -961,7 +866,7 @@ export class DashboardService {
     });
 
     commissions.forEach((comm) => {
-      const dateStr = new Date(comm.createdAt).toISOString().slice(0, 10);
+      const dateStr = vietnamDayKey(comm.createdAt);
       const point = dayMap.get(dateStr);
       if (point) {
         point.commission += Number(comm.commissionAmount || 0);

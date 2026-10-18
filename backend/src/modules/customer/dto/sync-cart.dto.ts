@@ -11,11 +11,12 @@ import {
 } from 'class-validator';
 
 export class SyncCustomerCartItemDto {
-  @IsUUID('4')
+  // PostgreSQL uses v4 IDs; deterministic Capstone fixtures use valid v5 IDs.
+  @IsUUID()
   productId: string;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID()
   variantId?: string;
 
   @IsInt()

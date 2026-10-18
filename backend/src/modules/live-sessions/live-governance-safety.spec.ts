@@ -31,7 +31,7 @@ describe('Live stop safety', () => {
     const store = { liveCooperationBlocked: true, liveRestrictionUntil: null };
     const prisma: any = { store: { findFirst: jest.fn(async () => store) } };
     const service: any = new LiveSessionsService(prisma, {} as any, {} as any);
-    await expect(service.create('shop', { storeId: 'store' })).rejects.toThrow(
+    await expect(service.create('shop', { storeId: 'store', commissionRate: 2 })).rejects.toThrow(
       'khóa quyền',
     );
     store.liveCooperationBlocked = false;
@@ -53,6 +53,7 @@ describe('Live stop safety', () => {
     const session = {
       id: 'session',
       governance: { dispute: { evidence: ['private-evidence'] } },
+      products: [],
       coupon: { usageLimitTotal: 10, usageCount: 1 },
     };
     const prisma: any = {

@@ -5,7 +5,7 @@ import {
   EyeOff,
   KeyRound,
   ArrowLeft,
-  Sparkles,
+  ArrowRight,
   User,
   Mail,
   Phone,
@@ -19,6 +19,8 @@ import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { Modal } from '../../components/ui/Modal';
 import { toast } from '../../utils/toast';
+import { RegisterShowcase } from '../../components/auth/RegisterShowcase';
+import './RegisterPage.css';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -193,8 +195,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#FAF8F5] text-[#1A1612] flex flex-col justify-between py-4 px-4 sm:px-8 lg:px-14 selection:bg-[#EEDFC6] selection:text-[#1A1612]">
-      <header className="max-w-[1240px] mx-auto w-full flex justify-between items-center py-2">
+    <div className="scanms-register-page selection:bg-[#EEDFC6] selection:text-[#1A1612]">
+      <header className="register-page-header">
         <Link to="/marketplace" className="hover:opacity-95 transition-opacity">
           <ScanMSLogo size="md" showSubtitle={true} />
         </Link>
@@ -208,64 +210,38 @@ export default function RegisterPage() {
         </Link>
       </header>
 
-      <main className="max-w-[1180px] mx-auto w-full my-auto py-2 sm:py-3">
-        <div
-          className="w-full rounded-[28px] sm:rounded-[32px] border-2 border-[#EEDFC6] shadow-[0_24px_70px_rgba(197,155,88,0.16),0_10px_30px_rgba(26,22,18,0.06)] ring-1 ring-[#C59B58]/20 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] lg:h-[620px] relative bg-[#FAF8F5]"
-          style={{
-            backgroundImage: "url('/assets/auth_luxury_card_inner.jpg')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        >
-          {/* CỘT TRÁI: MỞ RỘNG (7 COLS = ~58%) - KHÔNG GIAN SẢN PHẨM & SLOGAN HOÀNG GIA */}
-          <div className="relative w-full h-[280px] sm:h-[340px] lg:h-full lg:col-span-7 overflow-hidden flex flex-col justify-between p-6 sm:p-8 lg:p-12">
-            {/* Top-Left Section: Glassmorphic Badge & Slogan */}
-            <div className="relative z-20 space-y-3.5 max-w-md">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-[#EEDFC6] text-[#1A1612] text-xs font-bold shadow-xs">
-                <Sparkles className="w-3.5 h-3.5 text-[#C59B58]" />
-                <span>Sàn Thương Mại Đối Tác</span>
+      <main className="register-page-main">
+        <div className="register-experience">
+          <RegisterShowcase name={fullName} />
+          <div className="register-form-panel">
+            <div className="register-form-heading">
+              <div className="register-steps" aria-label="Các bước đăng ký">
+                <span aria-current={showOtpModal ? undefined : 'step'}><b>1</b> Tạo tài khoản</span><i aria-hidden="true" />
+                <span aria-current={showOtpModal ? 'step' : undefined}><b>2</b> Xác thực email</span>
               </div>
-
-              <h1 className="font-display italic text-2xl sm:text-3xl lg:text-[36px] leading-[1.18] tracking-tight drop-shadow-xs text-[#1A1612]">
-                Kết nối gian hàng,<br />
-                <span className="font-display italic text-[#B88E4F]">
-                  lan tỏa giá trị.
-                </span>
-              </h1>
-            </div>
-
-            {/* Dưới chân để thoáng cho các sản phẩm và hộp quà travertine */}
-            <div className="relative z-20" />
-          </div>
-
-          {/* CỘT PHẢI: FORM ĐĂNG KÝ GIAO DIỆN SANG TRỌNG (5 COLS = ~42%) */}
-          <div className="relative w-full h-full lg:col-span-5 p-6 sm:p-8 lg:py-7 lg:pr-8 lg:pl-10 xl:pl-12 flex flex-col justify-between text-left">
-            {/* Header: Tiêu đề căn giữa, phong cách hoàng gia như mockup */}
-            <div className="relative z-20 text-center">
-              <h2 className="font-display text-3xl sm:text-[34px] font-black tracking-tight text-[#1A1612]">
-                Đăng <span className="font-display text-[#B88E4F]">ký</span>
-              </h2>
+              <h2 className="font-display">Đăng <span>ký</span></h2>
+              <p>Một tài khoản, nhiều kết nối mới.</p>
             </div>
 
             {/* Google Button */}
             <div className="w-full">
               <GoogleOfficialButton
+                text="signup_with"
                 onSuccess={onGoogleRegisterSuccess}
                 onError={(err) => setError(err)}
               />
             </div>
 
             {/* Divider */}
-            <div className="relative flex items-center justify-center my-0.5">
+            <div className="register-email-divider relative flex items-center justify-center my-0.5">
               <div className="border-t border-[#EAE4D7] w-full" />
               <span className="bg-white px-3 text-[11px] font-medium text-[#7D715E] uppercase tracking-wider absolute">
                 hoặc email
               </span>
             </div>
 
-            {error && (
-              <div className="p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] font-medium">
+            {error && !showOtpModal && (
+              <div role="alert" className="p-2.5 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 text-xs text-[#DC2626] font-medium">
                 {error}
               </div>
             )}
@@ -273,8 +249,11 @@ export default function RegisterPage() {
             {/* Form inputs */}
             <form onSubmit={handleSubmit} className="space-y-2.5">
               {/* Họ và tên */}
+              <div>
+              <label className="register-field-label" htmlFor="register-name">Họ và tên</label>
               <div className="relative flex items-center">
                 <input
+                  id="register-name" name="name" autoComplete="name"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -284,10 +263,14 @@ export default function RegisterPage() {
                 />
                 <User className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
+              </div>
 
               {/* Email */}
+              <div>
+              <label className="register-field-label" htmlFor="register-email">Địa chỉ email</label>
               <div className="relative flex items-center">
                 <input
+                  id="register-email" name="email" autoComplete="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -297,23 +280,31 @@ export default function RegisterPage() {
                 />
                 <Mail className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
+              </div>
 
               {/* Số điện thoại */}
+              <div>
+              <label className="register-field-label" htmlFor="register-phone">Số điện thoại <small>(tùy chọn)</small></label>
               <div className="relative flex items-center">
                 <input
+                  id="register-phone" name="phone" autoComplete="tel"
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Số điện thoại (tùy chọn)"
+                  placeholder="Số điện thoại của bạn"
                   className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
                 />
                 <Phone className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
+              </div>
 
               {/* Password & Confirm Password */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="register-password-pair grid grid-cols-2 gap-3">
+                <div>
+                <label className="register-field-label" htmlFor="register-password">Mật khẩu</label>
                 <div className="relative flex items-center">
                   <input
+                    id="register-password" name="password" autoComplete="new-password" aria-describedby="register-password-note"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -324,15 +315,20 @@ export default function RegisterPage() {
                   <Lock className="w-3.5 h-3.5 text-[#A69986] absolute left-3 pointer-events-none" />
                   <button
                     type="button"
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} aria-pressed={showPassword}
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-2.5 text-[#A69986] hover:text-[#1A1612] p-0.5 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
+                </div>
 
+                <div>
+                <label className="register-field-label" htmlFor="register-confirm">Xác nhận mật khẩu</label>
                 <div className="relative flex items-center">
                   <input
+                    id="register-confirm" name="confirmPassword" autoComplete="new-password"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -343,13 +339,16 @@ export default function RegisterPage() {
                   <Lock className="w-3.5 h-3.5 text-[#A69986] absolute left-3 pointer-events-none" />
                   <button
                     type="button"
+                    aria-label={showConfirmPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'} aria-pressed={showConfirmPassword}
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-2.5 text-[#A69986] hover:text-[#1A1612] p-0.5 cursor-pointer"
                   >
                     {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
+                </div>
               </div>
+              <p className="register-password-note" id="register-password-note">Mật khẩu cần tối thiểu 8 ký tự.</p>
 
               {/* Mã giới thiệu đối tác (Collapsible) */}
               <div className="pt-0.5">
@@ -366,6 +365,7 @@ export default function RegisterPage() {
                   <div className="relative flex items-center">
                     <input
                       type="text"
+                      aria-label="Mã giới thiệu đối tác"
                       value={referralCode}
                       onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                       placeholder="Mã giới thiệu đối tác (Tùy chọn)"
@@ -392,18 +392,19 @@ export default function RegisterPage() {
                 </label>
               </div>
 
-              {/* Submit button: Exact match to user mockup */}
+              {/* Continue to email verification. */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 btn-gold-glossy disabled:opacity-50"
+                className="register-submit"
               >
                 <span>{loading ? 'Đang gửi mã xác thực...' : 'Đăng ký tài khoản'}</span>
+                <ArrowRight size={17} aria-hidden="true" />
               </button>
             </form>
 
             {/* Bottom switch link */}
-            <div className="text-center pt-2 border-t border-[#EAE4D7] text-xs text-[#7D715E]">
+            <div className="register-login-link">
               Đã có tài khoản?{' '}
               <Link to={loginUrl} className="font-bold text-[#B88E4F] hover:underline">
                 Đăng nhập ngay →
@@ -420,6 +421,7 @@ export default function RegisterPage() {
         title="Xác thực mã OTP Email"
       >
         <form onSubmit={handleVerifyOtp} className="space-y-4 py-2 text-left">
+          {error && <div role="alert" className="p-3 rounded-xl bg-[#DC2626]/10 text-xs text-[#DC2626]">{error}</div>}
           <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#7D715E] leading-relaxed">
             Mã xác thực 6 số đã được gửi tới hòm thư <strong className="text-[#1A1612] font-bold">{registeredEmail}</strong>.
           </div>
@@ -441,10 +443,11 @@ export default function RegisterPage() {
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#1A1612]">
+            <label htmlFor="register-otp" className="text-xs font-bold text-[#1A1612]">
               Mã xác thực 6 chữ số
             </label>
             <input
+              id="register-otp" inputMode="numeric" autoComplete="one-time-code"
               type="text"
               maxLength={6}
               value={otp}

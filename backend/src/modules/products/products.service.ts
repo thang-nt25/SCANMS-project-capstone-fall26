@@ -26,6 +26,7 @@ import {
 } from '@prisma/client';
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
 import { publicReturnPolicy } from '../stores/store-policy.util';
+import { validateProductPackage } from './product-package';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -122,6 +123,7 @@ export class ProductsService {
   }
 
   private assertProductSubmissionComplete(dto: CreateProductDto): void {
+    validateProductPackage(dto);
     const issues: string[] = [];
     const requiredText: Array<[string | undefined, string]> = [
       [dto.sku, 'Mã SKU sản phẩm'],
@@ -1099,7 +1101,7 @@ export class ProductsService {
           imageUrl: dto.imageUrl?.trim() || null,
           price: dto.price,
           originalPrice: dto.originalPrice || null,
-          customCommissionRate: dto.customCommissionRate || null,
+          customCommissionRate: 10,
           stockQuantity: preparedVariants.length
             ? preparedVariants.reduce(
                 (sum, variant) => sum + variant.stockQuantity,
@@ -1111,6 +1113,11 @@ export class ProductsService {
           ingredients: dto.ingredients?.trim() || null,
           origin: dto.origin?.trim() || null,
           labelInfo: dto.labelInfo?.trim() || null,
+          barcode: dto.barcode ?? null,
+          packageWeight: dto.packageWeight ?? null,
+          packageLength: dto.packageLength ?? null,
+          packageWidth: dto.packageWidth ?? null,
+          packageHeight: dto.packageHeight ?? null,
           isAffiliateEnabled: dto.isAffiliateEnabled ?? false,
           sampleEnabled: dto.sampleEnabled ?? false,
           sampleQuota: dto.sampleQuota ?? 0,
@@ -1205,6 +1212,7 @@ export class ProductsService {
     const isResubmission =
       userRole === UserRole.SHOP_MANAGER &&
       product.moderationStatus === ProductModerationStatus.REJECTED;
+    validateProductPackage(dto);
     const evidenceByProduct = await this.loadProductEvidence([id]);
     const existingEvidenceRows = evidenceByProduct.get(id) || [];
 
@@ -1244,6 +1252,7 @@ export class ProductsService {
       userRole === UserRole.SHOP_MANAGER &&
       product.moderationStatus === ProductModerationStatus.APPROVED &&
       (textChanged(dto.sku, product.sku) ||
+        textChanged(dto.barcode, product.barcode) ||
         textChanged(dto.title, product.title) ||
         textChanged(dto.categoryName, product.categoryName) ||
         textChanged(dto.description, product.description) ||
@@ -1324,6 +1333,11 @@ export class ProductsService {
         ...(dto.labelInfo !== undefined && {
           labelInfo: dto.labelInfo?.trim() || null,
         }),
+        ...(dto.barcode !== undefined && { barcode: dto.barcode }),
+        ...(dto.packageWeight !== undefined && { packageWeight: dto.packageWeight }),
+        ...(dto.packageLength !== undefined && { packageLength: dto.packageLength }),
+        ...(dto.packageWidth !== undefined && { packageWidth: dto.packageWidth }),
+        ...(dto.packageHeight !== undefined && { packageHeight: dto.packageHeight }),
         ...(dto.imageUrl !== undefined && {
           imageUrl: dto.imageUrl?.trim() || null,
         }),
@@ -1331,9 +1345,7 @@ export class ProductsService {
         ...(dto.originalPrice !== undefined && {
           originalPrice: dto.originalPrice,
         }),
-        ...(dto.customCommissionRate !== undefined && {
-          customCommissionRate: dto.customCommissionRate,
-        }),
+        customCommissionRate: 10,
         ...(dto.stockQuantity !== undefined && {
           stockQuantity: dto.stockQuantity,
         }),
@@ -1764,6 +1776,9 @@ export class ProductsService {
     productIds: string[],
     commissionRate: number,
   ) {
+    if (commissionRate !== 10) {
+      throw new BadRequestException('Hoa hồng nền cố định 10% theo chuẩn sàn SCANMS.');
+    }
     const isSystemAdminOrManager =
       userRole === UserRole.SYSTEM_ADMIN ||
       userRole === UserRole.SYSTEM_MANAGER;
