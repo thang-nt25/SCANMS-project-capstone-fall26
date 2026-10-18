@@ -16,6 +16,8 @@ import { seedId } from '../seed.helpers';
 import { auditSeedDatabase } from '../seed.audit';
 import { ChatService } from '../../../src/modules/chat/chat.service';
 import { DATASET_VERSION } from '../seed.helpers';
+import { enrichExistingSeed, ENRICHMENT_ID } from '../enrich-existing.seed';
+import { CREATOR_NAMES } from '../data/people.data';
 
 const connectionString = process.env.SEED_TEST_DATABASE_URL;
 const integration = connectionString ? describe : describe.skip;
@@ -39,11 +41,12 @@ integration('Prisma seeder on isolated PostgreSQL', () => {
     const url = new URL(baseTarget.connectionString);
     if (
       !['127.0.0.1', 'localhost'].includes(url.hostname) ||
-      url.port !== '55433' ||
+      !['55433', '25433'].includes(url.port) ||
+      url.username !== 'seed_test' ||
       url.pathname !== '/scanms_seed_test'
     ) {
       throw new Error(
-        'Integration tests only accept the isolated local scanms_seed_test database on port 55433.',
+        'Integration tests only accept seed_test on the isolated local scanms_seed_test database, port 55433 or 25433.',
       );
     }
   });
@@ -206,6 +209,39 @@ integration('Prisma seeder on isolated PostgreSQL', () => {
     expect(results.sort()).toEqual(['created', 'unchanged']);
     expect(await prisma.order.count()).toBe(60);
     expect(await prisma.auditLog.count({ where: { id: MANIFEST_ID } })).toBe(1);
+  }, 120_000);
+
+  it('additively enriches the old v3 cohort without touching tester edits, finances, passwords or order progress', async () => {
+    const legacy = buildDataset({ referenceDate: new Date('2026-10-16T05:00:00Z'),
+      frontendUrl: 'http://localhost:5173', passwordHash: 'unchanged-password-hash', shipping: [] });
+    legacy.sponsoredPlacements = [];
+    legacy.products.forEach(row => { row.barcode = null; row.packageWeight = null;
+      row.packageLength = null; row.packageWidth = null; row.packageHeight = null; });
+    CREATOR_NAMES.forEach((name, index) => {
+      legacy.users.find(row => row.id === seedId(`creator:${index}`))!.fullName = name;
+      const profile = legacy.profiles[index];
+      profile.bio = 'Hồ sơ người sáng tạo giả lập phục vụ kiểm thử Capstone SCANMS.';
+      delete profile.socialLinksJson;
+      legacy.socialChannels[index].channelUrl = `https://social.scanms.invalid/creator/${index + 1}`;
+    });
+    await applyDataset(prisma, target, legacy);
+    await prisma.product.update({ where: { id: data.products[1].id }, data: { packageWeight: 777, stockQuantity: 123 } });
+    await prisma.user.update({ where: { id: seedId('creator:1') }, data: { fullName: 'Tên tester tự sửa' } });
+    const before = await prisma.financialLedger.count();
+    const ordersBefore = await prisma.order.findMany({ select: { id: true, status: true }, orderBy: { id: 'asc' } });
+    const plan = await enrichExistingSeed(prisma, data, false);
+    expect(plan).toMatchObject({ mode: 'plan', products: 30, creators: 19, placements: 2 });
+    expect(await prisma.product.count({ where: { barcode: null } })).toBe(30);
+    expect(await prisma.sponsoredPlacement.count()).toBe(0);
+    expect(await enrichExistingSeed(prisma, data, true)).toMatchObject({ mode: 'applied', products: 30, creators: 19, placements: 2 });
+    expect(await enrichExistingSeed(prisma, data, true)).toMatchObject({ mode: 'unchanged' });
+    expect(await prisma.financialLedger.count()).toBe(before);
+    expect(await prisma.order.findMany({ select: { id: true, status: true }, orderBy: { id: 'asc' } })).toEqual(ordersBefore);
+    expect(await prisma.product.findUnique({ where: { id: data.products[1].id } })).toMatchObject({ packageWeight: 777, stockQuantity: 123 });
+    expect(await prisma.user.findUnique({ where: { id: seedId('creator:1') } })).toMatchObject({ fullName: 'Tên tester tự sửa', passwordHash: 'unchanged-password-hash' });
+    expect(await prisma.product.count({ where: { barcode: null } })).toBe(0);
+    expect(await prisma.sponsoredPlacement.count()).toBe(2);
+    expect(await prisma.auditLog.findUnique({ where: { id: ENRICHMENT_ID } })).not.toBeNull();
   }, 120_000);
 
   it('preserves unrelated records and leaves the immutable-ledger trigger enabled', async () => {

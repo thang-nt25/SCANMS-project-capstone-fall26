@@ -6,6 +6,38 @@ Phiên bản hiện tại là **`scanms-capstone-2026-v3`**. UUID tài khoản/s
 
 `prisma/seed-runner.cjs` nạp ts-node của chính dự án và `tsconfig.seed.json`, giúp lệnh Prisma chạy được cả khi terminal/CI không có `node_modules/.bin` trên PATH. Nếu PowerShell chặn các shim `.ps1`, dùng `npm.cmd` và `npx.cmd` cho các câu lệnh bên dưới.
 
+## Cập nhật nghiệm thu mới nhất — 18/10/2026
+
+- Đã nâng cấp bổ sung, **không reset/seed lại** DB nhóm: 30 sản phẩm seed có cột barcode/kiện hàng, 20 hồ sơ tham khảo KOL và hai booking tài trợ TEST miễn phí. Chỉ điền cột NULL trên sản phẩm fixture; số đo đã sửa và tài khoản đã đổi tên được bảo toàn. Không đổi mật khẩu, tồn kho, đơn, ví, ledger hoặc payout.
+- Tên/kênh công khai có nguồn tại [KOL_PUBLIC_REFERENCES.md](../../../docs/KOL_PUBLIC_REFERENCES.md). Tài khoản có hậu tố `· TEST`, kênh “tham khảo”, avatar trung tính; follower/tier/KYC/ngân hàng vẫn là fixture, không mạo nhận KOL thật đã đăng ký. Thông số sản phẩm seed là fixture 500 g / 20×15×10 cm và EAN nội bộ, không phải kết quả đo hoặc mã GS1 của nhãn hàng.
+- Hai gói tài trợ trong DB là `PLATFORM_GRANT`, số tiền 0, tiêu đề `[TEST]`, có ngày bắt đầu/kết thúc; không có chứng từ hoặc giao dịch quảng cáo giả. Chạy lại seed/enrichment không gia hạn hoặc khôi phục booking tester đã hủy.
+- Máy phát triển đã chủ động bật `SHIPPING_SIMULATION_ENABLED=true` và `RETURN_PICKUP_SIMULATION_ENABLED=true` để test GHN TEST/Staging không gửi kiện thật. `.env.example` vẫn mặc định tắt; production luôn chặn mô phỏng. Không bật tự điền đăng nhập hoặc đổi DATABASE_URL.
+- Audit DB nhóm: `datasetReady=true`, `schemaHistoryReady=true`, lệch ví/Shop/chat/pin bằng 0; thiếu package 0, URL `.invalid` 0, Shop tài trợ đang hiệu lực 2. Số phiên đang LIVE vẫn 0: phải phát nội dung qua quy trình Live, không tự sửa enum hoặc giả người xem. Giao dịch ngân hàng/PayOS và vận chuyển vật lý vẫn phải nghiệm thu riêng.
+
+### Bổ sung cho DB v3 đã có dữ liệu tester
+
+```powershell
+npm.cmd run seed:enrich:plan
+# Chỉ sau khi kiểm tra đúng target và kế hoạch, dùng fingerprint được in bởi --plan:
+$env:SCANMS_SEED_ENRICH_CONFIRM = '<fingerprint của DB phát triển/test>'
+npm.cmd run seed:enrich
+npm.cmd run seed:audit
+```
+
+`prisma/enrich-seed.ts` không nhận tùy chọn reset và từ chối production. Transaction khóa nâng cấp/booking, so sánh lại các trường đã đọc để tránh ghi đè đồng thời; thay đổi và bản chụp các trường trước nâng cấp lưu chung trong audit `CAPSTONE_ADDITIVE_ENRICHMENT`. Marker phiên bản giúp chạy lặp trả `unchanged`. Đây không phải công cụ nhập thông số vật lý hoặc xác minh danh tính thật.
+
+## Biên bản reset ban đầu ngày 18/10/2026 (lịch sử)
+
+Sau xác nhận riêng của Thịnh và sau khi backup mới được phục hồi kiểm chứng, schema `public` của DB phát triển nhóm đã được reset và seed v3. `npx prisma db seed`, `seed:check`, `seed:audit` và lần chạy lại seed đều thành công; đủ 61 migration, không lỗi foreign key hoặc lệch ví/ledger. Backend vẫn dùng `backend/.env` của nhóm, không chuyển sang DB local. Chi tiết backup, kết quả HTTP và giới hạn nghiệm thu tại `docs/THINH_DATABASE_HANDOFF.md` ở gốc repo.
+
+**Tài khoản cũ trong `public` không còn.** Đăng xuất phiên cũ và dùng các email seed bên dưới. Mật khẩu demo ngẫu nhiên của lần chạy này nằm trong file riêng `seed-access.json` cạnh backup; `.dev-runtime/current-public-rebuild.json` trỏ tới biên bản chứa đường dẫn file đó. Không commit hoặc chia sẻ công khai thông tin truy cập. Hai placement tài trợ `[DEMO]` từng được cấp trong phiên backend kiểm tra đã tắt theo yêu cầu kiểm thử không demo; không ghi `.env` hoặc đại diện giao dịch thật.
+
+Phiên kiểm thử hiện tại dùng FE → API → PostgreSQL của nhóm, không bật đăng nhập tự điền, placement DEMO hoặc giả lập giao vận. Không seed/reset/restore lại khi tester tự tạo dữ liệu mới trên web. `RETURN_PICKUP_PROVIDER` mặc định `disabled`, chỉ tạo mock khi đặt rõ `mock` ở môi trường không production. `SHIPPING_SIMULATION_ENABLED` mặc định tắt; credential GHN TEST không tự bật đồng hồ/shipper giả hoặc thanh toán cước giả lập. Khi thiếu credential dịch vụ, hiển thị lỗi chưa cấu hình, không biến dữ liệu synthetic thành giao dịch thật. Không tự gọi tạo vận đơn LIVE hoặc thanh toán thật để kiểm thử.
+
+Sau khi chủ dự án cung cấp cấu hình dịch vụ, đã bổ sung các khóa còn thiếu vào **`backend/.env` riêng, bị Git bỏ qua**, giữ nguyên DB/JWT và các cấu hình đang hoạt động. Phiên hiện tại đặt `RETURN_PICKUP_PROVIDER=staging`, dùng chung cặp `GHN_TEST_API_TOKEN/GHN_TEST_SHOP_ID`, vẫn tắt mô phỏng. Đọc danh mục tỉnh trực tiếp GHN sandbox thành công; PayOS availability chỉ xác nhận cấu hình đã nạp, **không chứng minh giao dịch đã được thanh toán**. Không seed lại để áp dụng cấu hình và không tự đổi fixture cũ thành giao dịch thật.
+
+Đã kiểm tra HTTP bốn vai trò và tải ảnh catalogue; chưa kiểm tra trực quan vì chưa có trình duyệt kết nối. Sau lần seed 61 migration, đã triển khai thêm hai migration **cộng thêm**, nâng lên 63; không seed/reset lại và không mất tài khoản tester mới tạo. Barcode/kiện hàng và đăng ký/duyệt tài trợ đã có API/UI. GHN TEST/PayOS, video LIVE và thông số bao bì thực tế vẫn cần người nghiệm thu thao tác. Xem `docs/THINH_ACCEPTANCE_WEB.md`.
+
 ## Phạm vi dữ liệu
 
 | Nhóm                 | Số lượng | Ràng buộc chính                                                                                 |
@@ -109,13 +141,13 @@ Các phòng LIVE là fixture có thời hạn, chưa tự phát video: KOC vẫn
 
 ## Nguồn dữ liệu và bằng chứng Sandbox
 
-Họ tên, tài khoản, SĐT, CCCD, mã số thuế, STK, lượt follower và giao dịch là dữ liệu giả lập. Tên thương hiệu trong kế hoạch được dùng làm ví dụ, không chứng minh các thương hiệu là đối tác đã đăng ký. Kênh mạng xã hội dùng miền `.invalid` để không giả mạo hồ sơ cá nhân thật.
+Tài khoản, SĐT, CCCD, mã số thuế, STK, lượt follower và giao dịch là dữ liệu giả lập. Tên thương hiệu trong kế hoạch được dùng làm ví dụ, không chứng minh các thương hiệu là đối tác đã đăng ký. Tên hoạt động/kênh công khai của KOL hiện dùng làm tham khảo có nguồn và nhãn TEST; không phải xác minh quyền sở hữu hay hợp tác.
 
 Ảnh sản phẩm/creator tái sử dụng tài nguyên đã có trong repository. Nguồn ảnh sản phẩm được ghi ở `frontend/public/assets/products/real/README.md`; bao bì ảnh có thể mang nhãn hiệu khác tên catalogue demo, đã được chú thích trong mô tả. Bốn logo Shop dùng asset sẵn có; các logo còn lại là wordmark SVG minh họa màu vàng be tại `frontend/public/assets/seed/shops/`. Ảnh chứng từ payout ghi rõ là minh họa, không phải biên lai ngân hàng.
 
-EAN-13 dùng prefix lưu hành nội bộ `20` và checksum hợp lệ, không phải mã GS1 của nhà sản xuất. Schema hiện chưa có cột barcode/khối lượng/kích thước nên các thông tin này được trình bày bằng văn bản trong `labelInfo`; không thêm field ngầm vào API. Mã tỉnh/huyện/xã trong `data/addresses.data.ts` đã đối chiếu trực tiếp ba API master-data GHN ngày 16/10/2026, cho Hồ Chí Minh, Hà Nội, Đà Nẵng, Cần Thơ. Địa chỉ số nhà và người nhận vẫn là fixture.
+EAN-13 fixture dùng prefix nội bộ `20` và checksum hợp lệ, không phải mã GS1 của nhà sản xuất. Schema/API hiện có các cột `barcode`, `packageWeight` (gram), `packageLength/Width/Height` (cm). Seeder mới ghi cả các cột riêng và nhãn nguồn fixture; khối lượng/kích thước fixture không phải kết quả đo thật. Migration giữ NULL cho sản phẩm cũ, không tự gán thông số giả: Shop cập nhật theo bao bì thực tế trước khi checkout. Mã tỉnh/huyện/xã trong `data/addresses.data.ts` đã đối chiếu ba API master-data GHN ngày 16/10/2026, cho Hồ Chí Minh, Hà Nội, Đà Nẵng, Cần Thơ. Địa chỉ số nhà và người nhận vẫn là fixture.
 
-Mặc định tracking mang tiền tố `DEMO-`, `ghnIsReal=false`, payment/bank reference mang tiền tố `DEMO-`; không có cuộc gọi tạo vận đơn, trừ tiền hay gửi email/SMS. Phí ship mặc định 0 để tương thích policy hiện tại trên `dev`.
+Mặc định tracking mang tiền tố `DEMO-`, `ghnIsReal=false`, payment/bank reference mang tiền tố `DEMO-`; không có cuộc gọi tạo vận đơn, trừ tiền hay gửi email/SMS. Bản v3 dùng cước lịch sử mô phỏng 24–33 nghìn đồng khi chưa có export sandbox, được đánh dấu `shippingFeeSource=SYNTHETIC_DEMO`; không phải báo giá GHN thật.
 
 Có thể nhập bằng chứng GHN sandbox qua `SCANMS_SEED_GHN_FIXTURES`, trỏ tới file JSON ngoài Git:
 
@@ -142,14 +174,14 @@ Có thể nhập bằng chứng GHN sandbox qua `SCANMS_SEED_GHN_FIXTURES`, tr�
 
 - `GET /stores/marketplace` đọc rating/reviewCount và campaign đang hiệu lực từ DB; seeder cung cấp 15 Shop, 30 sản phẩm, 66 review và 15 campaign để kiểm tra dữ liệu thật, không gán số 4.9 giả.
 - `GET /live-sessions/public/list` đọc sản phẩm ghim từ `governance.pinnedProductId`. Seeder gán pin đúng thành viên/Shop cho năm phiên; hai phiên LIVE không có viewer giả. KOC vẫn cần bắt đầu phát video thực tế.
-- `GET /stores/public/placements` dùng `MARKETPLACE_SPONSORED_PLACEMENTS`, không có bảng/cột sponsorship riêng để INSERT. `npm run seed:plan` xuất `marketplaceDemo` gồm đúng hai Shop được chọn bằng UUID fixture, thời gian hiệu lực và headline `[DEMO]`.
-- Cấu hình trên là **fixture cho demo, không phải bằng chứng Shop đã thanh toán**. Trạng thái `CONFIRMED` chỉ mô phỏng contract bộ lọc trong môi trường test. Không dùng làm booking trả tiền thật. Script không ghi `.env`, không kích hoạt quảng cáo, không gọi thanh toán và không tự đặt biến môi trường của backend đang chạy.
-- Khi nhóm quyết định chạy demo, người vận hành kiểm tra target/referenceDate và cấu hình JSON hai placement trong **môi trường demo đã được duyệt**, sau đó restart backend. Không đưa thông tin thanh toán/credential vào Git. `seed:audit` báo riêng thiếu cấu hình triển khai, không tự sửa.
+- `GET /stores/public/placements` hiện ưu tiên booking đã duyệt/còn hạn trong bảng `sponsored_placements`, chỉ hiển thị Shop còn đủ điều kiện. Cấu hình legacy `MARKETPLACE_SPONSORED_PLACEMENTS` vẫn tương thích nhưng phiên nghiệm thu đặt `[]`. Shop đăng ký tại `/merchant/settings`; quản trị duyệt tại `/admin/affiliate-oversight?tab=sponsorship`. Gói miễn phí phải ghi rõ sàn cấp, gói thu phí bắt buộc mã đối soát/chứng từ đã kiểm tra.
+- Seeder hiện tạo hai booking trong DB với nhãn `[TEST]`, funding `PLATFORM_GRANT`, số tiền 0; không có mã/chứng từ thanh toán giả và không gọi nhà cung cấp. Với DB v3 đã có dữ liệu, dùng enrichment có kiểm tra target thay vì reset/seed lại. Chạy lặp không gia hạn booking hoặc khôi phục booking đã hủy.
+- Hàm tạo cấu hình legacy được giữ để tương thích/test; trạng thái `CONFIRMED` của cấu hình đó không chứng minh Shop đã trả tiền. Phiên nghiệm thu không sử dụng cấu hình này và script không ghi `.env`. `seed:audit` báo riêng khoảng trống nghiệm thu; không đưa credential vào Git.
 - Popup đăng nhập nhanh mới của Quý được giữ tương thích email/SĐT khi đăng nhập; đăng ký và nhận OTP vẫn dùng email. Giỏ hàng không được reset khi đổi luồng xác thực.
 
 ## Đồng bộ contract Tuấn trên dev ngày 18/10/2026
 
-Nhánh `thinh` đã fast-forward tới `origin/dev` tại `da44661` (PR #95/#97); chưa push thay đổi v3.
+Nhánh `thinh` đã đồng bộ `origin/dev` tại `da44661` (PR #95/#97); thay đổi v3 đã push trong commit `f448155`.
 
 - Hoa hồng dùng `commission-policy.ts` và `exclusive-deal-bonus.ts` của checkout: nền 10 + Tier + VIP + Campaign + Live, chặn trần 25%, tính trên Net GMV. VIP vẫn lưu 12 trong proposal để thể hiện +2; Live lưu 2, không lưu 12. Đơn lịch sử dùng thời điểm mua để kiểm tra hiệu lực. Chỉ tái dựng trạng thái LIVE của phiên ENDED trong đúng cửa sổ lịch sử, không phục hồi Live bị hủy/tạm dừng.
 - Campaign có ngân sách, participant ACCEPTED, link chiến dịch, snapshot phần thưởng và `bonusBudgetUsed` khớp phần đã giữ. Lịch sử sáu đơn chứa Live đã kết thúc; đơn thứ hai phân bổ thêm năm Creator, bao gồm Kim Cương.
@@ -157,9 +189,9 @@ Nhánh `thinh` đã fast-forward tới `origin/dev` tại `da44661` (PR #95/#97)
 - Cước đơn mua lấy từ export sandbox nếu có, kể cả cước 0 thật. Khi chưa có export, dùng số tiền lịch sử **mô phỏng** 24–33 nghìn đồng và `shippingFeeSource=SYNTHETIC_DEMO`, `ghnIsReal=false`, `ghnTotalFee=null`. Đây không phải thuật toán báo giá GHN và không được dùng cho checkout thật. Seed không gọi GHN hoặc tạo vận đơn.
 - Đơn mẫu có `ghnProvinceId`, `ghnDistrictId`, `ghnWardCode` khớp sổ địa chỉ. Mười lăm khoản cước mẫu TEST chỉ thể hiện trách nhiệm Shop; chưa có số tiền/chứng từ, không ghi thành đã thanh toán và không trừ ví.
 - Thêm writer, kiểm tra ID khóa kép, kiểm tra ngân sách/funding/ownership trong transaction seed cho `StackedVoucherRedemption`, `CustomerSavedCoupon`, `SampleShippingCharge`.
-- Còn thiếu cột barcode/trọng lượng/kích thước sản phẩm. Bốn migration địa chỉ/voucher/campaign đã có trên dev; SQL của năm tên gốc còn thiếu đã tìm thấy dưới tên timestamp khác và khớp checksum DB. Không tự chép trùng/đổi tên vì có CREATE TYPE không idempotent. Bốn file SQL khác nội dung và bảy migration chưa ghi nhận áp dụng vẫn cần đối soát. Đã đọc metadata DB nhóm, không ghi DB; xem `docs/THINH_DATABASE_HANDOFF.md` ở gốc repo.
+- Cột barcode/kiện hàng đã được bổ sung bằng migration `20261018040000_product_shipping_metadata`; booking tài trợ bằng `20261018041000_sponsored_placements`. Lịch sử thiếu/khác SQL đã được xử lý trong lần dựng DB được phê duyệt trước đó, không còn là blocker hiện tại. Các ghi nhận lịch sử được giữ tại `docs/THINH_DATABASE_HANDOFF.md`; không đổi checksum hoặc chép migration trùng để chạy lại.
 
-Chỉ dữ liệu đã có chức năng thật được ghi vào schema. `fullUpgradeReady=false` vẫn giữ cho tới khi hoàn tất schema, lịch sử migration và nghiệm thu vận hành. Gói Shop tài trợ vẫn cần người vận hành duyệt cấu hình như mục Marketplace; không tự bật quảng cáo demo.
+Chỉ dữ liệu đã có chức năng thật được ghi vào schema. Audit báo riêng `acceptanceGaps` (thiếu bao bì, kênh placeholder, Live đang hiệu lực, tài trợ được duyệt, phản hồi hãng vận chuyển). `fullUpgradeReady=false`/`manualAcceptanceRequired=true` nhắc rằng kiểm tra tự động không chứng nhận danh tính, thanh toán, video phát hay giao hàng vật lý. Không tự bật quảng cáo demo hoặc seed lại để làm đẹp số liệu.
 
 ## Integration test PostgreSQL
 

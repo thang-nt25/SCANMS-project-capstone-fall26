@@ -8,6 +8,7 @@ export interface SeedDataset {
   socialChannels: Prisma.CollaboratorSocialChannelCreateManyInput[];
   addresses: Prisma.CustomerAddressCreateManyInput[];
   stores: Prisma.StoreCreateManyInput[];
+  sponsoredPlacements: Prisma.SponsoredPlacementCreateManyInput[];
   products: Prisma.ProductCreateManyInput[];
   variants: Prisma.ProductVariantCreateManyInput[];
   mediaAssets: Prisma.MediaAssetCreateManyInput[];

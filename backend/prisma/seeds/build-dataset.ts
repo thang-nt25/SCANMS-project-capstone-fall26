@@ -7,6 +7,7 @@ import { buildSamples } from './samples.seed';
 import { buildFinance } from './finance.seed';
 import { validateDataset } from './validate-dataset';
 import { buildChatNotifications } from './chat-notifications.seed';
+import { buildSponsoredFixtures } from './marketplace.seed';
 
 /** Pure construction allows financial and relationship invariants to run without a database. */
 export function buildDataset(context: SeedContext): SeedDataset {
@@ -17,6 +18,7 @@ export function buildDataset(context: SeedContext): SeedDataset {
     socialChannels: [],
     addresses: [],
     stores: [],
+    sponsoredPlacements: [],
     products: [],
     variants: [],
     mediaAssets: [],
@@ -56,6 +58,7 @@ export function buildDataset(context: SeedContext): SeedDataset {
   };
   buildIdentities(data, context);
   buildCatalog(data, context);
+  buildSponsoredFixtures(data, context);
   buildMarketing(data, context);
   buildOrders(data, context);
   buildSamples(data, context);

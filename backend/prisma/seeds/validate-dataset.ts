@@ -56,6 +56,13 @@ export function validateDataset(data: SeedDataset): void {
   }
   const users = new Map(data.users.map((row) => [row.id, row]));
   const stores = new Map(data.stores.map((row) => [row.id, row]));
+  assertSeed(data.sponsoredPlacements.length === 2, 'expected two free sponsored test placements');
+  for (const placement of data.sponsoredPlacements) {
+    assertSeed(stores.has(placement.storeId) && placement.status === 'APPROVED' &&
+      placement.fundingType === 'PLATFORM_GRANT' && amount(placement.amount) === 0 &&
+      !placement.paymentReference && !placement.paymentProofUrl && placement.headline.startsWith('[TEST]'),
+    'sponsored fixtures must be free, explicitly labeled test grants');
+  }
   const products = new Map(data.products.map((row) => [row.id, row]));
   const variants = new Map(data.variants.map((row) => [row.id, row]));
   const orders = new Map(data.orders.map((row) => [row.id, row]));

@@ -26,6 +26,7 @@ const MODEL_NAMES: Record<SeedTable, string> = {
   socialChannels: 'CollaboratorSocialChannel',
   addresses: 'CustomerAddress',
   stores: 'Store',
+  sponsoredPlacements: 'SponsoredPlacement',
   products: 'Product',
   variants: 'ProductVariant',
   mediaAssets: 'MediaAsset',
@@ -133,6 +134,7 @@ const WRITERS: Record<SeedTable, TableWriter> = {
     tx.collaboratorSocialChannel.createMany({ data: d.socialChannels }),
   addresses: (tx, d) => tx.customerAddress.createMany({ data: d.addresses }),
   stores: (tx, d) => tx.store.createMany({ data: d.stores }),
+  sponsoredPlacements: (tx, d) => tx.sponsoredPlacement.createMany({ data: d.sponsoredPlacements }),
   products: (tx, d) => tx.product.createMany({ data: d.products }),
   variants: (tx, d) => tx.productVariant.createMany({ data: d.variants }),
   collaborations: (tx, d) =>
@@ -294,7 +296,7 @@ export async function applyDataset(
             source: 'SYNTHETIC_CAPSTONE',
             earliestOrderAt: data.orders[0].createdAt!.toString(),
             inventoryBaseline: inventoryBaseline(data),
-            unsupported: ['PRODUCT_PACKAGE_COLUMNS'],
+            unsupported: [],
           },
         },
       });
