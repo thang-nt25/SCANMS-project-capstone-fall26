@@ -25,6 +25,8 @@ import {
   type FraudMitigationAction,
 } from '../../services/ai-fraud.service';
 import { Select } from '../../components/ui/Select';
+import { useRef } from 'react';
+import { WorkspaceHero, workspaceButton } from '@/components/ui/FeatureWorkspace';
 
 export default function AiFraudSentinelPage() {
   const [summary, setSummary] = useState<FraudScanSummary | null>(null);
@@ -36,40 +38,72 @@ export default function AiFraudSentinelPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionNote, setActionNote] = useState('');
   const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
+  const requestSequence = useRef(0);
+  const mutationLock = useRef(false);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const [pendingDecision, setPendingDecision] = useState<FraudMitigationAction | null>(null);
+  useEffect(() => {
+    setActionNote(''); setPendingDecision(null);
+    if (!activeIncident?.id) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden'; detailRef.current?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !mutationLock.current) setActiveIncident(null);
+      if (event.key !== 'Tab') return;
+      const controls = detailRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input, [tabindex="0"]');
+      if (!controls?.length) return;
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === detailRef.current)) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    window.addEventListener('keydown', keydown);
+    return () => { document.body.style.overflow = overflow; window.removeEventListener('keydown', keydown); previous?.focus(); };
+  }, [activeIncident?.id]);
 
   const loadData = useCallback(async () => {
+    const request = ++requestSequence.current;
     setLoading(true);
     setLoadError(null);
     try {
       const data = await aiFraudService.scanTraffic({ timeframe });
+      if (request !== requestSequence.current) return;
       setSummary(data);
     } catch (err: any) {
+      if (request !== requestSequence.current) return;
       console.error(err);
       const message = 'Không thể tải dữ liệu quét gian lận AI. Vui lòng thử lại.';
       setLoadError(message);
       toast.error(message);
     } finally {
-      setLoading(false);
+      if (request === requestSequence.current) setLoading(false);
     }
   }, [timeframe]);
 
   useEffect(() => {
+    setSummary(null);
     loadData();
+    return () => { requestSequence.current += 1; };
   }, [loadData]);
 
-  const handleAction = async (action: FraudMitigationAction) => {
-    if (!activeIncident) return;
+  const handleAction = (action: FraudMitigationAction) => setPendingDecision(action);
+  const applyAction = async (action: FraudMitigationAction) => {
+    if (!activeIncident || mutationLock.current) return;
+    if (actionNote.trim().length < 10) { toast.error('Nhập lý do xử lý tối thiểu 10 ký tự.'); return; }
+    mutationLock.current = true;
     setActionLoading(true);
     try {
       const res = await aiFraudService.takeAction(activeIncident.id, action, actionNote);
       toast.success(res.message || 'Thực hiện thao tác thành công!');
       setActiveIncident(res.incident);
       setActionNote('');
+      setPendingDecision(null);
       loadData();
     } catch (err: any) {
       console.error(err);
       toast.error(err?.response?.data?.message || 'Có lỗi xảy ra khi thực hiện hành động');
     } finally {
+      mutationLock.current = false;
       setActionLoading(false);
     }
   };
@@ -151,6 +185,7 @@ export default function AiFraudSentinelPage() {
 
   return (
     <div className="w-full min-w-0 space-y-4 pb-8">
+      <WorkspaceHero eyebrow="SCANMS / AI Anti-Fraud" title="Giám sát traffic & Đối soát rủi ro" description="Số click và đơn được đếm trong kỳ đã chọn. Quy tắc IP/bot phân tích tối đa 100 click gần nhất mỗi link; điểm quy tắc không phải kết luận gian lận. Ngưỡng >5.000 clicks, 0 đơn được gắn AI_FRAUD_FLAG để kiểm tra." />
       {/* KPI Metric Cards - Nhỏ gọn, cân xứng, chuẩn 4 cột trên desktop */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {/* Total Clicks Scanned */}
@@ -536,9 +571,10 @@ export default function AiFraudSentinelPage() {
       {activeIncident && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/55 p-4 backdrop-blur-sm"
-          onClick={() => setActiveIncident(null)}
+          onClick={() => { if (!mutationLock.current) setActiveIncident(null); }}
         >
           <div
+            ref={detailRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Chi tiết đối soát sự vụ"
             className="flex max-h-[90vh] w-full max-w-2xl animate-in flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-2xl duration-150 fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
@@ -557,7 +593,7 @@ export default function AiFraudSentinelPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveIncident(null)}
+                disabled={actionLoading} onClick={() => setActiveIncident(null)}
                 aria-label="Đóng chi tiết sự vụ"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#7D715E] transition hover:bg-white hover:text-[#1A1612]"
               >
@@ -646,7 +682,8 @@ export default function AiFraudSentinelPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Ghi chú lý do xử lý (tùy chọn)..."
+                  placeholder="Lý do xử lý bắt buộc (10–1.000 ký tự)…"
+                  aria-label="Lý do xử lý sự vụ" minLength={10} maxLength={1000} disabled={actionLoading}
                   value={actionNote}
                   onChange={(e) => setActionNote(e.target.value)}
                   className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 text-xs font-medium text-[#1A1612] outline-none placeholder:text-[#7D715E] focus:border-[#C59B58]"
@@ -684,7 +721,10 @@ export default function AiFraudSentinelPage() {
                   >
                     <span>Bỏ qua cảnh báo (Khách thật)</span>
                   </button>
+                  <button type="button" disabled={actionLoading || activeIncident.status === 'RESOLVED'} className={workspaceButton} onClick={() => handleAction('RESOLVE')}>Đánh dấu đã xử lý</button>
                 </div>
+                {pendingDecision && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-xs leading-5 text-[#7D715E]"><strong className="text-[#1A1612]">Xác nhận: {pendingDecision}</strong><p>{pendingDecision === 'FREEZE_COMMISSION' ? 'Tạm ngưng link và giữ hoa hồng PENDING của KOL tại gian hàng này trong 90 ngày để đối soát. Không tác động hoa hồng của gian hàng khác.' : pendingDecision === 'DISMISS' ? 'Mở lại link và bác bỏ cảnh báo. Không tự động hoàn tác khoản giữ hoa hồng trước đó.' : 'Thao tác được ghi vĩnh viễn vào nhật ký kiểm toán cùng lý do xử lý.'}</p><div className="flex gap-2"><button disabled={actionLoading || actionNote.trim().length < 10} className={`${workspaceButton} !bg-[#C59B58]`} onClick={() => void applyAction(pendingDecision)}>{actionLoading ? 'Đang xử lý…' : 'Xác nhận thực hiện'}</button><button disabled={actionLoading} className={workspaceButton} onClick={() => setPendingDecision(null)}>Hủy</button></div></div>}
+                {!!activeIncident.actionHistory?.length && <details><summary className="cursor-pointer text-xs font-semibold text-[#7D715E]">Lịch sử xử lý đã lưu ({activeIncident.actionHistory.length})</summary><ol className="space-y-3 pl-4 text-xs text-[#7D715E]">{activeIncident.actionHistory.map((item, index) => <li key={`${item.performedAt}:${index}`}><strong>{item.action}</strong> · {item.performedBy}<p className="my-1">{new Date(item.performedAt).toLocaleString('vi-VN')} · {item.note}</p></li>)}</ol></details>}
               </div>
             </div>
           </div>

@@ -5,6 +5,9 @@ import {
   IsEnum,
   Min,
   Max,
+  IsUUID,
+  MinLength,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -27,15 +30,15 @@ export type FraudMitigationAction =
 
 export class FraudScanQueryDto {
   @IsOptional()
-  @IsString()
+  @IsUUID()
   storeId?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   collaboratorId?: string;
 
   @IsOptional()
-  @IsString()
+  @IsEnum(['24h', '7d', '30d', 'all'])
   timeframe?: '24h' | '7d' | '30d' | 'all' = '30d';
 
   @IsOptional()
@@ -46,7 +49,7 @@ export class FraudScanQueryDto {
   minRiskScore?: number;
 
   @IsOptional()
-  @IsString()
+  @IsEnum(['ACTIVE', 'FROZEN', 'RESOLVED', 'DISMISSED'])
   status?: FraudIncidentStatus;
 }
 
@@ -56,9 +59,10 @@ export class FraudActionDto {
   })
   action: FraudMitigationAction;
 
-  @IsOptional()
   @IsString()
-  note?: string;
+  @MinLength(10)
+  @MaxLength(1000)
+  note: string;
 }
 
 export interface FraudEvidenceItem {
