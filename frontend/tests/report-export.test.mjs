@@ -16,5 +16,5 @@ test('custom range includes the full final Vietnam day', () => {
   assert.deepEqual(vietnamDateRange('2026-10-18', '2026-10-18'), { startDate: '2026-10-17T17:00:00.000Z', endDate: '2026-10-18T16:59:59.999Z' });
 });
 test('rejects incomplete, reversed and excessive date ranges', () => {
-  for (const [a, b] of [['', '2026-10-18'], ['2026-10-20', '2026-10-18'], ['2020-01-01', '2026-10-18']]) assert.throws(() => vietnamDateRange(a, b));
+  for (const [a, b] of [['', '2026-10-18'], ['2026-10-20', '2026-10-18'], ['2020-01-01', '2026-10-18'], ['2026-02-31', '2026-03-05']]) assert.throws(() => vietnamDateRange(a, b));
 });

@@ -9,19 +9,32 @@ export function useWorkspaceResource<T>(url: string) {
   const [revision, setRevision] = useState(0);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const sequence = useRef(0);
-  const refresh = useCallback(() => setRevision(value => value + 1), []);
+  const refresh = useCallback(() => setRevision((value) => value + 1), []);
   useEffect(() => {
     const controller = new AbortController();
     const request = ++sequence.current;
-    setLoading(true); setError('');
-    void api.get<T>(url, { signal: controller.signal, headers: { 'x-skip-cache': '1' } }).then(response => {
-      if (request !== sequence.current || controller.signal.aborted) return;
-      setData(response.data); setUpdatedAt(new Date());
-    }).catch((cause: unknown) => {
-      if (!controller.signal.aborted && request === sequence.current) setError(cause instanceof Error ? cause.message : 'Không tải được dữ liệu.');
-    }).finally(() => {
-      if (!controller.signal.aborted && request === sequence.current) setLoading(false);
-    });
+    setLoading(true);
+    setError('');
+    void api
+      .get<T>(url, {
+        signal: controller.signal,
+        headers: { 'x-skip-cache': '1' },
+      })
+      .then((response) => {
+        if (request !== sequence.current || controller.signal.aborted) return;
+        setData(response.data);
+        setUpdatedAt(new Date());
+      })
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted && request === sequence.current)
+          setError(
+            cause instanceof Error ? cause.message : 'Không tải được dữ liệu.',
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted && request === sequence.current)
+          setLoading(false);
+      });
     return () => controller.abort();
   }, [url, revision]);
   return { data, loading, error, updatedAt, refresh };

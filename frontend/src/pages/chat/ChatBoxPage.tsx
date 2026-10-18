@@ -1401,6 +1401,7 @@ export default function ChatBoxPage({
         return;
       }
       setInputText((current) => current.trim() === trimmed ? '' : current);
+      if (activeConvIdRef.current !== activeConvId) return;
       setPinnedProduct(null);
       if (pinnedProduct && queryProductId) {
         const nextParams = new URLSearchParams(searchParams);
@@ -1410,7 +1411,7 @@ export default function ChatBoxPage({
     });
 
     socket.emit('typing', { conversationId: activeConvId, isTyping: false });
-  }, [inputText, activeConvId, pinnedProduct, queryProductId, searchParams, setSearchParams]);
+  }, [inputText, activeConvId, pinnedProduct, queryProductId, searchParams, setSearchParams, setInputText]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

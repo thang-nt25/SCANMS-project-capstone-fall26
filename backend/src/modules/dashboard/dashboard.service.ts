@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { UserRole } from '@prisma/client';
 import { DAY_MS, VIETNAM_OFFSET_MS, vietnamDayKey, vietnamDayStart, vietnamHour } from './analytics-time';
@@ -12,6 +12,17 @@ import {
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async resolveAnalyticsScope(userId: string, role: string, requestedStoreId?: string) {
+    if (role === UserRole.SHOP_MANAGER) {
+      const storeId = await this.getStoreId(userId);
+      if (!storeId || (requestedStoreId && requestedStoreId !== storeId)) throw new ForbiddenException('Không có quyền xem dữ liệu gian hàng này.');
+      return { storeId, isShop: true };
+    }
+    if (role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER) return { storeId: requestedStoreId || null, isShop: true };
+    if (role === UserRole.COLLABORATOR) return { storeId: null, isShop: false };
+    throw new ForbiddenException('Không có quyền xem báo cáo tiếp thị.');
+  }
 
   // ─── Lấy storeId từ userId (Shop) ────────────────────────────────────
   private async getStoreId(userId: string): Promise<string | null> {
@@ -92,16 +103,7 @@ export class DashboardService {
     const { startDate, endDate, prevStartDate, prevEndDate } =
       this.resolveDateRange(dto);
 
-    let storeId: string | null = null;
-    let isShop = false;
-
-    if (role === UserRole.SHOP_MANAGER) {
-      storeId = await this.getStoreId(userId);
-      isShop = true;
-    } else if (role === UserRole.SYSTEM_ADMIN && dto.storeId) {
-      storeId = dto.storeId;
-      isShop = true;
-    }
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     // Điều kiện lọc theo vai trò
     const currentOrderWhere: any = {
@@ -254,18 +256,10 @@ export class DashboardService {
     );
 
     // Số liên kết tiếp thị đang hoạt động
-    const activeLinksCount =
-      isShop && storeId
-        ? await this.prisma.referralLink.count({
-            where: { product: { storeId }, status: 'ACTIVE', deletedAt: null },
-          })
-        : await this.prisma.referralLink.count({
-            where: {
-              collaboratorId: userId,
-              status: 'ACTIVE',
-              deletedAt: null,
-            },
-          });
+    const activeLinksCount = await this.prisma.referralLink.count({ where: {
+      status: 'ACTIVE', deletedAt: null,
+      ...(storeId ? { storeId } : !isShop ? { collaboratorId: userId } : {}),
+    } });
 
     return {
       period: {
@@ -312,16 +306,7 @@ export class DashboardService {
   ) {
     const { startDate, endDate, interval } = this.resolveDateRange(dto);
 
-    let storeId: string | null = null;
-    let isShop = false;
-
-    if (role === UserRole.SHOP_MANAGER) {
-      storeId = await this.getStoreId(userId);
-      isShop = true;
-    } else if (role === UserRole.SYSTEM_ADMIN && dto.storeId) {
-      storeId = dto.storeId;
-      isShop = true;
-    }
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     if (interval === AnalyticsTimeInterval.HOURLY) {
       return this._getHourlyTimeSeries(
@@ -355,13 +340,7 @@ export class DashboardService {
     });
     const limit = dto.limit || 5;
 
-    let storeId: string | null = null;
-    const isShop =
-      role === UserRole.SHOP_MANAGER || role === UserRole.SYSTEM_ADMIN;
-
-    if (role === UserRole.SHOP_MANAGER) {
-      storeId = await this.getStoreId(userId);
-    }
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     const orderWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
@@ -451,12 +430,7 @@ export class DashboardService {
       endDate: dto.endDate,
     });
 
-    let storeId: string | null = null;
-    const isShop = role === UserRole.SHOP_MANAGER;
-
-    if (isShop) {
-      storeId = await this.getStoreId(userId);
-    }
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     const clickWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
@@ -561,9 +535,7 @@ export class DashboardService {
   ) {
     const { startDate, endDate } = this.resolveDateRange(dto);
 
-    let storeId: string | null = null;
-    const isShop = role === UserRole.SHOP_MANAGER;
-    if (isShop) storeId = await this.getStoreId(userId);
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
     const clickWhere: any = { createdAt: { gte: startDate, lte: endDate } };
     const orderWhere: any = { createdAt: { gte: startDate, lte: endDate } };
@@ -631,12 +603,11 @@ export class DashboardService {
     const { startDate, endDate } = this.resolveDateRange(dto);
 
     let rawCampaigns: any[] = [];
+    const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
-    if (role === UserRole.SHOP_MANAGER) {
-      const storeId = await this.getStoreId(userId);
-      if (storeId) {
+    if (isShop) {
         rawCampaigns = await this.prisma.campaign.findMany({
-          where: { storeId },
+          where: storeId ? { storeId } : {},
           include: {
             store: { select: { id: true, name: true } },
             participants: {
@@ -648,7 +619,6 @@ export class DashboardService {
             },
           },
         });
-      }
     } else {
       // KOL: Các chiến dịch đã tham gia
       const participants = await this.prisma.campaignParticipant.findMany({
@@ -786,6 +756,13 @@ export class DashboardService {
       }
     });
 
+    const commissions = await this.prisma.commission.findMany({
+      where: { createdAt: { gte: startDate, lte: endDate }, status: { in: ['APPROVED', 'PAID'] },
+        ...(storeId ? { order: { storeId } } : !isShop ? { collaboratorId: userId } : {}),
+      }, select: { createdAt: true, commissionAmount: true },
+    });
+    for (const commission of commissions) hours[vietnamHour(commission.createdAt)].commission += Number(commission.commissionAmount || 0);
+
     return hours.map((item) => ({
       ...item,
       conversionRate:
@@ -875,6 +852,7 @@ export class DashboardService {
     // Query commissions
     const commissionWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
+      status: { in: ['APPROVED', 'PAID'] },
     };
     if (isShop && storeId) {
       commissionWhere.order = { storeId };
