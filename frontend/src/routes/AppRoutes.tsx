@@ -48,6 +48,7 @@ const CustomerPortalPage = lazyRetry(() => import('../pages/customer/CustomerPor
 const ReturnDetailPage = lazyRetry(() => import('../pages/returns/ReturnDetailPage'));
 const AdminReturnDisputesPage = lazyRetry(() => import('../pages/admin/AdminReturnDisputesPage'));
 const ChatBoxPage = lazyRetry(() => import('../pages/chat/ChatBoxPage'));
+const SampleRequestsPage = lazyRetry(() => import('../pages/collaborator/SampleRequestsPage'));
 const RealtimeAnalyticsPage = lazyRetry(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPage'));
 
@@ -248,8 +249,8 @@ function AppRoutes() {
               <Route path="collaborator/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="kol/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
-              <Route path="collaborator/samples" element={<Navigate to="/collaborator/collaboration?tab=samples" replace />} />
-              <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/collaboration?tab=samples" replace />} />
+              <Route path="collaborator/samples" element={<SampleRequestsPage />} />
+              <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
               <Route path="collaborator/campaigns" element={<Navigate to="/collaborator/collaboration?tab=invites" replace />} />
               <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />

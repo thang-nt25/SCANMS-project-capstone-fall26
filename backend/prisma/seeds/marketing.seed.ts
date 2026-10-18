@@ -1,5 +1,5 @@
 import type { SeedContext, SeedDataset } from './seed.types';
-import { daysFrom, seedId } from './seed.helpers';
+import { ADMIN_ID, daysFrom, seedId } from './seed.helpers';
 import { CREATOR_NAMES } from './data/people.data';
 import { SHOPS } from './data/catalog.data';
 
@@ -13,7 +13,10 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       storeId,
       name: `${shop.name} — Tuần lễ trải nghiệm`,
       bonusCommissionRate: 1,
-      startDate: daysFrom(context, -3),
+      bonusBudgetTotal: 5_000_000,
+      bonusBudgetUsed: 0,
+      isActive: true,
+      startDate: createdAt,
       endDate: daysFrom(context, 14),
       createdAt,
     });
@@ -27,7 +30,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
     data.coupons.push({
       id: seedId(`shop-coupon:${index}`),
       storeId,
-      collaboratorId: seedId(`creator:${index}`),
+      collaboratorId: seedId(`shop-owner:${index}`),
       codeNormalized: `SHOP${String(index + 1).padStart(2, '0')}SAVE`,
       displayCode: `SHOP${String(index + 1).padStart(2, '0')}SAVE`,
       status: 'ACTIVE',
@@ -51,6 +54,40 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       approvedAt: createdAt,
       createdAt,
     });
+    // Platform coupons are issued by Admin and scoped to one Shop by the real schema.
+    for (const benefitType of ['GOODS', 'SHIPPING'] as const) {
+      const code = `SAN${String(index + 1).padStart(2, '0')}${benefitType === 'GOODS' ? 'SAVE' : 'SHIP'}`;
+      data.coupons.push({
+        id: seedId(`platform-${benefitType}:${index}`),
+        storeId,
+        collaboratorId: ADMIN_ID,
+        codeNormalized: code,
+        displayCode: code,
+        status: 'ACTIVE',
+        benefitType,
+        discountType: 'FIXED_AMOUNT',
+        discountValue: benefitType === 'GOODS' ? 10_000 : 15_000,
+        maximumDiscountAmount: benefitType === 'GOODS' ? 10_000 : 15_000,
+        minimumOrderAmount: 100_000,
+        usageLimitTotal: 200,
+        usageLimitPerCustomer: 2,
+        budgetTotal: 3_000_000,
+        budgetUsed: 0,
+        usageCount: 0,
+        fundingSource: 'PLATFORM_FUNDED',
+        shopFundingRate: 0,
+        platformFundingRate: 100,
+        scopeType: 'STORE_WIDE',
+        stackableWithProductDiscount: true,
+        stackableWithShopVoucher: benefitType === 'GOODS',
+        stackableWithPlatformVoucher: true,
+        startsAt: createdAt,
+        expiresAt: daysFrom(context, 60),
+        approvedBy: ADMIN_ID,
+        approvedAt: createdAt,
+        createdAt,
+      });
+    }
   });
 
   CREATOR_NAMES.forEach((name, creatorIndex) => {
@@ -72,15 +109,15 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       campaignId: seedId(`campaign:${storeIndex}`),
       collaboratorId,
       status: 'ACCEPTED',
-      joinedAt: daysFrom(context, -3),
-      createdAt: daysFrom(context, -3),
+      joinedAt: createdAt,
+      createdAt,
     });
     data.conversations.push({
       id: conversationId,
       storeId,
       collaboratorId,
       lastMessageAt: daysFrom(context, -1),
-      createdAt: daysFrom(context, -20),
+      createdAt,
     });
     const couponId = seedId(`kol-coupon:${creatorIndex}`);
     const code = `KOL${String(creatorIndex + 1).padStart(2, '0')}SAVE`;
@@ -134,8 +171,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
     }
     const product = data.products[storeIndex * 2];
     const proposalId = seedId(`deal:${creatorIndex}`);
-    // Current dev stores an agreed final rate, so +2% is persisted as 12%.
-    // Do not write "2" into this field until the additive engine changes its contract.
+    // VIP deal still stores base + bonus (12); checkout extracts +2 via exclusiveDealBonus.
     data.deals.push({
       id: proposalId,
       storeId,
@@ -148,9 +184,21 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
         'Đề xuất cộng 2 điểm phần trăm trên mức nền 10%; cam kết một video trải nghiệm sau khi nhận mẫu.',
       status: 'APPROVED',
       reviewerId: seedId(`shop-owner:${storeIndex}`),
-      shopResponse: 'Đồng ý mức tổng 12% theo hợp đồng hiện tại của hệ thống.',
-      reviewedAt: daysFrom(context, -19),
-      createdAt: daysFrom(context, -20),
+      shopResponse:
+        'Duyệt VIP +2% (lưu mức nền + VIP là 12%). Tier, chiến dịch và Live được tính riêng khi đặt hàng.',
+      reviewedAt: daysFrom(context, -48),
+      createdAt: createdAt,
+    });
+    data.referralLinks.push({
+      id: seedId(`campaign-link:${creatorIndex}`),
+      storeId,
+      collaboratorId,
+      productId: product.id!,
+      campaignId: seedId(`campaign:${storeIndex}`),
+      shortCode: `seed-campaign-k${creatorIndex + 1}`,
+      destinationPath: `/products/${product.id!}`,
+      status: 'ACTIVE',
+      createdAt,
     });
     data.referralLinks.push({
       id: seedId(`deal-link:${creatorIndex}`),
@@ -181,10 +229,10 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
           salesCommitment:
             'Cam kết quay video trải nghiệm. Đề xuất cộng 2% trên mức nền 10%.',
           status: 'APPROVED',
-          createdAt: daysFrom(context, -20).toISOString(),
+          createdAt: createdAt.toISOString(),
         }),
         isRead: true,
-        createdAt: daysFrom(context, -20),
+        createdAt,
       },
       {
         id: seedId(`deal-reply:${creatorIndex}`),
@@ -200,7 +248,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
   for (let index = 0; index < 5; index++) {
     const sessionId = seedId(`live:${index}`);
     const active = index < 2;
-    const startsAt = daysFrom(context, active ? -1 / 48 : -index - 1);
+    const startsAt = daysFrom(context, active ? -1 / 48 : -40 - index);
     const endsAt = new Date(startsAt.getTime() + 2 * 3_600_000);
     data.liveSessions.push({
       id: sessionId,
@@ -218,13 +266,13 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       respondedAt: new Date(startsAt.getTime() - 3_600_000),
       startsAt,
       endsAt,
-      commissionRate: 12,
+      commissionRate: 2,
       governance: {
         seedSource: 'SYNTHETIC_CAPSTONE',
         intendedBonusPercentage: 2,
         pinnedProductId: seedId(`product:${index * 2}`),
       },
-      createdAt: daysFrom(context, -10),
+      createdAt: new Date(startsAt.getTime() - 86_400_000),
     });
     for (let slot = 0; slot < 2; slot++)
       data.liveProducts.push({

@@ -56,6 +56,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/collaborator/dashboard', label: 'Tổng quan & Doanh số', icon: TrendingUp, section: 'TỔNG QUAN' },
       { path: '/collaborator/marketing', label: 'Trung tâm Tiếp thị', icon: Link2, section: 'TIẾP THỊ & HỢP TÁC' },
       { path: '/collaborator/collaboration', label: 'Hợp tác & Nhận mẫu Shop', icon: MessageSquare, section: 'TIẾP THỊ & HỢP TÁC' },
+      { path: '/collaborator/samples', label: 'Tiến độ mẫu & Video', icon: Package, section: 'TIẾP THỊ & HỢP TÁC' },
       { path: '/collaborator/live-sessions', label: 'Phiên Livestream', icon: Radio, section: 'TIẾP THỊ & HỢP TÁC' },
       { path: '/collaborator/wallet', label: 'Ví & Rút hoa hồng', icon: Wallet, section: 'TÀI CHÍNH & HỒ SƠ' },
       { path: '/collaborator/profile', label: 'Hồ sơ & Cấp bậc KOL', icon: ShieldCheck, section: 'TÀI CHÍNH & HỒ SƠ' },

@@ -74,7 +74,7 @@ describe('GHN customer order notifications', () => {
       id: 'sample-1', status: 'APPROVED', collaboratorId: 'kol-1',
       recipientName: 'KOL', recipientPhone: '0912345678', shippingAddress: 'Address',
       ghnDistrictId: 1, ghnWardCode: '001',
-      product: { title: 'Sample', price: 100000, store: { id: 'store-1', ownerId: 'shop-1', name: 'Shop', onboardingData: { warehouseAddress: 'Actual warehouse', contactPhone: '0987654321' }, returnWarehouse: {} } },
+      product: { title: 'Sample', price: 100000, packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5, store: { id: 'store-1', ownerId: 'shop-1', name: 'Shop', onboardingData: { warehouseAddress: 'Actual warehouse', contactPhone: '0987654321' }, returnWarehouse: {} } },
     };
     const tx = {
       sampleProductRequest: { updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUnique: jest.fn().mockResolvedValue(sample) },
@@ -428,7 +428,10 @@ describe('GHN customer order notifications', () => {
       order: { findUnique: jest.fn().mockResolvedValue(order) },
       $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
     };
-    const service = new GhnService(prisma as any, {} as ConfigService);
+    const config = {
+      get: jest.fn((key: string) => key === 'SHIPPING_SIMULATION_ENABLED' ? 'false' : undefined),
+    } as unknown as ConfigService;
+    const service = new GhnService(prisma as any, config);
     jest.spyOn(service as any, 'resolveGhnLocation').mockResolvedValue({ districtId: 1, wardCode: '001' });
     const send = jest.spyOn(service as any, 'ghnFetch').mockResolvedValue({
       code: 200, data: { order_code: 'STAGING-ORDER-1', total_fee: 25000 },
@@ -448,10 +451,11 @@ describe('GHN customer order notifications', () => {
     expect(tx.order.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         rawPayload: expect.objectContaining({ ghnEnvironment: GhnEnvironment.TEST,
-          ghnSimulation: expect.objectContaining({ version: 1, orderCode: 'STAGING-ORDER-1', startedAt: expect.any(String), shipperName: expect.any(String) }),
         }),
       }),
     }));
+    // Creating a TEST waybill uses the real sandbox response, not an automatic fake clock.
+    expect(tx.order.updateMany.mock.calls[0][0].data.rawPayload).not.toHaveProperty('ghnSimulation');
   });
 
   it('explains GHN order-limit rejections without changing the order to shipping', async () => {

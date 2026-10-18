@@ -9,7 +9,6 @@ import {
   Search,
   X,
   Send,
-  Paperclip,
   CheckCheck,
   Check,
   Sparkles,
@@ -28,6 +27,8 @@ import {
   MoreVertical,
   Package,
 } from 'lucide-react';
+import { ChatAttachmentButton } from '@/components/chat/ChatAttachmentButton';
+import { useConversationDraft } from '@/hooks/useConversationDraft';
 import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '@/types/chat.types';
@@ -1011,7 +1012,7 @@ export default function ChatBoxPage({
     }
     return [];
   });
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useConversationDraft(currentUser?.id, activeConvId);
   const [pinnedProduct, setPinnedProduct] = useState<ProductContextData | null>(
     effectiveProductContext || null
   );
@@ -1048,7 +1049,6 @@ export default function ChatBoxPage({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const openConversationRef = useRef<(conv: Conversation) => Promise<void>>(() => Promise.resolve());
   const activeConvIdRef = useRef<string | null>(null);
   const sendingRef = useRef(false);
@@ -1162,7 +1162,11 @@ export default function ChatBoxPage({
     const socket = getChatSocket();
     setIsConnected(socket.connected);
 
-    const onConnect = () => setIsConnected(true);
+    const onConnect = () => {
+      setIsConnected(true);
+      const active = conversationsRef.current.find((conversation) => conversation.id === activeConvIdRef.current);
+      if (active) void openConversationRef.current(active);
+    };
     const onDisconnect = () => setIsConnected(false);
     const onNewMessage = (msg: ChatMessage) => {
       if (!canSeeAffiliateDeals && tryParseExclusiveDealCard(msg.messageText)) return;
@@ -1235,7 +1239,8 @@ export default function ChatBoxPage({
     socket.on('new_message', onNewMessage);
     socket.on('messages_read', onRead);
 
-    const onTyping = ({ fullName, isTyping }: { fullName: string; isTyping: boolean }) => {
+    const onTyping = ({ fullName, isTyping, conversationId }: { fullName: string; isTyping: boolean; conversationId?: string }) => {
+        if (conversationId && conversationId !== activeConvIdRef.current) return;
         setTypingUser(isTyping ? fullName : null);
         if (isTyping) {
           if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
@@ -1270,6 +1275,7 @@ export default function ChatBoxPage({
       socket.emit('leave_conversation', { conversationId: activeConvId });
     }
 
+    setTypingUser(null);
     setActiveConvId(conv.id);
     activeConvIdRef.current = conv.id;
     chatSessionCache.activeConvId = conv.id;
@@ -1291,6 +1297,7 @@ export default function ChatBoxPage({
       try {
         const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`, { headers: { 'x-skip-cache': '1' } });
         const msgs: ChatMessage[] = Array.isArray(res) ? res : res?.data || [];
+        if (activeConvIdRef.current !== conv.id) return;
         setMessages(msgs);
         chatSessionCache.messagesByConvId.set(conv.id, msgs);
         setHasMore(msgs.length === 50);
@@ -1305,8 +1312,10 @@ export default function ChatBoxPage({
       } catch (err) {
         console.error(err);
       } finally {
-        setIsLoadingMsgs(false);
-        setTimeout(() => scrollToBottom(), 50);
+        if (activeConvIdRef.current === conv.id) {
+          setIsLoadingMsgs(false);
+          setTimeout(() => scrollToBottom(), 50);
+        }
       }
 
       socket.emit('join_conversation', { conversationId: conv.id });
@@ -1321,13 +1330,15 @@ export default function ChatBoxPage({
     if (!activeConvId || !oldestMsgId || !hasMore) return;
     const container = messagesContainerRef.current;
     const prevScrollHeight = container?.scrollHeight || 0;
+    const conversationId = activeConvId;
 
     try {
       const res: any = await api.get(
         `/chat/conversations/${activeConvId}/messages?take=50&cursor=${oldestMsgId}`
       );
       const older: ChatMessage[] = Array.isArray(res) ? res : res?.data || [];
-      setMessages(prev => [...older, ...prev]);
+      if (activeConvIdRef.current !== conversationId) return;
+      setMessages(prev => { const existing = new Set(prev.map((message) => message.id)); return [...older.filter((message) => !existing.has(message.id)), ...prev]; });
       setHasMore(older.length === 50);
       setOldestMsgId(older[0]?.id);
 
@@ -1390,6 +1401,7 @@ export default function ChatBoxPage({
         return;
       }
       setInputText((current) => current.trim() === trimmed ? '' : current);
+      if (activeConvIdRef.current !== activeConvId) return;
       setPinnedProduct(null);
       if (pinnedProduct && queryProductId) {
         const nextParams = new URLSearchParams(searchParams);
@@ -1399,7 +1411,7 @@ export default function ChatBoxPage({
     });
 
     socket.emit('typing', { conversationId: activeConvId, isTyping: false });
-  }, [inputText, activeConvId, pinnedProduct, queryProductId, searchParams, setSearchParams]);
+  }, [inputText, activeConvId, pinnedProduct, queryProductId, searchParams, setSearchParams, setInputText]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1415,7 +1427,7 @@ export default function ChatBoxPage({
 
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       sendMessage();
     }
@@ -2262,15 +2274,7 @@ export default function ChatBoxPage({
 
               <div className={`chat-composer ${embedded ? 'p-2.5 sm:p-3' : 'px-4 py-3 sm:px-6 sm:py-4'}`}>
                 <div className="flex items-end gap-2 sm:gap-2.5">
-                <button
-                  type="button"
-                  className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                  id="chat-attach-btn"
-                  title="Đính kèm ảnh"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Paperclip className="w-5 h-5" />
-                </button>
+                <ChatAttachmentButton key={activeConvId} conversationId={activeConvId!} connected={isConnected} />
                 {isShop && (
                   isCollaboratorChat ? (
                     <button
@@ -2305,17 +2309,6 @@ export default function ChatBoxPage({
                     </>
                   ) : null
                 )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id="chat-file-input"
-                  onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) console.log('File:', file.name);
-                  }}
-                />
                 <textarea
                   id="chat-message-input"
                   className="min-h-10 max-h-28 flex-1 resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2.5 text-sm text-[#1A1612] transition-all placeholder:text-[#7D715E]/70 focus:border-[#C59B58] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C59B58]/15"
@@ -2324,6 +2317,7 @@ export default function ChatBoxPage({
                   value={inputText}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
+                  maxLength={5000}
                   rows={1}
                 />
                 <button

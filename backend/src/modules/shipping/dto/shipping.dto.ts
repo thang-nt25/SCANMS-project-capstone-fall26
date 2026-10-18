@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, IsEnum, IsInt, IsNotEmpty, Min } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsEnum, IsInt, IsNotEmpty, Min, Max, IsArray, ArrayMinSize, ArrayMaxSize, ValidateNested, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum GhnRequiredNote {
   CHOTHUHANG = 'CHOTHUHANG',
@@ -78,6 +79,12 @@ export class CreateGhnOrderDto {
 }
 
 export class CalculateShippingFeeDto {
+  @IsOptional() @IsInt() @Min(1) @Max(150)
+  length?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(150)
+  width?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(150)
+  height?: number;
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -112,7 +119,19 @@ export class CalculateShippingFeeDto {
   insuranceValue?: number;
 }
 
+export class QuoteShippingItemDto {
+  @IsUUID()
+  productId: string;
+  @IsOptional() @IsUUID()
+  variantId?: string;
+  @IsInt() @Min(1) @Max(1000)
+  quantity: number;
+}
+
 export class QuoteShippingAddressDto {
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(100)
+  @ValidateNested({ each: true }) @Type(() => QuoteShippingItemDto)
+  items?: QuoteShippingItemDto[];
   @ApiProperty({ description: 'ID gian hàng xuất kho' })
   @IsString()
   storeId: string;

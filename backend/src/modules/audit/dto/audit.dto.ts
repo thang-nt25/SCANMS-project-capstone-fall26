@@ -1,10 +1,13 @@
 import {
   IsOptional,
   IsString,
-  IsNumber,
   IsEnum,
   Min,
   Max,
+  IsInt,
+  IsDateString,
+  IsUUID,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -23,13 +26,13 @@ export type AuditCategory =
 export class QueryAuditLogsDto {
   @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
   @Min(1)
   page?: number = 1;
 
   @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
   @Min(1)
   @Max(100)
   limit?: number = 20;
@@ -39,11 +42,11 @@ export class QueryAuditLogsDto {
   action?: string;
 
   @IsOptional()
-  @IsString()
+  @IsEnum(['AUTH', 'FINANCIAL', 'PRODUCT', 'STORE', 'SAMPLE_CAMPAIGN', 'AI_SECURITY', 'SYSTEM', 'OTHER'])
   category?: AuditCategory;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   userId?: string;
 
   @IsOptional()
@@ -52,44 +55,53 @@ export class QueryAuditLogsDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   keyword?: string;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   startDate?: string;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   endDate?: string;
 
   @IsOptional()
-  @IsString()
+  @IsEnum(['INFO', 'WARN', 'CRITICAL'])
   severity?: AuditSeverity;
 }
 
 export class ExportAuditLogsDto {
   @IsOptional()
+  @IsEnum(['INFO', 'WARN', 'CRITICAL'])
+  severity?: AuditSeverity;
+
+  @IsOptional()
+  @IsString()
+  role?: string;
+  @IsOptional()
   @IsString()
   action?: string;
 
   @IsOptional()
-  @IsString()
+  @IsEnum(['AUTH', 'FINANCIAL', 'PRODUCT', 'STORE', 'SAMPLE_CAMPAIGN', 'AI_SECURITY', 'SYSTEM', 'OTHER'])
   category?: AuditCategory;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   userId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   keyword?: string;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   startDate?: string;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   endDate?: string;
 
   @IsOptional()

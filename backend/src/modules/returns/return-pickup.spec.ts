@@ -184,6 +184,46 @@ describe('return pickup booking', () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 
+  it('does not invent a warehouse or hotline when the Shop has not configured one', () => {
+    const detail = fixture();
+    const present = service as unknown as { present: (value: unknown) => { returnWarehouse: unknown } };
+    expect(present.present({ ...detail, order: { ...detail.order,
+      store: { ...detail.order.store, returnWarehouse: null } } }).returnWarehouse).toBeNull();
+    expect(present.present(detail).returnWarehouse).toEqual(warehouse);
+  });
+
+  it('never simulates an unknown or LIVE pickup provider even when test simulation is enabled', async () => {
+    const oldFlag = process.env.RETURN_PICKUP_SIMULATION_ENABLED;
+    process.env.RETURN_PICKUP_SIMULATION_ENABLED = 'true';
+    try {
+      prisma.returnRequest.findFirst.mockResolvedValue({ ...fixture(ReturnRequestStatus.PICKUP_BOOKED),
+        shipments: [{ direction: ReturnShipmentDirection.CUSTOMER_TO_SHOP, provider: 'GHN_LIVE', trackingNumber: 'LIVE123' }] });
+      await expect(service.simulatePickup(ownerId, UserRole.SHOP_MANAGER, id, 'picked')).rejects.toThrow('Production');
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    } finally {
+      if (oldFlag === undefined) delete process.env.RETURN_PICKUP_SIMULATION_ENABLED;
+      else process.env.RETURN_PICKUP_SIMULATION_ENABLED = oldFlag;
+    }
+  });
+
+  it('accepts the configured GHN TEST ShopId alias for staging callbacks', async () => {
+    const names = ['GHN_STAGING_WEBHOOK_SECRET', 'GHN_STAGING_SHOP_ID', 'GHN_TEST_SHOP_ID'] as const;
+    const saved = Object.fromEntries(names.map(name => [name, process.env[name]]));
+    try {
+      process.env.GHN_STAGING_WEBHOOK_SECRET = 'fixture-secret';
+      delete process.env.GHN_STAGING_SHOP_ID;
+      process.env.GHN_TEST_SHOP_ID = '230500';
+      gateway.mode.mockReturnValue('staging');
+      prisma.returnShipment.findFirst.mockResolvedValue(null);
+      await expect(service.handleGhnWebhook('fixture-secret', { ShopID: 230500, OrderCode: 'TEST123', Status: 'picked' })).resolves.toEqual({ received: true });
+      await expect(service.handleGhnWebhook('fixture-secret', { ShopID: 123, OrderCode: 'TEST123', Status: 'picked' })).rejects.toThrow(UnauthorizedException);
+    } finally {
+      for (const name of names) {
+        if (saved[name] === undefined) delete process.env[name]; else process.env[name] = saved[name];
+      }
+    }
+  });
+
   it('moves a booked pickup to in transit after the courier picks it up', async () => {
     const shipment = {
       id: 'shipment-1',

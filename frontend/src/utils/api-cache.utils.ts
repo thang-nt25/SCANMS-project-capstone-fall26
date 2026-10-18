@@ -52,6 +52,8 @@ export const apiCache = {
       url.includes('/refresh') ||
       url.includes('/otp') ||
       url.includes('/sample-requests') ||
+      url.includes('/wallets') ||
+      url.includes('/payouts') ||
       url.includes('/wallets/top-up-demo')
     ) {
       return false;
@@ -71,6 +73,7 @@ export const apiCache = {
     }
     // Shipping creates the waybill and changes the purchase order's fulfillment state.
     if (url.includes('/shipping/ghn/create-order/')) return '/orders';
+    if (url.includes('/shipping/ghn/simulation/')) return '/orders';
     if (url.includes('/orders')) return '/orders';
     if (url.includes('/products')) return '/products';
     if (url.includes('/chat')) return '/chat';

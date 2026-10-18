@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
+import { productPackageInput } from '../../utils/product-package.utils';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -607,11 +608,11 @@ export default function ProductManagementPage() {
   ];
 
   const [formSku, setFormSku] = useState('');
+  const [formBarcode, setFormBarcode] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formCustomCategory, setFormCustomCategory] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const originalPackage = useRef({ weight: 250, length: 15, width: 10, height: 5 });
   const [formIngredients, setFormIngredients] = useState('');
   const [formOrigin, setFormOrigin] = useState('');
   const [formLabelInfo, setFormLabelInfo] = useState('');
@@ -625,10 +626,10 @@ export default function ProductManagementPage() {
   const [formCommissionAmount, setFormCommissionAmount] = useState<number | ''>('');
   const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(false);
   const [formStock, setFormStock] = useState<number | ''>('');
-  const [formPackageWeight, setFormPackageWeight] = useState<number | ''>(250);
-  const [formPackageLength, setFormPackageLength] = useState<number | ''>(15);
-  const [formPackageWidth, setFormPackageWidth] = useState<number | ''>(10);
-  const [formPackageHeight, setFormPackageHeight] = useState<number | ''>(5);
+  const [formPackageWeight, setFormPackageWeight] = useState<number | ''>('');
+  const [formPackageLength, setFormPackageLength] = useState<number | ''>('');
+  const [formPackageWidth, setFormPackageWidth] = useState<number | ''>('');
+  const [formPackageHeight, setFormPackageHeight] = useState<number | ''>('');
   const [formSampleEnabled, setFormSampleEnabled] = useState(false);
   const [formSampleQuota, setFormSampleQuota] = useState<number | ''>('');
   const [formSpecifications, setFormSpecifications] = useState<ProductSpecificationItem[]>([
@@ -951,6 +952,7 @@ export default function ProductManagementPage() {
     setEditingProduct(null);
     setFormSku('PROD-' + Math.random().toString(36).substring(2, 7).toUpperCase());
     setFormTitle('');
+    setFormBarcode('');
     setFormCategory('');
     setFormCustomCategory('');
     setFormDescription('');
@@ -967,10 +969,10 @@ export default function ProductManagementPage() {
     setFormCommissionAmount('');
     setFormAffiliateEnabled(true);
     setFormStock('');
-    setFormPackageWeight(250);
-    setFormPackageLength(15);
-    setFormPackageWidth(10);
-    setFormPackageHeight(5);
+    setFormPackageWeight('');
+    setFormPackageLength('');
+    setFormPackageWidth('');
+    setFormPackageHeight('');
     setFormSampleEnabled(false);
     setFormSampleQuota('');
     setFormSpecifications(getDefaultSpecsForCategory(''));
@@ -1008,6 +1010,7 @@ export default function ProductManagementPage() {
     setSaveError(null);
     setEditingProduct(p);
     setFormSku(p.sku || '');
+    setFormBarcode(p.barcode || '');
     setFormTitle(p.title || p.name);
     setVariantOptionLists({});
     const matchedCat = STANDARD_CATEGORIES.find((c) => c.name === (p.categoryName || p.category));
@@ -1034,16 +1037,10 @@ export default function ProductManagementPage() {
     setFormCommissionAmount(currentPrice > 0 ? Math.round((currentPrice * 10) / 100) : '');
     setFormAffiliateEnabled(p.isAffiliateEnabled !== false);
     setFormStock(p.stockQuantity ?? p.stock ?? 0);
-    setFormPackageWeight(p.packageWeight || p.weight || 250);
-    setFormPackageLength(p.packageLength || p.length || 15);
-    setFormPackageWidth(p.packageWidth || p.width || 10);
-    setFormPackageHeight(p.packageHeight || p.height || 5);
-    originalPackage.current = {
-      weight: Number(p.packageWeight || p.weight || 250),
-      length: Number(p.packageLength || p.length || 15),
-      width: Number(p.packageWidth || p.width || 10),
-      height: Number(p.packageHeight || p.height || 5),
-    };
+    setFormPackageWeight(p.packageWeight ?? '');
+    setFormPackageLength(p.packageLength ?? '');
+    setFormPackageWidth(p.packageWidth ?? '');
+    setFormPackageHeight(p.packageHeight ?? '');
     setFormSampleEnabled(p.sampleEnabled === true);
     setFormSampleQuota(Number(p.sampleQuota) || 0);
     setVariantSamplePolicies(Object.fromEntries(
@@ -1279,6 +1276,15 @@ export default function ProductManagementPage() {
     if (savingProduct) return;
     setSaveError(null);
 
+    let packageData: ReturnType<typeof productPackageInput>;
+    try {
+      packageData = productPackageInput({ barcode: formBarcode, packageWeight: formPackageWeight,
+        packageLength: formPackageLength, packageWidth: formPackageWidth, packageHeight: formPackageHeight }, editingProduct);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Thông số đóng gói không hợp lệ.');
+      return;
+    }
+
     if (!editingProduct) {
       const issues: string[] = [];
       if (!formCategory.trim()) issues.push('Chọn danh mục sản phẩm.');
@@ -1433,20 +1439,10 @@ export default function ProductManagementPage() {
         : formCategory;
 
     const validSpecs = [...formSpecifications.filter((s) => s.key.trim() && s.value.trim())];
-    if (formPackageWeight && !validSpecs.some((s) => s.key.includes('Khối lượng'))) {
-      validSpecs.push({ id: 'pkg-weight', key: 'Khối lượng đóng gói', value: `${formPackageWeight} g` });
-    }
-    if (formPackageLength && formPackageWidth && formPackageHeight && !validSpecs.some((s) => s.key.includes('Kích thước'))) {
-      validSpecs.push({ id: 'pkg-dim', key: 'Kích thước kiện hàng (DxRxC)', value: `${formPackageLength} x ${formPackageWidth} x ${formPackageHeight} cm` });
-    }
     let combinedDescription = formDescription.trim();
     const descriptionInputsChanged = !editingProduct ||
       combinedDescription !== (editingProduct.description || '').trim() ||
-      formSpecifications.some(spec => spec.key.trim() && spec.value.trim()) ||
-      Number(formPackageWeight) !== originalPackage.current.weight ||
-      Number(formPackageLength) !== originalPackage.current.length ||
-      Number(formPackageWidth) !== originalPackage.current.width ||
-      Number(formPackageHeight) !== originalPackage.current.height;
+      formSpecifications.some(spec => spec.key.trim() && spec.value.trim());
     // Changing sample policy must not silently rewrite approved product content.
     if (descriptionInputsChanged && validSpecs.length > 0 && !/📌 THÔNG SỐ KỸ THUẬT(?: SẢN PHẨM)?:/.test(combinedDescription)) {
       const specsBlock = `📌 THÔNG SỐ KỸ THUẬT SẢN PHẨM:\n` +
@@ -1459,6 +1455,7 @@ export default function ProductManagementPage() {
     try {
       if (editingProduct) {
         const productUpdate = await productService.updateProduct(editingProduct.id, {
+          ...packageData,
           title: formTitle.trim(),
           categoryName: effectiveCategory,
           description: combinedDescription || undefined,
@@ -1491,6 +1488,7 @@ export default function ProductManagementPage() {
           : 'Cập nhật sản phẩm & hoa hồng thành công!');
       } else {
         const created = await productService.createProduct({
+          ...packageData,
           storeId: currentStoreId,
           sku: formSku.trim().toUpperCase(),
           title: formTitle.trim(),
@@ -2524,6 +2522,14 @@ export default function ProductManagementPage() {
                   </div>
                 </div>
 
+                <div className="mt-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+                  <label htmlFor="product-ean13" className="mb-1.5 block text-xs font-semibold text-[#1A1612]">Barcode EAN-13 {!editingProduct && '*'}</label>
+                  <input id="product-ean13" value={formBarcode} inputMode="numeric" maxLength={13}
+                    onChange={(event) => setFormBarcode(event.target.value.replace(/\D/g, ''))}
+                    placeholder="13 chữ số trên bao bì" required={!editingProduct}
+                    className="h-10 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm text-[#1A1612] outline-none focus:border-[#B88E4F]" />
+                  <p className="mt-1 text-xs text-[#7D715E]">Dữ liệu đóng gói bên dưới được lưu riêng và dùng để báo giá GHN. Không tự điền số đo mẫu.</p>
+                </div>
                 {/* 4 ô Đóng gói & Vận chuyển (GHN / GHTK) */}
                 <div id="product-section-shipping" className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 mb-3.5">
                   <div className="flex items-center border-b border-[#EAE4D7] pb-2 mb-2.5">

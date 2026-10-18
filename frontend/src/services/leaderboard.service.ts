@@ -101,7 +101,7 @@ export const leaderboardService = {
   getLeaderboard: async (params?: LeaderboardQueryParams): Promise<LeaderboardFullResponse> => {
     const res = await api.get<{ data?: LeaderboardFullResponse } | LeaderboardFullResponse>(
       '/leaderboard',
-      { params },
+      { params, headers: { 'x-skip-cache': '1' } },
     );
     return (res.data as any)?.data || res.data;
   },

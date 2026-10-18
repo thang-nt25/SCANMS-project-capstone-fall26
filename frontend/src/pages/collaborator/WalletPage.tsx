@@ -261,8 +261,9 @@ export default function WalletPage() {
   }, [activeTab, loadWallet]);
 
   useEffect(() => {
+    const sequenceRef = loadSequence;
     void loadCurrentTab();
-    return () => { loadSequence.current++; };
+    return () => { sequenceRef.current++; };
   }, [loadCurrentTab]);
 
   const isReloading = loading;
@@ -353,6 +354,8 @@ export default function WalletPage() {
         selectedStore.storeId,
       );
       setSuccess(`${result.message}. Mã yêu cầu: ${result.request.id}`);
+      setIsWithdrawHistoryCollapsed(false);
+      setIsLedgerCollapsed(false);
       setAmount("");
       setWallet((current) =>
         current
@@ -476,7 +479,7 @@ export default function WalletPage() {
         </div>
       )}
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-0 border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shadow-xs" aria-label="Tổng quan số dư" aria-busy={loading}>
+      <section className="kol-wallet-balances grid grid-cols-1 sm:grid-cols-2 gap-0 border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shadow-xs" aria-label="Tổng quan số dư" aria-busy={loading}>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2.5 p-3.5 sm:p-4">
           <div className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E]"><Wallet size={15} className="text-[#B88E4F]" /> Số dư khả dụng</div>
           <strong className="col-span-full text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612] tabular-nums mt-1">{wallet ? formatMoney(wallet.availableBalance) : "—"}</strong>
@@ -767,8 +770,9 @@ export default function WalletPage() {
 
         {/* Cột 2: Form Tạo yêu cầu rút tiền (Shopee / TikTok Creator Studio Standard) */}
         <form
+          aria-label="Yêu cầu rút tiền"
           onSubmit={(event) => void handleWithdrawal(event)}
-          className="rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between"
+          className="kol-wallet-transfer rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between"
         >
           <div className="space-y-3">
             {/* Header: Tiêu đề + Giới hạn rút tối thiểu */}
@@ -920,7 +924,7 @@ export default function WalletPage() {
             <button
               type="submit"
               disabled={submitting || loading || !selectedStoreCanWithdraw}
-              className="w-full h-10 sm:h-11 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none"
+              className="scanms-brand-action w-full h-10 sm:h-11 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none"
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -930,7 +934,8 @@ export default function WalletPage() {
               <span>{submitting ? "Đang gửi yêu cầu..." : "Gửi yêu cầu rút tiền"}</span>
             </button>
             {wallet && !selectedStoreCanWithdraw && (
-              <div className="mt-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-1">
+              <div className="kol-wallet-notice mt-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-1">
+                <p className="font-semibold">Bạn chưa thể rút tiền khi chưa đủ các điều kiện sau:</p>
                 {!wallet.bankAccount && (
                   <p className="m-0 text-[#D97706] font-semibold flex items-center gap-1">
                     <span>⚠️</span>
@@ -984,6 +989,7 @@ export default function WalletPage() {
             <button
               type="button"
               onClick={() => void loadWallet()}
+              aria-label="Tải lại ví"
               disabled={loading}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition shadow-2xs cursor-pointer select-none"
             >

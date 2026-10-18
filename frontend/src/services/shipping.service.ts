@@ -38,6 +38,7 @@ export interface GhnTrackingTimeline {
 }
 
 export interface GhnTrackingDetail {
+  simulationAvailable?: boolean;
   isSimulation?: boolean;
   simulationStartedAt?: string;
   nextEventAt?: string | null;
@@ -61,6 +62,10 @@ export interface GhnTrackingDetail {
 export const shippingService = {
   startCustomerSimulation: async (orderId: string): Promise<GhnTrackingDetail> => {
     const res = await api.post(`/shipping/ghn/simulation/${encodeURIComponent(orderId)}/start`, {});
+    return res.data;
+  },
+  completeCustomerSimulation: async (orderId: string): Promise<{ message: string; status: string }> => {
+    const res = await api.post(`/shipping/ghn/simulation/${encodeURIComponent(orderId)}/complete`, {});
     return res.data;
   },
   /**

@@ -132,7 +132,7 @@ export const analyticsService = {
   getTopProducts: async (params?: { range?: string; limit?: number; startDate?: string; endDate?: string }) => {
     const res = await api.get<{ data?: TopProductItem[] } | TopProductItem[]>(
       '/dashboard/realtime/top-products',
-      { params },
+      { params, headers: { 'x-skip-cache': '1' } },
     );
     return (res.data as any)?.data || res.data;
   },
@@ -140,7 +140,7 @@ export const analyticsService = {
   getTopChannels: async (params?: { range?: string; limit?: number; startDate?: string; endDate?: string }) => {
     const res = await api.get<{ data?: TopChannelItem[] } | TopChannelItem[]>(
       '/dashboard/realtime/top-channels',
-      { params },
+      { params, headers: { 'x-skip-cache': '1' } },
     );
     return (res.data as any)?.data || res.data;
   },
@@ -148,7 +148,7 @@ export const analyticsService = {
   getConversionFunnel: async (params?: { range?: string; startDate?: string; endDate?: string }) => {
     const res = await api.get<{ data?: FunnelResponse } | FunnelResponse>(
       '/dashboard/realtime/funnel',
-      { params },
+      { params, headers: { 'x-skip-cache': '1' } },
     );
     return (res.data as any)?.data || res.data;
   },
@@ -156,7 +156,7 @@ export const analyticsService = {
   getCampaignPerformance: async (params?: { range?: string; startDate?: string; endDate?: string }) => {
     const res = await api.get<{ data?: CampaignPerformanceItem[] } | CampaignPerformanceItem[]>(
       '/dashboard/realtime/campaigns',
-      { params },
+      { params, headers: { 'x-skip-cache': '1' } },
     );
     return (res.data as any)?.data || res.data;
   },
