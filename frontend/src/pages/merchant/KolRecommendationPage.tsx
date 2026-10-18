@@ -19,6 +19,8 @@ import {
 } from '../../services/ai-recommendation.service';
 import api from '../../services/api';
 import { Select } from '../../components/ui/Select';
+import { WorkspaceHero } from '@/components/ui/FeatureWorkspace';
+import { KolComparisonPanel } from '@/components/ai/KolComparisonPanel';
 
 const CATEGORIES = [
   'Tất cả danh mục',
@@ -78,7 +80,9 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('ALL');
   const [selectedMinTier, setSelectedMinTier] = useState<string>('');
   const [minConversionRate, setMinConversionRate] = useState<number>(0);
-  const [limit, setLimit] = useState<number>(10);
+  const [limit, setLimit] = useState<number>(5);
+  const [totalScanned, setTotalScanned] = useState(0);
+  const invitationLock = useRef(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
@@ -160,6 +164,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
       if (version !== scanVersion.current) return;
       if (selectedProductId && res.targetProduct?.productId !== selectedProductId) throw new Error('Kết quả chưa đúng sản phẩm đang chọn. Vui lòng quét lại.');
       setCalculatedAt(res.calculatedAt || '');
+      setTotalScanned(res.totalKolsScanned || 0);
       setKols(res.recommendedKols || []);
       setTargetProduct(res.targetProduct || null);
     } catch (err: any) {
@@ -211,7 +216,8 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
 
   // Handle VIP Invitation Submission
   const handleSendVipInvite = async () => {
-    if (!invitingKol) return;
+    if (!invitingKol || invitationLock.current) return;
+    invitationLock.current = true;
     setIsSendingInvite(true);
     try {
       const result: any = await api.post('/store-collaborators/invite', { email: invitingKol.email, note: inviteMessage.trim() || undefined });
@@ -222,6 +228,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
     } catch (err: any) {
       toast.error('Gửi lời mời thất bại: ' + (err.message || 'Lỗi'));
     } finally {
+      invitationLock.current = false;
       setIsSendingInvite(false);
     }
   };
@@ -238,6 +245,9 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
 
   return (
     <div className="kol-recommendation-page">
+      <WorkspaceHero eyebrow="SCANMS / AI Smart Matching" title="Tìm đúng KOL cho sản phẩm" description="Gợi ý mặc định 5 KOL dựa trên độ phù hợp ngành hàng, chuyển đổi, cấp bậc/kênh và khoảng giá. Mỗi đề xuất có bằng chứng để Shop chủ động đánh giá." />
+      {!loading && !scanError && <p className="my-3 text-xs text-[#7D715E]">Đã phân tích {totalScanned.toLocaleString('vi-VN')} hồ sơ · {kols.length} kết quả phù hợp bộ lọc · Điểm tối đa 100, không phải tỷ lệ chuyển đổi dự báo.</p>}
+      {!loading && !scanError && <KolComparisonPanel key={`${selectedProductId}:${selectedCategory}:${selectedPriceRange}:${selectedMinTier}:${minConversionRate}:${limit}`} candidates={kols} />}
 
       {scanError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-[#DC2626]">{scanError}<button type="button" onClick={() => void fetchRecommendations()} className="font-medium text-[#B88E4F] underline">Thử quét lại</button></div>}
       {/* 2. Target Product Selector & Profile Summary */}
