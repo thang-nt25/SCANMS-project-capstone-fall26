@@ -268,6 +268,14 @@ describe('FR-11 — Dynamic QR Code Generation (Tạo Mã QR Code Động)', () 
 
   // 11. Idempotency: Gọi nhiều lần không sinh thêm link hay bản ghi dư thừa
   it('11. Cùng một link tạo QR nhiều lần trả về kết quả nhất quán, không tạo thêm link mới', async () => {
+    // Model the real render cache instead of forcing a cache miss on every call.
+    // Other cases still render and decode actual PNG/SVG output.
+    const renderedCache = new Map<string, unknown>();
+    cacheService.get.mockImplementation(async (key: string) => renderedCache.get(key) ?? null);
+    cacheService.set.mockImplementation(async (key: string, value: unknown) => {
+      renderedCache.set(key, value);
+    });
+    prisma.referralLink.create = jest.fn();
     const res1 = await service.generateQrCode(
       mockLink.id,
       { id: mockCollaboratorId, role: UserRole.COLLABORATOR },
@@ -281,6 +289,10 @@ describe('FR-11 — Dynamic QR Code Generation (Tạo Mã QR Code Động)', () 
 
     expect(res1.filename).toEqual(res2.filename);
     expect(res1.shortUrl).toEqual(res2.shortUrl);
+    expect(res1.buffer).toEqual(res2.buffer);
+    expect(cacheService.get).toHaveBeenCalledTimes(2);
+    expect(cacheService.set).toHaveBeenCalledTimes(1);
+    expect(prisma.referralLink.create).not.toHaveBeenCalled();
   });
 
   // 12. Cache tối ưu render

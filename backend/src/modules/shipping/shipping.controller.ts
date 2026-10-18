@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseIntPipe,
+  ParseUUIDPipe,
   Headers,
   Query,
 } from '@nestjs/common';
@@ -79,16 +80,27 @@ export class ShippingController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @Post('simulation/:orderId/start')
-  async startCustomerSimulation(@Param('orderId') orderId: string, @Req() req: any) {
-    let storeId: string | undefined;
-    if (req.user?.role === UserRole.SHOP_MANAGER) {
-      const store = await this.prisma.store.findFirst({
-        where: { ownerId: req.user?.id || req.user?.sub, deletedAt: null }, select: { id: true },
-      });
-      if (!store) throw new ForbiddenException('Tài khoản không quản lý gian hàng.');
-      storeId = store.id;
-    }
+  async startCustomerSimulation(@Param('orderId', new ParseUUIDPipe()) orderId: string, @Req() req: any) {
+    const storeId = await this.simulationStoreId(req);
     return this.ghnService.startCustomerSimulation(orderId, storeId);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Post('simulation/:orderId/complete')
+  async completeCustomerSimulation(@Param('orderId', new ParseUUIDPipe()) orderId: string, @Req() req: any) {
+    const storeId = await this.simulationStoreId(req);
+    return this.ghnService.completeCustomerSimulation(orderId, req.user?.id || req.user?.sub, storeId);
+  }
+
+  private async simulationStoreId(req: any): Promise<string | undefined> {
+    if (req.user?.role !== UserRole.SHOP_MANAGER) return undefined;
+    const store = await this.prisma.store.findFirst({
+      where: { ownerId: req.user?.id || req.user?.sub, deletedAt: null }, select: { id: true },
+    });
+    if (!store) throw new ForbiddenException('Tài khoản không quản lý gian hàng.');
+    return store.id;
   }
 
   @ApiBearerAuth()
@@ -161,6 +173,7 @@ export class ShippingController {
   @Post('quote-address')
   @HttpCode(HttpStatus.OK)
   async quoteAddress(@Body() dto: QuoteShippingAddressDto) {
+    if (dto.items) return this.ghnService.quoteCart(dto.storeId, dto.address, dto.items);
     return this.ghnService.quoteAddress(dto.address, dto.weight, dto.insuranceValue, dto.storeId);
   }
 

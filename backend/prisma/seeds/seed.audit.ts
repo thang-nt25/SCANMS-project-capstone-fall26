@@ -12,30 +12,8 @@ import { activeSponsoredPlacements } from '../../src/modules/stores/sponsored-pl
 import type { DatabaseTarget } from './seed.config';
 import type { SeedDataset, SeedTable } from './seed.types';
 
-/** These are unimplemented contracts, not fields the seeder is allowed to invent. */
-export const PENDING_HANDOVERS = [
-  {
-    id: 'ADDITIVE_COMMISSION',
-    owner: 'Tuấn',
-    requirement:
-      'Base + Tier + Deal + Campaign + Live, capped at 25%, on Net GMV',
-  },
-  {
-    id: 'DYNAMIC_SHIPPING',
-    owner: 'Tuấn',
-    requirement: 'Checkout/order shipping fee matches GHN quote',
-  },
-  {
-    id: 'SHIPPING_PLATFORM_VOUCHERS',
-    owner: 'Tuấn',
-    requirement: 'Separate merchandise/platform/shipping voucher contracts',
-  },
-  {
-    id: 'PRODUCT_PACKAGE_FIELDS',
-    owner: 'Tuấn',
-    requirement: 'Persisted barcode, weight and package dimensions',
-  },
-] as const;
+/** Required schema is now implemented; actual business evidence is reported separately. */
+export const PENDING_HANDOVERS: ReadonlyArray<{ id: string; owner: string; requirement: string }> = [];
 
 export interface MigrationHistory {
   pending: string[];
@@ -256,9 +234,12 @@ export async function auditSeedDatabase(
           !session.products.some((row) => row.productId === pinned)
         );
       }).length;
-      const configured = activeSponsoredPlacements(
-        process.env.MARKETPLACE_SPONSORED_PLACEMENTS,
-      );
+      const now = new Date();
+      const booked = await tx.sponsoredPlacement.findMany({
+        where: { status: 'APPROVED', startsAt: { lte: now }, endsAt: { gt: now } },
+        select: { storeId: true },
+      });
+      const configured = [...booked, ...activeSponsoredPlacements(process.env.MARKETPLACE_SPONSORED_PLACEMENTS)];
       const eligible = await tx.store.findMany({
         where: {
           id: { in: configured.map((row) => row.storeId) },
@@ -271,6 +252,18 @@ export async function auditSeedDatabase(
         select: { id: true },
       });
       const expectedDemoStoreIds = [seedId('store:0'), seedId('store:1')];
+      const missingPackageData = await tx.product.count({ where: { isDeleted: false, OR: [
+        { barcode: null }, { packageWeight: null }, { packageLength: null }, { packageWidth: null }, { packageHeight: null },
+      ] } });
+      const placeholderSocialChannels = await tx.collaboratorSocialChannel.count({ where: { channelUrl: { contains: '.invalid' } } });
+      const activeLiveSessions = await tx.liveShoppingSession.count({ where: { status: 'LIVE', startsAt: { lte: now }, endsAt: { gt: now } } });
+      const [providerShipments] = await tx.$queryRaw<Array<{ sandbox: number; live: number }>>`
+        SELECT
+          COUNT(*) FILTER (WHERE raw_payload->>'ghnEnvironment' = 'TEST')::int AS sandbox,
+          COUNT(*) FILTER (WHERE raw_payload->>'ghnEnvironment' = 'LIVE')::int AS live
+        FROM orders
+        WHERE NULLIF(raw_payload #>> '{ghnRawResponse,order_code}', '') IS NOT NULL
+      `;
       const schemaHistoryReady =
         !migrations.pending.length &&
         !migrations.missingLocal.length &&
@@ -299,21 +292,27 @@ export async function auditSeedDatabase(
           livePinMismatches,
         },
         marketplaceConfiguration: {
-          source: 'MARKETPLACE_SPONSORED_PLACEMENTS deployment environment',
+          source: 'Approved DB bookings, with explicit legacy deployment bookings for compatibility',
           expectedDemoStoreIds,
           configuredActiveStoreIds: eligible.map((row) => row.id),
-          requiresDeploymentConfiguration: !expectedDemoStoreIds.every((id) =>
-            eligible.some((row) => row.id === id),
-          ),
+          expectedMinimumSponsoredStores: 2,
+          requiresDeploymentConfiguration: eligible.length < 2,
           autoApplied: false,
         },
         datasetReady,
         schemaHistoryReady,
         fullUpgradeReady: false,
+        manualAcceptanceRequired: true,
+        acceptanceGaps: {
+          missingPackageData,
+          placeholderSocialChannels,
+          activeLiveSessions,
+          approvedActiveSponsoredStores: eligible.length,
+          recordedProviderResponses: providerShipments,
+          note: 'Counts are not proof of real identities, payment settlement or physical delivery. Complete web acceptance with actual owner-entered data; do not reseed the shared DB.',
+        },
         pendingHandovers: PENDING_HANDOVERS,
-        realShipmentCount: data.orders.filter(
-          (order) => jsonObject(order.rawPayload).ghnIsReal === true,
-        ).length,
+        realShipmentCount: providerShipments.live,
         transactionProvenance:
           'Seed payments/payouts are synthetic, not PayOS/bank sandbox evidence.',
       };

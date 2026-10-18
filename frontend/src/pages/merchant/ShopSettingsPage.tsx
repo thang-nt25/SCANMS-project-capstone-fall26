@@ -28,6 +28,7 @@ import { uploadService } from '../../services/upload.service';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
+import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 
 export default function ShopSettingsPage() {
   const navigate = useNavigate();
@@ -89,7 +90,7 @@ export default function ShopSettingsPage() {
       if (store.logoUrl) {
         setLogoUrl(store.logoUrl);
       } else {
-        setLogoUrl('/assets/shops/shop-sora-skin.png');
+        setLogoUrl('');
       }
       if (store.slug) setStoreSlug(store.slug);
       setPolicyReturn(store.policyReturn || '');
@@ -99,17 +100,17 @@ export default function ShopSettingsPage() {
 
       const onboardingData = (store as any).onboardingData || {};
       const returnWarehouse = (store as any).returnWarehouse || {};
-      const businessAddr = onboardingData.businessAddress || 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh';
+      const businessAddr = onboardingData.businessAddress || '';
       const pickupAddr = onboardingData.warehouseAddress || returnWarehouse.address || '';
       const returnAddr = onboardingData.returnWarehouseAddress || returnWarehouse.address || pickupAddr;
 
       const loadedDetails = {
         representativeName:
-          onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || store.name || 'Sora Skin Official',
-        contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '0902345678',
-        contactEmail: onboardingData.contactEmail || store.owner?.email || 'shop@scanms.vn',
-        businessType: onboardingData.businessType || 'ENTERPRISE',
-        taxCode: onboardingData.taxCode || '0316892451',
+          onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || '',
+        contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '',
+        contactEmail: onboardingData.contactEmail || store.owner?.email || '',
+        businessType: onboardingData.businessType || '',
+        taxCode: onboardingData.taxCode || '',
         businessAddress: businessAddr,
         warehouseAddress: pickupAddr,
         returnWarehouseAddress: returnAddr,
@@ -760,6 +761,7 @@ export default function ShopSettingsPage() {
           </Button>
         </div>
       </form>
+      {isShopManager && <SponsoredPlacementsPanel />}
     </div>
   );
 }

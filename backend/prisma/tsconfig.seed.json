@@ -6,6 +6,6 @@
     "incremental": false,
     "rootDir": ".."
   },
-  "include": ["seed.ts", "seeds/**/*.ts"],
+  "include": ["seed.ts", "enrich-seed.ts", "seeds/**/*.ts"],
   "exclude": ["../node_modules", "../dist"]
 }

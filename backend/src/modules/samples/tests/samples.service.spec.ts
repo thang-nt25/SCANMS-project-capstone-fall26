@@ -28,9 +28,6 @@ describe('SamplesService', () => {
     sampleQuota: 10,
     sampleGrantedCount: 0,
     storeId: 'store-1',
-    sampleEnabled: true,
-    sampleQuota: 10,
-    sampleGrantedCount: 0,
     store: { id: 'store-1', name: 'Shop đối tác', ownerId: 'shop-1' },
   };
   const request = {
@@ -240,11 +237,12 @@ describe('SamplesService', () => {
 
     await expect(
       service.createRequest('kol-1', {
+        ...editDetails,
         productId: product.id,
         socialChannelId: channel.id,
         recipientName: 'KOL thử nghiệm',
         recipientPhone: '0912345678',
-        shippingAddress: '123 Nguyễn Văn A, Quận 1, TP.HCM',
+        shippingAddress: editDetails.shippingAddress,
         contentType: 'Video review 60 giây',
         expectedVideoAt: new Date(Date.now() + 7 * 86400000).toISOString(),
         termsAccepted: true,
