@@ -31,11 +31,11 @@ interface RoleOption {
 }
 
 const ROLES: RoleOption[] = [
-  { id: 'customer', label: 'Khách', icon: ShoppingBag, email: 'customer@scanms.vn', badge: 'Khách mua hàng' },
-  { id: 'kol', label: 'KOL/CTV', icon: Sparkles, email: 'kol1@scanms.vn', badge: 'KOL / CTV Tiếp thị' },
-  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'shop@scanms.vn', badge: 'Chủ Gian Hàng' },
-  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', badge: 'Vận hành (System Manager)' },
-  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@scanms.vn', badge: 'Quản trị viên (Admin)' },
+  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer01@seed.scanms.test', badge: 'Nguyễn Văn An (Có 2 đơn hàng)' },
+  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol01@seed.scanms.test', badge: 'Hà My Skincare (Kênh TikTok, Bạc)' },
+  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'shop01@seed.scanms.test', badge: 'Cỏ Mềm Official (Kho GHN, 2 SP)' },
+  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', badge: 'Ban Vận Hành & Tuân Thủ (Manager)' },
+  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@seed.scanms.test', badge: 'Quản Trị Viên Toàn Hệ Thống (Admin)' },
 ];
 
 export default function LoginPage() {
@@ -54,7 +54,7 @@ export default function LoginPage() {
 
   const [role, setRole] = useState<RoleType>('customer');
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const [email, setEmail] = useState(registeredEmail || 'customer@scanms.vn');
+  const [email, setEmail] = useState(registeredEmail || 'customer01@seed.scanms.test');
   const [password, setPassword] = useState(registeredEmail ? '' : 'Password@123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);

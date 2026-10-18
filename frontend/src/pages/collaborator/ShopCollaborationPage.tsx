@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { format, isToday, isYesterday } from 'date-fns';
+import { vi } from 'date-fns/locale';
 import {
   Store,
   MessageSquare,
@@ -41,6 +43,7 @@ import QRCode from 'qrcode';
 
 export interface PartnerStore {
   id: string;
+  conversationId?: string;
   name: string;
   slug?: string;
   logoUrl?: string;
@@ -48,11 +51,14 @@ export interface PartnerStore {
   ownerName?: string;
   category?: string;
   commissionRange?: string;
+  defaultCommissionRate?: number;
   rating?: number;
   location?: string;
   totalProducts?: number;
   unreadCount?: number;
   pendingSamplesCount?: number;
+  lastMessageText?: string;
+  lastMessageAt?: string;
 }
 
 const getShopLogoUrl = (logoUrl?: string | null) => {
@@ -97,52 +103,38 @@ function StoreAvatar({
   );
 }
 
-const REAL_STORES: PartnerStore[] = [
-  {
-    id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
-    name: 'Sora Skin Official Store',
-    slug: 'sora-skin',
-    category: 'Dược mỹ phẩm & Phục hồi da',
-    commissionRange: '20% - 32%',
-    rating: 4.9,
-    location: 'Quận 1, TP.HCM',
-    totalProducts: 12,
-    unreadCount: 1,
-  },
-  {
-    id: '461bdfe3-2260-4ac7-b93b-6a6da5c45535',
-    name: 'Aura Bio Cosmetics Vietnam',
-    slug: 'aura-bio-cosmetics',
-    category: 'Mỹ phẩm sinh học & Thuần chay',
-    commissionRange: '25% - 35%',
-    rating: 4.8,
-    location: 'Cầu Giấy, Hà Nội',
-    totalProducts: 8,
-    unreadCount: 0,
-  },
-  {
-    id: 'c4444444-4444-4444-8444-444444444444',
-    name: 'GreenBio Health & Herbs',
-    slug: 'greenbio-health',
-    category: 'Thực phẩm chức năng & Trà',
-    commissionRange: '18% - 25%',
-    rating: 4.7,
-    location: 'Bình Thạnh, TP.HCM',
-    totalProducts: 18,
-    unreadCount: 0,
-  },
-  {
-    id: 'd5555555-5555-4555-8555-555555555555',
-    name: 'Lumière Lab Vietnam',
-    slug: 'lumiere-lab',
-    category: 'Serum & Chăm sóc chuyên sâu',
-    commissionRange: '22% - 35%',
-    rating: 5.0,
-    location: 'Quận 1, TP.HCM',
-    totalProducts: 6,
-    unreadCount: 0,
-  },
-];
+function formatConvTime(dateStr?: string | null) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  if (isToday(d)) return format(d, 'HH:mm');
+  if (isYesterday(d)) return 'Hôm qua';
+  return format(d, 'dd/MM/yy', { locale: vi });
+}
+
+function getChatMessagePreview(messageText?: string, mediaName?: string): string {
+  if (!messageText) return mediaName ? `📎 ${mediaName}` : 'Bắt đầu cuộc trò chuyện...';
+  try {
+    const parsed = JSON.parse(messageText);
+    if (parsed.type === 'EXCLUSIVE_DEAL_PROPOSAL') {
+      return '🤝 Đề xuất deal độc quyền';
+    }
+    if (parsed.type === 'EXCLUSIVE_DEAL_DECISION') {
+      return parsed.status === 'APPROVED' ? '✅ Đã duyệt deal độc quyền' : '❌ Đã từ chối deal độc quyền';
+    }
+    if (parsed.type === 'PRODUCT_INQUIRY') {
+      return `🛍️ Hỏi về: ${parsed.productTitle || 'sản phẩm'}`;
+    }
+    if (parsed.type === 'COUPON_VOUCHER') {
+      return `🎟️ Voucher: ${parsed.couponCode || 'ưu đãi'}`;
+    }
+    return messageText;
+  } catch {
+    return messageText;
+  }
+}
+
+const REAL_STORES: PartnerStore[] = [];
 
 export default function ShopCollaborationPage() {
   const navigate = useNavigate();
@@ -173,7 +165,7 @@ export default function ShopCollaborationPage() {
   }, [productId, productTitle, productImage, productPrice, productSku, commissionRate, productVariantId]);
 
   const [stores, setStores] = useState<PartnerStore[]>(REAL_STORES);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(shopParam || REAL_STORES[0].id);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(shopParam || '');
   const [activeTab, setActiveTab] = useState<'messages' | 'products' | 'samples' | 'media'>(
     (tabParam as any) || 'messages'
   );
@@ -369,7 +361,7 @@ export default function ShopCollaborationPage() {
     try {
       await api.patch(`/sample-requests/${sampleId}/cancel`, {});
       toast.success('Đã hủy yêu cầu xin mẫu.');
-      await loadStoreSamples(selectedStore.id);
+      if (selectedStore?.id) await loadStoreSamples(selectedStore.id);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err.message || 'Không thể hủy yêu cầu mẫu.');
     }
@@ -405,51 +397,72 @@ export default function ShopCollaborationPage() {
         const st = conv.store || {};
         const storeId = st.id || conv.storeId;
         if (storeId && !mappedStores.some((store) => store.id === storeId)) {
+          const lastMsg = conv.chatMessages?.[0];
           mappedStores.push({
             id: storeId,
+            conversationId: conv.id,
             name: st.name || 'Gian hàng đối tác',
             slug: st.slug || '',
             logoUrl: getShopLogoUrl(st.logoUrl),
             ownerAvatarUrl: st.owner?.avatarUrl || undefined,
             ownerName: st.owner?.fullName || undefined,
-            category: 'Thương mại điện tử & Mỹ phẩm',
-            commissionRange: `${st.defaultCommissionRate || 20}% - 35%`,
+            category: st.description?.slice(0, 30) || 'Gian hàng chính hãng',
+            defaultCommissionRate: st.defaultCommissionRate ? Number(st.defaultCommissionRate) : 10,
             rating: 4.9,
             location: 'Toàn quốc',
-            unreadCount: conv.chatMessages?.[0]?.isRead === false ? 1 : 0,
+            unreadCount: (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead) ? 1 : 0,
+            lastMessageText: getChatMessagePreview(lastMsg?.messageText, lastMsg?.mediaName),
+            lastMessageAt: lastMsg?.createdAt || conv.lastMessageAt || conv.createdAt,
           });
         }
       });
 
-      marketStores.forEach((ms: any) => {
-        if (!mappedStores.some((s) => s.id === ms.id)) {
-          mappedStores.push({
-            id: ms.id,
-            name: ms.name,
-            slug: ms.slug || '',
-            logoUrl: getShopLogoUrl(ms.logoUrl),
-            ownerAvatarUrl: ms.owner?.avatarUrl || undefined,
-            ownerName: ms.owner?.fullName || undefined,
-            category: ms.description?.slice(0, 30) || 'Mỹ phẩm & Chăm sóc da',
-            commissionRange: `${ms.defaultCommissionRate || 20}% - 30%`,
+      // Sắp xếp hội thoại có tin nhắn mới nhất lên đầu
+      mappedStores.sort((a, b) => {
+        const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+        const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+        return timeB - timeA;
+      });
+
+      // Nếu KOL mở từ gian hàng hoặc trang sản phẩm qua URL query ?shop=xxx
+      // mà gian hàng này chưa có trong danh sách hội thoại, thêm tạm vào đầu danh sách để bắt đầu chat
+      if (shopParam && !mappedStores.some((s) => s.id === shopParam)) {
+        const targetStore = marketStores.find((ms: any) => ms.id === shopParam);
+        if (targetStore) {
+          mappedStores.unshift({
+            id: targetStore.id,
+            name: targetStore.name,
+            slug: targetStore.slug || '',
+            logoUrl: getShopLogoUrl(targetStore.logoUrl),
+            ownerAvatarUrl: targetStore.owner?.avatarUrl || undefined,
+            ownerName: targetStore.owner?.fullName || undefined,
+            category: targetStore.description?.slice(0, 30) || 'Gian hàng chính hãng',
+            defaultCommissionRate: targetStore.defaultCommissionRate ? Number(targetStore.defaultCommissionRate) : 10,
             rating: 4.8,
             location: 'Toàn quốc',
-            totalProducts: ms._count?.products || 10,
+            totalProducts: targetStore._count?.products || 10,
             unreadCount: 0,
+            lastMessageText: 'Bắt đầu cuộc trò chuyện...',
+            lastMessageAt: new Date().toISOString(),
           });
         }
-      });
+      }
 
-      const finalList = mappedStores.length > 0 ? mappedStores : REAL_STORES;
-      setStores(finalList);
+      setStores(mappedStores);
 
       const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!shopParam || !UUID_REGEX.test(shopParam) || !finalList.some((s) => s.id === shopParam)) {
-        setSelectedStoreId(finalList[0].id);
-        updateUrl(finalList[0].id, activeTab);
+      if (mappedStores.length > 0) {
+        if (!shopParam || !UUID_REGEX.test(shopParam) || !mappedStores.some((s) => s.id === shopParam)) {
+          setSelectedStoreId(mappedStores[0].id);
+          updateUrl(mappedStores[0].id, activeTab);
+        } else {
+          setSelectedStoreId(shopParam);
+        }
+      } else {
+        setSelectedStoreId('');
       }
     } catch {
-      setStores(REAL_STORES);
+      setStores([]);
     }
   }, [shopParam, activeTab]);
 
@@ -458,7 +471,7 @@ export default function ShopCollaborationPage() {
   }, [loadConversationsAndStores]);
 
   const selectedStore = useMemo(() => {
-    return stores.find((s) => s.id === selectedStoreId) || stores[0] || REAL_STORES[0];
+    return stores.find((s) => s.id === selectedStoreId) || stores[0] || null;
   }, [stores, selectedStoreId]);
 
   const openStorefront = useCallback((store: PartnerStore) => {
@@ -555,10 +568,11 @@ export default function ShopCollaborationPage() {
   }, [mediaAssets.length]);
 
   useEffect(() => {
+    if (!selectedStore?.id) return;
     if (activeTab === 'products') loadStoreProducts(selectedStore.id);
     else if (activeTab === 'samples') loadStoreSamples(selectedStore.id);
     else if (activeTab === 'media') loadStoreMedia(selectedStore.id);
-  }, [selectedStore.id, activeTab, loadStoreProducts, loadStoreSamples, loadStoreMedia]);
+  }, [selectedStore?.id, activeTab, loadStoreProducts, loadStoreSamples, loadStoreMedia]);
 
   // Chọn / bỏ chọn sản phẩm để tạo gói deal
   const handleToggleProductSelection = (productId: string) => {
@@ -657,7 +671,7 @@ export default function ShopCollaborationPage() {
       setDealModalProducts([]);
       setSelectedProductIds([]);
       setActiveTab('messages');
-      updateUrl(selectedStore.id, 'messages');
+      if (selectedStore?.id) updateUrl(selectedStore.id, 'messages');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Không thể gửi đề xuất deal.');
     } finally {
@@ -722,9 +736,11 @@ export default function ShopCollaborationPage() {
       });
       toast.success(`Đã gửi yêu cầu nhận mẫu "${requestSampleModalProduct.title}" kèm cam kết video trong 14 ngày sau khi nhận hàng.`);
       setRequestSampleModalProduct(null);
-      loadStoreSamples(selectedStore.id);
-      setActiveTab('samples');
-      updateUrl(selectedStore.id, 'samples');
+      if (selectedStore?.id) {
+        loadStoreSamples(selectedStore.id);
+        setActiveTab('samples');
+        updateUrl(selectedStore.id, 'samples');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Không thể gửi yêu cầu xin mẫu.');
     } finally {
@@ -737,7 +753,7 @@ export default function ShopCollaborationPage() {
     try {
       await api.patch(`/sample-requests/${sampleId}/receive`, {});
       toast.success('Đã xác nhận nhận hàng! Bạn có 14 ngày để nộp video review.');
-      await loadStoreSamples(selectedStore.id);
+      if (selectedStore?.id) await loadStoreSamples(selectedStore.id);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err.message || 'Không thể xác nhận đã nhận hàng.');
     }
@@ -785,7 +801,7 @@ export default function ShopCollaborationPage() {
       if (shopFilter === 'CHAT') return Boolean(s.unreadCount);
       if (shopFilter === 'SAMPLES') return Boolean(s.pendingSamplesCount);
       if (shopFilter === 'HIGH_COMM')
-        return (s.commissionRange || '').includes('25%') || (s.commissionRange || '').includes('30%') || (s.commissionRange || '').includes('32%') || (s.commissionRange || '').includes('35%');
+        return Number(s.defaultCommissionRate || 0) >= 15;
       return true;
     });
   }, [stores, searchShopQuery, shopFilter]);
@@ -863,7 +879,7 @@ export default function ShopCollaborationPage() {
               {/* Stores List: Chỉ hiển thị icon avatar gian hàng */}
               <div className="flex-1 overflow-x-auto md:overflow-y-auto py-2 flex flex-row md:flex-col items-center gap-2 no-scrollbar" role="list">
                 {filteredStores.map((st) => {
-                  const isSelected = st.id === selectedStore.id;
+                  const isSelected = selectedStore ? st.id === selectedStore.id : false;
                   return (
                     <div key={st.id} className="relative group">
                       <button
@@ -873,7 +889,7 @@ export default function ShopCollaborationPage() {
                           setSelectedStoreId(st.id);
                           updateUrl(st.id, activeTab);
                         }}
-                        title={`${st.name} • Hoa hồng: ${st.commissionRange || '20%'}`}
+                        title={`${st.name}${st.lastMessageText ? ` • ${st.lastMessageText}` : ''}`}
                         className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#FBF5EB] ring-2 ring-[#C59B58] shadow-xs'
@@ -966,12 +982,29 @@ export default function ShopCollaborationPage() {
               {/* Stores List: Gọn gàng */}
               <div className="flex-1 overflow-x-auto md:overflow-y-auto divide-y divide-[#EAE4D7]/50" role="list">
                 {filteredStores.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-[#7D715E]">
-                    Không có gian hàng nào phù hợp
+                  <div className="py-12 px-4 text-center text-xs text-[#7D715E] space-y-2.5">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F]">
+                      <MessageSquare className="w-5 h-5 stroke-1" />
+                    </div>
+                    <p className="font-semibold text-[#1A1612]">Chưa có cuộc trò chuyện nào</p>
+                    <p className="text-[11px] text-[#7D715E] leading-relaxed max-w-[200px] mx-auto">
+                      Khám phá các gian hàng đối tác để bắt đầu trao đổi & nhận mẫu thử.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDiscoverModal(true);
+                        loadMarketplaceStores();
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-xs font-bold text-[#B88E4F] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Khám phá gian hàng</span>
+                    </button>
                   </div>
                 ) : (
                   filteredStores.map((st) => {
-                    const isSelected = st.id === selectedStore.id;
+                    const isSelected = selectedStore ? st.id === selectedStore.id : false;
                     return (
                       <div
                         key={st.id}
@@ -1016,33 +1049,26 @@ export default function ShopCollaborationPage() {
                             <strong className="text-xs font-bold truncate text-[#1A1612] leading-snug" title={st.name}>
                               {st.name}
                             </strong>
+                            {st.lastMessageAt && (
+                              <span className="text-[10px] text-[#7D715E]/80 shrink-0 font-medium">
+                                {formatConvTime(st.lastMessageAt)}
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center justify-between gap-1 mt-0.5">
-                            <span className="text-[10px] text-[#7D715E] truncate" title={st.category}>
-                              {st.category}
+                            <span
+                              className={`text-[11px] truncate leading-tight ${
+                                st.unreadCount ? 'font-bold text-[#1A1612]' : 'text-[#7D715E]'
+                              }`}
+                              title={st.lastMessageText || 'Bắt đầu cuộc trò chuyện'}
+                            >
+                              {st.lastMessageText || 'Bắt đầu cuộc trò chuyện...'}
                             </span>
-                            <span className="text-[9.5px] font-extrabold text-[#B88E4F] bg-white px-1.5 py-0.2 rounded border border-[#EAE4D7] shrink-0">
-                              {st.commissionRange || '20%'}
-                            </span>
+                            {st.unreadCount ? (
+                              <span className="w-2 h-2 rounded-full bg-[#C59B58] shrink-0" />
+                            ) : null}
                           </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedStoreId(st.id);
-                            updateUrl(st.id, activeTab);
-                          }}
-                          title={`Mở chat với ${st.name}`}
-                          aria-label={`Mở chat với ${st.name}`}
-                          className="shrink-0 bg-transparent border-0 p-1 cursor-pointer"
-                        >
-                          <MessageSquare
-                            className={`w-3.5 h-3.5 transition ${
-                              isSelected || st.unreadCount ? 'text-[#B88E4F]' : 'text-stone-300'
-                            }`}
-                          />
                         </button>
                       </div>
                     );
@@ -1055,48 +1081,71 @@ export default function ShopCollaborationPage() {
 
         {/* RIGHT COLUMN: Không Gian Làm Việc 1-1 Với Shop */}
         <div className="collaboration-chat-pane flex-1 h-full flex flex-col min-w-0 bg-white overflow-hidden">
-          {/* Shop Context Header Bar */}
-          <div className="collaboration-shop-heading shrink-0 px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+          {!selectedStore ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF8F5]">
+              <div className="w-14 h-14 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mb-3 shadow-2xs">
+                <Store className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-extrabold text-[#1A1612] m-0">Chưa có cuộc trò chuyện nào</h3>
+              <p className="text-xs text-[#7D715E] max-w-sm mt-1.5 mb-4 leading-relaxed">
+                Bạn chưa nhắn tin với gian hàng nào. Hãy khám phá các gian hàng đối tác uy tín trên sàn SCANMS để bắt đầu trao đổi hoặc xin mẫu thử sản phẩm.
+              </p>
               <button
                 type="button"
-                onClick={() => openStorefront(selectedStore)}
-                title={`Mở gian hàng ${selectedStore.name}`}
-                aria-label={`Mở gian hàng ${selectedStore.name}`}
-                className="rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] shrink-0"
+                onClick={() => {
+                  setShowDiscoverModal(true);
+                  loadMarketplaceStores();
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-sm cursor-pointer"
               >
-                <StoreAvatar
-                  name={selectedStore.ownerName || selectedStore.name}
-                  logoUrl={selectedStore.ownerAvatarUrl || selectedStore.logoUrl}
-                  className="w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm"
-                />
+                <Sparkles className="w-4 h-4" />
+                <span>Khám phá gian hàng</span>
               </button>
-
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
+            </div>
+          ) : (
+            <>
+              {/* Shop Context Header Bar */}
+              <div className="collaboration-shop-heading shrink-0 px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <button
                     type="button"
                     onClick={() => openStorefront(selectedStore)}
-                    className="text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
                     title={`Mở gian hàng ${selectedStore.name}`}
+                    aria-label={`Mở gian hàng ${selectedStore.name}`}
+                    className="rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] shrink-0"
                   >
-                    {selectedStore.name}
+                    <StoreAvatar
+                      name={selectedStore.ownerName || selectedStore.name}
+                      logoUrl={selectedStore.ownerAvatarUrl || selectedStore.logoUrl}
+                      className="w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm"
+                    />
                   </button>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                    <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> Đã xác minh
-                  </span>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#7D715E] mt-0.5">
-                  <span className="flex items-center gap-1 text-[#B88E4F] font-semibold">
-                    <Star className="w-3 h-3 fill-[#C59B58] text-[#B88E4F]" />
-                    <span>{selectedStore.rating || 4.9}</span>
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3 text-[#B88E4F]" />
-                    <span>Hoa hồng: <strong className="text-[#B88E4F]">{selectedStore.commissionRange || '20% - 32%'}</strong></span>
-                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openStorefront(selectedStore)}
+                        className="text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
+                        title={`Mở gian hàng ${selectedStore.name}`}
+                      >
+                        {selectedStore.name}
+                      </button>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
+                        <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> Đã xác minh
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#7D715E] mt-0.5">
+                      <span className="flex items-center gap-1 text-[#B88E4F] font-semibold">
+                        <Star className="w-3 h-3 fill-[#C59B58] text-[#B88E4F]" />
+                        <span>{selectedStore.rating || 4.9}</span>
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3 text-[#B88E4F]" />
+                        <span>Hoa hồng chuẩn: <strong className="text-[#B88E4F]">{selectedStore.defaultCommissionRate ? `${selectedStore.defaultCommissionRate}%` : '10%'}</strong></span>
+                      </span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-[#7D715E]" />
@@ -1891,8 +1940,10 @@ export default function ShopCollaborationPage() {
           </div>
         )}
       </div>
+    </>
+  )}
+</div>
     </div>
-  </div>
 
       {/* MODAL 1: LẤY LINK TIẾP THỊ CHUẨN KÊNH & MÃ QR */}
       {linkModalProduct && (
@@ -2188,7 +2239,7 @@ export default function ShopCollaborationPage() {
           onClose={() => setSubmitVideoSample(null)}
           onSuccess={() => {
             setSubmitVideoSample(null);
-            loadStoreSamples(selectedStore.id);
+            if (selectedStore?.id) loadStoreSamples(selectedStore.id);
           }}
         />
       )}

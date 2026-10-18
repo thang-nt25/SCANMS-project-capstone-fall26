@@ -73,6 +73,13 @@ export class LiveSessionsService {
     private readonly walletsService: WalletsService,
   ) {}
 
+  async getUserSummary(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, avatarUrl: true, role: true },
+    });
+  }
+
   async getShopCatalog(userId: string, storeId: string) {
     await this.assertStoreOwner(userId, storeId);
     const [products, collaborators, store, approvedDeals, activeCampaigns] = await Promise.all([

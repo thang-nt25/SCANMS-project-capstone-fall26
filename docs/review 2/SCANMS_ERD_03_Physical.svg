@@ -1,0 +1,2787 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4370 3542" width="4370" height="3542" style="background:#ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <style>
+      .tbl-header { fill: #ffffff; stroke: #000000; stroke-width: 1.8px; }
+      .tbl-body { fill: #ffffff; stroke: #000000; stroke-width: 1.2px; }
+      .header-title { font-size: 11px; font-weight: bold; fill: #000000; text-anchor: middle; letter-spacing: 0.5px; font-family: 'Segoe UI', monospace; }
+      .col-pk { font-size: 8.5px; font-weight: bold; fill: #000000; font-family: 'Segoe UI', monospace; }
+      .col-fk { font-size: 8.5px; font-weight: bold; fill: #333333; font-family: 'Segoe UI', monospace; }
+      .col-name { font-size: 8.5px; fill: #222222; font-family: 'Segoe UI', monospace; }
+      .col-type { font-size: 8px; fill: #666666; font-family: 'Segoe UI', monospace; text-anchor: end; }
+      .divider { stroke: #000000; stroke-width: 1px; }
+      .wire-line { fill: none; stroke: #000000; stroke-width: 1.3px; }
+      .card-badge { font-size: 9px; font-weight: bold; fill: #000000; font-family: 'Segoe UI', monospace; text-anchor: middle; }
+      .title-main { font-size: 24px; font-weight: bold; fill: #000000; text-anchor: middle; letter-spacing: 1px; }
+      .subtitle { font-size: 12.5px; fill: #555555; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!-- TITLE -->
+  <text x="2185.0" y="36" class="title-main">SCANMS - MASTER PHYSICAL DATABASE SCHEMA (RADIAL ORBITAL TREE)</text>
+  <text x="2185.0" y="60" class="subtitle">Full 61 Production Normalized Tables | Central Transaction Hub &amp; 360-Degree Satellite Clusters | Strictly Orthogonal Connectors</text>
+
+  <g transform="translate(150, 150)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="166" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">BONUS_ADJUSTMENTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-name">store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">collaborator_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK original_settlement_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-fk">FK refund_id</text>
+    <text x="262" y="103" class="col-type">uuid</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">target_year_month</text>
+    <text x="262" y="119" class="col-type">varchar(7)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">adjustment_amount</text>
+    <text x="262" y="135" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">reason</text>
+    <text x="262" y="151" class="col-type">text</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">status</text>
+    <text x="262" y="167" class="col-type">varchar(50)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">created_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(150, 1700)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="86" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COLLABORATOR_TIERS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-name">name</text>
+    <text x="262" y="55" class="col-type">varchar(50)</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">min_revenue_threshold</text>
+    <text x="262" y="71" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">extra_bonus_percentage</text>
+    <text x="262" y="87" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">created_at</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(150, 1848)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="134" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COLLABORATOR_SOCIAL_CHANNELS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">channel_name</text>
+    <text x="262" y="71" class="col-type">varchar(150)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">channel_url</text>
+    <text x="262" y="87" class="col-type">text</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">follower_count</text>
+    <text x="262" y="103" class="col-type">integer</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">is_primary</text>
+    <text x="262" y="119" class="col-type">boolean</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">created_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">platform_name</text>
+    <text x="262" y="151" class="col-type">socialplatform</text>
+  </g>
+  <g transform="translate(150, 2044)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="86" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">PAYOUT_BATCHES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK created_by_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">created_at</text>
+    <text x="262" y="87" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">file_data</text>
+    <text x="262" y="103" class="col-type">bytea</text>
+  </g>
+  <g transform="translate(600, 150)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="294" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">MONTHLY_BONUS_RESULTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">year_month</text>
+    <text x="262" y="87" class="col-type">varchar(7)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">valid_revenue</text>
+    <text x="262" y="103" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-fk">FK applied_rule_id</text>
+    <text x="262" y="119" class="col-type">uuid</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">applied_rule_name</text>
+    <text x="262" y="135" class="col-type">varchar(150)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">bonus_percentage</text>
+    <text x="262" y="151" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">bonus_amount</text>
+    <text x="262" y="167" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">rule_snapshot</text>
+    <text x="262" y="183" class="col-type">jsonb</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">status</text>
+    <text x="262" y="199" class="col-type">commissionstatus</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">settled_at</text>
+    <text x="262" y="215" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">created_at</text>
+    <text x="262" y="231" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">achievement_bonus</text>
+    <text x="262" y="247" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">approved_at</text>
+    <text x="262" y="263" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">paid_at</text>
+    <text x="262" y="279" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">wallet_transaction_id</text>
+    <text x="262" y="295" class="col-type">uuid</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">updated_at</text>
+    <text x="262" y="311" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(600, 506)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="102" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CAMPAIGN_PARTICIPANTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK campaign_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">status</text>
+    <text x="262" y="87" class="col-type">campaignparticipantstatus</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">joined_at</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">created_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(600, 670)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="70" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CAMPAIGN_PRODUCTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK campaign_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">created_at</text>
+    <text x="262" y="87" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(600, 802)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="230" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">EXCLUSIVE_DEAL_PROPOSALS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK store_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK product_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-fk">FK conversation_id</text>
+    <text x="262" y="103" class="col-type">uuid</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">proposed_commission_rate</text>
+    <text x="262" y="119" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">approved_commission_rate</text>
+    <text x="262" y="135" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">sales_commitment</text>
+    <text x="262" y="151" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">status</text>
+    <text x="262" y="167" class="col-type">exclusivedealstatus</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">shop_response</text>
+    <text x="262" y="183" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-fk">FK reviewer_id</text>
+    <text x="262" y="199" class="col-type">uuid</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">reviewed_at</text>
+    <text x="262" y="215" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">created_at</text>
+    <text x="262" y="231" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">updated_at</text>
+    <text x="262" y="247" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(600, 1094)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="150" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CHAT_MESSAGES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK conversation_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK sender_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">message_text</text>
+    <text x="262" y="87" class="col-type">text</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">media_url</text>
+    <text x="262" y="103" class="col-type">text</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">is_read</text>
+    <text x="262" y="119" class="col-type">boolean</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">created_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">media_type</text>
+    <text x="262" y="151" class="col-type">varchar(20)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">media_name</text>
+    <text x="262" y="167" class="col-type">varchar(255)</text>
+  </g>
+  <g transform="translate(600, 1700)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="310" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COLLABORATOR_PROFILES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK user_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK tier_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">avatar_url</text>
+    <text x="262" y="87" class="col-type">text</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">bio</text>
+    <text x="262" y="103" class="col-type">text</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">id_card_number</text>
+    <text x="262" y="119" class="col-type">varchar(50)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">tax_code</text>
+    <text x="262" y="135" class="col-type">varchar(50)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">bank_name</text>
+    <text x="262" y="151" class="col-type">varchar(100)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">bank_account_number</text>
+    <text x="262" y="167" class="col-type">varchar(50)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">bank_account_name</text>
+    <text x="262" y="183" class="col-type">varchar(150)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">social_links_json</text>
+    <text x="262" y="199" class="col-type">jsonb</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">total_followers</text>
+    <text x="262" y="215" class="col-type">integer</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">total_earned_commission</text>
+    <text x="262" y="231" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">total_orders_referred</text>
+    <text x="262" y="247" class="col-type">integer</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">created_at</text>
+    <text x="262" y="263" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">updated_at</text>
+    <text x="262" y="279" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">kyc_status</text>
+    <text x="262" y="295" class="col-type">kycstatus</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">sample_requests_blocked_at</text>
+    <text x="262" y="311" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">sample_requests_block_reason</text>
+    <text x="262" y="327" class="col-type">varchar(500)</text>
+  </g>
+  <g transform="translate(600, 2072)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="214" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">FINANCIAL_LEDGERS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK wallet_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">amount</text>
+    <text x="262" y="71" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">balance_before</text>
+    <text x="262" y="87" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">balance_after</text>
+    <text x="262" y="103" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">reference_id</text>
+    <text x="262" y="119" class="col-type">uuid</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">created_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">transaction_type</text>
+    <text x="262" y="151" class="col-type">transactiontype</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">balance_bucket</text>
+    <text x="262" y="167" class="col-type">walletbalancebucket</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">reference_type</text>
+    <text x="262" y="183" class="col-type">varchar(30)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">store_balance_after</text>
+    <text x="262" y="199" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">store_balance_before</text>
+    <text x="262" y="215" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-fk">FK store_id</text>
+    <text x="262" y="231" class="col-type">uuid</text>
+  </g>
+  <g transform="translate(600, 2348)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="326" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">PAYOUT_REQUESTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">amount</text>
+    <text x="262" y="71" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">bank_ref_code</text>
+    <text x="262" y="87" class="col-type">varchar(100)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">proof_image_url</text>
+    <text x="262" y="103" class="col-type">text</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">rejected_reason</text>
+    <text x="262" y="119" class="col-type">text</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">processed_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">created_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">status</text>
+    <text x="262" y="167" class="col-type">payoutstatus</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">bank_account_name</text>
+    <text x="262" y="183" class="col-type">varchar(150)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">bank_account_number</text>
+    <text x="262" y="199" class="col-type">varchar(50)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">bank_name</text>
+    <text x="262" y="215" class="col-type">varchar(100)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">net_amount</text>
+    <text x="262" y="231" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">tax_amount</text>
+    <text x="262" y="247" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-fk">FK store_id</text>
+    <text x="262" y="263" class="col-type">uuid</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-fk">FK approved_by_id</text>
+    <text x="262" y="279" class="col-type">uuid</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-fk">FK batch_id</text>
+    <text x="262" y="295" class="col-type">uuid</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">proof_image_format</text>
+    <text x="262" y="311" class="col-type">varchar(10)</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">proof_image_public_id</text>
+    <text x="262" y="327" class="col-type">text</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">proof_image_sha256</text>
+    <text x="262" y="343" class="col-type">varchar(64)</text>
+  </g>
+  <g transform="translate(1050, 150)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="278" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COMMISSION_RULES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">name</text>
+    <text x="262" y="71" class="col-type">varchar(150)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">min_monthly_revenue</text>
+    <text x="262" y="87" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">bonus_percentage</text>
+    <text x="262" y="103" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">is_deleted</text>
+    <text x="262" y="119" class="col-type">boolean</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">deleted_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">created_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">updated_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">effective_from</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">effective_to</text>
+    <text x="262" y="199" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">version</text>
+    <text x="262" y="215" class="col-type">integer</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">description</text>
+    <text x="262" y="231" class="col-type">text</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">achievement_bonus</text>
+    <text x="262" y="247" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">is_active</text>
+    <text x="262" y="263" class="col-type">boolean</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">created_by</text>
+    <text x="262" y="279" class="col-type">uuid</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">updated_by</text>
+    <text x="262" y="295" class="col-type">uuid</text>
+  </g>
+  <g transform="translate(1050, 490)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="166" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CAMPAIGNS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">name</text>
+    <text x="262" y="71" class="col-type">varchar(200)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">bonus_commission_rate</text>
+    <text x="262" y="87" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">start_date</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">end_date</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">is_active</text>
+    <text x="262" y="135" class="col-type">boolean</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">created_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">bonus_budget_total</text>
+    <text x="262" y="167" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">bonus_budget_used</text>
+    <text x="262" y="183" class="col-type">decimal(15,2)</text>
+  </g>
+  <g transform="translate(1050, 718)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="102" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CONVERSATIONS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">last_message_at</text>
+    <text x="262" y="87" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">created_at</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-fk">FK customer_id</text>
+    <text x="262" y="119" class="col-type">uuid</text>
+  </g>
+  <g transform="translate(1050, 1250)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="118" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">STORE_WALLETS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK wallet_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK store_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">available_balance</text>
+    <text x="262" y="87" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">pending_balance</text>
+    <text x="262" y="103" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">version</text>
+    <text x="262" y="119" class="col-type">integer</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">updated_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(1050, 1700)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="134" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CUSTOMER_IDENTITIES</text>
+    <text x="8" y="39" class="col-pk">PK user_id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-name">full_name</text>
+    <text x="262" y="55" class="col-type">varchar(150)</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">id_card_number</text>
+    <text x="262" y="71" class="col-type">varchar(12)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">address</text>
+    <text x="262" y="87" class="col-type">varchar(200)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">verification_method</text>
+    <text x="262" y="103" class="col-type">varchar(30)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">verified_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">created_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">updated_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(1050, 1896)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="262" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CUSTOMER_ADDRESSES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK user_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">full_name</text>
+    <text x="262" y="71" class="col-type">varchar(150)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">phone_number</text>
+    <text x="262" y="87" class="col-type">varchar(20)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">province_code</text>
+    <text x="262" y="103" class="col-type">varchar(50)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">province_name</text>
+    <text x="262" y="119" class="col-type">varchar(100)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">district_code</text>
+    <text x="262" y="135" class="col-type">varchar(50)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">district_name</text>
+    <text x="262" y="151" class="col-type">varchar(100)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">ward_code</text>
+    <text x="262" y="167" class="col-type">varchar(50)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">ward_name</text>
+    <text x="262" y="183" class="col-type">varchar(100)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">detail_address</text>
+    <text x="262" y="199" class="col-type">varchar(255)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">is_default</text>
+    <text x="262" y="215" class="col-type">boolean</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">created_at</text>
+    <text x="262" y="231" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">updated_at</text>
+    <text x="262" y="247" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">latitude</text>
+    <text x="262" y="263" class="col-type">decimal(10,7)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">longitude</text>
+    <text x="262" y="279" class="col-type">decimal(10,7)</text>
+  </g>
+  <g transform="translate(1050, 2220)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="118" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">AUDIT_LOGS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK user_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">action</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">details</text>
+    <text x="262" y="87" class="col-type">jsonb</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">ip_address</text>
+    <text x="262" y="103" class="col-type">varchar(45)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">created_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">event_id</text>
+    <text x="262" y="135" class="col-type">uuid</text>
+  </g>
+  <g transform="translate(1050, 2400)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="134" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">NOTIFICATIONS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK user_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">title</text>
+    <text x="262" y="71" class="col-type">varchar(255)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">message</text>
+    <text x="262" y="87" class="col-type">text</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">type</text>
+    <text x="262" y="103" class="col-type">varchar(50)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">data</text>
+    <text x="262" y="119" class="col-type">jsonb</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">is_read</text>
+    <text x="262" y="135" class="col-type">boolean</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">created_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(1050, 2596)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="278" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">WALLET_TOP_UPS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK user_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">order_code</text>
+    <text x="262" y="71" class="col-type">bigint</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">amount</text>
+    <text x="262" y="87" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">status</text>
+    <text x="262" y="103" class="col-type">varchar(20)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">payment_link_id</text>
+    <text x="262" y="119" class="col-type">text</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">checkout_url</text>
+    <text x="262" y="135" class="col-type">text</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">qr_code</text>
+    <text x="262" y="151" class="col-type">text</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">bin</text>
+    <text x="262" y="167" class="col-type">text</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">account_number</text>
+    <text x="262" y="183" class="col-type">text</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">account_name</text>
+    <text x="262" y="199" class="col-type">text</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">description</text>
+    <text x="262" y="215" class="col-type">text</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">expires_at</text>
+    <text x="262" y="231" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">paid_at</text>
+    <text x="262" y="247" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">next_check_at</text>
+    <text x="262" y="263" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">created_at</text>
+    <text x="262" y="279" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">updated_at</text>
+    <text x="262" y="295" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(1600, 280)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="134" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">STORE_COLLABORATORS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">status</text>
+    <text x="262" y="87" class="col-type">storecollaboratorstatus</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">approved_at</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">note</text>
+    <text x="262" y="119" class="col-type">varchar(255)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">created_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">updated_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(1600, 476)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="70" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">STORE_FOLLOWS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK user_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">created_at</text>
+    <text x="262" y="87" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(1600, 608)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="310" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">MEDIA_ASSETS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">title</text>
+    <text x="262" y="87" class="col-type">varchar(255)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">url_or_content</text>
+    <text x="262" y="103" class="col-type">text</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">is_deleted</text>
+    <text x="262" y="119" class="col-type">boolean</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">deleted_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">created_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">asset_type</text>
+    <text x="262" y="167" class="col-type">assettype</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="183" class="col-type">uuid</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">status</text>
+    <text x="262" y="199" class="col-type">mediaassetstatus</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-fk">FK reviewed_by</text>
+    <text x="262" y="215" class="col-type">uuid</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">reviewed_at</text>
+    <text x="262" y="231" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">rejection_reason</text>
+    <text x="262" y="247" class="col-type">varchar(500)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">is_featured</text>
+    <text x="262" y="263" class="col-type">boolean</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">poster_url</text>
+    <text x="262" y="279" class="col-type">text</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">caption</text>
+    <text x="262" y="295" class="col-type">text</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">updated_at</text>
+    <text x="262" y="311" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-fk">FK sample_request_id</text>
+    <text x="262" y="327" class="col-type">uuid</text>
+  </g>
+  <g transform="translate(1600, 1250)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="454" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">STORES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK owner_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">name</text>
+    <text x="262" y="71" class="col-type">varchar(200)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">slug</text>
+    <text x="262" y="87" class="col-type">varchar(200)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">logo_url</text>
+    <text x="262" y="103" class="col-type">text</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">description</text>
+    <text x="262" y="119" class="col-type">text</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">website_url</text>
+    <text x="262" y="135" class="col-type">varchar(255)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">default_commission_rate</text>
+    <text x="262" y="151" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">attribution_window_days</text>
+    <text x="262" y="167" class="col-type">integer</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">min_payout_amount</text>
+    <text x="262" y="183" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">is_deleted</text>
+    <text x="262" y="199" class="col-type">boolean</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">deleted_at</text>
+    <text x="262" y="215" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">created_at</text>
+    <text x="262" y="231" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">updated_at</text>
+    <text x="262" y="247" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">is_active</text>
+    <text x="262" y="263" class="col-type">boolean</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">is_verified</text>
+    <text x="262" y="279" class="col-type">boolean</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">policy_return</text>
+    <text x="262" y="295" class="col-type">text</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">policy_warranty</text>
+    <text x="262" y="311" class="col-type">varchar(500)</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">policy_shipping</text>
+    <text x="262" y="327" class="col-type">varchar(500)</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">onboarding_status</text>
+    <text x="262" y="343" class="col-type">shoponboardingstatus</text>
+    <line x1="4" y1="347" x2="266" y2="347" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="359" class="col-name">onboarding_data</text>
+    <text x="262" y="359" class="col-type">jsonb</text>
+    <line x1="4" y1="363" x2="266" y2="363" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="375" class="col-name">onboarding_submitted_at</text>
+    <text x="262" y="375" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="379" x2="266" y2="379" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="391" class="col-name">onboarding_reviewed_at</text>
+    <text x="262" y="391" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="395" x2="266" y2="395" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="407" class="col-name">onboarding_review_note</text>
+    <text x="262" y="407" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="411" x2="266" y2="411" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="423" class="col-fk">FK onboarding_reviewed_by_id</text>
+    <text x="262" y="423" class="col-type">uuid</text>
+    <line x1="4" y1="427" x2="266" y2="427" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="439" class="col-name">return_warehouse</text>
+    <text x="262" y="439" class="col-type">jsonb</text>
+    <line x1="4" y1="443" x2="266" y2="443" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="455" class="col-name">live_restriction_until</text>
+    <text x="262" y="455" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="459" x2="266" y2="459" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="471" class="col-name">live_cooperation_blocked</text>
+    <text x="262" y="471" class="col-type">boolean</text>
+  </g>
+  <g transform="translate(1600, 1850)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="198" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">USERS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-name">email</text>
+    <text x="262" y="55" class="col-type">varchar(255)</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">password_hash</text>
+    <text x="262" y="71" class="col-type">varchar(255)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">full_name</text>
+    <text x="262" y="87" class="col-type">varchar(150)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">phone_number</text>
+    <text x="262" y="103" class="col-type">varchar(20)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">is_active</text>
+    <text x="262" y="119" class="col-type">boolean</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">is_deleted</text>
+    <text x="262" y="135" class="col-type">boolean</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">deleted_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">created_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">updated_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">role</text>
+    <text x="262" y="199" class="col-type">userrole</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">avatar_url</text>
+    <text x="262" y="215" class="col-type">text</text>
+  </g>
+  <g transform="translate(1600, 2450)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="102" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">WALLETS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">available_balance</text>
+    <text x="262" y="71" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">pending_balance</text>
+    <text x="262" y="87" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">version</text>
+    <text x="262" y="103" class="col-type">integer</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">updated_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(2050, 2650)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="182" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COMMISSIONS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK order_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">commission_amount</text>
+    <text x="262" y="87" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">approved_at</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">created_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">status</text>
+    <text x="262" y="135" class="col-type">commissionstatus</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">store_wallet_tracked</text>
+    <text x="262" y="151" class="col-type">boolean</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">eligible_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">available_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">reversed_at</text>
+    <text x="262" y="199" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(2500, 150)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="70" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CUSTOMER_WISHLISTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK user_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">created_at</text>
+    <text x="262" y="87" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(2500, 282)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="134" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CUSTOMER_CART_ITEMS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK user_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK variant_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">variant_key</text>
+    <text x="262" y="103" class="col-type">varchar(36)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">quantity</text>
+    <text x="262" y="119" class="col-type">integer</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">created_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">updated_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(2500, 478)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="246" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">PRODUCT_REVIEWS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK product_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK order_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">customer_name</text>
+    <text x="262" y="87" class="col-type">varchar(150)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">rating</text>
+    <text x="262" y="103" class="col-type">integer</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">comment</text>
+    <text x="262" y="119" class="col-type">text</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">review_image_url</text>
+    <text x="262" y="135" class="col-type">text</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">is_approved</text>
+    <text x="262" y="151" class="col-type">boolean</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">created_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">status</text>
+    <text x="262" y="183" class="col-type">reviewstatus</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">reviewed_by</text>
+    <text x="262" y="199" class="col-type">uuid</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">reviewed_at</text>
+    <text x="262" y="215" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">rejection_reason</text>
+    <text x="262" y="231" class="col-type">varchar(500)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">images</text>
+    <text x="262" y="247" class="col-type">array</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">video_url</text>
+    <text x="262" y="263" class="col-type">text</text>
+  </g>
+  <g transform="translate(2500, 786)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="230" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">PRODUCT_VARIANTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK product_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">sku</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">name</text>
+    <text x="262" y="87" class="col-type">varchar(150)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">price</text>
+    <text x="262" y="103" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">stock_quantity</text>
+    <text x="262" y="119" class="col-type">integer</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">is_active</text>
+    <text x="262" y="135" class="col-type">boolean</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">created_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">updated_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">sample_enabled</text>
+    <text x="262" y="183" class="col-type">boolean</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">sample_quota</text>
+    <text x="262" y="199" class="col-type">integer</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">sample_granted_count</text>
+    <text x="262" y="215" class="col-type">integer</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">image_url</text>
+    <text x="262" y="231" class="col-type">text</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">attributes</text>
+    <text x="262" y="247" class="col-type">jsonb</text>
+  </g>
+  <g transform="translate(2500, 1250)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="438" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">PRODUCTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">sku</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">title</text>
+    <text x="262" y="87" class="col-type">varchar(255)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">category_name</text>
+    <text x="262" y="103" class="col-type">varchar(100)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">description</text>
+    <text x="262" y="119" class="col-type">text</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">image_url</text>
+    <text x="262" y="135" class="col-type">text</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">original_price</text>
+    <text x="262" y="151" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">price</text>
+    <text x="262" y="167" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">custom_commission_rate</text>
+    <text x="262" y="183" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">stock_quantity</text>
+    <text x="262" y="199" class="col-type">integer</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">is_active</text>
+    <text x="262" y="215" class="col-type">boolean</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">is_deleted</text>
+    <text x="262" y="231" class="col-type">boolean</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">deleted_at</text>
+    <text x="262" y="247" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">created_at</text>
+    <text x="262" y="263" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">updated_at</text>
+    <text x="262" y="279" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">is_affiliate_enabled</text>
+    <text x="262" y="295" class="col-type">boolean</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">sample_enabled</text>
+    <text x="262" y="311" class="col-type">boolean</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">sample_quota</text>
+    <text x="262" y="327" class="col-type">integer</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">sample_granted_count</text>
+    <text x="262" y="343" class="col-type">integer</text>
+    <line x1="4" y1="347" x2="266" y2="347" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="359" class="col-name">moderation_status</text>
+    <text x="262" y="359" class="col-type">productmoderationstatus</text>
+    <line x1="4" y1="363" x2="266" y2="363" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="375" class="col-name">moderation_reason</text>
+    <text x="262" y="375" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="379" x2="266" y2="379" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="391" class="col-name">moderated_at</text>
+    <text x="262" y="391" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="395" x2="266" y2="395" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="407" class="col-name">moderated_by_id</text>
+    <text x="262" y="407" class="col-type">uuid</text>
+    <line x1="4" y1="411" x2="266" y2="411" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="423" class="col-name">ingredients</text>
+    <text x="262" y="423" class="col-type">text</text>
+    <line x1="4" y1="427" x2="266" y2="427" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="439" class="col-name">origin</text>
+    <text x="262" y="439" class="col-type">varchar(255)</text>
+    <line x1="4" y1="443" x2="266" y2="443" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="455" class="col-name">label_info</text>
+    <text x="262" y="455" class="col-type">text</text>
+  </g>
+  <g transform="translate(2500, 1850)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="646" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">ORDERS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">external_order_sn</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK attributed_collaborator_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">customer_name</text>
+    <text x="262" y="103" class="col-type">varchar(150)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">customer_phone</text>
+    <text x="262" y="119" class="col-type">varchar(20)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">shipping_address</text>
+    <text x="262" y="135" class="col-type">text</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">subtotal_amount</text>
+    <text x="262" y="151" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">discount_amount</text>
+    <text x="262" y="167" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">final_amount</text>
+    <text x="262" y="183" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">created_at</text>
+    <text x="262" y="199" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">updated_at</text>
+    <text x="262" y="215" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">attribution_method</text>
+    <text x="262" y="231" class="col-type">attributionmethod</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">status</text>
+    <text x="262" y="247" class="col-type">orderstatus</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">shipping_fee</text>
+    <text x="262" y="263" class="col-type">decimal(12,2)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">completed_at</text>
+    <text x="262" y="279" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">refunded_amount</text>
+    <text x="262" y="295" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-fk">FK referral_link_id</text>
+    <text x="262" y="311" class="col-type">uuid</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">coupon_code_snapshot</text>
+    <text x="262" y="327" class="col-type">varchar(20)</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">coupon_discount_amount</text>
+    <text x="262" y="343" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="347" x2="266" y2="347" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="359" class="col-fk">FK coupon_id</text>
+    <text x="262" y="359" class="col-type">uuid</text>
+    <line x1="4" y1="363" x2="266" y2="363" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="375" class="col-name">original_attribution_method</text>
+    <text x="262" y="375" class="col-type">attributionmethod</text>
+    <line x1="4" y1="379" x2="266" y2="379" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="391" class="col-name">original_collaborator_id</text>
+    <text x="262" y="391" class="col-type">uuid</text>
+    <line x1="4" y1="395" x2="266" y2="395" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="407" class="col-name">override_reason</text>
+    <text x="262" y="407" class="col-type">varchar(255)</text>
+    <line x1="4" y1="411" x2="266" y2="411" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="423" class="col-name">idempotency_key</text>
+    <text x="262" y="423" class="col-type">varchar(100)</text>
+    <line x1="4" y1="427" x2="266" y2="427" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="439" class="col-name">cancellation_token</text>
+    <text x="262" y="439" class="col-type">varchar(100)</text>
+    <line x1="4" y1="443" x2="266" y2="443" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="455" class="col-name">attribution_session_id</text>
+    <text x="262" y="455" class="col-type">uuid</text>
+    <line x1="4" y1="459" x2="266" y2="459" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="471" class="col-name">click_id</text>
+    <text x="262" y="471" class="col-type">uuid</text>
+    <line x1="4" y1="475" x2="266" y2="475" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="487" class="col-name">attribution_confidence</text>
+    <text x="262" y="487" class="col-type">varchar(20)</text>
+    <line x1="4" y1="491" x2="266" y2="491" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="503" class="col-name">attribution_snapshot</text>
+    <text x="262" y="503" class="col-type">jsonb</text>
+    <line x1="4" y1="507" x2="266" y2="507" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="519" class="col-name">attributed_at</text>
+    <text x="262" y="519" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="523" x2="266" y2="523" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="535" class="col-name">clicked_at</text>
+    <text x="262" y="535" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="539" x2="266" y2="539" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="551" class="col-name">source_platform</text>
+    <text x="262" y="551" class="col-type">ordersourceplatform</text>
+    <line x1="4" y1="555" x2="266" y2="555" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="567" class="col-name">raw_payload</text>
+    <text x="262" y="567" class="col-type">jsonb</text>
+    <line x1="4" y1="571" x2="266" y2="571" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="583" class="col-name">source_updated_at</text>
+    <text x="262" y="583" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="587" x2="266" y2="587" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="599" class="col-name">customer_email</text>
+    <text x="262" y="599" class="col-type">varchar(254)</text>
+    <line x1="4" y1="603" x2="266" y2="603" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="615" class="col-fk">FK customer_id</text>
+    <text x="262" y="615" class="col-type">uuid</text>
+    <line x1="4" y1="619" x2="266" y2="619" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="631" class="col-name">policy_accepted_at</text>
+    <text x="262" y="631" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="635" x2="266" y2="635" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="647" class="col-name">policy_snapshot</text>
+    <text x="262" y="647" class="col-type">jsonb</text>
+    <line x1="4" y1="651" x2="266" y2="651" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="663" class="col-name">delivered_at</text>
+    <text x="262" y="663" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(2500, 2650)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="214" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">ORDER_ITEMS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK order_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">quantity</text>
+    <text x="262" y="87" class="col-type">integer</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">unit_price</text>
+    <text x="262" y="103" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">applied_commission_rate</text>
+    <text x="262" y="119" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">calculated_commission_amount</text>
+    <text x="262" y="135" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">created_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-fk">FK referral_link_id</text>
+    <text x="262" y="167" class="col-type">uuid</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">commission_snapshot_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-fk">FK variant_id</text>
+    <text x="262" y="199" class="col-type">uuid</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">regular_commission_rate</text>
+    <text x="262" y="215" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">regular_commission_amount</text>
+    <text x="262" y="231" class="col-type">decimal(15,2)</text>
+  </g>
+  <g transform="translate(3000, 150)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="310" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">LIVE_SHOPPING_SESSIONS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK creator_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK created_by</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">title</text>
+    <text x="262" y="103" class="col-type">varchar(200)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">cover_image_url</text>
+    <text x="262" y="119" class="col-type">text</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">description</text>
+    <text x="262" y="135" class="col-type">text</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">platform</text>
+    <text x="262" y="151" class="col-type">livesessionplatform</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">live_url</text>
+    <text x="262" y="167" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">starts_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">ends_at</text>
+    <text x="262" y="199" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">status</text>
+    <text x="262" y="215" class="col-type">livesessionstatus</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">invite_status</text>
+    <text x="262" y="231" class="col-type">livesessioninvitestatus</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">responded_at</text>
+    <text x="262" y="247" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">commission_rate</text>
+    <text x="262" y="263" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">created_at</text>
+    <text x="262" y="279" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">updated_at</text>
+    <text x="262" y="295" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">external_channels</text>
+    <text x="262" y="311" class="col-type">jsonb</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">governance</text>
+    <text x="262" y="327" class="col-type">jsonb</text>
+  </g>
+  <g transform="translate(3000, 522)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="614" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">SAMPLE_PRODUCT_REQUESTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">shipping_address</text>
+    <text x="262" y="87" class="col-type">text</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">tracking_number</text>
+    <text x="262" y="103" class="col-type">varchar(100)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">created_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">updated_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">status</text>
+    <text x="262" y="151" class="col-type">samplerequeststatus</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-fk">FK social_channel_id</text>
+    <text x="262" y="167" class="col-type">uuid</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">content_type</text>
+    <text x="262" y="183" class="col-type">varchar(500)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">expected_video_at</text>
+    <text x="262" y="199" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">accepted_terms_at</text>
+    <text x="262" y="215" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">carrier</text>
+    <text x="262" y="231" class="col-type">varchar(50)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">rejected_reason</text>
+    <text x="262" y="247" class="col-type">varchar(500)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">received_at</text>
+    <text x="262" y="263" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">deadline_at</text>
+    <text x="262" y="279" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">reminder_sent_at</text>
+    <text x="262" y="295" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">overdue_at</text>
+    <text x="262" y="311" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">video_url</text>
+    <text x="262" y="327" class="col-type">varchar(2000)</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">video_title</text>
+    <text x="262" y="343" class="col-type">varchar(255)</text>
+    <line x1="4" y1="347" x2="266" y2="347" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="359" class="col-name">video_submitted_at</text>
+    <text x="262" y="359" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="363" x2="266" y2="363" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="375" class="col-name">video_rejection_reason</text>
+    <text x="262" y="375" class="col-type">varchar(500)</text>
+    <line x1="4" y1="379" x2="266" y2="379" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="391" class="col-fk">FK product_variant_id</text>
+    <text x="262" y="391" class="col-type">uuid</text>
+    <line x1="4" y1="395" x2="266" y2="395" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="407" class="col-name">recipient_name</text>
+    <text x="262" y="407" class="col-type">varchar(150)</text>
+    <line x1="4" y1="411" x2="266" y2="411" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="423" class="col-name">recipient_phone</text>
+    <text x="262" y="423" class="col-type">varchar(30)</text>
+    <line x1="4" y1="427" x2="266" y2="427" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="439" class="col-name">granted_at</text>
+    <text x="262" y="439" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="443" x2="266" y2="443" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="455" class="col-name">social_platform_snapshot</text>
+    <text x="262" y="455" class="col-type">varchar(50)</text>
+    <line x1="4" y1="459" x2="266" y2="459" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="471" class="col-name">social_channel_name_snapshot</text>
+    <text x="262" y="471" class="col-type">varchar(150)</text>
+    <line x1="4" y1="475" x2="266" y2="475" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="487" class="col-name">social_channel_url_snapshot</text>
+    <text x="262" y="487" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="491" x2="266" y2="491" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="503" class="col-name">social_follower_snapshot</text>
+    <text x="262" y="503" class="col-type">integer</text>
+    <line x1="4" y1="507" x2="266" y2="507" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="519" class="col-name">expected_reminder_sent_at</text>
+    <text x="262" y="519" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="523" x2="266" y2="523" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="535" class="col-name">shop_reminder_sent_at</text>
+    <text x="262" y="535" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="539" x2="266" y2="539" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="551" class="col-name">revision_deadline_at</text>
+    <text x="262" y="551" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="555" x2="266" y2="555" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="567" class="col-name">revision_reminder_sent_at</text>
+    <text x="262" y="567" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="571" x2="266" y2="571" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="583" class="col-name">revision_shop_reminder_sent_at</text>
+    <text x="262" y="583" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="587" x2="266" y2="587" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="599" class="col-name">ghn_province_id</text>
+    <text x="262" y="599" class="col-type">integer</text>
+    <line x1="4" y1="603" x2="266" y2="603" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="615" class="col-name">ghn_district_id</text>
+    <text x="262" y="615" class="col-type">integer</text>
+    <line x1="4" y1="619" x2="266" y2="619" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="631" class="col-name">ghn_ward_code</text>
+    <text x="262" y="631" class="col-type">varchar(20)</text>
+  </g>
+  <g transform="translate(3000, 1198)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="598" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COUPONS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-name">code_normalized</text>
+    <text x="262" y="55" class="col-type">varchar(20)</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">display_code</text>
+    <text x="262" y="71" class="col-type">varchar(20)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-fk">FK store_id</text>
+    <text x="262" y="103" class="col-type">uuid</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-fk">FK campaign_id</text>
+    <text x="262" y="119" class="col-type">uuid</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">status</text>
+    <text x="262" y="135" class="col-type">couponstatus</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">discount_type</text>
+    <text x="262" y="151" class="col-type">discounttype</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">discount_value</text>
+    <text x="262" y="167" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">minimum_order_amount</text>
+    <text x="262" y="183" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">maximum_discount_amount</text>
+    <text x="262" y="199" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">usage_limit_total</text>
+    <text x="262" y="215" class="col-type">integer</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">usage_limit_per_customer</text>
+    <text x="262" y="231" class="col-type">integer</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">usage_count</text>
+    <text x="262" y="247" class="col-type">integer</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">budget_total</text>
+    <text x="262" y="263" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">budget_used</text>
+    <text x="262" y="279" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">starts_at</text>
+    <text x="262" y="295" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">expires_at</text>
+    <text x="262" y="311" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">scope_type</text>
+    <text x="262" y="327" class="col-type">couponscope</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">funding_source</text>
+    <text x="262" y="343" class="col-type">couponfundingsource</text>
+    <line x1="4" y1="347" x2="266" y2="347" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="359" class="col-name">shop_funding_rate</text>
+    <text x="262" y="359" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="363" x2="266" y2="363" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="375" class="col-name">platform_funding_rate</text>
+    <text x="262" y="375" class="col-type">decimal(5,2)</text>
+    <line x1="4" y1="379" x2="266" y2="379" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="391" class="col-name">stackable_with_product_discount</text>
+    <text x="262" y="391" class="col-type">boolean</text>
+    <line x1="4" y1="395" x2="266" y2="395" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="407" class="col-name">stackable_with_shop_voucher</text>
+    <text x="262" y="407" class="col-type">boolean</text>
+    <line x1="4" y1="411" x2="266" y2="411" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="423" class="col-name">stackable_with_platform_voucher</text>
+    <text x="262" y="423" class="col-type">boolean</text>
+    <line x1="4" y1="427" x2="266" y2="427" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="439" class="col-fk">FK approved_by</text>
+    <text x="262" y="439" class="col-type">uuid</text>
+    <line x1="4" y1="443" x2="266" y2="443" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="455" class="col-name">approved_at</text>
+    <text x="262" y="455" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="459" x2="266" y2="459" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="471" class="col-name">rejected_reason</text>
+    <text x="262" y="471" class="col-type">varchar(255)</text>
+    <line x1="4" y1="475" x2="266" y2="475" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="487" class="col-name">blocked_reason</text>
+    <text x="262" y="487" class="col-type">varchar(255)</text>
+    <line x1="4" y1="491" x2="266" y2="491" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="503" class="col-name">deleted_by</text>
+    <text x="262" y="503" class="col-type">uuid</text>
+    <line x1="4" y1="507" x2="266" y2="507" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="519" class="col-name">delete_reason</text>
+    <text x="262" y="519" class="col-type">varchar(255)</text>
+    <line x1="4" y1="523" x2="266" y2="523" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="535" class="col-name">deleted_at</text>
+    <text x="262" y="535" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="539" x2="266" y2="539" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="551" class="col-name">created_at</text>
+    <text x="262" y="551" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="555" x2="266" y2="555" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="567" class="col-name">updated_at</text>
+    <text x="262" y="567" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="571" x2="266" y2="571" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="583" class="col-fk">FK live_session_id</text>
+    <text x="262" y="583" class="col-type">uuid</text>
+    <line x1="4" y1="587" x2="266" y2="587" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="599" class="col-name">benefit_type</text>
+    <text x="262" y="599" class="col-type">couponbenefittype</text>
+    <line x1="4" y1="603" x2="266" y2="603" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="615" class="col-name">status_before_block</text>
+    <text x="262" y="615" class="col-type">couponstatus</text>
+  </g>
+  <g transform="translate(3000, 1858)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="470" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">REFERRAL_LINKS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">short_code</text>
+    <text x="262" y="87" class="col-type">varchar(50)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">custom_coupon_code</text>
+    <text x="262" y="103" class="col-type">varchar(50)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">qr_code_url</text>
+    <text x="262" y="119" class="col-type">text</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">total_clicks</text>
+    <text x="262" y="135" class="col-type">integer</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">total_orders</text>
+    <text x="262" y="151" class="col-type">integer</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">deleted_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">created_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-fk">FK store_id</text>
+    <text x="262" y="199" class="col-type">uuid</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-fk">FK campaign_id</text>
+    <text x="262" y="215" class="col-type">uuid</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">channel</text>
+    <text x="262" y="231" class="col-type">socialplatform</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">destination_path</text>
+    <text x="262" y="247" class="col-type">varchar(255)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">disabled_at</text>
+    <text x="262" y="263" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">disabled_by</text>
+    <text x="262" y="279" class="col-type">uuid</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">disabled_reason</text>
+    <text x="262" y="295" class="col-type">varchar(255)</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">expires_at</text>
+    <text x="262" y="311" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">label</text>
+    <text x="262" y="327" class="col-type">varchar(150)</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">last_accessed_at</text>
+    <text x="262" y="343" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="347" x2="266" y2="347" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="359" class="col-name">status</text>
+    <text x="262" y="359" class="col-type">referrallinkstatus</text>
+    <line x1="4" y1="363" x2="266" y2="363" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="375" class="col-name">unique_clicks</text>
+    <text x="262" y="375" class="col-type">integer</text>
+    <line x1="4" y1="379" x2="266" y2="379" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="391" class="col-name">updated_at</text>
+    <text x="262" y="391" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="395" x2="266" y2="395" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="407" class="col-name">utm_campaign</text>
+    <text x="262" y="407" class="col-type">varchar(100)</text>
+    <line x1="4" y1="411" x2="266" y2="411" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="423" class="col-name">utm_content</text>
+    <text x="262" y="423" class="col-type">varchar(100)</text>
+    <line x1="4" y1="427" x2="266" y2="427" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="439" class="col-name">utm_medium</text>
+    <text x="262" y="439" class="col-type">varchar(100)</text>
+    <line x1="4" y1="443" x2="266" y2="443" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="455" class="col-name">utm_source</text>
+    <text x="262" y="455" class="col-type">varchar(100)</text>
+    <line x1="4" y1="459" x2="266" y2="459" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="471" class="col-name">qr_download_count</text>
+    <text x="262" y="471" class="col-type">integer</text>
+    <line x1="4" y1="475" x2="266" y2="475" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="487" class="col-fk">FK exclusive_deal_id</text>
+    <text x="262" y="487" class="col-type">uuid</text>
+  </g>
+  <g transform="translate(3000, 2390)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="150" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">PAYMENT_TRANSACTIONS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK order_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">transaction_id</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">amount</text>
+    <text x="262" y="87" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">currency</text>
+    <text x="262" y="103" class="col-type">varchar(10)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">payment_method</text>
+    <text x="262" y="119" class="col-type">varchar(50)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">payment_proof</text>
+    <text x="262" y="135" class="col-type">text</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">status</text>
+    <text x="262" y="151" class="col-type">varchar(20)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">created_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3000, 2602)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="118" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">ORDER_REFUNDS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK order_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">amount</text>
+    <text x="262" y="71" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">reason</text>
+    <text x="262" y="87" class="col-type">text</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">status</text>
+    <text x="262" y="103" class="col-type">varchar(50)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">refunded_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">created_at</text>
+    <text x="262" y="135" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3000, 2782)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="166" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">GHN_TRACKING_RECORDS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-name">environment</text>
+    <text x="262" y="55" class="col-type">varchar(10)</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">order_code</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">status</text>
+    <text x="262" y="87" class="col-type">varchar(40)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">events</text>
+    <text x="262" y="103" class="col-type">jsonb</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">shipper_name</text>
+    <text x="262" y="119" class="col-type">varchar(150)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">shipper_phone</text>
+    <text x="262" y="135" class="col-type">varchar(30)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">contact_updated_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">status_updated_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">observed_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3000, 3010)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="406" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">RETURN_REQUESTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK order_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK customer_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">reason</text>
+    <text x="262" y="87" class="col-type">returnreason</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">details</text>
+    <text x="262" y="103" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">image_urls</text>
+    <text x="262" y="119" class="col-type">array</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">unboxing_video_url</text>
+    <text x="262" y="135" class="col-type">text</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">status</text>
+    <text x="262" y="151" class="col-type">returnrequeststatus</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">deadline_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">shop_response</text>
+    <text x="262" y="183" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">shop_responded_at</text>
+    <text x="262" y="199" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">submitted_at</text>
+    <text x="262" y="215" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">updated_at</text>
+    <text x="262" y="231" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">original_order_status</text>
+    <text x="262" y="247" class="col-type">orderstatus</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">ship_by_at</text>
+    <text x="262" y="263" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">return_address</text>
+    <text x="262" y="279" class="col-type">varchar(500)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">return_instructions</text>
+    <text x="262" y="295" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">resolution</text>
+    <text x="262" y="311" class="col-type">returnresolution</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">inspection_notes</text>
+    <text x="262" y="327" class="col-type">varchar(2000)</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">received_at</text>
+    <text x="262" y="343" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="347" x2="266" y2="347" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="359" class="col-name">inspection_started_at</text>
+    <text x="262" y="359" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="363" x2="266" y2="363" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="375" class="col-name">inspection_completed_at</text>
+    <text x="262" y="375" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="379" x2="266" y2="379" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="391" class="col-name">inspection_escalated_at</text>
+    <text x="262" y="391" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="395" x2="266" y2="395" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="407" class="col-name">completed_at</text>
+    <text x="262" y="407" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="411" x2="266" y2="411" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="423" class="col-name">pickup_contact</text>
+    <text x="262" y="423" class="col-type">jsonb</text>
+  </g>
+  <g transform="translate(3500, 150)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="86" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">LIVE_SESSION_PRODUCTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK session_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK variant_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">created_at</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 298)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="86" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">LIVE_SESSION_CLAIMS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK session_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">claim_key</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK user_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">claimed_at</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 446)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="86" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">LIVE_SESSION_VIEWERS</text>
+    <text x="8" y="39" class="col-pk">PK session_id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-pk">PK client_id</text>
+    <text x="262" y="55" class="col-type">varchar(100)</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">first_seen_at</text>
+    <text x="262" y="71" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">last_seen_at</text>
+    <text x="262" y="87" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">left_at</text>
+    <text x="262" y="103" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 594)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="102" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">SAMPLE_REQUEST_EVENTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK sample_request_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK actor_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">action</text>
+    <text x="262" y="87" class="col-type">varchar(100)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">details</text>
+    <text x="262" y="103" class="col-type">jsonb</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">created_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 758)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="182" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">SAMPLE_SHIPPING_CHARGES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK sample_request_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK store_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">carrier</text>
+    <text x="262" y="87" class="col-type">varchar(30)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">environment</text>
+    <text x="262" y="103" class="col-type">varchar(10)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">tracking_number</text>
+    <text x="262" y="119" class="col-type">varchar(100)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">amount</text>
+    <text x="262" y="135" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">payer</text>
+    <text x="262" y="151" class="col-type">varchar(10)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">cod_amount</text>
+    <text x="262" y="167" class="col-type">integer</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">status</text>
+    <text x="262" y="183" class="col-type">varchar(30)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">recorded_at</text>
+    <text x="262" y="199" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 1002)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="70" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COUPON_PRODUCTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK coupon_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK product_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">created_at</text>
+    <text x="262" y="87" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 1134)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="70" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COUPON_CATEGORIES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK coupon_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">category_name</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">created_at</text>
+    <text x="262" y="87" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 1266)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="278" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">COUPON_REDEMPTIONS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK coupon_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK order_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">collaborator_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">store_id</text>
+    <text x="262" y="103" class="col-type">uuid</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">customer_id</text>
+    <text x="262" y="119" class="col-type">uuid</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">customer_phone</text>
+    <text x="262" y="135" class="col-type">varchar(20)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">status</text>
+    <text x="262" y="151" class="col-type">couponredemptionstatus</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">discount_amount</text>
+    <text x="262" y="167" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">shop_funded_amount</text>
+    <text x="262" y="183" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">platform_funded_amount</text>
+    <text x="262" y="199" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">eligible_subtotal</text>
+    <text x="262" y="215" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">coupon_code_snapshot</text>
+    <text x="262" y="231" class="col-type">varchar(20)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">discount_type_snapshot</text>
+    <text x="262" y="247" class="col-type">discounttype</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">discount_value_snapshot</text>
+    <text x="262" y="263" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">created_at</text>
+    <text x="262" y="279" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">updated_at</text>
+    <text x="262" y="295" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 1606)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="422" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CLICK_TRAFFIC_LOGS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK referral_link_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">ip_address</text>
+    <text x="262" y="71" class="col-type">varchar(45)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">user_agent</text>
+    <text x="262" y="87" class="col-type">text</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">device_fingerprint</text>
+    <text x="262" y="103" class="col-type">varchar(255)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">created_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">device_type</text>
+    <text x="262" y="135" class="col-type">varchar(50)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">is_valid</text>
+    <text x="262" y="151" class="col-type">boolean</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">referrer</text>
+    <text x="262" y="167" class="col-type">varchar(255)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">rejection_reason</text>
+    <text x="262" y="183" class="col-type">varchar(150)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">session_id</text>
+    <text x="262" y="199" class="col-type">varchar(100)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">utm_campaign</text>
+    <text x="262" y="215" class="col-type">varchar(100)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">utm_medium</text>
+    <text x="262" y="231" class="col-type">varchar(100)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">utm_source</text>
+    <text x="262" y="247" class="col-type">varchar(100)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">access_method</text>
+    <text x="262" y="263" class="col-type">accessmethod</text>
+    <line x1="4" y1="267" x2="266" y2="267" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="279" class="col-name">event_id</text>
+    <text x="262" y="279" class="col-type">varchar(64)</text>
+    <line x1="4" y1="283" x2="266" y2="283" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="295" class="col-name">store_id</text>
+    <text x="262" y="295" class="col-type">uuid</text>
+    <line x1="4" y1="299" x2="266" y2="299" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="311" class="col-name">collaborator_id</text>
+    <text x="262" y="311" class="col-type">uuid</text>
+    <line x1="4" y1="315" x2="266" y2="315" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="327" class="col-name">product_id</text>
+    <text x="262" y="327" class="col-type">uuid</text>
+    <line x1="4" y1="331" x2="266" y2="331" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="343" class="col-name">campaign_id</text>
+    <text x="262" y="343" class="col-type">uuid</text>
+    <line x1="4" y1="347" x2="266" y2="347" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="359" class="col-name">ip_hash</text>
+    <text x="262" y="359" class="col-type">varchar(64)</text>
+    <line x1="4" y1="363" x2="266" y2="363" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="375" class="col-name">fingerprint_hash</text>
+    <text x="262" y="375" class="col-type">varchar(64)</text>
+    <line x1="4" y1="379" x2="266" y2="379" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="391" class="col-name">is_unique</text>
+    <text x="262" y="391" class="col-type">boolean</text>
+    <line x1="4" y1="395" x2="266" y2="395" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="407" class="col-name">risk_reason</text>
+    <text x="262" y="407" class="col-type">varchar(150)</text>
+    <line x1="4" y1="411" x2="266" y2="411" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="423" class="col-name">request_id</text>
+    <text x="262" y="423" class="col-type">varchar(64)</text>
+    <line x1="4" y1="427" x2="266" y2="427" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="439" class="col-name">received_at</text>
+    <text x="262" y="439" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 2550)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="86" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">RETURN_ITEMS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK return_request_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK order_item_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">quantity</text>
+    <text x="262" y="87" class="col-type">integer</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">unit_price</text>
+    <text x="262" y="103" class="col-type">decimal(15,2)</text>
+  </g>
+  <g transform="translate(3500, 2698)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="246" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">RETURN_SHIPMENTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK return_request_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">direction</text>
+    <text x="262" y="71" class="col-type">returnshipmentdirection</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">carrier_name</text>
+    <text x="262" y="87" class="col-type">varchar(100)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">tracking_number</text>
+    <text x="262" y="103" class="col-type">varchar(100)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">receipt_image_url</text>
+    <text x="262" y="119" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">version</text>
+    <text x="262" y="135" class="col-type">integer</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">shipped_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">received_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">provider</text>
+    <text x="262" y="183" class="col-type">varchar(30)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">provider_status</text>
+    <text x="262" y="199" class="col-type">varchar(50)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">client_order_code</text>
+    <text x="262" y="215" class="col-type">varchar(50)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">fee_amount</text>
+    <text x="262" y="231" class="col-type">integer</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">booked_at</text>
+    <text x="262" y="247" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="251" x2="266" y2="251" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="263" class="col-name">picked_up_at</text>
+    <text x="262" y="263" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3500, 3006)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="198" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">RETURN_REFUNDS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK return_request_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">amount</text>
+    <text x="262" y="71" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">method</text>
+    <text x="262" y="87" class="col-type">varchar(50)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">provider</text>
+    <text x="262" y="103" class="col-type">varchar(50)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">provider_reference</text>
+    <text x="262" y="119" class="col-type">varchar(150)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">idempotency_key</text>
+    <text x="262" y="135" class="col-type">varchar(150)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">status</text>
+    <text x="262" y="151" class="col-type">returnrefundstatus</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">failure_reason</text>
+    <text x="262" y="167" class="col-type">varchar(1000)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">processed_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">created_at</text>
+    <text x="262" y="199" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">updated_at</text>
+    <text x="262" y="215" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3950, 1250)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="54" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">CUSTOMER_SAVED_COUPONS</text>
+    <text x="8" y="39" class="col-pk">PK user_id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-pk">PK coupon_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">saved_at</text>
+    <text x="262" y="71" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3950, 1366)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="150" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">STACKED_VOUCHER_REDEMPTIONS</text>
+    <text x="8" y="39" class="col-pk">PK order_id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-pk">PK coupon_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">customer_phone</text>
+    <text x="262" y="71" class="col-type">varchar(20)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">benefit_type</text>
+    <text x="262" y="87" class="col-type">couponbenefittype</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">status</text>
+    <text x="262" y="103" class="col-type">couponredemptionstatus</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">discount_amount</text>
+    <text x="262" y="119" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">shop_funded_amount</text>
+    <text x="262" y="135" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">platform_funded_amount</text>
+    <text x="262" y="151" class="col-type">decimal(15,2)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">created_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3950, 1578)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="230" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">ATTRIBUTION_SESSIONS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK store_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK collaborator_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-fk">FK referral_link_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">visitor_id_hash</text>
+    <text x="262" y="103" class="col-type">varchar(64)</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">fingerprint_hash</text>
+    <text x="262" y="119" class="col-type">varchar(64)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">latest_click_id</text>
+    <text x="262" y="135" class="col-type">uuid</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">first_clicked_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">last_clicked_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">expires_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-name">version</text>
+    <text x="262" y="199" class="col-type">integer</text>
+    <line x1="4" y1="203" x2="266" y2="203" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="215" class="col-name">status</text>
+    <text x="262" y="215" class="col-type">varchar(20)</text>
+    <line x1="4" y1="219" x2="266" y2="219" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="231" class="col-name">created_at</text>
+    <text x="262" y="231" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="235" x2="266" y2="235" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="247" class="col-name">updated_at</text>
+    <text x="262" y="247" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3950, 1870)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="182" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">ATTRIBUTION_ADJUSTMENTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK order_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-fk">FK admin_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">previous_collaborator_id</text>
+    <text x="262" y="87" class="col-type">uuid</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">new_collaborator_id</text>
+    <text x="262" y="103" class="col-type">uuid</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">reason</text>
+    <text x="262" y="119" class="col-type">varchar(255)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">evidence_url</text>
+    <text x="262" y="135" class="col-type">text</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-name">adjusted_at</text>
+    <text x="262" y="151" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">created_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-fk">FK previous_commission_id</text>
+    <text x="262" y="183" class="col-type">uuid</text>
+    <line x1="4" y1="187" x2="266" y2="187" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="199" class="col-fk">FK new_commission_id</text>
+    <text x="262" y="199" class="col-type">uuid</text>
+  </g>
+  <g transform="translate(3950, 2550)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="102" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">RETURN_EVENTS</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK return_request_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">actor_id</text>
+    <text x="262" y="71" class="col-type">uuid</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">type</text>
+    <text x="262" y="87" class="col-type">varchar(80)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">data</text>
+    <text x="262" y="103" class="col-type">jsonb</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">created_at</text>
+    <text x="262" y="119" class="col-type">timestamptz(6)</text>
+  </g>
+  <g transform="translate(3950, 2714)">
+    <rect x="0" y="0" width="270" height="26" class="tbl-header" />
+    <rect x="0" y="26" width="270" height="166" class="tbl-body" />
+    <text x="135.0" y="17" class="header-title">RETURN_DISPUTES</text>
+    <text x="8" y="39" class="col-pk">PK id</text>
+    <text x="262" y="39" class="col-type">uuid</text>
+    <line x1="4" y1="43" x2="266" y2="43" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="55" class="col-fk">FK return_request_id</text>
+    <text x="262" y="55" class="col-type">uuid</text>
+    <line x1="4" y1="59" x2="266" y2="59" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="71" class="col-name">reason</text>
+    <text x="262" y="71" class="col-type">varchar(100)</text>
+    <line x1="4" y1="75" x2="266" y2="75" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="87" class="col-name">details</text>
+    <text x="262" y="87" class="col-type">varchar(2000)</text>
+    <line x1="4" y1="91" x2="266" y2="91" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="103" class="col-name">status</text>
+    <text x="262" y="103" class="col-type">returndisputestatus</text>
+    <line x1="4" y1="107" x2="266" y2="107" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="119" class="col-name">ruling</text>
+    <text x="262" y="119" class="col-type">varchar(50)</text>
+    <line x1="4" y1="123" x2="266" y2="123" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="135" class="col-name">resolution_notes</text>
+    <text x="262" y="135" class="col-type">varchar(3000)</text>
+    <line x1="4" y1="139" x2="266" y2="139" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="151" class="col-fk">FK resolved_by_id</text>
+    <text x="262" y="151" class="col-type">uuid</text>
+    <line x1="4" y1="155" x2="266" y2="155" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="167" class="col-name">opened_at</text>
+    <text x="262" y="167" class="col-type">timestamptz(6)</text>
+    <line x1="4" y1="171" x2="266" y2="171" class="divider" stroke-opacity="0.1" />
+    <text x="8" y="183" class="col-name">resolved_at</text>
+    <text x="262" y="183" class="col-type">timestamptz(6)</text>
+  </g>
+  <path d="M 1320 1780.0 L 1580 1780 L 1580 1960 L 1590 1960 L 1600 1962.0" class="wire-line" />
+  <text x="1328" y="1774.0" class="card-badge">N</text>
+  <text x="1592" y="1956.0" class="card-badge">1</text>
+  <path d="M 870 1868.0 L 880 1870 L 1570 1870 L 1570 1930 L 1590 1930 L 1600 1928.4" class="wire-line" />
+  <text x="878" y="1862.0" class="card-badge">N</text>
+  <text x="1592" y="1922.4" class="card-badge">1</text>
+  <path d="M 600 1868.0 L 590 1870 L 430 1870 L 430 1760 L 420 1756.0" class="wire-line" />
+  <text x="592" y="1862.0" class="card-badge">N</text>
+  <text x="428" y="1750.0" class="card-badge">1</text>
+  <path d="M 420 1928.0 L 430 1930 L 580 1930 L 580 1820 L 590 1820 L 600 1817.6" class="wire-line" />
+  <text x="428" y="1922.0" class="card-badge">N</text>
+  <text x="592" y="1811.6" class="card-badge">1</text>
+  <path d="M 1320 2040.0 L 1580 2040 L 1580 2000 L 1590 2000 L 1600 1995.6" class="wire-line" />
+  <text x="1328" y="2034.0" class="card-badge">N</text>
+  <text x="1592" y="1989.6" class="card-badge">1</text>
+  <path d="M 1320 2292.0 L 1330 2290 L 1560 2290 L 1560 1890 L 1590 1890 L 1600 1894.8" class="wire-line" />
+  <text x="1328" y="2286.0" class="card-badge">N</text>
+  <text x="1592" y="1888.8" class="card-badge">1</text>
+  <path d="M 1320 2480.0 L 1580 2480 L 1580 2030 L 1590 2030 L 1600 2029.2" class="wire-line" />
+  <text x="1328" y="2474.0" class="card-badge">N</text>
+  <text x="1592" y="2023.2" class="card-badge">1</text>
+  <path d="M 1600 1490.0 L 1550 1490 L 1550 1950 L 1590 1950 L 1600 1950.8" class="wire-line" />
+  <text x="1592" y="1484.0" class="card-badge">N</text>
+  <text x="1592" y="1944.8" class="card-badge">1</text>
+  <path d="M 1600 360.0 L 1580 360 L 1580 1420 L 1590 1420 L 1600 1418.0" class="wire-line" />
+  <text x="1592" y="354.0" class="card-badge">N</text>
+  <text x="1592" y="1412.0" class="card-badge">1</text>
+  <path d="M 1600 524.0 L 1590 520 L 1570 520 L 1570 1560 L 1590 1560 L 1600 1562.0" class="wire-line" />
+  <text x="1592" y="518.0" class="card-badge">N</text>
+  <text x="1592" y="1556.0" class="card-badge">1</text>
+  <path d="M 1320 1322.0 L 1330 1320 L 1560 1320 L 1560 1350 L 1590 1350 L 1600 1346.0" class="wire-line" />
+  <text x="1328" y="1316.0" class="card-badge">N</text>
+  <text x="1592" y="1340.0" class="card-badge">1</text>
+  <path d="M 1600 776.0 L 1590 780 L 1540 780 L 1540 1630 L 1590 1630 L 1600 1634.0" class="wire-line" />
+  <text x="1592" y="770.0" class="card-badge">N</text>
+  <text x="1592" y="1628.0" class="card-badge">1</text>
+  <path d="M 1320 782.0 L 1330 780 L 1530 780 L 1530 1470 L 1590 1470 L 1600 1466.0" class="wire-line" />
+  <text x="1328" y="776.0" class="card-badge">N</text>
+  <text x="1592" y="1460.0" class="card-badge">1</text>
+  <path d="M 870 1182.0 L 880 1180 L 1030 1180 L 1030 780 L 1040 780 L 1050 782.0" class="wire-line" />
+  <text x="878" y="1176.0" class="card-badge">N</text>
+  <text x="1042" y="776.0" class="card-badge">1</text>
+  <path d="M 2500 1482.0 L 2490 1480 L 1880 1480 L 1880 1490 L 1870 1490.0" class="wire-line" />
+  <text x="2492" y="1476.0" class="card-badge">N</text>
+  <text x="1878" y="1484.0" class="card-badge">1</text>
+  <path d="M 2770 914.0 L 2780 910 L 2780 1480 L 2770 1482.0" class="wire-line" />
+  <text x="2778" y="908.0" class="card-badge">N</text>
+  <text x="2778" y="1476.0" class="card-badge">1</text>
+  <path d="M 2770 614.0 L 2780 610 L 2790 610 L 2790 1410 L 2780 1410 L 2770 1412.4" class="wire-line" />
+  <text x="2778" y="608.0" class="card-badge">N</text>
+  <text x="2778" y="1406.4" class="card-badge">1</text>
+  <path d="M 2770 362.0 L 2780 360 L 2800 360 L 2800 1550 L 2780 1550 L 2770 1551.6" class="wire-line" />
+  <text x="2778" y="356.0" class="card-badge">N</text>
+  <text x="2778" y="1545.6" class="card-badge">1</text>
+  <path d="M 2770 198.0 L 2780 200 L 2810 200 L 2810 1340 L 2780 1340 L 2770 1342.8" class="wire-line" />
+  <text x="2778" y="192.0" class="card-badge">N</text>
+  <text x="2778" y="1336.8" class="card-badge">1</text>
+  <path d="M 1320 586.0 L 1330 590 L 1520 590 L 1520 1510 L 1590 1510 L 1600 1514.0" class="wire-line" />
+  <text x="1328" y="580.0" class="card-badge">N</text>
+  <text x="1592" y="1508.0" class="card-badge">1</text>
+  <path d="M 870 570.0 L 1030 570 L 1030 590 L 1040 590 L 1050 586.0" class="wire-line" />
+  <text x="878" y="564.0" class="card-badge">N</text>
+  <text x="1042" y="580.0" class="card-badge">1</text>
+  <path d="M 870 718.0 L 880 720 L 1020 720 L 1020 560 L 1040 560 L 1050 557.2" class="wire-line" />
+  <text x="878" y="712.0" class="card-badge">N</text>
+  <text x="1042" y="551.2" class="card-badge">1</text>
+  <path d="M 870 930.0 L 1010 930 L 1010 610 L 1040 610 L 1050 614.8" class="wire-line" />
+  <text x="878" y="924.0" class="card-badge">N</text>
+  <text x="1042" y="608.8" class="card-badge">1</text>
+  <path d="M 1320 302.0 L 1330 300 L 1550 300 L 1550 1480 L 1580 1480 L 1580 1490 L 1600 1490.0" class="wire-line" />
+  <text x="1328" y="296.0" class="card-badge">N</text>
+  <text x="1592" y="1484.0" class="card-badge">1</text>
+  <path d="M 870 310.0 L 1030 310 L 1030 300 L 1040 300 L 1050 302.0" class="wire-line" />
+  <text x="878" y="304.0" class="card-badge">N</text>
+  <text x="1042" y="296.0" class="card-badge">1</text>
+  <path d="M 420 246.0 L 430 250 L 580 250 L 580 310 L 600 310.0" class="wire-line" />
+  <text x="428" y="240.0" class="card-badge">N</text>
+  <text x="592" y="304.0" class="card-badge">1</text>
+  <path d="M 3000 2106.0 L 2990 2110 L 2780 2110 L 2780 1620 L 2770 1621.2" class="wire-line" />
+  <text x="2992" y="2100.0" class="card-badge">N</text>
+  <text x="2778" y="1615.2" class="card-badge">1</text>
+  <path d="M 3500 1830.0 L 3280 1830 L 3280 2110 L 3270 2106.0" class="wire-line" />
+  <text x="3492" y="1824.0" class="card-badge">N</text>
+  <text x="3278" y="2100.0" class="card-badge">1</text>
+  <path d="M 3950 1706.0 L 3940 1710 L 3780 1710 L 3780 2070 L 3290 2070 L 3290 2030 L 3280 2030 L 3270 2031.6" class="wire-line" />
+  <text x="3942" y="1700.0" class="card-badge">N</text>
+  <text x="3278" y="2025.6" class="card-badge">1</text>
+  <path d="M 4220 1974.0 L 4230 1970 L 4230 1710 L 4220 1706.0" class="wire-line" />
+  <text x="4228" y="1968.0" class="card-badge">N</text>
+  <text x="4228" y="1700.0" class="card-badge">1</text>
+  <path d="M 3000 842.0 L 2990 840 L 2820 840 L 2820 1460 L 2780 1460 L 2770 1458.8" class="wire-line" />
+  <text x="2992" y="836.0" class="card-badge">N</text>
+  <text x="2778" y="1452.8" class="card-badge">1</text>
+  <path d="M 3500 658.0 L 3490 660 L 3280 660 L 3280 840 L 3270 842.0" class="wire-line" />
+  <text x="3492" y="652.0" class="card-badge">N</text>
+  <text x="3278" y="836.0" class="card-badge">1</text>
+  <path d="M 3500 862.0 L 3490 860 L 3290 860 L 3290 750 L 3280 750 L 3270 746.0" class="wire-line" />
+  <text x="3492" y="856.0" class="card-badge">N</text>
+  <text x="3278" y="740.0" class="card-badge">1</text>
+  <path d="M 3000 318.0 L 2990 320 L 2780 320 L 2780 460 L 1880 460 L 1880 1420 L 1870 1418.0" class="wire-line" />
+  <text x="2992" y="312.0" class="card-badge">N</text>
+  <text x="1878" y="1412.0" class="card-badge">1</text>
+  <path d="M 3500 206.0 L 3490 210 L 3280 210 L 3280 320 L 3270 318.0" class="wire-line" />
+  <text x="3492" y="200.0" class="card-badge">N</text>
+  <text x="3278" y="312.0" class="card-badge">1</text>
+  <path d="M 3500 354.0 L 3490 350 L 3290 350 L 3290 270 L 3280 270 L 3270 267.6" class="wire-line" />
+  <text x="3492" y="348.0" class="card-badge">N</text>
+  <text x="3278" y="261.6" class="card-badge">1</text>
+  <path d="M 3500 502.0 L 3490 500 L 3280 500 L 3280 370 L 3270 368.4" class="wire-line" />
+  <text x="3492" y="496.0" class="card-badge">N</text>
+  <text x="3278" y="362.4" class="card-badge">1</text>
+  <path d="M 3000 1510.0 L 2810 1510 L 2810 1730 L 1880 1730 L 1880 1560 L 1870 1562.0" class="wire-line" />
+  <text x="2992" y="1504.0" class="card-badge">N</text>
+  <text x="1878" y="1556.0" class="card-badge">1</text>
+  <path d="M 3500 1050.0 L 3280 1050 L 3280 1510 L 3270 1510.0" class="wire-line" />
+  <text x="3492" y="1044.0" class="card-badge">N</text>
+  <text x="3278" y="1504.0" class="card-badge">1</text>
+  <path d="M 3500 1182.0 L 3490 1180 L 3290 1180 L 3290 1420 L 3280 1420 L 3270 1416.4" class="wire-line" />
+  <text x="3492" y="1176.0" class="card-badge">N</text>
+  <text x="3278" y="1410.4" class="card-badge">1</text>
+  <path d="M 3500 1418.0 L 3490 1420 L 3300 1420 L 3300 1600 L 3280 1600 L 3270 1603.6" class="wire-line" />
+  <text x="3492" y="1412.0" class="card-badge">N</text>
+  <text x="3278" y="1597.6" class="card-badge">1</text>
+  <path d="M 3950 1290.0 L 3780 1290 L 3780 1240 L 3300 1240 L 3300 1320 L 3280 1320 L 3270 1322.8" class="wire-line" />
+  <text x="3942" y="1284.0" class="card-badge">N</text>
+  <text x="3278" y="1316.8" class="card-badge">1</text>
+  <path d="M 3950 1454.0 L 3940 1450 L 3780 1450 L 3780 1580 L 3310 1580 L 3310 1700 L 3280 1700 L 3270 1697.2" class="wire-line" />
+  <text x="3942" y="1448.0" class="card-badge">N</text>
+  <text x="3278" y="1691.2" class="card-badge">1</text>
+  <path d="M 2500 2186.0 L 2490 2190 L 1890 2190 L 1890 1350 L 1880 1350 L 1870 1346.0" class="wire-line" />
+  <text x="2492" y="2180.0" class="card-badge">N</text>
+  <text x="1878" y="1340.0" class="card-badge">1</text>
+  <path d="M 2770 2770.0 L 2780 2770 L 2780 2190 L 2770 2186.0" class="wire-line" />
+  <text x="2778" y="2764.0" class="card-badge">N</text>
+  <text x="2778" y="2180.0" class="card-badge">1</text>
+  <path d="M 2770 2734.0 L 2780 2730 L 2790 2730 L 2790 1510 L 2780 1510 L 2770 1505.2" class="wire-line" />
+  <text x="2778" y="2728.0" class="card-badge">N</text>
+  <text x="2778" y="1499.2" class="card-badge">1</text>
+  <path d="M 3000 2478.0 L 2990 2480 L 2800 2480 L 2800 2090 L 2780 2090 L 2770 2085.2" class="wire-line" />
+  <text x="2992" y="2472.0" class="card-badge">N</text>
+  <text x="2778" y="2079.2" class="card-badge">1</text>
+  <path d="M 3000 2674.0 L 2990 2670 L 2810 2670 L 2810 2290 L 2780 2290 L 2770 2286.8" class="wire-line" />
+  <text x="2992" y="2668.0" class="card-badge">N</text>
+  <text x="2778" y="2280.8" class="card-badge">1</text>
+  <path d="M 3000 2878.0 L 2990 2880 L 2820 2880 L 2820 1980 L 2780 1980 L 2770 1984.4" class="wire-line" />
+  <text x="2992" y="2872.0" class="card-badge">N</text>
+  <text x="2778" y="1978.4" class="card-badge">1</text>
+  <path d="M 3000 3226.0 L 2990 3230 L 2830 3230 L 2830 2390 L 2780 2390 L 2770 2387.6" class="wire-line" />
+  <text x="2992" y="3220.0" class="card-badge">N</text>
+  <text x="2778" y="2381.6" class="card-badge">1</text>
+  <path d="M 3500 2606.0 L 3490 2610 L 3280 2610 L 3280 3230 L 3270 3226.0" class="wire-line" />
+  <text x="3492" y="2600.0" class="card-badge">N</text>
+  <text x="3278" y="3220.0" class="card-badge">1</text>
+  <path d="M 3500 2834.0 L 3490 2830 L 3290 2830 L 3290 3160 L 3280 3160 L 3270 3161.2" class="wire-line" />
+  <text x="3492" y="2828.0" class="card-badge">N</text>
+  <text x="3278" y="3155.2" class="card-badge">1</text>
+  <path d="M 3500 3118.0 L 3490 3120 L 3300 3120 L 3300 3290 L 3280 3290 L 3270 3290.8" class="wire-line" />
+  <text x="3492" y="3112.0" class="card-badge">N</text>
+  <text x="3278" y="3284.8" class="card-badge">1</text>
+  <path d="M 3950 2614.0 L 3940 2610 L 3780 2610 L 3780 2980 L 3300 2980 L 3300 3100 L 3280 3100 L 3270 3096.4" class="wire-line" />
+  <text x="3942" y="2608.0" class="card-badge">N</text>
+  <text x="3278" y="3090.4" class="card-badge">1</text>
+  <path d="M 3950 2810.0 L 3790 2810 L 3790 3360 L 3280 3360 L 3270 3355.6" class="wire-line" />
+  <text x="3942" y="2804.0" class="card-badge">N</text>
+  <text x="3278" y="3349.6" class="card-badge">1</text>
+  <path d="M 2320 2754.0 L 2330 2750 L 2480 2750 L 2480 2090 L 2490 2090 L 2500 2085.2" class="wire-line" />
+  <text x="2328" y="2748.0" class="card-badge">N</text>
+  <text x="2492" y="2079.2" class="card-badge">1</text>
+  <path d="M 2050 2754.0 L 2040 2750 L 1880 2750 L 1880 2510 L 1870 2514.0" class="wire-line" />
+  <text x="2042" y="2748.0" class="card-badge">N</text>
+  <text x="1878" y="2508.0" class="card-badge">1</text>
+  <path d="M 1600 2514.0 L 1590 2510 L 1570 2510 L 1570 1970 L 1590 1970 L 1600 1973.2" class="wire-line" />
+  <text x="1592" y="2508.0" class="card-badge">N</text>
+  <text x="1592" y="1967.2" class="card-badge">1</text>
+  <path d="M 1320 2748.0 L 1330 2750 L 1580 2750 L 1580 2490 L 1590 2490 L 1600 2494.8" class="wire-line" />
+  <text x="1328" y="2742.0" class="card-badge">N</text>
+  <text x="1592" y="2488.8" class="card-badge">1</text>
+  <path d="M 870 2192.0 L 880 2190 L 1030 2190 L 1030 2380 L 1560 2380 L 1560 2530 L 1590 2530 L 1600 2533.2" class="wire-line" />
+  <text x="878" y="2186.0" class="card-badge">N</text>
+  <text x="1592" y="2527.2" class="card-badge">1</text>
+  <path d="M 870 2524.0 L 880 2520 L 1030 2520 L 1030 2570 L 1550 2570 L 1550 2480 L 1590 2480 L 1600 2475.6" class="wire-line" />
+  <text x="878" y="2518.0" class="card-badge">N</text>
+  <text x="1592" y="2469.6" class="card-badge">1</text>
+  <path d="M 420 2100.0 L 580 2100 L 580 2520 L 590 2520 L 600 2524.0" class="wire-line" />
+  <text x="428" y="2094.0" class="card-badge">N</text>
+  <text x="592" y="2518.0" class="card-badge">1</text>
+</svg>
