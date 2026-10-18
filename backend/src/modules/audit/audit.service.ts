@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import {
   QueryAuditLogsDto,
@@ -9,6 +9,8 @@ import {
   AuditSeverity,
 } from './dto/audit.dto';
 import { Prisma } from '@prisma/client';
+import { sanitizeAuditDetails, auditCsvCell } from './audit-safety';
+import { vietnamDayStart } from '../dashboard/analytics-time';
 
 export const AUDIT_ACTIONS: AuditActionDefinition[] = [
   // AUTH
@@ -245,6 +247,35 @@ export class AuditService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Shared by screen, pagination counts and export so no filter is silently lost. */
+  private async buildAuditWhere(query: QueryAuditLogsDto | ExportAuditLogsDto): Promise<Prisma.AuditLogWhereInput> {
+    const conditions: Prisma.AuditLogWhereInput[] = [];
+    if (query.action) conditions.push({ action: query.action });
+    if (query.userId) conditions.push({ userId: query.userId });
+    if (query.role) conditions.push({ user: { role: query.role as any } });
+    if (query.startDate || query.endDate) {
+      const start = query.startDate ? new Date(query.startDate) : undefined;
+      const end = query.endDate ? new Date(query.endDate) : undefined;
+      if ((start && !Number.isFinite(start.getTime())) || (end && !Number.isFinite(end.getTime())) || (start && end && start > end)) throw new BadRequestException('Khoảng ngày kiểm toán không hợp lệ.');
+      conditions.push({ createdAt: { gte: start, lte: end } });
+    }
+    if (query.category || query.severity) {
+      const storedActions = await this.prisma.auditLog.findMany({ distinct: ['action'], select: { action: true } });
+      const actions = [...new Set([...AUDIT_ACTIONS.map(item => item.code), ...storedActions.map(item => item.action)])].filter(action => {
+        const meta = this.resolveActionMeta(action);
+        return (!query.category || meta.category === query.category) && (!query.severity || meta.severity === query.severity);
+      });
+      conditions.push({ action: { in: actions } });
+    }
+    if (query.keyword?.trim()) {
+      const contains = query.keyword.trim();
+      const search: Prisma.AuditLogWhereInput[] = [{ action: { contains, mode: 'insensitive' } }, { ipAddress: { contains, mode: 'insensitive' } }, { user: { fullName: { contains, mode: 'insensitive' } } }, { user: { email: { contains, mode: 'insensitive' } } }];
+      if (/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(contains)) search.push({ id: contains }, { eventId: contains }, { userId: contains });
+      conditions.push({ OR: search });
+    }
+    return conditions.length ? { AND: conditions } : {};
+  }
+
   /**
    * Helper an toàn ghi nhận nhật ký kiểm toán (Fail-safe)
    */
@@ -260,7 +291,7 @@ export class AuditService {
         data: {
           userId: userId || null,
           action,
-          details: details ? details : undefined,
+          details: details ? sanitizeAuditDetails(details) as Prisma.InputJsonValue : undefined,
           ipAddress: ipAddress || '127.0.0.1',
           eventId: eventId || undefined,
         },
@@ -364,56 +395,8 @@ export class AuditService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const where: Prisma.AuditLogWhereInput = {};
-
-    // Filter theo user cụ thể
-    if (query.userId) {
-      where.userId = query.userId;
-    }
-
-    // Filter theo action cụ thể
-    if (query.action) {
-      where.action = query.action;
-    }
-
-    // Filter theo category
-    if (query.category) {
-      const actionsInCat = AUDIT_ACTIONS.filter(
-        (a) => a.category === query.category,
-      ).map((a) => a.code);
-      if (actionsInCat.length > 0) {
-        where.action = { in: actionsInCat };
-      }
-    }
-
-    // Filter theo timeframe
-    if (query.startDate || query.endDate) {
-      where.createdAt = {};
-      if (query.startDate) {
-        where.createdAt.gte = new Date(query.startDate);
-      }
-      if (query.endDate) {
-        where.createdAt.lte = new Date(query.endDate);
-      }
-    }
-
-    // Search keyword (IP, Action, User email/name)
-    if (query.keyword && query.keyword.trim()) {
-      const kw = query.keyword.trim();
-      where.OR = [
-        { action: { contains: kw, mode: 'insensitive' } },
-        { ipAddress: { contains: kw, mode: 'insensitive' } },
-        { user: { fullName: { contains: kw, mode: 'insensitive' } } },
-        { user: { email: { contains: kw, mode: 'insensitive' } } },
-      ];
-    }
-
-    // Lọc theo vai trò người thực hiện
-    if (query.role) {
-      where.user = {
-        role: query.role as any,
-      };
-    }
+    if (currentUser && !['SYSTEM_ADMIN', 'SYSTEM_MANAGER'].includes(currentUser.role)) throw new ForbiddenException('Chỉ quản trị được tra cứu nhật ký toàn sàn.');
+    const where = await this.buildAuditWhere(query);
 
     const [total, rawLogs] = await Promise.all([
       this.prisma.auditLog.count({ where }),
@@ -451,7 +434,7 @@ export class AuditService {
         severity: meta.severity,
         description: meta.description,
         ipAddress: log.ipAddress || '127.0.0.1',
-        details: log.details,
+        details: sanitizeAuditDetails(log.details),
         createdAt: log.createdAt.toISOString(),
         actor: log.user
           ? {
@@ -527,7 +510,7 @@ export class AuditService {
         severity: meta.severity,
         description: meta.description,
         ipAddress: log.ipAddress || '127.0.0.1',
-        details: log.details,
+        details: sanitizeAuditDetails(log.details),
         createdAt: log.createdAt.toISOString(),
         actor: log.user
           ? {
@@ -558,11 +541,8 @@ export class AuditService {
     data: AuditStatsResponse;
   }> {
     const now = new Date();
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
+    const todayStart = vietnamDayStart(now);
+    if (!['24h', '7d', '30d', 'all'].includes(timeframe)) throw new BadRequestException('Khoảng thời gian không hợp lệ.');
 
     let dateGte: Date | undefined;
     if (timeframe === '24h') {
@@ -577,26 +557,15 @@ export class AuditService {
       ? { createdAt: { gte: dateGte } }
       : {};
 
-    const [totalEvents, eventsToday, allLogs] = await Promise.all([
+    const [totalEvents, eventsToday, groups] = await Promise.all([
       this.prisma.auditLog.count({ where: whereTime }),
       this.prisma.auditLog.count({ where: { createdAt: { gte: todayStart } } }),
-      this.prisma.auditLog.findMany({
-        where: whereTime,
-        select: {
-          action: true,
-          userId: true,
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-              role: true,
-            },
-          },
-        },
-        take: 1000,
-      }),
+      this.prisma.auditLog.groupBy({ by: ['action', 'userId'], where: whereTime, _count: { _all: true } }),
     ]);
+    const actorIds = [...new Set(groups.map(group => group.userId).filter((id): id is string => !!id))];
+    const actors = actorIds.length ? await this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, fullName: true, email: true, role: true } }) : [];
+    const actorById = new Map(actors.map(actor => [actor.id, actor]));
+    const allLogs = groups.map(group => ({ action: group.action, user: group.userId ? actorById.get(group.userId) : undefined, count: group._count._all }));
 
     // Phân loại đếm
     let financialEventsCount = 0;
@@ -631,15 +600,15 @@ export class AuditService {
 
     allLogs.forEach((log) => {
       const meta = this.resolveActionMeta(log.action);
-      catCounts[meta.category] = (catCounts[meta.category] || 0) + 1;
+      catCounts[meta.category] = (catCounts[meta.category] || 0) + log.count;
 
-      if (meta.category === 'FINANCIAL') financialEventsCount++;
-      if (meta.category === 'AI_SECURITY') securityEventsCount++;
-      if (meta.category === 'AUTH') authEventsCount++;
+      if (meta.category === 'FINANCIAL') financialEventsCount += log.count;
+      if (meta.category === 'AI_SECURITY') securityEventsCount += log.count;
+      if (meta.category === 'AUTH') authEventsCount += log.count;
 
-      if (meta.severity === 'INFO') severityCounts.info++;
-      if (meta.severity === 'WARN') severityCounts.warn++;
-      if (meta.severity === 'CRITICAL') severityCounts.critical++;
+      if (meta.severity === 'INFO') severityCounts.info += log.count;
+      if (meta.severity === 'WARN') severityCounts.warn += log.count;
+      if (meta.severity === 'CRITICAL') severityCounts.critical += log.count;
 
       if (log.user) {
         const uId = log.user.id;
@@ -650,7 +619,7 @@ export class AuditService {
           role: log.user.role,
           count: 0,
         };
-        cur.count++;
+        cur.count += log.count;
         actorMap.set(uId, cur);
       }
     });
@@ -710,31 +679,7 @@ export class AuditService {
    * Xuất danh sách kiểm toán ra CSV
    */
   async exportAuditLogsCsv(query: ExportAuditLogsDto) {
-    const where: Prisma.AuditLogWhereInput = {};
-
-    if (query.action) {
-      where.action = query.action;
-    }
-
-    if (query.userId) {
-      where.userId = query.userId;
-    }
-
-    if (query.startDate || query.endDate) {
-      where.createdAt = {};
-      if (query.startDate) where.createdAt.gte = new Date(query.startDate);
-      if (query.endDate) where.createdAt.lte = new Date(query.endDate);
-    }
-
-    if (query.keyword && query.keyword.trim()) {
-      const kw = query.keyword.trim();
-      where.OR = [
-        { action: { contains: kw, mode: 'insensitive' } },
-        { ipAddress: { contains: kw, mode: 'insensitive' } },
-        { user: { fullName: { contains: kw, mode: 'insensitive' } } },
-        { user: { email: { contains: kw, mode: 'insensitive' } } },
-      ];
-    }
+    const where = await this.buildAuditWhere(query);
 
     const logs = await this.prisma.auditLog.findMany({
       where,
@@ -768,30 +713,13 @@ export class AuditService {
       'Chi tiết JSON (Details)',
     ];
 
-    const rows = logs.map((log, idx) => {
+    const rows = logs.map((log, index) => {
       const meta = this.resolveActionMeta(log.action);
-      const detailsStr = log.details
-        ? JSON.stringify(log.details).replace(/"/g, '""')
-        : '';
-      return [
-        idx + 1,
-        `"${log.id}"`,
-        `"${log.eventId || ''}"`,
-        `"${log.createdAt.toISOString()}"`,
-        `"${log.action}"`,
-        `"${meta.nameVi}"`,
-        `"${meta.category}"`,
-        `"${meta.severity}"`,
-        `"${log.user?.fullName || 'Hệ thống'}"`,
-        `"${log.user?.email || 'system@scanms.vn'}"`,
-        `"${log.user?.role || 'SYSTEM'}"`,
-        `"${log.ipAddress || '127.0.0.1'}"`,
-        `"${detailsStr}"`,
-      ].join(',');
+      return [index + 1, log.id, log.eventId, log.createdAt.toISOString(), log.action, meta.nameVi, meta.category, meta.severity,
+        log.user?.fullName || 'Hệ thống', log.user?.email || '', log.user?.role || 'SYSTEM', log.ipAddress || '',
+        JSON.stringify(sanitizeAuditDetails(log.details))].map(auditCsvCell).join(',');
     });
-
-    // Thêm UTF-8 BOM để Excel hiển thị tiếng Việt chính xác
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const csvContent = '\uFEFF' + [headers.map(auditCsvCell).join(','), ...rows].join('\r\n');
 
     return {
       csvContent,

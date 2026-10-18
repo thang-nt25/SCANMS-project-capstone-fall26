@@ -137,6 +137,12 @@ export class CampaignsController {
     return this.campaignsService.getMyInvitations(user.id);
   }
 
+  @Get('invitations/:participantId/state')
+  @ApiOperation({ summary: 'Trạng thái hiện tại của thẻ mời; chỉ hai bên hợp tác được xem' })
+  getInvitationState(@CurrentUser() user: any, @Param('participantId', new ParseUUIDPipe()) participantId: string) {
+    return this.campaignsService.getInvitationState(user.id, participantId);
+  }
+
   // ─── KOL: Chấp nhận lời mời ──────────────────────────────────────────
   @Patch('invitations/:participantId/accept')
   @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN)

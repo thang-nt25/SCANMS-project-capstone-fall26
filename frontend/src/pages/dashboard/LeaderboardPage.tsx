@@ -29,6 +29,9 @@ import type {
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
+import { WorkspaceHero, WorkspaceMetrics, workspaceButton, workspaceInput } from '@/components/ui/FeatureWorkspace';
+import { downloadReport } from '@/utils/report-export';
+import { normalizeSearch } from '@/utils/marketplace.utils';
 
 export default function LeaderboardPage({ alignToContainer = false }: { alignToContainer?: boolean } = {}) {
   const [data, setData] = useState<LeaderboardFullResponse | null>(null);
@@ -67,6 +70,27 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
   const [creatorProfile, setCreatorProfile] = useState<CreatorHallOfFameProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState<boolean>(false);
+  const [profileError, setProfileError] = useState('');
+  const [search, setSearch] = useState('');
+  const profileRequest = useRef(0);
+  const profileDialog = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!selectedCreatorId) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden'; profileDialog.current?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { profileRequest.current += 1; setSelectedCreatorId(null); setCreatorProfile(null); }
+      if (event.key !== 'Tab') return;
+      const controls = profileDialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], [tabindex="0"]');
+      if (!controls?.length) return;
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === profileDialog.current)) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    window.addEventListener('keydown', keydown);
+    return () => { document.body.style.overflow = overflow; window.removeEventListener('keydown', keydown); previousFocus?.focus(); };
+  }, [selectedCreatorId]);
 
   const fetchLeaderboard = useCallback(async () => {
     const requestId = ++requestSequence.current;
@@ -83,7 +107,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
         timeRange,
         scope,
         ...(scope === 'STORE' && isAdmin ? { storeId: selectedStoreId } : {}),
-        limit: 20,
+        limit: 10,
       });
       if (requestId !== requestSequence.current) return;
       setData(res);
@@ -102,19 +126,23 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
   }, [fetchLeaderboard]);
 
   const handleOpenCreatorModal = async (creatorId: string) => {
+    const request = ++profileRequest.current;
     try {
+      setCreatorProfile(null); setProfileError('');
       setSelectedCreatorId(creatorId);
       setLoadingProfile(true);
       const profile = await leaderboardService.getCreatorProfile(creatorId);
+      if (request !== profileRequest.current) return;
       setCreatorProfile(profile);
     } catch (err) {
-      console.error('Lỗi khi tải hồ sơ creator:', err);
+      if (request === profileRequest.current) setProfileError(err instanceof Error ? err.message : 'Không tải được hồ sơ.');
     } finally {
-      setLoadingProfile(false);
+      if (request === profileRequest.current) setLoadingProfile(false);
     }
   };
 
   const handleCloseModal = () => {
+    profileRequest.current += 1;
     setSelectedCreatorId(null);
     setCreatorProfile(null);
   };
@@ -148,6 +176,12 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
 
   const podium = data?.podium;
   const rankings = data?.rankings || [];
+  const displayedRankings = rankings.filter(item => normalizeSearch(`${item.fullName} ${item.primaryChannelHandle || ''} ${item.tierName}`).includes(normalizeSearch(search)));
+  const allTop = [data?.podium.rank1, data?.podium.rank2, data?.podium.rank3, ...rankings].filter((item): item is LeaderboardItem => !!item);
+  const exportRankings = () => downloadReport(`SCANMS_Top10_${timeRange}_${metric}.csv`, [
+    ['Hạng', 'Creator', 'Cấp bậc', 'Click', 'Đơn hàng', 'CR (%)', 'Doanh số (VNĐ)', 'Hoa hồng (VNĐ)'],
+    ...allTop.map(item => [item.rank, item.fullName, item.tierName, item.totalClicks, item.totalOrders, item.conversionRate, item.grossRevenue, item.totalCommission]),
+  ]);
   const myRank = data?.myRankStatus;
 
   const timeOptions: { value: LeaderboardTimeRange; label: string }[] = [
@@ -167,6 +201,13 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
 
   return (
     <div className={`flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] ${alignToContainer ? 'p-0 pb-1 gap-3' : 'p-4 sm:p-5'}`}>
+      <WorkspaceHero eyebrow="SCANMS / Creator hall of fame" title="Top 10 nhà sáng tạo" description="Vinh danh hiệu suất thực tế của các KOL trên sàn đa gian hàng. Cúp Vàng, Bạc, Đồng dành cho ba vị trí dẫn đầu; đổi tiêu chí để khám phá từng thế mạnh." actions={<button className={workspaceButton} disabled={loading || !!loadError || !allTop.length} onClick={exportRankings}>Xuất Top 10 CSV</button>} />
+      {!loading && !loadError && data && <WorkspaceMetrics items={[
+        { label: 'KOL đủ điều kiện', value: formatNumber(data.totalParticipants), detail: data.periodLabel },
+        { label: 'Creator dẫn đầu', value: data.podium.rank1?.fullName || 'Chưa có', detail: formatMetricValue(data.podium.rank1) },
+        { label: 'Doanh số Top 10', value: formatVND(allTop.reduce((sum, item) => sum + item.grossRevenue, 0)), detail: scopeLabel },
+        { label: 'Đơn hàng Top 10', value: formatNumber(allTop.reduce((sum, item) => sum + item.totalOrders, 0)), detail: 'Theo kỳ và phạm vi đang chọn' },
+      ]} />}
       <section className="p-3.5 sm:p-4 min-w-0 border border-[#EAE4D7] rounded-[15px] bg-white" aria-labelledby="lb-title">
         <header className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -280,10 +321,11 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
         <header className="flex items-center justify-between flex-wrap gap-3 p-4 sm:p-4.5 border-b border-[#EAE4D7]">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="w-8 sm:w-9 h-8 sm:h-9 grid place-items-center shrink-0 rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]"><Award aria-hidden="true" className="w-[18px] h-[18px]" /></span>
-            <div><h2 id="lb-ranking-title" className="m-0 text-sm sm:text-base font-semibold tracking-tight text-[#1A1612]">Bảng xếp hạng Creator</h2><p className="m-0 mt-0.5 text-xs text-[#7D715E]">Các Creator tiếp theo trong tối đa 20 kết quả dẫn đầu.</p></div>
+            <div><h2 id="lb-ranking-title" className="m-0 text-sm sm:text-base font-semibold tracking-tight text-[#1A1612]">Bảng xếp hạng Creator</h2><p className="m-0 mt-0.5 text-xs text-[#7D715E]">Vị trí 4–10; ba vị trí đầu được vinh danh trên bục nhận cúp.</p></div>
           </div>
           <span className="text-xs text-[#7D715E]">{metricLabels[metric]} · {scopeLabel}</span>
         </header>
+        <div className="p-3"><input className={workspaceInput} aria-label="Tìm Creator trong vị trí 4 đến 10" placeholder="Tìm Creator, kênh, cấp bậc trong vị trí 4–10…" value={search} onChange={event => setSearch(event.target.value)} /></div>
         <div className="overflow-x-auto" role="region" aria-label="Danh sách Creator tiếp theo" tabIndex={0}>
           <table className="w-full min-w-[900px] border-collapse text-xs text-[#7D715E] text-left">
             <thead className="bg-[#FAF8F5]"><tr>
@@ -294,7 +336,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
               <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'COMMISSION' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Hoa hồng đã duyệt</th><th scope="col" className="text-center px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Hồ sơ</th>
             </tr></thead>
             <tbody>
-              {loading || loadError || !rankings.length ? <tr><td colSpan={9} className="py-8 px-4 text-center text-xs sm:text-sm text-[#7D715E]">{loading ? 'Đang tải danh sách KOL…' : loadError ? 'Chưa tải được danh sách. Vui lòng làm mới.' : 'Chưa có thêm Creator đủ điều kiện trong kỳ này.'}</td></tr> : rankings.map(item => (
+              {loading || loadError || !displayedRankings.length ? <tr><td colSpan={9} className="py-8 px-4 text-center text-xs sm:text-sm text-[#7D715E]">{loading ? 'Đang tải danh sách KOL…' : loadError ? 'Chưa tải được danh sách. Vui lòng làm mới.' : 'Không có Creator phù hợp.'}</td></tr> : displayedRankings.map(item => (
                 <tr key={item.collaboratorId} className={`hover:bg-[#FDFBF7] transition-colors ${item.isCurrentUser ? 'bg-[#FDFAF4]' : ''}`}>
                   <td className="text-center px-3.5 py-3 border-t border-[#EAE4D7]">
                     <div className="inline-flex items-center justify-center gap-1.5"><strong className="text-xs sm:text-[13px] font-semibold text-[#1A1612]">#{item.rank < 10 ? `0${item.rank}` : item.rank}</strong>
@@ -346,7 +388,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
       {/* ─── 5. MODAL HỒ SƠ VINH DANH CREATOR (CREATOR HALL OF FAME) ─────── */}
       {selectedCreatorId && createPortal(
         <div role="dialog" aria-modal="true" aria-labelledby="creator-hall-profile-title" className="creator-hall-overlay fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="creator-hall-modal bg-white border border-[#EAE4D7] rounded-2xl max-w-2xl w-full p-5 sm:p-6 space-y-5 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div ref={profileDialog} tabIndex={-1} className="creator-hall-modal bg-white border border-[#EAE4D7] rounded-2xl max-w-2xl w-full p-5 sm:p-6 space-y-5 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-4">
               <div className="flex items-center space-x-2">
                 <Trophy className="w-6 h-6 text-[#8F682E]" />
@@ -361,7 +403,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
               </button>
             </div>
 
-            {loadingProfile || !creatorProfile ? (
+            {profileError ? <div role="alert" className="py-8 text-center text-xs text-[#DC2626]">{profileError}<button className={`${workspaceButton} ml-2`} onClick={() => void handleOpenCreatorModal(selectedCreatorId)}>Thử lại</button></div> : loadingProfile || !creatorProfile ? (
               <div className="py-12 text-center text-[#7D715E] space-y-2">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#8F682E]" />
                 <p className="text-xs">Đang tải hồ sơ thành tích...</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Crown, Gift, CheckCircle2, XCircle, Clock3, CalendarDays } from 'lucide-react';
 import api from '../../services/api';
 
@@ -21,12 +21,28 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
   const [statusOverride, setStatusOverride] = useState<'ACCEPTED' | 'REJECTED' | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const effectiveParticipantId = participantId || card.participantId;
+  const pending = useRef(false);
+  const [currentState, setCurrentState] = useState<{ status: string; isActive: boolean; endDate: string } | null>(null);
+  const [stateRevision, setStateRevision] = useState(0);
+  useEffect(() => {
+    if (card.type !== 'CAMPAIGN_INVITE' || !effectiveParticipantId) return;
+    const controller = new AbortController();
+    setCurrentState(null); setFeedbackError(null);
+    const sync = () => void api.get(`/campaigns/invitations/${effectiveParticipantId}/state`, { signal: controller.signal, headers: { 'x-skip-cache': '1' } }).then(response => {
+      if (!controller.signal.aborted) setCurrentState(response.data);
+    }).catch(() => { if (!controller.signal.aborted) setFeedbackError('Không đồng bộ được trạng thái lời mời. Hãy thử lại.'); });
+    sync();
+    window.addEventListener('focus', sync);
+    return () => { controller.abort(); window.removeEventListener('focus', sync); };
+  }, [card.type, effectiveParticipantId, stateRevision]);
 
   const respond = async (decision: 'ACCEPTED' | 'REJECTED') => {
+    if (pending.current || !currentState || currentState.status !== 'INVITED') return;
     if (!effectiveParticipantId) {
       setFeedbackError('Không tìm thấy mã định danh lời mời.');
       return;
     }
+    pending.current = true;
     setLoading(true);
     setFeedbackError(null);
     try {
@@ -36,12 +52,13 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
     } catch (error: any) {
       setFeedbackError(error?.response?.data?.message || 'Không thể phản hồi lời mời lúc này.');
     } finally {
+      pending.current = false;
       setLoading(false);
     }
   };
 
-  const status = statusOverride || (card.type === 'CAMPAIGN_ACCEPTED' ? 'ACCEPTED' : card.type === 'CAMPAIGN_REJECTED' ? 'REJECTED' : 'PENDING');
-  const isExpired = !!card.endDate && new Date(card.endDate) < new Date();
+  const status = statusOverride || (currentState?.status === 'ACCEPTED' || currentState?.status === 'REJECTED' ? currentState.status : card.type === 'CAMPAIGN_ACCEPTED' ? 'ACCEPTED' : card.type === 'CAMPAIGN_REJECTED' ? 'REJECTED' : 'PENDING');
+  const isExpired = currentState?.isActive === false || (!!(currentState?.endDate || card.endDate) && new Date(currentState?.endDate || card.endDate) <= new Date());
   const start = campaignDate(card.startDate);
   const end = campaignDate(card.endDate);
 
@@ -94,7 +111,7 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
             <small className="text-[#7D715E] text-[10px] tabular-nums">{end.time}</small>
           </div>
         </div>
-        {feedbackError && <p className="m-0 mt-2.5 text-[11px] leading-relaxed text-[#DC2626]" role="alert">{feedbackError}</p>}
+        {feedbackError && <p className="m-0 mt-2.5 text-[11px] leading-relaxed text-[#DC2626]" role="alert">{feedbackError} <button type="button" className="underline" onClick={() => setStateRevision(value => value + 1)}>Thử lại</button></p>}
       </div>
       <footer className="px-3.5 py-2.5 border-t border-[#EAE4D7] bg-[#FAF8F5]">
         {isExpired ? (
@@ -103,8 +120,8 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
           <div className="flex items-center gap-2 text-[11px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" /><span>Đã gửi lời mời<small className="block text-[10px] mt-0.5">Đang chờ đối tác phản hồi</small></span></div>
         ) : (
           <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
-            <button type="button" id={`btn-reject-campaign-${card.campaignId}`} disabled={loading} onClick={() => void respond('REJECTED')} className="min-h-[34px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-[11px] hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-55">Từ chối</button>
-            <button type="button" id={`btn-accept-campaign-${card.campaignId}`} disabled={loading} onClick={() => void respond('ACCEPTED')} className="min-h-[34px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-[11px] font-semibold hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-55">{loading ? 'Đang xử lý…' : 'Chấp nhận lời mời'}</button>
+            <button type="button" id={`btn-reject-campaign-${card.campaignId}`} disabled={loading || !currentState} onClick={() => void respond('REJECTED')} className="min-h-[34px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-[11px] hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-55">Từ chối</button>
+            <button type="button" id={`btn-accept-campaign-${card.campaignId}`} disabled={loading || !currentState} onClick={() => void respond('ACCEPTED')} className="min-h-[34px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-[11px] font-semibold hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-55">{loading ? 'Đang xử lý…' : (!currentState ? 'Đang đồng bộ…' : 'Chấp nhận lời mời')}</button>
           </div>
         )}
       </footer>
