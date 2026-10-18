@@ -47,6 +47,8 @@ export interface SampleCollaborator {
 }
 
 export interface SampleRequest {
+  revisionDeadlineAt?: string | null;
+  events?: Array<{ id: string; action: string; createdAt: string; details?: Record<string, unknown> | null }>;
   id: string;
   collaboratorId: string;
   productId: string;
