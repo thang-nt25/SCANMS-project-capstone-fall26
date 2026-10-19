@@ -47,6 +47,7 @@ import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { CustomSelect } from '../ui/CustomSelect';
 import { resolveSavedShippingAddress } from '@/utils/checkout-address.utils';
 import { walletService, type WalletSummary } from '../../services/wallet.service';
+import { normalizeOrderVariantId } from '../../utils/order-variant.utils';
 
 const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
@@ -743,8 +744,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         response = await api.post('/shipping/ghn/quote-address', {
           storeId: group.store.id,
           address,
-          weight: Math.max(500, group.items.reduce((sum, item) => sum + item.quantity, 0) * 500),
-          insuranceValue: group.subtotal,
+          items: group.items.map((item) => ({ productId: item.productId, variantId: normalizeOrderVariantId(item.variantId), quantity: item.quantity })),
         }, { signal: controller.signal, timeout: 20000 });
       } catch (error: any) {
         const detail = error?.response?.data?.message || error?.message;

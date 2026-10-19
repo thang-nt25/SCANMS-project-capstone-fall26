@@ -159,6 +159,11 @@ export class ChatGateway
     ack?: (result: { ok: boolean; error?: string; messageId?: string }) => void,
   ) {
     const userId = client.data.userId;
+    if (!data || (data.messageText !== undefined && typeof data.messageText !== 'string')
+      || (typeof data.messageText === 'string' && data.messageText.length > 5000)) {
+      ack?.({ ok: false, error: 'Tin nhắn phải là văn bản tối đa 5.000 ký tự.' });
+      return;
+    }
     let messageText = data.messageText?.trim() || '';
     if (!data?.conversationId || (!messageText && !data.mediaUrl)) {
       client.emit('error', {
@@ -280,6 +285,7 @@ export class ChatGateway
       return;
     }
     client.to(`conv:${data.conversationId}`).emit('user_typing', {
+      conversationId: data.conversationId,
       userId: client.data.userId,
       fullName: client.data.userFullName,
       isTyping: data.isTyping,

@@ -1,5 +1,33 @@
 # Nghiệm thu tái thiết dữ liệu Thịnh
 
+## Cập nhật 18/10/2026 — đồng bộ Tuấn
+
+Đã fast-forward `thinh` tới `dev` tại `da44661`, không conflict. Phần bên dưới ghi nhận kết quả v2 ngày 17/10; cập nhật này dùng **seeder v3**, không ghi đè bản v1/v2 đã cài.
+
+- Dùng hàm policy thật của checkout cho hoa hồng nền/Tier/VIP/Campaign/Live, theo thời điểm đơn lịch sử; Live lưu bonus 2, proposal VIP vẫn lưu tổng 12 theo contract. Budget campaign và snapshot Net GMV được đối soát.
+- Bổ sung 30 voucher sàn/phí ship, thành 70 mã; thêm 30 mã Customer đã lưu, redemption khóa kép và funding sàn. Không trừ phí ship/freeship khỏi cơ sở hoa hồng.
+- Bổ sung mã GHN ba cấp vào đơn mẫu và 15 khoản cước TEST chưa xác nhận, Shop chịu phí/COD 0. Không tự gán cước thiếu thành 0 hay gắn trạng thái đã trả tiền.
+- Cước mua hàng không có export dùng số tiền demo có nhãn SYNTHETIC_DEMO; không gọi GHN. Chỉ export kèm evidence mới được gắn GHN_SANDBOX_EXPORT.
+- Sửa hồi quy trên Marketplace API: Shop có 0 đánh giá trả rating null, không trả 4.9 giả.
+- Bốn migration chờ Tuấn đã có file trong dev. Lượt kiểm tra chỉ-đọc tiếp theo đã tìm thấy SQL khớp checksum của năm tên migration còn thiếu dưới các tên timestamp khác; bốn migration khác nội dung vẫn cần lead đối soát. DB nhóm thiếu bảng đối soát voucher sàn và bảy migration chưa ghi nhận áp dụng. Xem `THINH_DATABASE_HANDOFF.md`. Không reset, migrate hoặc seed DB nhóm; không đổi `.env`.
+- Vẫn còn phụ thuộc schema barcode/quy cách kiện hàng, bằng chứng GHN và phê duyệt vận hành. Chưa đánh dấu hoàn tất toàn bộ nâng cấp.
+
+Đã sửa fixture test cũ của Samples/Shipping/Orders/Live theo DTO và dependency mới, không nới kiểm tra production. TypeScript toàn backend bao gồm test và build đều qua. Test frontend sửa đường dẫn tới module validation thật và kiểm tra component account/Sidebar hiện hành, không thêm module giả để làm xanh. Kết quả được ghi bên dưới.
+
+### Kiểm thử v3
+
+- Seeder: **52/52 test qua**, gồm 43 unit và 9 integration PostgreSQL. Chạy toàn bộ migration trên schema mới, kiểm tra đủ 70 coupon/30 mã đã lưu/56 stacked redemption/15 cước mẫu, rollback, chạy lại, concurrency, ledger và CLI seed → check → seed lại → audit.
+- Stores API và policy Tuấn: **195/195 test qua**, gồm 6 HTTP integration PostgreSQL của Marketplace và các test policy hoa hồng/VIP/voucher. Ca regression Shop chưa có review trả rating null đã qua.
+- TypeScript strict seed, TypeScript toàn backend (kể cả spec), build backend và lint các file seeder thay đổi qua.
+- Frontend `npm test`: 50 qua, 0 lỗi, 20 browser test chưa bật môi trường opt-in. Build frontend qua, còn cảnh báo chunk lớn hơn 500 kB. Không coi browser test chưa chạy là đã nghiệm thu UI.
+- `npm test` backend được tách thành unit suite an toàn. Test cần PostgreSQL/Redis thật vẫn giữ nguyên, chạy riêng với dịch vụ cô lập. Các file integration/E2E cũ có thể nạp `.env` nhóm không còn chạy vô tình trong lệnh mặc định. Có sáu ca regression kiểm tra phân loại này.
+- Lượt cuối `npm test` backend: **1.036/1.036 ca qua trong 86 suite, không lỗi/skip**, bao gồm 15 ca QR sau cập nhật cache fixture. Integration seed riêng **52/52** và HTTP Marketplace **6/6** được chạy lại trên PostgreSQL cô lập. Các integration/E2E/Redis cũ không có hạ tầng riêng chưa được chạy, không được tính vào số ca đã qua.
+- `seed:plan` chạy không ghi DB, xác nhận dataset v3; chỉ còn PRODUCT_PACKAGE_FIELDS trong danh sách thiếu contract. `fullUpgradeReady=false` vẫn giữ.
+- Không kiểm thử giao dịch GHN/PayOS thật, không reset/migrate/seed DB nhóm, không thay `.env` hoặc dependencies/lockfile. Chỉ đổi script test backend sang cấu hình unit an toàn.
+- Backup public schema đã restore thử thành công vào DB local mới: 113 users / 126 orders / 247 ledger. Không sửa archive gốc hoặc lịch sử DB nhóm. Chi tiết và các quyết định còn cần lead nằm trong `THINH_DATABASE_HANDOFF.md`.
+
+## Ghi nhận lịch sử 17/10/2026
+
 Ngày đối chiếu: 17/10/2026. Nhánh `dev` tại `ae8993f` và bản bàn giao `quy` tại `3f71c54` đã merge vào nhánh làm việc `thinh` không conflict. Khi cập nhật trước khi push, `origin/dev` đã ở `78125bc` (PR #93 của Quý, có thêm refactor `5ccf00d`). Chỉ push nhánh `thinh` theo yêu cầu; không tự merge PR vào `dev`.
 
 ## Kết luận

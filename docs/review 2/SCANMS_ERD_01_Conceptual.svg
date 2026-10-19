@@ -1,0 +1,305 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3600 1600" width="3600" height="1600" style="background:#ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <style>
+    .entity-box { fill: #ffffff; stroke: #000000; stroke-width: 2px; rx: 4px; }
+    .entity-text { font-size: 13px; font-weight: bold; fill: #000000; text-anchor: middle; letter-spacing: 0.5px; }
+    .diamond-shape { fill: #ffffff; stroke: #000000; stroke-width: 1.8px; }
+    .diamond-text { font-size: 11px; font-weight: bold; fill: #000000; text-anchor: middle; font-style: italic; }
+    .conn-line { fill: none; stroke: #000000; stroke-width: 1.5px; }
+    .card-text { font-size: 13px; font-weight: bold; fill: #000000; font-family: 'Segoe UI', monospace; text-anchor: middle; }
+    .title-main { font-size: 24px; font-weight: bold; fill: #000000; text-anchor: middle; letter-spacing: 1px; }
+    .subtitle { font-size: 12px; fill: #555555; text-anchor: middle; }
+  </style>
+
+  <!-- TITLE (NO CATEGORY BOXES) -->
+  <text x="1800.0" y="36" class="title-main">SCANMS - CONCEPTUAL DATABASE SCHEMA</text>
+  <text x="1800.0" y="58" class="subtitle">Core Entities and Business Relationships (Conceptual Tier)</text>
+
+  <path d="M 450.0 440 L 450.0 332.0" class="conn-line" />
+  <path d="M 450.0 288.0 L 450.0 232" class="conn-line" />
+  <text x="465" y="420" class="card-text">1</text>
+  <text x="465" y="250" class="card-text">N</text>
+  <path d="M 450.0 492 L 450.0 548.0" class="conn-line" />
+  <path d="M 450.0 592.0 L 450.0 700" class="conn-line" />
+  <text x="465" y="510" class="card-text">1</text>
+  <text x="465" y="680" class="card-text">1</text>
+  <path d="M 340 470.15999999999997 L 220 470 L 220.0 704.0" class="conn-line" />
+  <path d="M 220.0 748.0 L 220 986 L 340 986.0" class="conn-line" />
+  <text x="320" y="460" class="card-text">1</text>
+  <text x="320" y="975" class="card-text">N</text>
+  <path d="M 340 455.08 L 80 455 L 80.0 834.0" class="conn-line" />
+  <path d="M 80.0 878.0 L 80 1246 L 340 1246.0" class="conn-line" />
+  <text x="320" y="445" class="card-text">1</text>
+  <text x="320" y="1235" class="card-text">N</text>
+  <path d="M 560 466.0 L 672.0 466.0" class="conn-line" />
+  <path d="M 788.0 466.0 L 900 466.0" class="conn-line" />
+  <text x="580" y="455" class="card-text">1</text>
+  <text x="880" y="455" class="card-text">N</text>
+  <path d="M 1010.0 440 L 1010.0 332.0" class="conn-line" />
+  <path d="M 1010.0 288.0 L 1010.0 232" class="conn-line" />
+  <text x="1025" y="420" class="card-text">1</text>
+  <text x="1025" y="250" class="card-text">N</text>
+  <path d="M 1010.0 492 L 1010.0 548.0" class="conn-line" />
+  <path d="M 1010.0 592.0 L 1010.0 700" class="conn-line" />
+  <text x="1025" y="510" class="card-text">1</text>
+  <text x="1025" y="680" class="card-text">N</text>
+  <path d="M 900 473.8 L 820 474 L 820.0 704.0" class="conn-line" />
+  <path d="M 820.0 748.0 L 820 986 L 900 986.0" class="conn-line" />
+  <text x="880" y="485" class="card-text">1</text>
+  <text x="880" y="975" class="card-text">N</text>
+  <path d="M 1120 473.8 L 1170 474 L 1170.0 816.0" class="conn-line" />
+  <path d="M 1170.0 860.0 L 1170 1206 L 1120 1206.0" class="conn-line" />
+  <text x="1135" y="465" class="card-text">1</text>
+  <text x="1135" y="1195" class="card-text">1</text>
+  <path d="M 1010.0 1232 L 1010.0 1268.0" class="conn-line" />
+  <path d="M 1010.0 1312.0 L 1010.0 1400" class="conn-line" />
+  <text x="1025" y="1250" class="card-text">1</text>
+  <text x="1025" y="1380" class="card-text">N</text>
+  <path d="M 1120 466.0 L 1232.0 466.0" class="conn-line" />
+  <path d="M 1348.0 466.0 L 1460 466.0" class="conn-line" />
+  <text x="1145" y="455" class="card-text">1</text>
+  <text x="1445" y="455" class="card-text">N</text>
+  <path d="M 1120 450.4 L 1160 450 L 1160 80 L 1232.0 80.0" class="conn-line" />
+  <path d="M 1348.0 80.0 L 3250 80 L 3250.0 440" class="conn-line" />
+  <text x="1145" y="435" class="card-text">1</text>
+  <text x="3265" y="420" class="card-text">N</text>
+  <path d="M 1570.0 440 L 1570.0 332.0" class="conn-line" />
+  <path d="M 1570.0 288.0 L 1570.0 232" class="conn-line" />
+  <text x="1585" y="420" class="card-text">1</text>
+  <text x="1585" y="250" class="card-text">N</text>
+  <path d="M 1570.0 492 L 1570.0 548.0" class="conn-line" />
+  <path d="M 1570.0 592.0 L 1570.0 700" class="conn-line" />
+  <text x="1585" y="510" class="card-text">1</text>
+  <text x="1585" y="680" class="card-text">N</text>
+  <path d="M 1460 473.8 L 1400 474 L 1400.0 704.0" class="conn-line" />
+  <path d="M 1400.0 748.0 L 1400 986 L 1460 986.0" class="conn-line" />
+  <text x="1445" y="485" class="card-text">1</text>
+  <text x="1445" y="975" class="card-text">N</text>
+  <path d="M 1570.0 1012 L 1570.0 1068.0" class="conn-line" />
+  <path d="M 1570.0 1112.0 L 1570.0 1220" class="conn-line" />
+  <text x="1585" y="1030" class="card-text">1</text>
+  <text x="1585" y="1200" class="card-text">N</text>
+  <path d="M 1680 466.0 L 1792.0 466.0" class="conn-line" />
+  <path d="M 1908.0 466.0 L 2020 466.0" class="conn-line" />
+  <text x="1700" y="455" class="card-text">M</text>
+  <text x="2000" y="455" class="card-text">N</text>
+  <path d="M 2130.0 440 L 2130.0 332.0" class="conn-line" />
+  <path d="M 2130.0 288.0 L 2130.0 232" class="conn-line" />
+  <text x="2145" y="420" class="card-text">1</text>
+  <text x="2145" y="250" class="card-text">1</text>
+  <path d="M 2130.0 492 L 2130.0 548.0" class="conn-line" />
+  <path d="M 2130.0 592.0 L 2130.0 700" class="conn-line" />
+  <text x="2145" y="510" class="card-text">1</text>
+  <text x="2145" y="680" class="card-text">1</text>
+  <path d="M 2240 466.0 L 2352.0 466.0" class="conn-line" />
+  <path d="M 2468.0 466.0 L 2580 466.0" class="conn-line" />
+  <text x="2260" y="455" class="card-text">1</text>
+  <text x="2560" y="455" class="card-text">N</text>
+  <path d="M 2690.0 492 L 2690.0 548.0" class="conn-line" />
+  <path d="M 2690.0 592.0 L 2690.0 700" class="conn-line" />
+  <text x="2705" y="510" class="card-text">1</text>
+  <text x="2705" y="680" class="card-text">1</text>
+  <path d="M 3250.0 440 L 3250.0 332.0" class="conn-line" />
+  <path d="M 3250.0 288.0 L 3250.0 232" class="conn-line" />
+  <text x="3265" y="420" class="card-text">1</text>
+  <text x="3265" y="250" class="card-text">N</text>
+  <path d="M 3250.0 492 L 3250.0 548.0" class="conn-line" />
+  <path d="M 3250.0 592.0 L 3250.0 700" class="conn-line" />
+  <text x="3265" y="510" class="card-text">1</text>
+  <text x="3265" y="680" class="card-text">N</text>
+  <path d="M 2130.0 752 L 2130 1340 L 1738.0 1340.0" class="conn-line" />
+  <path d="M 1622.0 1340.0 L 1150 1340 L 1150 1214 L 1120 1213.8" class="conn-line" />
+  <text x="2145" y="770" class="card-text">N</text>
+  <text x="1135" y="1225" class="card-text">1</text>
+  <g>
+    <polygon points="450,288.0 508.0,310 450,332.0 392.0,310" class="diamond-shape" />
+    <text x="450" y="314" class="diamond-text">records audit</text>
+  </g>
+  <g>
+    <polygon points="450,548.0 508.0,570 450,592.0 392.0,570" class="diamond-shape" />
+    <text x="450" y="574" class="diamond-text">registers creator</text>
+  </g>
+  <g>
+    <polygon points="220,704.0 278.0,726 220,748.0 162.0,726" class="diamond-shape" />
+    <text x="220" y="730" class="diamond-text">adds to cart</text>
+  </g>
+  <g>
+    <polygon points="80,834.0 138.0,856 80,878.0 22.0,856" class="diamond-shape" />
+    <text x="80" y="860" class="diamond-text">chats with store</text>
+  </g>
+  <g>
+    <polygon points="730,444.0 788.0,466 730,488.0 672.0,466" class="diamond-shape" />
+    <text x="730" y="470" class="diamond-text">owns store</text>
+  </g>
+  <g>
+    <polygon points="1010,288.0 1068.0,310 1010,332.0 952.0,310" class="diamond-shape" />
+    <text x="1010" y="314" class="diamond-text">publishes media</text>
+  </g>
+  <g>
+    <polygon points="1010,548.0 1068.0,570 1010,592.0 952.0,570" class="diamond-shape" />
+    <text x="1010" y="574" class="diamond-text">hosts stream</text>
+  </g>
+  <g>
+    <polygon points="820,704.0 878.0,726 820,748.0 762.0,726" class="diamond-shape" />
+    <text x="820" y="730" class="diamond-text">creates coupon</text>
+  </g>
+  <g>
+    <polygon points="1170,816.0 1228.0,838 1170,860.0 1112.0,838" class="diamond-shape" />
+    <text x="1170" y="842" class="diamond-text">holds balance</text>
+  </g>
+  <g>
+    <polygon points="1010,1268.0 1068.0,1290 1010,1312.0 952.0,1290" class="diamond-shape" />
+    <text x="1010" y="1294" class="diamond-text">withdraws money</text>
+  </g>
+  <g>
+    <polygon points="1290,444.0 1348.0,466 1290,488.0 1232.0,466" class="diamond-shape" />
+    <text x="1290" y="470" class="diamond-text">sells product</text>
+  </g>
+  <g>
+    <polygon points="1290,58.0 1348.0,80 1290,102.0 1232.0,80" class="diamond-shape" />
+    <text x="1290" y="84" class="diamond-text">launches campaign</text>
+  </g>
+  <g>
+    <polygon points="1570,288.0 1628.0,310 1570,332.0 1512.0,310" class="diamond-shape" />
+    <text x="1570" y="314" class="diamond-text">requests sample</text>
+  </g>
+  <g>
+    <polygon points="1570,548.0 1628.0,570 1570,592.0 1512.0,570" class="diamond-shape" />
+    <text x="1570" y="574" class="diamond-text">reviews product</text>
+  </g>
+  <g>
+    <polygon points="1400,704.0 1458.0,726 1400,748.0 1342.0,726" class="diamond-shape" />
+    <text x="1400" y="730" class="diamond-text">creates link</text>
+  </g>
+  <g>
+    <polygon points="1570,1068.0 1628.0,1090 1570,1112.0 1512.0,1090" class="diamond-shape" />
+    <text x="1570" y="1094" class="diamond-text">tracks clicks</text>
+  </g>
+  <g>
+    <polygon points="1850,444.0 1908.0,466 1850,488.0 1792.0,466" class="diamond-shape" />
+    <text x="1850" y="470" class="diamond-text">ordered in</text>
+  </g>
+  <g>
+    <polygon points="2130,288.0 2188.0,310 2130,332.0 2072.0,310" class="diamond-shape" />
+    <text x="2130" y="314" class="diamond-text">paid by</text>
+  </g>
+  <g>
+    <polygon points="2130,548.0 2188.0,570 2130,592.0 2072.0,570" class="diamond-shape" />
+    <text x="2130" y="574" class="diamond-text">earns commission</text>
+  </g>
+  <g>
+    <polygon points="2410,444.0 2468.0,466 2410,488.0 2352.0,466" class="diamond-shape" />
+    <text x="2410" y="470" class="diamond-text">returns order</text>
+  </g>
+  <g>
+    <polygon points="2690,548.0 2748.0,570 2690,592.0 2632.0,570" class="diamond-shape" />
+    <text x="2690" y="574" class="diamond-text">reports dispute</text>
+  </g>
+  <g>
+    <polygon points="3250,288.0 3308.0,310 3250,332.0 3192.0,310" class="diamond-shape" />
+    <text x="3250" y="314" class="diamond-text">proposes deal</text>
+  </g>
+  <g>
+    <polygon points="3250,548.0 3308.0,570 3250,592.0 3192.0,570" class="diamond-shape" />
+    <text x="3250" y="574" class="diamond-text">sets rules</text>
+  </g>
+  <g>
+    <polygon points="1680,1318.0 1738.0,1340 1680,1362.0 1622.0,1340" class="diamond-shape" />
+    <text x="1680" y="1344" class="diamond-text">adds to wallet</text>
+  </g>
+  <g transform="translate(340, 180)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">AUDIT_LOG</text>
+  </g>
+  <g transform="translate(340, 440)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">USER</text>
+  </g>
+  <g transform="translate(340, 700)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">COLLABORATOR_PROFILE</text>
+  </g>
+  <g transform="translate(340, 960)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">CUSTOMER_CART</text>
+  </g>
+  <g transform="translate(340, 1220)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">CONVERSATION</text>
+  </g>
+  <g transform="translate(900, 180)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">MEDIA_ASSET</text>
+  </g>
+  <g transform="translate(900, 440)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">STORE</text>
+  </g>
+  <g transform="translate(900, 700)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">LIVE_SESSION</text>
+  </g>
+  <g transform="translate(900, 960)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">COUPON</text>
+  </g>
+  <g transform="translate(900, 1180)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">WALLET</text>
+  </g>
+  <g transform="translate(900, 1400)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">PAYOUT</text>
+  </g>
+  <g transform="translate(1460, 180)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">SAMPLE_REQUEST</text>
+  </g>
+  <g transform="translate(1460, 440)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">PRODUCT</text>
+  </g>
+  <g transform="translate(1460, 700)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">PRODUCT_REVIEW</text>
+  </g>
+  <g transform="translate(1460, 960)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">REFERRAL_LINK</text>
+  </g>
+  <g transform="translate(1460, 1220)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">TRACKING_SESSION</text>
+  </g>
+  <g transform="translate(2020, 180)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">PAYMENT_TRANSACTION</text>
+  </g>
+  <g transform="translate(2020, 440)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">SALES_ORDER</text>
+  </g>
+  <g transform="translate(2020, 700)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">COMMISSION</text>
+  </g>
+  <g transform="translate(2580, 440)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">RETURN_REQUEST</text>
+  </g>
+  <g transform="translate(2580, 700)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">DISPUTE</text>
+  </g>
+  <g transform="translate(3140, 180)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">EXCLUSIVE_DEAL</text>
+  </g>
+  <g transform="translate(3140, 440)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">CAMPAIGN</text>
+  </g>
+  <g transform="translate(3140, 700)">
+    <rect width="220" height="52" class="entity-box" />
+    <text x="110.0" y="31" class="entity-text">COMMISSION_RULE</text>
+  </g>
+</svg>

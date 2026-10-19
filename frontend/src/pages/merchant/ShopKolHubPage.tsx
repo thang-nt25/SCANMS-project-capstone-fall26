@@ -43,9 +43,42 @@ import ChatBoxPage from '../chat/ChatBoxPage';
 import KolRecommendationPage from './KolRecommendationPage';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
+import { format, isToday, isYesterday } from 'date-fns';
+import { vi } from 'date-fns/locale';
 import { ExclusiveDealInbox } from '../../components/affiliate/ExclusiveDealInbox';
 import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
 import SampleDeadlineExtension from '../../components/affiliate/SampleDeadlineExtension';
+
+function formatConvTime(dateStr?: string | null) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  if (isToday(d)) return format(d, 'HH:mm');
+  if (isYesterday(d)) return 'Hôm qua';
+  return format(d, 'dd/MM/yy', { locale: vi });
+}
+
+function getChatMessagePreview(messageText?: string, mediaName?: string): string {
+  if (!messageText) return mediaName ? `📎 ${mediaName}` : 'Bắt đầu cuộc trò chuyện...';
+  try {
+    const parsed = JSON.parse(messageText);
+    if (parsed.type === 'EXCLUSIVE_DEAL_PROPOSAL') {
+      return '🤝 Đề xuất deal độc quyền';
+    }
+    if (parsed.type === 'EXCLUSIVE_DEAL_DECISION') {
+      return parsed.status === 'APPROVED' ? '✅ Đã duyệt deal độc quyền' : '❌ Đã từ chối deal độc quyền';
+    }
+    if (parsed.type === 'PRODUCT_INQUIRY') {
+      return `🛍️ Hỏi về: ${parsed.productTitle || 'sản phẩm'}`;
+    }
+    if (parsed.type === 'COUPON_VOUCHER') {
+      return `🎟️ Voucher: ${parsed.couponCode || 'ưu đãi'}`;
+    }
+    return messageText;
+  } catch {
+    return messageText;
+  }
+}
 
 function sampleVideoStatusLabel(status: string) {
   if (status === 'APPROVED') return 'Đã duyệt';
@@ -87,6 +120,8 @@ export interface PartnerKol {
   };
   lastMessage?: string;
   lastMessageTime?: string;
+  lastMessageTimestamp?: number;
+  unreadCount?: number;
 }
 
 type PartnerTier = NonNullable<PartnerKol['tier']>;
@@ -348,20 +383,26 @@ export default function ShopKolHubPage() {
   }, [kolParam, tabParam, modeParam]);
 
   // Load real data from backend
+  // Load real data from backend
   const loadBackendData = useCallback(async () => {
     const sequence = ++sampleLoadSequence.current;
     setLoadingBackendData(true);
     try {
-      // 1. Load sample requests from shop
-      const [sampleRes, statsRes]: [any, any] = await Promise.all([
-        api.get('/sample-requests/shop', { headers: { 'x-skip-cache': 'true' } }),
+// 1. Fetch conversations, sample requests, and store members in parallel
+      const [sampleRes, statsRes, convsRes, membersRes]: [any, any, any, any] = await Promise.all([
+        api.get('/sample-requests/shop', { headers: { 'x-skip-cache': 'true' } }).catch(() => []),
         api.get('/sample-requests/shop/stats', { headers: { 'x-skip-cache': 'true' } }).catch(() => null),
+        api.get('/chat/conversations').catch(() => []),
+        api.get('/store-collaborators/shop').catch(() => ({})),
       ]);
+
       setSampleProgramStats(statsRes?.data || statsRes || null);
       const sampleData = sampleRes?.data || sampleRes;
       if (sequence !== sampleLoadSequence.current) return;
       if (!Array.isArray(sampleData)) throw new Error('Không đọc được danh sách hàng mẫu.');
       const sampleStatsByKol: Record<string, { total: number; pending: number; completed: number }> = {};
+      const requestKols: PartnerKol[] = [];
+
       if (Array.isArray(sampleData)) {
         const grouped: Record<string, SampleRequestItem[]> = {};
         sampleData.forEach((item: any) => {
@@ -422,7 +463,6 @@ export default function ShopKolHubPage() {
             productVariantName: item.productVariant?.name,
           };
           if (!grouped[kolId]) grouped[kolId] = [];
-          // Avoid duplicates
           if (!grouped[kolId].some((s) => s.id === transformed.id)) {
             grouped[kolId].unshift(transformed);
           }
@@ -432,18 +472,20 @@ export default function ShopKolHubPage() {
           if (item.status === 'COMPLETED') currentStats.completed += 1;
         });
         setSamplesMap(grouped);
-        const requestKols: PartnerKol[] = sampleData
+
+        sampleData
           .filter((item: any) => item.collaborator?.id)
-          .map((item: any) => {
+          .forEach((item: any) => {
             const creator = item.collaborator;
             const profile = creator.collaboratorProfile || {};
             const channel = item.socialChannel;
             const requestStats = sampleStatsByKol[creator.id] || { total: 0, pending: 0, completed: 0 };
-            return {
+            requestKols.push({
               id: creator.id,
               fullName: creator.fullName || 'Nhà sáng tạo SCANMS',
               email: creator.email || '',
               phone: creator.phoneNumber || undefined,
+              avatarUrl: profile.avatarUrl || creator.avatarUrl || undefined,
               tier: normalizePartnerTier(profile.tier),
               handle: channel?.channelName ? `@${channel.channelName}` : undefined,
               primaryChannel: channel ? {
@@ -459,29 +501,20 @@ export default function ShopKolHubPage() {
                 pendingSamplesCount: requestStats.pending,
                 completedVideosCount: requestStats.completed,
               },
-            };
+            });
           });
-        setKols((current) => {
-          const merged = [...current];
-          requestKols.forEach((kol) => {
-            const index = merged.findIndex((item) => item.id === kol.id);
-            if (index < 0) merged.push(kol);
-            else merged[index] = { ...merged[index], ...kol };
-          });
-          return merged;
-        });
       }
 
       // 2. Load members from store collaborators
-      const membersRes: any = await api.get('/store-collaborators/shop', { headers: { 'x-skip-cache': '1' } });
       const membersBody = membersRes?.data || membersRes;
       if (membersBody?.store?.id) setOwnedStore(membersBody.store);
+      const backendKols: PartnerKol[] = [];
       if (Array.isArray(membersBody?.members) && membersBody.members.length > 0) {
-        const backendKols: PartnerKol[] = membersBody.members.map((m: any, idx: number) => {
+        membersBody.members.forEach((m: any, idx: number) => {
           const c = m.collaborator || {};
           const profile = c.collaboratorProfile || {};
           const channel = c.socialChannels?.[0];
-          return {
+          backendKols.push({
             id: c.id || `collab-${idx}`,
             fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
             email: c.email || '',
@@ -502,93 +535,169 @@ export default function ShopKolHubPage() {
               pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
               completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
             },
-          };
-        });
-
-        // Merge without losing default rich preview
-        setKols((prev) => {
-          const combined = [...prev];
-          backendKols.forEach((bk) => {
-            const existingIndex = combined.findIndex(
-              (k) => k.id === bk.id || k.email === bk.email
-            );
-            if (existingIndex === -1) {
-              combined.push(bk);
-            } else {
-              combined[existingIndex] = {
-                ...combined[existingIndex],
-                ...bk,
-                stats: bk.stats,
-              };
-            }
           });
-          return combined;
         });
       }
 
       // 3. Load active verified creators from backend database
-      const creatorsRes: any = await api.get('/chat/search-collaborators', { headers: { 'x-skip-cache': '1' } });
-      const creatorsData = creatorsRes?.data || creatorsRes;
-      if (Array.isArray(creatorsData) && creatorsData.length > 0) {
-        const dbKols: PartnerKol[] = creatorsData.map((c: any) => {
-          const profile = c.collaboratorProfile || {};
-          const channel = c.socialChannels?.[0];
-          return {
-            id: c.id,
-            fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
-            email: c.email || '',
-            phone: c.phoneNumber || '',
-            avatarUrl: profile.avatarUrl || c.avatarUrl || undefined,
-            tier: normalizePartnerTier(profile.tier),
-            handle: channel?.channelName ? `@${channel.channelName}` : undefined,
-            primaryChannel: channel
-              ? {
-                  platform: channel.platformName?.toUpperCase() as any,
-                  url: channel.channelUrl || '',
-                  followers: Number(channel.followerCount ?? profile.totalFollowers ?? 0),
-                }
-              : undefined,
-            socialChannels: (c.socialChannels || []).map((sc: any) => ({
-              platform: sc.platformName?.toUpperCase() as any,
-              url: sc.channelUrl,
-              handle: `@${sc.channelName}`,
-              followers: Number(sc.followerCount ?? profile.totalFollowers ?? 0),
-              isVerified: sc.isVerified,
-            })),
-            kycStatus: profile.kycStatus || undefined,
-            commissionRate: undefined,
-            stats: {
-              totalRevenue: 0,
-              totalOrders: 0,
-              sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
-              pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
-              completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
-            },
-          };
-        });
-
-        setKols((prev) => {
-          const combined = [...prev];
-          dbKols.forEach((dk) => {
-            const existingIdx = combined.findIndex((k) => k.id === dk.id || k.email === dk.email);
-            if (existingIdx >= 0) {
-              combined[existingIdx] = { ...combined[existingIdx], ...dk, id: dk.id };
-            } else {
-              combined.push(dk);
-            }
+      let dbKols: PartnerKol[] = [];
+      try {
+        const creatorsRes: any = await api.get('/chat/search-collaborators', { headers: { 'x-skip-cache': '1' } });
+        const creatorsData = creatorsRes?.data || creatorsRes;
+        if (Array.isArray(creatorsData) && creatorsData.length > 0) {
+          dbKols = creatorsData.map((c: any) => {
+            const profile = c.collaboratorProfile || {};
+            const channel = c.socialChannels?.[0];
+            return {
+              id: c.id,
+              fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
+              email: c.email || '',
+              phone: c.phoneNumber || '',
+              avatarUrl: profile.avatarUrl || c.avatarUrl || undefined,
+              tier: normalizePartnerTier(profile.tier),
+              handle: channel?.channelName ? `@${channel.channelName}` : undefined,
+              primaryChannel: channel
+                ? {
+                    platform: channel.platformName?.toUpperCase() as any,
+                    url: channel.channelUrl || '',
+                    followers: Number(channel.followerCount ?? profile.totalFollowers ?? 0),
+                  }
+                : undefined,
+              socialChannels: (c.socialChannels || []).map((sc: any) => ({
+                platform: sc.platformName?.toUpperCase() as any,
+                url: sc.channelUrl,
+                handle: `@${sc.channelName}`,
+                followers: Number(sc.followerCount ?? profile.totalFollowers ?? 0),
+                isVerified: sc.isVerified,
+              })),
+              kycStatus: profile.kycStatus || undefined,
+              commissionRate: undefined,
+              stats: {
+                totalRevenue: 0,
+                totalOrders: 0,
+                sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
+                pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
+                completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
+              },
+            };
           });
-          return combined;
+        }
+      } catch {
+        dbKols = [];
+      }
+
+      // 4. Load active conversations with collaborators (real chat history)
+      const convsList = Array.isArray(convsRes) ? convsRes : convsRes?.data || [];
+      const convKols: PartnerKol[] = [];
+
+      convsList.forEach((conv: any) => {
+        const c = conv.collaborator;
+        if (!c || !c.id) return;
+        const profile = c.collaboratorProfile || {};
+        const channel = c.socialChannels?.[0];
+        const lastMsg = conv.chatMessages?.[0];
+        const lastText = getChatMessagePreview(lastMsg?.messageText, lastMsg?.mediaName);
+        const lastDate = conv.lastMessageAt || lastMsg?.createdAt || conv.updatedAt || conv.createdAt;
+        const lastTimestamp = lastDate ? new Date(lastDate).getTime() : 0;
+        const unreadCount = Number(conv._count?.chatMessages || (lastMsg && !lastMsg.isRead ? 1 : 0));
+
+        convKols.push({
+          id: c.id,
+          fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
+          email: c.email || '',
+          phone: c.phoneNumber || '',
+          avatarUrl: profile.avatarUrl || c.avatarUrl || undefined,
+          tier: normalizePartnerTier(profile.tier),
+          handle: channel?.channelName ? `@${channel.channelName}` : undefined,
+          primaryChannel: channel ? {
+            platform: channel.platformName?.toUpperCase() as any,
+            url: channel.channelUrl || '',
+            followers: Number(channel.followerCount ?? profile.totalFollowers ?? 0),
+          } : undefined,
+          socialChannels: (c.socialChannels || []).map((sc: any) => ({
+            platform: sc.platformName?.toUpperCase() as any,
+            url: sc.channelUrl,
+            handle: `@${sc.channelName}`,
+            followers: Number(sc.followerCount ?? profile.totalFollowers ?? 0),
+            isVerified: sc.isVerified,
+          })),
+          kycStatus: profile.kycStatus || undefined,
+          commissionRate: undefined,
+          stats: {
+            totalRevenue: 0,
+            totalOrders: 0,
+            sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
+            pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
+            completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
+          },
+          lastMessage: lastText,
+          lastMessageTime: formatConvTime(lastDate),
+          lastMessageTimestamp: lastTimestamp,
+          unreadCount,
         });
+      });
+
+      // 4. Merge all active collaborators (Chat Conversations + Sample Requests + Store Members)
+      const mergedMap = new Map<string, PartnerKol>();
+      convKols.forEach((k) => mergedMap.set(k.id, k));
+
+      requestKols.forEach((k) => {
+        if (!mergedMap.has(k.id)) {
+          mergedMap.set(k.id, k);
+        } else {
+          const existing = mergedMap.get(k.id)!;
+          mergedMap.set(k.id, {
+            ...existing,
+            stats: { ...existing.stats, ...k.stats },
+            phone: existing.phone || k.phone,
+          });
+        }
+      });
+
+      backendKols.forEach((k) => {
+        if (!mergedMap.has(k.id)) {
+          mergedMap.set(k.id, k);
+        } else {
+          const existing = mergedMap.get(k.id)!;
+          mergedMap.set(k.id, {
+            ...existing,
+            stats: { ...existing.stats, ...k.stats },
+          });
+        }
+      });
+
+      dbKols.forEach((k) => {
+        if (!mergedMap.has(k.id)) {
+          mergedMap.set(k.id, k);
+        }
+      });
+
+      // Sort with latest message / interaction first
+      const allKols = Array.from(mergedMap.values()).sort((a, b) => {
+        return (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0);
+      });
+
+      setKols(allKols);
+
+      if (allKols.length > 0) {
+        if (!kolParam || !allKols.some((k) => k.id === kolParam)) {
+          setSelectedKolId(allKols[0].id);
+        } else {
+          setSelectedKolId(kolParam);
+        }
+      } else {
+        setSelectedKolId('');
       }
     } catch {
-      if (sequence !== sampleLoadSequence.current) return;
+if (sequence !== sampleLoadSequence.current) return;
+      setKols([]);
       setSamplesMap({});
       setTrackingModalItem(null);
       toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
       if (sequence === sampleLoadSequence.current) setLoadingBackendData(false);
     }
-  }, []);
+  }, [kolParam]);
 
   useEffect(() => {
     loadBackendData();
@@ -607,7 +716,7 @@ export default function ShopKolHubPage() {
 
   // Selected Kol Object
   const selectedKol = useMemo(() => {
-    return kols.find((k) => k.id === selectedKolId) || kols[0];
+    return kols.find((k) => k.id === selectedKolId) || kols[0] || null;
   }, [kols, selectedKolId]);
 
   // Multi-channel list for selected KOL
@@ -1289,7 +1398,7 @@ return true;
                 {/* Collapsed List: Avatars only */}
                 <div className="flex-1 w-full overflow-y-auto py-3 px-2 space-y-3 no-scrollbar flex flex-col items-center">
                   {filteredKols.map((kol) => {
-                    const isSelected = kol.id === selectedKol.id;
+                    const isSelected = selectedKol ? kol.id === selectedKol.id : false;
                     const kolSamples = samplesMap[kol.id] || [];
                     const pendingSamples = kolSamples.filter((s) => s.status === 'PENDING').length;
                     const cleanHandle = kol.handle ? kol.handle.replace(/^@+/, '@') : kol.email;
@@ -1512,7 +1621,7 @@ return true;
                     </div>
                   ) : (
                     filteredKols.map((kol) => {
-                      const isSelected = kol.id === selectedKol.id;
+                      const isSelected = selectedKol ? kol.id === selectedKol.id : false;
                       const kolSamples = samplesMap[kol.id] || [];
                       const pendingSamples = kolSamples.filter((s) => s.status === 'PENDING').length;
 
@@ -1698,8 +1807,28 @@ return true;
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
           <div className={`shop-kol-detail flex-1 flex flex-col min-w-0 bg-white${isDetailHeaderCompact ? ' is-header-compact' : ''}`}>
             <StoreCooperationPanel mode="shop" />
-            {/* 1. Header of Selected KOL (Ultra-Compact Single-Row SCANMS Creator Style) */}
-            <div className="shop-kol-detail-heading px-4 py-3 bg-white border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 shrink-0">
+            {!selectedKol ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF8F5]">
+                <div className="w-14 h-14 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mb-3 shadow-2xs">
+                  <Users className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-extrabold text-[#1A1612] m-0">Chưa có kết nối nào với KOL</h3>
+                <p className="text-xs text-[#7D715E] max-w-sm mt-1.5 mb-4 leading-relaxed">
+                  Chưa có nhà sáng tạo nào gửi tin nhắn hay yêu cầu mẫu thử. Hãy dùng tính năng Khám phá KOL để tìm kiếm và mời các nhà sáng tạo hợp tác đẩy số.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowDiscoveryModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Khám phá danh bạ KOL</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* 1. Header of Selected KOL (Ultra-Compact Single-Row SCANMS Creator Style) */}
+                <div className="shop-kol-detail-heading px-4 py-3 bg-white border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 shrink-0">
               {/* Left: Avatar + (Name & Badges on top) + (TikTok & Followers below) */}
               <div className="kol-profile-identity flex items-center gap-3 min-w-0 flex-1">
                 <div className="relative shrink-0">
@@ -2691,9 +2820,11 @@ setActiveTab('messages');
             </div>
           )}
         </div>
-      </div>
-    </div>
-  )}
+      </>
+    )}
+  </div>
+</div>
+)}
 
       {/* MODAL 1: Nhập Mã Vận Đơn Mẫu */}
       {trackingModalItem && (

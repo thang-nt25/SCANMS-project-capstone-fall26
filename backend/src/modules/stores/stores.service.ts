@@ -428,7 +428,19 @@ export class StoresService {
    * Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối
    */
   async getSponsoredPlacements() {
-    const placements = activeSponsoredPlacements(process.env.MARKETPLACE_SPONSORED_PLACEMENTS);
+    const now = new Date();
+    const booked = await this.prisma.sponsoredPlacement.findMany({
+      where: { status: 'APPROVED', startsAt: { lte: now }, endsAt: { gt: now },
+        store: { isDeleted: false, isActive: true, isVerified: true, onboardingStatus: 'VERIFIED', owner: { isActive: true } },
+      },
+      select: { storeId: true, headline: true, endsAt: true },
+      orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+    });
+    // Explicit legacy bookings remain compatible; no store is promoted automatically.
+    const placements = [
+      ...booked.map((row) => ({ ...row, endsAt: row.endsAt.toISOString() })),
+      ...activeSponsoredPlacements(process.env.MARKETPLACE_SPONSORED_PLACEMENTS),
+    ].filter((row, index, all) => all.findIndex((item) => item.storeId === row.storeId) === index).slice(0, 6);
     if (!placements.length) return [];
     const stores = await this.prisma.store.findMany({
       where: {
@@ -497,7 +509,7 @@ export class StoresService {
             ? 'Thực phẩm & Sức khỏe'
             : 'Mỹ phẩm & Chăm sóc da'),
         commissionRange: `${Number(store.defaultCommissionRate)}% cơ bản + thưởng theo bậc/Deal/chiến dịch/Live (tối đa 25%)`,
-        rating: reviewCount ? Math.round(ratingSum / reviewCount * 10) / 10 : 4.9,
+        rating: reviewCount ? Math.round(ratingSum / reviewCount * 10) / 10 : null,
         reviewCount,
         location: 'TP.HCM & Hà Nội',
         activeCampaign: campaigns[0] ? {

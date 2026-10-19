@@ -17,8 +17,9 @@ import {
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductVariantInputDto } from './sync-product-variants.dto';
+import { ProductPackageDto } from './product-package.dto';
 
-export class CreateProductDto {
+export class CreateProductDto extends ProductPackageDto {
   @ApiProperty({
     description: 'Ít nhất một SKU phân loại được tạo cùng sản phẩm',
   })

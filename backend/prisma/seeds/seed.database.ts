@@ -26,6 +26,7 @@ const MODEL_NAMES: Record<SeedTable, string> = {
   socialChannels: 'CollaboratorSocialChannel',
   addresses: 'CustomerAddress',
   stores: 'Store',
+  sponsoredPlacements: 'SponsoredPlacement',
   products: 'Product',
   variants: 'ProductVariant',
   mediaAssets: 'MediaAsset',
@@ -41,6 +42,8 @@ const MODEL_NAMES: Record<SeedTable, string> = {
   coupons: 'Coupon',
   couponProducts: 'CouponProduct',
   redemptions: 'CouponRedemption',
+  stackedRedemptions: 'StackedVoucherRedemption',
+  savedCoupons: 'CustomerSavedCoupon',
   liveSessions: 'LiveShoppingSession',
   liveProducts: 'LiveSessionProduct',
   liveViewers: 'LiveSessionViewer',
@@ -51,6 +54,7 @@ const MODEL_NAMES: Record<SeedTable, string> = {
   reviews: 'ProductReview',
   samples: 'SampleProductRequest',
   sampleEvents: 'SampleRequestEvent',
+  sampleShippingCharges: 'SampleShippingCharge',
   returns: 'ReturnRequest',
   returnItems: 'ReturnItem',
   returnEvents: 'ReturnEvent',
@@ -130,6 +134,7 @@ const WRITERS: Record<SeedTable, TableWriter> = {
     tx.collaboratorSocialChannel.createMany({ data: d.socialChannels }),
   addresses: (tx, d) => tx.customerAddress.createMany({ data: d.addresses }),
   stores: (tx, d) => tx.store.createMany({ data: d.stores }),
+  sponsoredPlacements: (tx, d) => tx.sponsoredPlacement.createMany({ data: d.sponsoredPlacements }),
   products: (tx, d) => tx.product.createMany({ data: d.products }),
   variants: (tx, d) => tx.productVariant.createMany({ data: d.variants }),
   collaborations: (tx, d) =>
@@ -160,10 +165,16 @@ const WRITERS: Record<SeedTable, TableWriter> = {
   commissions: (tx, d) => tx.commission.createMany({ data: d.commissions }),
   redemptions: (tx, d) =>
     tx.couponRedemption.createMany({ data: d.redemptions }),
+  stackedRedemptions: (tx, d) =>
+    tx.stackedVoucherRedemption.createMany({ data: d.stackedRedemptions }),
+  savedCoupons: (tx, d) =>
+    tx.customerSavedCoupon.createMany({ data: d.savedCoupons }),
   reviews: (tx, d) => tx.productReview.createMany({ data: d.reviews }),
   samples: (tx, d) => tx.sampleProductRequest.createMany({ data: d.samples }),
   sampleEvents: (tx, d) =>
     tx.sampleRequestEvent.createMany({ data: d.sampleEvents }),
+  sampleShippingCharges: (tx, d) =>
+    tx.sampleShippingCharge.createMany({ data: d.sampleShippingCharges }),
   mediaAssets: (tx, d) => tx.mediaAsset.createMany({ data: d.mediaAssets }),
   returns: (tx, d) => tx.returnRequest.createMany({ data: d.returns }),
   returnItems: (tx, d) => tx.returnItem.createMany({ data: d.returnItems }),
@@ -196,7 +207,26 @@ export async function readPersistedCounts(
       `${quoted(target.schema)}.${quoted(model.dbName || model.name)}`,
     );
     let result: { count: bigint }[];
-    if (key === 'liveViewers') {
+    if (key === 'stackedRedemptions' || key === 'savedCoupons') {
+      const identities =
+        key === 'stackedRedemptions'
+          ? data.stackedRedemptions.map(
+              (row) =>
+                Prisma.sql`(${row.orderId}::uuid, ${row.couponId}::uuid)`,
+            )
+          : data.savedCoupons.map(
+              (row) => Prisma.sql`(${row.userId}::uuid, ${row.couponId}::uuid)`,
+            );
+      if (!identities.length) {
+        counts[key] = 0;
+        continue;
+      }
+      const firstColumn = Prisma.raw(
+        key === 'stackedRedemptions' ? 'order_id' : 'user_id',
+      );
+      result =
+        await tx.$queryRaw`SELECT count(*) FROM ${table} WHERE (${firstColumn}, coupon_id) IN (${Prisma.join(identities)})`;
+    } else if (key === 'liveViewers') {
       const identities = data.liveViewers.map(
         (row) => Prisma.sql`(${row.sessionId}::uuid, ${row.clientId})`,
       );
@@ -266,12 +296,7 @@ export async function applyDataset(
             source: 'SYNTHETIC_CAPSTONE',
             earliestOrderAt: data.orders[0].createdAt!.toString(),
             inventoryBaseline: inventoryBaseline(data),
-            unsupported: [
-              'ADDITIVE_COMMISSION_ENGINE',
-              'SHIPPING_VOUCHER_MODEL',
-              'DYNAMIC_SHIPPING_FEE_POLICY',
-              'PRODUCT_PACKAGE_COLUMNS',
-            ],
+            unsupported: [],
           },
         },
       });

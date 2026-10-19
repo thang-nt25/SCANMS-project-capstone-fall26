@@ -73,7 +73,7 @@ for (const savedEnvironment of ['TEST', 'LIVE', null, 'REJECTED', 'SUCCESS']) te
     assert.match(await page.$eval('table', el => el.innerText), /QA-SAVED/);
     await page.waitForFunction(() => document.body.innerText.includes('QA-SAVED'));
     const content = await page.$eval('body', el => el.innerText);
-    if (savedEnvironment === 'TEST' || savedEnvironment === 'SUCCESS') assert.match(content, /Hành trình mô phỏng đang chạy/);
+      if (savedEnvironment === 'TEST' || savedEnvironment === 'SUCCESS') assert.match(content, /Đã tạo vận đơn GHN sandbox/);
     else {
       assert.doesNotMatch(content, /Hành trình mô phỏng đang chạy/);
       if (savedEnvironment === 'LIVE') assert.match(content, /GHN thật thành công/);

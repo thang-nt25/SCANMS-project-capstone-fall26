@@ -1,5 +1,6 @@
 import { useSearchParams, Navigate } from 'react-router-dom';
-import { Link2, Tag, Radio } from 'lucide-react';
+import { Link2, Tag, Radio, Store } from 'lucide-react';
+import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { authService } from '../../services/auth.service';
@@ -29,6 +30,7 @@ export default function AdminOversightHubPage() {
   };
 
   const tabs: HubTabItem[] = [
+    { id: 'sponsorship', label: 'Gian hàng tài trợ', icon: Store },
     {
       id: 'links',
       label: 'Quản trị Link Tiếp thị Sàn',
@@ -62,7 +64,7 @@ export default function AdminOversightHubPage() {
         activeTab={activeTab}
         onChange={handleTabChange}
         stretchTabs
-        stretchTabColumns={3}
+        stretchTabColumns={4}
         tone="white"
       />
 
@@ -80,6 +82,7 @@ export default function AdminOversightHubPage() {
         )}
 
         {activeTab === 'live-sessions' && <AdminLiveSessionsPage />}
+        {activeTab === 'sponsorship' && <SponsoredPlacementsPanel admin />}
       </div>
     </div>
   );

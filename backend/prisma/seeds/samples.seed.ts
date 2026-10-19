@@ -29,6 +29,9 @@ export function buildSamples(data: SeedDataset, context: SeedContext): void {
       recipientName: name,
       recipientPhone: demoPhone(1, index),
       shippingAddress: fullAddress(addressFor(index)),
+      ghnProvinceId: Number(addressFor(index).provinceCode),
+      ghnDistrictId: Number(addressFor(index).districtCode),
+      ghnWardCode: addressFor(index).wardCode,
       socialPlatformSnapshot: channel.platformName,
       socialChannelNameSnapshot: channel.channelName,
       socialChannelUrlSnapshot: channel.channelUrl,
@@ -65,6 +68,20 @@ export function buildSamples(data: SeedDataset, context: SeedContext): void {
       createdAt,
     });
     if (granted) {
+      // No sandbox export exists for samples: preserve unknown freight instead of claiming GHN charged 0.
+      data.sampleShippingCharges.push({
+        id: seedId(`sample-shipping:${index}`),
+        sampleRequestId: sampleId,
+        storeId: product.storeId,
+        carrier: 'GHN',
+        environment: 'TEST',
+        trackingNumber: `DEMO-SAMPLE-GHN-${index + 1}`,
+        payer: 'SHOP',
+        codAmount: 0,
+        amount: null,
+        status: 'PENDING_CONFIRMATION',
+        recordedAt: new Date(createdAt.getTime() + 86_400_000),
+      });
       product.sampleGrantedCount = (product.sampleGrantedCount ?? 0) + 1;
       variant.sampleGrantedCount = (variant.sampleGrantedCount ?? 0) + 1;
       data.sampleEvents.push({

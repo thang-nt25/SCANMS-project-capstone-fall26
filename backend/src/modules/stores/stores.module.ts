@@ -4,11 +4,13 @@ import { StoresController } from './stores.controller';
 import { PrismaModule } from '../../core/database/prisma.module';
 import { CacheModule } from '../../core/cache/cache.module';
 import { StorePresenceService } from './store-presence.service';
+import { SponsorshipController } from './sponsorship/sponsorship.controller';
+import { SponsorshipService } from './sponsorship/sponsorship.service';
 
 @Module({
   imports: [PrismaModule, CacheModule],
-  controllers: [StoresController],
-  providers: [StoresService, StorePresenceService],
-  exports: [StoresService],
+  controllers: [StoresController, SponsorshipController],
+  providers: [StoresService, StorePresenceService, SponsorshipService],
+  exports: [StoresService, StorePresenceService, SponsorshipService],
 })
 export class StoresModule {}

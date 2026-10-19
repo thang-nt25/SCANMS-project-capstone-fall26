@@ -10,6 +10,11 @@ export interface Product {
   ingredients?: string | null;
   origin?: string | null;
   labelInfo?: string | null;
+  barcode?: string | null;
+  packageWeight?: number | null;
+  packageLength?: number | null;
+  packageWidth?: number | null;
+  packageHeight?: number | null;
   originProofLinks?: string[];
   originProofImages?: string[];
   labelProofLinks?: string[];

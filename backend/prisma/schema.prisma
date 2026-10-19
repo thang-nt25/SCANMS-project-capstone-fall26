@@ -348,6 +348,9 @@ model User {
   liveSessionClaims         LiveSessionClaim[]
   reviewedShopOnboardings   Store[]                 @relation("ShopOnboardingReviewer")
 
+  requestedSponsoredPlacements SponsoredPlacement[] @relation("SponsorshipRequester")
+  reviewedSponsoredPlacements  SponsoredPlacement[] @relation("SponsorshipReviewer")
+
   @@map("users")
 }
 
@@ -420,9 +423,49 @@ model Store {
   payoutBatches          PayoutBatch[]
   exclusiveDealProposals ExclusiveDealProposal[]
   liveSessions          LiveShoppingSession[]
+  sponsoredPlacements    SponsoredPlacement[]
 
   @@index([ownerId], map: "idx_fk_stores_owner")
   @@map("stores")
+}
+
+enum SponsoredPlacementStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum SponsoredPlacementFunding {
+  PAID
+  PLATFORM_GRANT
+}
+
+model SponsoredPlacement {
+  id               String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestKey       String                     @unique @map("request_key") @db.Uuid
+  storeId          String                     @map("store_id") @db.Uuid
+  requestedById    String                     @map("requested_by_id") @db.Uuid
+  reviewedById     String?                    @map("reviewed_by_id") @db.Uuid
+  headline         String                     @db.VarChar(160)
+  startsAt         DateTime                   @map("starts_at") @db.Timestamptz(6)
+  endsAt           DateTime                   @map("ends_at") @db.Timestamptz(6)
+  status           SponsoredPlacementStatus   @default(REQUESTED)
+  fundingType      SponsoredPlacementFunding? @map("funding_type")
+  amount           Decimal?                   @db.Decimal(15, 2)
+  paymentReference String?                    @unique @map("payment_reference") @db.VarChar(100)
+  paymentProofUrl  String?                    @map("payment_proof_url") @db.VarChar(2000)
+  reviewNote       String?                    @map("review_note") @db.VarChar(2000)
+  reviewedAt       DateTime?                  @map("reviewed_at") @db.Timestamptz(6)
+  createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  store            Store                      @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  requestedBy      User                       @relation("SponsorshipRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  reviewedBy       User?                      @relation("SponsorshipReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@index([status, startsAt, endsAt], map: "idx_sponsorship_public_window")
+  @@index([storeId, createdAt], map: "idx_sponsorship_store")
+  @@map("sponsored_placements")
 }
 
 model StoreFollow {
@@ -544,6 +587,11 @@ model Product {
   ingredients           String?   @db.Text
   origin                String?   @db.VarChar(255)
   labelInfo             String?   @map("label_info") @db.Text
+  barcode              String?                 @db.VarChar(13)
+  packageWeight        Int?                    @map("package_weight")
+  packageLength        Int?                    @map("package_length")
+  packageWidth         Int?                    @map("package_width")
+  packageHeight        Int?                    @map("package_height")
   isAffiliateEnabled   Boolean   @default(true) @map("is_affiliate_enabled")
   sampleEnabled        Boolean   @default(false) @map("sample_enabled")
   sampleQuota          Int       @default(0) @map("sample_quota")
@@ -570,6 +618,7 @@ model Product {
 
   @@index([storeId], map: "idx_fk_products_store")
   @@index([moderationStatus, createdAt], map: "idx_products_moderation_status_created")
+  @@index([barcode], map: "idx_products_barcode")
   @@map("products")
 }
 
@@ -1848,8 +1897,8 @@ model ReturnShipment {
   receivedAt      DateTime?               @map("received_at") @db.Timestamptz(6)
   returnRequest   ReturnRequest           @relation(fields: [returnRequestId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "return_shipments_request_fkey")
 
-  @@index([returnRequestId, direction, shippedAt])
   @@unique([returnRequestId, direction], map: "return_shipments_request_direction_key")
+  @@index([returnRequestId, direction, shippedAt])
   @@index([trackingNumber])
   @@map("return_shipments")
 }

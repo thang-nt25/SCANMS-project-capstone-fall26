@@ -3,8 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { createHash } from 'node:crypto';
 import {
   FraudScanQueryDto,
   FraudIncidentDto,
@@ -26,8 +28,6 @@ interface IncidentActionRecord {
   }>;
 }
 
-const incidentActionStore = new Map<string, IncidentActionRecord>();
-
 @Injectable()
 export class AiFraudService {
   private readonly logger = new Logger(AiFraudService.name);
@@ -44,22 +44,34 @@ export class AiFraudService {
     const isShop = requesterUser.role === 'SHOP_MANAGER';
     let targetStoreId = query.storeId;
 
-    if (isShop && !targetStoreId) {
+    if (isShop) {
       const shop = await this.prisma.store.findFirst({
-        where: { ownerId: requesterUser.id, isDeleted: false },
+        where: { ownerId: requesterUser.id, isDeleted: false, ...(targetStoreId ? { id: targetStoreId } : {}) },
         select: { id: true },
       });
-      if (shop) targetStoreId = shop.id;
+      if (!shop) throw new ForbiddenException('Không có quyền quét gian hàng này.');
+      targetStoreId = shop.id;
     }
+    const isCreator = requesterUser.role === 'COLLABORATOR';
+    if (!isShop && !isCreator && !['SYSTEM_ADMIN', 'SYSTEM_MANAGER'].includes(requesterUser.role)) throw new ForbiddenException();
+    if (isCreator && query.collaboratorId && query.collaboratorId !== requesterUser.id) throw new ForbiddenException('Chỉ được xem dữ liệu của chính mình.');
+    const timeframe = query.timeframe || '30d';
+    const windowDays = { '24h': 1, '7d': 7, '30d': 30, all: null }[timeframe];
+    if (windowDays === undefined) throw new BadRequestException('Khoảng thời gian không hợp lệ.');
+    const now = new Date();
+    const period = { ...(windowDays === null ? {} : { gte: new Date(now.getTime() - windowDays * 86400000) }), lte: now };
+    const orderFilter = { status: { notIn: ['CANCELLED', 'RETURNED'] as any }, createdAt: period };
 
     // Lấy danh sách link tiếp thị và các phiên truy cập
     const whereClause: any = { deletedAt: null };
     if (targetStoreId) whereClause.storeId = targetStoreId;
     if (query.collaboratorId) whereClause.collaboratorId = query.collaboratorId;
+    if (isCreator) whereClause.collaboratorId = requesterUser.id;
 
     const referralLinks = await this.prisma.referralLink.findMany({
       where: whereClause,
       include: {
+        _count: { select: { orders: { where: orderFilter }, clickTrafficLogs: { where: { createdAt: period } } } },
         collaborator: {
           select: {
             id: true,
@@ -93,9 +105,7 @@ export class AiFraudService {
           },
         },
         orders: {
-          where: {
-            status: { notIn: ['CANCELLED', 'RETURNED'] },
-          },
+          where: orderFilter,
           select: {
             id: true,
             customerId: true,
@@ -107,6 +117,7 @@ export class AiFraudService {
           take: 50,
         },
         clickTrafficLogs: {
+          where: { createdAt: period },
           take: 100,
           orderBy: { createdAt: 'desc' },
           select: {
@@ -120,6 +131,21 @@ export class AiFraudService {
       },
     });
 
+    const actionRecords = referralLinks.length ? await this.prisma.auditLog.findMany({
+      where: { action: { startsWith: 'FRAUD_MITIGATION_' }, OR: referralLinks.map(link => ({ details: { path: ['linkId'], equals: link.id } })) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { action: true, details: true, createdAt: true, userId: true },
+    }) : [];
+    const savedActions = new Map<string, IncidentActionRecord>();
+    for (const record of actionRecords) {
+      const details = record.details as Record<string, unknown> | null;
+      if (typeof details?.linkId !== 'string') continue;
+      const action = record.action.replace('FRAUD_MITIGATION_', '');
+      const status = action === 'DISMISS' ? 'DISMISSED' : action === 'RESOLVE' ? 'RESOLVED' : 'FROZEN';
+      const state = savedActions.get(details.linkId) || { status, history: [] };
+      if (state.history.length < 20) state.history.push({ action, performedBy: String(details.actorName || record.userId || 'Hệ thống'), performedAt: record.createdAt, note: typeof details.note === 'string' ? details.note : undefined });
+      savedActions.set(details.linkId, state);
+    }
     const collaboratorIds = [
       ...new Set(referralLinks.map((link) => link.collaboratorId)),
     ];
@@ -129,6 +155,7 @@ export class AiFraudService {
           where: {
             collaboratorId: { in: collaboratorIds },
             status: 'PENDING',
+            ...(targetStoreId ? { order: { storeId: targetStoreId } } : {}),
           },
           _sum: { commissionAmount: true },
         })
@@ -143,21 +170,19 @@ export class AiFraudService {
     const incidents: FraudIncidentDto[] = [];
     let totalScannedClicks = 0;
     let potentialSavedAmount = 0;
+    const countedCollaborators = new Set<string>();
 
     for (const link of referralLinks) {
       const pendingAmount =
         pendingAmountByCollaborator.get(link.collaboratorId) ?? 0;
       const relatedOrders = link.orders;
 
-      const totalOrdersCount = relatedOrders.length;
-      const totalClicks = Math.max(
-        link.totalClicks || link.clickTrafficLogs.length,
-        1,
-      );
+      const totalOrdersCount = link._count.orders;
+      const totalClicks = link._count.clickTrafficLogs;
       totalScannedClicks += totalClicks;
 
       const incidentId = `incident-${link.id}`;
-      const actionRecord = incidentActionStore.get(incidentId);
+      const actionRecord = savedActions.get(link.id);
 
       // Phân tích dữ liệu bằng thuật toán AI Anomaly Heuristics (kèm Self-Referral Detection)
       const analysis = this.evaluateFraudAnomalies({
@@ -188,7 +213,16 @@ export class AiFraudService {
       }
 
       if (analysis.riskScore >= 70) {
+        const hash = createHash('sha256').update(`AI_FRAUD_FLAG:v1:${link.id}:${timeframe}:${now.toISOString().slice(0, 10)}`).digest('hex').slice(0, 32);
+        const eventId = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20)}`;
+        await this.prisma.auditLog.upsert({ where: { eventId }, update: {}, create: {
+          eventId, userId: requesterUser.id, action: 'AI_FRAUD_FLAG',
+          details: { incidentId, linkId: link.id, storeId: link.storeId, timeframe, totalClicks, totalOrders: totalOrdersCount, riskScore: analysis.riskScore, anomalies: analysis.anomalies, ruleVersion: 1 },
+        } });
+      }
+      if (analysis.riskScore >= 70 && !countedCollaborators.has(link.collaboratorId)) {
         potentialSavedAmount += pendingAmount;
+        countedCollaborators.add(link.collaboratorId);
       }
 
       const incident: FraudIncidentDto = {
@@ -212,7 +246,7 @@ export class AiFraudService {
         totalClicks,
         totalOrders: totalOrdersCount,
         conversionRate: Number(
-          ((totalOrdersCount / totalClicks) * 100).toFixed(2),
+          (totalClicks ? (totalOrdersCount / totalClicks) * 100 : 0).toFixed(2),
         ),
         pendingCommissionAmount: pendingAmount,
         aiReasoning: analysis.aiReasoning,
@@ -291,6 +325,7 @@ export class AiFraudService {
   ): Promise<FraudIncidentDto> {
     const summary = await this.scanTraffic({ collaboratorId }, requesterUser);
     if (summary.incidents.length === 0) {
+      if (requesterUser.role === 'SHOP_MANAGER') throw new NotFoundException('Chưa có dữ liệu đối tác trong gian hàng này.');
       const user = await this.prisma.user.findUnique({
         where: { id: collaboratorId },
         include: { collaboratorProfile: { include: { tier: true } } },
@@ -306,7 +341,7 @@ export class AiFraudService {
         collaboratorName: user.fullName,
         collaboratorEmail: user.email,
         collaboratorTier: user.collaboratorProfile?.tier?.name || 'Đồng',
-        riskScore: 12,
+        riskScore: 0,
         riskLevel: 'CLEAN',
         anomalyTypes: [],
         totalClicks: 0,
@@ -314,14 +349,14 @@ export class AiFraudService {
         conversionRate: 0,
         pendingCommissionAmount: 0,
         aiReasoning:
-          'Chưa phát hiện hành vi bất thường. Tài khoản hoạt động ổn định và tuân thủ chính sách.',
+          'Chưa có đủ dữ liệu traffic trong phạm vi được phép xem. Không thể kết luận tài khoản an toàn hay gian lận.',
         evidences: [
           {
             metric: 'Lưu lượng sạch',
-            value: '100% Organic',
+            value: 'Chưa đủ dữ liệu',
             severity: 'LOW',
             description:
-              'Không phát hiện bot hoặc dấu hiệu can thiệp click ảo.',
+              'Không dùng thiếu dữ liệu làm bằng chứng xác nhận lưu lượng sạch.',
           },
         ],
         suggestedAction: 'NONE',
@@ -340,7 +375,7 @@ export class AiFraudService {
   async takeActionOnIncident(
     incidentId: string,
     actionDto: FraudActionDto,
-    actorUser: { id: string; fullName?: string; email: string },
+    actorUser: { id: string; role: string; fullName?: string; email: string },
   ): Promise<{
     success: boolean;
     message: string;
@@ -359,97 +394,38 @@ export class AiFraudService {
       );
     }
 
-    let targetStatus: 'ACTIVE' | 'FROZEN' | 'RESOLVED' | 'DISMISSED' = 'ACTIVE';
-    let message = '';
-
-    switch (actionDto.action) {
-      case 'FREEZE_COMMISSION':
-        targetStatus = 'FROZEN';
-        message =
-          'Đã kích hoạt đóng băng toàn bộ hoa hồng ví chờ của đối tác để đối soát an toàn.';
-        // Tạm ngưng link tiếp thị trong database
-        await this.prisma.referralLink.update({
-          where: { id: linkId },
-          data: { status: 'PAUSED' },
-        });
-        try {
-          await this.prisma.commission.updateMany({
-            where: {
-              collaboratorId: referralLink.collaboratorId,
-              status: 'PENDING',
-            },
-            data: {
-              availableAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-            },
-          });
-        } catch (e) {
-          this.logger.warn(`Lỗi đóng băng hoa hồng pending: ${e}`);
-        }
-        break;
-
-      case 'PAUSE_LINK':
-        targetStatus = 'FROZEN';
-        message = 'Đã tạm ngưng hoạt động của link tiếp thị nghi vấn.';
-        await this.prisma.referralLink.update({
-          where: { id: linkId },
-          data: { status: 'PAUSED' },
-        });
-        break;
-
-      case 'DISMISS':
-        targetStatus = 'DISMISSED';
-        message =
-          'Đã bác bỏ cảnh báo. Lưu lượng được đánh giá là an toàn và hợp lệ.';
-        await this.prisma.referralLink.update({
-          where: { id: linkId },
-          data: { status: 'ACTIVE' },
-        });
-        break;
-
-      case 'RESOLVE':
-        targetStatus = 'RESOLVED';
-        message = 'Đã đánh dấu xử lý hoàn tất sự vụ.';
-        break;
-
-      default:
-        throw new BadRequestException('Hành động không được hỗ trợ');
-    }
-
-    // Ghi nhận vào action store
-    const existing = incidentActionStore.get(incidentId) || {
-      status: 'ACTIVE',
-      history: [],
+    const messages = {
+      FREEZE_COMMISSION: 'Đã tạm ngưng link và giữ hoa hồng chờ của đối tác tại gian hàng này để đối soát.',
+      PAUSE_LINK: 'Đã tạm ngưng link tiếp thị nghi vấn.',
+      DISMISS: 'Đã bác bỏ cảnh báo và mở lại link. Các khoản giữ hoa hồng phải được đối soát riêng.',
+      RESOLVE: 'Đã đánh dấu hoàn tất xử lý sự vụ.',
     };
-    existing.status = targetStatus;
-    existing.history.unshift({
-      action: actionDto.action,
-      performedBy: actorUser.fullName || actorUser.email,
-      performedAt: new Date(),
-      note: actionDto.note,
-    });
-    incidentActionStore.set(incidentId, existing);
-
-    // Ghi vết vào AuditLog nếu có
-    try {
-      await this.prisma.auditLog.create({
-        data: {
-          userId: actorUser.id,
-          action: `FRAUD_MITIGATION_${actionDto.action}`,
-          details: {
-            incidentId,
-            linkId,
-            collaboratorId: referralLink.collaboratorId,
-            note: actionDto.note,
-          },
-        },
-      });
-    } catch (e) {
-      this.logger.warn(`Audit log write skipped: ${e}`);
+    const message = messages[actionDto.action];
+    if (!message) throw new BadRequestException('Hành động không được hỗ trợ.');
+    if (!actionDto.note?.trim() || actionDto.note.trim().length < 10) throw new BadRequestException('Nhập lý do xử lý tối thiểu 10 ký tự.');
+    if (!['SYSTEM_ADMIN', 'SYSTEM_MANAGER', 'SHOP_MANAGER'].includes(actorUser.role)) throw new ForbiddenException();
+    if (actorUser.role === 'SHOP_MANAGER') {
+      const store = await this.prisma.store.findFirst({ where: { id: referralLink.storeId, ownerId: actorUser.id, isDeleted: false }, select: { id: true } });
+      if (!store) throw new ForbiddenException('Không có quyền xử lý link của gian hàng khác.');
     }
+    // Enforcement and its audit trail either both commit or both roll back.
+    await this.prisma.$transaction(async tx => {
+      if (actionDto.action !== 'RESOLVE') await tx.referralLink.update({
+        where: { id: linkId }, data: { status: actionDto.action === 'DISMISS' ? 'ACTIVE' : 'PAUSED' },
+      });
+      if (actionDto.action === 'FREEZE_COMMISSION') await tx.commission.updateMany({
+        where: { collaboratorId: referralLink.collaboratorId, status: 'PENDING', order: { storeId: referralLink.storeId } },
+        data: { availableAt: new Date(Date.now() + 90 * 86400000) },
+      });
+      await tx.auditLog.create({ data: {
+        userId: actorUser.id, action: `FRAUD_MITIGATION_${actionDto.action}`,
+        details: { incidentId, linkId, storeId: referralLink.storeId, collaboratorId: referralLink.collaboratorId, note: actionDto.note!.trim(), actorName: actorUser.fullName || actorUser.email },
+      } });
+    });
 
     const updatedIncident = await this.getIncidentById(incidentId, {
       id: actorUser.id,
-      role: 'SYSTEM_ADMIN',
+      role: actorUser.role,
       email: actorUser.email,
     });
 
@@ -505,7 +481,11 @@ export class AiFraudService {
       totalClicks > 0 ? (totalOrders / totalClicks) * 100 : 0;
 
     // 1. Kiểm tra Zombie Traffic: Quá nhiều click nhưng không chuyển đổi (Clicks > 300, CR < 0.2%)
-    if (totalClicks >= 300 && totalOrders === 0) {
+    if (totalClicks > 5000 && totalOrders === 0) {
+      score += 70;
+      anomalies.push('ZOMBIE_TRAFFIC');
+      evidences.push({ metric: 'AI_FRAUD_FLAG: click cao không có đơn', value: `${totalClicks} clicks / 0 đơn`, severity: 'HIGH', description: 'Vượt ngưỡng 5.000 clicks trong kỳ nhưng không có đơn hợp lệ. Cần đối soát, không phải kết luận gian lận.' });
+    } else if (totalClicks >= 300 && totalOrders === 0) {
       score += 45;
       anomalies.push('ZOMBIE_TRAFFIC');
       evidences.push({
@@ -523,7 +503,7 @@ export class AiFraudService {
         value: `CR = ${conversionRate.toFixed(2)}%`,
         severity: 'MEDIUM',
         description:
-          'Tỷ lệ chuyển đổi thấp hơn 95% mức trung bình của toàn sàn.',
+          'CR dưới ngưỡng quy tắc 0,3% với ít nhất 150 clicks; không phải so sánh trung bình toàn sàn.',
       });
     }
 
@@ -531,11 +511,12 @@ export class AiFraudService {
     if (logs.length >= 5) {
       const ipCounts = new Map<string, number>();
       logs.forEach((s) => {
-        const ip = s.ipAddress || '127.0.0.1';
+        const ip = s.ipAddress;
+        if (!ip) return;
         ipCounts.set(ip, (ipCounts.get(ip) || 0) + 1);
       });
 
-      const maxIpCount = Math.max(...Array.from(ipCounts.values()));
+      const maxIpCount = Math.max(0, ...Array.from(ipCounts.values()));
       if (maxIpCount >= 8) {
         score += 35;
         anomalies.push('IP_CLUSTER');
@@ -638,14 +619,14 @@ export class AiFraudService {
     } else {
       riskLevel = 'CLEAN';
       suggestedAction = 'NONE';
-      aiReasoning = `LƯU LƯỢNG AN TOÀN (Điểm rủi ro: ${finalScore}/100): Mẫu tương tác và tỷ lệ chuyển đổi hoàn toàn tự nhiên, tuân thủ chính sách tiếp thị của sàn SCANMS.`;
+      aiReasoning = `CHƯA PHÁT HIỆN BẤT THƯỜNG (Điểm quy tắc: ${finalScore}/100): Chưa khớp các quy tắc đang kiểm tra trong kỳ. Đây không phải xác nhận toàn bộ traffic là tự nhiên.`;
       if (evidences.length === 0) {
         evidences.push({
           metric: 'Traffic Organic',
           value: 'Bình thường',
           severity: 'LOW',
           description:
-            'Lượt click và đơn hàng phân bố đều đặn theo thời gian thực.',
+            'Chưa khớp quy tắc bất thường trong dữ liệu được kiểm tra; IP/bot chỉ phân tích tối đa 100 click gần nhất.',
         });
       }
     }

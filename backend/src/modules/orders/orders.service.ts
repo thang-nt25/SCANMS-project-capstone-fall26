@@ -18,6 +18,7 @@ import { publicReturnPolicy } from '../stores/store-policy.util';
 import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
 import { requireShippingFee } from '../shipping/shipping-fee';
 import { syncCustomerGhnSimulations } from '../shipping/sync-customer-ghn-simulation';
+import { buildShippingPackage, type ShippingPackage } from '../shipping/shipping-package';
 import { CacheService } from '../../core/cache/cache.service';
 import { CreateOrderDto, PaymentMethod } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
@@ -129,9 +130,10 @@ export class OrdersService {
     }
   }
 
-  private async quoteCheckoutShipping(address: string, quantity: number, subtotal: number, storeId: string) {
+  private async quoteCheckoutShipping(address: string, items: Array<{ productId: string; quantity: number }>, products: Map<string, any>, subtotal: number, storeId: string) {
     if (!this.ghnService) throw new InternalServerErrorException('Dịch vụ tính cước GHN chưa sẵn sàng. Vui lòng thử lại sau.');
-    return this.ghnService.quoteAddress(address, Math.max(500, quantity * 500), subtotal, storeId);
+    const parcel = buildShippingPackage(items.map((item) => ({ product: products.get(item.productId), quantity: item.quantity })));
+    return { ...await this.ghnService.quoteAddress(address, parcel.weight, subtotal, storeId, parcel), shippingPackage: parcel };
   }
 
   /**
@@ -886,7 +888,8 @@ export class OrdersService {
 
     const shippingQuote = await this.quoteCheckoutShipping(
       shippingAddress,
-      dto.items.reduce((sum, item) => sum + item.quantity, 0),
+      dto.items,
+      productMap,
       rawSubtotalAmount,
       store.id,
     );
@@ -985,7 +988,7 @@ export class OrdersService {
       customerPhone: string;
       customerEmail: string | null;
       shippingAddress: string;
-      shippingQuote?: { totalFee: number; districtId: number; wardCode: string } | null;
+      shippingQuote?: { totalFee: number; districtId: number; wardCode: string; shippingPackage?: ShippingPackage } | null;
       orderNotes?: string | null;
       cleanIdempotencyKey: string;
       currentPayloadHash: string;
@@ -1054,6 +1057,22 @@ export class OrdersService {
       throw new BadRequestException(
         `Gian hàng "${lockedStore?.name || store.name}" không tồn tại, đã tạm ngưng hoạt động hoặc đã ngừng kinh doanh.`,
       );
+    }
+
+    if (shippingQuote?.shippingPackage) {
+      // Prevent a concurrent package edit from invalidating the carrier quote at checkout.
+      const ids = [...new Set(dto.items.map((item) => item.productId))].sort();
+      const current = await tx.$queryRaw<Array<{ id: string; packageWeight: number | null; packageLength: number | null; packageWidth: number | null; packageHeight: number | null }>>(Prisma.sql`
+        SELECT id, package_weight AS "packageWeight", package_length AS "packageLength",
+          package_width AS "packageWidth", package_height AS "packageHeight"
+        FROM products WHERE id IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))})
+        ORDER BY id FOR UPDATE
+      `);
+      const packages = new Map(current.map((product) => [product.id, product]));
+      const locked = buildShippingPackage(dto.items.map((item) => ({ product: packages.get(item.productId)!, quantity: item.quantity })));
+      if (['weight', 'length', 'width', 'height'].some((key: keyof ShippingPackage) => locked[key] !== shippingQuote.shippingPackage![key])) {
+        throw new ConflictException('Thông số đóng gói vừa thay đổi. Vui lòng tải lại báo giá vận chuyển.');
+      }
     }
 
     // 4.2 Trừ kho an toàn: hỗ trợ tồn kho variant hoặc sản phẩm
@@ -1828,6 +1847,8 @@ export class OrdersService {
           requestHash: currentPayloadHash,
           ghnDistrictId: shippingQuote?.districtId || null,
           ghnWardCode: shippingQuote?.wardCode || null,
+          shippingPackage: shippingQuote?.shippingPackage ? { ...shippingQuote.shippingPackage } : null,
+          shippingPackageVersion: shippingQuote?.shippingPackage ? 1 : 0,
         },
         policyAcceptedAt: new Date(),
         policySnapshot: {
@@ -2203,7 +2224,7 @@ export class OrdersService {
       subDto: CreateOrderDto;
       subIdempotencyKey: string;
       subPayloadHash: string;
-      shippingQuote: { totalFee: number; districtId: number; wardCode: string } | null;
+      shippingQuote: { totalFee: number; districtId: number; wardCode: string; shippingPackage?: ShippingPackage } | null;
     }> = [];
 
     const uuidPattern =
@@ -2309,7 +2330,8 @@ export class OrdersService {
 
       const shippingQuote = await this.quoteCheckoutShipping(
         shippingAddress,
-        storeItems.reduce((sum, item) => sum + item.quantity, 0),
+        storeItems,
+        storeProdMap,
         rawSubtotalAmount,
         storeId,
       );

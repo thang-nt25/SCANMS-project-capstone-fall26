@@ -32,6 +32,7 @@ import {
 import { Select } from '../../components/ui/Select';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
+import { WorkspaceHero } from '@/components/ui/FeatureWorkspace';
 
 export const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
@@ -39,6 +40,7 @@ export const AuditLogsPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [exporting, setExporting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState('');
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -58,6 +60,9 @@ export const AuditLogsPage: React.FC = () => {
   const detailRef = useRef<HTMLDivElement>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState<boolean>(false);
+  const logSequence = useRef(0);
+  const statsSequence = useRef(0);
+  const exportLock = useRef(false);
 
   useEffect(() => {
     if (!selectedLog) {
@@ -94,16 +99,21 @@ export const AuditLogsPage: React.FC = () => {
 
   // Load Action metadata & Stats
   const loadStatsAndActions = useCallback(async () => {
+    const request = ++statsSequence.current;
+    setStats(null); setStatsError('');
     try {
       const statsRes = await auditService.getAuditStats(selectedTimeframe);
+      if (request !== statsSequence.current) return;
       setStats(statsRes);
     } catch (err: any) {
+      if (request === statsSequence.current) setStatsError('Chưa tải được thống kê kiểm toán. Bảng sự kiện vẫn có thể tra cứu độc lập.');
       console.error('Lỗi khi tải metadata kiểm toán:', err);
     }
   }, [selectedTimeframe]);
 
   // Load Logs
   const loadLogs = useCallback(async () => {
+    const request = ++logSequence.current;
     setLoading(true);
     setError(null);
     try {
@@ -133,31 +143,40 @@ export const AuditLogsPage: React.FC = () => {
       }
 
       const res = await auditService.getAuditLogs(params);
+      if (request !== logSequence.current) return;
       setLogs(res.items || []);
       setTotalPages(res.pagination?.totalPages || 1);
       setTotalCount(res.pagination?.total || 0);
     } catch (err: any) {
+      if (request !== logSequence.current) return;
       console.error('Lỗi khi tải danh sách Audit Logs:', err);
       setError(err.response?.data?.message || err.message || 'Không thể tải nhật ký kiểm toán');
     } finally {
-      setLoading(false);
+      if (request === logSequence.current) setLoading(false);
     }
   }, [currentPage, selectedCategory, selectedSeverity, debouncedKeyword, selectedTimeframe]);
 
   useEffect(() => {
     loadStatsAndActions();
+    return () => { statsSequence.current += 1; };
   }, [loadStatsAndActions]);
 
   useEffect(() => {
     loadLogs();
+    return () => { logSequence.current += 1; };
   }, [loadLogs]);
 
   // Export CSV Handler
   const handleExportCsv = async () => {
+    if (exportLock.current) return;
+    exportLock.current = true;
     setExporting(true);
     try {
       const params: any = {};
       if (selectedCategory !== 'ALL') params.category = selectedCategory;
+      if (selectedSeverity !== 'ALL') params.severity = selectedSeverity;
+      const days = { '24h': 1, '7d': 7, '30d': 30, all: null }[selectedTimeframe];
+      if (days !== null) params.startDate = new Date(Date.now() - days * 86400000).toISOString();
       if (debouncedKeyword.trim()) params.keyword = debouncedKeyword.trim();
 
       const blob = await auditService.exportAuditLogsCsv(params);
@@ -167,13 +186,14 @@ export const AuditLogsPage: React.FC = () => {
       a.download = `scanms_nhat_ky_hoat_dong_${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
       document.body.removeChild(a);
     } catch (err: any) {
       toast.error('Xuất file nhật ký thất bại', {
         description: err.message || 'Lỗi kết nối máy chủ.',
       });
     } finally {
+      exportLock.current = false;
       setExporting(false);
     }
   };
@@ -381,6 +401,7 @@ export const AuditLogsPage: React.FC = () => {
 
   return (
     <div className="w-full min-w-0 text-[#1A1612] flex flex-col gap-4 pb-8">
+      <WorkspaceHero eyebrow="SCANMS / Compliance & Traceability" title="Dấu vết vận hành toàn sàn" description="Tra cứu thao tác theo nghiệp vụ, mức độ, thời gian hoặc mã Log/Event ID. Mật khẩu, OTP và token được che khi ghi, đọc và xuất. CSV giữ nguyên bộ lọc; tối đa 2.000 bản ghi mới nhất mỗi lần xuất." />
       {/* 1. Page Header Chuẩn Hóa */}
       <PageHeader
         title="Nhật ký Kiểm toán Toàn sàn"
@@ -409,6 +430,7 @@ export const AuditLogsPage: React.FC = () => {
           </div>
         }
       />
+      {statsError && <p role="alert" className="m-0 text-xs text-[#DC2626]">{statsError}<button className="ml-2 underline" onClick={() => void loadStatsAndActions()}>Thử lại thống kê</button></p>}
 
       <div className="w-full min-w-0">
         {/* 2. 4 KPI Cards Chuẩn Hóa */}

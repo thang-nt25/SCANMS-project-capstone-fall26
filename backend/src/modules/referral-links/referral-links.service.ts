@@ -40,6 +40,7 @@ import {
 import { normalizeClientIp, hashIpForRateLimit } from './utils/client-ip.util';
 import { CacheService } from '../../core/cache/cache.service';
 import * as QRCode from 'qrcode';
+import { renderQrPng } from './utils/qr-png.renderer';
 import * as crypto from 'crypto';
 
 export interface ClientTrackingInfo {
@@ -2802,16 +2803,7 @@ export class ReferralLinksService {
           : cached.bufferBase64;
       contentType = cached.contentType;
     } else if (format === 'png') {
-      buffer = await QRCode.toBuffer(shortUrl, {
-        type: 'png',
-        width: size,
-        margin: 4,
-        errorCorrectionLevel: 'M',
-        color: {
-          dark: '#1A1612',
-          light: '#FFFFFF',
-        },
-      });
+      buffer = renderQrPng(shortUrl, size);
       contentType = 'image/png';
 
       // Lưu cache 24h

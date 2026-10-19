@@ -258,11 +258,12 @@ const FIGMA13_BATCH_SEEDS: MerchantPayoutBatch[] = [
 ];
 
 export default function PayoutApprovalPage() {
+  const fixtureMode = import.meta.env.DEV && import.meta.env.VITE_PAYOUT_FIXTURES_ENABLED === 'true';
   const { storeId: routeStoreId } = useParams<{ storeId: string }>();
   const [storeId, setStoreId] = useState(routeStoreId ?? "");
   const [history, setHistory] = useState<MerchantPayoutHistory | null>(null);
-  const [localRequests, setLocalRequests] = useState<MerchantPayout[]>(FIGMA13_PAYOUT_SEEDS);
-  const [batches, setBatches] = useState<MerchantPayoutBatch[]>(FIGMA13_BATCH_SEEDS);
+  const [localRequests, setLocalRequests] = useState<MerchantPayout[]>(fixtureMode ? FIGMA13_PAYOUT_SEEDS : []);
+  const [batches, setBatches] = useState<MerchantPayoutBatch[]>(fixtureMode ? FIGMA13_BATCH_SEEDS : []);
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<PayoutStatus | "">("");
   const [activeKpiFilter, setActiveKpiFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'TAX' | 'KYC'>('ALL');
@@ -490,6 +491,17 @@ export default function PayoutApprovalPage() {
     setError("");
   }
 
+  async function openBill(request: MerchantPayout) {
+    setBillLink('');
+    setViewingBill(request);
+    await runAction(async () => {
+      if (!storeId) throw new Error('Chưa xác định được gian hàng chi trả.');
+      const result = await payoutService.bill(storeId, request.id);
+      if (!result.url || new URL(result.url).protocol !== 'https:') throw new Error('Chưa có liên kết chứng từ an toàn từ máy chủ.');
+      setBillLink(result.url);
+    });
+  }
+
   async function submitDialog(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dialog || busy) return;
@@ -510,7 +522,8 @@ export default function PayoutApprovalPage() {
       return;
     }
     await runAction(async () => {
-      const isSeedRequest = FIGMA13_PAYOUT_SEEDS.some((s) => s.id === dialog.request.id);
+      const isSeedRequest = fixtureMode && FIGMA13_PAYOUT_SEEDS.some((s) => s.id === dialog.request.id);
+      if (!isSeedRequest && !storeId) throw new Error('Chưa xác định được gian hàng chi trả. Vui lòng tải lại.');
 
       // Nếu là yêu cầu chi trả thực tế trong Database (không phải dữ liệu seed tĩnh)
       if (!isSeedRequest && storeId) {
@@ -579,9 +592,10 @@ export default function PayoutApprovalPage() {
     });
   }
 
-  // Danh sách dữ liệu hoạt động: ưu tiên DB nếu có bản ghi, ngược lại dùng seed data phong phú chuẩn Figma 13
-  const baseRequests =
-    history && history.requests.length > 0 ? history.requests : localRequests;
+  // An empty/failed API response is not consent to display fabricated financial activity.
+  const baseRequests = useMemo(() =>
+    history && history.requests.length > 0 ? history.requests : fixtureMode ? localRequests : [],
+  [history, fixtureMode, localRequests]);
 
   // Thống kê KPIs chi trả (Chuẩn Figma 13 - tính toán chính xác trên dữ liệu hiện tại)
   const pendingRequests = baseRequests.filter((r) => r.status === "PENDING");
@@ -651,7 +665,8 @@ export default function PayoutApprovalPage() {
 
     await runAction(async () => {
       try {
-        if (history && history.requests.length > 0 && selected.length > 0) {
+        if (!fixtureMode || (history && history.requests.length > 0 && selected.length > 0)) {
+          if (!storeId) throw new Error('Chưa xác định được gian hàng đối soát.');
           const blob = await payoutService.exportBatch(storeId, targetIds);
           saveWorkbook(blob, `SCANMS-VietQR-${Date.now()}.xlsx`);
         } else {
@@ -723,14 +738,19 @@ export default function PayoutApprovalPage() {
           `Đã xuất file đối soát VietQR cho ${targetIds.length} lệnh payout!`
         );
         setSelected([]);
+        if (!fixtureMode) await load();
       } catch (err: any) {
         toast.error(err?.message || "Lỗi xuất file VietQR");
+        throw err;
       }
     });
   };
 
   return (
     <div className="merchant-payout-page mx-auto w-full min-w-0 max-w-[1480px] space-y-4 pb-8 pt-4 text-ink sm:pt-6">
+      {fixtureMode && <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+        Đang bật dữ liệu giao diện chi trả TEST. Những bản ghi này không chứng minh chuyển tiền thật.
+      </p>}
 
       {error && (
         <p
@@ -1500,7 +1520,7 @@ export default function PayoutApprovalPage() {
                         <button
                           type="button"
                           disabled={busy}
-                          onClick={() => setViewingBill(request)}
+                          onClick={() => void openBill(request)}
                           className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#8A642C] transition hover:bg-[#F3EFE6] cursor-pointer whitespace-nowrap"
                         >
                           <ReceiptText size={13} className="text-[#B88E4F]" />
@@ -1593,7 +1613,8 @@ export default function PayoutApprovalPage() {
                       try {
                         const blob = await payoutService.downloadBatch(storeId, batch.id);
                         saveWorkbook(blob, `SCANMS-VietQR-${batch.id}.xlsx`);
-                      } catch {
+                      } catch (error) {
+                        if (!fixtureMode) throw error;
                         const batchRows = [
                           [
                             "STT",
@@ -1854,9 +1875,10 @@ export default function PayoutApprovalPage() {
       {/* Modal Xem Bill Chuyển Khoản Ngân Hàng VietQR / Napas247 */}
       {viewingBill && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-3xl border border-[#EEDFC6] p-6 shadow-2xl text-left animate-in fade-in zoom-in-95">
+          <div role="dialog" aria-modal="true" aria-label="Chứng từ chi trả" className="relative w-full max-w-md bg-white rounded-3xl border border-[#EEDFC6] p-6 shadow-2xl text-left animate-in fade-in zoom-in-95">
             <button
               type="button"
+              aria-label="Đóng chứng từ chi trả"
               onClick={() => setViewingBill(null)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:text-[#1A1612] flex items-center justify-center transition cursor-pointer"
             >
@@ -1868,15 +1890,15 @@ export default function PayoutApprovalPage() {
                 <ReceiptText className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#1A1612] m-0">Chứng từ giao dịch VietQR</h3>
-                <p className="text-xs text-[#7D715E] m-0 font-mono">Ủy nhiệm chi điện tử Napas247</p>
+                <h3 className="text-base font-bold text-[#1A1612] m-0">Hồ sơ chứng từ chi trả</h3>
+                <p className="text-xs text-[#7D715E] m-0">Thông tin đối soát do Shop ghi nhận</p>
               </div>
             </div>
 
             <div className="mt-4 p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-[#7D715E]">Mã giao dịch ngân hàng:</span>
-                <span className="font-mono font-bold text-[#1A1612]">{viewingBill.bankRefCode || 'MBB202610038821'}</span>
+                <span className="font-mono font-bold text-[#1A1612]">{viewingBill.bankRefCode || 'Chưa cung cấp'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#7D715E]">Mã yêu cầu SCANMS:</span>
@@ -1913,12 +1935,17 @@ export default function PayoutApprovalPage() {
             <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-[#F3EFE6] p-3 text-xs">
               <div className="flex items-center gap-1.5 font-semibold text-[#5F5547]">
                 <CheckCircle className="h-4 w-4 text-[#059669]" />
-                <span>Đã chuyển khoản thành công</span>
+                <span>{viewingBill.status === 'APPROVED' ? 'Shop đã xác nhận chi trả' : 'Chưa xác nhận chi trả'}</span>
               </div>
               <span className="text-right font-mono text-[11px] text-[#7D715E]">
-                {viewingBill.processedAt ? new Date(viewingBill.processedAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN')}
+                {viewingBill.processedAt ? new Date(viewingBill.processedAt).toLocaleString('vi-VN') : 'Chưa ghi nhận thời điểm'}
               </span>
             </div>
+
+            {busy && <p role="status" className="mt-3 text-xs text-[#7D715E]">Đang tải chứng từ từ máy chủ…</p>}
+            {error && <p role="alert" className="mt-3 text-xs text-[#DC2626]">{error}</p>}
+            {billLink && <a href={billLink} target="_blank" rel="noopener noreferrer"
+              className="mt-3 block text-sm font-semibold text-[#B88E4F] underline">Mở chứng từ đã tải lên (liên kết có thời hạn)</a>}
 
             <button
               type="button"

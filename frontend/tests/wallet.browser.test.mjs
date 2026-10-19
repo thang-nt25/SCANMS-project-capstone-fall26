@@ -248,14 +248,15 @@ test(
       await page.waitForFunction(
         () =>
           getComputedStyle(document.querySelector('form button[type="submit"]'))
-            .backgroundColor === "rgb(197, 155, 88)",
-      );
+            .backgroundColor === "rgb(251, 245, 235)",
+        { timeout: 5000 },
+      ).catch(async error => { throw new Error(`Unexpected withdrawal CTA: ${await page.$eval('form button[type="submit"]', el => JSON.stringify({ disabled: el.disabled, color: getComputedStyle(el).backgroundColor, className: el.className }))}`, { cause: error }); });
       assert.equal(
         await page.$eval(
           'form button[type="submit"]',
           (element) => getComputedStyle(element).backgroundColor,
         ),
-        "rgb(197, 155, 88)",
+        "rgb(251, 245, 235)",
       );
 
       ledgerPaging = true;

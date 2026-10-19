@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1570 680" width="1570" height="680">
+  <defs>
+    <!-- UML Open Arrowhead -->
+    <marker id="arrowhead-open" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M 0 1 L 7 4.5 L 0 8" fill="none" stroke="#000000" stroke-width="1.6" />
+    </marker>
+  </defs>
+
+  <!-- Clean Pure White Canvas -->
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+
+  <!-- Transitions (Strict Solid Lines, Zero Diagonals) -->
+  
+      <!-- Edge: start -> requested -->
+      <path d="M 74 75 L 240 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="113" y="53" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Submit Return</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: requested -> shop_rejected -->
+      <path d="M 420 75 L 720 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="526" y="53" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Reject Return</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: shop_rejected -> closed -->
+      <path d="M 900 75 L 1140 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="973" y="53" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="1020" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Expire Request</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: closed -> end_closed -->
+      <path d="M 1300 75 L 1425 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="1327" y="53" width="70" height="14" fill="#FFFFFF" rx="2" />
+        <text x="1362" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Close Case</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: requested -> shop_approved -->
+      <path d="M 330 100 L 330 170" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="128" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="135" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Approve Return</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: shop_approved -> pickup_booked -->
+      <path d="M 330 220 L 330 290" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="248" width="76" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="255" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Book Pickup</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pickup_booked -> return_shipped -->
+      <path d="M 330 340 L 330 410" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="368" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="375" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Pick Up Package</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: return_shipped -> inspecting -->
+      <path d="M 330 460 L 330 530" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="488" width="128" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="495" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Receive at Warehouse</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: shop_rejected -> disputed -->
+      <path d="M 810 100 L 810 290" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="822" y="188" width="111" height="14" fill="#FFFFFF" rx="2" />
+        <text x="824" y="195" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Escalate to Admin</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: inspecting -> disputed -->
+      <path d="M 420 540 L 570 540 L 570 315 L 720 315" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="582" y="420" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="584" y="427" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Fail Inspection</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: disputed -> closed -->
+      <path d="M 900 305 L 1220 305 L 1220 100" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="1016" y="283" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="1060" y="293" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Rule for Shop</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: inspecting -> refunded -->
+      <path d="M 420 555 L 720 555" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="520.5" y="533" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="543" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Pass Inspection</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: disputed -> refunded -->
+      <path d="M 810 340 L 810 530" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="822" y="428" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="824" y="435" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Rule for Buyer</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: refunded -> end_refunded -->
+      <path d="M 900 555 L 1045 555" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="925" y="533" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="972" y="543" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Transfer Funds</tspan>
+        </text>
+      </g>
+    
+
+  <!-- States & Nodes (Clean Single Boxes, English) -->
+  
+        <!-- Initial State: Start (Label placed cleanly ABOVE circle) -->
+        <circle cx="60" cy="75" r="14" fill="#000000" />
+        <text x="60" y="55" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">Start</text>
+      
+
+        <!-- State: requested -->
+        <g id="state-requested">
+          <rect x="240" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Return Requested</text>
+        </g>
+      
+
+        <!-- State: shop_rejected -->
+        <g id="state-shop_rejected">
+          <rect x="720" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Shop Rejected</text>
+        </g>
+      
+
+        <!-- State: closed -->
+        <g id="state-closed">
+          <rect x="1140" y="50" width="160" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="1220" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Closed</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="1440" cy="75" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="1440" cy="75" r="8" fill="#000000" />
+        <text x="1440" y="103" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: shop_approved -->
+        <g id="state-shop_approved">
+          <rect x="240" y="170" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="200" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Shop Approved</text>
+        </g>
+      
+
+        <!-- State: pickup_booked -->
+        <g id="state-pickup_booked">
+          <rect x="240" y="290" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="320" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Pickup Booked</text>
+        </g>
+      
+
+        <!-- State: return_shipped -->
+        <g id="state-return_shipped">
+          <rect x="240" y="410" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="440" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Return Shipped</text>
+        </g>
+      
+
+        <!-- State: inspecting -->
+        <g id="state-inspecting">
+          <rect x="240" y="530" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="560" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Inspecting</text>
+        </g>
+      
+
+        <!-- State: disputed -->
+        <g id="state-disputed">
+          <rect x="720" y="290" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="320" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Disputed</text>
+        </g>
+      
+
+        <!-- State: refunded -->
+        <g id="state-refunded">
+          <rect x="720" y="530" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="560" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Refunded</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="1060" cy="555" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="1060" cy="555" r="8" fill="#000000" />
+        <text x="1060" y="583" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+</svg>

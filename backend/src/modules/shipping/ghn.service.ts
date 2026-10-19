@@ -11,6 +11,7 @@ import { isGeneratedGhnTestTrackingCode } from './ghn-tracking-code';
 import { createCustomerGhnSimulation, customerGhnSimulationDetail } from './customer-ghn-simulation';
 import { syncCustomerGhnSimulations } from './sync-customer-ghn-simulation';
 import { isValidShippingFee, requireShippingFee } from './shipping-fee';
+import { assertShippingPackage, buildShippingPackage, lockedOrderPackage, type ShippingPackage } from './shipping-package';
 import { OrderStatus, SampleRequestStatus, Prisma } from '@prisma/client';
 import {
   CreateGhnOrderDto,
@@ -66,6 +67,22 @@ export class GhnService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {}
+
+  private simulationEnabled(): boolean {
+    const enabled =
+      this.configService.get?.<string>('SHIPPING_SIMULATION_ENABLED') ??
+      process.env.SHIPPING_SIMULATION_ENABLED;
+    // A real GHN sandbox response must not silently turn into a fabricated journey.
+    return process.env.NODE_ENV !== 'production' && enabled === 'true';
+  }
+
+  private requireSimulationEnabled(): void {
+    if (!this.simulationEnabled()) {
+      throw new BadRequestException(
+        'Mô phỏng vận chuyển đang tắt. Hãy cấu hình GHN để kiểm tra dữ liệu từ hãng vận chuyển.',
+      );
+    }
+  }
 
   /**
    * Lấy cấu hình GHN từ .env
@@ -266,6 +283,8 @@ export class GhnService {
    * Tính phí giao hàng trực tiếp qua GHN API
    */
   async calculateShippingFee(dto: CalculateShippingFeeDto) {
+    // service_type_id=2: GHN requires a separate per-parcel service for loads >=20kg.
+    assertShippingPackage({ weight: dto.weight ?? 500, length: dto.length ?? 15, width: dto.width ?? 10, height: dto.height ?? 5 });
     try {
       const res = await this.ghnFetch<{
         code: number;
@@ -284,9 +303,9 @@ export class GhnService {
           to_district_id: dto.toDistrictId,
           to_ward_code: dto.toWardCode,
           weight: dto.weight || 500,
-          length: 15,
-          width: 10,
-          height: 5,
+          length: dto.length ?? 15,
+          width: dto.width ?? 10,
+          height: dto.height ?? 5,
           insurance_value: dto.insuranceValue || 0,
         },
       });
@@ -308,7 +327,7 @@ export class GhnService {
     throw new BadRequestException('GHN chưa trả được cước vận chuyển. Vui lòng thử lại sau.');
   }
 
-  async quoteAddress(address: string, weight = 500, insuranceValue = 0, storeId?: string) {
+  async quoteAddress(address: string, weight = 500, insuranceValue = 0, storeId?: string, parcel?: ShippingPackage) {
     if (!storeId) throw new BadRequestException('Cần chọn gian hàng để tính cước từ đúng kho xuất.');
     const store = await this.prisma.store.findUnique({ where: { id: storeId }, select: { onboardingData: true, returnWarehouse: true, isActive: true, isDeleted: true } });
     if (!store?.isActive || store.isDeleted) throw new BadRequestException('Gian hàng không khả dụng.');
@@ -326,8 +345,28 @@ export class GhnService {
       toWardCode: wardCode,
       weight,
       insuranceValue,
+      ...(parcel ? { length: parcel.length, width: parcel.width, height: parcel.height } : {}),
     });
     return { ...fee, districtId, wardCode };
+  }
+
+  async quoteCart(storeId: string, address: string, items: Array<{ productId: string; variantId?: string; quantity: number }>) {
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: [...new Set(items.map((item) => item.productId))] }, storeId, isDeleted: false, isActive: true, moderationStatus: 'APPROVED' },
+      include: { variants: { where: { isActive: true } } },
+    });
+    const byId = new Map(products.map((product) => [product.id, product]));
+    let insuranceValue = 0;
+    const lines = items.map((item) => {
+      const product = byId.get(item.productId);
+      if (!product) throw new BadRequestException('Sản phẩm tính cước không thuộc gian hàng hoặc không còn bán.');
+      const variant = item.variantId ? product.variants.find((row) => row.id === item.variantId) : null;
+      if (item.variantId && !variant) throw new BadRequestException('Phân loại tính cước không hợp lệ.');
+      insuranceValue += Number(variant?.price ?? product.price) * item.quantity;
+      return { product, quantity: item.quantity };
+    });
+    const parcel = buildShippingPackage(lines);
+    return { ...await this.quoteAddress(address, parcel.weight, insuranceValue, storeId, parcel), shippingPackage: parcel };
   }
 
   /**
@@ -407,13 +446,13 @@ export class GhnService {
       name: item.product?.title || 'Sản phẩm SCANMS',
       quantity: item.quantity,
       price: Math.round(Number(item.unitPrice)),
-      weight: 500,
     }));
-    const checkoutWeight = Math.max(500, order.orderItems.reduce((total, item) => total + item.quantity, 0) * 500);
+    const parcel = lockedOrderPackage(rawPayload, order.orderItems.reduce((total, item) => total + item.quantity, 0));
+    const checkoutWeight = parcel.weight;
     if ((customOptions?.weight !== undefined && customOptions.weight !== checkoutWeight) ||
-        (customOptions?.length !== undefined && customOptions.length !== 15) ||
-        (customOptions?.width !== undefined && customOptions.width !== 10) ||
-        (customOptions?.height !== undefined && customOptions.height !== 5)) {
+        (customOptions?.length !== undefined && customOptions.length !== parcel.length) ||
+        (customOptions?.width !== undefined && customOptions.width !== parcel.width) ||
+        (customOptions?.height !== undefined && customOptions.height !== parcel.height)) {
       throw new BadRequestException('Khối lượng hoặc kích thước phải khớp báo giá GHN lúc khách đặt hàng.');
     }
 
@@ -437,9 +476,9 @@ export class GhnService {
       cod_amount: targetCod,
       content: `Đơn hàng #${order.externalOrderSn} - ${items.length} sản phẩm`,
       weight: checkoutWeight,
-      length: customOptions?.length || 15,
-      width: customOptions?.width || 10,
-      height: customOptions?.height || 5,
+      length: parcel.length,
+      width: parcel.width,
+      height: parcel.height,
       insurance_value: Math.round(Number(order.subtotalAmount)),
       service_type_id: 2, // Giao chuẩn TMĐT
       items,
@@ -545,7 +584,8 @@ export class GhnService {
       ghnEnvironment,
       ghnRawResponse: ghnResponseData,
       ghnShippedAt: new Date().toISOString(),
-      ...(ghnEnvironment === GhnEnvironment.TEST ? { ghnSimulation: createCustomerGhnSimulation(orderCode) } : {}),
+      ...(ghnEnvironment === GhnEnvironment.TEST && this.simulationEnabled()
+        ? { ghnSimulation: createCustomerGhnSimulation(orderCode) } : {}),
     };
 
     const updatedOrder = await this.prisma.$transaction(async (tx) => {
@@ -600,6 +640,7 @@ export class GhnService {
   }
 
   async sandboxSampleState(code: string, userId: string, action?: 'start' | 'receive' | 'video' | 'expire' | 'pay-shipping', videoUrl?: string, videoDetails?: { title?: string; caption?: string }) {
+    this.requireSimulationEnabled();
     const charge = await this.prisma.sampleShippingCharge.findFirst({
       where: { trackingNumber: code, environment: 'TEST', carrier: 'GHN' },
       include: { sampleRequest: { include: { product: { select: { store: { select: { ownerId: true } } } } } } },
@@ -732,6 +773,7 @@ export class GhnService {
     const to = !sandbox && sample.ghnDistrictId && sample.ghnWardCode
       ? { districtId: sample.ghnDistrictId, wardCode: sample.ghnWardCode }
       : await this.resolveGhnLocation(sample.shippingAddress, environment);
+    const samplePackage = buildShippingPackage([{ product: sample.product, quantity: 1 }]);
     const response = await this.ghnFetch<{ code: number; message?: string; code_message_value?: string; code_message?: string; data?: { order_code: string; total_fee: number } }>(
       '/v2/shipping-order/create', {
         method: 'POST',
@@ -751,8 +793,8 @@ export class GhnService {
           to_ward_code: to.wardCode,
           cod_amount: 0,
           content: `Hàng mẫu SCANMS - ${sample.product.title}`,
-          weight: 500,
-          length: 15, width: 10, height: 5,
+          weight: samplePackage.weight,
+          length: samplePackage.length, width: samplePackage.width, height: samplePackage.height,
           service_type_id: 2,
           items: [{ name: sample.product.title, quantity: 1, price: Math.round(Number(sample.product.price)) }],
         },
@@ -882,7 +924,7 @@ export class GhnService {
   async trackOrder(orderCode: string, requestedEnvironment?: GhnEnvironment) {
     if (!/^[A-Za-z0-9-]{5,100}$/.test(orderCode)) throw new BadRequestException('Mã vận đơn GHN không hợp lệ.');
     const environment = requestedEnvironment || await this.getOrderEnvironment(orderCode);
-    if (environment === GhnEnvironment.TEST && this.prisma?.order?.findFirst) {
+    if (this.simulationEnabled() && environment === GhnEnvironment.TEST && this.prisma?.order?.findFirst) {
       const order = await this.prisma.order.findFirst({
         where: { rawPayload: { path: ['ghnOrderCode'], equals: orderCode } }, select: { rawPayload: true },
       });
@@ -891,7 +933,7 @@ export class GhnService {
         if (simulated.status === 'delivered') {
           await syncCustomerGhnSimulations(this.prisma, { rawPayload: { path: ['ghnOrderCode'], equals: orderCode } });
         }
-        return simulated;
+        return { ...simulated, simulationAvailable: true };
       }
     }
     let detailData: any = null;
@@ -951,6 +993,7 @@ export class GhnService {
       carrier: 'Giao Hàng Nhanh (GHN Express)',
       environment,
       status: displayStatus,
+      simulationAvailable: environment === GhnEnvironment.TEST && this.simulationEnabled(),
       trackingError,
       statusText: displayStatus !== 'unavailable'
         ? this.translateStatus(displayStatus)
@@ -971,6 +1014,7 @@ export class GhnService {
   }
 
   async startCustomerSimulation(orderId: string, storeIdContext?: string) {
+    this.requireSimulationEnabled();
     const code = await this.prisma.$transaction(async tx => {
       const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
       if (!rows.length) throw new NotFoundException('Không tìm thấy đơn mua.');
@@ -989,6 +1033,55 @@ export class GhnService {
       return raw.ghnOrderCode as string;
     });
     return this.trackOrder(code, GhnEnvironment.TEST);
+  }
+
+  /** Explicit test action, never a delivery callback or a side effect of public polling. */
+  async completeCustomerSimulation(orderId: string, actorId: string, storeIdContext?: string) {
+    this.requireSimulationEnabled();
+    return this.prisma.$transaction(async tx => {
+      const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
+      if (!rows.length) throw new NotFoundException('Không tìm thấy đơn mua.');
+      const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+      if (storeIdContext && order.storeId !== storeIdContext) {
+        throw new BadRequestException('Đơn mua không thuộc Shop của bạn.');
+      }
+      const raw = (order.rawPayload || {}) as Record<string, any>;
+      const simulated = customerGhnSimulationDetail(raw, raw.ghnOrderCode);
+      if (!simulated) throw new BadRequestException('Chỉ đồng bộ đơn GHN TEST đã bắt đầu mô phỏng.');
+      // A retry cannot move COMPLETED/RETURN_REQUESTED/CANCELLED backwards or notify twice.
+      if (order.status === OrderStatus.DELIVERED && raw.ghnSimulation.completedAt) {
+        return { orderId, status: order.status, isSimulation: true, message: 'Đã đồng bộ giao thử trước đó.' };
+      }
+      if (order.status !== OrderStatus.SHIPPING) {
+        throw new BadRequestException('Chỉ đồng bộ giao thử cho đơn đang giao.');
+      }
+      if (simulated.status !== 'delivered') {
+        throw new BadRequestException('Hành trình mô phỏng chưa hoàn tất. Vui lòng chờ đủ 4 phút từ khi bắt đầu.');
+      }
+      const completedAt = new Date();
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.DELIVERED,
+          deliveredAt: completedAt,
+          rawPayload: {
+            ...raw,
+            ghnSimulation: { ...raw.ghnSimulation, completedAt: completedAt.toISOString(), completedBy: actorId },
+          },
+        },
+      });
+      if (order.customerId) {
+        await tx.notification.create({ data: {
+          userId: order.customerId,
+          type: 'ORDER_DELIVERED',
+          title: 'Đơn TEST đã hoàn tất giao thử',
+          message: `Đơn ${order.externalOrderSn} đã giao theo mô phỏng, không phải xác nhận từ GHN. Bạn có thể kiểm thử nhận hàng hoặc yêu cầu đổi trả.`,
+          data: { orderId, externalOrderSn: order.externalOrderSn, actionUrl: '/customer/orders', isSimulation: true },
+        } });
+      }
+      // Do not confirm payment, release escrow, credit wallets or mark the order COMPLETED.
+      return { orderId, status: OrderStatus.DELIVERED, isSimulation: true, message: 'Đã đồng bộ giao thử. Khách có thể kiểm thử bước nhận hàng/đổi trả.' };
+    });
   }
 
   private trackingPhone(value: unknown): string | null {

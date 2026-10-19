@@ -451,6 +451,19 @@ export class CampaignsService {
     });
   }
 
+  /** Only the invited creator or this campaign's shop may inspect its state. */
+  async getInvitationState(userId: string, participantId: string) {
+    const invitation = await this.prisma.campaignParticipant.findUnique({
+      where: { id: participantId },
+      include: { campaign: { include: { store: { select: { ownerId: true } } } } },
+    });
+    if (!invitation) throw new NotFoundException('Không tìm thấy lời mời.');
+    if (invitation.collaboratorId !== userId && invitation.campaign.store.ownerId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền xem lời mời này.');
+    }
+    return { id: invitation.id, status: invitation.status, isActive: invitation.campaign.isActive, endDate: invitation.campaign.endDate };
+  }
+
   // ─── KOL: Chấp nhận lời mời ──────────────────────────────────────────
   async acceptInvitation(userId: string, participantId: string) {
     const participant = await this.prisma.campaignParticipant.findUnique({
