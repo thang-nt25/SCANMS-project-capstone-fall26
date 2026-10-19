@@ -1,0 +1,1300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg content="<mxfile host=&quot;Electron&quot; modified=&quot;2026-10-18T18:09:53.042Z&quot; agent=&quot;SCANMS&quot; version=&quot;21.0.0&quot; type=&quot;device&quot;>
+  <diagram id=&quot;sm01&quot; name=&quot;1. Order Lifecycle&quot;>
+    <mxGraphModel dx=&quot;1270&quot; dy=&quot;915&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1190&quot; pageHeight=&quot;835&quot; math=&quot;0&quot; shadow=&quot;0&quot;>
+      <root>
+        <mxCell id=&quot;0&quot;/>
+<mxCell id=&quot;1&quot; parent=&quot;0&quot;/>
+
+        <mxCell id=&quot;st_start&quot; value=&quot;&quot; style=&quot;ellipse;fillColor=#000000;strokeColor=#000000;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;46&quot; y=&quot;61&quot; width=&quot;28&quot; height=&quot;28&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_start&quot; value=&quot;&lt;b&gt;Start&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;30&quot; y=&quot;39&quot; width=&quot;60&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_pending&quot; value=&quot;&lt;b&gt;Pending&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_cancelled&quot; value=&quot;&lt;b&gt;Cancelled&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_cancelled&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1045&quot; y=&quot;60&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_cancelled&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1025&quot; y=&quot;92&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_shipping&quot; value=&quot;&lt;b&gt;Shipping&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;180&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_delivered&quot; value=&quot;&lt;b&gt;Delivered&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;310&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_completed&quot; value=&quot;&lt;b&gt;Completed&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;440&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_completed&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;45&quot; y=&quot;450&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_completed&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;25&quot; y=&quot;482&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_return_req&quot; value=&quot;&lt;b&gt;Return Requested&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;310&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_disputed&quot; value=&quot;&lt;b&gt;Disputed&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;440&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_returned&quot; value=&quot;&lt;b&gt;Returned&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;570&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_returned&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;795&quot; y=&quot;695&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_returned&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;775&quot; y=&quot;727&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+      <mxCell id=&quot;edge_1&quot; value=&quot;&lt;b&gt;Create Order&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_start&quot; target=&quot;st_pending&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_2&quot; value=&quot;&lt;b&gt;Cancel Order&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending&quot; target=&quot;st_cancelled&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_3&quot; value=&quot;&lt;b&gt;Close Order&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_cancelled&quot; target=&quot;st_end_cancelled&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_4&quot; value=&quot;&lt;b&gt;Ship Order&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending&quot; target=&quot;st_shipping&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_5&quot; value=&quot;&lt;b&gt;Confirm Delivery&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_shipping&quot; target=&quot;st_delivered&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_6&quot; value=&quot;&lt;b&gt;Complete Order&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_delivered&quot; target=&quot;st_completed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_7&quot; value=&quot;&lt;b&gt;Settle Order&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_completed&quot; target=&quot;st_end_completed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_8&quot; value=&quot;&lt;b&gt;Request Return&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_delivered&quot; target=&quot;st_return_req&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_9&quot; value=&quot;&lt;b&gt;Accept Return&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=1.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_return_req&quot; target=&quot;st_returned&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          <Array as=&quot;points&quot;><mxPoint x=&quot;960&quot; y=&quot;335&quot;/><mxPoint x=&quot;960&quot; y=&quot;595&quot;/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_10&quot; value=&quot;&lt;b&gt;Reject Return&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_return_req&quot; target=&quot;st_disputed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_11&quot; value=&quot;&lt;b&gt;Arbitrate for Buyer&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_disputed&quot; target=&quot;st_returned&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_12&quot; value=&quot;&lt;b&gt;Arbitrate for Shop&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;entryX=1.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_disputed&quot; target=&quot;st_completed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_13&quot; value=&quot;&lt;b&gt;Refund Order&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_returned&quot; target=&quot;st_end_returned&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id=&quot;sm02&quot; name=&quot;2. Return & Dispute&quot;>
+    <mxGraphModel dx=&quot;1650&quot; dy=&quot;760&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1570&quot; pageHeight=&quot;680&quot; math=&quot;0&quot; shadow=&quot;0&quot;>
+      <root>
+        <mxCell id=&quot;0&quot;/>
+<mxCell id=&quot;1&quot; parent=&quot;0&quot;/>
+
+        <mxCell id=&quot;st_start&quot; value=&quot;&quot; style=&quot;ellipse;fillColor=#000000;strokeColor=#000000;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;46&quot; y=&quot;61&quot; width=&quot;28&quot; height=&quot;28&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_start&quot; value=&quot;&lt;b&gt;Start&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;30&quot; y=&quot;39&quot; width=&quot;60&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_requested&quot; value=&quot;&lt;b&gt;Return Requested&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_shop_rejected&quot; value=&quot;&lt;b&gt;Shop Rejected&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_closed&quot; value=&quot;&lt;b&gt;Closed&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1140&quot; y=&quot;50&quot; width=&quot;160&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_closed&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1425&quot; y=&quot;60&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_closed&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1405&quot; y=&quot;92&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_shop_approved&quot; value=&quot;&lt;b&gt;Shop Approved&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;170&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_pickup_booked&quot; value=&quot;&lt;b&gt;Pickup Booked&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;290&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_return_shipped&quot; value=&quot;&lt;b&gt;Return Shipped&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;410&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_inspecting&quot; value=&quot;&lt;b&gt;Inspecting&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;530&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_disputed&quot; value=&quot;&lt;b&gt;Disputed&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;290&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_refunded&quot; value=&quot;&lt;b&gt;Refunded&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;530&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_refunded&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1045&quot; y=&quot;540&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_refunded&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1025&quot; y=&quot;572&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+      <mxCell id=&quot;edge_1&quot; value=&quot;&lt;b&gt;Submit Return&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_start&quot; target=&quot;st_requested&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_2&quot; value=&quot;&lt;b&gt;Reject Return&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_requested&quot; target=&quot;st_shop_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_3&quot; value=&quot;&lt;b&gt;Expire Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_shop_rejected&quot; target=&quot;st_closed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_4&quot; value=&quot;&lt;b&gt;Close Case&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_closed&quot; target=&quot;st_end_closed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_5&quot; value=&quot;&lt;b&gt;Approve Return&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_requested&quot; target=&quot;st_shop_approved&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_6&quot; value=&quot;&lt;b&gt;Book Pickup&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_shop_approved&quot; target=&quot;st_pickup_booked&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_7&quot; value=&quot;&lt;b&gt;Pick Up Package&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pickup_booked&quot; target=&quot;st_return_shipped&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_8&quot; value=&quot;&lt;b&gt;Receive at Warehouse&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_return_shipped&quot; target=&quot;st_inspecting&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_9&quot; value=&quot;&lt;b&gt;Escalate to Admin&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_shop_rejected&quot; target=&quot;st_disputed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_10&quot; value=&quot;&lt;b&gt;Fail Inspection&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.20;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_inspecting&quot; target=&quot;st_disputed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          <Array as=&quot;points&quot;><mxPoint x=&quot;570&quot; y=&quot;540&quot;/><mxPoint x=&quot;570&quot; y=&quot;315&quot;/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_11&quot; value=&quot;&lt;b&gt;Rule for Shop&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.30;exitDx=0;exitDy=0;entryX=0.50;entryY=1.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_disputed&quot; target=&quot;st_closed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          <Array as=&quot;points&quot;><mxPoint x=&quot;1220&quot; y=&quot;305&quot;/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_12&quot; value=&quot;&lt;b&gt;Pass Inspection&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_inspecting&quot; target=&quot;st_refunded&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_13&quot; value=&quot;&lt;b&gt;Rule for Buyer&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_disputed&quot; target=&quot;st_refunded&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_14&quot; value=&quot;&lt;b&gt;Transfer Funds&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_refunded&quot; target=&quot;st_end_refunded&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id=&quot;sm03&quot; name=&quot;3. Commission & Payout&quot;>
+    <mxGraphModel dx=&quot;1280&quot; dy=&quot;760&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1200&quot; pageHeight=&quot;680&quot; math=&quot;0&quot; shadow=&quot;0&quot;>
+      <root>
+        <mxCell id=&quot;0&quot;/>
+<mxCell id=&quot;1&quot; parent=&quot;0&quot;/>
+
+        <mxCell id=&quot;st_start&quot; value=&quot;&quot; style=&quot;ellipse;fillColor=#000000;strokeColor=#000000;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;46&quot; y=&quot;61&quot; width=&quot;28&quot; height=&quot;28&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_start&quot; value=&quot;&lt;b&gt;Start&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;30&quot; y=&quot;39&quot; width=&quot;60&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_comm_pending&quot; value=&quot;&lt;b&gt;Commission Pending&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;50&quot; width=&quot;200&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_comm_reversed&quot; value=&quot;&lt;b&gt;Commission Reversed&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;730&quot; y=&quot;50&quot; width=&quot;200&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_reversed&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1055&quot; y=&quot;60&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_reversed&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1035&quot; y=&quot;92&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_comm_approved&quot; value=&quot;&lt;b&gt;Commission Approved&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;170&quot; width=&quot;200&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_payout_pending&quot; value=&quot;&lt;b&gt;Payout Pending&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;290&quot; width=&quot;200&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_payout_processing&quot; value=&quot;&lt;b&gt;Payout Processing&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;410&quot; width=&quot;200&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_payout_rejected&quot; value=&quot;&lt;b&gt;Payout Rejected&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;730&quot; y=&quot;410&quot; width=&quot;200&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_rejected&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1055&quot; y=&quot;420&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_rejected&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1035&quot; y=&quot;452&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_payout_paid&quot; value=&quot;&lt;b&gt;Payout Paid&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;530&quot; width=&quot;200&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_paid&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;45&quot; y=&quot;540&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_paid&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;25&quot; y=&quot;572&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+      <mxCell id=&quot;edge_1&quot; value=&quot;&lt;b&gt;Record Commission&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_start&quot; target=&quot;st_comm_pending&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_2&quot; value=&quot;&lt;b&gt;Revoke Commission&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_comm_pending&quot; target=&quot;st_comm_reversed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_3&quot; value=&quot;&lt;b&gt;Reverse Ledger&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_comm_reversed&quot; target=&quot;st_end_reversed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_4&quot; value=&quot;&lt;b&gt;Release Commission&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_comm_pending&quot; target=&quot;st_comm_approved&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_5&quot; value=&quot;&lt;b&gt;Request Payout&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_comm_approved&quot; target=&quot;st_payout_pending&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_6&quot; value=&quot;&lt;b&gt;Process Payout&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_payout_pending&quot; target=&quot;st_payout_processing&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_7&quot; value=&quot;&lt;b&gt;Reject Payout&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_payout_processing&quot; target=&quot;st_payout_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_8&quot; value=&quot;&lt;b&gt;Restore Funds&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_payout_rejected&quot; target=&quot;st_end_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_9&quot; value=&quot;&lt;b&gt;Transfer Payout&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_payout_processing&quot; target=&quot;st_payout_paid&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_10&quot; value=&quot;&lt;b&gt;Settle Payout&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_payout_paid&quot; target=&quot;st_end_paid&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id=&quot;sm04&quot; name=&quot;4. KOL Sample Request&quot;>
+    <mxGraphModel dx=&quot;1290&quot; dy=&quot;880&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1210&quot; pageHeight=&quot;800&quot; math=&quot;0&quot; shadow=&quot;0&quot;>
+      <root>
+        <mxCell id=&quot;0&quot;/>
+<mxCell id=&quot;1&quot; parent=&quot;0&quot;/>
+
+        <mxCell id=&quot;st_start&quot; value=&quot;&quot; style=&quot;ellipse;fillColor=#000000;strokeColor=#000000;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;46&quot; y=&quot;61&quot; width=&quot;28&quot; height=&quot;28&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_start&quot; value=&quot;&lt;b&gt;Start&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;30&quot; y=&quot;39&quot; width=&quot;60&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_pending&quot; value=&quot;&lt;b&gt;Pending Review&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_rejected&quot; value=&quot;&lt;b&gt;Rejected&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_rejected&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1065&quot; y=&quot;60&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_rejected&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1045&quot; y=&quot;92&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_approved&quot; value=&quot;&lt;b&gt;Approved&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;170&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_shipped&quot; value=&quot;&lt;b&gt;Shipped&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;280&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_received&quot; value=&quot;&lt;b&gt;Received&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;390&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_overdue&quot; value=&quot;&lt;b&gt;Overdue&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;390&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_overdue&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1065&quot; y=&quot;400&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_overdue&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1045&quot; y=&quot;432&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_video_submitted&quot; value=&quot;&lt;b&gt;Video Submitted&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;520&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_revision_req&quot; value=&quot;&lt;b&gt;Revision Required&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;520&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_completed&quot; value=&quot;&lt;b&gt;Completed&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;650&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_completed&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;45&quot; y=&quot;660&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_completed&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;25&quot; y=&quot;692&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+      <mxCell id=&quot;edge_1&quot; value=&quot;&lt;b&gt;Request Sample&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_start&quot; target=&quot;st_pending&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_2&quot; value=&quot;&lt;b&gt;Reject Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending&quot; target=&quot;st_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_3&quot; value=&quot;&lt;b&gt;Close Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_rejected&quot; target=&quot;st_end_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_4&quot; value=&quot;&lt;b&gt;Approve Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending&quot; target=&quot;st_approved&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_5&quot; value=&quot;&lt;b&gt;Dispatch Sample&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_approved&quot; target=&quot;st_shipped&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_6&quot; value=&quot;&lt;b&gt;Confirm Delivery&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_shipped&quot; target=&quot;st_received&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_7&quot; value=&quot;&lt;b&gt;Expire Deadline&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_received&quot; target=&quot;st_overdue&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_8&quot; value=&quot;&lt;b&gt;Suspend Privileges&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_overdue&quot; target=&quot;st_end_overdue&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_9&quot; value=&quot;&lt;b&gt;Submit Video&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_received&quot; target=&quot;st_video_submitted&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_10&quot; value=&quot;&lt;b&gt;Request Revision&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.30;exitDx=0;exitDy=0;entryX=0.00;entryY=0.30;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_video_submitted&quot; target=&quot;st_revision_req&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_11&quot; value=&quot;&lt;b&gt;Resubmit Video&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_revision_req&quot; target=&quot;st_video_submitted&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_12&quot; value=&quot;&lt;b&gt;Approve Video&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_video_submitted&quot; target=&quot;st_completed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_13&quot; value=&quot;&lt;b&gt;Complete Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_completed&quot; target=&quot;st_end_completed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id=&quot;sm05&quot; name=&quot;5. Product Moderation&quot;>
+    <mxGraphModel dx=&quot;1060&quot; dy=&quot;930&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;980&quot; pageHeight=&quot;850&quot; math=&quot;0&quot; shadow=&quot;0&quot;>
+      <root>
+        <mxCell id=&quot;0&quot;/>
+<mxCell id=&quot;1&quot; parent=&quot;0&quot;/>
+
+        <mxCell id=&quot;st_start&quot; value=&quot;&quot; style=&quot;ellipse;fillColor=#000000;strokeColor=#000000;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;46&quot; y=&quot;61&quot; width=&quot;28&quot; height=&quot;28&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_start&quot; value=&quot;&lt;b&gt;Start&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;30&quot; y=&quot;39&quot; width=&quot;60&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_draft&quot; value=&quot;&lt;b&gt;Draft&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_pending_appr&quot; value=&quot;&lt;b&gt;Pending Approval&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;180&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_rejected&quot; value=&quot;&lt;b&gt;Rejected&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;180&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_approved&quot; value=&quot;&lt;b&gt;Approved&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;310&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_active&quot; value=&quot;&lt;b&gt;Active&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;440&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_out_of_stock&quot; value=&quot;&lt;b&gt;Out of Stock&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;440&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_inactive&quot; value=&quot;&lt;b&gt;Inactive&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;570&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_suspended&quot; value=&quot;&lt;b&gt;Suspended&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;570&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_deleted&quot; value=&quot;&lt;b&gt;Deleted&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;700&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_deleted&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;45&quot; y=&quot;710&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_deleted&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;25&quot; y=&quot;742&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+      <mxCell id=&quot;edge_1&quot; value=&quot;&lt;b&gt;Create Draft&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_start&quot; target=&quot;st_draft&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_2&quot; value=&quot;&lt;b&gt;Submit for Review&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_draft&quot; target=&quot;st_pending_appr&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_3&quot; value=&quot;&lt;b&gt;Reject Product&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.24;exitDx=0;exitDy=0;entryX=0.00;entryY=0.24;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending_appr&quot; target=&quot;st_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_4&quot; value=&quot;&lt;b&gt;Resubmit for Review&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_rejected&quot; target=&quot;st_pending_appr&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_5&quot; value=&quot;&lt;b&gt;Approve Product&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending_appr&quot; target=&quot;st_approved&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_6&quot; value=&quot;&lt;b&gt;Publish Listing&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_approved&quot; target=&quot;st_active&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_7&quot; value=&quot;&lt;b&gt;Deplete Stock&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.24;exitDx=0;exitDy=0;entryX=0.00;entryY=0.24;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_active&quot; target=&quot;st_out_of_stock&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_8&quot; value=&quot;&lt;b&gt;Restock Inventory&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_out_of_stock&quot; target=&quot;st_active&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_9&quot; value=&quot;&lt;b&gt;Pause Listing&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.33;exitY=1.00;exitDx=0;exitDy=0;entryX=0.33;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_active&quot; target=&quot;st_inactive&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_10&quot; value=&quot;&lt;b&gt;Resume Listing&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.67;exitY=0.00;exitDx=0;exitDy=0;entryX=0.67;entryY=1.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_inactive&quot; target=&quot;st_active&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_11&quot; value=&quot;&lt;b&gt;Suspend Product&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.94;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_active&quot; target=&quot;st_suspended&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          <Array as=&quot;points&quot;><mxPoint x=&quot;410&quot; y=&quot;540&quot;/><mxPoint x=&quot;810&quot; y=&quot;540&quot;/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_12&quot; value=&quot;&lt;b&gt;Delete Product&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_inactive&quot; target=&quot;st_deleted&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_13&quot; value=&quot;&lt;b&gt;Take Down Product&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=1.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_suspended&quot; target=&quot;st_deleted&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          <Array as=&quot;points&quot;><mxPoint x=&quot;810&quot; y=&quot;725&quot;/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_14&quot; value=&quot;&lt;b&gt;Archive Product&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_deleted&quot; target=&quot;st_end_deleted&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id=&quot;sm06&quot; name=&quot;6. KYC Verification&quot;>
+    <mxGraphModel dx=&quot;1290&quot; dy=&quot;690&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1210&quot; pageHeight=&quot;610&quot; math=&quot;0&quot; shadow=&quot;0&quot;>
+      <root>
+        <mxCell id=&quot;0&quot;/>
+<mxCell id=&quot;1&quot; parent=&quot;0&quot;/>
+
+        <mxCell id=&quot;st_start&quot; value=&quot;&quot; style=&quot;ellipse;fillColor=#000000;strokeColor=#000000;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;46&quot; y=&quot;61&quot; width=&quot;28&quot; height=&quot;28&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_start&quot; value=&quot;&lt;b&gt;Start&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;30&quot; y=&quot;39&quot; width=&quot;60&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_unverified&quot; value=&quot;&lt;b&gt;Unverified&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_pending_review&quot; value=&quot;&lt;b&gt;Pending Review&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;180&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_needs_info&quot; value=&quot;&lt;b&gt;Needs Info&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;180&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_rejected&quot; value=&quot;&lt;b&gt;Rejected&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;320&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_rejected&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1065&quot; y=&quot;330&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_rejected&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1045&quot; y=&quot;362&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_verified&quot; value=&quot;&lt;b&gt;Verified&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;320&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_verified&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;45&quot; y=&quot;330&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_verified&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;25&quot; y=&quot;362&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_suspended&quot; value=&quot;&lt;b&gt;Suspended&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;460&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_suspended&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;45&quot; y=&quot;470&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_suspended&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;25&quot; y=&quot;502&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+      <mxCell id=&quot;edge_1&quot; value=&quot;&lt;b&gt;Register Account&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_start&quot; target=&quot;st_unverified&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_2&quot; value=&quot;&lt;b&gt;Submit KYC Dossier&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_unverified&quot; target=&quot;st_pending_review&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_3&quot; value=&quot;&lt;b&gt;Request Clarification&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.24;exitDx=0;exitDy=0;entryX=0.00;entryY=0.24;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending_review&quot; target=&quot;st_needs_info&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_4&quot; value=&quot;&lt;b&gt;Reupload Documents&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_needs_info&quot; target=&quot;st_pending_review&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_5&quot; value=&quot;&lt;b&gt;Reject KYC&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.78;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending_review&quot; target=&quot;st_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          <Array as=&quot;points&quot;><mxPoint x=&quot;380&quot; y=&quot;275&quot;/><mxPoint x=&quot;810&quot; y=&quot;275&quot;/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_6&quot; value=&quot;&lt;b&gt;Blacklist Dossier&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_rejected&quot; target=&quot;st_end_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_7&quot; value=&quot;&lt;b&gt;Approve KYC&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending_review&quot; target=&quot;st_verified&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_8&quot; value=&quot;&lt;b&gt;Unlock Privileges&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_verified&quot; target=&quot;st_end_verified&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_9&quot; value=&quot;&lt;b&gt;Suspend Account&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_verified&quot; target=&quot;st_suspended&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_10&quot; value=&quot;&lt;b&gt;Revoke Access&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_suspended&quot; target=&quot;st_end_suspended&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1190 835" width="1190" height="835">
+  <defs>
+    <!-- UML Open Arrowhead -->
+    <marker id="arrowhead-open" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M 0 1 L 7 4.5 L 0 8" fill="none" stroke="#000000" stroke-width="1.6" />
+    </marker>
+  </defs>
+
+  <!-- Clean Pure White Canvas -->
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+
+  <!-- Transitions (Strict Solid Lines, Zero Diagonals) -->
+  
+      <!-- Edge: start -> pending -->
+      <path d="M 74 75 L 240 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="116" y="53" width="82" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Create Order</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending -> cancelled -->
+      <path d="M 420 75 L 720 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="529" y="53" width="82" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Cancel Order</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: cancelled -> end_cancelled -->
+      <path d="M 900 75 L 1045 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="934" y="53" width="76" height="14" fill="#FFFFFF" rx="2" />
+        <text x="972" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Close Order</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending -> shipping -->
+      <path d="M 330 100 L 330 180" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="133" width="70" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="140" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Ship Order</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: shipping -> delivered -->
+      <path d="M 330 230 L 330 310" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="263" width="105" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="270" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Confirm Delivery</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: delivered -> completed -->
+      <path d="M 330 360 L 330 440" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="393" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="400" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Complete Order</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: completed -> end_completed -->
+      <path d="M 240 465 L 75 465" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="116" y="443" width="82" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="453" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Settle Order</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: delivered -> return_req -->
+      <path d="M 420 335 L 720 335" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="523" y="313" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="323" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Request Return</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: return_req -> returned -->
+      <path d="M 900 335 L 960 335 L 960 595 L 900 595" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="972" y="458" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="974" y="465" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Accept Return</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: return_req -> disputed -->
+      <path d="M 810 360 L 810 440" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="822" y="393" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="824" y="400" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Reject Return</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: disputed -> returned -->
+      <path d="M 810 490 L 810 570" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="822" y="523" width="123" height="14" fill="#FFFFFF" rx="2" />
+        <text x="824" y="530" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Arbitrate for Buyer</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: disputed -> completed -->
+      <path d="M 720 465 L 420 465" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="511.5" y="443" width="117" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="453" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Arbitrate for Shop</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: returned -> end_returned -->
+      <path d="M 810 620 L 810 695" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="822" y="650" width="82" height="14" fill="#FFFFFF" rx="2" />
+        <text x="824" y="657" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Refund Order</tspan>
+        </text>
+      </g>
+    
+
+  <!-- States & Nodes (Clean Single Boxes, English) -->
+  
+        <!-- Initial State: Start (Label placed cleanly ABOVE circle) -->
+        <circle cx="60" cy="75" r="14" fill="#000000" />
+        <text x="60" y="55" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">Start</text>
+      
+
+        <!-- State: pending -->
+        <g id="state-pending">
+          <rect x="240" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Pending</text>
+        </g>
+      
+
+        <!-- State: cancelled -->
+        <g id="state-cancelled">
+          <rect x="720" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Cancelled</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="1060" cy="75" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="1060" cy="75" r="8" fill="#000000" />
+        <text x="1060" y="103" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: shipping -->
+        <g id="state-shipping">
+          <rect x="240" y="180" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="210" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Shipping</text>
+        </g>
+      
+
+        <!-- State: delivered -->
+        <g id="state-delivered">
+          <rect x="240" y="310" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="340" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Delivered</text>
+        </g>
+      
+
+        <!-- State: completed -->
+        <g id="state-completed">
+          <rect x="240" y="440" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="470" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Completed</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="60" cy="465" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="60" cy="465" r="8" fill="#000000" />
+        <text x="60" y="493" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: return_req -->
+        <g id="state-return_req">
+          <rect x="720" y="310" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="340" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Return Requested</text>
+        </g>
+      
+
+        <!-- State: disputed -->
+        <g id="state-disputed">
+          <rect x="720" y="440" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="470" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Disputed</text>
+        </g>
+      
+
+        <!-- State: returned -->
+        <g id="state-returned">
+          <rect x="720" y="570" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="600" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Returned</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="810" cy="710" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="810" cy="710" r="8" fill="#000000" />
+        <text x="810" y="738" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+</svg>

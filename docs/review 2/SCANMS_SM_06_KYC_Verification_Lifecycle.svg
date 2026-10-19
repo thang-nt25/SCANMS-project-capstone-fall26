@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1210 610" width="1210" height="610">
+  <defs>
+    <!-- UML Open Arrowhead -->
+    <marker id="arrowhead-open" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M 0 1 L 7 4.5 L 0 8" fill="none" stroke="#000000" stroke-width="1.6" />
+    </marker>
+  </defs>
+
+  <!-- Clean Pure White Canvas -->
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+
+  <!-- Transitions (Strict Solid Lines, Zero Diagonals) -->
+  
+      <!-- Edge: start -> unverified -->
+      <path d="M 74 75 L 240 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="104.5" y="53" width="105" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Register Account</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: unverified -> pending_review -->
+      <path d="M 330 100 L 330 180" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="133" width="117" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="140" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Submit KYC Dossier</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending_review -> needs_info -->
+      <path d="M 420 192 L 720 192" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="503" y="170" width="134" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="180" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Request Clarification</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: needs_info -> pending_review -->
+      <path d="M 720 218 L 420 218" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="511.5" y="228" width="117" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="230" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Reupload Documents</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending_review -> rejected -->
+      <path d="M 380 230 L 380 275 L 810 275 L 810 320" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="560" y="253" width="70" height="14" fill="#FFFFFF" rx="2" />
+        <text x="595" y="263" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Reject KYC</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: rejected -> end_rejected -->
+      <path d="M 900 345 L 1065 345" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="926.5" y="323" width="111" height="14" fill="#FFFFFF" rx="2" />
+        <text x="982" y="333" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Blacklist Dossier</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending_review -> verified -->
+      <path d="M 330 230 L 330 320" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="268" width="76" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="275" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Approve KYC</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: verified -> end_verified -->
+      <path d="M 240 345 L 75 345" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="101.5" y="323" width="111" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="333" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Unlock Privileges</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: verified -> suspended -->
+      <path d="M 330 370 L 330 460" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="408" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="415" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Suspend Account</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: suspended -> end_suspended -->
+      <path d="M 240 485 L 75 485" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="113" y="463" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="473" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Revoke Access</tspan>
+        </text>
+      </g>
+    
+
+  <!-- States & Nodes (Clean Single Boxes, English) -->
+  
+        <!-- Initial State: Start (Label placed cleanly ABOVE circle) -->
+        <circle cx="60" cy="75" r="14" fill="#000000" />
+        <text x="60" y="55" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">Start</text>
+      
+
+        <!-- State: unverified -->
+        <g id="state-unverified">
+          <rect x="240" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Unverified</text>
+        </g>
+      
+
+        <!-- State: pending_review -->
+        <g id="state-pending_review">
+          <rect x="240" y="180" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="210" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Pending Review</text>
+        </g>
+      
+
+        <!-- State: needs_info -->
+        <g id="state-needs_info">
+          <rect x="720" y="180" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="210" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Needs Info</text>
+        </g>
+      
+
+        <!-- State: rejected -->
+        <g id="state-rejected">
+          <rect x="720" y="320" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="350" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Rejected</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="1080" cy="345" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="1080" cy="345" r="8" fill="#000000" />
+        <text x="1080" y="373" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: verified -->
+        <g id="state-verified">
+          <rect x="240" y="320" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="350" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Verified</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="60" cy="345" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="60" cy="345" r="8" fill="#000000" />
+        <text x="60" y="373" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: suspended -->
+        <g id="state-suspended">
+          <rect x="240" y="460" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="490" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Suspended</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="60" cy="485" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="60" cy="485" r="8" fill="#000000" />
+        <text x="60" y="513" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+</svg>
