@@ -723,6 +723,9 @@ export class OrdersService {
         cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
         trackingUrl: `/tracking?sn=${existingOrder.externalOrderSn}`,
         confirmationEmailQueued: false,
+        confirmationEmailStatus:
+          (rawPayload.confirmationEmailStatus as string) ||
+          (!customerEmail ? 'NOT_REQUESTED' : 'SENT'),
         items: existingOrder.orderItems.map((item) => ({
           productId: item.productId,
           variantId: item.variantId || undefined,
@@ -2137,6 +2140,9 @@ export class OrdersService {
         cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
         trackingUrl: `/tracking?sn=${existingSubOrders[0]?.externalOrderSn}`,
         confirmationEmailQueued: false,
+        confirmationEmailStatus:
+          (firstRaw.confirmationEmailStatus as string) ||
+          (!customerEmail ? 'NOT_REQUESTED' : 'SENT'),
         orders: existingSubOrders.map((o) => {
           const raw = (o.rawPayload as Record<string, any>) || {};
           return {
